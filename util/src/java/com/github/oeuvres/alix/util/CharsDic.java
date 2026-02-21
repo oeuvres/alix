@@ -502,75 +502,6 @@ public final class CharsDic
     }
     
     /**
-     * Shared lookup core for array and {@link CharSequence} sources.
-     *
-     * <p>Exactly one of {@code term} or {@code cs} must be non-null.</p>
-     *
-     * @param term source array, or {@code null} if using {@code cs}
-     * @param off start offset in the chosen source
-     * @param len number of chars to read
-     * @param cs source character sequence, or {@code null} if using {@code term}
-     * @return existing ord, or {@code -1} if absent
-     */
-    private int find0(final char[] term, final int off, final int len, final CharSequence cs)
-    {
-        final boolean arraySrc = (term != null);
-
-        final int h = arraySrc ? hashCode(term, off, len) : hashCode(cs, off, len);
-        final short f = (short) (h >>> 16);
-
-        int i = h & mask;
-        for (;;) {
-            final int ord = table[i];
-            if (ord == -1) return -1;
-
-            if (fp16[i] == f) {
-                final long m = meta[ord];
-                if (metaLen(m) == len) {
-                    final boolean eq = arraySrc
-                        ? equalsAt(ord, term, off, len)
-                        : equalsAt(ord, cs, off, len);
-                    if (eq) return ord;
-                }
-            }
-            i = (i + 1) & mask;
-        }
-    }
-
-    /**
-     * Ensures that the slab can accept {@code extra} additional characters.
-     *
-     * <p>The slab grows geometrically (~1.5x) with a small additive constant.</p>
-     *
-     * @param extra number of chars that will be appended ({@code >= 0})
-     */
-    private void ensureSlabCapacity(final int extra)
-    {
-        final int need = slabUsed + extra;
-        if (need <= slab.length) return;
-
-        final int cap = Math.max(need, slab.length + (slab.length >>> 1) + 16);
-        slab = Arrays.copyOf(slab, cap);
-    }
-
-    /**
-     * Appends {@code term[off..off+len)} to the end of the slab.
-     *
-     * @param term source term array
-     * @param off start offset in {@code term}
-     * @param len number of chars to copy
-     * @return starting slab offset where the term was written
-     */
-    private int appendToSlab(final char[] term, final int off, final int len)
-    {
-        ensureSlabCapacity(len);
-        final int base = slabUsed;
-        System.arraycopy(term, off, slab, base, len);
-        slabUsed = base + len;
-        return base;
-    }
-
-    /**
      * Appends {@code cs[off..off+len)} to the end of the slab.
      *
      * <p>Characters are copied through {@link CharSequence#charAt(int)}. This avoids an intermediate
@@ -593,6 +524,69 @@ public final class CharsDic
     }
 
     /**
+     * Appends {@code term[off..off+len)} to the end of the slab.
+     *
+     * @param term source term array
+     * @param off start offset in {@code term}
+     * @param len number of chars to copy
+     * @return starting slab offset where the term was written
+     */
+    private int appendToSlab(final char[] term, final int off, final int len)
+    {
+        ensureSlabCapacity(len);
+        final int base = slabUsed;
+        System.arraycopy(term, off, slab, base, len);
+        slabUsed = base + len;
+        return base;
+    }
+
+    /**
+     * Validates a slice of a {@link CharSequence}.
+     *
+     * @param term source sequence
+     * @param off start offset (inclusive)
+     * @param len slice length
+     * @throws NullPointerException if {@code cs} is null
+     * @throws IndexOutOfBoundsException if the slice is invalid
+     */
+    private static void checkBounds(final CharSequence term, final int off, final int len)
+    {
+        if (term == null) throw new NullPointerException("term");
+        final int n = term.length();
+        if (off < 0 || len < 0 || off > n - len) throw new IndexOutOfBoundsException();
+    }
+
+    /**
+     * Validates a slice of a {@code char[]}.
+     *
+     * <p>Uses an overflow-safe bound check form.</p>
+     *
+     * @param term source array
+     * @param off start offset (inclusive)
+     * @param len slice length
+     * @throws NullPointerException if {@code a} is null
+     * @throws IndexOutOfBoundsException if the slice is invalid
+     */
+    private static void checkBounds(final char[] term, final int off, final int len)
+    {
+        if (term == null) throw new NullPointerException("term");
+        if (off < 0 || len < 0 || off > term.length - len) throw new IndexOutOfBoundsException();
+    }
+
+    /**
+     * Validates that {@code ord} is an assigned ordinal.
+     *
+     * @param ord candidate ordinal
+     * @throws IllegalArgumentException if {@code ord < 0} or {@code ord >= size()}
+     */
+    private void checkOrd(final int ord)
+    {
+        if (ord < 0 || ord >= sizeOrds) {
+            throw new IllegalArgumentException("bad ord " + ord);
+        }
+    }
+
+    /**
      * Ensures per-ord arrays can accommodate {@code required} ords.
      *
      * <p>Arrays grow geometrically (~1.5x) with a small additive constant.</p>
@@ -610,52 +604,44 @@ public final class CharsDic
     // ---- Private validation helpers -----------------------------------------
 
     /**
-     * Validates a slice of a {@link CharSequence}.
+     * Ensures that the slab can accept {@code extra} additional characters.
      *
-     * @param cs source sequence
-     * @param off start offset (inclusive)
-     * @param len slice length
-     * @throws NullPointerException if {@code cs} is null
-     * @throws IndexOutOfBoundsException if the slice is invalid
+     * <p>The slab grows geometrically (~1.5x) with a small additive constant.</p>
+     *
+     * @param extra number of chars that will be appended ({@code >= 0})
      */
-    private static void checkBounds(final CharSequence cs, final int off, final int len)
+    private void ensureSlabCapacity(final int extra)
     {
-        if (cs == null) throw new NullPointerException("cs");
-        final int n = cs.length();
-        if (off < 0 || len < 0 || off > n - len) throw new IndexOutOfBoundsException();
+        final int need = slabUsed + extra;
+        if (need <= slab.length) return;
+    
+        final int cap = Math.max(need, slab.length + (slab.length >>> 1) + 16);
+        slab = Arrays.copyOf(slab, cap);
     }
 
-    /**
-     * Validates a slice of a {@code char[]}.
-     *
-     * <p>Uses an overflow-safe bound check form.</p>
-     *
-     * @param a source array
-     * @param off start offset (inclusive)
-     * @param len slice length
-     * @throws NullPointerException if {@code a} is null
-     * @throws IndexOutOfBoundsException if the slice is invalid
-     */
-    private static void checkBounds(final char[] a, final int off, final int len)
-    {
-        if (a == null) throw new NullPointerException("a");
-        if (off < 0 || len < 0 || off > a.length - len) throw new IndexOutOfBoundsException();
-    }
-
-    /**
-     * Validates that {@code ord} is an assigned ordinal.
-     *
-     * @param ord candidate ordinal
-     * @throws IllegalArgumentException if {@code ord < 0} or {@code ord >= size()}
-     */
-    private void checkOrd(final int ord)
-    {
-        if (ord < 0 || ord >= sizeOrds) {
-            throw new IllegalArgumentException("bad ord " + ord);
-        }
-    }
+    
 
     // ---- Private comparison helpers -----------------------------------------
+
+    /**
+     * Compares the stored term at {@code ord} to {@code cs[off..off+len)}.
+     *
+     * <p>Assumes the caller already checked length equality.</p>
+     *
+     * @param ord target ordinal
+     * @param term probe source sequence
+     * @param off start offset in {@code cs}
+     * @param len number of chars to compare
+     * @return {@code true} if equal, otherwise {@code false}
+     */
+    private boolean equalsAt(final int ord, final CharSequence term, final int off, final int len)
+    {
+        final int s = metaOff(meta[ord]);
+        for (int i = 0, j = off; i < len; i++, j++) {
+            if (slab[s + i] != term.charAt(j)) return false;
+        }
+        return true;
+    }
 
     /**
      * Compares the stored term at {@code ord} to {@code term[off..off+len)}.
@@ -677,27 +663,45 @@ public final class CharsDic
         return true;
     }
 
-    /**
-     * Compares the stored term at {@code ord} to {@code cs[off..off+len)}.
-     *
-     * <p>Assumes the caller already checked length equality.</p>
-     *
-     * @param ord target ordinal
-     * @param cs probe source sequence
-     * @param off start offset in {@code cs}
-     * @param len number of chars to compare
-     * @return {@code true} if equal, otherwise {@code false}
-     */
-    private boolean equalsAt(final int ord, final CharSequence cs, final int off, final int len)
-    {
-        final int s = metaOff(meta[ord]);
-        for (int i = 0, j = off; i < len; i++, j++) {
-            if (slab[s + i] != cs.charAt(j)) return false;
-        }
-        return true;
-    }
+    
 
     // ---- Private metadata helpers -------------------------------------------
+
+    /**
+     * Shared lookup core for array and {@link CharSequence} sources.
+     *
+     * <p>Exactly one of {@code term} or {@code cs} must be non-null.</p>
+     *
+     * @param term source array, or {@code null} if using {@code cs}
+     * @param off start offset in the chosen source
+     * @param len number of chars to read
+     * @param cs source character sequence, or {@code null} if using {@code term}
+     * @return existing ord, or {@code -1} if absent
+     */
+    private int find0(final char[] term, final int off, final int len, final CharSequence cs)
+    {
+        final boolean arraySrc = (term != null);
+    
+        final int h = arraySrc ? hashCode(term, off, len) : hashCode(cs, off, len);
+        final short f = (short) (h >>> 16);
+    
+        int i = h & mask;
+        for (;;) {
+            final int ord = table[i];
+            if (ord == -1) return -1;
+    
+            if (fp16[i] == f) {
+                final long m = meta[ord];
+                if (metaLen(m) == len) {
+                    final boolean eq = arraySrc
+                        ? equalsAt(ord, term, off, len)
+                        : equalsAt(ord, cs, off, len);
+                    if (eq) return ord;
+                }
+            }
+            i = (i + 1) & mask;
+        }
+    }
 
     /**
      * Extracts the stored term length from packed metadata.
@@ -736,16 +740,6 @@ public final class CharsDic
     // ---- Private hash-table maintenance -------------------------------------
 
     /**
-     * Returns the occupancy threshold that triggers a rehash.
-     *
-     * @return maximum number of occupied slots before growth
-     */
-    private int resizeThreshold()
-    {
-        return (int) (table.length * LOAD_FACTOR);
-    }
-
-    /**
      * Rebuilds the hash table with a new power-of-two capacity.
      *
      * <p>Term data remain in the slab; only slot placement is recomputed using {@link #termHash}.</p>
@@ -781,6 +775,18 @@ public final class CharsDic
             fp16[j] = (short) (h >>> 16);
             occupied++;
         }
+    }
+
+    // ---- Private hash-table maintenance -------------------------------------
+    
+    /**
+     * Returns the occupancy threshold that triggers a rehash.
+     *
+     * @return maximum number of occupied slots before growth
+     */
+    private int resizeThreshold()
+    {
+        return (int) (table.length * LOAD_FACTOR);
     }
 
     /**
@@ -887,35 +893,6 @@ public final class CharsDic
     }
 
     /**
-     * Murmur3 block mix for a 32-bit chunk.
-     *
-     * @param k1 input chunk
-     * @return mixed chunk
-     */
-    private static int mixK1(int k1)
-    {
-        k1 *= MURMUR_C1;
-        k1 = Integer.rotateLeft(k1, 15);
-        k1 *= MURMUR_C2;
-        return k1;
-    }
-
-    /**
-     * Murmur3 hash-state update after one mixed block.
-     *
-     * @param h1 current hash state
-     * @param k1 mixed block
-     * @return updated hash state
-     */
-    private static int mixH1(int h1, final int k1)
-    {
-        h1 ^= k1;
-        h1 = Integer.rotateLeft(h1, 13);
-        h1 = h1 * 5 + 0xe6546b64;
-        return h1;
-    }
-
-    /**
      * Murmur3 finalization helper for a UTF-16 input length expressed in chars.
      *
      * @param h1 hash state before finalization
@@ -942,5 +919,34 @@ public final class CharsDic
         h1 *= 0xc2b2ae35;
         h1 ^= (h1 >>> 16);
         return h1;
+    }
+
+    /**
+     * Murmur3 hash-state update after one mixed block.
+     *
+     * @param h1 current hash state
+     * @param k1 mixed block
+     * @return updated hash state
+     */
+    private static int mixH1(int h1, final int k1)
+    {
+        h1 ^= k1;
+        h1 = Integer.rotateLeft(h1, 13);
+        h1 = h1 * 5 + 0xe6546b64;
+        return h1;
+    }
+
+    /**
+     * Murmur3 block mix for a 32-bit chunk.
+     *
+     * @param k1 input chunk
+     * @return mixed chunk
+     */
+    private static int mixK1(int k1)
+    {
+        k1 *= MURMUR_C1;
+        k1 = Integer.rotateLeft(k1, 15);
+        k1 *= MURMUR_C2;
+        return k1;
     }
 }
