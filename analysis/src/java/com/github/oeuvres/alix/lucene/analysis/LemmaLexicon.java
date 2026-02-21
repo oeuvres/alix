@@ -45,29 +45,33 @@ public final class LemmaLexicon
     {
         return forms.find(term, off, len);
     }
-    
+
+    /** Return formId for a surface form, or -1 if unknown. */
+    public int findFormId(CharSequence term)
+    {
+        return forms.find(term);
+    }
+
     public int findFormId(CharTermAttribute att)
     {
         return forms.find(att.buffer(), 0, att.length());
     }
-
 
     /** Return lemmaFormId for (formId,posId), or -1 if unknown. */
     public int findLemmaId(int formId, int posId)
     {
         return lemmaByFormPos.get(formId, posId);
     }
-    
+
     /** Return lemmaFormId for (formId) with DEFAULT_POS, or -1 if unknown. */
     public int findLemmaId(int formId)
     {
         return lemmaByFormPos.get(formId, DEFAULT_POS);
     }
 
-
     /**
-     * One-shot: surface + posId -> lemmaFormId, or -1 if missing at any stage. This
-     * avoids the caller having to do two lookups explicitly.
+     * One-shot: surface + posId -> lemmaFormId, or -1 if missing at any stage.
+     * This avoids the caller having to do two lookups explicitly.
      */
     public int findLemmaId(char[] surface, int off, int len, int posId)
     {
@@ -78,27 +82,57 @@ public final class LemmaLexicon
     }
 
     /**
+     * Intern a string into forms, returning its formId. Uses CharsDic.add
+     * contract (negative means "already existed").
+     */
+    public int internForm(CharSequence term)
+    {
+        int ord = forms.add(term);
+        return (ord >= 0) ? ord : (-ord - 1);
+    }
+
+    public int internForm(CharSequence form, int off, int len)
+    {
+        int ord = forms.add(form, off, len);
+        return (ord >= 0) ? ord : (-ord - 1);
+    }
+
+    /**
+     * Intern a string into forms, returning its formId. Uses CharsDic.add
+     * contract (negative means "already existed").
+     */
+    public int internForm(char[] form, int off, int len)
+    {
+        int ord = forms.add(form, off, len);
+        return (ord >= 0) ? ord : (-ord - 1);
+    }
+
+    /**
      * TOOO Javadoc
      */
     public int lemmaToBuffer(CharTermAttribute srcAtt, int posId, CharTermAttribute dstAtt)
     {
         final int formId = findFormId(srcAtt);
-        if (formId < 0) return -1;
+        if (formId < 0)
+            return -1;
         final int lemmaId = findLemmaId(formId, posId);
-        if (lemmaId < 0) return -1;
+        if (lemmaId < 0)
+            return -1;
         copyForm(lemmaId, dstAtt);
         return lemmaId;
     }
-    
+
     /**
      * TOOO Javadoc
      */
     public int lemmaToBuffer(CharTermAttribute srcAtt, CharTermAttribute dstAtt)
     {
         final int formId = findFormId(srcAtt);
-        if (formId < 0) return -1;
+        if (formId < 0)
+            return -1;
         final int lemmaId = findLemmaId(formId, DEFAULT_POS);
-        if (lemmaId < 0) return -1;
+        if (lemmaId < 0)
+            return -1;
         copyForm(lemmaId, dstAtt);
         return lemmaId;
     }
@@ -108,13 +142,11 @@ public final class LemmaLexicon
      */
     public boolean copyForm(int formId, CharTermAttribute dstAtt)
     {
-        if (formId < 0 || formId >= forms.size()) return false;
+        if (formId < 0 || formId >= forms.size())
+            return false;
         dstAtt.copyBuffer(forms.slab(), forms.termOffset(formId), forms.termLength(formId));
         return true;
     }
-    
-
-
 
     /**
      * Max length of any interned string (useful to size TokenFilter scratch
@@ -125,25 +157,33 @@ public final class LemmaLexicon
         return forms.maxTermLength();
     }
 
-    // ---------------------------
-    // Load / mutation API (build-time only)
-    // ---------------------------
-
-    /**
-     * Intern a string into forms, returning its formId. Uses CharsDic.add contract
-     * (negative means "already existed").
-     */
-    public int internForm(char[] buf, int off, int len)
+    public int putEntry(CharSequence form, int posId, CharSequence lemma, OnDuplicate policy)
     {
-        int ord = forms.add(buf, off, len);
-        return (ord >= 0) ? ord : (-ord - 1);
+        return putEntry(form, 0, form.length(), posId, lemma, 0, lemma.length(), policy);
     }
-    
-    public enum OnDuplicate { IGNORE, REPLACE, ERROR }
-    
-    public int putEntry(char[] inflected, int iOff, int iLen, char[] lemma, int lOff, int lLen,
-            OnDuplicate policy) {
+
+    public int putEntry(char[] inflected, int iOff, int iLen, char[] lemma, int lOff, int lLen, OnDuplicate policy)
+    {
         return putEntry(inflected, iOff, iLen, DEFAULT_POS, lemma, lOff, lLen, policy);
+    }
+
+    public int putEntry(CharSequence inflected, int iOff, int iLen, CharSequence lemma, int lOff, int lLen,
+            OnDuplicate policy)
+    {
+
+        return putEntry(inflected, iOff, iLen, DEFAULT_POS, lemma, lOff, lLen, policy);
+    }
+
+    public int putEntry(CharSequence form, int iOff, int iLen, int posId, CharSequence lemma, int lOff, int lLen,
+            OnDuplicate policy)
+    {
+        final int formId = internForm(form, iOff, iLen);
+        final int lemmaId = internForm(lemma, lOff, lLen);
+
+        putEntry(formId, posId, lemmaId, policy);
+
+        return lemmaId;
+
     }
 
     /**
@@ -157,8 +197,14 @@ public final class LemmaLexicon
         final int formId = internForm(inflected, iOff, iLen);
         final int lemmaId = internForm(lemma, lOff, lLen);
 
-        final long key = LongIntMap.packIntPair(formId, posId);
+        putEntry(formId, posId, lemmaId, policy);
 
+        return lemmaId;
+    }
+
+    public void putEntry(int formId, int posId, int lemmaId, OnDuplicate policy)
+    {
+        final long key = LongIntMap.packIntPair(formId, posId);
         switch (policy) {
             case IGNORE:
                 lemmaByFormPos.putIfAbsent(key, lemmaId);
@@ -175,9 +221,11 @@ public final class LemmaLexicon
             default:
                 throw new AssertionError(policy);
         }
+    }
 
-        return lemmaId;
-    }   
+    public enum OnDuplicate
+    {
+        IGNORE, REPLACE, ERROR
+    }
 
 }
-
