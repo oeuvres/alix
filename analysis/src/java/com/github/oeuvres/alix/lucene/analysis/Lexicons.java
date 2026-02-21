@@ -8,6 +8,7 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.util.CSVReader;
 
 public abstract class Lexicons
@@ -19,22 +20,22 @@ public abstract class Lexicons
     protected Lexicons() {}
 
     
-    static public void fillMap(CharArrayMap<char[]> map, final Class<?> anchor,
+    static public void loadMap(CharArrayMap<char[]> map, final Class<?> anchor,
             final String resourcePath, boolean replace) throws IOException
     {
         try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
-            fillMap(map, csv, replace);
+            loadMap(map, csv, replace);
         }
     }
     
-    static public void  fillMap(CharArrayMap<char[]> map, final Path file, final boolean replace) throws IOException
+    static public void  loadMap(CharArrayMap<char[]> map, final Path file, final boolean replace) throws IOException
     {
         try (CSVReader csv = new CSVReader(file, ',', 2)) {
-            fillMap(map, csv, replace);
+            loadMap(map, csv, replace);
         }
     }
 
-    static public void  fillMap(CharArrayMap<char[]> map, final CSVReader csv, final boolean replace) throws IOException
+    static public void  loadMap(CharArrayMap<char[]> map, final CSVReader csv, final boolean replace) throws IOException
     {
         final int cols = 2;
         // what Exception to send if map is null?
@@ -51,23 +52,23 @@ public abstract class Lexicons
         }
     }
     
-    static public void fillSet(CharArraySet set, final Class<?> anchor,
+    static public void loadSet(CharArraySet set, final Class<?> anchor,
             final String resourcePath, final int col, final String rtrim) throws IOException
     {
         try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
-            fillSet(set, csv, col, rtrim);
+            loadSet(set, csv, col, rtrim);
         }
     }
     
     
-    static public void  fillSet(CharArraySet set, final Path file, final int col, final String rtrim) throws IOException
+    static public void  loadSet(CharArraySet set, final Path file, final int col, final String rtrim) throws IOException
     {
         try (CSVReader csv = new CSVReader(file, ',', 2)) {
-            fillSet(set, csv, col, rtrim);
+            loadSet(set, csv, col, rtrim);
         }
     }
     
-    static public void  fillSet(CharArraySet set, final CSVReader csv, final int col, final String rtrim) throws IOException
+    static public void  loadSet(CharArraySet set, final CSVReader csv, final int col, final String rtrim) throws IOException
     {
         // pass first line
         if(!csv.readRow()) return;
@@ -81,6 +82,52 @@ public abstract class Lexicons
             set.add(word);
         }
     }
+    
+    static public void loadLemma(
+        LemmaLexicon lex,
+        LemmaLexicon.OnDuplicate policy,
+        final Class<?> anchor,
+        final String spec,
+        char sep,
+        int inflectedCol,
+        int posCol,
+        int lemmaCol
+    ) throws IOException
+    {
+        int maxCol = Math.max(Math.max(inflectedCol, posCol), lemmaCol) +1;
+        try (CSVReader csv = new CSVReader(anchor, spec, sep, maxCol)) {
+            loadLemma(lex, policy, csv, inflectedCol, posCol, lemmaCol);
+        }
+    }
+    
+    static public void loadLemma(
+        LemmaLexicon lex,
+        LemmaLexicon.OnDuplicate policy,
+        CSVReader csv,
+        int inflectedCol,
+        int posCol,
+        int lemmaCol
+    ) throws IOException
+    {
+        int maxCol = Math.max(Math.max(inflectedCol, posCol), lemmaCol) +1;
+        // pass first line
+        if(!csv.readRow()) return;
+        while (csv.readRow()) {
+            if (csv.getCellCount() < maxCol)
+                continue;
+            StringBuilder prefix = csv.getCell(0);
+            if (prefix.length() < 1) continue;
+            if (prefix.charAt(0) == '#') continue;
+            // specific to this loader
+            
+            String posName = csv.getCellAsString(posCol);
+            int posId = Upos.code(posName);
+            // Here I would like a logger System to show the unknow tags
+            lex.putEntry(csv.getCell(inflectedCol), posId, csv.getCell(lemmaCol), policy);
+        }
+
+    }
+
     
     public static void rtrim(StringBuilder sb, String stripChars) {
         if (stripChars == null || stripChars.length() < 1) return;
