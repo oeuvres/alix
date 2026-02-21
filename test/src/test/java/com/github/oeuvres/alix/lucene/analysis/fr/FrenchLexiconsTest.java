@@ -3,6 +3,8 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.junit.jupiter.api.Test;
 
+import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
+
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -14,7 +16,7 @@ import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class FrLexiconsTest {
+class FrenchLexiconsTest {
 
     private static String value(CharArrayMap<char[]> map, String key) {
         char[] v = map.get(key.toCharArray());
@@ -27,6 +29,13 @@ class FrLexiconsTest {
         Files.writeString(f, "FROM,TO\n" + from + "," + to + "\n", StandardCharsets.UTF_8);
         f.toFile().deleteOnExit();
         return f;
+    }
+
+    @Test
+    void loadLemmas() {
+        LemmaLexicon lex = FrenchLexicons.getLemmaLexicon();
+        assertNotNull(lex);
+        assertTrue(lex.formCount() > 0, "Expected word.csv  to load at least one entry");
     }
 
     @Test

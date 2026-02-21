@@ -59,7 +59,7 @@ public class LemmaFilterTest {
         // A normal plural -> singular POS-specific example
         put(lex, "cats", POS_NOUN, "cat");
 
-        lex.freeze();
+        lex.trimToSize();
     }
 
     @Test

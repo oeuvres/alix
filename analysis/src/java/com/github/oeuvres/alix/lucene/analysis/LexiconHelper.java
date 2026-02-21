@@ -407,17 +407,19 @@ public final class LexiconHelper
             {
                 final String rawPosName = row.getCellAsString(posCol);
                 int posId = pr.posInt(rawPosName);
-                lex.putEntry(row.getCell(formCol), row.getCell(lemmaCol), policy);
+                CharSequence form = row.getCell(formCol);
+                CharSequence lemma = row.getCell(lemmaCol);
+                if (form.isEmpty() || lemma.isEmpty()) return false;
+                lex.putEntry(form, lemma, policy);
                 if (posId >= 0) {
-                    lex.putEntry(row.getCell(formCol), posId, row.getCell(lemmaCol), policy);
+                    lex.putEntry(form, posId, lemma, policy);
                 }
-                lex.putEntry(row.getCell(formCol), row.getCell(lemmaCol), policy);
                 return true;
             }
         };
         
         forEachDataRow(csv, minCols, keyCol, skipHeader, handler);
-        
+        pr.endFile(null);
     }
     
     /**
@@ -739,14 +741,13 @@ public final class LexiconHelper
          */
         public void endFile(final LoadStats stats)
         {
-            Objects.requireNonNull(stats, "stats");
             
             final Map<String, Integer> unknowns = unknownCounts();
             if (unknowns.isEmpty()) {
                 return;
             }
             
-            System.out.println(
+            if (stats != null) System.out.println(
                     (stats.path() == null ? "<unknown source>" : stats.path())
                             + " rows read=" + stats.rowsRead()
                             + ", loaded=" + stats.rowsLoaded()

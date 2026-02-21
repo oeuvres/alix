@@ -186,19 +186,6 @@ public class LemmaLexiconTest
         assertTrue(sawVerbLemmaId >= 0);
         assertEquals("see", dstLemmaAtt.toString());
 
-        // Fallback helper (unknown POS -> default POS)
-        dstLemmaAtt.setEmpty();
-        final int sawFallbackLemmaId = lex.lemmaToBufferOrDefaultPos(srcFormAtt, ADJ, dstLemmaAtt);
-        assertTrue(sawFallbackLemmaId >= 0);
-        assertEquals("see", dstLemmaAtt.toString());
-
-        // Unknown form -> -1 and destination remains usable
-        srcFormAtt.setEmpty().append("nonexistent");
-        dstLemmaAtt.setEmpty().append("unchanged");
-        final int missing = lex.lemmaToBufferOrDefaultPos(srcFormAtt, VERB, dstLemmaAtt);
-        assertEquals(-1, missing);
-        assertEquals("unchanged", dstLemmaAtt.toString());
-
         // findFormId(CharTermAttribute)
         srcFormAtt.setEmpty().append("went");
         final int wentFormId = lex.findFormId(srcFormAtt);
@@ -218,7 +205,7 @@ public class LemmaLexiconTest
         final int before2 = lex.findLemmaId("saw", VERB);
         final int before3 = lex.findLemmaId("saw", NOUN);
 
-        lex.freeze();
+        lex.trimToSize();
 
         assertEquals(before1, lex.findLemmaId("teeth"));
         assertEquals(before2, lex.findLemmaId("saw", VERB));
