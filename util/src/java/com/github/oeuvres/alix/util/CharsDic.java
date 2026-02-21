@@ -36,35 +36,24 @@ import java.util.Arrays;
 
 /**
  * A dependency-free, {@link org.apache.lucene.util.BytesRefHash BytesRefHash}-style hash table for
- * {@code char[]} terms. Same performance (memory and speed) as a Lucene
- * {@link org.apache.lucene.analysis.CharArrayMap CharArrayMap}.
+ * UTF-16 {@code char[]} / {@link CharSequence} terms, with stable ordinals.
  *
  * <p>Semantics mirror Lucene's {@link org.apache.lucene.util.BytesRefHash BytesRefHash}:</p>
  * <ul>
- *   <li>{@link #add(char[], int, int)} returns the 0-based ordinal (ord) if the term was not present;
- *       otherwise it returns {@code -(ord) - 1} for an existing term.</li>
+ *   <li>{@link #add(char[], int, int)} and {@link #add(CharSequence, int, int)} return the 0-based
+ *       ordinal (ord) if the term was not present; otherwise they return {@code -(ord)-1}.</li>
  *   <li>{@link #find(char[], int, int)} returns {@code ord} if present, or {@code -1} if absent.</li>
  * </ul>
  *
  * <p>Implementation details:</p>
  * <ul>
- *   <li>Open addressing with linear probing; table capacity is always a power of two (fast masking).</li>
+ *   <li>Open addressing with linear probing; table capacity is always a power of two.</li>
  *   <li>Load factor ~0.75; automatic rehash on growth. Ords remain stable across rehash.</li>
- *   <li>Terms are copied and stored contiguously in a growing {@code char} slab.</li>
- *   <li>Per-ord metadata store offset, length, and the 32-bit hash. Length is stored as an
- *       <em>unsigned</em> 16-bit value (supports term lengths 0..65535).</li>
- *   <li>Lookup uses: (1) slot check, (2) length check, (3) 16-bit fingerprint derived from the
- *       stored 32-bit hash (top 16 bits), then (4) a {@code memcmp}-style verification against the slab.</li>
- *   <li>Hash function: Murmur3-32 over UTF-16 code units (robust distribution for short Latin terms).</li>
- * </ul>
- *
- * <p>Space/time trade-offs:</p>
- * <ul>
- *   <li>Compared to keeping a dedicated 16-bit fingerprint array per slot, this implementation saves
- *       {@code 2 * capacity} bytes, but fingerprint checks may require an additional random load from
- *       {@code termHash[ord]} when length matches.</li>
- *   <li>Use {@link #trimToSize()} after bulk build to reduce slack in metadata arrays, the slab, and
- *       (optionally) the hash table itself.</li>
+ *   <li>Terms are copied into a contiguous growing {@code char} slab.</li>
+ *   <li>Per-ord metadata stores slab offset and term length (length stored as unsigned 16-bit: 0..65535).</li>
+ *   <li>A per-slot 16-bit fingerprint array ({@code fp16}) rejects most probes cheaply before slab comparison.</li>
+ *   <li>A per-ord 32-bit hash array ({@code termHash}) is retained to rebuild the table during rehash.</li>
+ *   <li>Hash function: Murmur3-32 over UTF-16 code units.</li>
  * </ul>
  *
  * <p>Complexity:</p>
@@ -73,117 +62,385 @@ import java.util.Arrays;
  *   <li>Worst-case (pathological clustering): {@code O(n)} probes.</li>
  * </ul>
  *
- * <p>Thread-safety: not thread-safe. External synchronization is required for concurrent use.</p>
- *
- * <p>Stability: ords are stable across resizes. No removal API is provided.</p>
+ * <p>Thread-safety: not thread-safe. External synchronization is required for concurrent mutation.</p>
  */
 public final class CharsDic
 {
-    // Hash table: stores ords (>=0) or -1 if empty.
-    private int[] table;
-    // fp16 is a per-slot 16-bit fingerprint = (hash >>> 16) to cheaply reject most probes.
-    private short[] fp16;
-    private int mask;
-    
-    // Per-ord metadata packed in one array to reduce random loads on hits.
-    // meta[ord] = [ off:32 | len:16 | unused:16 ]  (len stored unsigned in low 16 bits)
-    private long[] meta;
-    private int[] termHash; // kept for rehash (and optional diagnostics); not used on hot path
-    
-    
+    // ---- Constants -----------------------------------------------------------
+
+    /** Target maximum fill ratio before rehashing. */
     private static final float LOAD_FACTOR = 0.75f;
+
+    /** Maximum supported term length (stored as unsigned 16-bit in metadata). */
     private static final int MAX_TERM_LENGTH = 0xFFFF;
-    
-    // Term storage
-    private char[] slab;
-    private int slabUsed = 0;
-    
-    // Sizes
-    private int sizeOrds = 0; // number of unique terms
-    private int occupied = 0; // filled slots in table
-    // Maximum term length ever added (monotonic).
-    private int maxTermLen = 0;
 
-    // ---- Public API ----------------------------------------------------------
+    /** Murmur3 x86_32 seed. */
+    private static final int MURMUR_SEED = 0x9747b28c;
 
+    /** Murmur3 x86_32 mix constant 1. */
+    private static final int MURMUR_C1 = 0xcc9e2d51;
+
+    /** Murmur3 x86_32 mix constant 2. */
+    private static final int MURMUR_C2 = 0x1b873593;
+
+    // ---- Hash-table state ----------------------------------------------------
+
+    /** Slot -> ord mapping ({@code -1} means empty). */
+    private int[] table;
+
+    /** Per-slot 16-bit fingerprint ({@code hash >>> 16}) used to reject most probes cheaply. */
+    private short[] fp16;
+
+    /** Power-of-two table mask ({@code index = hash & mask}). */
+    private int mask;
+
+    // ---- Per-ord storage -----------------------------------------------------
 
     /**
-     * Constructs the hash with an expected number of unique terms.
+     * Packed per-ord metadata.
      *
-     * <p>The table's initial capacity is chosen to keep the load factor <= 0.75 for the expected
-     * number of unique terms. The internal term-slab and per-ord metadata arrays are also sized
-     * heuristically based on {@code expectedSize} and will grow as needed.
+     * <pre>
+     * meta[ord] = [ off:32 | unused:16 | len:16 ]
+     * </pre>
      *
-     * @param expectedSize an estimate of the number of distinct terms to be added (must be >= 1; values <= 0 are treated as 1)
+     * <p>{@code len} is stored as an unsigned 16-bit value in the low bits.</p>
+     */
+    private long[] meta;
+
+    /** Full 32-bit hash per ord, retained for rehashing. */
+    private int[] termHash;
+
+    // ---- Term slab -----------------------------------------------------------
+
+    /** Contiguous storage for all term characters. Valid range is {@code [0..slabUsed)}. */
+    private char[] slab;
+
+    /** Number of used chars in {@link #slab}. */
+    private int slabUsed = 0;
+
+    // ---- Sizes / counters ----------------------------------------------------
+
+    /** Number of unique terms currently stored (and next ord to assign). */
+    private int sizeOrds = 0;
+
+    /** Number of occupied table slots. Equals {@link #sizeOrds} because removals are not supported. */
+    private int occupied = 0;
+
+    /** Maximum term length ever added (monotonic). */
+    private int maxTermLen = 0;
+
+    // ---- Constructor ---------------------------------------------------------
+
+    /**
+     * Constructs the dictionary with an expected number of unique terms.
+     *
+     * <p>The initial table capacity is chosen so that {@code expectedSize} terms fit under the
+     * target load factor. Other arrays are sized heuristically and grow on demand.</p>
+     *
+     * @param expectedSize estimate of the number of distinct terms to add;
+     *        values {@code <= 0} are treated as {@code 1}
      */
     public CharsDic(int expectedSize)
     {
         if (expectedSize < 1) expectedSize = 1;
-        int cap = 1, need = (int) Math.ceil(expectedSize / LOAD_FACTOR);
-        while (cap < need) cap <<= 1;
 
+        final int cap = tableCapacityForExpected(expectedSize);
         table = new int[cap];
         Arrays.fill(table, -1);
         fp16 = new short[cap];
         mask = cap - 1;
 
-        // ord metadata
-        int metaCap = Math.max(8, expectedSize);
+        final int metaCap = Math.max(8, expectedSize);
         meta = new long[metaCap];
         termHash = new int[metaCap];
 
-        // Heuristic: small average token size; the slab grows geometrically.
+        // Heuristic: small average token size; slab grows geometrically.
         slab = new char[Math.max(16, expectedSize * 4)];
     }
-    
- // --- public overloads --------------------------------------------------------
 
-    public int add(CharSequence cs)
+    // ---- Public mutating API -------------------------------------------------
+
+    /**
+     * Adds the specified character sequence if absent, or returns the existing ordinal if present.
+     *
+     * @param cs source character sequence (UTF-16 code units)
+     * @return {@code ord} if the term was added; otherwise {@code -(ord)-1} if already present
+     * @throws NullPointerException if {@code cs} is null
+     * @throws IllegalArgumentException if the term length exceeds 65535
+     */
+    public int add(final CharSequence cs)
     {
         if (cs == null) throw new NullPointerException("cs");
         return add(cs, 0, cs.length());
     }
 
-    public int add(CharSequence cs, int off, int len)
+    /**
+     * Adds the specified character sequence slice if absent, or returns the existing ordinal if present.
+     *
+     * <p>Semantics match {@link #add(char[], int, int)}.</p>
+     *
+     * @param cs source character sequence (UTF-16 code units)
+     * @param off start offset within {@code cs} (inclusive)
+     * @param len number of {@code char} code units to read
+     * @return {@code ord} if the term was added; otherwise {@code -(ord)-1} if already present
+     * @throws NullPointerException if {@code cs} is null
+     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code cs}
+     * @throws IllegalArgumentException if {@code len > 65535}
+     */
+    public int add(final CharSequence cs, final int off, final int len)
     {
         checkBounds(cs, off, len);
-        if (len > MAX_TERM_LENGTH) throw new IllegalArgumentException("term length > " + MAX_TERM_LENGTH + ": " + len);
+        if (len > MAX_TERM_LENGTH) {
+            throw new IllegalArgumentException("term length > " + MAX_TERM_LENGTH + ": " + len);
+        }
         return add0(null, off, len, cs);
     }
 
-    // Optional: keep this convenience overload if you want it
-    public int add(StringBuilder buf)
-    {
-        return add((CharSequence) buf, 0, buf.length());
-    }
-
     /**
-     * Adds the specified term if absent, or returns the existing ordinal if present.
+     * Adds the specified {@code char[]} slice if absent, or returns the existing ordinal if present.
      *
-     * <p>This method implements the {@code BytesRefHash.add} return contract:
+     * <p>This method implements the {@code BytesRefHash.add} return contract:</p>
      * <ul>
-     *   <li>If the term is new, returns its assigned 0-based ordinal (ord >= 0).</li>
-     *   <li>If the term already exists, returns {@code -(ord) - 1} (a negative encoding of the existing ord).</li>
+     *   <li>If the term is new, returns its assigned 0-based ordinal ({@code ord >= 0}).</li>
+     *   <li>If the term already exists, returns {@code -(ord)-1}.</li>
      * </ul>
      *
-     * <p>No removal is supported. Ords are stable across table resizes.
+     * <p>Ords are stable across table resizes. No removal API is provided.</p>
      *
-     * @param term the term array (UTF-16 code units)
+     * @param term source array (UTF-16 code units)
      * @param off start offset within {@code term} (inclusive)
      * @param len number of {@code char} code units to read
-     * @return {@code ord} if the term was added; otherwise {@code -(ord)-1} if the term already existed
+     * @return {@code ord} if the term was added; otherwise {@code -(ord)-1} if already present
+     * @throws NullPointerException if {@code term} is null
      * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code term}
-     * @throws IllegalArgumentException if {@code len} is greater than 65535
+     * @throws IllegalArgumentException if {@code len > 65535}
      */
-    public int add(char[] term, int off, int len)
+    public int add(final char[] term, final int off, final int len)
     {
         checkBounds(term, off, len);
-        if (len > MAX_TERM_LENGTH) throw new IllegalArgumentException("term length > " + MAX_TERM_LENGTH + ": " + len);
+        if (len > MAX_TERM_LENGTH) {
+            throw new IllegalArgumentException("term length > " + MAX_TERM_LENGTH + ": " + len);
+        }
         return add0(term, off, len, null);
     }
 
-    // --- shared core ------------------------------------------------------------
+    /**
+     * Alias for {@link #trimToSize()} to emphasize the common "bulk build then freeze" workflow.
+     */
+    public void freeze()
+    {
+        trimToSize();
+    }
 
+    /**
+     * Shrinks internal storage to approximately the minimum needed for the current contents.
+     *
+     * <p>Intended for bulk-build workflows:</p>
+     * <ol>
+     *   <li>Create with a reasonable {@code expectedSize}.</li>
+     *   <li>Add all terms.</li>
+     *   <li>Call {@link #trimToSize()} once to reduce memory slack.</li>
+     * </ol>
+     *
+     * <p>This method:</p>
+     * <ul>
+     *   <li>Trims the slab to {@code slabUsed}.</li>
+     *   <li>Trims per-ord arrays to {@link #size()}.</li>
+     *   <li>Optionally shrinks the hash table to the smallest power-of-two capacity able to
+     *       hold {@link #size()} entries at the target load factor.</li>
+     * </ul>
+     *
+     * <p>Further {@link #add(char[], int, int)} / {@link #add(CharSequence, int, int)} calls remain valid,
+     * but arrays may grow again.</p>
+     */
+    public void trimToSize()
+    {
+        // 1) Shrink slab to used length.
+        if (slab.length != slabUsed) {
+            slab = Arrays.copyOf(slab, slabUsed);
+        }
+
+        // 2) Optionally shrink table.
+        final int targetCap = tableCapacityForExpected(Math.max(1, sizeOrds));
+        if (targetCap < table.length) {
+            rehash(targetCap);
+        }
+
+        // 3) Shrink per-ord arrays.
+        if (meta.length != sizeOrds) {
+            meta = Arrays.copyOf(meta, sizeOrds);
+            termHash = Arrays.copyOf(termHash, sizeOrds);
+        }
+    }
+
+    // ---- Public lookup / access API -----------------------------------------
+
+    /**
+     * Finds the ordinal for the specified term slice.
+     *
+     * @param term source array (UTF-16 code units)
+     * @param off start offset within {@code term} (inclusive)
+     * @param len number of {@code char} code units to read
+     * @return the 0-based ordinal if present; otherwise {@code -1}
+     * @throws NullPointerException if {@code term} is null
+     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code term}
+     */
+    public int find(final char[] term, final int off, final int len)
+    {
+        checkBounds(term, off, len);
+        if (len > MAX_TERM_LENGTH) return -1;
+
+        final int h = hashCode(term, off, len);
+        final short f = (short) (h >>> 16);
+
+        int i = h & mask;
+        for (;;) {
+            final int ord = table[i];
+            if (ord == -1) return -1;
+
+            if (fp16[i] == f) {
+                final long m = meta[ord];
+                if (metaLen(m) == len && equalsAt(ord, term, off, len)) {
+                    return ord;
+                }
+            }
+            i = (i + 1) & mask;
+        }
+    }
+
+    /**
+     * Copies the term identified by {@code ord} into {@code dst}, starting at {@code dstOff}.
+     *
+     * <p>This is the {@code char[]} analogue of Lucene's {@code BytesRefHash.get(int, BytesRef)}:
+     * it provides allocation-free access to stored term material without exposing write access
+     * to internal structures.</p>
+     *
+     * <p>Typical usage:</p>
+     * <pre>{@code
+     * char[] buf = new char[dic.maxTermLength()];
+     * int len = dic.get(ord, buf, 0);
+     * // buf[0..len) now contains the term
+     * }</pre>
+     *
+     * @param ord the 0-based ordinal ({@code 0 <= ord < size()})
+     * @param dst destination array
+     * @param dstOff start offset (inclusive) in {@code dst}
+     * @return the term length (number of UTF-16 {@code char} code units copied)
+     * @throws NullPointerException if {@code dst} is null
+     * @throws IndexOutOfBoundsException if {@code dstOff} is invalid
+     * @throws IllegalArgumentException if {@code ord} is invalid or if {@code dst} is too small
+     */
+    public int get(final int ord, final char[] dst, final int dstOff)
+    {
+        checkOrd(ord);
+        if (dst == null) throw new NullPointerException("dst");
+        if (dstOff < 0 || dstOff > dst.length) {
+            throw new IndexOutOfBoundsException("dstOff=" + dstOff);
+        }
+
+        final long m = meta[ord];
+        final int len = metaLen(m);
+        if (dstOff > dst.length - len) {
+            throw new IllegalArgumentException(
+                "dst too small: dst.length - dstOff=" + (dst.length - dstOff) + " need=" + len
+            );
+        }
+
+        final int off = metaOff(m);
+        System.arraycopy(slab, off, dst, dstOff, len);
+        return len;
+    }
+
+    /**
+     * Returns the term identified by {@code ord} as a newly allocated {@link String}.
+     *
+     * <p>This is intended for debugging, diagnostics and tests, not hot paths.</p>
+     *
+     * @param ord the 0-based ordinal ({@code 0 <= ord < size()})
+     * @return a newly allocated string containing the term
+     * @throws IllegalArgumentException if {@code ord} is invalid
+     */
+    public String getAsString(final int ord)
+    {
+        checkOrd(ord);
+        final long m = meta[ord];
+        return new String(slab, metaOff(m), metaLen(m));
+    }
+
+    /**
+     * Returns the length (in UTF-16 {@code char} code units) of the term identified by {@code ord}.
+     *
+     * @param ord the 0-based ordinal ({@code 0 <= ord < size()})
+     * @return term length in UTF-16 code units
+     * @throws IllegalArgumentException if {@code ord} is invalid
+     */
+    public int termLength(final int ord)
+    {
+        checkOrd(ord);
+        return metaLen(meta[ord]);
+    }
+
+    /**
+     * Returns the starting offset of the term identified by {@code ord} within the internal slab.
+     *
+     * @param ord the 0-based ordinal ({@code 0 <= ord < size()})
+     * @return starting offset in {@link #slab()}
+     * @throws IllegalArgumentException if {@code ord} is invalid
+     */
+    public int termOffset(final int ord)
+    {
+        checkOrd(ord);
+        return metaOff(meta[ord]);
+    }
+
+    /**
+     * Returns the maximum term length (in UTF-16 {@code char} code units) ever added.
+     *
+     * <p>Useful to pre-size reusable scratch buffers before calling {@link #get(int, char[], int)}.</p>
+     *
+     * @return maximum term length among stored terms
+     */
+    public int maxTermLength()
+    {
+        return maxTermLen;
+    }
+
+    /**
+     * Returns the number of unique terms stored in the dictionary.
+     *
+     * @return number of assigned ordinals
+     */
+    public int size()
+    {
+        return sizeOrds;
+    }
+
+    /**
+     * Returns the internal character slab storing all terms contiguously.
+     *
+     * <p>The valid populated range is {@code [0 .. slabUsed)}. The returned array is internal
+     * mutable storage and must be treated as read-only by callers.</p>
+     *
+     * @return internal slab array
+     */
+    public char[] slab()
+    {
+        return slab;
+    }
+
+    // ---- Private add / probe core -------------------------------------------
+
+    /**
+     * Shared insertion core for array and {@link CharSequence} sources.
+     *
+     * <p>Exactly one of {@code term} or {@code cs} must be non-null.</p>
+     *
+     * @param term source array, or {@code null} if using {@code cs}
+     * @param off start offset in the chosen source
+     * @param len number of chars to read
+     * @param cs source character sequence, or {@code null} if using {@code term}
+     * @return {@code ord} if inserted, otherwise {@code -(ord)-1} if already present
+     */
     private int add0(final char[] term, final int off, final int len, final CharSequence cs)
     {
         final boolean arraySrc = (term != null);
@@ -195,13 +452,13 @@ public final class CharsDic
         for (;;) {
             final int ord = table[i];
 
-            if (ord == -1) { // empty slot -> insert
+            if (ord == -1) {
                 final int newOrd = sizeOrds++;
                 ensureOrdCapacity(sizeOrds);
 
                 final int base = arraySrc
-                        ? appendToSlab(term, off, len)
-                        : appendToSlab(cs, off, len);
+                    ? appendToSlab(term, off, len)
+                    : appendToSlab(cs, off, len);
 
                 meta[newOrd] = packMeta(base, len);
                 termHash[newOrd] = h;
@@ -219,8 +476,8 @@ public final class CharsDic
                 final long m = meta[ord];
                 if (metaLen(m) == len) {
                     final boolean eq = arraySrc
-                            ? equalsAt(ord, term, off, len)
-                            : equalsAt(ord, cs, off, len);
+                        ? equalsAt(ord, term, off, len)
+                        : equalsAt(ord, cs, off, len);
                     if (eq) return -ord - 1;
                 }
             }
@@ -229,310 +486,140 @@ public final class CharsDic
         }
     }
 
-
-
+    // ---- Private slab / storage helpers -------------------------------------
 
     /**
-     * Finds the ordinal for the specified term.
+     * Ensures that the slab can accept {@code extra} additional characters.
      *
-     * @param term the term array (UTF-16 code units)
-     * @param off start offset within {@code term} (inclusive)
-     * @param len number of {@code char} code units to read
-     * @return the 0-based ordinal if present; otherwise {@code -1}
-     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code term}
+     * <p>The slab grows geometrically (~1.5x) with a small additive constant.</p>
+     *
+     * @param extra number of chars that will be appended ({@code >= 0})
      */
-    public int find(char[] term, int off, int len)
+    private void ensureSlabCapacity(final int extra)
     {
-        checkBounds(term, off, len);
-        if (len > MAX_TERM_LENGTH) return -1;
+        final int need = slabUsed + extra;
+        if (need <= slab.length) return;
 
-        final int h = hashCode(term, off, len);
-        final short f = (short) (h >>> 16);
-
-        // 2) Main table
-        int i = h & mask;
-        for (;;) {
-            final int ord = table[i];
-            if (ord == -1) return -1;
-
-            if (fp16[i] == f) {
-                final long m = meta[ord];
-                if (metaLen(m) == len && equalsAt(ord, term, off, len)) {
-                    return ord;
-                }
-            }
-
-            i = (i + 1) & mask;
-        }
+        final int cap = Math.max(need, slab.length + (slab.length >>> 1) + 16);
+        slab = Arrays.copyOf(slab, cap);
     }
 
     /**
-     * Alias for {@link #trimToSize()} to emphasize the "bulk build then freeze" use-case.
-     */
-    public void freeze()
-    {
-        trimToSize();
-    }
-    
-    /**
-     * Copies the term identified by {@code ord} into {@code dst}, starting at index 0.
-     *
-     * <p>This method is the char[] analogue of Lucene's {@code BytesRefHash.get(int, BytesRef)}:
-     * it provides safe, allocation-free access to the stored term material without exposing the
-     * internal slab.</p>
-     *
-     * <p>Usage pattern:</p>
-     * <pre>{@code
-     * char[] buf = new char[64];                 // reusable scratch
-     * int len = dic.get(ord, buf);               // copies into buf[0..len)
-     * termAtt.copyBuffer(buf, 0, len);           // emit token
-     * }</pre>
-     *
-     * <p>Capacity rule:</p>
-     * <ul>
-     *   <li>If {@code dst.length < termLength(ord)}, this method throws an {@link IllegalArgumentException}.</li>
-     *   <li>Call {@link #termLength(int)} first to size your scratch buffer if needed.</li>
-     * </ul>
-     *
-     * <p>Thread-safety:</p>
-     * <ul>
-     *   <li>This method is safe for concurrent reads provided the dictionary is not being mutated.</li>
-     *   <li>If you call {@link #add(char[], int, int)} concurrently, external synchronization is required.</li>
-     * </ul>
-     *
-     * @param ord the 0-based ordinal of the term (0 <= ord < {@link #size()})
-     * @param dst destination array to receive the term
-     * @param dstOff start offset (inclusive) where to term
-     * @return the term length (number of {@code char} code units copied)
-     * @throws IllegalArgumentException if {@code ord} is out of range or {@code dst} is too small
-     * @throws NullPointerException if {@code dst} is null
-     */
-    public int get(final int ord, final char[] dst, int dstOff)
-    {
-        checkOrd(ord);
-        if (dst == null) throw new NullPointerException("dst");
-        final long m = meta[ord];
-        final int len = (int) m & 0xFFFF;
-        if ( dst.length - dstOff < len) {
-            throw new IllegalArgumentException("dst too small: dst.length - dstOff =" + (dst.length - dstOff) + " need=" + len);
-        }
-        final int off = (int) (m >>> 32);
-        System.arraycopy(slab, off, dst, dstOff, len);
-        return len;
-    }
-    
-
-    
-    /**
-     * Returns the term identified by {@code ord} as a {@link String}.
-     *
-     * <p>This is a convenience method intended for debugging, logging, diagnostics,
-     * and tests. It necessarily allocates a new String (and may copy characters),
-     * so it should not be used on hot paths.</p>
-     *
-     * @param ord the 0-based ordinal of the term (0 <= ord < {@link #size()})
-     * @return a newly created String containing the term characters
-     * @throws IllegalArgumentException if {@code ord} is out of range
-     */
-    public String getAsString(final int ord)
-    {
-        checkOrd(ord);
-        final long m = meta[ord];
-        final int off = (int) (m >>> 32);
-        final int len = (int) m & 0xFFFF;
-        return new String(slab, off, len);
-    }
-
-    /**
-     * Returns the length (in {@code char} code units) of the term identified by the given ordinal.
-     *
-     * @param ord the 0-based ordinal of the term (0 <= ord &lt; {@link #size()})
-     * @return the number of {@code char} code units of the term at {@link #termOffset(int)}
-     * @throws IllegalArgumentException if {@code ord} is out of range
-     */
-    public int termLength(int ord)
-    {
-        checkOrd(ord);
-        return (int) meta[ord] & 0xFFFF;
-    }
-
-    /**
-     * Returns the starting offset of the term identified by the given ordinal within the slab.
-     *
-     * @param ord the 0-based ordinal of the term (0 <= ord &lt; {@link #size()})
-     * @return the starting offset within {@link #slab()}
-     * @throws IllegalArgumentException if {@code ord} is out of range
-     */
-    public int termOffset(int ord)
-    {
-        checkOrd(ord);
-        return (int) (meta[ord] >>> 32);
-    }
-    
-    /**
-     * Returns the maximum term length (in {@code char} code units) ever added to this dictionary.
-     *
-     * <p>This is intended to pre-size reusable scratch buffers, e.g. in TokenFilter code, so that
-     * calls to {@link #get(int, char[])} never need to grow the buffer.</p>
-     *
-     * <p>Complexity: {@code O(1)}.</p>
-     *
-     * @return the maximum length among all stored terms, in UTF-16 code units
-     */
-    public int maxTermLength()
-    {
-        return maxTermLen;
-    }
-
-    /**
-     * Returns the number of unique terms in the dictionary.
-     *
-     * @return the number of assigned ords (>= 0)
-     */
-    public int size()
-    {
-        return sizeOrds;
-    }
-
-    /**
-     * Returns the underlying character slab storing all terms contiguously.
-     *
-     * <p>The valid range is {@code [0 .. slabUsed)}.
-     */
-    public char[] slab()
-    {
-        return slab;
-    }
-
-    /**
-     * Shrinks internal storage to (approximately) the minimum needed for the current contents.
-     *
-     * <p>Intended for bulk-build workflows:
-     * <ol>
-     *   <li>Create with a reasonable {@code expectedSize}.</li>
-     *   <li>Add all terms.</li>
-     *   <li>Call {@link #trimToSize()} once to reduce memory slack.</li>
-     * </ol>
-     *
-     * <p>This method:
-     * <ul>
-     *   <li>Trims the slab to {@code slabUsed}.</li>
-     *   <li>Trims per-ord metadata arrays to {@link #size()}.</li>
-     *   <li>Optionally shrinks the hash table to the smallest power-of-two capacity that can hold
-     *       {@link #size()} entries at the target load factor, rebuilding the table if it shrinks.</li>
-     * </ul>
-     *
-     * <p>After trimming, further {@link #add(char[], int, int)} calls remain valid, but may grow
-     * arrays again.
-     */
-    public void trimToSize()
-    {
-        // 1) shrink slab
-        if (slab.length != slabUsed) {
-            slab = Arrays.copyOf(slab, slabUsed);
-        }
-        
-        int need = (int) Math.ceil(sizeOrds / LOAD_FACTOR);
-        int cap = 1;
-        while (cap < need) cap <<= 1;
-
-        // shrink table (if possible)
-        
-        if (cap < table.length) {
-            rehash(cap);
-        }
-
-        // now shrink per-ord arrays (safe after rehash too)
-        if (meta.length != sizeOrds) {
-            meta = Arrays.copyOf(meta, sizeOrds);
-            termHash = Arrays.copyOf(termHash, sizeOrds);
-        }
-
-
-    }
-    
-    
-
-    /**
-     * Appends {@code term[off..off+len)} to the end of the slab, growing the slab as needed.
+     * Appends {@code term[off..off+len)} to the end of the slab.
      *
      * @param term source term array
-     * @param off start offset
-     * @param len number of {@code char}s to copy
-     * @return the starting offset within the slab where the term was written
+     * @param off start offset in {@code term}
+     * @param len number of chars to copy
+     * @return starting slab offset where the term was written
      */
-    private int appendToSlab(char[] term, int off, int len)
+    private int appendToSlab(final char[] term, final int off, final int len)
     {
-        int need = slabUsed + len;
-        if (need > slab.length) {
-            int cap = Math.max(need, slab.length + (slab.length >>> 1) + 16);
-            slab = Arrays.copyOf(slab, cap);
-        }
-        System.arraycopy(term, off, slab, slabUsed, len);
-        int base = slabUsed;
-        slabUsed = need;
+        ensureSlabCapacity(len);
+        final int base = slabUsed;
+        System.arraycopy(term, off, slab, base, len);
+        slabUsed = base + len;
         return base;
     }
-    
-    private int appendToSlab(CharSequence cs, int off, int len)
+
+    /**
+     * Appends {@code cs[off..off+len)} to the end of the slab.
+     *
+     * <p>Characters are copied through {@link CharSequence#charAt(int)}. This avoids an intermediate
+     * {@code char[]} copy when the source is a mutable parser buffer (e.g. {@link StringBuilder}).</p>
+     *
+     * @param cs source character sequence
+     * @param off start offset in {@code cs}
+     * @param len number of chars to copy
+     * @return starting slab offset where the term was written
+     */
+    private int appendToSlab(final CharSequence cs, final int off, final int len)
     {
-        int need = slabUsed + len;
-        if (need > slab.length) {
-            int cap = Math.max(need, slab.length + (slab.length >>> 1) + 16);
-            slab = Arrays.copyOf(slab, cap);
-        }
+        ensureSlabCapacity(len);
         final int base = slabUsed;
         for (int i = 0, j = off; i < len; i++, j++) {
             slab[base + i] = cs.charAt(j);
         }
-        slabUsed = need;
+        slabUsed = base + len;
         return base;
     }
-    
-    private static void checkBounds(CharSequence cs, int off, int len)
+
+    /**
+     * Ensures per-ord arrays can accommodate {@code required} ords.
+     *
+     * <p>Arrays grow geometrically (~1.5x) with a small additive constant.</p>
+     *
+     * @param required number of ords that must be addressable
+     */
+    private void ensureOrdCapacity(final int required)
+    {
+        if (required <= meta.length) return;
+        final int cap = Math.max(required, meta.length + (meta.length >>> 1) + 16);
+        meta = Arrays.copyOf(meta, cap);
+        termHash = Arrays.copyOf(termHash, cap);
+    }
+
+    // ---- Private validation helpers -----------------------------------------
+
+    /**
+     * Validates a slice of a {@link CharSequence}.
+     *
+     * @param cs source sequence
+     * @param off start offset (inclusive)
+     * @param len slice length
+     * @throws NullPointerException if {@code cs} is null
+     * @throws IndexOutOfBoundsException if the slice is invalid
+     */
+    private static void checkBounds(final CharSequence cs, final int off, final int len)
     {
         if (cs == null) throw new NullPointerException("cs");
-        // overflow-safe form
         final int n = cs.length();
         if (off < 0 || len < 0 || off > n - len) throw new IndexOutOfBoundsException();
     }
 
     /**
-     * Validates that {@code off} and {@code len} define a valid subrange of {@code a}.
+     * Validates a slice of a {@code char[]}.
      *
-     * @param a   the array being accessed
-     * @param off starting offset (inclusive)
-     * @param len number of elements
-     * @throws IndexOutOfBoundsException if the subrange is invalid
+     * <p>Uses an overflow-safe bound check form.</p>
+     *
+     * @param a source array
+     * @param off start offset (inclusive)
+     * @param len slice length
+     * @throws NullPointerException if {@code a} is null
+     * @throws IndexOutOfBoundsException if the slice is invalid
      */
-    private static void checkBounds(char[] a, int off, int len)
+    private static void checkBounds(final char[] a, final int off, final int len)
     {
-        if (a == null || off < 0 || len < 0 || off + len > a.length) throw new IndexOutOfBoundsException();
+        if (a == null) throw new NullPointerException("a");
+        if (off < 0 || len < 0 || off > a.length - len) throw new IndexOutOfBoundsException();
     }
 
     /**
-     * Validates that {@code ord} is a currently assigned ordinal.
+     * Validates that {@code ord} is an assigned ordinal.
      *
-     * @param ord 0-based ordinal
-     * @throws IllegalArgumentException if {@code ord} is &lt; 0 or >= {@link #size()}
+     * @param ord candidate ordinal
+     * @throws IllegalArgumentException if {@code ord < 0} or {@code ord >= size()}
      */
-    private void checkOrd(int ord)
+    private void checkOrd(final int ord)
     {
-        if (ord < 0 || ord >= sizeOrds) throw new IllegalArgumentException("bad ord " + ord);
+        if (ord < 0 || ord >= sizeOrds) {
+            throw new IllegalArgumentException("bad ord " + ord);
+        }
     }
 
+    // ---- Private comparison helpers -----------------------------------------
+
     /**
-     * Compares the term at {@code ord} against the specified {@code term[off..off+len)}.
+     * Compares the stored term at {@code ord} to {@code term[off..off+len)}.
      *
-     * <p>Assumes length equality was already checked by the caller.
+     * <p>Assumes the caller already checked length equality.</p>
      *
      * @param ord target ordinal
-     * @param term probe term array
+     * @param term probe source array
      * @param off start offset in {@code term}
-     * @param len number of characters to compare
-     * @return {@code true} if all {@code len} characters are equal; otherwise {@code false}
+     * @param len number of chars to compare
+     * @return {@code true} if equal, otherwise {@code false}
      */
-    private boolean equalsAt(int ord, char[] term, int off, int len)
+    private boolean equalsAt(final int ord, final char[] term, final int off, final int len)
     {
         final int s = metaOff(meta[ord]);
         for (int i = 0; i < len; i++) {
@@ -540,53 +627,69 @@ public final class CharsDic
         }
         return true;
     }
-    
-    private boolean equalsAt(int ord, CharSequence term, int off, int len)
+
+    /**
+     * Compares the stored term at {@code ord} to {@code cs[off..off+len)}.
+     *
+     * <p>Assumes the caller already checked length equality.</p>
+     *
+     * @param ord target ordinal
+     * @param cs probe source sequence
+     * @param off start offset in {@code cs}
+     * @param len number of chars to compare
+     * @return {@code true} if equal, otherwise {@code false}
+     */
+    private boolean equalsAt(final int ord, final CharSequence cs, final int off, final int len)
     {
         final int s = metaOff(meta[ord]);
         for (int i = 0, j = off; i < len; i++, j++) {
-            if (slab[s + i] != term.charAt(j)) return false;
+            if (slab[s + i] != cs.charAt(j)) return false;
         }
         return true;
     }
 
-    /**
-     * Ensures that per-ord metadata arrays can accommodate {@code required} ords.
-     *
-     * <p>If necessary, grows the arrays by ~1.5x plus a small constant to amortize copy costs.
-     *
-     * @param required the number of ords that must be addressable (i.e., {@code required <= newCapacity})
-     */
-    private void ensureOrdCapacity(int required)
-    {
-        if (required <= meta.length) return;
-        int cap = Math.max(required, meta.length + (meta.length >>> 1) + 16);
-        meta = Arrays.copyOf(meta, cap);
-        termHash = Arrays.copyOf(termHash, cap);
-    }
+    // ---- Private metadata helpers -------------------------------------------
 
-    private static int metaLen(long m)
+    /**
+     * Extracts the stored term length from packed metadata.
+     *
+     * @param m packed metadata word
+     * @return term length (unsigned 16-bit value)
+     */
+    private static int metaLen(final long m)
     {
         return (int) m & 0xFFFF;
     }
 
-    private static int metaOff(long m)
+    /**
+     * Extracts the slab offset from packed metadata.
+     *
+     * @param m packed metadata word
+     * @return slab offset
+     */
+    private static int metaOff(final long m)
     {
         return (int) (m >>> 32);
     }
 
-    private static long packMeta(int off, int len)
+    /**
+     * Packs slab offset and term length into one metadata word.
+     *
+     * @param off slab offset (high 32 bits)
+     * @param len term length (stored as unsigned low 16 bits)
+     * @return packed metadata word
+     */
+    private static long packMeta(final int off, final int len)
     {
         return ((long) off << 32) | (len & 0xFFFFL);
     }
 
+    // ---- Private hash-table maintenance -------------------------------------
+
     /**
-     * Computes the occupancy threshold that triggers a rehash.
+     * Returns the occupancy threshold that triggers a rehash.
      *
-     * <p>Rehashing is performed when the number of occupied slots exceeds
-     * {@code floor(table.length * LOAD_FACTOR)} to keep probe lengths bounded.
-     *
-     * @return the maximum number of occupied slots before a resize
+     * @return maximum number of occupied slots before growth
      */
     private int resizeThreshold()
     {
@@ -594,24 +697,25 @@ public final class CharsDic
     }
 
     /**
-     * Rehashes the table to {@code newCap} slots and reinserts all existing ords.
+     * Rebuilds the hash table with a new power-of-two capacity.
      *
-     * <p>This method does not move or rewrite term data in the slab; it only rebuilds the index
-     * using the stored 32-bit hashes and ord metadata. The {@code newCap} must be a power of two.
+     * <p>Term data remain in the slab; only slot placement is recomputed using {@link #termHash}.</p>
      *
-     * @param newCap the new table capacity (power of two)
+     * @param newCap new table capacity (must be a power of two)
+     * @throws IllegalArgumentException if {@code newCap} is not a power of two
+     * @throws IllegalStateException if internal per-ord hash storage is inconsistent
      */
-    private void rehash(int newCap)
+    private void rehash(final int newCap)
     {
         if (Integer.bitCount(newCap) != 1) {
             throw new IllegalArgumentException("newCap must be power of two: " + newCap);
         }
-        // This check catches your current failure mode immediately and clearly.
         if (termHash.length < sizeOrds) {
-            throw new IllegalStateException("termHash too small: termHash.length=" + termHash.length
-                    + " sizeOrds=" + sizeOrds);
+            throw new IllegalStateException(
+                "termHash too small: termHash.length=" + termHash.length + " sizeOrds=" + sizeOrds
+            );
         }
-        
+
         table = new int[newCap];
         Arrays.fill(table, -1);
         fp16 = new short[newCap];
@@ -621,90 +725,168 @@ public final class CharsDic
         for (int ord = 0; ord < sizeOrds; ord++) {
             final int h = termHash[ord];
             int j = h & mask;
-            while (table[j] != -1) j = (j + 1) & mask;
-            
+            while (table[j] != -1) {
+                j = (j + 1) & mask;
+            }
             table[j] = ord;
             fp16[j] = (short) (h >>> 16);
             occupied++;
         }
     }
 
-    static int hashCode(final char[] chars, final int off, final int len) 
+    /**
+     * Computes the smallest power-of-two table capacity able to hold {@code expectedSize} entries
+     * under {@link #LOAD_FACTOR}.
+     *
+     * @param expectedSize expected number of entries (must be {@code >= 1})
+     * @return power-of-two table capacity
+     */
+    private static int tableCapacityForExpected(final int expectedSize)
+    {
+        int cap = 1;
+        final int need = (int) Math.ceil(expectedSize / LOAD_FACTOR);
+        while (cap < need) cap <<= 1;
+        return cap;
+    }
+
+    // ---- Hash functions ------------------------------------------------------
+
+    /**
+     * Internal term hash helper for {@code char[]} sources.
+     *
+     * @param chars source array
+     * @param off start offset
+     * @param len slice length
+     * @return 32-bit hash
+     */
+    static int hashCode(final char[] chars, final int off, final int len)
     {
         return murmur3(chars, off, len);
     }
 
+    /**
+     * Internal term hash helper for {@link CharSequence} sources.
+     *
+     * @param chars source character sequence
+     * @param off start offset
+     * @param len slice length
+     * @return 32-bit hash
+     */
     static int hashCode(final CharSequence chars, final int off, final int len)
     {
         return murmur3(chars, off, len);
     }
-    
+
     /**
-     * Computes Murmur3-32 for a UTF-16 {@code char[]} slice using the x86_32 mixing constants.
+     * Computes Murmur3-32 over a UTF-16 {@code char[]} slice.
      *
-     * @param a    input array of UTF-16 code units
-     * @param off  start offset (inclusive)
-     * @param len  number of {@code char} code units to read
-     * @return the 32-bit hash value
-     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code a}
+     * <p>This method does not perform bounds checking; callers are expected to validate
+     * {@code off}/{@code len} beforehand on hot paths.</p>
+     *
+     * @param a source UTF-16 array
+     * @param off start offset (inclusive)
+     * @param len number of UTF-16 code units
+     * @return 32-bit hash value
      */
-    public static int murmur3(final char[] a, final int off, final int len) {
-        int h1 = MURMUR_SEED;
-        int i = off;
-        final int endPair = off + (len & ~1); // even boundary
-
-        while (i < endPair) {
-            int k1 = (a[i] & 0xFFFF) | ((a[i + 1] & 0xFFFF) << 16);
-            i += 2;
-            h1 = mixH1(h1, mixK1(k1));
-        }
-
-        if ((len & 1) != 0) {
-            int k1 = (a[i] & 0xFFFF);
-            h1 ^= mixK1(k1);
-        }
-
-        return finishHash(h1, len);
-    }
-    
-    public static int murmur3(final CharSequence a, final int off, final int len) {
+    public static int murmur3(final char[] a, final int off, final int len)
+    {
         int h1 = MURMUR_SEED;
         int i = off;
         final int endPair = off + (len & ~1);
 
         while (i < endPair) {
-            int k1 = (a.charAt(i) & 0xFFFF) | ((a.charAt(i + 1) & 0xFFFF) << 16);
+            final int k1 = (a[i] & 0xFFFF) | ((a[i + 1] & 0xFFFF) << 16);
             i += 2;
             h1 = mixH1(h1, mixK1(k1));
         }
 
         if ((len & 1) != 0) {
-            int k1 = (a.charAt(i) & 0xFFFF);
-            h1 ^= mixK1(k1);
+            h1 ^= mixK1(a[i] & 0xFFFF);
         }
 
         return finishHash(h1, len);
     }
 
-    private static final int MURMUR_SEED = 0x9747b28c;
-    private static final int MURMUR_C1   = 0xcc9e2d51;
-    private static final int MURMUR_C2   = 0x1b873593;
+    /**
+     * Computes Murmur3-32 over a UTF-16 {@link CharSequence} slice.
+     *
+     * <p>This method does not perform bounds checking; callers are expected to validate
+     * {@code off}/{@code len} beforehand on hot paths.</p>
+     *
+     * @param a source UTF-16 character sequence
+     * @param off start offset (inclusive)
+     * @param len number of UTF-16 code units
+     * @return 32-bit hash value
+     */
+    public static int murmur3(final CharSequence a, final int off, final int len)
+    {
+        int h1 = MURMUR_SEED;
+        int i = off;
+        final int endPair = off + (len & ~1);
 
-    private static int mixK1(int k1) {
+        while (i < endPair) {
+            final int k1 = (a.charAt(i) & 0xFFFF) | ((a.charAt(i + 1) & 0xFFFF) << 16);
+            i += 2;
+            h1 = mixH1(h1, mixK1(k1));
+        }
+
+        if ((len & 1) != 0) {
+            h1 ^= mixK1(a.charAt(i) & 0xFFFF);
+        }
+
+        return finishHash(h1, len);
+    }
+
+    /**
+     * Murmur3 block mix for a 32-bit chunk.
+     *
+     * @param k1 input chunk
+     * @return mixed chunk
+     */
+    private static int mixK1(int k1)
+    {
         k1 *= MURMUR_C1;
         k1 = Integer.rotateLeft(k1, 15);
         k1 *= MURMUR_C2;
         return k1;
     }
 
-    private static int mixH1(int h1, int k1) {
+    /**
+     * Murmur3 hash-state update after one mixed block.
+     *
+     * @param h1 current hash state
+     * @param k1 mixed block
+     * @return updated hash state
+     */
+    private static int mixH1(int h1, final int k1)
+    {
         h1 ^= k1;
         h1 = Integer.rotateLeft(h1, 13);
         h1 = h1 * 5 + 0xe6546b64;
         return h1;
     }
 
-    private static int fmix32(int h1) {
+    /**
+     * Murmur3 finalization helper for a UTF-16 input length expressed in chars.
+     *
+     * @param h1 hash state before finalization
+     * @param charLen input length in UTF-16 code units
+     * @return finalized hash value
+     */
+    private static int finishHash(int h1, final int charLen)
+    {
+        h1 ^= (charLen << 1); // Murmur finalizer expects length in bytes
+        return fmix32(h1);
+    }
+
+    /**
+     * Murmur3 fmix32 avalanche finalizer.
+     *
+     * @param h1 hash state
+     * @return avalanched 32-bit hash
+     */
+    private static int fmix32(int h1)
+    {
         h1 ^= (h1 >>> 16);
         h1 *= 0x85ebca6b;
         h1 ^= (h1 >>> 13);
@@ -712,10 +894,4 @@ public final class CharsDic
         h1 ^= (h1 >>> 16);
         return h1;
     }
-
-    private static int finishHash(int h1, int charLen) {
-        h1 ^= (charLen << 1); // bytes = len * 2
-        return fmix32(h1);
-    }
-
 }
