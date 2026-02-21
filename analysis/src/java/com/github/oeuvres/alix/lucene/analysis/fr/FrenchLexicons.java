@@ -9,7 +9,7 @@ import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
-import com.github.oeuvres.alix.lucene.analysis.Lexicons;
+import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.util.Cache;
 
 public class FrenchLexicons
@@ -35,9 +35,9 @@ public class FrenchLexicons
     {
         // set ignore case
         CharArraySet map = new CharArraySet(100, true);
-        Lexicons.loadSet(map, Lexicons.class, "/com/github/oeuvres/alix/fr/brevidot.csv", 0, ".");
+        LexiconHelper.loadSet(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidot.csv", 0, ".");
         for (String file : localFiles) {
-            Lexicons.loadSet(map, Path.of(file), 0, ".");
+            LexiconHelper.loadSet(map, Path.of(file), 0, ".");
         }
         return map;
     }
@@ -58,9 +58,9 @@ public class FrenchLexicons
     private static CharArrayMap<char[]> termMapping(List<String> localFiles) throws IOException
     {
         CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
-        Lexicons.loadMap(map, Lexicons.class, "/com/github/oeuvres/alix/fr/norm.csv", false);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm.csv", false);
         for (String file : localFiles) {
-            Lexicons.loadMap(map, Path.of(file), true);
+            LexiconHelper.loadMap(map, Path.of(file), true);
         }
         return map;
     }

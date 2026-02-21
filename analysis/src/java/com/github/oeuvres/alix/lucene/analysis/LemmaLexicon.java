@@ -581,6 +581,25 @@ public final class LemmaLexicon
     }
 
     /**
+     * Inserts a POS-agnostic mapping {@code (form, DEFAULT_POS_ID) -> lemmaForm}.
+     *
+     * <p>Both strings are interned (or reused if already interned), then the mapping is stored
+     * according to {@code policy}.</p>
+     *
+     * @param form surface form
+     * @param lemmaForm lemma form
+     * @param policy duplicate handling policy
+     * @return {@code lemmaId}
+     * 
+     * @throws NullPointerException if an argument is null
+     * @throws IllegalArgumentException if {@code policy == ERROR} and a conflicting mapping exists
+     */
+    public int putEntry(final CharSequence form, final CharSequence lemmaForm, final OnDuplicate policy)
+    {
+        return putEntry(form, 0, form.length(), DEFAULT_POS_ID, lemmaForm, 0, lemmaForm.length(), policy);
+    }
+    
+    /**
      * Inserts a mapping {@code (form, posId) -> lemmaForm}.
      *
      * <p>Both strings are interned (or reused if already interned), then the mapping is stored
