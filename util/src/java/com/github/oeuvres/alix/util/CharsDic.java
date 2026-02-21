@@ -135,6 +135,27 @@ public final class CharsDic
         // Heuristic: small average token size; the slab grows geometrically.
         slab = new char[Math.max(16, expectedSize * 4)];
     }
+    
+ // --- public overloads --------------------------------------------------------
+
+    public int add(CharSequence cs)
+    {
+        if (cs == null) throw new NullPointerException("cs");
+        return add(cs, 0, cs.length());
+    }
+
+    public int add(CharSequence cs, int off, int len)
+    {
+        checkBounds(cs, off, len);
+        if (len > MAX_TERM_LENGTH) throw new IllegalArgumentException("term length > " + MAX_TERM_LENGTH + ": " + len);
+        return add0(null, off, len, cs);
+    }
+
+    // Optional: keep this convenience overload if you want it
+    public int add(StringBuilder buf)
+    {
+        return add((CharSequence) buf, 0, buf.length());
+    }
 
     /**
      * Adds the specified term if absent, or returns the existing ordinal if present.
@@ -157,24 +178,36 @@ public final class CharsDic
     public int add(char[] term, int off, int len)
     {
         checkBounds(term, off, len);
-        if (len > MAX_TERM_LENGTH) throw new IllegalArgumentException("term length > 65535: " + len);
+        if (len > MAX_TERM_LENGTH) throw new IllegalArgumentException("term length > " + MAX_TERM_LENGTH + ": " + len);
+        return add0(term, off, len, null);
+    }
 
-        final int h = hashCode(term, off, len);
+    // --- shared core ------------------------------------------------------------
+
+    private int add0(final char[] term, final int off, final int len, final CharSequence cs)
+    {
+        final boolean arraySrc = (term != null);
+
+        final int h = arraySrc ? hashCode(term, off, len) : hashCode(cs, off, len);
         final short f = (short) (h >>> 16);
         int i = h & mask;
 
         for (;;) {
             final int ord = table[i];
+
             if (ord == -1) { // empty slot -> insert
-                final int newOrd = sizeOrds++; // 0-based
+                final int newOrd = sizeOrds++;
                 ensureOrdCapacity(sizeOrds);
 
-                final int base = appendToSlab(term, off, len);
+                final int base = arraySrc
+                        ? appendToSlab(term, off, len)
+                        : appendToSlab(cs, off, len);
+
                 meta[newOrd] = packMeta(base, len);
                 termHash[newOrd] = h;
 
                 if (len > maxTermLen) maxTermLen = len;
-                
+
                 table[i] = newOrd;
                 fp16[i] = f;
 
@@ -182,16 +215,22 @@ public final class CharsDic
                 return newOrd;
             }
 
-            // Probe rejection in table order: fp16 then len then memcmp
             if (fp16[i] == f) {
                 final long m = meta[ord];
-                if (metaLen(m) == len && equalsAt(ord, term, off, len)) {
-                    return -ord - 1;
+                if (metaLen(m) == len) {
+                    final boolean eq = arraySrc
+                            ? equalsAt(ord, term, off, len)
+                            : equalsAt(ord, cs, off, len);
+                    if (eq) return -ord - 1;
                 }
             }
+
             i = (i + 1) & mask;
         }
     }
+
+
+
 
     /**
      * Finds the ordinal for the specified term.
@@ -281,6 +320,7 @@ public final class CharsDic
         System.arraycopy(slab, off, dst, dstOff, len);
         return len;
     }
+    
 
     
     /**
@@ -410,6 +450,8 @@ public final class CharsDic
 
 
     }
+    
+    
 
     /**
      * Appends {@code term[off..off+len)} to the end of the slab, growing the slab as needed.
@@ -430,6 +472,29 @@ public final class CharsDic
         int base = slabUsed;
         slabUsed = need;
         return base;
+    }
+    
+    private int appendToSlab(CharSequence cs, int off, int len)
+    {
+        int need = slabUsed + len;
+        if (need > slab.length) {
+            int cap = Math.max(need, slab.length + (slab.length >>> 1) + 16);
+            slab = Arrays.copyOf(slab, cap);
+        }
+        final int base = slabUsed;
+        for (int i = 0, j = off; i < len; i++, j++) {
+            slab[base + i] = cs.charAt(j);
+        }
+        slabUsed = need;
+        return base;
+    }
+    
+    private static void checkBounds(CharSequence cs, int off, int len)
+    {
+        if (cs == null) throw new NullPointerException("cs");
+        // overflow-safe form
+        final int n = cs.length();
+        if (off < 0 || len < 0 || off > n - len) throw new IndexOutOfBoundsException();
     }
 
     /**
@@ -472,6 +537,15 @@ public final class CharsDic
         final int s = metaOff(meta[ord]);
         for (int i = 0; i < len; i++) {
             if (slab[s + i] != term[off + i]) return false;
+        }
+        return true;
+    }
+    
+    private boolean equalsAt(int ord, CharSequence term, int off, int len)
+    {
+        final int s = metaOff(meta[ord]);
+        for (int i = 0, j = off; i < len; i++, j++) {
+            if (slab[s + i] != term.charAt(j)) return false;
         }
         return true;
     }
@@ -560,6 +634,11 @@ public final class CharsDic
         return murmur3(chars, off, len);
     }
 
+    static int hashCode(final CharSequence chars, final int off, final int len)
+    {
+        return murmur3(chars, off, len);
+    }
+    
     /**
      * Computes Murmur3-32 for a UTF-16 {@code char[]} slice using the x86_32 mixing constants.
      *
@@ -569,33 +648,63 @@ public final class CharsDic
      * @return the 32-bit hash value
      * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code a}
      */
-    static int murmur3(final char[] a, final int off, final int len)
-    {
-        final int seed = 0x9747b28c;
-        final int n16 = len >>> 1;
-        final boolean odd = (len & 1) != 0;
-        int h1 = seed, idx = off;
-        final int c1 = 0xcc9e2d51, c2 = 0x1b873593;
+    public static int murmur3(final char[] a, final int off, final int len) {
+        int h1 = MURMUR_SEED;
+        int i = off;
+        final int endPair = off + (len & ~1); // even boundary
 
-        for (int i = 0; i < (n16 << 1); i += 2) {
-            int k1 = (a[idx] & 0xFFFF) | ((a[idx + 1] & 0xFFFF) << 16);
-            idx += 2;
-            k1 *= c1;
-            k1 = (k1 << 15) | (k1 >>> 17);
-            k1 *= c2;
-            h1 ^= k1;
-            h1 = (h1 << 13) | (h1 >>> 19);
-            h1 = h1 * 5 + 0xe6546b64;
+        while (i < endPair) {
+            int k1 = (a[i] & 0xFFFF) | ((a[i + 1] & 0xFFFF) << 16);
+            i += 2;
+            h1 = mixH1(h1, mixK1(k1));
         }
-        if (odd) {
-            int k1 = (a[idx] & 0xFFFF);
-            k1 *= c1;
-            k1 = (k1 << 15) | (k1 >>> 17);
-            k1 *= c2;
-            h1 ^= k1;
+
+        if ((len & 1) != 0) {
+            int k1 = (a[i] & 0xFFFF);
+            h1 ^= mixK1(k1);
         }
-        final int bytes = len << 1;
-        h1 ^= bytes;
+
+        return finishHash(h1, len);
+    }
+    
+    public static int murmur3(final CharSequence a, final int off, final int len) {
+        int h1 = MURMUR_SEED;
+        int i = off;
+        final int endPair = off + (len & ~1);
+
+        while (i < endPair) {
+            int k1 = (a.charAt(i) & 0xFFFF) | ((a.charAt(i + 1) & 0xFFFF) << 16);
+            i += 2;
+            h1 = mixH1(h1, mixK1(k1));
+        }
+
+        if ((len & 1) != 0) {
+            int k1 = (a.charAt(i) & 0xFFFF);
+            h1 ^= mixK1(k1);
+        }
+
+        return finishHash(h1, len);
+    }
+
+    private static final int MURMUR_SEED = 0x9747b28c;
+    private static final int MURMUR_C1   = 0xcc9e2d51;
+    private static final int MURMUR_C2   = 0x1b873593;
+
+    private static int mixK1(int k1) {
+        k1 *= MURMUR_C1;
+        k1 = Integer.rotateLeft(k1, 15);
+        k1 *= MURMUR_C2;
+        return k1;
+    }
+
+    private static int mixH1(int h1, int k1) {
+        h1 ^= k1;
+        h1 = Integer.rotateLeft(h1, 13);
+        h1 = h1 * 5 + 0xe6546b64;
+        return h1;
+    }
+
+    private static int fmix32(int h1) {
         h1 ^= (h1 >>> 16);
         h1 *= 0x85ebca6b;
         h1 ^= (h1 >>> 13);
@@ -604,55 +713,9 @@ public final class CharsDic
         return h1;
     }
 
-    /**
-     * 31-based polynomial hash (String-style) over UTF-16 code units.
-     *
-     * Important: if you index with (h & mask) in a power-of-two table, you should
-     * smear the result (h ^ (h >>> 16)) to improve low-bit distribution.
-     */
-    static int hash31(final char[] a, final int off, final int len)
-    {
-        int h = 0;
-        final int end = off + len;
-        for (int i = off; i < end; i++) {
-            h = 31 * h + a[i];
-        }
-        // smear like HashMap to improve low bits for power-of-two masking
-        h ^= (h >>> 16);
-        return h;
+    private static int finishHash(int h1, int charLen) {
+        h1 ^= (charLen << 1); // bytes = len * 2
+        return fmix32(h1);
     }
-    
-    /**
-     * Murmur3 fmix32 finalizer (avalanche).
-     *
-     * <p>Mixes all bits of {@code h} so that small differences in input
-     * produce large differences in output. Useful after a cheap rolling hash
-     * (e.g., 31-polynomial) when indexing with power-of-two masking.</p>
-     */
-    static int fmix32(int h)
-    {
-        h ^= (h >>> 16);
-        h *= 0x85ebca6b;
-        h ^= (h >>> 13);
-        h *= 0xc2b2ae35;
-        h ^= (h >>> 16);
-        return h;
-    }
-    
-    /**
-     * Cheap rolling hash (String-style) + fmix32 avalanche.
-     *
-     * <p>Good compromise for power-of-two hash tables: fast loop, robust final bits.</p>
-     */
-    static int hash31_fmix32(final char[] a, final int off, final int len)
-    {
-        int h = 0;
-        final int end = off + len;
-        for (int i = off; i < end; i++) {
-            h = 31 * h + a[i];
-        }
-        // incorporate length (like String does implicitly via iteration count, but explicit helps)
-        h ^= (len << 1);
-        return fmix32(h);
-    }
+
 }
