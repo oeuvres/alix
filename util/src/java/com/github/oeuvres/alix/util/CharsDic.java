@@ -275,14 +275,6 @@ public final class CharsDic
     }
 
     /**
-     * Alias for {@link #trimToSize()} to emphasize the common "bulk build then freeze" workflow.
-     */
-    public void freeze()
-    {
-        trimToSize();
-    }
-
-    /**
      * Copies the term identified by {@code ord} into {@code dst}, starting at {@code dstOff}.
      *
      * <p>This is the {@code char[]} analogue of Lucene's {@code BytesRefHash.get(int, BytesRef)}:
