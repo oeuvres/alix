@@ -29,22 +29,11 @@ public final class LemmaLexicon
         this.lemmaByFormPos = new LongIntMap(Math.max(8, expectedForms));
     }
 
-    /** Shrink internal storage (not required for correctness). */
-    public void freeze()
-    {
-        forms.freeze();
-        lemmaByFormPos.trimToSize();
-    }
+    
 
     // ---------------------------
     // Lookup API (TokenFilter hot path)
     // ---------------------------
-
-    /** Return formId for a surface form, or -1 if unknown. */
-    public int findFormId(char[] term, int off, int len)
-    {
-        return forms.find(term, off, len);
-    }
 
     /** Return formId for a surface form, or -1 if unknown. */
     public int findFormId(CharSequence term)
@@ -57,16 +46,28 @@ public final class LemmaLexicon
         return forms.find(att.buffer(), 0, att.length());
     }
 
-    /** Return lemmaFormId for (formId,posId), or -1 if unknown. */
-    public int findLemmaId(int formId, int posId)
+    // ---------------------------
+    // Lookup API (TokenFilter hot path)
+    // ---------------------------
+    
+    /** Return formId for a surface form, or -1 if unknown. */
+    public int findFormId(char[] term, int off, int len)
     {
-        return lemmaByFormPos.get(formId, posId);
+        return forms.find(term, off, len);
     }
 
     /** Return lemmaFormId for (formId) with DEFAULT_POS, or -1 if unknown. */
     public int findLemmaId(int formId)
     {
         return lemmaByFormPos.get(formId, DEFAULT_POS);
+    }
+
+
+
+    /** Return lemmaFormId for (formId,posId), or -1 if unknown. */
+    public int findLemmaId(int formId, int posId)
+    {
+        return lemmaByFormPos.get(formId, posId);
     }
 
     /**
@@ -79,6 +80,15 @@ public final class LemmaLexicon
         if (formId < 0)
             return -1;
         return lemmaByFormPos.get(formId, posId);
+    }
+
+
+
+    /** Shrink internal storage (not required for correctness). */
+    public void freeze()
+    {
+        forms.freeze();
+        lemmaByFormPos.trimToSize();
     }
 
     /**
@@ -110,6 +120,19 @@ public final class LemmaLexicon
     /**
      * TOOO Javadoc
      */
+    public boolean copyForm(int formId, CharTermAttribute dstAtt)
+    {
+        if (formId < 0 || formId >= forms.size())
+            return false;
+        dstAtt.copyBuffer(forms.slab(), forms.termOffset(formId), forms.termLength(formId));
+        return true;
+    }
+
+
+
+    /**
+     * TOOO Javadoc
+     */
     public int lemmaToBuffer(CharTermAttribute srcAtt, int posId, CharTermAttribute dstAtt)
     {
         final int formId = findFormId(srcAtt);
@@ -135,17 +158,6 @@ public final class LemmaLexicon
             return -1;
         copyForm(lemmaId, dstAtt);
         return lemmaId;
-    }
-
-    /**
-     * TOOO Javadoc
-     */
-    public boolean copyForm(int formId, CharTermAttribute dstAtt)
-    {
-        if (formId < 0 || formId >= forms.size())
-            return false;
-        dstAtt.copyBuffer(forms.slab(), forms.termOffset(formId), forms.termLength(formId));
-        return true;
     }
 
     /**
