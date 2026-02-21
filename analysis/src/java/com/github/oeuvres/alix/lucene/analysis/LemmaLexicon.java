@@ -82,137 +82,11 @@ public final class LemmaLexicon
         return DEFAULT_POS_ID;
     }
 
-    /**
-     * Shrinks internal storage to reduce memory footprint after bulk loading.
-     *
-     * <p>This method is optional and not required for correctness. It is typically called once
-     * after all entries have been inserted.</p>
-     */
-    public void freeze()
-    {
-        forms.freeze();
-        lemmaByFormPos.trimToSize();
-    }
+    
 
     // ------------------------------------------------------------------------
     // Form interning / form dictionary access
     // ------------------------------------------------------------------------
-
-    /**
-     * Interns a form string and returns its stable {@code formId}.
-     *
-     * <p>If the form already exists, its existing id is returned.</p>
-     *
-     * @param form form string to intern
-     * @return stable form id (ordinal in the internal {@link CharsDic})
-     * @throws NullPointerException if {@code form} is null
-     * @throws IndexOutOfBoundsException if the provided slice is invalid (via delegated method)
-     * @throws IllegalArgumentException if the form length exceeds {@link CharsDic} limits
-     */
-    public int internForm(final CharSequence form)
-    {
-        final int result = forms.add(form);
-        return (result >= 0) ? result : (-result - 1);
-    }
-
-    /**
-     * Interns a slice of a character sequence and returns its stable {@code formId}.
-     *
-     * <p>If the form already exists, its existing id is returned.</p>
-     *
-     * @param form source character sequence
-     * @param off start offset (inclusive)
-     * @param len number of UTF-16 code units to read
-     * @return stable form id (ordinal in the internal {@link CharsDic})
-     * @throws NullPointerException if {@code form} is null
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     * @throws IllegalArgumentException if the form length exceeds {@link CharsDic} limits
-     */
-    public int internForm(final CharSequence form, final int off, final int len)
-    {
-        final int result = forms.add(form, off, len);
-        return (result >= 0) ? result : (-result - 1);
-    }
-
-    /**
-     * Interns a slice of a character array and returns its stable {@code formId}.
-     *
-     * <p>If the form already exists, its existing id is returned.</p>
-     *
-     * @param form source character array
-     * @param off start offset (inclusive)
-     * @param len number of UTF-16 code units to read
-     * @return stable form id (ordinal in the internal {@link CharsDic})
-     * @throws NullPointerException if {@code form} is null
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     * @throws IllegalArgumentException if the form length exceeds {@link CharsDic} limits
-     */
-    public int internForm(final char[] form, final int off, final int len)
-    {
-        final int result = forms.add(form, off, len);
-        return (result >= 0) ? result : (-result - 1);
-    }
-
-    /**
-     * Returns the form id for a form string, or {@code -1} if unknown.
-     *
-     * @param form surface form
-     * @return form id, or {@code -1} if absent
-     */
-    public int findFormId(final CharSequence form)
-    {
-        return forms.find(form);
-    }
-
-    /**
-     * Returns the form id for a form slice, or {@code -1} if unknown.
-     *
-     * @param form source character sequence
-     * @param off start offset (inclusive)
-     * @param len number of UTF-16 code units to read
-     * @return form id, or {@code -1} if absent
-     */
-    public int findFormId(final CharSequence form, final int off, final int len)
-    {
-        return forms.find(form, off, len);
-    }
-
-    /**
-     * Returns the form id for a form slice, or {@code -1} if unknown.
-     *
-     * @param form source character array
-     * @param off start offset (inclusive)
-     * @param len number of UTF-16 code units to read
-     * @return form id, or {@code -1} if absent
-     */
-    public int findFormId(final char[] form, final int off, final int len)
-    {
-        return forms.find(form, off, len);
-    }
-
-    /**
-     * Returns the form id for the contents of a Lucene {@link CharTermAttribute}, or {@code -1} if
-     * unknown.
-     *
-     * @param formAtt source term attribute
-     * @return form id, or {@code -1} if absent
-     * @throws NullPointerException if {@code formAtt} is null
-     */
-    public int findFormId(final CharTermAttribute formAtt)
-    {
-        return forms.find(formAtt.buffer(), 0, formAtt.length());
-    }
-
-    /**
-     * Tests whether the given form exists in the lexicon.
-     *
-     * @param form form string
-     * @return {@code true} if present, otherwise {@code false}
-     */
-    public boolean containsForm(final CharSequence form)
-    {
-        return findFormId(form) >= 0;
-    }
 
     /**
      * Tests whether the given form slice exists in the lexicon.
@@ -228,64 +102,14 @@ public final class LemmaLexicon
     }
 
     /**
-     * Returns the number of distinct interned forms (surface + lemma forms).
+     * Tests whether the given form exists in the lexicon.
      *
-     * @return number of interned forms
+     * @param form form string
+     * @return {@code true} if present, otherwise {@code false}
      */
-    public int formCount()
+    public boolean containsForm(final CharSequence form)
     {
-        return forms.size();
-    }
-
-    /**
-     * Returns the maximum length of any interned form (in UTF-16 code units).
-     *
-     * <p>Useful to size reusable scratch buffers in token filters.</p>
-     *
-     * @return maximum form length
-     */
-    public int maxFormLength()
-    {
-        return forms.maxTermLength();
-    }
-
-    /**
-     * Returns the length of the interned form identified by {@code formId}.
-     *
-     * @param formId form id
-     * @return form length (UTF-16 code units)
-     * @throws IllegalArgumentException if {@code formId} is invalid
-     */
-    public int formLength(final int formId)
-    {
-        return forms.termLength(formId);
-    }
-
-    /**
-     * Returns the offset of the interned form identified by {@code formId} in the internal slab.
-     *
-     * <p>This is an advanced method. The returned offset is valid only against the array returned by
-     * {@link #formSlab()}.</p>
-     *
-     * @param formId form id
-     * @return offset in the internal slab
-     * @throws IllegalArgumentException if {@code formId} is invalid
-     */
-    public int formOffset(final int formId)
-    {
-        return forms.termOffset(formId);
-    }
-
-    /**
-     * Returns the internal character slab used by the underlying dictionary.
-     *
-     * <p>The returned array is internal mutable storage and must be treated as read-only.</p>
-     *
-     * @return internal form slab
-     */
-    public char[] formSlab()
-    {
-        return forms.slab();
+        return findFormId(form) >= 0;
     }
 
     /**
@@ -340,6 +164,135 @@ public final class LemmaLexicon
     // Lemma lookup by ids
     // ------------------------------------------------------------------------
 
+    // ------------------------------------------------------------------------
+    // Form interning / form dictionary access
+    // ------------------------------------------------------------------------
+    
+    // ------------------------------------------------------------------------
+    // Form interning / form dictionary access
+    // ------------------------------------------------------------------------
+    
+    /**
+     * Interns a slice of a character array and returns its stable {@code formId}.
+     *
+     * <p>If the form already exists, its existing id is returned.</p>
+     *
+     * @param form source character array
+     * @param off start offset (inclusive)
+     * @param len number of UTF-16 code units to read
+     * @return stable form id (ordinal in the internal {@link CharsDic})
+     * @throws NullPointerException if {@code form} is null
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
+     * @throws IllegalArgumentException if the form length exceeds {@link CharsDic} limits
+     */
+    public int internForm(final char[] form, final int off, final int len)
+    {
+        final int result = forms.add(form, off, len);
+        return (result >= 0) ? result : (-result - 1);
+    }
+
+    /**
+     * Interns a form string and returns its stable {@code formId}.
+     *
+     * <p>If the form already exists, its existing id is returned.</p>
+     *
+     * @param form form string to intern
+     * @return stable form id (ordinal in the internal {@link CharsDic})
+     * @throws NullPointerException if {@code form} is null
+     * @throws IndexOutOfBoundsException if the provided slice is invalid (via delegated method)
+     * @throws IllegalArgumentException if the form length exceeds {@link CharsDic} limits
+     */
+    public int internForm(final CharSequence form)
+    {
+        final int result = forms.add(form);
+        return (result >= 0) ? result : (-result - 1);
+    }
+
+    /**
+     * Interns a slice of a character sequence and returns its stable {@code formId}.
+     *
+     * <p>If the form already exists, its existing id is returned.</p>
+     *
+     * @param form source character sequence
+     * @param off start offset (inclusive)
+     * @param len number of UTF-16 code units to read
+     * @return stable form id (ordinal in the internal {@link CharsDic})
+     * @throws NullPointerException if {@code form} is null
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
+     * @throws IllegalArgumentException if the form length exceeds {@link CharsDic} limits
+     */
+    public int internForm(final CharSequence form, final int off, final int len)
+    {
+        final int result = forms.add(form, off, len);
+        return (result >= 0) ? result : (-result - 1);
+    }
+
+    // ------------------------------------------------------------------------
+    // Form interning / form dictionary access
+    // ------------------------------------------------------------------------
+    
+    // ------------------------------------------------------------------------
+    // Form interning / form dictionary access
+    // ------------------------------------------------------------------------
+    
+    /**
+     * Returns the form id for a form slice, or {@code -1} if unknown.
+     *
+     * @param form source character array
+     * @param off start offset (inclusive)
+     * @param len number of UTF-16 code units to read
+     * @return form id, or {@code -1} if absent
+     */
+    public int findFormId(final char[] form, final int off, final int len)
+    {
+        return forms.find(form, off, len);
+    }
+
+    // ------------------------------------------------------------------------
+    // Form interning / form dictionary access
+    // ------------------------------------------------------------------------
+    
+    /**
+     * Returns the form id for the contents of a Lucene {@link CharTermAttribute}, or {@code -1} if
+     * unknown.
+     *
+     * @param formAtt source term attribute
+     * @return form id, or {@code -1} if absent
+     * @throws NullPointerException if {@code formAtt} is null
+     */
+    public int findFormId(final CharTermAttribute formAtt)
+    {
+        return forms.find(formAtt.buffer(), 0, formAtt.length());
+    }
+
+    /**
+     * Returns the form id for a form string, or {@code -1} if unknown.
+     *
+     * @param form surface form
+     * @return form id, or {@code -1} if absent
+     */
+    public int findFormId(final CharSequence form)
+    {
+        return forms.find(form);
+    }
+
+    // ------------------------------------------------------------------------
+    // Form interning / form dictionary access
+    // ------------------------------------------------------------------------
+    
+    /**
+     * Returns the form id for a form slice, or {@code -1} if unknown.
+     *
+     * @param form source character sequence
+     * @param off start offset (inclusive)
+     * @param len number of UTF-16 code units to read
+     * @return form id, or {@code -1} if absent
+     */
+    public int findFormId(final CharSequence form, final int off, final int len)
+    {
+        return forms.find(form, off, len);
+    }
+
     /**
      * Returns the lemma form id for a POS-agnostic mapping of {@code formId}.
      *
@@ -383,17 +336,9 @@ public final class LemmaLexicon
         return findLemmaId(formId, DEFAULT_POS_ID);
     }
 
-    /**
-     * Tests whether a lemma mapping exists for {@code (formId, posId)}.
-     *
-     * @param formId form id
-     * @param posId part-of-speech id
-     * @return {@code true} if a mapping exists, otherwise {@code false}
-     */
-    public boolean containsLemma(final int formId, final int posId)
-    {
-        return findLemmaId(formId, posId) >= 0;
-    }
+    
+
+    
 
     // ------------------------------------------------------------------------
     // One-shot lookup from form text
@@ -490,6 +435,18 @@ public final class LemmaLexicon
     }
 
     /**
+     * Resolves a POS-agnostic lemma form id from a Lucene term attribute.
+     *
+     * @param formAtt source term attribute
+     * @return lemma form id, or {@code -1} if unknown
+     * @throws NullPointerException if {@code formAtt} is null
+     */
+    public int findLemmaId(final CharTermAttribute formAtt)
+    {
+        return findLemmaId(formAtt, DEFAULT_POS_ID);
+    }
+
+    /**
      * Resolves a lemma form id from a Lucene term attribute and POS id.
      *
      * @param formAtt source term attribute
@@ -504,38 +461,70 @@ public final class LemmaLexicon
         return lemmaByFormPos.get(formId, posId);
     }
 
-    /**
-     * Resolves a POS-agnostic lemma form id from a Lucene term attribute.
-     *
-     * @param formAtt source term attribute
-     * @return lemma form id, or {@code -1} if unknown
-     * @throws NullPointerException if {@code formAtt} is null
-     */
-    public int findLemmaId(final CharTermAttribute formAtt)
-    {
-        return findLemmaId(formAtt, DEFAULT_POS_ID);
-    }
-
-    /**
-     * Resolves a lemma form id from a Lucene term attribute and POS id, with fallback to
-     * {@link #DEFAULT_POS_ID}.
-     *
-     * @param formAtt source term attribute
-     * @param posId part-of-speech id
-     * @return POS-specific lemma form id if present, otherwise POS-agnostic lemma form id, or
-     *         {@code -1} if neither exists
-     * @throws NullPointerException if {@code formAtt} is null
-     */
-    public int findLemmaIdOrDefaultPos(final CharTermAttribute formAtt, final int posId)
-    {
-        final int formId = findFormId(formAtt);
-        if (formId < 0) return -1;
-        return findLemmaIdOrDefaultPos(formId, posId);
-    }
-
     // ------------------------------------------------------------------------
     // Lemma copy helpers (TokenFilter-oriented)
     // ------------------------------------------------------------------------
+
+    /**
+     * Returns the number of distinct interned forms (surface + lemma forms).
+     *
+     * @return number of interned forms
+     */
+    public int formCount()
+    {
+        return forms.size();
+    }
+
+    /**
+     * Returns the length of the interned form identified by {@code formId}.
+     *
+     * @param formId form id
+     * @return form length (UTF-16 code units)
+     * @throws IllegalArgumentException if {@code formId} is invalid
+     */
+    public int formLength(final int formId)
+    {
+        return forms.termLength(formId);
+    }
+
+    /**
+     * Returns the offset of the interned form identified by {@code formId} in the internal slab.
+     *
+     * <p>This is an advanced method. The returned offset is valid only against the array returned by
+     * {@link #formSlab()}.</p>
+     *
+     * @param formId form id
+     * @return offset in the internal slab
+     * @throws IllegalArgumentException if {@code formId} is invalid
+     */
+    public int formOffset(final int formId)
+    {
+        return forms.termOffset(formId);
+    }
+
+    /**
+     * Returns the internal character slab used by the underlying dictionary.
+     *
+     * <p>The returned array is internal mutable storage and must be treated as read-only.</p>
+     *
+     * @return internal form slab
+     */
+    public char[] formSlab()
+    {
+        return forms.slab();
+    }
+
+    /**
+     * Shrinks internal storage to reduce memory footprint after bulk loading.
+     *
+     * <p>This method is optional and not required for correctness. It is typically called once
+     * after all entries have been inserted.</p>
+     */
+    public void trimToSize()
+    {
+        forms.trimToSize();
+        lemmaByFormPos.trimToSize();
+    }
 
     /**
      * Resolves and copies the lemma form for {@code srcFormAtt} + {@code posId} into
@@ -574,31 +563,22 @@ public final class LemmaLexicon
         return lemmaId;
     }
 
-    /**
-     * Resolves and copies the lemma form for {@code srcFormAtt} + {@code posId} into
-     * {@code dstLemmaAtt}, falling back to {@link #DEFAULT_POS_ID} when no POS-specific mapping
-     * exists.
-     *
-     * @param srcFormAtt source form attribute
-     * @param posId part-of-speech id
-     * @param dstLemmaAtt destination attribute receiving lemma characters
-     * @return POS-specific lemma form id if present, otherwise POS-agnostic lemma form id, or
-     *         {@code -1} if neither exists
-     */
-    public int lemmaToBufferOrDefaultPos(
-        final CharTermAttribute srcFormAtt,
-        final int posId,
-        final CharTermAttribute dstLemmaAtt
-    ) {
-        final int lemmaId = findLemmaIdOrDefaultPos(srcFormAtt, posId);
-        if (lemmaId < 0) return -1;
-        copyForm(lemmaId, dstLemmaAtt);
-        return lemmaId;
-    }
 
     // ------------------------------------------------------------------------
     // Mapping insertion API
     // ------------------------------------------------------------------------
+
+    /**
+     * Returns the maximum length of any interned form (in UTF-16 code units).
+     *
+     * <p>Useful to size reusable scratch buffers in token filters.</p>
+     *
+     * @return maximum form length
+     */
+    public int maxFormLength()
+    {
+        return forms.maxTermLength();
+    }
 
     /**
      * Inserts a mapping {@code (form, posId) -> lemmaForm}.
