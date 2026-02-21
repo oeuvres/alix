@@ -39,15 +39,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
-import com.github.oeuvres.alix.common.Upos;
-import static com.github.oeuvres.alix.common.Upos.*;
-
-import com.github.oeuvres.alix.lucene.analysis.FilterCloud;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
-import com.github.oeuvres.alix.util.Calcul;
-import com.github.oeuvres.alix.util.Char;
 
 /**
  * A lucene token filter adding other channels to the token stream
@@ -81,14 +72,13 @@ import com.github.oeuvres.alix.util.Char;
  */
 public final class FilterLemmatize extends TokenFilter
 {
-    /** The lexicon from which read lemmas */
-    private final LemmaDic lexicon;
+
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** A normalized orthographic form (ex : capitalization) */
-    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
+    // private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
     /** A lemma when possible */
-    private final LemAtt lemAtt = addAttribute(LemAtt.class);
+    // private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
     /** Last token was Punctuation */
@@ -96,24 +86,20 @@ public final class FilterLemmatize extends TokenFilter
     /** Store state */
     private State save;
     
-    public FilterLemmatize(TokenStream input)
-    {
-        super(input);
-        throw new Error("TODO");
-    }
+
 
     /**
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterLemmatize(TokenStream input, LemmaDic lexicon) {
+    public FilterLemmatize(TokenStream input) {
         super(input);
-        this.lexicon = lexicon;
     }
 
     @Override
     public final boolean incrementToken() throws IOException
     {
+        /*
         // Reusable char sequence for some tests and transformations
         final CharsAttImpl testAtt = new CharsAttImpl();
         if (save != null) {
@@ -152,7 +138,6 @@ public final class FilterLemmatize extends TokenFilter
             orthAtt.copy(termAtt); // start with original term
         }
         
-        /*
         // normalise oeil -> œil, Etat -> État, naître -> naitre
         lexicon.norm((CharsAttImpl)orthAtt);
 

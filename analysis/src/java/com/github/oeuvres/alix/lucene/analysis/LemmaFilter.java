@@ -1,5 +1,7 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
+import static com.github.oeuvres.alix.common.Upos.XML;
+
 import java.io.IOException;
 
 import org.apache.lucene.analysis.TokenFilter;
@@ -7,6 +9,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
+import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 
@@ -34,7 +37,9 @@ public final class LemmaFilter extends TokenFilter
         if (keywordAtt.isKeyword()) return true;
 
         final int posId = posAtt.getPos();
-
+        if (posId == XML.code || Upos.isPunct(posId)) {
+            return true;
+        }
         // Step 1: surface known ?
         final int formId = lex.findFormId(termAtt);
         if (formId < 0) return true;

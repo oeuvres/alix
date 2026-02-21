@@ -67,7 +67,7 @@ public class AnalyzerCloud extends Analyzer
         // fr split on ’ and -
         ts = new FrenchCliticSplitFilter(ts);
         // pos tagging before lemmatize
-        ts = new PosTaggingFilter(ts);
+        // ts = new PosTaggingFilter(ts);
         // provide lemma+pos
         ts = new FilterLemmatize(ts);
         // group compounds after lemmatization for verbal compounds

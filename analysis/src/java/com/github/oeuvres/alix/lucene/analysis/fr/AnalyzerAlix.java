@@ -46,7 +46,6 @@ public class AnalyzerAlix extends DelegatingAnalyzerWrapper
     final Analyzer cloudAnalyzer;
     final Analyzer findAnalyzer;
     final Analyzer orthAnalyzer;
-    final Analyzer posAnalyzer;
     final Analyzer queryAnalyzer;
 
     /**
@@ -57,7 +56,6 @@ public class AnalyzerAlix extends DelegatingAnalyzerWrapper
         cloudAnalyzer = new AnalyzerCloud();
         findAnalyzer = new AnalyzerFind();
         orthAnalyzer = new AnalyzerOrth();
-        posAnalyzer = new AnalyzerPos();
         queryAnalyzer = new AnalyzerQuery();
     }
 
@@ -70,8 +68,6 @@ public class AnalyzerAlix extends DelegatingAnalyzerWrapper
             return cloudAnalyzer;
         } else if (fieldName.endsWith("_orth")) {
             return orthAnalyzer;
-        } else if (fieldName.endsWith("_pos")) {
-            return posAnalyzer;
         } else {
             return findAnalyzer;
         }
