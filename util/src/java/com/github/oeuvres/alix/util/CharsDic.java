@@ -163,15 +163,15 @@ public final class CharsDic
     /**
      * Adds the specified character sequence if absent, or returns the existing ordinal if present.
      *
-     * @param cs source character sequence (UTF-16 code units)
+     * @param term source character sequence (UTF-16 code units)
      * @return {@code ord} if the term was added; otherwise {@code -(ord)-1} if already present
      * @throws NullPointerException if {@code cs} is null
      * @throws IllegalArgumentException if the term length exceeds 65535
      */
-    public int add(final CharSequence cs)
+    public int add(final CharSequence term)
     {
-        if (cs == null) throw new NullPointerException("cs");
-        return add(cs, 0, cs.length());
+        if (term == null) throw new NullPointerException("cs");
+        return add(term, 0, term.length());
     }
 
     /**
@@ -179,7 +179,7 @@ public final class CharsDic
      *
      * <p>Semantics match {@link #add(char[], int, int)}.</p>
      *
-     * @param cs source character sequence (UTF-16 code units)
+     * @param term source character sequence (UTF-16 code units)
      * @param off start offset within {@code cs} (inclusive)
      * @param len number of {@code char} code units to read
      * @return {@code ord} if the term was added; otherwise {@code -(ord)-1} if already present
@@ -187,13 +187,13 @@ public final class CharsDic
      * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code cs}
      * @throws IllegalArgumentException if {@code len > 65535}
      */
-    public int add(final CharSequence cs, final int off, final int len)
+    public int add(final CharSequence term, final int off, final int len)
     {
-        checkBounds(cs, off, len);
+        checkBounds(term, off, len);
         if (len > MAX_TERM_LENGTH) {
             throw new IllegalArgumentException("term length > " + MAX_TERM_LENGTH + ": " + len);
         }
-        return add0(null, off, len, cs);
+        return add0(null, off, len, term);
     }
 
     /**
@@ -224,56 +224,37 @@ public final class CharsDic
         return add0(term, off, len, null);
     }
 
+    
     /**
-     * Alias for {@link #trimToSize()} to emphasize the common "bulk build then freeze" workflow.
+     * Finds the ordinal for the specified character sequence.
+     *
+     * @param term source character sequence (UTF-16 code units)
+     * @return the 0-based ordinal if present; otherwise {@code -1}
+     * @throws NullPointerException if {@code cs} is null
      */
-    public void freeze()
+    public int find(final CharSequence term)
     {
-        trimToSize();
+        if (term == null) throw new NullPointerException("cs");
+        return find(term, 0, term.length());
     }
-
+    
     /**
-     * Shrinks internal storage to approximately the minimum needed for the current contents.
+     * Finds the ordinal for the specified character sequence slice.
      *
-     * <p>Intended for bulk-build workflows:</p>
-     * <ol>
-     *   <li>Create with a reasonable {@code expectedSize}.</li>
-     *   <li>Add all terms.</li>
-     *   <li>Call {@link #trimToSize()} once to reduce memory slack.</li>
-     * </ol>
-     *
-     * <p>This method:</p>
-     * <ul>
-     *   <li>Trims the slab to {@code slabUsed}.</li>
-     *   <li>Trims per-ord arrays to {@link #size()}.</li>
-     *   <li>Optionally shrinks the hash table to the smallest power-of-two capacity able to
-     *       hold {@link #size()} entries at the target load factor.</li>
-     * </ul>
-     *
-     * <p>Further {@link #add(char[], int, int)} / {@link #add(CharSequence, int, int)} calls remain valid,
-     * but arrays may grow again.</p>
+     * @param term source character sequence (UTF-16 code units)
+     * @param off start offset within {@code cs} (inclusive)
+     * @param len number of {@code char} code units to read
+     * @return the 0-based ordinal if present; otherwise {@code -1}
+     * @throws NullPointerException if {@code cs} is null
+     * @throws IndexOutOfBoundsException if {@code off} or {@code len} are invalid for {@code cs}
      */
-    public void trimToSize()
+    public int find(final CharSequence term, final int off, final int len)
     {
-        // 1) Shrink slab to used length.
-        if (slab.length != slabUsed) {
-            slab = Arrays.copyOf(slab, slabUsed);
-        }
+        checkBounds(term, off, len);
+        if (len > MAX_TERM_LENGTH) return -1;
 
-        // 2) Optionally shrink table.
-        final int targetCap = tableCapacityForExpected(Math.max(1, sizeOrds));
-        if (targetCap < table.length) {
-            rehash(targetCap);
-        }
-
-        // 3) Shrink per-ord arrays.
-        if (meta.length != sizeOrds) {
-            meta = Arrays.copyOf(meta, sizeOrds);
-            termHash = Arrays.copyOf(termHash, sizeOrds);
-        }
+        return find0(null, off, len, term);
     }
-
-    // ---- Public lookup / access API -----------------------------------------
 
     /**
      * Finds the ordinal for the specified term slice.
@@ -290,22 +271,15 @@ public final class CharsDic
         checkBounds(term, off, len);
         if (len > MAX_TERM_LENGTH) return -1;
 
-        final int h = hashCode(term, off, len);
-        final short f = (short) (h >>> 16);
+        return find0(term, off, len, null);
+    }
 
-        int i = h & mask;
-        for (;;) {
-            final int ord = table[i];
-            if (ord == -1) return -1;
-
-            if (fp16[i] == f) {
-                final long m = meta[ord];
-                if (metaLen(m) == len && equalsAt(ord, term, off, len)) {
-                    return ord;
-                }
-            }
-            i = (i + 1) & mask;
-        }
+    /**
+     * Alias for {@link #trimToSize()} to emphasize the common "bulk build then freeze" workflow.
+     */
+    public void freeze()
+    {
+        trimToSize();
     }
 
     /**
@@ -431,6 +405,47 @@ public final class CharsDic
     // ---- Private add / probe core -------------------------------------------
 
     /**
+     * Shrinks internal storage to approximately the minimum needed for the current contents.
+     *
+     * <p>Intended for bulk-build workflows:</p>
+     * <ol>
+     *   <li>Create with a reasonable {@code expectedSize}.</li>
+     *   <li>Add all terms.</li>
+     *   <li>Call {@link #trimToSize()} once to reduce memory slack.</li>
+     * </ol>
+     *
+     * <p>This method:</p>
+     * <ul>
+     *   <li>Trims the slab to {@code slabUsed}.</li>
+     *   <li>Trims per-ord arrays to {@link #size()}.</li>
+     *   <li>Optionally shrinks the hash table to the smallest power-of-two capacity able to
+     *       hold {@link #size()} entries at the target load factor.</li>
+     * </ul>
+     *
+     * <p>Further {@link #add(char[], int, int)} / {@link #add(CharSequence, int, int)} calls remain valid,
+     * but arrays may grow again.</p>
+     */
+    public void trimToSize()
+    {
+        // 1) Shrink slab to used length.
+        if (slab.length != slabUsed) {
+            slab = Arrays.copyOf(slab, slabUsed);
+        }
+    
+        // 2) Optionally shrink table.
+        final int targetCap = tableCapacityForExpected(Math.max(1, sizeOrds));
+        if (targetCap < table.length) {
+            rehash(targetCap);
+        }
+    
+        // 3) Shrink per-ord arrays.
+        if (meta.length != sizeOrds) {
+            meta = Arrays.copyOf(meta, sizeOrds);
+            termHash = Arrays.copyOf(termHash, sizeOrds);
+        }
+    }
+
+    /**
      * Shared insertion core for array and {@link CharSequence} sources.
      *
      * <p>Exactly one of {@code term} or {@code cs} must be non-null.</p>
@@ -485,8 +500,42 @@ public final class CharsDic
             i = (i + 1) & mask;
         }
     }
+    
+    /**
+     * Shared lookup core for array and {@link CharSequence} sources.
+     *
+     * <p>Exactly one of {@code term} or {@code cs} must be non-null.</p>
+     *
+     * @param term source array, or {@code null} if using {@code cs}
+     * @param off start offset in the chosen source
+     * @param len number of chars to read
+     * @param cs source character sequence, or {@code null} if using {@code term}
+     * @return existing ord, or {@code -1} if absent
+     */
+    private int find0(final char[] term, final int off, final int len, final CharSequence cs)
+    {
+        final boolean arraySrc = (term != null);
 
-    // ---- Private slab / storage helpers -------------------------------------
+        final int h = arraySrc ? hashCode(term, off, len) : hashCode(cs, off, len);
+        final short f = (short) (h >>> 16);
+
+        int i = h & mask;
+        for (;;) {
+            final int ord = table[i];
+            if (ord == -1) return -1;
+
+            if (fp16[i] == f) {
+                final long m = meta[ord];
+                if (metaLen(m) == len) {
+                    final boolean eq = arraySrc
+                        ? equalsAt(ord, term, off, len)
+                        : equalsAt(ord, cs, off, len);
+                    if (eq) return ord;
+                }
+            }
+            i = (i + 1) & mask;
+        }
+    }
 
     /**
      * Ensures that the slab can accept {@code extra} additional characters.
