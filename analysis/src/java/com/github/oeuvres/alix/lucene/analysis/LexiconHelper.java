@@ -392,7 +392,10 @@ public final class LexiconHelper
         checkColumnIndex(lemmaCol, "lemmaCol");
         // put the default posResolver
         
-        // if (posResolver == null) posResolver = new PosResolver() {};
+        final PosResolver pr;
+        if (posResolver == null) pr = DEFAULT_POS_RESOLVER;
+        else pr = posResolver;
+        pr.reset();
         
         final int minCols = maxRequiredCol(formCol, posCol, lemmaCol);
         final int keyCol = formCol; // ignore blank/comment rows based on the form column
@@ -403,7 +406,7 @@ public final class LexiconHelper
             protected boolean accept(final CSVReader row) throws IOException
             {
                 final String rawPosName = row.getCellAsString(posCol);
-                int posId = posResolver.posInt(rawPosName);
+                int posId = pr.posInt(rawPosName);
                 lex.putEntry(row.getCell(formCol), row.getCell(lemmaCol), policy);
                 if (posId >= 0) {
                     lex.putEntry(row.getCell(formCol), posId, row.getCell(lemmaCol), policy);
@@ -576,7 +579,7 @@ public final class LexiconHelper
      * counters intended for single-threaded resource loading.
      * </p>
      */
-    public abstract class PosResolver
+    public static abstract class PosResolver
     {
         /**
          * Unknown tag frequencies accumulated during the current parsing
@@ -806,6 +809,7 @@ public final class LexiconHelper
             return total;
         }
     }
+    public static final PosResolver DEFAULT_POS_RESOLVER = new PosResolver() {};
     
     /**
      * Immutable statistics collected while loading a lexical resource.
