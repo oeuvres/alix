@@ -53,8 +53,8 @@ public class LemmaFilterTest {
         // -------------------------
         // POS-agnostic (DEFAULT_POS) entries
         // -------------------------
-        put(lex, "children", lex.DEFAULT_POS, "child");
-        put(lex, "mice",     lex.DEFAULT_POS, "mouse");
+        put(lex, "children", lex.DEFAULT_POS_ID, "child");
+        put(lex, "mice",     lex.DEFAULT_POS_ID, "mouse");
 
         // A normal plural -> singular POS-specific example
         put(lex, "cats", POS_NOUN, "cat");
