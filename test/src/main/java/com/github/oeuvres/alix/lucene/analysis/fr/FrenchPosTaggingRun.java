@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -37,7 +38,7 @@ public class FrenchPosTaggingRun
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
                 TokenStream stream = tokenizer;
-                stream = new MLFilter(stream);
+                // stream = new MLFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
                 stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
                 stream = new PosTaggingFilter(stream, model);
@@ -79,22 +80,20 @@ public class FrenchPosTaggingRun
         final ProbAttribute probAtt = ts.getAttribute(ProbAttribute.class);
 
         ts.reset();
-        try {
-            while (ts.incrementToken()) {
-                final int pos = posAtt.getPos();
-                final double prob = probAtt.getProb();
+        out.println("form\tpos\tprob");
+        while (ts.incrementToken()) {
+            final int pos = posAtt.getPos();
+            final double prob = probAtt.getProb();
 
-                out.printf(
-                    "%s\t%s\t%.5f%n",
-                    escape(termAtt.toString()),
-                    Upos.get(pos).name(),
-                    prob
-                );
-            }
-            ts.end();
-        } finally {
-            // caller closes
+            out.printf(
+                Locale.ROOT,
+                "%s\t%s\t%.5f%n",
+                escape(termAtt.toString()),
+                Upos.get(pos).name(),
+                prob
+            );
         }
+        ts.end();
     }
     
     public static String escape(final String s) {

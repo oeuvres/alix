@@ -1,14 +1,17 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoSupport;
+import com.github.oeuvres.alix.lucene.analysis.MLFilter;
 import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
+import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import opennlp.tools.postag.POSModel;
@@ -38,6 +41,21 @@ public final class FrenchPosTaggingFilterDemo {
 
     private static final String FIELD = "f";
 
+    private static Analyzer buildAnalyzer(final POSModel model) {
+        return new Analyzer() {
+            @Override
+            protected TokenStreamComponents createComponents(String fieldName) {
+                Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
+                TokenStream stream = tokenizer;
+                stream = new MLFilter(stream);
+                stream = new FrenchCliticSplitFilter(stream);
+                stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
+                stream = new PosTaggingFilter(stream, model, PosTaggingFilter.APOS_REWRITER);
+                return new TokenStreamComponents(tokenizer, stream);
+            }
+        };
+    }
+
 
     /**
      * Curated cases targeting:
@@ -50,12 +68,17 @@ public final class FrenchPosTaggingFilterDemo {
      * - robustness on long sentences (SENTMAX=300)
      */
     static final List<AnalysisDemoSupport.Case> CASES = List.of(
+        new AnalysisDemoSupport.Case(
+            "Clitique",
+            "Le sujet, tout d’abord, peut le classer de plusieurs manières :",
+            null
+        ),
 
         new AnalysisDemoSupport.Case(
-                "Clitique",
-                "L’Homme est l’Avenir de l’Apocalypse.",
-                null
-            ),
+            "Clitique",
+            "L’Homme est l’Avenir de l’Apocalypse.",
+            null
+        ),
         new AnalysisDemoSupport.Case(
                 "Clitique",
                 "Ce est la vie.",
@@ -170,18 +193,6 @@ public final class FrenchPosTaggingFilterDemo {
             System.out.println("\n==== PosTaggingFilterDemo ====\n");
             AnalysisDemoSupport.runAll(analyzer, FIELD, CASES);
         }
-    }
-
-    private static Analyzer buildAnalyzer(final POSModel model) {
-        return new Analyzer() {
-            @Override
-            protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
-                TokenStream stream = new FrenchCliticSplitFilter(tokenizer);
-                // stream = new PosTaggingFilter(stream, model);
-                return new TokenStreamComponents(tokenizer, stream);
-            }
-        };
     }
     
     private static POSModel loadModel() throws IOException {
