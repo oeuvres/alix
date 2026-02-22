@@ -1,8 +1,12 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
-import static com.github.oeuvres.alix.common.Upos.*;
+import static com.github.oeuvres.alix.common.Upos.PUNCTclause;
+import static com.github.oeuvres.alix.common.Upos.PUNCTsection;
+import static com.github.oeuvres.alix.common.Upos.PUNCTsent;
+import static com.github.oeuvres.alix.common.Upos.XML;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -13,59 +17,108 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
 
 /**
- * Suppose a Tokenizer like MLTokenizer that keep punctuation to have sentence boudaries.
+ * Lowercase the first lexical token after a sentence boundary if its lowercase form
+ * is found in the lexicon, while preserving punctuation/XML tokens and keyword tokens.
+ *
+ * <p>This filter assumes upstream tokenization keeps sentence punctuation tokens
+ * (for example {@code PUNCTsent}, {@code PUNCTsection}) and exposes a POS tag in
+ * {@link PosAttribute}.
+ *
+ * <p>Current policy:
+ * <ul>
+ *   <li>Start of stream is treated as sentence start.</li>
+ *   <li>{@code XML} and {@code PUNCTclause} do not consume sentence-start state.</li>
+ *   <li>{@code PUNCTsent} and {@code PUNCTsection} set sentence-start state.</li>
+ *   <li>{@link KeywordAttribute#isKeyword()} prevents rewriting, but does not prevent state transitions.</li>
+ * </ul>
  */
-
-public class SentenceStartLowerCaseFilter extends TokenFilter
+public final class SentenceStartLowerCaseFilter extends TokenFilter
 {
     private final LemmaLexicon lex;
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-    private final TermProbe termProbe = new TermProbe();
-    private boolean lastTokenIsSentenceEnd = true;
 
+    /** Reusable probe for transformed dictionary lookup (no String allocation in hot path). */
+    private final TermProbe probe = new TermProbe();
 
-    public SentenceStartLowerCaseFilter(TokenStream input, LemmaLexicon lex)
+    /**
+     * State machine flag:
+     * true  -> the next lexical token is sentence-initial candidate
+     * false -> currently inside a sentence
+     */
+    private boolean sentenceStartPending = true;
+
+    public SentenceStartLowerCaseFilter(final TokenStream input, final LemmaLexicon lex)
     {
         super(input);
-        this.lex = lex;
+        this.lex = Objects.requireNonNull(lex, "lex");
     }
-    
+
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
+        // Start-of-stream is treated as sentence start.
+        sentenceStartPending = true;
+        probe.clear();
+    }
+
     @Override
     public boolean incrementToken() throws IOException
     {
         if (!input.incrementToken()) return false;
-        if (keywordAtt.isKeyword()) return true;
+
         final int posId = posAtt.getPos();
-        // let’s try to get first word after the end of a sentence
-        if (posId == XML.code) {
-            // a filter should have interpret here the XML tags which are sentence boundaries like <td>
-            // should be something like <i>
+
+        // 1) Sentence boundary tokens: set state, never rewritten here.
+        if (isSentenceBoundary(posId)) {
+            sentenceStartPending = true;
             return true;
         }
-        if (posId == PUNCTclause.code) {
-            // a sentence may start by parenthesis and some other clause punctuation
+
+        // 2) Ignorable tokens before sentence start (XML, clause punctuation):
+        //    pass through without consuming the pending sentence-start state.
+        if (isIgnorableBeforeSentenceStart(posId)) {
             return true;
         }
-        if (posId == PUNCTsent.code || posId == PUNCTsection.code) {
-            lastTokenIsSentenceEnd = true;
+
+        // 3) Any other token is lexical/content for this state machine.
+        //    If we are not at sentence start, do nothing.
+        if (!sentenceStartPending) {
             return true;
         }
-        if (!lastTokenIsSentenceEnd) {
-            // words in sentence, do nothing
+
+        // 4) We are on the first lexical token after a sentence boundary (or stream start):
+        //    consume the state now, regardless of whether token is keyword.
+        sentenceStartPending = false;
+
+        // 5) Keyword token: preserve as-is, but state is already consumed.
+        if (keywordAtt.isKeyword()) {
             return true;
         }
-        lastTokenIsSentenceEnd = false; // do not forget to reset flag
-        // test lower case version of that word
-        termProbe.copyFrom(termAtt).toLowerCase();
-        final int formId = lex.findFormId(termProbe);
-        // term not known as a common word, keep as is
-        if (formId < 0) return true;
-        // copy canonical version of the term
+
+        // 6) Probe lowercase form in lexicon; if known, rewrite with canonical form.
+        probe.copyFrom(termAtt).toLowerCase();
+        final int formId = lex.findFormId(probe);
+        if (formId < 0) {
+            return true;
+        }
+
         lex.copyForm(formId, termAtt);
         return true;
     }
 
+    private static boolean isSentenceBoundary(final int posId)
+    {
+        return (posId == PUNCTsent.code || posId == PUNCTsection.code);
+    }
+
+    private static boolean isIgnorableBeforeSentenceStart(final int posId)
+    {
+        // XML tags and clause punctuation do not consume sentence-start state.
+        // (Sentence-boundary XML tags are not interpreted here.)
+        return (posId == XML.code || posId == PUNCTclause.code);
+    }
 }
