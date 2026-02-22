@@ -230,7 +230,7 @@ public class PosLookupBenchmark
                 }
                 codeByOrd[o] = code;
             }
-            dic.freeze();
+            dic.trimToSize();
 
             // Sanity: every ord must map to some code
             for (int i = 0; i < distinct; i++) {
