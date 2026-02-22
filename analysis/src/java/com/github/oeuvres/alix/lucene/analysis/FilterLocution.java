@@ -45,10 +45,6 @@ import static com.github.oeuvres.alix.common.Upos.*;
 import com.github.oeuvres.alix.common.Upos;
 
 
-
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Chain;
 
 /**
@@ -62,10 +58,6 @@ public class FilterLocution extends TokenFilter
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     /** Current Flags */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** A normalized orthographic form (ex : capitalization) */
-    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
-    /** A lemma when possible */
-    private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** A stack of states */
     private TokenStateQueue queue;
     /** A term used to concat a compound */

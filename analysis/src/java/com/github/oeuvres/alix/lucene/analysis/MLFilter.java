@@ -43,8 +43,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
 
 /**
  * A final token filter before indexation, to plug after a lemmatizer filter,
@@ -57,7 +57,6 @@ public class MLFilter extends TokenFilter
 {
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    private final CharsAttImpl test = new CharsAttImpl();
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
     /** A flag for non content element */
     private int skip;
@@ -122,17 +121,24 @@ public class MLFilter extends TokenFilter
     @Override
     public final boolean incrementToken() throws IOException
     {
+        
         while (input.incrementToken()) {
             // update the char wrapper with present term
             
-            test.wrap(termAtt.buffer(), termAtt.length());
+            if (termAtt.length() <= 0) return true;
+            
             final int pos = posAtt.getPos();
             final boolean xml = (pos == XML.code);
+            
+            
             boolean open = false;
             boolean close = false;
             if (xml) {
-                close =  test.startsWith("</");
-                if (!close) open = test.startsWith('<');
+                open = (termAtt.charAt(0) == '<');
+                if (open && termAtt.length()>= 2 && termAtt.charAt(1) == '/') {
+                    open = false;
+                    close = true;
+                }
             }
             int tagOff = -1;
             int tagLen = -1;

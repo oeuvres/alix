@@ -40,11 +40,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
-import com.github.oeuvres.alix.common.Upos;
 import static com.github.oeuvres.alix.common.Upos.*;
 
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.OrthAtt;
 import com.github.oeuvres.alix.util.Char;
 
 /**
@@ -62,10 +59,6 @@ public class FilterCloud extends TokenFilter
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     /** A linguistic category as a short number, see {@link TagFr} */
     private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-    /** A normalized orthographic form */
-    private final OrthAtt orthAtt = addAttribute(OrthAtt.class);
-    /** A lemma when possible */
-    private final LemAtt lemAtt = addAttribute(LemAtt.class);
     /** keep right position order */
     private int holes;
 
@@ -103,7 +96,7 @@ public class FilterCloud extends TokenFilter
     {
         final int flags = flagsAtt.getFlags();
         // known word from dictionary, keep it
-        if (!lemAtt.isEmpty()) return false;
+        // if (!lemAtt.isEmpty()) return false;
         // empty
         if (termAtt.isEmpty()) return true;
         // no position for XML between words M<sup>elle</sup>
@@ -131,9 +124,6 @@ public class FilterCloud extends TokenFilter
     protected boolean accept()
     {
         final int flags = flagsAtt.getFlags();
-        if (flags == TEST.code) {
-            System.out.println(termAtt + " — " + orthAtt);
-        }
         // record an empty token at puctuation position for the rails
         if (PUNCT.isPunct(flags)) {
             if (flags == PUNCTclause.code) {
@@ -155,8 +145,8 @@ public class FilterCloud extends TokenFilter
         }
         
         // do not keep flexion on substantives, no semantic gain
-        if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
-        else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
+        // if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
+        // else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
         // no more suffix
         return true;
     }

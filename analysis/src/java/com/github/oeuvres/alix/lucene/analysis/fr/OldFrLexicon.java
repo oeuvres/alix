@@ -49,8 +49,6 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAtt;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharsAttImpl;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.CSVReader;
 
@@ -188,6 +186,7 @@ public class OldFrLexicon
      * @param form a form to insert
      * @param tree the tree to insert in.
      */
+    /*"
     protected static void decompose(Chain form, HashMap<CharsAtt, Integer> tree)
     {
         int len = form.length();
@@ -217,6 +216,7 @@ public class OldFrLexicon
         else
             tree.put(key, entry | LEAF);
     }
+    */
 
     /**
      * Test if the requested chars are a known abbreviation ending by a dot.
