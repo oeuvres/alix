@@ -1,9 +1,10 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
+ * Copyright 2026 Frédéric Glorieux <frederic.glorieux@fictif.org> & Unige
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
- * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/

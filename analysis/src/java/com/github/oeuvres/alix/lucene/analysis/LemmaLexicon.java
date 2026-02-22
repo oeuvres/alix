@@ -1,7 +1,41 @@
+/*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
+ * Copyright 2026 Frédéric Glorieux <frederic.glorieux@fictif.org> & Unige
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache license.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
+ * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.github.oeuvres.alix.lucene.analysis;
 
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.CharSlot;
 import com.github.oeuvres.alix.util.CharsDic;
 import com.github.oeuvres.alix.util.LongIntMap;
 
@@ -146,6 +180,34 @@ public final class LemmaLexicon
         return true;
     }
 
+    /**
+     * Copies an interned form into a destination {@link CharSlot}.
+     *
+     * <p>The destination slot is overwritten with the exact UTF-16 contents of the interned
+     * form identified by {@code formId}. This method delegates to
+     * {@link CharSlot#copyBuffer(char[], int, int)} using the lexicon's internal character slab.</p>
+     *
+     * <p>The source slab is internal mutable storage of the lexicon; callers must not retain or
+     * mutate it. The destination slot receives its own copied characters (per {@code CharSlot}
+     * contract).</p>
+     *
+     * @param formId form id to copy
+     * @param slot destination slot receiving the copied characters
+     * @return {@code true} if copied, {@code false} if {@code formId} is out of range
+     * @throws NullPointerException if {@code slot} is null
+     */
+    public boolean copyForm(final int formId, final CharSlot slot)
+    {
+        if (formId < 0 || formId >= forms.size()) return false;
+        // localize variables for debug
+        final char[] slab = forms.slab();
+        final int off = forms.termOffset(formId);
+        final int len = forms.termLength(formId);
+        slot.copyBuffer(slab, off, len);
+        return true;
+    }
+
+    
     /**
      * Returns an interned form as a newly allocated {@link String}.
      *
@@ -318,27 +380,6 @@ public final class LemmaLexicon
         return lemmaByFormPos.get(formId, posId);
     }
 
-    /**
-     * Returns the lemma form id for {@code (formId, posId)} and falls back to
-     * {@link #DEFAULT_POS_ID} if no POS-specific mapping exists.
-     *
-     * <p>This method is useful when POS tagging is uncertain or the dictionary is incomplete.</p>
-     *
-     * @param formId form id
-     * @param posId part-of-speech id
-     * @return POS-specific lemma form id if present, otherwise POS-agnostic lemma form id, or
-     *         {@code -1} if neither exists
-     */
-    public int findLemmaIdOrDefaultPos(final int formId, final int posId)
-    {
-        final int lemmaId = findLemmaId(formId, posId);
-        if (lemmaId >= 0 || posId == DEFAULT_POS_ID) return lemmaId;
-        return findLemmaId(formId, DEFAULT_POS_ID);
-    }
-
-    
-
-    
 
     // ------------------------------------------------------------------------
     // One-shot lookup from form text

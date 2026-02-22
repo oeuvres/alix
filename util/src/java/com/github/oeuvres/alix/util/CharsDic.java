@@ -1,9 +1,10 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
+ * Copyright 2026 Frédéric Glorieux <frederic.glorieux@fictif.org> & Unige
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
- *                Frederic Glorieux <frederic.glorieux@fictif.org>
- * Copyright 2016 Frederic Glorieux <frederic.glorieux@fictif.org>
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
  * with Lucene https://lucene.apache.org/core/
@@ -14,8 +15,8 @@
  * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
  * Alix continues the concepts of SDX under another licence
- * "Systeme de Documentation XML"
- * 2000-2010  Ministere de la culture et de la communication (France), AJLSM.
+ * «Système de Documentation XML»
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
