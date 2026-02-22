@@ -12,6 +12,7 @@ import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.util.CSVReader;
+import com.github.oeuvres.alix.util.Char;
 
 /**
  * Utility methods to load lexical resources from CSV-like files into
@@ -407,8 +408,11 @@ public final class LexiconHelper
             {
                 final String rawPosName = row.getCellAsString(posCol);
                 int posId = pr.posInt(rawPosName);
-                CharSequence form = row.getCell(formCol);
-                CharSequence lemma = row.getCell(lemmaCol);
+                // normalize some chars before input entries
+                StringBuilder form = row.getCell(formCol);
+                Char.translate(form, "’", "'");
+                StringBuilder lemma = row.getCell(lemmaCol);
+                Char.translate(lemma, "’", "'");
                 if (form.isEmpty() || lemma.isEmpty()) return false;
                 lex.putEntry(form, lemma, policy);
                 if (posId >= 0) {

@@ -2314,6 +2314,90 @@ public class Char
      * source.toCharArray(); toLowASCII(chars, 0, source.length()); return new
      * String(chars); }
      */
+    
+    private static final int KEEP = -2;
+    private static final int DELETE = -1;
+
+    /**
+     * In-place translate on StringBuilder (char-based).
+     * XSLT translate/tr semantics:
+     * - map by position in 'from' -> 'to'
+     * - if source index >= to.length(), delete char
+     * - duplicate chars in 'from': first occurrence wins
+     */
+    public static void translate(StringBuilder sb, String from, String to) {
+        if (sb == null) throw new NullPointerException("sb");
+        if (from == null) throw new NullPointerException("from");
+        if (to == null) throw new NullPointerException("to");
+
+        int i = 0;
+        while (i < sb.length()) {
+            int action = mapChar(sb.charAt(i), from, to);
+            if (action == KEEP) {
+                i++;
+            } else if (action == DELETE) {
+                sb.deleteCharAt(i);   // stay at same index
+            } else {
+                sb.setCharAt(i, (char) action);
+                i++;
+            }
+        }
+    }
+
+    /**
+     * In-place translate on a subrange of char[].
+     *
+     * @param chars buffer
+     * @param off   start offset (inclusive)
+     * @param len   logical length of range to translate
+     * @return new logical length of translated range (because deletions may occur)
+     *
+     * Result is stored in chars[off .. off+newLen).
+     * Trailing chars beyond off+newLen are left unchanged/garbage.
+     */
+    public static int translate(char[] chars, int off, int len, String from, String to) {
+        if (chars == null) throw new NullPointerException("chars");
+        if (from == null) throw new NullPointerException("from");
+        if (to == null) throw new NullPointerException("to");
+        if (off < 0 || len < 0 || off + len > chars.length) {
+            throw new IndexOutOfBoundsException(
+                "off=" + off + ", len=" + len + ", chars.length=" + chars.length);
+        }
+
+        int r = off;         // read
+        int end = off + len;
+        int w = off;         // write
+
+        while (r < end) {
+            char c = chars[r++];
+            int action = mapChar(c, from, to);
+
+            if (action == KEEP) {
+                chars[w++] = c;
+            } else if (action == DELETE) {
+                // skip (compact)
+            } else {
+                chars[w++] = (char) action;
+            }
+        }
+
+        return w - off;
+    }
+
+    // Shared mapping logic
+    private static int mapChar(char c, String from, String to) {
+        int k = firstIndexOf(from, c);   // first occurrence wins
+        if (k < 0) return KEEP;
+        if (k >= to.length()) return DELETE;
+        return to.charAt(k);
+    }
+
+    private static int firstIndexOf(String s, char ch) {
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == ch) return i;
+        }
+        return -1;
+    }
 
     /**
      * Deligature, Æ → AE, œ → oe…

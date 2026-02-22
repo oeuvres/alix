@@ -1,9 +1,6 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
-import static com.github.oeuvres.alix.common.Upos.PUNCTclause;
-import static com.github.oeuvres.alix.common.Upos.PUNCTsection;
-import static com.github.oeuvres.alix.common.Upos.PUNCTsent;
-import static com.github.oeuvres.alix.common.Upos.XML;
+import static com.github.oeuvres.alix.common.Upos.*;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -112,7 +109,7 @@ public final class SentenceStartLowerCaseFilter extends TokenFilter
 
     private static boolean isSentenceBoundary(final int posId)
     {
-        return (posId == PUNCTsent.code || posId == PUNCTsection.code);
+        return (posId == PUNCTsent.code || posId == PUNCTpara.code || posId == PUNCTsection.code);
     }
 
     private static boolean isIgnorableBeforeSentenceStart(final int posId)

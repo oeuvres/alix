@@ -100,21 +100,21 @@ public class FrenchCliticSplitFilter extends TokenFilter
         KEEP_AS_IS.add("d'abord");
         KEEP_AS_IS.add("d'accord");
         KEEP_AS_IS.add("d'ailleurs");
+        KEEP_AS_IS.add("d'après");
         KEEP_AS_IS.add("d'autant");
         KEEP_AS_IS.add("d'autre");
         KEEP_AS_IS.add("d'autres");
-        KEEP_AS_IS.add("d'emblée");
-        KEEP_AS_IS.add("d'après");
         KEEP_AS_IS.add("d'avec");
+        KEEP_AS_IS.add("d'emblée");
         KEEP_AS_IS.add("d'entre");
         KEEP_AS_IS.add("d'ici");
-        KEEP_AS_IS.add("l'un");
-        KEEP_AS_IS.add("l'une");
-        KEEP_AS_IS.add("l'autre");
-        KEEP_AS_IS.add("n'est");
+        // KEEP_AS_IS.add("l'un");
+        // KEEP_AS_IS.add("l'une");
+        // KEEP_AS_IS.add("l'autre");
+        // KEEP_AS_IS.add("n'est");
+        KEEP_AS_IS.add("n'empêche");
         KEEP_AS_IS.add("n'est-ce");
         KEEP_AS_IS.add("n'importe");
-        KEEP_AS_IS.add("n'empêche");
         KEEP_AS_IS.add("qu'est-ce");
     }
 
@@ -122,6 +122,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
     private static final CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, true);
     static {
         // CharArrayMap is ignoreCase=true, do not duplicate case variants.
+        PREFIX.put("c'", "ce".toCharArray());
         PREFIX.put("d'", "de".toCharArray());
         PREFIX.put("j'", "je".toCharArray());
         PREFIX.put("jusqu'", "jusque".toCharArray());

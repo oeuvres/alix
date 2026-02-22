@@ -21,6 +21,7 @@ import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.MLFilter;
 import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
+import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import com.github.oeuvres.alix.util.Dir;
@@ -35,8 +36,10 @@ public class FrenchPosTaggingRun
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
-                TokenStream stream = new MLFilter(tokenizer);
+                TokenStream stream = tokenizer;
+                stream = new MLFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
+                stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
                 stream = new PosTaggingFilter(stream, model);
                 return new TokenStreamComponents(tokenizer, stream);
             }
@@ -82,7 +85,7 @@ public class FrenchPosTaggingRun
                 final double prob = probAtt.getProb();
 
                 out.printf(
-                    "%s\t%-6s\t%.5f%n",
+                    "%s\t%s\t%.5f%n",
                     escape(termAtt.toString()),
                     Upos.get(pos).name(),
                     prob
