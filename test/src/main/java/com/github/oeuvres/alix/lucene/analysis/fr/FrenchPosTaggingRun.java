@@ -52,9 +52,12 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
+import com.github.oeuvres.alix.lucene.analysis.MLFilter;
 import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import com.github.oeuvres.alix.util.Dir;
@@ -69,10 +72,12 @@ public class FrenchPosTaggingRun
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
                 TokenStream stream = tokenizer;
-                // stream = new MLFilter(stream);
+                stream = new MLFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
                 stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
-                stream = new PosTaggingFilter(stream, model);
+                stream = new PosTaggingFilter(stream, model, PosTaggingFilter.HYPHEN_REWRITER);
+                stream = new LemmaFilter(stream, FrenchLexicons.getLemmaLexicon());
+                /* here, to think, switches and forks for different fields */
                 return new TokenStreamComponents(tokenizer, stream);
             }
         };
@@ -90,6 +95,7 @@ public class FrenchPosTaggingRun
         ) {
             // Writer out = new BufferedWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8));
             List<Path> paths = Dir.ls("D:/code/piaget_xml/piaget1970*.xml");
+            out.println("form\tpos\tprob\tlemma");
             for (Path p : paths) {
                 System.out.print("#" + p + '\n');
                 try (BufferedReader reader = Files.newBufferedReader(p, StandardCharsets.UTF_8);
@@ -108,19 +114,21 @@ public class FrenchPosTaggingRun
         final CharTermAttribute termAtt = ts.getAttribute(CharTermAttribute.class);
         final PosAttribute posAtt = ts.getAttribute(PosAttribute.class);
         final ProbAttribute probAtt = ts.getAttribute(ProbAttribute.class);
+        final LemmaAttribute lemmaAtt = ts.getAttribute(LemmaAttribute.class);
 
         ts.reset();
-        out.println("form\tpos\tprob");
         while (ts.incrementToken()) {
             final int pos = posAtt.getPos();
             final double prob = probAtt.getProb();
+            String lemma = (lemmaAtt != null)?lemmaAtt.toString():"";
 
             out.printf(
                 Locale.ROOT,
-                "%s\t%s\t%.5f%n",
+                "%s\t%s\t%.5f\t%s%n",
                 escape(termAtt.toString()),
                 Upos.get(pos).name(),
-                prob
+                prob,
+                lemma
             );
         }
         ts.end();

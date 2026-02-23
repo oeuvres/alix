@@ -138,4 +138,11 @@ public abstract class AbstractCharSlotAttributeImpl extends AttributeImpl implem
         }
         return true;
     }
+    
+    @Override
+    public String toString()
+    {
+        return new String(buffer, 0, length);
+    }
+
 }

@@ -93,80 +93,14 @@ public class PosTaggingFilter extends TokenFilter
         }
     };
     
-
-    /**
-     * Rewriter for POS-tagger input that splits one Lucene token into multiple tagger tokens
-     * on ASCII apostrophe (') and ASCII hyphen (-), without emitting delimiter tokens.
-     *
-     * <p>Rules (left-to-right, no language resources):
-     * <ul>
-     *   <li>Apostrophe (') splits and stays attached to the left segment.</li>
-     *   <li>Hyphen (-) splits and is discarded.</li>
-     *   <li>No empty strings are appended.</li>
-     *   <li>If no split occurs, the original term is appended unchanged.</li>
-     * </ul>
-     *
-     * <p>Examples:
-     * <pre>
-     * d'abord         -> ["d'", "abord"]
-     * sensori-moteur  -> ["sensori", "moteur"]
-     * aujourd'hui     -> ["aujourd'", "hui"]
-     * x-y-z           -> ["x", "y", "z"]
-     * </pre>
-     *
-     * <p>Notes:
-     * <ul>
-     *   <li>This class is purely mechanical and language-agnostic.</li>
-     *   <li>It only handles ASCII '\'' and '-'. If the tokenizer normalizes Unicode punctuation,
-     *       this is sufficient. Otherwise, add normalization upstream.</li>
-     *   <li>It appends directly into the provided list (no per-token array allocation).</li>
-     * </ul>
-     */
-    public static final TaggerRewriter APOS_REWRITER = new TaggerRewriter() {
+    /** Identity rewriter (1 Lucene token -> 1 tagger token), no per-token array allocation. */
+    public static final TaggerRewriter HYPHEN_REWRITER = new TaggerRewriter() {
         @Override
-        public void rewrite(final String term, final List<String> out)
-        {
-            if (term == null || term.isEmpty()) {
-                return;
-            }
-
-            final int before = out.size();
-            final int len = term.length();
-            int start = 0;
-
-            for (int i = 0; i < len; i++) {
-                final char c = term.charAt(i);
-
-                if (c == '\'') {
-                    // Keep apostrophe attached to left segment: [start..i] inclusive.
-                    if (i >= start) {
-                        final int end = i + 1;
-                        if (end > start) {
-                            out.add(term.substring(start, end));
-                        }
-                    }
-                    start = i + 1;
-                }
-                else if (c == '-') {
-                    // Split on hyphen; hyphen is not emitted.
-                    if (i > start) {
-                        out.add(term.substring(start, i));
-                    }
-                    start = i + 1;
-                }
-            }
-
-            // Tail segment after last delimiter.
-            if (start < len) {
-                out.add(term.substring(start));
-            }
-
-            // Defensive fallback: if the term was only delimiters, keep identity.
-            if (out.size() == before) {
-                out.add(term);
-            }
+        public void rewrite(final String term, final List<String> out) {
+            out.add(term.replace("-", ""));
         }
     };
+
 
     /** The term provided by the Tokenizer (current token cursor). */
     @SuppressWarnings("unused")
@@ -365,7 +299,7 @@ public class PosTaggingFilter extends TokenFilter
         // debug, check how sentence is splitted
         final CharTermAttribute termLast = queue.get(n-1).getAttribute(CharTermAttribute.class);
         // termLast.setEmpty().append("$$$");
-        termLast.setEmpty().append(Arrays.toString(sentence));
+        // termLast.setEmpty().append(Arrays.toString(sentence));
 
         // Tag
         final String[] tags = tagger.tag(sentence);
