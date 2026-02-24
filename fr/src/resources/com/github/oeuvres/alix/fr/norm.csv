@@ -369,6 +369,7 @@ Dniéper,Dniepr
 doncques,donc
 Doubrovska,Doubrovska
 Dr,docteur
+Dʳ,docteur
 Dreyschok,Dreyschock
 Durer,Dürer
 écoeura,écœura
@@ -498,6 +499,7 @@ lvanoff,Ivanov
 m',me
 main-d'oeuvre,main-d'œuvre
 maitre,maître
+Mᵉ,maître
 Malaca,Malacca
 Malhouet,Malouet
 Malkovsky,Malkovsky
@@ -529,12 +531,18 @@ Mazoyer,Mazoïer
 Mécènes,Mécène
 Mendosa,Mendoza
 Mgr,monseigneur
+mgr,monseigneur
+Mᵍʳ,monseigneur
+Mgrs,messeigneurs
+Mᵍʳˢ,messeigneurs
 Mireio,Miréio
 Misantrope,Misanthrope
 Mlle,mademoiselle
 mlle,mademoiselle
+Mˡˡᵉ,mademoiselle
 Mlles,mesdemoiselles
 mlles,mesdemoiselles
+Mˡˡᵉˢ,mesdemoiselles
 Mme,madame
 mme,madame
 Mmes,mesdames
@@ -545,9 +553,11 @@ Montchrétien,Montchrestien
 Monte-Christo,Monte-Cristo
 Moyen-Age,Moyen Âge
 Mr,monsieur
+Mʳ,monsieur
 mr,monsieur
 Mrs,messieurs
 mrs,messieurs
+Mʳˢ,messieurs
 Munster,Münster
 Murger,Mürger
 n',ne
