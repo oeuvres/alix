@@ -33,7 +33,7 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
-import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoSupport;
+import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.MLFilter;
 import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
@@ -77,7 +77,7 @@ public final class FrenchPosTaggingFilterDemo {
                 stream = new MLFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
                 stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
-                stream = new PosTaggingFilter(stream, model, PosTaggingFilter.APOS_REWRITER);
+                stream = new PosTaggingFilter(stream, model, PosTaggingFilter.HYPHEN_REWRITER);
                 return new TokenStreamComponents(tokenizer, stream);
             }
         };
@@ -94,50 +94,50 @@ public final class FrenchPosTaggingFilterDemo {
      * - "que" and other ambiguous function words
      * - robustness on long sentences (SENTMAX=300)
      */
-    static final List<AnalysisDemoSupport.Case> CASES = List.of(
-        new AnalysisDemoSupport.Case(
+    static final List<AnalysisDemoHelper.Case> CASES = List.of(
+        new AnalysisDemoHelper.Case(
             "Clitique",
             "Le sujet, tout d’abord, peut le classer de plusieurs manières :",
             null
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Clitique",
             "L’Homme est l’Avenir de l’Apocalypse.",
             null
         ),
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
                 "Clitique",
                 "Ce est la vie.",
                 null
             ),
         
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Mixed XML tag",
             "il <i>ira</i> où ?",
             null
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Sentence-initial capital (workaround for 'Tu' mis-tagging)",
             "Tu vas bien ?",
             null
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Sentence-initial capital (workaround for 'Tu' mis-tagging)",
             "Tu crois ça ?",
             null
         ),
 
         
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Sentence-initial capital (workaround for 'Tu' mis-tagging)",
             "Je vais bien.",
             null
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Baseline: DET NOUN VERB DET NOUN",
             "Le chat mange la souris.",
             null
@@ -145,56 +145,56 @@ public final class FrenchPosTaggingFilterDemo {
         
 
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Adjectives and adverbs",
             "Ce très grand arbre tombe vite.",
             "Expect: ce=DET/PRON, très=ADV, grand=ADJ, arbre=NOUN, tombe=VERB, vite=ADV."
         ),
 
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Proper nouns after token #0 (exposes 'firstToken' bug if lowercased)",
             "Jean Dupont vit à Paris.",
             "Watch whether 'Dupont' and 'Paris' are fed lowercased to the tagger (should NOT happen)."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Acronym at sentence start (corner case for downcasing workaround)",
             "USA signe un accord.",
             "If you lowercased 'USA' -> 'usa', you may harm tagging/term preservation."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Contracted ADP+DET forms (au/du/aux)",
             "Il va au marché du village, puis aux halles.",
             "Expect tags for au/du/aux often come back as ADP+DET; you map that to Upos.ADP_DET."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Numbers + comma decimals",
             "En 2024, il a gagné 3,14 euros.",
             "Check: 2024=NUM, 3,14=NUM (often), euros=NOUN; punctuation should remain punctuation."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "SCONJ 'que' (common dependency)",
             "Je sais que tu viens.",
             "Many UD models tag 'que' as SCONJ here; verify it lands in Upos.SCONJ."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Quotes / parentheses / colon",
             "« Oui », dit-il (très calmement) : \"je viens\".",
             "Primarily checks robustness + punctuation boundary detection in your upstream tokenizer."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Two sentences (queue flush on sentence punctuation)",
             "Le chat mange. Le chien dort.",
             "Verify tagging happens per sentence boundary; ensure no token loss between sentences."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Ellipsis and exclamation",
             "Alors… vraiment !",
             "Check punctuation and whether ellipsis confuses sentence segmentation."
@@ -218,7 +218,7 @@ public final class FrenchPosTaggingFilterDemo {
 
         try (Analyzer analyzer = buildAnalyzer(model)) {
             System.out.println("\n==== PosTaggingFilterDemo ====\n");
-            AnalysisDemoSupport.runAll(analyzer, FIELD, CASES);
+            AnalysisDemoHelper.runAll(analyzer, FIELD, CASES);
         }
     }
     

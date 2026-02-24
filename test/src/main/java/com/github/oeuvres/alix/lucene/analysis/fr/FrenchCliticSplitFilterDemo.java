@@ -1,6 +1,6 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
-import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoSupport;
+import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -44,71 +44,71 @@ public final class FrenchCliticSplitFilterDemo {
      * - known side effects noted in the filter Javadoc
      * - robustness limit (MAX_STEPS)
      */
-    static final List<AnalysisDemoSupport.Case> CASES = List.of(
+    static final List<AnalysisDemoHelper.Case> CASES = List.of(
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
                 "Clitique",
                 "L’homme est l’Avenir de l’Apocalypse à l’abord du désastre.",
                 null
             ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Curly apostrophes + common prefixes",
             "D’Alembert n’est l’avenir de l’Homme.",
             ""
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Longer apostrophe prefixes (lorsqu', puisqu', qu')",
             "Lorsqu’il arrive, puisqu’on sait ce qu’il veut.",
             "Should emit tokens like 'lorsque' + 'il', 'puisque' + 'on', 'que' + 'il'."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Inversion and linking -t",
             "Habite-t-il ici ? Serait-ce vrai ?",
             "Should drop '-t' (suffix -t => null), split '-il' and '-ce'."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Multiple clitic suffixes (ordering)",
             // U+2011 (non-breaking hyphen) to test lastHyphenIndexAndNormalize
             "Rends‑le‑moi; donne-les-leur.",
             "Expect base then clitics in surface order: rends + le + moi; donne + les + leur."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Y/En clitics",
             "Allons-y, parlons-en.",
             "Expect allons + y; parlons + en."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Do not split inside XML tags",
             "<a href=\"d'Artagnan\">d'Artagnan</a> d'Artagnan",
             "Filter skips splitting when PosAttribute==XML for tag tokens. If you observe splits inside <...>, your upstream does not set pos=XML or tags are not tokenized as XML."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Suffixes mapped to null (-ci, -là)",
             "Ceux-ci viennent cette année-là.",
             "Filter strips -ci/-là without emitting a token (value null). Verify this is desired."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Known side effect: qu’en-dira-t-on",
             "Qu’en-dira-t-on ?",
             "Comment in filter mentions this form. Observe what splits and what remains glued."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Potentially over-aggressive splits (quelqu', l')",
             "Quelqu’un l’aime; L’Oreal est cité.",
             "PREFIX contains quelqu' => quelque + un; l' is preserved as " +
                 "l' (not expanded). Both behaviors may be controversial."
         ),
 
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Pathological: exceed MAX_STEPS",
             MAX_STEPS_TOKEN,
             "If this crashes, it demonstrates a robustness limit. If it does not, your tokenizer likely split the token earlier."
@@ -118,16 +118,16 @@ public final class FrenchCliticSplitFilterDemo {
     public static void main(String[] args) throws Exception {
         try (Analyzer analyzer = buildAnalyzer()) {
             System.out.println("\n==== FrenchCliticSplitFilterDemo ====\n");
-            for (AnalysisDemoSupport.Case c : CASES) {
+            for (AnalysisDemoHelper.Case c : CASES) {
                 System.out.println("---- " + c.title() + " ----");
                 if (c.notes() != null && !c.notes().isEmpty()) {
                     System.out.println("Notes: " + c.notes());
                 }
-                System.out.println("Input: " + AnalysisDemoSupport.escape(c.input()));
+                System.out.println("Input: " + AnalysisDemoHelper.escape(c.input()));
 
                 try {
                     // Use the Analyzer path to avoid any Tokenizer-only helper limitations.
-                    AnalysisDemoSupport.printTokens(analyzer, FIELD, c.input());
+                    AnalysisDemoHelper.printTokens(analyzer, FIELD, c.input());
                 }
                 catch (RuntimeException ex) {
                     // Intentional: keep demo running so you can see which case triggered the failure.

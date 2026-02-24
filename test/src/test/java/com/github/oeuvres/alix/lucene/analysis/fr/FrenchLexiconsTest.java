@@ -40,14 +40,14 @@ class FrenchLexiconsTest {
 
     @Test
     void baseResourceLoads_nonEmpty() {
-        CharArrayMap<char[]> base = FrenchLexicons.getTermMapping();
+        CharArrayMap<char[]> base = FrenchLexicons.getWordNormalizer();
         assertNotNull(base);
         assertTrue(base.size() > 0, "Expected norm.tsv  to load at least one entry");
     }
     
     @Test
     void defaultNormalizerIsLoaded() {
-        CharArrayMap<char[]> map = FrenchLexicons.getTermMapping();
+        CharArrayMap<char[]> map = FrenchLexicons.getWordNormalizer();
         String k = "boeuf";
         String v = "bœuf";
         assertEquals(v, value(map, k), "Default norm.tsv resources not loaded");
@@ -60,14 +60,14 @@ class FrenchLexiconsTest {
 
         Path overlay = writeTsvOverlay(k, v);
 
-        CharArrayMap<char[]> map = FrenchLexicons.getTermMapping(overlay.toString());
+        CharArrayMap<char[]> map = FrenchLexicons.getWordNormalizer(overlay.toString());
         assertEquals(v, value(map, k), "Overlay TSV pair should be visible in the normalizer map");
     }
 
     @Test
     void overlayOverridesBaseEntry() throws Exception {
         // Get a base map and pick any existing key to override.
-        CharArrayMap<char[]> base = FrenchLexicons.getTermMapping();
+        CharArrayMap<char[]> base = FrenchLexicons.getWordNormalizer();
         assertTrue(base.size() > 0, "Base map must not be empty for this test");
 
         Map.Entry<Object, char[]> any = null;
@@ -84,7 +84,7 @@ class FrenchLexiconsTest {
         String overridden = "__override__";
         Path overlay = writeTsvOverlay(existingKey, overridden);
 
-        CharArrayMap<char[]> map2 = FrenchLexicons.getTermMapping(overlay.toString());
+        CharArrayMap<char[]> map2 = FrenchLexicons.getWordNormalizer(overlay.toString());
         assertEquals(overridden, value(map2, existingKey),
                 "Overlay should override the base mapping for the same key");
     }
@@ -93,8 +93,8 @@ class FrenchLexiconsTest {
     void cacheReturnsSameInstanceForSameParams() throws Exception {
         Path overlay = writeTsvOverlay("__k__", "__v__");
 
-        CharArrayMap<char[]> a = FrenchLexicons.getTermMapping(overlay.toString());
-        CharArrayMap<char[]> b = FrenchLexicons.getTermMapping(overlay.toString());
+        CharArrayMap<char[]> a = FrenchLexicons.getWordNormalizer(overlay.toString());
+        CharArrayMap<char[]> b = FrenchLexicons.getWordNormalizer(overlay.toString());
 
         assertSame(a, b, "Same parameters should hit cache and return identical instance");
     }
@@ -111,7 +111,7 @@ class FrenchLexiconsTest {
         for (int i = 0; i < threads; i++) {
             futures.add(pool.submit(() -> {
                 start.await();
-                return FrenchLexicons.getTermMapping(overlay.toString());
+                return FrenchLexicons.getWordNormalizer(overlay.toString());
             }));
         }
 
@@ -132,14 +132,14 @@ class FrenchLexiconsTest {
         // If you wrap differently, adjust the expected exception.
         String missing = Path.of("does-not-exist-" + System.nanoTime() + ".tsv").toString();
 
-        assertThrows(RuntimeException.class, () -> FrenchLexicons.getTermMapping(missing));
+        assertThrows(RuntimeException.class, () -> FrenchLexicons.getWordNormalizer(missing));
 
         // Now create a real overlay for the same (string) parameter to verify retry works.
         // This requires using the exact same parameter string; easiest is to reuse `missing` as a real file.
         // We can't create a file with that name portably across directories, so we just ensure
         // "a failing key does not prevent other keys from working":
         Path ok = writeTsvOverlay("__k3__", "__v3__");
-        assertDoesNotThrow(() -> FrenchLexicons.getTermMapping(ok.toString()));
+        assertDoesNotThrow(() -> FrenchLexicons.getWordNormalizer(ok.toString()));
     }
 }
 

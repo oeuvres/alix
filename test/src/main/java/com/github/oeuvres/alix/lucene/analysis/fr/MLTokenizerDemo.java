@@ -3,8 +3,8 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 
-import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoSupport;
-import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoSupport.Case;
+import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
+import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
 import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
 
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  *
  * <p>
  * Runs curated inputs through the tokenizer and dumps the resulting token
- * stream using {@link AnalysisDemoSupport}. This is intended for human
+ * stream using {@link AnalysisDemoHelper}. This is intended for human
  * inspection and algorithm iteration (manual regression), not automated
  * testing.
  * </p>
@@ -86,7 +86,7 @@ public class MLTokenizerDemo
         switch (which) {
             case "orig" -> {
                 Analyzer a = AnalyzerFactory.forTokenizer(() -> new MLTokenizer(FrenchLexicons.getDotEndingWords()));
-                AnalysisDemoSupport.runAll(a, "f", CASES);
+                AnalysisDemoHelper.runAll(a, "f", CASES);
             }
             default -> {
                 System.err.println("Usage: MLTokenizerDemo [orig]");

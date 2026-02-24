@@ -43,49 +43,49 @@ public final class TermReplaceFilterDemo {
     // Curated cases (orthography, not lemmatization)
     // ---------------------------------------------------------------------
 
-    static final List<AnalysisDemoSupport.Case> EN_CASES = List.of(
-        new AnalysisDemoSupport.Case(
+    static final List<AnalysisDemoHelper.Case> EN_CASES = List.of(
+        new AnalysisDemoHelper.Case(
             "Digraph / learned spelling variants",
             "Paediatric anaemia Encyclopaedia foetus.",
             "IgnoreCase. Canonicalize ae/oe variants: paediatric→pediatric, anaemia→anemia, encyclopaedia→encyclopedia, foetus→fetus."
         ),
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "UK/US spelling normalization (lexicon-driven)",
             "The colour of the centre is grey; we organise the programme.",
             "Canonicalize to US spellings: colour→color, centre→center, organise→organize, programme→program."
         ),
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Diacritics in loanwords and editorial spellings",
             "A naïve coöperate façade résumé.",
             "Canonicalize to plain ASCII: naïve→naive, coöperate→cooperate, façade→facade, résumé→resume."
         )
     );
 
-    static final List<AnalysisDemoSupport.Case> FR_CASES = List.of(
-        new AnalysisDemoSupport.Case(
+    static final List<AnalysisDemoHelper.Case> FR_CASES = List.of(
+        new AnalysisDemoHelper.Case(
             "French ligatures: ASCII fallback → canonical Unicode",
             "boeuf coeur soeur oeuvre oeuf foetus",
             "Canonicalize oe→œ only for listed forms: boeuf→bœuf, coeur→cœur, soeur→sœur, oeuvre→œuvre, oeuf→œuf, foetus→fœtus."
         ),
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Missing diacritics (curated, non-algorithmic)",
             "aout noel etude",
             "Restore diacritics only when you are confident: aout→août, noel→noël, etude→étude. (Avoid ambiguous cases like pere/père/…)"
         )
     );
 
-    static final List<AnalysisDemoSupport.Case> DE_CASES = List.of(
-        new AnalysisDemoSupport.Case(
+    static final List<AnalysisDemoHelper.Case> DE_CASES = List.of(
+        new AnalysisDemoHelper.Case(
             "German orthography reform and ß/ss variants",
             "daß dass muß muss strasse straße gross groß fluß fluss",
             "Canonicalize to standard modern spellings: daß→dass, muß→muss, strasse→straße, gross→groß, fluß→fluss."
         ),
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Umlaut transliterations: ue/oe/ae → ü/ö/ä (curated list)",
             "mueller müller goedel gödel schroeder schröder",
             "Canonicalize common transliterations: mueller→müller, goedel→gödel, schroeder→schröder."
         ),
-        new AnalysisDemoSupport.Case(
+        new AnalysisDemoHelper.Case(
             "Other lexicalized spelling variants",
             "photographie fotografie",
             "Sometimes you just pick a house style: photographie→fotografie (if your corpus mixes both)."
@@ -106,19 +106,19 @@ public final class TermReplaceFilterDemo {
         }
     }
 
-    private static void run(final String lang, final Analyzer analyzer, final List<AnalysisDemoSupport.Case> cases)
+    private static void run(final String lang, final Analyzer analyzer, final List<AnalysisDemoHelper.Case> cases)
         throws Exception
     {
         System.out.println("\n== " + lang + " ==\n");
-        for (AnalysisDemoSupport.Case c : cases) {
+        for (AnalysisDemoHelper.Case c : cases) {
             System.out.println("----? " + c.title() + " ----");
             if (c.notes() != null && !c.notes().isEmpty()) {
                 System.out.println("Notes: " + c.notes());
             }
-            System.out.println("Input: " + AnalysisDemoSupport.escape(c.input()));
+            System.out.println("Input: " + AnalysisDemoHelper.escape(c.input()));
 
             try {
-                AnalysisDemoSupport.printTokens(analyzer, FIELD, c.input());
+                AnalysisDemoHelper.printTokens(analyzer, FIELD, c.input());
             }
             catch (RuntimeException ex) {
                 System.out.println("[ERROR] " + ex.getClass().getSimpleName() + ": " + ex.getMessage());

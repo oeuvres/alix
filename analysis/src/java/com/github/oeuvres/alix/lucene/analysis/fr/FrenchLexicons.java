@@ -77,11 +77,11 @@ public class FrenchLexicons
         return map;
     }
 
-    static CharArrayMap<char[]> getTermMapping(String... localFiles)
+    static CharArrayMap<char[]> getWordNormalizer(String... localFiles)
     {
         CharArrayMap<char[]> m = (CharArrayMap<char[]>) Cache.get(FrenchLexicons.class, "norm", p -> {
             try {
-                return termMapping(p);
+                return wordNormalizer(p);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -89,10 +89,11 @@ public class FrenchLexicons
         return m;
     }
 
-    private static CharArrayMap<char[]> termMapping(List<String> localFiles) throws IOException
+    private static CharArrayMap<char[]> wordNormalizer(List<String> localFiles) throws IOException
     {
         CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm.csv", false);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", false);
         for (String file : localFiles) {
             LexiconHelper.loadMap(map, Path.of(file), true);
         }
