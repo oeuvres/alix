@@ -195,7 +195,7 @@ av.,avant
 avr.,avril
 Cpt.,compte
 cpt.,compte
-c.-à-d.,c'est à dire
+c.-à-d.,c'est-à-dire
 categ.,catégorie
 catég.,catégorie
 ch.,chapitre
@@ -244,6 +244,7 @@ Mm.,messieurs
 Mr.,monsieur
 ms.,manuscrit
 Ms.,manuscrit
+no,n°
 Nov.,novembre
 nov.,novembre
 N.R.F.,NRF
@@ -498,7 +499,6 @@ Luzan,Luzán
 lvanoff,Ivanov
 m',me
 main-d'oeuvre,main-d'œuvre
-maitre,maître
 Mᵉ,maître
 Malaca,Malacca
 Malhouet,Malouet
@@ -563,19 +563,6 @@ Murger,Mürger
 n',ne
 Napierkowska,Napierkovska
 Nemtchinova,Nemtchinova
-naît,nait
-naîtra,naitra
-naîtrai,naitrai
-naîtrais,naitrais
-naîtrait,naitrait
-naîtraient,naitraient
-naîtras,naitras
-naître,naitre
-naîtrez,naitrez
-naîtriez,naitriez
-naîtrions,naitrions
-naîtrons,naitrons
-naîtront,naitront
 national-soialistes,national-socialiste
 nationale-soialiste,national-socialiste
 nationale-soialistes,national-socialiste
