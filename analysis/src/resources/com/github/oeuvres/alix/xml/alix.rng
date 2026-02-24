@@ -7,7 +7,7 @@
   xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" 
   xmlns:h="http://www.w3.org/1999/xhtml"
 >
-  <a:documentation>Alix, schema of xml to ingest in lucene</a:documentation>
+  <a:documentation>Alix: Relax NG schema for XML ingested into a Lucene index</a:documentation>
   <div xmlns="http://www.w3.org/1999/xhtml">
     <p>
       This Relax-NG schema defines the XML tags understood by Alix to ingest text documents (articles, books…) in a <a href="https://lucene.apache.org/core/">Lucene</a> index.
@@ -42,13 +42,13 @@
     <alix:chapter>
       <!-- Useful metas for an application should be replicated, example facet  -->
       <alix:field name="author" type="facet">Surname, Firstname</alix:field>
-      <alix:field name="text" type="xml">
+      <alix:field name="text" type="text">
         <p>First chapter text</p>
       </alix:field>
     </alix:chapter>
     <alix:chapter>
       <alix:field name="author" type="facet">Surname, Firstname</alix:field>
-      <alix:field name="text" type="xml">
+      <alix:field name="text" type="text">
         <p>Second chapter text</p>
       </alix:field>
     </alix:chapter>
@@ -56,26 +56,23 @@
 </alix:set>
     </a:example>
     <p>
-As other lucene indexing platforms, Alix borrows some concepts from <a href="https://lucene.apache.org/solr/">Solr</a>,
+Like other Lucene indexing platforms, Alix borrows some concepts from <a href="https://lucene.apache.org/solr/">Solr</a>,
 but also, a less known but older open source product <a href="http://savannah.nongnu.org/projects/sdx/">SDX</a> (2001),
 on which worked the creators of Alix.
     </p>
     <p>
-Unlike Solr, ElasticSearch or others; Alix does not need a configuration file, closing 
+Unlike Solr, Elasticsearch and similar tools, Alix does not need a configuration file that closes 
 the number, names and types of fields before indexing.
-The declaration of fields is done at indexing time, allowing to add fields
-when the documents need them.
-The user of Alix library knows what he 
-has indexed, so he knows what he will find.
+The declaration of fields is done at indexing time, allowing fields to be added when documents need them.
+The user of the Alix library knows what was indexed, and therefore what can be retrieved.
     </p>
     <p>
-Alix is XML friendly. Contents of fields could be a clean HTML ready to display in a web application,
+Alix is XML friendly. Contents of fields can be clean HTML ready to display in a web application,
 all Alix analyzers and searching helpers know how to deal with tags and avoid to break them.
     </p>
     <p>
-The proposed field types 
-are designed to answer to a need, not to replicate Lucene API complexity.
-Investigations have been done to offer the best of a Lucene for texts.
+The proposed field types describe indexing uses understandable by an application developer (full text, lexical metadata, exact classifier, multi-valued facet, integer, stored payload), not the full complexity of Lucene internals.
+Alix maps these logical types to Lucene field implementations and analyzers.
     </p>
     <p>
 According to Lucene model, there are 3 levels of objects inside Alix.
@@ -109,12 +106,18 @@ According to Lucene model, there are 3 levels of objects inside Alix.
       <a:documentation>A set of <a:el>book</a:el>s or <a:el>document</a:el>s.</a:documentation>
       <oneOrMore>
         <choice>
-          <ref name="article"/>
           <ref name="book"/>
           <ref name="document"/>
+          <ref name="article"/>
         </choice>
       </oneOrMore>
     </element>
+  </define>
+    <define name="docid">
+    <attribute name="xml:id">
+      <a:documentation>String identifier, unique in the index.</a:documentation>
+      <data type="NCName"/>
+    </attribute>
   </define>
   <define name="book">
     <element name="book">
@@ -123,14 +126,12 @@ According to Lucene model, there are 3 levels of objects inside Alix.
       A String identifier, unique for the base, is required for a permanent access to a book.
       The identifier of chapters will be automatically calculated by Alix (identifier of book + a counter starting at 001).
       </a:documentation>
-      <attribute name="xml:id">
-        <a:documentation>String identifier for the book.</a:documentation>
-      </attribute>
+      <ref name="docid"/>
+      <zeroOrMore>
+        <ref name="field"/>
+      </zeroOrMore>
       <oneOrMore>
-        <choice>
-          <ref name="field"/>
-          <ref name="chapter"/>
-        </choice>
+        <ref name="chapter"/>
       </oneOrMore>
     </element>
   </define>
@@ -145,6 +146,7 @@ According to Lucene model, there are 3 levels of objects inside Alix.
   <define name="article">
     <element name="article">
       <a:documentation>A set of <a:el>field</a:el>s, alias for <a:el>document</a:el>.</a:documentation>
+      <ref name="docid"/>
       <oneOrMore>
         <ref name="field"/>
       </oneOrMore>
@@ -153,6 +155,7 @@ According to Lucene model, there are 3 levels of objects inside Alix.
   <define name="document">
     <element name="document">
       <a:documentation>A set of <a:el>field</a:el>s.</a:documentation>
+      <ref name="docid"/>
       <oneOrMore>
         <ref name="field"/>
       </oneOrMore>
@@ -171,11 +174,11 @@ According to Lucene model, there are 3 levels of objects inside Alix.
   <define name="field-text">
     <element name="field">
       <a:documentation>
-Text to search with advanced lexical features (lemma, co-occurrences…).
-XML tags are allowed, well-formedness is not required, so HTML ready to display could be sent.
-Content is also available as a stored field for display, hilite of occurrences found, relevant excerpts.
-This type is quite heavy (positions, offsets, term vectors…).
-If you need a simple token search, prefer @type="meta".
+Full text to search with advanced lexical features (for example lemma/normalization, phrase positions, offsets, co-occurrences, snippets).
+XML/HTML tags are allowed as element content (well-formed XML fragment in this schema).
+Content is also stored for display, highlighting of occurrences, and relevant excerpts.
+This type is heavy (positions, offsets, term vectors...).
+If you need only lightweight token search (for example bibliographic strings), prefer @type="meta".
       </a:documentation>
       <ref name="name"/>
       <attribute name="type">
@@ -187,8 +190,8 @@ If you need a simple token search, prefer @type="meta".
   <define name="field-meta">
     <element name="field">
       <a:documentation>
-Some text (or xml) to search as raw tokens without linguistic features. Is especially useful to search 
-in bibliographic records by token.
+Text (or XML) indexed as lightweight lexical tokens, without the heavy linguistic/full-text features of @type="text".
+Typical use: bibliographic citations, identifiers embedded in text strings, names, short metadata fields searchable by token.
       </a:documentation>
       <ref name="name"/>
       <attribute name="type">
@@ -202,8 +205,8 @@ in bibliographic records by token.
   </define>
   <define name="field-store">
     <element name="field">
-      <a:documentation>Content to store (not for search nor sorting), maybe a text value in the @value attribute, or an xml content nested. 
-        Stored values can be retrieved in search results (ex: url), or as an annex for a full document view (ex: table of contents).</a:documentation>
+      <a:documentation>Payload stored only (no search, no sort), either as a string in @value or as nested XML content.
+        Use for any application data the developer wants back as-is (URL, local TOC, pre-rendered citation, rights block, UI fragments...).</a:documentation>
       <ref name="name"/>
       <attribute name="type">
         <value>store</value>
@@ -216,7 +219,8 @@ in bibliographic records by token.
   </define>
   <define name="field-int">
     <element name="field">
-      <a:documentation>A signed integer value, unique for a field name by document (ex: date), used for sorting, queries, or retrieve (also available as a stored field).</a:documentation>
+      <a:documentation>A signed integer value (for example year or sequence), unique by field name within a document.
+      Used for sorting, numeric queries, and retrieval (also available as a stored field).</a:documentation>
       <ref name="name"/>
       <attribute name="type">
         <value>int</value>
@@ -228,7 +232,8 @@ in bibliographic records by token.
   </define>
   <define name="field-category">
     <element name="field">
-      <a:documentation>A term, unique for field name by document (ex: title), used as a classifier (also available for retrieve as a stored field).</a:documentation>
+      <a:documentation>A single exact string value (0..1 by document for a given field name), used as a classifier/category.
+      Alix chooses the Lucene implementation; application code treats it as one exact value per document (also retrievable).</a:documentation>
       <ref name="name"/>
       <attribute name="type">
         <value>category</value>
@@ -238,7 +243,8 @@ in bibliographic records by token.
   </define>
   <define name="field-facet">
     <element name="field">
-      <a:documentation>Set of terms by document (ex: author) used as a classifier for the collection (also available for retrieve as a stored field).</a:documentation>
+      <a:documentation>A set of exact string values (0..n by document for a given field name), used for faceting/filtering the collection.
+      Alix chooses the Lucene implementation; application code treats it as a multi-valued classifier (also retrievable).</a:documentation>
       <ref name="name"/>
       <attribute name="type">
         <value>facet</value>
@@ -249,10 +255,11 @@ in bibliographic records by token.
   <define name="name">
     <attribute name="name">
       <a:documentation>Field name is required.</a:documentation>
-      <data type="Name"/>
+      <data type="NCName"/>
     </attribute>
   </define>
   <define name="xml">
+    <a:documentation>XML fragment content (mixed text/elements). In this schema the fragment must be well-formed.</a:documentation>
     <oneOrMore>
       <choice>
         <text/>
