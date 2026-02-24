@@ -1075,7 +1075,7 @@ Could be correct for a text only version in <xsl:value-of select=""/>
         <xsl:call-template name="message"/>
       </xsl:when>
       <!-- Level <text>, get a short title to display, an author maybe nice as a prefix -->
-      <xsl:when test=" self::tei:text or self::tei:body ">
+      <xsl:when test="self::tei:text or self::tei:body ">
         <xsl:variable name="title">
           <xsl:choose>
             <xsl:when test="tei:body/tei:head">

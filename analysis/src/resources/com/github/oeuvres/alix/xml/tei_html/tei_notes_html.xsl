@@ -12,7 +12,6 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   exclude-result-prefixes="tei"
   extension-element-prefixes="exslt"
   xmlns="http://www.w3.org/1999/xhtml"
-  xmlns:epub="http://www.idpf.org/2007/ops"
   xmlns:exslt="http://exslt.org/common"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -191,7 +190,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       </xsl:choose>
     </xsl:variable>
     <xsl:if test="$notes != ''">
-      <section epub:type="footnotes" class="footnotes">
+      <section class="footnotes">
         <xsl:copy-of select="$notes"/>
       </section>
     </xsl:if>
@@ -211,7 +210,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     <xsl:variable name="html">
       <xsl:choose>
         <xsl:when test="$text='' and count(*)=1 and tei:p">
-          <span class="note" id="{$id}" epub:type="note">
+          <span class="note" id="{$id}">
             <xsl:call-template name="noteback">
               <xsl:with-param name="class"/>
               <xsl:with-param name="from" select="$from"/>
@@ -260,7 +259,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   </xsl:template>
   <!-- Block of notes  -->
   <xsl:template match="tei:div[@type='notes' or @type='footnotes']">
-    <section epub:type="footnotes" class="footnotes">
+    <section class="footnotes">
       <xsl:attribute name="id">
         <xsl:call-template name="id"/>
       </xsl:attribute>
@@ -306,7 +305,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
           </xsl:choose>
         </xsl:variable>
         <xsl:if test="translate($lastchar, '  &#9;&#10;&#13;', '') != ''"> </xsl:if>
-        <a class="{$class}" role="doc-noteref" epub:type="noteref" href="{$target}" id="{$id}">
+        <a class="{$class}" role="doc-noteref" href="{$target}" id="{$id}">
           <sup>
             <xsl:value-of select="$n"/>
           </sup>
@@ -497,7 +496,7 @@ and doc-endnotes are doc-biblioentry and doc-endnote.
       <xsl:attribute name="id">
         <xsl:value-of select="$id"/>
       </xsl:attribute>
-      <xsl:attribute name="epub:type">note</xsl:attribute>
+      <xsl:attribute name="role">doc-footnote</xsl:attribute>
       <xsl:variable name="noteback">
         <xsl:choose>
           <xsl:when test="@place = 'margin'"/>
@@ -634,7 +633,7 @@ and doc-endnotes are doc-biblioentry and doc-endnote.
       </xsl:variable>
       <!-- FBRreader -->
       <sup>
-        <a class="noteref" href="#{$id}" name="_{$id}" epub:type="noteref">
+        <a class="noteref" href="#{$id}" name="_{$id}" role="doc-noteref">
           <!-- xsl:attribute name="onclick">if(this.cloc) {this.parentNode.className='cit_n'; this.cloc=null; } else { this.cloc=true;  this.parentNode.className='cit_n_bibl'}; return true;</xsl:attribute -->
           <xsl:attribute name="onmouseover">this.parentNode.className='cit_n_bibl'</xsl:attribute>
           <xsl:attribute name="onmouseout">this.parentNode.className='cit_n'</xsl:attribute>

@@ -18,7 +18,6 @@ XSLT 1.0 is compatible browser, PHP, Python, Java…
   exclude-result-prefixes="eg tei"
   xmlns="http://www.w3.org/1999/xhtml"
   xmlns:eg="http://www.tei-c.org/ns/Examples"
-  xmlns:epub="http://www.idpf.org/2007/ops"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <!-- Import shared templates -->
@@ -56,7 +55,7 @@ Sections
   <xsl:template match="tei:front">
     <xsl:param name="from"/>
     <xsl:param name="level" select="count(ancestor::tei:group)"/>
-    <section epub:type="frontmatter">
+    <section>
       <xsl:call-template name="atts"/>
       <xsl:apply-templates select="*">
         <xsl:with-param name="level" select="$level"/>
@@ -71,7 +70,7 @@ Sections
     <xsl:choose>
       <xsl:when test="normalize-space(.) = ''"/>
       <xsl:otherwise>
-        <section epub:type="backmatter">
+        <section>
           <xsl:call-template name="atts"/>
           <xsl:apply-templates select="*">
             <xsl:with-param name="level" select="$level "/>
@@ -84,7 +83,7 @@ Sections
   <xsl:template match="tei:body">
     <xsl:param name="from"/>
     <xsl:param name="level" select="count(ancestor::tei:group)"/>
-    <section epub:type="bodymatter">
+    <section>
       <xsl:call-template name="atts"/>
       <xsl:apply-templates>
         <xsl:with-param name="level" select="$level "/>
@@ -126,29 +125,22 @@ Sections
           <xsl:if test="@type = 'act' and $verse"> verse</xsl:if>
         </xsl:with-param>
       </xsl:call-template>
-      <!-- attributs epub3 -->
+      <!-- role attributes -->
       <xsl:choose>
         <xsl:when test="@type = 'bibliography'">
-          <xsl:attribute name="epub:type">bibliography</xsl:attribute>
-        </xsl:when>
-        <xsl:when test="@type = 'glossary'">
-          <xsl:attribute name="epub:type">glossary</xsl:attribute>
-        </xsl:when>
-        <xsl:when test="@type = 'index'">
-          <xsl:attribute name="epub:type">index</xsl:attribute>
+          <xsl:attribute name="role">doc-bibliography</xsl:attribute>
         </xsl:when>
         <xsl:when test="@type = 'chapter' or @type = 'act' or @type='article'">
-          <xsl:attribute name="epub:type">chapter</xsl:attribute>
+          <xsl:attribute name="role">doc-chapter</xsl:attribute>
         </xsl:when>
-        <xsl:when test="ancestor::tei:div[@type = 'chapter' or @type = 'act' or @type='article']">
-          <xsl:attribute name="epub:type">subchapter</xsl:attribute>
+        <xsl:when test="@type = 'glossary'">
+          <xsl:attribute name="role">doc-glossary</xsl:attribute>
         </xsl:when>
-        <xsl:when test=".//tei:div[@type = 'chapter' or @type = 'act' or @type='article']">
-          <xsl:attribute name="epub:type">part</xsl:attribute>
+        <xsl:when test="@type = 'index'">
+          <xsl:attribute name="role">doc-index</xsl:attribute>
         </xsl:when>
-        <!-- dangerous ? -->
-        <xsl:when test="self::*[key('split', generate-id())]">
-          <xsl:attribute name="epub:type">chapter</xsl:attribute>
+        <xsl:when test="@type = 'part' or .//tei:div[@type = 'chapter' or @type = 'act' or @type='article']">
+          <xsl:attribute name="role">doc-part</xsl:attribute>
         </xsl:when>
       </xsl:choose>
       <!-- First element is an empty(?) page break, may come from numerisation or text-processor -->
@@ -270,7 +262,7 @@ Sections
   <!-- Page de titre -->
   <xsl:template match="tei:titlePage">
     <xsl:param name="from"/>
-    <section epub:type="titlepage">
+    <section>
       <xsl:call-template name="atts"/>
       <xsl:apply-templates>
         <xsl:with-param name="from" select="$from"/>
@@ -303,7 +295,9 @@ Sections
           <xsl:with-param name="rend">
             <xsl:value-of select="@rend"/>
             <xsl:if test="$verse"> verse </xsl:if>
-            <xsl:value-of select="../@type"/>
+            <xsl:if test="../@type != ''">
+              <xsl:value-of select="concat(../@type, '-head')"/>
+            </xsl:if>
           </xsl:with-param>
         </xsl:call-template>
         <xsl:attribute name="id">

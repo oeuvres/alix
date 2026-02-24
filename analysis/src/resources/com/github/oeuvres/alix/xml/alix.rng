@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <grammar
   xmlns="http://relaxng.org/ns/structure/1.0" 
-  ns="http://alix.casa" 
+  ns="https://oeuvres.github.io/alix" 
   datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
   xml:lang="en"
   xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" 
@@ -14,7 +14,7 @@
     </p>
     <p>Let's start by the kind of XML understood by Alix.</p>
     <a:example>
-<alix:set xmlns:alix="http://alix.casa">
+<alix:set xmlns:alix="https://oeuvres.github.io/alix">
   <alix:document xml:id="docid1">
     <alix:field name="title" type="text">First document</alix:field>
     <alix:field name="year" type="int" value="2019"/>
@@ -89,13 +89,10 @@ According to Lucene model, there are 3 levels of objects inside Alix.
       <li><a:el>document</a:el>, a set of <a:el>field</a:el>s corresponding to a lucene 
         <a href="https://lucene.apache.org/core/8_7_0/core/org/apache/lucene/document/Document.html">Document</a>
       </li>
-      <li><a:el>book</a:el>, a set of <a:el>chapter</a:el>s, 
-        corresponding to an advance feature in lucene, allowing to index a group of Document objects,
-        with a specefic one used as a cover
-        <a href="https://lucene.apache.org/core/8_7_0/core/org/apache/lucene/index/IndexWriter.html#addDocuments-java.lang.Iterable-">IndexReader.addDocuments()</a>.
-        A book is a useful unit in Alix for faceting results, or defining a corpus.
-        For Lucene, a <a:el>chapter</a:el> is like a document. 
-      </li>
+      <li><a:el>chapter</a:el>, a set of <a:el>field</a:el>s corresponding to a lucene 
+        <a href="https://lucene.apache.org/core/8_7_0/core/org/apache/lucene/document/Document.html">Document</a>, like <a:el>document</a:el>, but appears inside a <a:el>book</a:el>.</li>
+      <li><a:el>book</a:el>, is a convenient set of <a:el>chapter</a:el>s, 
+        this unit is handled at application level for faceting results, or defining a corpus.</li>
     </ul>
   </div>
   <start>
