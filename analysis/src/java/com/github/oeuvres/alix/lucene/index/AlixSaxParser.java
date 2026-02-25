@@ -3,8 +3,11 @@ package com.github.oeuvres.alix.lucene.index;
 
 import org.xml.sax.*;
 import org.xml.sax.ext.DefaultHandler2;
-import org.xml.sax.helpers.XMLReaderFactory;
 
+import javax.xml.XMLConstants;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -29,14 +32,32 @@ public final class AlixSaxParser extends DefaultHandler2 {
     // ---------- Public API ----------
 
     public static void parse(InputStream in, AlixSink sink) throws IOException, SAXException {
-        XMLReader xr = XMLReaderFactory.createXMLReader();
-        xr.setContentHandler(new AlixSaxParser(sink));
-        xr.setErrorHandler(new StrictErrorHandler());
-        // Important for fragment serialization: keep qName + xmlns attrs if possible
-        try { xr.setFeature("http://xml.org/sax/features/namespaces", true); } catch (SAXNotRecognizedException | SAXNotSupportedException ignored) {}
-        try { xr.setFeature("http://xml.org/sax/features/namespace-prefixes", true); } catch (SAXNotRecognizedException | SAXNotSupportedException ignored) {}
+        try {
+            SAXParserFactory spf = SAXParserFactory.newInstance();
+            spf.setNamespaceAware(true);
 
-        xr.parse(new InputSource(in));
+            // Harden parser defaults (XXE / external entity expansion). Not all SAX implementations support all features.
+            try { spf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true); } catch (Exception ignored) {}
+            try { spf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true); } catch (Exception ignored) {}
+            try { spf.setFeature("http://xml.org/sax/features/external-general-entities", false); } catch (Exception ignored) {}
+            try { spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false); } catch (Exception ignored) {}
+            try { spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false); } catch (Exception ignored) {}
+
+            SAXParser parser = spf.newSAXParser();
+            XMLReader xr = parser.getXMLReader();
+
+            xr.setContentHandler(new AlixSaxParser(sink));
+            xr.setErrorHandler(new StrictErrorHandler());
+
+            // Important for fragment serialization: keep qName + xmlns attrs if possible
+            try { xr.setFeature("http://xml.org/sax/features/namespaces", true); } catch (SAXNotRecognizedException | SAXNotSupportedException ignored) {}
+            try { xr.setFeature("http://xml.org/sax/features/namespace-prefixes", true); } catch (SAXNotRecognizedException | SAXNotSupportedException ignored) {}
+
+            xr.parse(new InputSource(in));
+        }
+        catch (ParserConfigurationException e) {
+            throw new SAXException("Cannot configure SAX parser", e);
+        }
     }
 
     public interface AlixSink {
