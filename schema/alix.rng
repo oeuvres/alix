@@ -57,7 +57,7 @@
     </a:example>
     <p>
 Like other Lucene indexing platforms, Alix borrows some concepts from <a href="https://lucene.apache.org/solr/">Solr</a>,
-but also, a less known but older open source product <a href="http://savannah.nongnu.org/projects/sdx/">SDX</a> (2001),
+but also, a less known but older open source product <a href="http://savannah.nongnu.org/projects/sdx/">SDX</a> (2001–…),
 on which worked the creators of Alix.
     </p>
     <p>
@@ -74,6 +74,108 @@ all Alix analyzers and searching helpers know how to deal with tags and avoid to
 The proposed field types describe indexing uses understandable by an application developer (full text, lexical metadata, exact classifier, multi-valued facet, integer, stored payload), not the full complexity of Lucene internals.
 Alix maps these logical types to Lucene field implementations and analyzers.
     </p>
+    <p><strong>Global rule:</strong> all fields are stored. <code>@type</code> describes indexing/query/analysis behavior only.</p>
+<p><strong>Legend:</strong> empty cell = absent / not supported by default · ✓ = yes · ~ = possible but not default</p>
+
+<table>
+  <thead>
+    <tr>
+      <th><code>@type</code></th>
+      <th>Cardinality</th>
+      <th>Content</th>
+      <th>Exact filter</th>
+      <th>Lexical search</th>
+      <th>Full-text</th>
+      <th>Sort (default)</th>
+      <th>Range</th>
+      <th>Analysis</th>
+      <th>Lemma</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th><code>store</code></th>
+      <td>0..n</td>
+      <td>XML/HTML</td>
+      <td>✓</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td>none</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th><code>int</code></th>
+      <td>0..n</td>
+      <td>@value="numeric"</td>
+      <td></td>
+      <td>✓</td>
+      <td></td>
+      <td></td>
+      <td>✓</td>
+      <td>✓</td>
+      <td>numeric parse</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th><code>category</code></th>
+      <td>0..1 (ideal)</td>
+      <td>@value="string"</td>
+      <td></td>
+      <td>✓</td>
+      <td></td>
+      <td></td>
+      <td>✓</td>
+      <td></td>
+      <td>keyword normalization</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th><code>facet</code></th>
+      <td>0..n</td>
+      <td>@value="string"</td>
+      <td></td>
+      <td>✓</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td>keyword normalization</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th><code>meta</code></th>
+      <td>0..n</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td></td>
+      <td>✓</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td>tokenization + normalization (light)</td>
+      <td></td>
+    </tr>
+    <tr>
+      <th><code>text</code></th>
+      <td>0..n</td>
+      <td>✓</td>
+      <td>✓</td>
+      <td></td>
+      <td>~</td>
+      <td>✓</td>
+      <td></td>
+      <td></td>
+      <td>HTML-aware full-text + offsets</td>
+      <td>fr</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Notes:</strong> <code>facet</code> sort is technically possible in Lucene (selector on multi-valued field), but not enabled by default because semantics are ambiguous for users. <code>meta</code> is intentionally non-lemmatized and language-agnostic (default). <code>text</code> currently means French-quality linguistic indexing (<code>fr</code>); other languages require dedicated work.</p>
+<p><em>* Help required to support other languages with quality comparable to French.</em></p>
     <p>
 According to Lucene model, there are 3 levels of objects inside Alix.
     </p>

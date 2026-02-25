@@ -25,13 +25,20 @@
 
 
     <modules>
-        <module>web</module>
+        <!-- generic data structure and algorithms, with no dependancies -->
         <module>util</module>
-        <module>common</module>
+        <!-- lexical resources with no dependancies -->
         <module>fr</module>
+        <!-- tools for lucene analysis, French token filter rely on fr -->
         <module>analysis</module>
+        <!-- tools for lucene search -->
         <module>search</module>
+        <!-- tools for lucene, used by analysis and search -->
+        <module>common</module>
+        <!-- tests of all modules -->
         <module>test</module>
+        <!-- some tools for servlet/jsp applications -->
+        <module>web</module>
     </modules>
 
 
