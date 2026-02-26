@@ -13,7 +13,7 @@ import java.util.Set;
  * Some useful tools to deal with “Markup Languages” (xml, but also html tag
  * soup)
  */
-public class ML
+public class Markup
 {
     /** limit kwic width */
     private static int KWIC_MAXCHARS = 500;
@@ -33,7 +33,7 @@ public class ML
     /**
      * Avoid instantiation, use static methods instead.
      */
-    private ML()
+    private Markup()
     {
 
     }

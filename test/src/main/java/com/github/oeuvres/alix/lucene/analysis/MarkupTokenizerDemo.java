@@ -8,19 +8,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 
-public class MLTokenizerDemo
+public class MarkupTokenizerDemo
 {
     /** Minimal Analyzer for StandardTokenizer ->TermReplaceFilter. */
     private static Analyzer buildAnalyzer() {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MLTokenizer();
+                Tokenizer tokenizer = new MarkupTokenizer();
                 TokenStream stream = tokenizer;
                 return new TokenStreamComponents(tokenizer, stream);
             }

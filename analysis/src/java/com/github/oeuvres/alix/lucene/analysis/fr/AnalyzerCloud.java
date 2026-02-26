@@ -38,8 +38,8 @@ import org.apache.lucene.analysis.Tokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.FilterCloud;
 import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
-import com.github.oeuvres.alix.lucene.analysis.MLFilter;
-import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupFilter;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 
 /**
@@ -60,10 +60,10 @@ public class AnalyzerCloud extends Analyzer
     @Override
     public TokenStreamComponents createComponents(String field)
     {
-        final Tokenizer tokenizer = new MLTokenizer();
+        final Tokenizer tokenizer = new MarkupTokenizer();
         TokenStream ts = tokenizer; // segment words
         // interpret html tags as token events like para or section
-        ts = new MLFilter(ts);
+        ts = new MarkupFilter(ts);
         // fr split on ’ and -
         ts = new FrenchCliticSplitFilter(ts);
         // pos tagging before lemmatize

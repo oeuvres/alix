@@ -60,7 +60,7 @@ import com.github.oeuvres.alix.util.Char;
  * - No buffer backtracking; uses a one-char pushback slot.
  * - Sentence punctuation token cannot absorb following letters (e.g., "!Word" no longer possible).
  */
-public class MLTokenizer extends Tokenizer
+public class MarkupTokenizer extends Tokenizer
 {
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
@@ -89,11 +89,11 @@ public class MLTokenizer extends Tokenizer
     private int pendingChar = -1;          // 0..65535, or -1
     private int pendingCharOffset = -1;    // offset where pendingChar occurs
 
-    public MLTokenizer() { 
+    public MarkupTokenizer() { 
         this(CharArraySet.EMPTY_SET);
     }
 
-    public MLTokenizer(final CharArraySet keepTrailingDot) { 
+    public MarkupTokenizer(final CharArraySet keepTrailingDot) { 
         super();
         // Lucene-style: accept null as “no config”
         this.keepTrailingDot = (keepTrailingDot == null) ? CharArraySet.EMPTY_SET : keepTrailingDot;

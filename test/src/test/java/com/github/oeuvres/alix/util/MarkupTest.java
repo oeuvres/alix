@@ -6,7 +6,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
-public class MLTest {
+public class MarkupTest {
 
     @Test
     public void testDetag() {
@@ -24,7 +24,7 @@ public class MLTest {
             "An include <mark>tag with in another</mark>.",
         };
         for (int i = 0; i < xml.length; i++) {
-            String result = ML.detag(xml[i], include);
+            String result = Markup.detag(xml[i], include);
             assertEquals(expected[i], result);
         }
     }

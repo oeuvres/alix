@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.oeuvres.alix.lucene.analysis.fr.AnalyzerMeta;
-import com.github.oeuvres.alix.util.ML;
+import com.github.oeuvres.alix.util.Markup;
 
 /**
  * From HTML data, Populate a lucene/alix document ready to index, with right
@@ -152,7 +152,7 @@ public class AlixDocument
             return this;
         uniks.add(name);
         doc.add(new StoredField(name, html));
-        String txt = ML.detag(html);
+        String txt = Markup.detag(html);
         BytesRef bytes = new BytesRef(txt);
         doc.add(new SortedDocValuesField(name, bytes));
         // NO, or lucene
@@ -179,7 +179,7 @@ public class AlixDocument
         }
         uniks.add(name);
         doc.add(new StoredField(name, html));
-        String txt = ML.detag(html);
+        String txt = Markup.detag(html);
         BytesRef bytes = new BytesRef(txt);
         doc.add(new StringField(name, bytes, Field.Store.NO));
         doc.add(new SortedSetDocValuesField(name, bytes));
@@ -198,7 +198,7 @@ public class AlixDocument
         if (bad(html))
             return this;
         doc.add(new StoredField(name, html)); // (TokenStream fields cannot be stored)
-        String txt = ML.detag(html);
+        String txt = Markup.detag(html);
         TokenStream ts = metaAnalyzer.tokenStream("meta", txt); // renew token stream
         doc.add(new Field(name, ts, AlixWriter.ftypeMeta)); // indexation of the chosen tokens
         return this;

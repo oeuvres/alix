@@ -53,8 +53,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.MLFilter;
-import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupFilter;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
@@ -70,9 +70,9 @@ public class FrenchLemmaRun
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
+                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.getDotEndingWords());
                 TokenStream stream = tokenizer;
-                stream = new MLFilter(stream);
+                stream = new MarkupFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
                 stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
                 stream = new PosTaggingFilter(stream, model, PosTaggingFilter.HYPHEN_REWRITER);

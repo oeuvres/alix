@@ -92,7 +92,7 @@ import static com.github.oeuvres.alix.common.Upos.*;
  *   <li>Comments / declarations / processing instructions are dropped.</li>
  * </ul>
  */
-public final class MLFilter extends TokenFilter
+public final class MarkupFilter extends TokenFilter
 {
     /** Synthetic term emitted for paragraph-like boundaries. */
     public static final String PARA_MARK = "¶";
@@ -199,7 +199,7 @@ public final class MLFilter extends TokenFilter
      * @param input token stream from tokenizer (or a very early filter)
      * @throws NullPointerException if {@code input} is null
      */
-    public MLFilter(final TokenStream input)
+    public MarkupFilter(final TokenStream input)
     {
         super(Objects.requireNonNull(input, "input"));
     }

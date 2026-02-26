@@ -5,13 +5,13 @@ import org.apache.lucene.analysis.Tokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
-import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 
 import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * Demo driver for {@link MLTokenizer}.
+ * Demo driver for {@link MarkupTokenizer}.
  *
  * <p>
  * Runs curated inputs through the tokenizer and dumps the resulting token
@@ -20,7 +20,7 @@ import java.util.function.Supplier;
  * testing.
  * </p>
  */
-public class MLTokenizerDemo
+public class MarkupTokenizerDemo
 {
 
     // --- curated cases (edit freely) ---
@@ -85,7 +85,7 @@ public class MLTokenizerDemo
         final String which = (args.length == 0) ? "orig" : args[0]; // orig | (reserved for future modes)
         switch (which) {
             case "orig" -> {
-                Analyzer a = AnalyzerFactory.forTokenizer(() -> new MLTokenizer(FrenchLexicons.getDotEndingWords()));
+                Analyzer a = AnalyzerFactory.forTokenizer(() -> new MarkupTokenizer(FrenchLexicons.getDotEndingWords()));
                 AnalysisDemoHelper.runAll(a, "f", CASES);
             }
             default -> {

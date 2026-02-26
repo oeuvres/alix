@@ -37,8 +37,8 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
-import com.github.oeuvres.alix.lucene.analysis.MLFilter;
-import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupFilter;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 
 /**
  * An Analyzer for metadata.
@@ -57,9 +57,9 @@ public class AnalyzerMeta extends Analyzer
     @Override
     protected TokenStreamComponents createComponents(String fieldName)
     {
-        final Tokenizer tokenizer = new MLTokenizer(); // segment words
+        final Tokenizer tokenizer = new MarkupTokenizer(); // segment words
         TokenStream ts = tokenizer;
-        ts = new MLFilter(ts); // strip tags
+        ts = new MarkupFilter(ts); // strip tags
         ts = new FrenchCliticSplitFilter(ts); // fr split on ’ and -
         ts = new ASCIIFoldingFilter(ts); // no accents
         return new TokenStreamComponents(tokenizer, ts);

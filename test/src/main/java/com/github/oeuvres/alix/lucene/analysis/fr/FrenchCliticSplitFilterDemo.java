@@ -1,7 +1,7 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
-import com.github.oeuvres.alix.lucene.analysis.MLTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -143,7 +143,7 @@ public final class FrenchCliticSplitFilterDemo {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MLTokenizer(FrenchLexicons.getDotEndingWords());
+                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.getDotEndingWords());
                 TokenStream stream = new FrenchCliticSplitFilter(tokenizer);
                 return new TokenStreamComponents(tokenizer, stream);
             }

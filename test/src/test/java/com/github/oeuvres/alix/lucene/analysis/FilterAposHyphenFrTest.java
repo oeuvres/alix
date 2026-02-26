@@ -51,7 +51,7 @@ public class FilterAposHyphenFrTest
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new MLTokenizer();
+            final Tokenizer tokenizer = new MarkupTokenizer();
             TokenStream ts = tokenizer;
             ts = new FrenchCliticSplitFilter(tokenizer);
             return new TokenStreamComponents(tokenizer, ts);
