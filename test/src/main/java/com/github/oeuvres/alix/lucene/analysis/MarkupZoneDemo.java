@@ -11,28 +11,36 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-public class MarkupTokenizerDemo
+public class MarkupZoneDemo
 {
     /** Minimal Analyzer for StandardTokenizer ->TermReplaceFilter. */
-    private static Analyzer buildAnalyzer() {
-        return new Analyzer() {
+    private static Analyzer buildAnalyzer()
+    {
+        return new Analyzer()
+        {
             @Override
-            protected TokenStreamComponents createComponents(String fieldName) {
+            protected TokenStreamComponents createComponents(String fieldName)
+            {
                 Tokenizer tokenizer = new MarkupTokenizer();
-                TokenStream stream = tokenizer;
-                return new TokenStreamComponents(tokenizer, stream);
+                TokenStream ts = tokenizer;
+                ts = new MarkupZoneFilter(
+                        ts,
+                        "@other-attribute='observation'",
+                        MarkupZoneFilter.Mode.INCLUDE,
+                        MarkupZoneFilter.Suppress.DROP);
+                return new TokenStreamComponents(tokenizer, ts);
             }
         };
     }
-
+    
     static public void main(String[] args) throws IOException
     {
         Path path = Paths.get("src/test/test-data/ingest.html");
         String input = Files.readString(path, StandardCharsets.UTF_8);
         try (
-            Analyzer analyzer = buildAnalyzer();
-            BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)
-        ){
+                Analyzer analyzer = buildAnalyzer();
+                BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8))
+        {
             TokenStream ts = analyzer.tokenStream("contents", reader);
             AnalysisDemoHelper.dump(ts, input);
         }
