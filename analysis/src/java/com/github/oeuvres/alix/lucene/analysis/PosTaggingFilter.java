@@ -250,7 +250,10 @@ public class PosTaggingFilter extends TokenFilter
             final int pos = p.getPos();
 
             // Skip structural XML tags entirely (1 -> 0)
-            if (pos == XML.code) continue;
+            if (pos == XML.code) {
+                probAtt.setProb(1);
+                continue;
+            }
 
             // Sentence boundaries are submitted as punctuation token (1 -> 1)
             if (isSentenceBoundary(pos)) {

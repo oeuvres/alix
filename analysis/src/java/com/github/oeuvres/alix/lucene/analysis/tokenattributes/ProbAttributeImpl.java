@@ -4,7 +4,7 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
 public final class ProbAttributeImpl extends AttributeImpl implements ProbAttribute {
-    private static double UNKNOWN = -1;
+    private static double UNKNOWN = 0;
     private double prob = UNKNOWN;
     
     

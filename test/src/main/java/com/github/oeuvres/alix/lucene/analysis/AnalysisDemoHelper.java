@@ -87,10 +87,10 @@ public final class AnalysisDemoHelper {
                 final int start = offAtt.startOffset();
                 final int end = offAtt.endOffset();
                 final int pos = (posAtt != null)?posAtt.getPos():0;
-                final double prob = (probAtt != null)?probAtt.getProb():-1;
+                final String prob = (probAtt != null)?String.format(java.util.Locale.ROOT, "%.5f",probAtt.getProb()):"";
 
                 System.out.printf(
-                    "%5d\t[%d,%d)\t|%s|\t%s\t%s\t%s\t%.5f%n",
+                    "%5d\t[%d,%d)\t|%s|\t%s\t%s\t%s\t%s%n",
                     i++,
                     start, end,
                     safeSlice(input, start, end),

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alix:book
+    xmlns:alix="https://oeuvres.github.io/alix"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xml:id="demo-book">
+
+  <!-- Book-level metadata -->
+  <alix:field name="doc_kind" type="category" value="book"/>
+  <alix:field name="title" type="meta" value="Demo Book for Alix SAX Ingest"/>
+  <alix:field name="year" type="int" value="1959"/>
+  <alix:field name="author" type="facet" value="Jean Piaget"/>
+  <alix:field name="author" type="facet" value="Bärbel Inhelder"/>
+
+  <!-- Stored mixed content -->
+  <alix:field name="toc" type="store">
+    <nav class="toc">
+      <ol>
+        <li><a href="#ch1">Chapter I. Demo chapter</a></li>
+      </ol>
+    </nav>
+  </alix:field>
+
+  <alix:chapter xml:id="demo-book_ch1">
+
+    <alix:field name="doc_kind" type="category" value="chapter"/>
+    <alix:field name="bookid" type="category" value="demo-book"/>
+    <alix:field name="title" type="meta" value="Chapter I. Demo chapter"/>
+    <alix:field name="year" type="int" value="1959"/>
+    <alix:field name="author" type="facet" value="Jean Piaget"/>
+
+    <!-- Stored display/result string -->
+    <alix:field name="resultline" type="store" value="Piaget (1959), Chapter I, p. 1-12."/>
+
+    <!-- Main source text (XHTML payload) -->
+    <alix:field name="text" type="text">
+      <article id="ch1">
+        <h1>Chapter I. Demo chapter</h1>
+
+        <p>This is author text before a quotation.</p>
+
+        <blockquote data-tei-type="quote">
+          <p>This quoted passage should be indexable separately.</p>
+        </blockquote>
+
+        <p>This is author text after the quotation.</p>
+
+        <div data-tei-type="observation">
+          <p>Observation: the child groups objects by color first.</p>
+        </div>
+
+        <p>Final paragraph of author text.</p>
+      </article>
+    </alix:field>
+
+    <!-- Derived field: only observation zones -->
+    <alix:field name="observations" type="text" source="text">
+      <alix:include attribute="data-tei-type" value="observation"/>
+    </alix:field>
+
+    <!-- Derived field: exclude quoted zones -->
+    <alix:field name="text_noquotes" type="text" source="text">
+      <alix:exclude attribute="data-tei-type" value="quote"/>
+    </alix:field>
+
+  </alix:chapter>
+</alix:book>
