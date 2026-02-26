@@ -9,7 +9,6 @@ import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ElementAttribute;
@@ -78,8 +77,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  * ts = new MarkupZoneFilter(
  *         ts,
  *         "@data-tei-type='quote'|other-attribute='observation'",
- *         MarkupZoneFilter.Mode.INCLUDE,
- *         MarkupZoneFilter.Suppress.GAPS
+ *         MarkupZoneFilter.Mode.INCLUDE
  * );
  *
  * // Later, if you do not want markup indexed, strip tag tokens in a final filter.
@@ -89,13 +87,6 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 public final class MarkupZoneFilter extends TokenFilter
 {
     public enum Mode { INCLUDE, EXCLUDE }
-
-    public enum Suppress
-    {
-        DROP,
-        GAPS,
-        PLACEHOLDER
-    }
 
     /** Compiled OR-pattern: element local-names and/or attribute pairs. */
     private static final class CompiledMatch
@@ -165,13 +156,10 @@ public final class MarkupZoneFilter extends TokenFilter
     }
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    private final OffsetAttribute offAtt = addAttribute(OffsetAttribute.class);
-    private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
     private final ElementAttribute elemAtt = addAttribute(ElementAttribute.class);
 
     private final Mode mode;
-    private final Suppress suppress;
     private final CompiledMatch match;
 
     // Match stack: for each open element, whether that element matched the compiled pattern.
@@ -179,33 +167,11 @@ public final class MarkupZoneFilter extends TokenFilter
     private int depth = 0;
     private int matchDepth = 0;
 
-    // For Suppress.GAPS
-    private int pendingPosInc = 0;
 
-    // For Suppress.PLACEHOLDER
-    private final String placeholderTerm;
-    private State deferredState = null; // token to emit after a placeholder
-    private State emitState = null;     // placeholder to emit now (highest priority)
-    private State runFirstState = null;
-    private int runStartOffset = 0;
-    private int runEndOffset = 0;
-    private int runPosInc = 0;
-
-    public MarkupZoneFilter(TokenStream input, String matchExpr, Mode mode) {
-        this(input, matchExpr, mode, Suppress.GAPS, "__Z__");
-    }
-
-    public MarkupZoneFilter(TokenStream input, String matchExpr, Mode mode, Suppress suppress) {
-        this(input, matchExpr, mode, suppress, "__Z__");
-    }
-
-    public MarkupZoneFilter(TokenStream input, String matchExpr, Mode mode, Suppress suppress, String placeholderTerm) {
+    public MarkupZoneFilter(TokenStream input, String matchExpr,  Mode mode) {
         super(input);
         if (mode == null) throw new NullPointerException("mode is null");
-        if (suppress == null) throw new NullPointerException("suppress is null");
         this.mode = mode;
-        this.suppress = suppress;
-        this.placeholderTerm = (placeholderTerm == null || placeholderTerm.isEmpty()) ? "__Z__" : placeholderTerm;
         this.match = CompiledMatch.compile(matchExpr);
     }
 
@@ -214,29 +180,11 @@ public final class MarkupZoneFilter extends TokenFilter
         super.reset();
         depth = 0;
         matchDepth = 0;
-        pendingPosInc = 0;
-
-        deferredState = null;
-        emitState = null;
-        runFirstState = null;
-        runStartOffset = runEndOffset = runPosInc = 0;
     }
 
     @Override
     public boolean incrementToken() throws IOException
     {
-        // Emit placeholder first if scheduled.
-        if (emitState != null) {
-            restoreState(emitState);
-            emitState = null;
-            return true;
-        }
-        // Emit deferred token (captured before placeholder emission).
-        if (deferredState != null) {
-            restoreState(deferredState);
-            deferredState = null;
-            return true;
-        }
 
         while (input.incrementToken())
         {
@@ -272,55 +220,7 @@ public final class MarkupZoneFilter extends TokenFilter
             final boolean inZone = (matchDepth > 0);
             final boolean keep = (mode == Mode.INCLUDE)?inZone:!inZone;
 
-            if (!keep)
-            {
-                switch (suppress)
-                {
-                    case DROP:
-                        // drop token, do not preserve positions
-                        break;
-
-                    case GAPS:
-                        // preserve positions for phrase queries by adding gaps to next emitted NON-XML token
-                        pendingPosInc += Math.max(0, posIncAtt.getPositionIncrement());
-                        break;
-
-                    case PLACEHOLDER:
-                        // Build/extend a contiguous "dropped run"
-                        startOrExtendDroppedRun();
-                        break;
-                }
-                continue;
-            }
-
-            // We are about to emit a kept non-XML token. If we have a dropped run placeholder pending,
-            // emit placeholder BEFORE this token.
-            if (suppress == Suppress.PLACEHOLDER && runFirstState != null) {
-                deferredState = captureState();          // kept token as-is
-                emitState = buildPlaceholderState();
-                restoreState(emitState);
-                emitState = null;
-                return true;
-            }
-
-            // Apply pending gaps (only to NON-XML tokens; do not touch markup tokens).
-            if (suppress == Suppress.GAPS && pendingPosInc != 0) {
-                posIncAtt.setPositionIncrement(posIncAtt.getPositionIncrement() + pendingPosInc);
-                pendingPosInc = 0;
-            }
-
-            // Ensure sane position increment for emitted tokens.
-            if (posIncAtt.getPositionIncrement() <= 0) {
-                posIncAtt.setPositionIncrement(1);
-            }
-            return true;
-        }
-
-        // End of stream: flush trailing placeholder if needed.
-        if (suppress == Suppress.PLACEHOLDER && runFirstState != null) {
-            emitState = buildPlaceholderState();
-            restoreState(emitState);
-            emitState = null;
+            if (!keep) continue;
             return true;
         }
         return false;
@@ -351,7 +251,6 @@ public final class MarkupZoneFilter extends TokenFilter
                 elemAtt.copyBuffer(tag, name[0], name[1] - name[0]);
             }
             elemAtt.setEvent(ElementAttribute.CLOSE);
-            pop();
             return;
         }
 
@@ -389,54 +288,6 @@ public final class MarkupZoneFilter extends TokenFilter
         if (depth == 0) return;
         final boolean matched = matchStack[--depth];
         if (matched) matchDepth--;
-    }
-
-    private void startOrExtendDroppedRun()
-    {
-        final int inc = Math.max(0, posIncAtt.getPositionIncrement());
-
-        if (runFirstState == null) {
-            runFirstState = captureState(); // state of first dropped token
-            runStartOffset = offAtt.startOffset();
-            runEndOffset = offAtt.endOffset();
-            runPosInc = inc;
-        }
-        else {
-            // Extend run span and position gap.
-            final int end = offAtt.endOffset();
-            if (end > runEndOffset) runEndOffset = end;
-            runPosInc += inc;
-        }
-    }
-
-    private State buildPlaceholderState()
-    {
-        // Restore first dropped token, then overwrite term/offsets/posInc.
-        restoreState(runFirstState);
-
-        // Placeholder term: emitted as a normal token.
-        // (Alternative strategies you mentioned but NOT implemented here:
-        //  - empty term token (risky),
-        //  - fixed gap without any placeholder term.)
-        termAtt.setEmpty().append(placeholderTerm);
-
-        // Offsets span the dropped run.
-        offAtt.setOffset(runStartOffset, runEndOffset);
-
-        // Position increment: represent the dropped run as a single step.
-        posIncAtt.setPositionIncrement(runPosInc > 0 ? runPosInc : 1);
-
-        // This is not an XML tag token.
-        elemAtt.setEmpty();
-        elemAtt.setEvent(ElementAttribute.NONE);
-
-        final State st = captureState();
-
-        // Reset run.
-        runFirstState = null;
-        runStartOffset = runEndOffset = runPosInc = 0;
-
-        return st;
     }
 
     // -------------------------

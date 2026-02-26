@@ -24,10 +24,10 @@ public class MarkupZoneDemo
                 Tokenizer tokenizer = new MarkupTokenizer();
                 TokenStream ts = tokenizer;
                 ts = new MarkupZoneFilter(
-                        ts,
-                        "@other-attribute='observation'",
-                        MarkupZoneFilter.Mode.INCLUDE,
-                        MarkupZoneFilter.Suppress.DROP);
+                    ts,
+                    "@other-attribute='observation' | @data-tei-type=\"quote\" | h1",
+                    MarkupZoneFilter.Mode.INCLUDE
+                );
                 return new TokenStreamComponents(tokenizer, ts);
             }
         };
