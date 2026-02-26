@@ -25,14 +25,17 @@ public class MarkupDemo
                 TokenStream ts = tokenizer;
                 ts = new MarkupZoneFilter(
                     ts,
-                    "@other-attribute='observation' | @data-tei-type=\"quote\" | h1",
-                    MarkupZoneFilter.Mode.EXCLUDE
+                    "@other-attribute='observation' \n | @data-tei-type=\"quote\" \n | h1",
+                    
+                    MarkupZoneFilter.Mode.INCLUDE
                 );
+                /*
                 ts = new MarkupBoundaryFilter(
                     ts,
                     "h1|p|div",
                     "article|section"
                 );
+                */
                 return new TokenStreamComponents(tokenizer, ts);
             }
         };

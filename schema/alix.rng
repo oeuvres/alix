@@ -14,7 +14,7 @@
     </p>
     <p>Let's start by the kind of XML understood by Alix.</p>
     <a:example>
-<alix:set xmlns:alix="https://oeuvres.github.io/alix">
+<alix:set xmlns:alix="https://github.com/oeuvres/alix/ns">
   <alix:document xml:id="docid1">
     <alix:field name="title" type="text">First document</alix:field>
     <alix:field name="year" type="int" value="2019"/>
@@ -31,7 +31,7 @@
   </alix:document>
   <alix:book xml:id="bookid1">
     <alix:field name="title" type="text">Book title</alix:field>
-    <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+    <alix:field name="author" type="facet" value="Surname, Firstname"/>
     <alix:field name="toc" type="store">
       <ul>
         <li>1) Chapter 1</li>
@@ -41,13 +41,13 @@
     <alix:field name="year" type="int" value="2019"/>
     <alix:chapter>
       <!-- Useful metas for an application should be replicated, example facet  -->
-      <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+      <alix:field name="author" type="facet" value="Surname, Firstname"/>
       <alix:field name="text" type="text">
         <p>First chapter text</p>
       </alix:field>
     </alix:chapter>
     <alix:chapter>
-      <alix:field name="author" type="facet">Surname, Firstname</alix:field>
+      <alix:field name="author" type="facet" value="Surname, Firstname"/>
       <alix:field name="text" type="text">
         <p>Second chapter text</p>
       </alix:field>
@@ -274,6 +274,18 @@ According to Lucene model, there are 3 levels of objects inside Alix.
       <ref name="field-facet"/>
     </choice>
   </define>
+
+  <define name="zoneMatchExpr">
+    <a:documentation>
+Expression syntax for @include / @exclude (consumed by MarkupZoneFilter).
+This is NOT XPath. It is an OR-list of “atoms” separated by “|” (pipe).
+Atom forms:
+  - element name (local name): p, div, blockquote, teiHeader...
+  - attribute test: @attr='value' or @attr="value" (local attribute name)
+Whitespace is allowed around separators (e.g. "p | div").
+    </a:documentation>
+    <data type="token"/>
+  </define>
   <define name="field-text">
     <element name="field">
       <a:documentation>
@@ -282,19 +294,32 @@ XML/HTML tags are allowed as element content (well-formed XML fragment in this s
 Content is also stored for display, highlighting of occurrences, and relevant excerpts.
 This type is heavy (positions, offsets, term vectors...).
 If you need only lightweight token search (for example bibliographic strings), prefer @type="meta".
+
+@source (optional): derive this field from another field in the same document (the other field provides the XML/HTML payload).
+This is a field-to-field derivation (no payload duplication is implied by the schema).
+
+@include / @exclude (optional): zone filters applied during analysis, using the MarkupZoneFilter expression syntax
+(documented in <a:el>zoneMatchExpr</a:el>).
       </a:documentation>
       <ref name="name"/>
       <attribute name="type">
         <value>text</value>
       </attribute>
+
       <optional>
-        <choice>
-          <attribute name="include"/>
-          <attribute name="exclude"/>
-        </choice>
+        <attribute name="include"><ref name="zoneMatchExpr"/></attribute>
       </optional>
+      <optional>
+        <attribute name="exclude"><ref name="zoneMatchExpr"/></attribute>
+      </optional>
+
       <choice>
-        <attribute name="copy"/>
+        <group>
+          <attribute name="source">
+            <data type="NCName"/>
+          </attribute>
+          <empty/>
+        </group>
         <ref name="xml"/>
       </choice>
     </element>
@@ -314,16 +339,16 @@ Typical use: bibliographic citations, identifiers embedded in text strings, name
   </define>
   <define name="field-store">
     <element name="field">
-      <a:documentation>Payload stored only (no search, no sort), either as a string in @value or as nested XML content.
-        Use for any application data the developer wants back as-is (URL, local TOC, pre-rendered citation, rights block, UI fragments...).</a:documentation>
+      <a:documentation>
+Payload stored only (no search, no sort).
+Use for any application data the developer wants back as-is (URL, local TOC, pre-rendered citation, rights block, UI fragments...).
+Content is provided as element content only (text and/or nested XML/HTML).
+      </a:documentation>
       <ref name="name"/>
       <attribute name="type">
         <value>store</value>
       </attribute>
-      <choice>
-        <attribute name="value"/>
-        <ref name="xml"/>
-      </choice>
+      <ref name="xml"/>
     </element>
   </define>
   <define name="field-int">
@@ -378,7 +403,11 @@ Typical use: bibliographic citations, identifiers embedded in text strings, name
   </define>
   <define name="el">
     <element>
-      <anyName/>
+      <anyName>
+        <except>
+          <nsName ns="https://github.com/oeuvres/alix/ns"/>
+        </except>
+      </anyName>
       <zeroOrMore>
         <choice>
           <attribute>
