@@ -9,79 +9,79 @@ import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ElementAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /**
- * <p>
- * A streaming zone filter driven by minimal XSLT-like {@code match=} expressions.
- * The tokenizer is assumed to emit XML tags as normal tokens whose term text is
- * the literal tag (between {@code <...>}), and whose {@link PosAttribute} is
- * {@code XML.code}.
- * </p>
+ * Streaming zone filter for token streams that contain explicit XML/HTML tag tokens.
+ *
+ * <h2>Input contract</h2>
+ * <ul>
+ *   <li>The upstream tokenizer emits XML/HTML tags as tokens (e.g. {@code "<div a='b'>"}, {@code "</p>"}).</li>
+ *   <li>Tag tokens are identified by {@link PosAttribute#getPos()} == {@code XML.code}.</li>
+ *   <li>The literal tag text is carried by {@link CharTermAttribute} (including {@code <} and {@code >}).</li>
+ * </ul>
  *
  * <h2>What it does</h2>
  * <ul>
- *   <li><b>Preserves all XML tag tokens</b> (does not modify their {@link CharTermAttribute}).</li>
- *   <li>Maintains an <b>open-element stack</b> by parsing start/end tags.</li>
- *   <li>Sets {@link ElementAttribute} on <b>XML tag tokens only</b>:
- *       local-name + event (OPEN/CLOSE/EMPTY/OTHER).</li>
- *   <li>Filters <b>non-XML tokens only</b> according to {@link Mode} and the compiled match expression.</li>
+ *   <li>Parses tag tokens just enough to maintain an <b>open-element stack</b>.</li>
+ *   <li>Computes a boolean <b>zone membership</b> state: “inside at least one open element whose <i>start tag</i>
+ *       matched the configured {@code matchExpr}”.</li>
+ *   <li>Sets {@link ElementAttribute} on <b>tag tokens only</b>:
+ *     <ul>
+ *       <li>buffer = element local-name (namespace prefix removed)</li>
+ *       <li>event = {@link ElementAttribute#OPEN}, {@link ElementAttribute#CLOSE}, {@link ElementAttribute#EMPTY},
+ *           or {@link ElementAttribute#OTHER}</li>
+ *     </ul>
+ *   </li>
+ *   <li>Filters <b>both tag tokens and non-tag tokens</b> according to {@link Mode}:
+ *     <ul>
+ *       <li>{@link Mode#INCLUDE}: keep tokens only when “in zone”.</li>
+ *       <li>{@link Mode#EXCLUDE}: drop tokens when “in zone”.</li>
+ *     </ul>
+ *   </li>
  * </ul>
  *
- * <h2>Minimal match syntax (OR only)</h2>
- * <p>
- * Expression is a {@code |}-separated list of "atoms". Each atom is either:
- * </p>
+ * <h2>Minimal {@code matchExpr} syntax (OR only)</h2>
+ * {@code matchExpr} is a {@code |}-separated list of atoms. Each atom is either:
  * <ul>
  *   <li>An element name (local-name only): {@code teiHeader} or {@code teiHeader|note}</li>
- *   <li>An attribute test: {@code @data-tei-type='quote'} (also local-name only for the attribute name)</li>
+ *   <li>An attribute test: {@code @data-tei-type='quote'} (attribute local-name only)</li>
  * </ul>
  *
- * <p>
- * There is no descendant axis, no predicates, no AND, no wildcards; this is intentionally limited.
- * Mixing element atoms and attribute atoms is supported because matching is defined as OR:
- * a start-tag matches if its element local-name matches <i>any</i> element atom OR it contains
- * <i>any</i> attribute pair atom.
- * </p>
- *
- * <h2>Filtering semantics</h2>
+ * <p>Matching is OR:</p>
  * <ul>
- *   <li>{@link Mode#INCLUDE}: keep non-XML tokens only when inside at least one matched open element.</li>
- *   <li>{@link Mode#EXCLUDE}: drop non-XML tokens whenever inside at least one matched open element.</li>
+ *   <li>A start-tag matches if its element local-name matches <i>any</i> element atom, OR</li>
+ *   <li>the start-tag contains <i>any</i> attribute pair atom.</li>
  * </ul>
  *
- * <h2>Suppression strategies for dropped non-XML tokens</h2>
+ * <p>Not supported: XPath axes, predicates, wildcards, AND, descendant tests.</p>
+ *
+ * <h2>Tag parsing limits</h2>
  * <ul>
- *   <li>{@link Suppress#DROP}: simply drop tokens (position increments collapse).</li>
- *   <li>{@link Suppress#GAPS}: accumulate dropped tokens' {@link PositionIncrementAttribute} and add it to the
- *       next emitted <b>non-XML</b> token. Offsets of emitted tokens are unchanged.</li>
- *   <li>{@link Suppress#PLACEHOLDER}: emit one placeholder token for each contiguous run of dropped non-XML tokens.
- *       The placeholder offsets span the dropped run. (This is often useful for debugging or downstream heuristics.)</li>
+ *   <li>End-tags pop the open-element stack; start-tags push it.</li>
+ *   <li>Self-closing tags {@code <x/>} are recognized (event {@link ElementAttribute#EMPTY}) but
+ *       <b>do not open a new stack frame</b> in this implementation (no push/pop). This preserves your current behaviour.</li>
+ *   <li>PI/comments/doctype/CDATA-like tokens (prefix {@code <?} or {@code <!}) are tagged as {@link ElementAttribute#OTHER}
+ *       and do not affect the stack.</li>
  * </ul>
  *
- * <p>
- * Note: emitting empty terms (term length 0) as a "suppression" technique is deliberately not implemented here;
- * depending on your Lucene version and indexing pipeline, zero-length terms can be unsafe.
- * </p>
+ * <h2>Correctness note</h2>
+ * Closing tags must be tested for “in zone” <b>before</b> popping; otherwise the closing tag of an included zone is lost.
+ * This filter implements that ordering: {@link #processTag(char[], int)} sets the CLOSE event but does not pop;
+ * {@link #incrementToken()} pops after the keep/drop decision for CLOSE tokens.
  *
- * <h2>Usage example</h2>
- *
+ * <h2>Example</h2>
  * <pre>{@code
- * TokenStream ts = new YourXmlTokenizer(reader); // emits XML tags as tokens: pos==XML.code, term is "<...>"
+ * TokenStream ts = new YourXmlTokenizer(reader); // tag tokens have pos==XML.code and term "<...>"
  *
- * // Keep only quoted passages and observations (non-XML tokens),
- * // but keep ALL XML tag tokens unchanged in the stream.
+ * // Keep only the observation zones (tags + content inside).
  * ts = new MarkupZoneFilter(
- *         ts,
- *         "@data-tei-type='quote'|other-attribute='observation'",
- *         MarkupZoneFilter.Mode.INCLUDE
+ *     ts,
+ *     "@other-attribute='observation'",
+ *     MarkupZoneFilter.Mode.INCLUDE
  * );
- *
- * // Later, if you do not want markup indexed, strip tag tokens in a final filter.
- * // ts = new StripTagsFilter(ts);
  * }</pre>
  */
 public final class MarkupZoneFilter extends TokenFilter
@@ -113,8 +113,7 @@ public final class MarkupZoneFilter extends TokenFilter
                     attrs.add(parseAttrAtom(s));
                 }
                 else {
-                    // element atom (local-name only)
-                    String ln = localNameOfQName(s);
+                    final String ln = localNameOfQName(s);
                     if (!ln.isEmpty()) elems.add(ln.toCharArray());
                 }
             }
@@ -131,12 +130,8 @@ public final class MarkupZoneFilter extends TokenFilter
 
         boolean matchesStartTag(char[] tag, int n, int elLocalStart, int elLocalEnd) {
             // element-name OR attribute-pair
-            if (elemNames.length != 0 && matchesAnyElemName(tag, elLocalStart, elLocalEnd, elemNames)) {
-                return true;
-            }
-            if (attrPairs.length != 0 && matchesAnyAttrPair(tag, n, attrPairs)) {
-                return true;
-            }
+            if (elemNames.length != 0 && matchesAnyElemName(tag, elLocalStart, elLocalEnd, elemNames)) return true;
+            if (attrPairs.length != 0 && matchesAnyAttrPair(tag, n, attrPairs)) return true;
             return false;
         }
 
@@ -167,8 +162,7 @@ public final class MarkupZoneFilter extends TokenFilter
     private int depth = 0;
     private int matchDepth = 0;
 
-
-    public MarkupZoneFilter(TokenStream input, String matchExpr,  Mode mode) {
+    public MarkupZoneFilter(TokenStream input, String matchExpr, Mode mode) {
         super(input);
         if (mode == null) throw new NullPointerException("mode is null");
         this.mode = mode;
@@ -185,7 +179,6 @@ public final class MarkupZoneFilter extends TokenFilter
     @Override
     public boolean incrementToken() throws IOException
     {
-
         while (input.incrementToken())
         {
             final boolean isXml = (posAtt.getPos() == XML.code);
@@ -194,31 +187,30 @@ public final class MarkupZoneFilter extends TokenFilter
                 final char[] buf = termAtt.buffer();
                 final int len = termAtt.length();
 
-                // processTag MUST set elemAtt.event to OPEN/CLOSE/EMPTY/OTHER,
-                // and MUST NOT pop() yet for CLOSE (see next patch).
+                // Sets elemAtt (local-name + event) and pushes for OPEN tags.
+                // Does NOT pop for CLOSE tags (pop after keep decision).
                 processTag(buf, len);
 
                 final byte ev = elemAtt.getEvent();
+
                 // For end tags, "inside zone" must be tested *before* pop()
                 final boolean inZone = (matchDepth > 0);
-                final boolean keepTag = (mode == Mode.INCLUDE)?inZone:!inZone;
-                // Now that keepTag was decided with matchDepth BEFORE pop,
-                // we can pop for closing tags.
+                final boolean keep = (mode == Mode.INCLUDE) ? inZone : !inZone;
+
                 if (ev == ElementAttribute.CLOSE) {
                     pop();
                 }
 
-                if (keepTag) return true;
+                if (keep) return true;
                 continue;
             }
-            
+
             // Non-XML token: clear element-tag attribute to avoid stale values downstream.
             elemAtt.setEmpty();
             elemAtt.setEvent(ElementAttribute.NONE);
-            
-            // matchDepth > 0 means we are inside at least one matched open element.
+
             final boolean inZone = (matchDepth > 0);
-            final boolean keep = (mode == Mode.INCLUDE)?inZone:!inZone;
+            final boolean keep = (mode == Mode.INCLUDE) ? inZone : !inZone;
 
             if (!keep) continue;
             return true;
@@ -226,8 +218,10 @@ public final class MarkupZoneFilter extends TokenFilter
         return false;
     }
 
-
-
+    /**
+     * Parse a tag token, set {@link ElementAttribute}, and update the open-element stack for OPEN tags.
+     * CLOSE tags do not pop here; pop is performed in {@link #incrementToken()} after keep/drop decision.
+     */
     private void processTag(char[] tag, int n)
     {
         // Default for "weird" markup: clear element info.
@@ -239,37 +233,38 @@ public final class MarkupZoneFilter extends TokenFilter
         // PI / comments / doctype / CDATA markers
         final char c1 = tag[1];
         if (c1 == '?' || c1 == '!') {
-            // keep OTHER, no stack changes
             return;
         }
 
         if (c1 == '/')
         {
             // End tag: </name>
-            final int[] name = readElementLocalName(tag, n, 2);
-            if (name[1] > name[0]) {
-                elemAtt.copyBuffer(tag, name[0], name[1] - name[0]);
-            }
+            final long span = readElementLocalNameSpan(tag, n, 2);
+            final int start = (int)(span >>> 32);
+            final int end = (int)span;
+
+            if (end > start) elemAtt.copyBuffer(tag, start, end - start);
             elemAtt.setEvent(ElementAttribute.CLOSE);
             return;
         }
 
         // Start tag: <name ...> or <name .../>
-        final int[] name = readElementLocalName(tag, n, 1);
-        if (name[1] > name[0]) {
-            elemAtt.copyBuffer(tag, name[0], name[1] - name[0]);
-        }
+        final long span = readElementLocalNameSpan(tag, n, 1);
+        final int start = (int)(span >>> 32);
+        final int end = (int)span;
+
+        if (end > start) elemAtt.copyBuffer(tag, start, end - start);
 
         final boolean selfClosing = isSelfClosing(tag, n);
         elemAtt.setEvent(selfClosing ? ElementAttribute.EMPTY : ElementAttribute.OPEN);
 
-        // Only start-tags affect matching (end-tags just pop).
-        final boolean m = (name[1] > name[0]) && match.matchesStartTag(tag, n, name[0], name[1]);
+        // Only start-tags affect matching.
+        final boolean matched = (end > start) && match.matchesStartTag(tag, n, start, end);
 
         if (!selfClosing) {
-            push(m);
+            push(matched);
         }
-        // If self-closing: no scope; we deliberately do not push/pop.
+        // selfClosing: no scope (current behaviour preserved).
     }
 
     private void push(boolean matched)
@@ -311,11 +306,11 @@ public final class MarkupZoneFilter extends TokenFilter
     }
 
     /**
-     * Reads element local-name from an XML tag token.
+     * Reads element local-name span from an XML tag token.
      * @param from index right after '<' (1) or '</' (2)
-     * @return int[]{start,end} in the same char buffer, end exclusive.
+     * @return packed long: (start<<32) | end, end exclusive, in the same char buffer.
      */
-    private static int[] readElementLocalName(char[] tag, int n, int from)
+    private static long readElementLocalNameSpan(char[] tag, int n, int from)
     {
         int i = from;
         while (i < n && isSpace(tag[i])) i++;
@@ -333,7 +328,7 @@ public final class MarkupZoneFilter extends TokenFilter
         for (int k = nameStart; k < nameEnd; k++) {
             if (tag[k] == ':') localStart = k + 1;
         }
-        return new int[]{ localStart, nameEnd };
+        return (((long)localStart) << 32) | (nameEnd & 0xFFFFFFFFL);
     }
 
     private static boolean regionEquals(char[] s, int start, int end, char[] needle) {
