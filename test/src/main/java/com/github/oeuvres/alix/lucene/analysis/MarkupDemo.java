@@ -11,7 +11,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 
-public class MarkupZoneDemo
+public class MarkupDemo
 {
     /** Minimal Analyzer for StandardTokenizer ->TermReplaceFilter. */
     private static Analyzer buildAnalyzer()
@@ -26,7 +26,12 @@ public class MarkupZoneDemo
                 ts = new MarkupZoneFilter(
                     ts,
                     "@other-attribute='observation' | @data-tei-type=\"quote\" | h1",
-                    MarkupZoneFilter.Mode.INCLUDE
+                    MarkupZoneFilter.Mode.EXCLUDE
+                );
+                ts = new MarkupBoundaryFilter(
+                    ts,
+                    "h1|p|div",
+                    "article|section"
                 );
                 return new TokenStreamComponents(tokenizer, ts);
             }
