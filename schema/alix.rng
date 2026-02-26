@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <grammar
   xmlns="http://relaxng.org/ns/structure/1.0" 
-  ns="https://oeuvres.github.io/alix" 
+  ns="https://github.com/oeuvres/alix/ns" 
   datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
   xml:lang="en"
   xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" 
@@ -240,6 +240,7 @@ According to Lucene model, there are 3 levels of objects inside Alix.
   <define name="chapter">
     <element name="chapter">
       <a:documentation>A set of <a:el>field</a:el>s, like a <a:el>document</a:el>, except it has to be inside a <a:el>book</a:el>.</a:documentation>
+      <ref name="docid"/>
       <oneOrMore>
         <ref name="field"/>
       </oneOrMore>
@@ -286,7 +287,16 @@ If you need only lightweight token search (for example bibliographic strings), p
       <attribute name="type">
         <value>text</value>
       </attribute>
-      <ref name="xml"/>
+      <optional>
+        <choice>
+          <attribute name="include"/>
+          <attribute name="exclude"/>
+        </choice>
+      </optional>
+      <choice>
+        <attribute name="copy"/>
+        <ref name="xml"/>
+      </choice>
     </element>
   </define>
   <define name="field-meta">
@@ -299,10 +309,7 @@ Typical use: bibliographic citations, identifiers embedded in text strings, name
       <attribute name="type">
         <value>meta</value>
       </attribute>
-      <choice>
-        <attribute name="value"/>
-        <ref name="xml"/>
-      </choice>
+      <ref name="xml"/>
     </element>
   </define>
   <define name="field-store">

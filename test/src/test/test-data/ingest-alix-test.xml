@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="https://raw.githubusercontent.com/oeuvres/alix/master/schema/alix.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
 <alix:book
-    xmlns:alix="https://oeuvres.github.io/alix"
+    xmlns:alix="https://github.com/oeuvres/alix/ns"
     xmlns="http://www.w3.org/1999/xhtml"
     xml:id="demo-book">
 
   <!-- Book-level metadata -->
   <alix:field name="doc_kind" type="category" value="book"/>
-  <alix:field name="title" type="meta" value="Demo Book for Alix SAX Ingest"/>
+  <alix:field name="title" type="meta">Demo Book for Alix SAX Ingest</alix:field>
   <alix:field name="year" type="int" value="1959"/>
   <alix:field name="author" type="facet" value="Jean Piaget"/>
   <alix:field name="author" type="facet" value="Bärbel Inhelder"/>
@@ -24,7 +25,7 @@
 
     <alix:field name="doc_kind" type="category" value="chapter"/>
     <alix:field name="bookid" type="category" value="demo-book"/>
-    <alix:field name="title" type="meta" value="Chapter I. Demo chapter"/>
+    <alix:field name="title" type="meta">Chapter I. Demo chapter</alix:field>
     <alix:field name="year" type="int" value="1959"/>
     <alix:field name="author" type="facet" value="Jean Piaget"/>
 
@@ -32,13 +33,13 @@
     <alix:field name="resultline" type="store" value="Piaget (1959), Chapter I, p. 1-12."/>
 
     <!-- Main source text (XHTML payload) -->
-    <alix:field name="text" type="text">
+    <alix:field name="text" type="text" exclude="nav">
       <article id="ch1">
         <h1>Chapter I. Demo chapter</h1>
 
         <p>This is author text before a quotation.</p>
 
-        <blockquote data-tei-type="quote">
+        <blockquote other-type="quote">
           <p>This quoted passage should be indexable separately.</p>
         </blockquote>
 
@@ -49,18 +50,19 @@
         </div>
 
         <p>Final paragraph of author text.</p>
+        
+        <nav>
+          <a href="intro" class="prev">Introduction</a>
+          <a href="ch2" class="next">Chapter II</a>
+        </nav>
       </article>
     </alix:field>
 
     <!-- Derived field: only observation zones -->
-    <alix:field name="observations" type="text" source="text">
-      <alix:include attribute="data-tei-type" value="observation"/>
-    </alix:field>
+    <alix:field name="observations" type="text" copy="text" include="@data-tei-type='observation'"/>
 
     <!-- Derived field: exclude quoted zones -->
-    <alix:field name="text_noquotes" type="text" source="text">
-      <alix:exclude attribute="data-tei-type" value="quote"/>
-    </alix:field>
+    <alix:field name="text_noquotes" type="text" copy="text" exclude="@other-type='observation'"/>
 
   </alix:chapter>
 </alix:book>
