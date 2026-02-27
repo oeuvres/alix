@@ -2437,4 +2437,10 @@ Centralize some html attribute policy, especially for id, and class
       <xsl:value-of select="."/>
     </xsl:attribute>
   </xsl:template>
+  <!-- @type -->
+  <xsl:template match="@type">
+    <xsl:attribute name="data-tei-type">
+      <xsl:value-of select="normalize-space(.)"/>
+    </xsl:attribute>
+  </xsl:template>
 </xsl:transform>

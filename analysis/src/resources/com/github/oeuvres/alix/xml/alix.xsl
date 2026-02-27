@@ -40,9 +40,9 @@
   <xsl:variable name="split" select=".//tei:div[key('split', generate-id())]"/>
   <!--  clean url -->
   <xsl:variable name="_ext"/>
-  <!-- Get metas as a global var to insert fields in all chapters -->
-  <xsl:variable name="info">
-    <alix:field name="title" type="category" value="{normalize-space($doctitle)}"/>
+  
+  <!-- Root authors, maybe replicated at chapter level -->
+  <xsl:variable name="author-fields">
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt">
       <xsl:for-each select="tei:author|tei:principal">
         <xsl:variable name="value">
@@ -54,27 +54,24 @@
         <alix:field name="author" type="facet" value="{normalize-space($value)}"/>
       </xsl:for-each>
     </xsl:for-each>
-    <xsl:if test="$byline != ''">
-      <alix:field name="byline" type="store">
-        <xsl:copy-of select="$byline"/>
-      </alix:field>
-    </xsl:if>
-    <!-- rights -->
+  </xsl:variable> 
+  
+  <!-- Get metas as a global var to insert fields in all chapters -->
+  <xsl:variable name="info">
+    <!-- rights, send only if it seems that there are restriction for publication -->
     <xsl:choose>
-      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/*">
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt[not(tei:availability)]"/>
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability[not(@status)]"/>
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability[@status='free']"/>
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:licence[contains(@target, 'creativecommons.org')]"/>
+      <xsl:otherwise>
         <alix:field name="rights" type="meta">
           <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/*">
-            <p>
-              <xsl:apply-templates/>
-            </p>
+            <xsl:apply-templates select="."/>
           </xsl:for-each>
-          <!--
-          <xsl:apply-templates select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/"/>
-          -->
         </alix:field>
-      </xsl:when>
+      </xsl:otherwise>
     </xsl:choose>
-
   </xsl:variable>
   
   <!-- tags to add at text level (not the book cover) for better stats -->
@@ -83,12 +80,15 @@
       <xsl:variable name="value">
         <xsl:apply-templates select="." mode="key"/>
       </xsl:variable>
-      <xsl:if test="normalize-space($value) != ''">
-        <alix:field name="term" type="facet" value="{normalize-space($value)}"/>
-        <xsl:if test="@type and @type != 'term'">
+      <xsl:choose>
+        <xsl:when test="normalize-space($value) = ''"/>
+        <xsl:when test="@type and normalize-space(@type) != ''">
           <alix:field name="{@type}" type="facet" value="{normalize-space($value)}"/>
-        </xsl:if>
-      </xsl:if>
+        </xsl:when>
+        <xsl:otherwise>
+          <alix:field name="term" type="facet" value="{normalize-space($value)}"/>
+        </xsl:otherwise>
+      </xsl:choose>
     </xsl:for-each>
   </xsl:variable>
   
@@ -194,7 +194,12 @@
     <xsl:if test="/*/@cert">
       <alix:field name="cert" type="category" value="{normalize-space(/*/@cert)}"/>
     </xsl:if>
-
+    <alix:field name="title" type="category" value="{normalize-space($doctitle)}"/>
+    
+    <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:notesStmt">
+      <xsl:call-template name="note-bibl"/>
+    </xsl:for-each>
+    <xsl:copy-of select="$author-fields"/>
     <xsl:copy-of select="$info"/>
     <!-- Date of global book -->
     <xsl:variable name="year" select="substring($docdate, 1, 4)"/>
@@ -207,14 +212,6 @@
     </xsl:if>
     <xsl:if test="@type">
       <alix:field name="type" type="category" value="{@type}"/>
-    </xsl:if>
-    <alix:field name="bibl" type="meta">
-      <xsl:copy-of select="$bibl-book"/>
-    </alix:field>
-    <xsl:if test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'ref']">
-      <alix:field name="ref" type="meta">
-        <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'ref']"/>
-      </alix:field>
     </xsl:if>
     <alix:field name="toc" type="store">
       <xsl:call-template name="toc">
@@ -229,6 +226,7 @@
         <xsl:apply-templates mode="alix" select="*"/>
       </xsl:when>
       <xsl:otherwise>
+        <!-- Do not copy tags for book field cover -->
         <xsl:copy-of select="$tags"/>
         <alix:field name="text" type="text">
           <article>
@@ -392,10 +390,25 @@
           <alix:field name="type" type="category" value="{normalize-space(/*/@type)}"/>
         </xsl:when>
       </xsl:choose>
+            <!-- local date or replicate book date ? -->
+      <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
+      <xsl:variable name="bookyear" select="substring($docdate, 1, 4)"/>
+      <xsl:choose>
+        <xsl:when test="string(number($chapyear)) != 'NaN'">
+          <alix:field name="year" type="int" value="{$chapyear}"/>
+        </xsl:when>
+        <xsl:when test="string(number($bookyear)) != 'NaN'">
+          <alix:field name="year" type="int" value="{$bookyear}"/>
+        </xsl:when>
+      </xsl:choose>
+      <!-- Todo, chapter authors -->
+      <xsl:copy-of select="$author-fields"/>
+      <xsl:call-template name="note-bibl"/>
       <!-- replication of tags from parent -->
       <xsl:copy-of select="$tags"/>
-      <!-- Todo, chapter authors -->
       <xsl:copy-of select="$info"/>
+      <!-- by chapter metadata -->
+      
       <alix:field name="toc" type="store">
         <xsl:call-template name="toclocal"/>
       </alix:field>
@@ -412,37 +425,12 @@
           </xsl:if>
         </article>
       </alix:field>
-      <!-- local date or replicate book date ? -->
-      <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
-      <xsl:variable name="bookyear" select="substring($docdate, 1, 4)"/>
-      <xsl:choose>
-        <xsl:when test="string(number($chapyear)) != 'NaN'">
-          <alix:field name="year" type="int" value="{$chapyear}"/>
-        </xsl:when>
-        <xsl:when test="string(number($bookyear)) != 'NaN'">
-          <alix:field name="year" type="int" value="{$bookyear}"/>
-        </xsl:when>
-      </xsl:choose>
-      <alix:field name="source" type="meta">
-        <xsl:choose>
-          <xsl:when test="tei:head/tei:note[@type = 'source']">
-            <xsl:apply-templates select="tei:head/tei:note[@type = 'source']/node()"/>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:copy-of select="$bibl-book"/>
-            <xsl:variable name="analytic">
-              <xsl:call-template name="analytic"/>
-            </xsl:variable>
-            <xsl:if test="$analytic != ''">
-              <xsl:text> « </xsl:text>
-              <span class="analytic">
-                <xsl:copy-of select="$analytic"/>
-              </span>
-              <xsl:text> »</xsl:text>
-            </xsl:if>
-          </xsl:otherwise>
-        </xsl:choose>
-      </alix:field>
+      <xsl:if test=".//*[@type = 'observation']">
+        <alix:field name="observations" type="text" source="text">
+          <alix:include attribute="data-tei-type" value="observation"/>
+        </alix:field>
+      </xsl:if>
+      <!--
       <alix:field name="analytic" type="meta">
         <xsl:call-template name="analytic"/>
       </alix:field>
@@ -470,6 +458,7 @@
           <xsl:value-of select="$next"/>
         </alix:field>
       </xsl:if>
+      -->
       <!-- get the internal links -->
       <xsl:call-template name="links"/>
     </alix:chapter>
@@ -520,6 +509,26 @@
           </alix:field>
         </xsl:otherwise>
       </xsl:choose>
+    </xsl:for-each>
+  </xsl:template>
+
+  <xsl:template name="note-bibl">
+    <xsl:for-each select="tei:note[@type = 'bibl'][1]">
+      <xsl:for-each select="processing-instruction('title')">
+        <alix:field name="html:title" type="store">
+          <xsl:value-of select="."/>
+        </alix:field>
+      </xsl:for-each>
+      <xsl:for-each select="processing-instruction('JSON-LD')">
+        <alix:field name="json-ld" type="store">
+          <xsl:value-of select="."/>
+        </alix:field>
+      </xsl:for-each>
+      <xsl:for-each select="tei:bibl[@type = 'hit'][1]">
+        <alix:field name="hit" type="store">
+          <xsl:apply-templates/>
+        </alix:field>
+      </xsl:for-each>
     </xsl:for-each>
   </xsl:template>
 
