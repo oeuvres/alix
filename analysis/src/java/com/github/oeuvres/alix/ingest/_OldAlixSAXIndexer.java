@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.lucene.index;
+package com.github.oeuvres.alix.ingest;
 
 import java.io.IOException;
 import java.text.DecimalFormat;

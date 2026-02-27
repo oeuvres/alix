@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.index;
+package com.github.oeuvres.alix.ingest;
 
 import org.xml.sax.*;
 import javax.xml.XMLConstants;

@@ -33,4 +33,4 @@
 /**
  * Pilots for indexing corpora.
  */
-package com.github.oeuvres.alix.lucene.index;
+package com.github.oeuvres.alix.ingest;

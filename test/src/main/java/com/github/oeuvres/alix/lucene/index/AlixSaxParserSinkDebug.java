@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.github.oeuvres.alix.ingest.AlixSaxHandler;
+
 public final class  AlixSaxParserSinkDebug implements AlixSaxHandler.AlixSink {
 
     @Override

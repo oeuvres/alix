@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.index;
+package com.github.oeuvres.alix.ingest;
 
 import java.io.IOException;
 import java.nio.file.Files;
