@@ -34,28 +34,29 @@
 
     <!-- Main source text (XHTML payload) -->
     <alix:field name="text" type="text" exclude="nav">
-      <article id="ch1">
-        <h1>Chapter I. Demo chapter</h1>
-
-        <p>This is author text before a quotation.</p>
-
-        <blockquote other-type="quote">
-          <p>This quoted passage should be indexable separately.</p>
-        </blockquote>
-
-        <p>This is author text after the quotation.</p>
-
-        <div data-tei-type="observation">
-          <p>Observation: the child groups objects by color first.</p>
-        </div>
-
-        <p>Final paragraph of author text.</p>
-        
-        <nav>
-          <a href="intro" class="prev">Introduction</a>
-          <a href="ch2" class="next">Chapter II</a>
-        </nav>
-      </article>
+<article id="ch1">
+  <h1>Chapter I. Demo chapter</h1>
+  <div>
+    <p>This is author text before a quotation.</p>
+    <blockquote data-tei-type="quote">
+      <p>This quoted passage should be indexable separately.</p>
+    </blockquote>
+    <p>This is author text after the quotation.</p>
+  </div>
+  <div>
+    <p>Paragraph of author text before an observation.</p>
+    <div other-attribute="observation">
+      <p>Observation: the child groups objects by color first.</p>
+      <div>&lt;div> inside observation</div>
+    </div>
+    <p>Final paragraph of author text.</p>
+  </div>
+  
+  <nav>
+    <a href="intro" class="prev">Introduction</a>
+    <a href="ch2" class="next">Chapter II</a>
+  </nav>
+</article>
     </alix:field>
 
     <!-- Derived field: only observation zones -->

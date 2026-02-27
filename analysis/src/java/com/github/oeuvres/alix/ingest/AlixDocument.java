@@ -118,6 +118,10 @@ public final class AlixDocument
             return doc.openReader(off, len);
         }
         
+        public CharSequence getCharSequence(AlixDocument doc) {
+            return doc.sliceAsCharSequence(off, len);
+        }
+        
         @Override
         public String toString()
         {
@@ -144,6 +148,16 @@ public final class AlixDocument
     private int fieldCount = 0;
     
     private AlixField current = null;
+    
+ // ---- Add inside AlixDocument ----
+    private long ingestEpochMillis = 0L;
+    private int chapterOrdinal = -1; // -1 = unknown
+
+    public void setIngestEpochMillis(long ms) { this.ingestEpochMillis = ms; }
+    public long getIngestEpochMillis() { return ingestEpochMillis; }
+
+    public void setChapterOrdinal(int ord) { this.chapterOrdinal = ord; }
+    public int getChapterOrdinal() { return chapterOrdinal; }
     
     public AlixDocument()
     {
@@ -287,6 +301,39 @@ public final class AlixDocument
             throw new IndexOutOfBoundsException();
         return new String(buffer, off, len);
     }
+    
+    public CharSequence sliceAsCharSequence(int off, int len) {
+        if (off < 0 || len < 0 || off + len > size) throw new IndexOutOfBoundsException();
+        return new CharSlice(buffer, off, len);
+      }
+
+    
+    private static final class CharSlice implements CharSequence {
+        private final char[] buf;
+        private final int off, len;
+
+        CharSlice(char[] buf, int off, int len) {
+          this.buf = buf;
+          this.off = off;
+          this.len = len;
+        }
+
+        @Override public int length() { return len; }
+
+        @Override public char charAt(int index) {
+          if (index < 0 || index >= len) throw new IndexOutOfBoundsException();
+          return buf[off + index];
+        }
+
+        @Override public CharSequence subSequence(int start, int end) {
+          if (start < 0 || end < start || end > len) throw new IndexOutOfBoundsException();
+          return new CharSlice(buf, off + start, end - start);
+        }
+
+        @Override public String toString() {
+          return new String(buf, off, len); // allocate only if someone explicitly asks
+        }
+      }
     
     // -------------------------
     // Internal growth helpers

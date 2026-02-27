@@ -38,6 +38,7 @@ package com.github.oeuvres.alix.common;
  */
 public final class Names
 {
+    private Names() {}
     /** For a cookie */
     public static final String ALIX_BASE = "alix.base";
     /** Mandatory field, unique id for a book and its chapters */
@@ -88,8 +89,4 @@ public final class Names
     public final static String UNKNOWN = "unknown";
     /** Field type */
     public final static String XML = "xml";
-
-    private Names() {
-        // restrict instantiation
-    }
 }
