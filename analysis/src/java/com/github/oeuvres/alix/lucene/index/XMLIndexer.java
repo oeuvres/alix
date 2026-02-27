@@ -130,7 +130,7 @@ public class XMLIndexer implements Runnable
             throws FileNotFoundException, TransformerException {
         
         // lucene indexation
-        alix2luceneResult = new SAXResult((ContentHandler) new AlixSAXIndexer(writer));
+        alix2luceneResult = new SAXResult((ContentHandler) new _OldAlixSAXIndexer(writer));
 
         // to get XSL as a SAX handler for piping
         // final SAXTransformerFactory stf = (SAXTransformerFactory)TransformerFactory.newInstance();
@@ -173,7 +173,7 @@ public class XMLIndexer implements Runnable
     ) throws ParserConfigurationException, SAXException, IOException, TransformerException
     {
         // alix indexation
-        AlixSAXIndexer alix2luceneHandler = new AlixSAXIndexer(writer);
+        _OldAlixSAXIndexer alix2luceneHandler = new _OldAlixSAXIndexer(writer);
         SAXResult alix2luceneResult = new SAXResult((ContentHandler) alix2luceneHandler);
 
         // to get XSL as a SAX handler for piping
@@ -216,7 +216,7 @@ public class XMLIndexer implements Runnable
             // load source file 
             StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
             // alix2luceneHandler.setFileName(filename); // set fileName meta
-            ((AlixSAXIndexer)alix2luceneResult.getHandler()).setFileName(filename); // set fileName meta
+            ((_OldAlixSAXIndexer)alix2luceneResult.getHandler()).setFileName(filename); // set fileName meta
             
             try {
                 if (preXsl != null) {
@@ -271,7 +271,7 @@ public class XMLIndexer implements Runnable
     
                 // load source file 
                 StreamSource docSource = new StreamSource(new ByteArrayInputStream(docBytes));
-                ((AlixSAXIndexer)alix2luceneResult.getHandler()).setFileName(filename); // set fileName meta
+                ((_OldAlixSAXIndexer)alix2luceneResult.getHandler()).setFileName(filename); // set fileName meta
             
                 if (preHandler != null) {
                     preHandler.getTransformer().setParameter("filename", filename);

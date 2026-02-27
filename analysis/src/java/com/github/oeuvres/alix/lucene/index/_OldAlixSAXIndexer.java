@@ -77,10 +77,10 @@ import static com.github.oeuvres.alix.common.Names.*;
  * </p>
  *
  */
-public class AlixSAXIndexer extends DefaultHandler
+public class _OldAlixSAXIndexer extends DefaultHandler
 {
     /** logger */
-    private static Logger LOGGER = LoggerFactory.getLogger(AlixSAXIndexer.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(_OldAlixSAXIndexer.class);
     final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
     final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
     /** Lucene writer */
@@ -114,7 +114,7 @@ public class AlixSAXIndexer extends DefaultHandler
      * 
      * @param writer A Lucene index to write in.
      */
-    public AlixSAXIndexer(final IndexWriter writer) {
+    public _OldAlixSAXIndexer(final IndexWriter writer) {
         this.writer = writer;
     }
 

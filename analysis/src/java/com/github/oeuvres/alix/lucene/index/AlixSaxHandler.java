@@ -1,494 +1,395 @@
 package com.github.oeuvres.alix.lucene.index;
 
-
-import org.xml.sax.*;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
 import org.xml.sax.ext.DefaultHandler2;
 
 import javax.xml.XMLConstants;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
+import java.util.Objects;
 
 /**
- * SAX parser for Alix XML (v1).
+ * SAX handler for the current Alix ingest XML as exemplified by ingest-alix-test.xml.
  *
- * Supported:
- * - alix:book / alix:chapter / alix:field
- * - field payload: @value OR mixed XML content OR @source + selectors
- * - derived field selectors: alix:include / alix:exclude (attribute/element)
+ * <h2>Supported structure</h2>
+ * <ul>
+ *   <li>{@code <alix:book>} root in namespace {@value #ALIX_NS}.</li>
+ *   <li>{@code <alix:chapter>} under book.</li>
+ *   <li>{@code <alix:field>} under book and under chapter.</li>
+ * </ul>
  *
- * Notes:
- * - All fields are "stored" by Alix contract, but this parser only emits definitions.
- * - Analyzer names are emitted as hints only (no actual analyzer binding here).
+ * <h2>Supported field forms (exactly one)</h2>
+ * <ul>
+ *   <li><b>Scalar attribute</b>: {@code value="..."} (as in ingest-alix-test.xml).</li>
+ *   <li><b>Inline content</b>: text-only or mixed XHTML elements between {@code <alix:field>...</alix:field>}.</li>
+ *   <li><b>Derived field</b>: {@code source="fieldName"} with optional {@code include} / {@code exclude}.</li>
+ * </ul>
+ *
+ * <h2>Output</h2>
+ * Writes directly into a reusable {@link AlixDocument}:
+ * <ul>
+ *   <li>On {@code <alix:book>} start: {@link AlixDocument#openDocument(AlixDocument.DocumentType, String)} with BOOK.</li>
+ *   <li>Book document is emitted to {@link AlixDocumentConsumer} immediately before the first chapter (if any),
+ *       otherwise at {@code </alix:book>}.</li>
+ *   <li>On {@code <alix:chapter>} start: opens a CHAPTER document; emitted on {@code </alix:chapter>}.</li>
+ * </ul>
+ *
+ * <p>Mixed content is re-serialized from SAX events (not a byte-identical round-trip).</p>
+ *
+ * <p>This handler is compatible with:</p>
+ * <ul>
+ *   <li>{@link AlixFileIngester} (XMLReader parsing Alix XML files)</li>
+ *   <li>{@link AlixTeiIngester} (XSLT streaming to SAXResult)</li>
+ * </ul>
  */
 public final class AlixSaxHandler extends DefaultHandler2 {
 
-    public static final String ALIX_NS = "https://oeuvres.github.io/alix";
-    public static final String XML_NS = "http://www.w3.org/XML/1998/namespace";
+  public static final String ALIX_NS = "https://github.com/oeuvres/alix/ns";
+  private static final String XML_NS = XMLConstants.XML_NS_URI;
 
-    // ---------- Public API ----------
+  /** Called when a logical AlixDocument (BOOK or CHAPTER) is complete. */
+  @FunctionalInterface
+  public interface AlixDocumentConsumer {
+    void accept(AlixDocument doc) throws SAXException;
+  }
 
-    public static void parse(InputStream in, AlixSink sink) throws IOException, SAXException {
-        try {
-            SAXParserFactory spf = SAXParserFactory.newInstance();
-            spf.setNamespaceAware(true);
+  private final AlixDocument doc;
+  private final AlixDocumentConsumer consumer;
 
-            // Harden parser defaults (XXE / external entity expansion). Not all SAX implementations support all features.
-            try { spf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true); } catch (Exception ignored) {}
-            try { spf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true); } catch (Exception ignored) {}
-            try { spf.setFeature("http://xml.org/sax/features/external-general-entities", false); } catch (Exception ignored) {}
-            try { spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false); } catch (Exception ignored) {}
-            try { spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false); } catch (Exception ignored) {}
+  // logical document state
+  private boolean bookOpen = false;
+  private boolean bookEmitted = false;
+  private boolean chapterOpen = false;
 
-            SAXParser parser = spf.newSAXParser();
-            XMLReader xr = parser.getXMLReader();
+  // current field capture
+  private enum FieldMode { NONE, SCALAR, CONTENT, DERIVED }
+  private FieldMode fieldMode = FieldMode.NONE;
 
-            xr.setContentHandler(new AlixSaxHandler(sink));
-            xr.setErrorHandler(new StrictErrorHandler());
+  // when capturing mixed content, we serialize nested non-alix elements
+  private int payloadDepth = 0;
 
-            // Important for fragment serialization: keep qName + xmlns attrs if possible
-            try { xr.setFeature("http://xml.org/sax/features/namespaces", true); } catch (SAXNotRecognizedException | SAXNotSupportedException ignored) {}
-            try { xr.setFeature("http://xml.org/sax/features/namespace-prefixes", true); } catch (SAXNotRecognizedException | SAXNotSupportedException ignored) {}
+  // reused tag builder for start/end tags
+  private final StringBuilder tagBuf = new StringBuilder(256);
 
-            xr.parse(new InputSource(in));
-        }
-        catch (ParserConfigurationException e) {
-            throw new SAXException("Cannot configure SAX parser", e);
-        }
+  public AlixSaxHandler(AlixDocument doc, AlixDocumentConsumer consumer) {
+    this.doc = Objects.requireNonNull(doc, "doc");
+    this.consumer = Objects.requireNonNull(consumer, "consumer");
+  }
+
+  @Override
+  public void startDocument() {
+    // Important for XSLT producers: handler instances may be reused.
+    bookOpen = false;
+    bookEmitted = false;
+    chapterOpen = false;
+    fieldMode = FieldMode.NONE;
+    payloadDepth = 0;
+    tagBuf.setLength(0);
+  }
+
+  @Override
+  public void endDocument() throws SAXException {
+    // Flush any open logical docs if the input ended unexpectedly.
+    if (fieldMode != FieldMode.NONE) {
+      throw new SAXException("Unclosed alix:field at end of input");
+    }
+    if (chapterOpen) {
+      emitAndCloseCurrent();
+      chapterOpen = false;
+    }
+    if (bookOpen && !bookEmitted) {
+      emitAndCloseCurrent();
+      bookEmitted = true;
+      bookOpen = false;
+    }
+  }
+
+  @Override
+  public void startElement(String uri, String localName, String qName, Attributes atts) throws SAXException {
+
+    // Inside mixed-content payload: serialize all nested elements (non-alix only)
+    if (fieldMode == FieldMode.CONTENT && payloadDepth > 0) {
+      appendStartTag(nameForTag(qName, localName), atts);
+      payloadDepth++;
+      return;
     }
 
-    public interface AlixSink {
-        void startUnit(Unit unit);
-        void field(Unit unit, FieldSpec field);
-        void endUnit(Unit unit);
+    // Alix structural elements
+    if (ALIX_NS.equals(uri)) {
+      switch (localName) {
+        case "book" -> startBook(atts);
+        case "chapter" -> startChapter(atts);
+        case "field" -> startField(atts);
+        default -> throw new SAXException("Unsupported alix element: " + nameForTag(qName, localName));
+      }
+      return;
     }
 
-    public record Unit(String kind, String xmlId) {} // kind = "book" | "chapter"
-
-    public enum FieldType {
-        STORE, INT, CATEGORY, FACET, META, TEXT;
-
-        public static FieldType parse(String s) throws SAXException {
-            if (s == null) throw new SAXException("alix:field missing @type");
-            return switch (s) {
-                case "store" -> STORE;
-                case "int" -> INT;
-                case "category" -> CATEGORY;
-                case "facet" -> FACET;
-                case "meta" -> META;
-                case "text" -> TEXT;
-                default -> throw new SAXException("Unknown alix:field @type='" + s + "'");
-            };
-        }
+    // Non-alix element: only legal inside an inline CONTENT field
+    if (fieldMode == FieldMode.CONTENT) {
+      payloadDepth = 1;
+      appendStartTag(nameForTag(qName, localName), atts);
+      return;
     }
 
-    public enum SelectorMode { INCLUDE, EXCLUDE }
+    throw new SAXException("Unexpected non-alix element outside alix:field content: " + nameForTag(qName, localName));
+  }
 
-    public record Selector(
-        SelectorMode mode,
-        String element,      // optional
-        String attribute,    // optional
-        String value         // optional (usually used with attribute)
-    ) {}
+  @Override
+  public void endElement(String uri, String localName, String qName) throws SAXException {
 
-    public record FieldSpec(
-        String name,
-        FieldType type,
-        String analyzerHint,      // hint only, no analyzer binding here
-        String value,             // scalar payload (@value)
-        String contentXml,        // mixed XML/XHTML payload (serialized fragment)
-        String source,            // derived field source name
-        List<Selector> selectors  // include/exclude directives for derived fields
-    ) {}
-
-    // ---------- Internal state ----------
-
-    private final AlixSink sink;
-
-    private final Deque<UnitCtx> unitStack = new ArrayDeque<>();
-    private FieldCtx currentField;
-
-    private AlixSaxHandler(AlixSink sink) {
-        this.sink = Objects.requireNonNull(sink, "sink");
+    if (fieldMode == FieldMode.CONTENT && payloadDepth > 0) {
+      appendEndTag(nameForTag(qName, localName));
+      payloadDepth--;
+      return;
     }
 
-    private static final class UnitCtx {
-        final Unit unit;
-        final Set<String> seenFieldNames = new HashSet<>();
-        UnitCtx(Unit unit) { this.unit = unit; }
+    if (!ALIX_NS.equals(uri)) {
+      // Outside payload we ignore non-alix closings.
+      return;
     }
 
-    private static final class FieldCtx {
-        final String name;
-        final FieldType type;
-        final String analyzerHint;
-        final String value;
-        final String source;
-        final List<Selector> selectors = new ArrayList<>();
+    switch (localName) {
+      case "field" -> endField();
+      case "chapter" -> endChapter();
+      case "book" -> endBook();
+      default -> { /* rejected on start */ }
+    }
+  }
 
-        // Mixed-content capture
-        final StringBuilder xml = new StringBuilder(256);
-        boolean hasMixedPayload = false;
-        int payloadDepth = 0; // depth inside non-alix payload root(s)
+  @Override
+  public void characters(char[] ch, int start, int length) throws SAXException {
+    if (fieldMode == FieldMode.NONE) return;
 
-        FieldCtx(String name, FieldType type, String analyzerHint, String value, String source) {
-            this.name = name;
-            this.type = type;
-            this.analyzerHint = analyzerHint;
-            this.value = value;
-            this.source = source;
+    switch (fieldMode) {
+      case SCALAR, DERIVED -> {
+        // Must be empty (except indentation whitespace)
+        if (!isAllWhitespace(ch, start, length)) {
+          throw new SAXException("Field with " + (fieldMode == FieldMode.SCALAR ? "@value" : "@source")
+              + " must not have inline content");
         }
+      }
+      case CONTENT -> {
+        // Preserve whitespace but escape text so the fragment stays XML-safe
+        appendEscapedText(ch, start, length);
+      }
+      default -> { /* unreachable */ }
+    }
+  }
+
+  @Override
+  public void ignorableWhitespace(char[] ch, int start, int length) throws SAXException {
+    // Keep pretty-print whitespace inside CONTENT.
+    characters(ch, start, length);
+  }
+
+  // ----------------------------
+  // Book / chapter boundaries
+  // ----------------------------
+
+  private void startBook(Attributes atts) throws SAXException {
+    if (fieldMode != FieldMode.NONE) throw new SAXException("alix:book inside alix:field");
+    final String bookId = xmlId(atts);
+    doc.openDocument(AlixDocument.DocumentType.BOOK, bookId);
+    bookOpen = true;
+    bookEmitted = false;
+  }
+
+  private void endBook() throws SAXException {
+    if (fieldMode != FieldMode.NONE) throw new SAXException("Unclosed alix:field before </alix:book>");
+    if (bookOpen && !bookEmitted) {
+      emitAndCloseCurrent();
+      bookEmitted = true;
+    }
+    bookOpen = false;
+  }
+
+  private void startChapter(Attributes atts) throws SAXException {
+    if (fieldMode != FieldMode.NONE) throw new SAXException("alix:chapter inside alix:field");
+
+    // Emit book-level doc before first chapter (matches ingest-alix-test.xml layout)
+    if (bookOpen && !bookEmitted) {
+      emitAndCloseCurrent();
+      bookEmitted = true;
+      bookOpen = false;
     }
 
-    // ---------- SAX callbacks ----------
+    final String chapId = xmlId(atts);
+    doc.openDocument(AlixDocument.DocumentType.CHAPTER, chapId);
+    chapterOpen = true;
+  }
 
-    @Override
-    public void startDocument() {}
+  private void endChapter() throws SAXException {
+    if (fieldMode != FieldMode.NONE) throw new SAXException("Unclosed alix:field before </alix:chapter>");
+    if (!chapterOpen) throw new SAXException("Unexpected </alix:chapter>");
+    emitAndCloseCurrent();
+    chapterOpen = false;
+  }
 
-    @Override
-    public void endDocument() throws SAXException {
-        if (!unitStack.isEmpty()) {
-            throw new SAXException("Unclosed units at end of document");
-        }
-        if (currentField != null) {
-            throw new SAXException("Unclosed alix:field at end of document");
-        }
+  private void emitAndCloseCurrent() throws SAXException {
+    doc.closeDocument();
+    consumer.accept(doc);
+  }
+
+  // ----------------------------
+  // Field handling (ingest-alix-test.xml exact attributes)
+  // ----------------------------
+
+  private void startField(Attributes atts) throws SAXException {
+    if (fieldMode != FieldMode.NONE) throw new SAXException("Nested alix:field");
+
+    final String name = requiredAttr(atts, "name");
+    final AlixDocument.FieldType type = AlixDocument.FieldType.fromXml(requiredAttr(atts, "type"));
+
+    final String value = blankToNull(attr(atts, "value"));
+    final String source = blankToNull(attr(atts, "source"));
+    final String include = blankToNull(attr(atts, "include"));
+    final String exclude = blankToNull(attr(atts, "exclude"));
+
+    if (value != null && source != null) {
+      throw new SAXException("Field '" + name + "': cannot have both value= and source=");
     }
 
-    @Override
-    public void startElement(String uri, String localName, String qName, Attributes atts) throws SAXException {
-        // If we are capturing payload content of a field, most nested elements are payload and must be serialized.
-        if (currentField != null && currentField.payloadDepth > 0) {
-            // Nested inside payload: always serialize (including alix namespace if payload legitimately contains it)
-            appendStartTag(currentField.xml, qNameOrLocal(qName, localName), atts);
-            currentField.payloadDepth++;
-            return;
-        }
+    // Open immediately; all content (including scalar) is appended to AlixDocument buffer.
+    doc.openField(name, type, source, include, exclude);
 
-        // Top-level Alix structure / field directives
-        if (ALIX_NS.equals(uri)) {
-            switch (localName) {
-                case "book" -> {
-                    requireNoCurrentField("alix:book");
-                    String xmlId = attr(atts, XML_NS, "id");
-                    if (xmlId == null) xmlId = attr(atts, "xml:id"); // fallback if parser reports prefixed attr only
-                    Unit unit = new Unit("book", xmlId);
-                    unitStack.push(new UnitCtx(unit));
-                    sink.startUnit(unit);
-                }
-                case "chapter" -> {
-                    requireNoCurrentField("alix:chapter");
-                    String xmlId = attr(atts, XML_NS, "id");
-                    if (xmlId == null) xmlId = attr(atts, "xml:id");
-                    Unit unit = new Unit("chapter", xmlId);
-                    unitStack.push(new UnitCtx(unit));
-                    sink.startUnit(unit);
-                }
-                case "field" -> startField(atts);
-                case "include", "exclude" -> addSelector(localName, atts);
-                default -> {
-                    // alix elements unknown in v1: reject for now
-                    throw new SAXException("Unsupported alix element: " + qNameOrLocal(qName, localName));
-                }
-            }
-            return;
-        }
-
-        // Non-Alix element at top level inside a field => payload root begins
-        if (currentField != null) {
-            if (currentField.value != null) {
-                throw new SAXException("Field '" + currentField.name + "' has @value and mixed content");
-            }
-            if (currentField.source != null) {
-                throw new SAXException("Derived field '" + currentField.name + "' with @source cannot contain payload XML");
-            }
-            currentField.hasMixedPayload = true;
-            currentField.payloadDepth = 1;
-            appendStartTag(currentField.xml, qNameOrLocal(qName, localName), atts);
-            return;
-        }
-
-        // Otherwise ignore non-Alix wrappers only if desired; for v1, reject unexpected root content.
-        throw new SAXException("Unexpected non-alix element outside alix:field payload: " + qNameOrLocal(qName, localName));
+    if (value != null) {
+      fieldMode = FieldMode.SCALAR;
+      payloadDepth = 0;
+      doc.fieldText(value);
+      return;
     }
 
-    @Override
-    public void endElement(String uri, String localName, String qName) throws SAXException {
-        // Payload closing while inside field mixed-content capture
-        if (currentField != null && currentField.payloadDepth > 0) {
-            appendEndTag(currentField.xml, qNameOrLocal(qName, localName));
-            currentField.payloadDepth--;
-            return;
-        }
-
-        if (!ALIX_NS.equals(uri)) {
-            // Outside payload, non-Alix closings are unexpected
-            return;
-        }
-
-        switch (localName) {
-            case "field" -> endField();
-            case "chapter", "book" -> endUnit(localName);
-            case "include", "exclude" -> {
-                // empty directives, nothing to do at end
-            }
-            default -> {
-                // already rejected in startElement
-            }
-        }
+    if (source != null) {
+      fieldMode = FieldMode.DERIVED;
+      payloadDepth = 0;
+      return;
     }
 
-    @Override
-    public void characters(char[] ch, int start, int length) throws SAXException {
-        if (currentField == null) return;
-        if (currentField.payloadDepth > 0) {
-            escapeText(currentField.xml, ch, start, length);
-        }
+    fieldMode = FieldMode.CONTENT;
+    payloadDepth = 0;
+  }
+
+  private void endField() {
+    doc.closeField();
+    fieldMode = FieldMode.NONE;
+    payloadDepth = 0;
+    tagBuf.setLength(0);
+  }
+
+  // ----------------------------
+  // Minimal XML fragment serialization (for mixed CONTENT only)
+  // ----------------------------
+
+  private static String nameForTag(String qName, String localName) {
+    return (qName != null && !qName.isEmpty()) ? qName : localName;
+  }
+
+  private void appendStartTag(String name, Attributes atts) {
+    tagBuf.setLength(0);
+    tagBuf.append('<').append(name);
+    for (int i = 0; i < atts.getLength(); i++) {
+      String an = atts.getQName(i);
+      if (an == null || an.isEmpty()) an = atts.getLocalName(i);
+      if (an == null || an.isEmpty()) continue;
+
+      tagBuf.append(' ').append(an).append("=\"");
+      appendEscapedAttrValue(atts.getValue(i));
+      tagBuf.append('"');
     }
+    tagBuf.append('>');
+    doc.fieldText(tagBuf); // optimized inside AlixDocument if you add a StringBuilder overload
+  }
 
-    @Override
-    public void ignorableWhitespace(char[] ch, int start, int length) throws SAXException {
-        // Keep whitespace inside payload XML
-        characters(ch, start, length);
+  private void appendEndTag(String name) {
+    tagBuf.setLength(0);
+    tagBuf.append("</").append(name).append('>');
+    doc.fieldText(tagBuf);
+  }
+
+  private void appendEscapedText(char[] ch, int start, int len) {
+    final int end = start + len;
+    int last = start;
+
+    for (int i = start; i < end; i++) {
+      final char c = ch[i];
+      final String repl;
+      switch (c) {
+        case '&' -> repl = "&amp;";
+        case '<' -> repl = "&lt;";
+        case '>' -> repl = "&gt;";
+        default -> repl = null;
+      }
+      if (repl != null) {
+        if (i > last) doc.fieldChars(ch, last, i - last);
+        doc.fieldText(repl);
+        last = i + 1;
+      }
     }
+    if (end > last) doc.fieldChars(ch, last, end - last);
+  }
 
-    @Override
-    public void processingInstruction(String target, String data) throws SAXException {
-        if (currentField != null && currentField.payloadDepth > 0) {
-            currentField.xml.append("<?").append(target);
-            if (data != null && !data.isEmpty()) currentField.xml.append(' ').append(data);
-            currentField.xml.append("?>");
-        }
+  private void appendEscapedAttrValue(String s) {
+    if (s == null || s.isEmpty()) return;
+    for (int i = 0; i < s.length(); i++) {
+      final char c = s.charAt(i);
+      switch (c) {
+        case '&' -> tagBuf.append("&amp;");
+        case '<' -> tagBuf.append("&lt;");
+        case '"' -> tagBuf.append("&quot;");
+        default -> tagBuf.append(c);
+      }
     }
+  }
 
-    // ---------- Field handling ----------
+  // ----------------------------
+  // Attribute helpers
+  // ----------------------------
 
-    private void startField(Attributes atts) throws SAXException {
-        if (unitStack.isEmpty()) {
-            throw new SAXException("alix:field outside alix:book/alix:chapter");
-        }
-        if (currentField != null) {
-            throw new SAXException("Nested alix:field is not allowed");
-        }
+  private static String attr(Attributes atts, String localName) {
+    if (atts == null) return null;
 
-        String name = attr(atts, "name");
-        if (name == null || name.isBlank()) throw new SAXException("alix:field missing @name");
+    // Namespace-aware form (unprefixed attrs are in no-namespace)
+    String v = atts.getValue("", localName);
+    if (v != null) return v;
 
-        FieldType type = FieldType.parse(attr(atts, "type"));
-        String value = attr(atts, "value");
-        String source = attr(atts, "source");
+    // Fallback: qName lookup
+    v = atts.getValue(localName);
+    if (v != null) return v;
 
-        // Source-before-derived validation (streaming rule)
-        if (source != null && !source.isBlank()) {
-            if (!unitStack.peek().seenFieldNames.contains(source)) {
-                throw new SAXException("Derived field '" + name + "' references @source='" + source +
-                    "' which must precede it in the same unit");
-            }
-        }
-
-        // Type-specific minimal validation
-        if ((type == FieldType.INT || type == FieldType.CATEGORY || type == FieldType.FACET) && source != null) {
-            // Allowed in theory, but probably not useful; reject in v1 for clarity
-            throw new SAXException("Field type '" + type.name().toLowerCase() + "' does not support @source in v1");
-        }
-
-        String analyzerHint = analyzerHintFor(type);
-
-        currentField = new FieldCtx(name, type, analyzerHint, blankToNull(value), blankToNull(source));
+    // Last resort: scan
+    for (int i = 0; i < atts.getLength(); i++) {
+      if (localName.equals(atts.getLocalName(i)) || localName.equals(atts.getQName(i))) {
+        return atts.getValue(i);
+      }
     }
+    return null;
+  }
 
-    private void addSelector(String localName, Attributes atts) throws SAXException {
-        if (currentField == null) {
-            throw new SAXException("alix:" + localName + " outside alix:field");
-        }
-        if (currentField.source == null) {
-            throw new SAXException("alix:" + localName + " requires field @source");
-        }
-        if (currentField.payloadDepth > 0) {
-            throw new SAXException("alix:" + localName + " is not allowed inside payload XML");
-        }
-        if (currentField.value != null) {
-            throw new SAXException("Derived field '" + currentField.name + "' cannot use @value with selectors");
-        }
+  private static String requiredAttr(Attributes atts, String localName) throws SAXException {
+    final String v = attr(atts, localName);
+    if (v == null || v.isBlank()) throw new SAXException("Missing required attribute @" + localName);
+    return v;
+  }
 
-        String element = blankToNull(attr(atts, "element"));
-        String attribute = blankToNull(attr(atts, "attribute"));
-        String value = blankToNull(attr(atts, "value"));
+  private static String xmlId(Attributes atts) {
+    if (atts == null) return null;
+    String v = atts.getValue(XML_NS, "id");
+    if (v != null) return v;
+    // fallback if parser does not report XML_NS correctly
+    v = atts.getValue("xml:id");
+    if (v != null) return v;
+    return atts.getValue("id");
+  }
 
-        if (element == null && attribute == null) {
-            throw new SAXException("alix:" + localName + " requires @element or @attribute");
-        }
-        if (attribute == null && value != null) {
-            throw new SAXException("alix:" + localName + " @value requires @attribute");
-        }
+  private static String blankToNull(String s) {
+    return (s == null || s.isBlank()) ? null : s;
+  }
 
-        SelectorMode mode = localName.equals("include") ? SelectorMode.INCLUDE : SelectorMode.EXCLUDE;
-        currentField.selectors.add(new Selector(mode, element, attribute, value));
+  private static boolean isAllWhitespace(char[] ch, int start, int len) {
+    final int end = start + len;
+    for (int i = start; i < end; i++) {
+      if (!Character.isWhitespace(ch[i])) return false;
     }
-
-    private void endField() throws SAXException {
-        FieldCtx f = currentField;
-        if (f == null) throw new SAXException("Unexpected </alix:field>");
-
-        boolean hasValue = f.value != null;
-        boolean hasContent = f.hasMixedPayload;
-        boolean hasSource = f.source != null;
-
-        int modes = (hasValue ? 1 : 0) + (hasContent ? 1 : 0) + (hasSource ? 1 : 0);
-        if (modes == 0) {
-            throw new SAXException("Field '" + f.name + "' has no payload (@value / content / @source)");
-        }
-        if (modes > 1) {
-            throw new SAXException("Field '" + f.name + "' must use exactly one of @value, mixed content, or @source");
-        }
-
-        // For derived fields, selectors are optional (copy-all is allowed)
-        if (hasSource && hasContent) {
-            throw new SAXException("Field '" + f.name + "' cannot have both @source and mixed content");
-        }
-
-        // Minimal content/type sanity
-        if ((f.type == FieldType.INT || f.type == FieldType.CATEGORY || f.type == FieldType.FACET) && !hasValue) {
-            throw new SAXException("Field '" + f.name + "' type '" + f.type.name().toLowerCase() + "' requires @value in v1");
-        }
-
-        FieldSpec spec = new FieldSpec(
-            f.name,
-            f.type,
-            f.analyzerHint,
-            f.value,
-            hasContent ? f.xml.toString() : null,
-            f.source,
-            List.copyOf(f.selectors)
-        );
-
-        UnitCtx uc = unitStack.peek();
-        sink.field(uc.unit, spec);
-        uc.seenFieldNames.add(f.name);
-
-        currentField = null;
-    }
-
-    // ---------- Unit handling ----------
-
-    private void endUnit(String localName) throws SAXException {
-        if (currentField != null) {
-            throw new SAXException("Unclosed alix:field before closing alix:" + localName);
-        }
-        if (unitStack.isEmpty()) {
-            throw new SAXException("Unexpected </alix:" + localName + ">");
-        }
-
-        UnitCtx ctx = unitStack.pop();
-        if (!ctx.unit.kind().equals(localName)) {
-            throw new SAXException("Mismatched unit close: expected </alix:" + ctx.unit.kind() +
-                "> but found </alix:" + localName + ">");
-        }
-        sink.endUnit(ctx.unit);
-    }
-
-    private void requireNoCurrentField(String element) throws SAXException {
-        if (currentField != null) {
-            throw new SAXException(element + " is not allowed inside alix:field");
-        }
-    }
-
-    // ---------- Analyzer hint mapping (names only, no implementation) ----------
-
-    private static String analyzerHintFor(FieldType type) {
-        return switch (type) {
-            case STORE -> "ALIX_NONE";
-            case INT -> "ALIX_INT";
-            case CATEGORY -> "ALIX_KEYWORD";
-            case FACET -> "ALIX_KEYWORD";
-            case META -> "ALIX_META";
-            case TEXT -> "ALIX_TEXT_FR";
-        };
-    }
-
-    // ---------- XML fragment serialization helpers ----------
-
-    private static String qNameOrLocal(String qName, String localName) {
-        return (qName != null && !qName.isEmpty()) ? qName : localName;
-    }
-
-    private static void appendStartTag(StringBuilder sb, String qName, Attributes atts) {
-        sb.append('<').append(qName);
-        for (int i = 0; i < atts.getLength(); i++) {
-            String an = atts.getQName(i);
-            if (an == null || an.isEmpty()) an = atts.getLocalName(i);
-            if (an == null || an.isEmpty()) continue;
-            sb.append(' ').append(an).append("=\"");
-            escapeAttr(sb, atts.getValue(i));
-            sb.append('"');
-        }
-        sb.append('>');
-    }
-
-    private static void appendEndTag(StringBuilder sb, String qName) {
-        sb.append("</").append(qName).append('>');
-    }
-
-    private static void escapeText(StringBuilder sb, char[] ch, int start, int len) {
-        int end = start + len;
-        for (int i = start; i < end; i++) {
-            char c = ch[i];
-            switch (c) {
-                case '&' -> sb.append("&amp;");
-                case '<' -> sb.append("&lt;");
-                case '>' -> sb.append("&gt;");
-                default -> sb.append(c);
-            }
-        }
-    }
-
-    private static void escapeAttr(StringBuilder sb, String s) {
-        if (s == null) return;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            switch (c) {
-                case '&' -> sb.append("&amp;");
-                case '<' -> sb.append("&lt;");
-                case '"' -> sb.append("&quot;");
-                default -> sb.append(c);
-            }
-        }
-    }
-
-    // ---------- Attribute helpers ----------
-
-    private static String attr(Attributes atts, String localName) {
-        if (atts == null) return null;
-        // Try no-namespace local lookup first
-        String v = atts.getValue("", localName);
-        if (v != null) return v;
-        // Fallback: scan qNames (useful depending on parser feature settings)
-        for (int i = 0; i < atts.getLength(); i++) {
-            if (localName.equals(atts.getLocalName(i)) || localName.equals(atts.getQName(i))) {
-                return atts.getValue(i);
-            }
-        }
-        return null;
-    }
-
-    private static String attr(Attributes atts, String nsUri, String localName) {
-        if (atts == null) return null;
-        String v = atts.getValue(nsUri, localName);
-        if (v != null) return v;
-        // Fallback if parser does not report namespaced attrs as expected
-        return attr(atts, "xml:" + localName);
-    }
-
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
-    }
-
-    private static final class StrictErrorHandler implements ErrorHandler {
-        @Override public void warning(SAXParseException e) { /* ignore */ }
-        @Override public void error(SAXParseException e) throws SAXException { throw e; }
-        @Override public void fatalError(SAXParseException e) throws SAXException { throw e; }
-    }
+    return true;
+  }
 }
