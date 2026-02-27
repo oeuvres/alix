@@ -24,7 +24,7 @@ import java.util.*;
  * - All fields are "stored" by Alix contract, but this parser only emits definitions.
  * - Analyzer names are emitted as hints only (no actual analyzer binding here).
  */
-public final class AlixSaxParser extends DefaultHandler2 {
+public final class AlixSaxHandler extends DefaultHandler2 {
 
     public static final String ALIX_NS = "https://oeuvres.github.io/alix";
     public static final String XML_NS = "http://www.w3.org/XML/1998/namespace";
@@ -46,7 +46,7 @@ public final class AlixSaxParser extends DefaultHandler2 {
             SAXParser parser = spf.newSAXParser();
             XMLReader xr = parser.getXMLReader();
 
-            xr.setContentHandler(new AlixSaxParser(sink));
+            xr.setContentHandler(new AlixSaxHandler(sink));
             xr.setErrorHandler(new StrictErrorHandler());
 
             // Important for fragment serialization: keep qName + xmlns attrs if possible
@@ -111,7 +111,7 @@ public final class AlixSaxParser extends DefaultHandler2 {
     private final Deque<UnitCtx> unitStack = new ArrayDeque<>();
     private FieldCtx currentField;
 
-    private AlixSaxParser(AlixSink sink) {
+    private AlixSaxHandler(AlixSink sink) {
         this.sink = Objects.requireNonNull(sink, "sink");
     }
 
