@@ -6,15 +6,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public final class  AlixSaxParserSinkDebug implements AlixSaxParser.AlixSink {
+public final class  AlixSaxParserSinkDebug implements AlixSaxHandler.AlixSink {
 
     @Override
-    public void startUnit(AlixSaxParser.Unit unit) {
+    public void startUnit(AlixSaxHandler.Unit unit) {
         System.out.printf("START %-7s id=%s%n", unit.kind(), unit.xmlId());
     }
 
     @Override
-    public void field(AlixSaxParser.Unit unit, AlixSaxParser.FieldSpec f) {
+    public void field(AlixSaxHandler.Unit unit, AlixSaxHandler.FieldSpec f) {
         System.out.printf("  FIELD %-12s type=%-8s analyzer=%-12s",
             f.name(), f.type().name().toLowerCase(), f.analyzerHint());
 
@@ -36,7 +36,7 @@ public final class  AlixSaxParserSinkDebug implements AlixSaxParser.AlixSink {
     }
 
     @Override
-    public void endUnit(AlixSaxParser.Unit unit) {
+    public void endUnit(AlixSaxHandler.Unit unit) {
         System.out.printf("END   %-7s id=%s%n", unit.kind(), unit.xmlId());
     }
 
@@ -48,12 +48,12 @@ public final class  AlixSaxParserSinkDebug implements AlixSaxParser.AlixSink {
     
     public static void main(String[] args) throws Exception {
         // final String res = "/ingest/test-alix.xml";
-        Path path = Paths.get("src/main/resources/ingest/test-alix.xml");
+        Path path = Paths.get("src/test/test-data/ingest-alix-test.xml");
         System.out.println(path.toAbsolutePath());
         // try (InputStream in = Thread.currentThread().getContextClassLoader() .getResourceAsStream(res)) {
         try (InputStream in = Files.newInputStream(path)) {
             if (in == null) throw new IllegalStateException(path + ": resource not found");
-            AlixSaxParser.parse(in, new AlixSaxParserSinkDebug());
+            AlixSaxHandler.parse(in, new AlixSaxParserSinkDebug());
         }
     }
 }
