@@ -31,7 +31,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
@@ -48,113 +47,145 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
 
 /**
- * A final token filter before indexation, to plug after a lemmatizer filter,
- * providing most significant tokens for word cloud. Index lemma instead of
- * forms when available. Strip punctuation and numbers. Positions of striped
- * tokens are deleted. This allows simple computation of a token context (ex:
- * span queries, co-occurrences).
+ * Final, last-stage token hygiene before indexing.
+ *
+ * <p>Typical placement: after a tokenizer and linguistic filters (POS tagger, lemmatizer, synonym/normalizers),
+ * on a dedicated "terms" field used for tasks such as word-clouds, co-occurrence, or SpanQuery-based context
+ * computations.</p>
+ *
+ * <h2>Behavior</h2>
+ * <ul>
+ *   <li><b>Noise removal without holes</b>: {@link #skip()} drops tokens and <em>collapses positions</em>
+ *       (their {@code posInc} is not propagated). This is used for markup artifacts and other "non-text" noise.</li>
+ *   <li><b>Optional removal with holes</b>: {@link #accept()} may return {@code false} to drop a token while
+ *       <em>preserving a positional gap</em> (its {@code posInc} is accumulated and added to the next emitted token).
+ *       This is useful if you want to preserve word-distance despite removing some tokens (e.g., stopwords).</li>
+ *   <li><b>Punctuation rail</b>: punctuation tokens are emitted as a zero-length term (empty {@link CharTermAttribute})
+ *       to prevent phrase/span matches from crossing punctuation boundaries while keeping positional continuity.</li>
+ *   <li><b>Number unification</b>: numeric tokens ({@code DIGIT}/{@code NUM}) are mapped to a single marker {@code "#"}.</li>
+ * </ul>
+ *
+ * <p><b>Note:</b> This is a {@link TokenFilter}; it does not rewrite the input character stream. If you need to strip
+ * XML/HTML markup, do it with a CharFilter upstream.</p>
  */
 public class FinalCleanupFilter extends TokenFilter
 {
-    /** The term provided by the Tokenizer */
+    /** The term provided by the upstream TokenStream. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    /** The position increment (inform it if positions are stripped) */
+    /** Used to propagate/adjust holes when tokens are removed with preserved gaps. */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    /** A linguistic category as a short number, see {@link Upos} */
+    /** Linguistic category (short code), see {@link Upos}. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-    /** keep right position order */
-    private int holes;
 
+    /** Heuristic: drop very short tokens (typically non-informative for "terms" fields). */
+    protected static final int MIN_TERM_LEN = 3;
+
+    /** Marker used to normalize all numbers. */
+    protected static final String NUMBER_MARKER = "#";
 
     /**
-     * Default constructor.
-     * @param input previous filter.
+     * @param input upstream token stream (tokenizer or previous filters)
      */
     public FinalCleanupFilter(TokenStream input) {
         super(input);
     }
 
+    /**
+     * Emits the next accepted token, applying {@link #skip()} and {@link #accept()}.
+     *
+     * <p>Algorithm:</p>
+     * <ol>
+     *   <li>Tokens for which {@link #skip()} returns {@code true} are dropped and do <em>not</em> create holes.</li>
+     *   <li>Tokens for which {@link #accept()} returns {@code false} are dropped but their {@code posInc} contributes
+     *       to a hole counter, added to the next emitted token.</li>
+     * </ol>
+     */
     @Override
     public final boolean incrementToken() throws IOException
     {
-        // skipping positions will create holes, the count of tokens will be different
-        // from the count of positions
-        holes = 0;
+        int holeCount = 0;
+
         while (input.incrementToken()) {
-            if (skip()) continue;
+            if (skip()) {
+                // Intentionally collapse positions for this token.
+                continue;
+            }
+
             if (accept()) {
-                if (holes != 0) posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + holes);
+                if (holeCount != 0) {
+                    posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + holeCount);
+                }
                 return true;
             }
-            holes += posIncrAtt.getPositionIncrement();
+
+            // Token rejected but its position increment must be preserved as a gap.
+            holeCount += posIncrAtt.getPositionIncrement();
         }
         return false;
     }
-    
+
     /**
-     * Token to skip, without the position, different noises.
-     * @return
+     * Drops "noise" tokens <em>without preserving positional gaps</em> (positions collapse).
+     *
+     * <p>Override this to define what should be removed as non-textual noise for your corpus.</p>
+     *
+     * @return {@code true} to drop the current token and collapse positions; {@code false} to let it be processed
+     *         by {@link #accept()}.
      */
     protected boolean skip()
     {
         final int pos = posAtt.getPos();
-        // known word from dictionary, keep it
-        // if (!lemAtt.isEmpty()) return false;
-        // empty
-        if (termAtt.isEmpty()) return true;
-        // no position for XML between words M<sup>elle</sup>
+        final int len = termAtt.length();
+
+        if (len == 0) return true;
+
+        // Markup / structural artifacts injected by XML processing.
         if (pos == XML.code) return true;
-        // unknown short word
-        if (termAtt.length() < 3) return true;
-        // < >
+
+        // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
         if (Char.isMath(termAtt.charAt(0))) return true;
-        char charLast = termAtt.charAt(termAtt.length() - 1);
-        // variable like A'
-        if (charLast == '\'') return true;
-        // variable like A.
-        if (charLast == '.' && termAtt.length() == 2) return true;
-        // variable like A4
-        if (Char.isDigit(charLast) && !Char.isDigit(termAtt.charAt(termAtt.length() - 2))) return true;
-        // default is no skip
+
+        final char last = termAtt.charAt(len - 1);
+
+        // Truncated variables / elisions like "jusqu'" or any token ending with apostrophe.
+        if (last == '\'') return true;
+
+        // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
+        if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2))) return true;
+
+        // keep stop words
         return false;
     }
 
     /**
-     * Most of the tokens are not rejected but rewrited, except punctuation.
-     * 
-     * @return true if accepted
+     * Accepts (and optionally rewrites) the current token.
+     *
+     * <p>Contract:</p>
+     * <ul>
+     *   <li>Return {@code true} to emit the token (possibly after rewriting {@link #termAtt}).</li>
+     *   <li>Return {@code false} to drop the token <em>but preserve a positional gap</em>
+     *       (its {@code posInc} will be added to the next emitted token).</li>
+     * </ul>
+     *
+     * @return {@code true} to emit the token, {@code false} to drop it while keeping a hole
      */
     protected boolean accept()
     {
         final int pos = posAtt.getPos();
-        // record an empty token at puctuation position for the rails
+
+        // Punctuation: keep a positional rail token that blocks phrase/span crossing.
         if (Upos.isPunct(pos)) {
-            termAtt.setEmpty().append("");
+            termAtt.setEmpty(); // zero-length term on purpose
             return true;
         }
-        // unify numbers
+
+        // Numbers: normalize to a single marker.
         if (pos == DIGIT.code || pos == NUM.code) {
-            termAtt.setEmpty().append("#");
+            termAtt.setEmpty().append(NUMBER_MARKER);
             return true;
         }
-        
-        // do not keep flexion on substantives, no semantic gain
-        // if (!lemAtt.isEmpty()) termAtt.setEmpty().append(lemAtt);
-        // else if (!orthAtt.isEmpty()) termAtt.setEmpty().append(orthAtt);
-        // no more suffix
+
+        // Default: keep token as-is (or rewritten by upstream filters).
         return true;
     }
-
-    @Override
-    public void reset() throws IOException
-    {
-        super.reset();
-    }
-
-    @Override
-    public void end() throws IOException
-    {
-        super.end();
-    }
-
 }
