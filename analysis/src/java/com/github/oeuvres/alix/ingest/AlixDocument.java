@@ -34,10 +34,6 @@ public final class AlixDocument
 {
     
     /** Scope boundary for one Lucene document (typically one {@code alix:chapter}). */
-    public enum DocumentType
-    {
-        BOOK, CHAPTER, DOCUMENT
-    }
     
     /** Canonical type set used in alix.rng: store, int, category, facet, meta, text. */
     public enum FieldType
@@ -65,11 +61,6 @@ public final class AlixDocument
                     throw new IllegalArgumentException("Unknown field type: " + s);
             }
         }
-        
-        /** Your chosen canonical processing order. */
-        public static final FieldType[] CANONICAL_ORDER = {
-                STORE, INT, CATEGORY, FACET, META, TEXT
-        };
     }
     
     /**
@@ -86,6 +77,7 @@ public final class AlixDocument
      */
     public static final class AlixField
     {
+        public AlixDocument doc;
         public String name;
         public FieldType type;
         
@@ -98,28 +90,39 @@ public final class AlixDocument
         public String exclude;
         
         // Internal: start offset while accumulating
-        private int start;
+        private int tmpOff;
+        private String cache;
         
         private void reset()
         {
+            doc = null;
             name = null;
             type = null;
-            off = 0;
-            len = 0;
+            off = -1;
+            len = -1;
             source = null;
             include = null;
             exclude = null;
-            start = 0;
+            tmpOff = -1;
+            cache = null;
+        }
+        
+        public String getValueAsString()
+        {
+            if (cache == null)
+                cache = new String(doc.buffer, off, len);
+            return cache;
         }
         
         /** Zero-copy reader over this field slice. */
-        public Reader openReader(AlixDocument doc)
+        public Reader openReader()
         {
-            return doc.openReader(off, len);
+            return new CharArrayReader(doc.buffer, off, len);
         }
         
-        public CharSequence getCharSequence(AlixDocument doc) {
-            return doc.sliceAsCharSequence(off, len);
+        public CharSequence getCharSequence()
+        {
+            return new CharSlice(doc.buffer, off, len);
         }
         
         @Override
@@ -137,27 +140,41 @@ public final class AlixDocument
     // State
     // -------------------------
     
-    private DocumentType docType;
+    private String docType;
     private String docId;
     
     // Lucene-style naming: "buffer" + "size"
     private char[] buffer = new char[16 * 1024];
-    private int size = 0;
+    private int length = 0;
     
     private AlixField[] fields = new AlixField[32];
     private int fieldCount = 0;
     
     private AlixField current = null;
     
- // ---- Add inside AlixDocument ----
+    // ---- Add inside AlixDocument ----
     private long ingestEpochMillis = 0L;
     private int chapterOrdinal = -1; // -1 = unknown
-
-    public void setIngestEpochMillis(long ms) { this.ingestEpochMillis = ms; }
-    public long getIngestEpochMillis() { return ingestEpochMillis; }
-
-    public void setChapterOrdinal(int ord) { this.chapterOrdinal = ord; }
-    public int getChapterOrdinal() { return chapterOrdinal; }
+    
+    public void setIngestEpochMillis(long ms)
+    {
+        this.ingestEpochMillis = ms;
+    }
+    
+    public long getIngestEpochMillis()
+    {
+        return ingestEpochMillis;
+    }
+    
+    public void setChapterOrdinal(int ord)
+    {
+        this.chapterOrdinal = ord;
+    }
+    
+    public int getChapterOrdinal()
+    {
+        return chapterOrdinal;
+    }
     
     public AlixDocument()
     {
@@ -174,11 +191,11 @@ public final class AlixDocument
      * Open a new logical document scope (typically at {@code <alix:chapter>} start).
      * Resets buffer size and field count; does not shrink arrays.
      */
-    public void openDocument(DocumentType type, String id)
+    public void openDocument(String type, String id)
     {
         this.docType = Objects.requireNonNull(type, "document type");
         this.docId = id; // may be null
-        this.size = 0;
+        this.length = 0;
         this.fieldCount = 0;
         this.current = null;
     }
@@ -210,14 +227,15 @@ public final class AlixDocument
         final AlixField f = fields[fieldCount++];
         f.reset();
         
+        f.doc = this;
         f.name = Objects.requireNonNull(name, "field name");
         f.type = Objects.requireNonNull(type, "field type");
         f.source = source;
         f.include = include;
         f.exclude = exclude;
         
-        f.start = size;
-        f.off = size;
+        f.tmpOff = length;
+        f.off = length;
         f.len = 0;
         
         current = f;
@@ -230,9 +248,9 @@ public final class AlixDocument
             throw new IllegalStateException("fieldChars() without an open field");
         if (len <= 0)
             return;
-        ensureBufferCapacity(size + len);
-        System.arraycopy(ch, off, buffer, size, len);
-        size += len;
+        ensureBufferCapacity(length + len);
+        System.arraycopy(ch, off, buffer, length, len);
+        length += len;
     }
     
     /** Append a whole scalar value (JSON/CSV-style) to the currently open field. */
@@ -245,9 +263,9 @@ public final class AlixDocument
         final int n = cs.length();
         if (n == 0)
             return;
-        ensureBufferCapacity(size + n);
+        ensureBufferCapacity(length + n);
         for (int i = 0; i < n; i++)
-            buffer[size++] = cs.charAt(i);
+            buffer[length++] = cs.charAt(i);
     }
     
     /** Close the current field and finalize its {@code (off,len)} slice into the buffer. */
@@ -255,8 +273,8 @@ public final class AlixDocument
     {
         if (current == null)
             throw new IllegalStateException("closeField() without an open field");
-        current.off = current.start;
-        current.len = size - current.start;
+        current.off = current.tmpOff;
+        current.len = length - current.tmpOff;
         current = null;
     }
     
@@ -264,12 +282,12 @@ public final class AlixDocument
     // Accessors for consumers
     // -------------------------
     
-    public DocumentType documentType()
+    public String docType()
     {
         return docType;
     }
     
-    public String documentId()
+    public String docId()
     {
         return docId;
     }
@@ -286,54 +304,46 @@ public final class AlixDocument
         return fields[i];
     }
     
-    /** Zero-copy reader over a buffer slice (for analyzers). */
-    public Reader openReader(int off, int len)
+    private static final class CharSlice implements CharSequence
     {
-        if (off < 0 || len < 0 || off + len > size)
-            throw new IndexOutOfBoundsException();
-        return new CharArrayReader(buffer, off, len);
-    }
-    
-    /** Copy a buffer slice into a String (for Lucene stored fields, logging, etc.). */
-    public String sliceToString(int off, int len)
-    {
-        if (off < 0 || len < 0 || off + len > size)
-            throw new IndexOutOfBoundsException();
-        return new String(buffer, off, len);
-    }
-    
-    public CharSequence sliceAsCharSequence(int off, int len) {
-        if (off < 0 || len < 0 || off + len > size) throw new IndexOutOfBoundsException();
-        return new CharSlice(buffer, off, len);
-      }
-
-    
-    private static final class CharSlice implements CharSequence {
         private final char[] buf;
         private final int off, len;
-
-        CharSlice(char[] buf, int off, int len) {
-          this.buf = buf;
-          this.off = off;
-          this.len = len;
+        
+        CharSlice(char[] buf, int off, int len)
+        {
+            this.buf = buf;
+            this.off = off;
+            this.len = len;
         }
-
-        @Override public int length() { return len; }
-
-        @Override public char charAt(int index) {
-          if (index < 0 || index >= len) throw new IndexOutOfBoundsException();
-          return buf[off + index];
+        
+        @Override
+        public int length()
+        {
+            return len;
         }
-
-        @Override public CharSequence subSequence(int start, int end) {
-          if (start < 0 || end < start || end > len) throw new IndexOutOfBoundsException();
-          return new CharSlice(buf, off + start, end - start);
+        
+        @Override
+        public char charAt(int index)
+        {
+            if (index < 0 || index >= len)
+                throw new IndexOutOfBoundsException();
+            return buf[off + index];
         }
-
-        @Override public String toString() {
-          return new String(buf, off, len); // allocate only if someone explicitly asks
+        
+        @Override
+        public CharSequence subSequence(int start, int end)
+        {
+            if (start < 0 || end < start || end > len)
+                throw new IndexOutOfBoundsException();
+            return new CharSlice(buf, off + start, end - start);
         }
-      }
+        
+        @Override
+        public String toString()
+        {
+            return new String(buf, off, len); // allocate only if someone explicitly asks
+        }
+    }
     
     // -------------------------
     // Internal growth helpers
@@ -347,7 +357,7 @@ public final class AlixDocument
         while (cap < needed)
             cap = cap + (cap >> 1) + 1; // ~1.5x growth
         final char[] n = new char[cap];
-        System.arraycopy(buffer, 0, n, 0, size);
+        System.arraycopy(buffer, 0, n, 0, length);
         buffer = n;
     }
     

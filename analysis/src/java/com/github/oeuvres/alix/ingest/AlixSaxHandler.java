@@ -6,6 +6,8 @@ import org.xml.sax.ext.DefaultHandler2;
 
 import javax.xml.XMLConstants;
 import java.util.Objects;
+import static com.github.oeuvres.alix.common.Names.*;
+
 
 /**
  * SAX handler for the current Alix ingest XML as exemplified by ingest-alix-test.xml.
@@ -189,7 +191,7 @@ public final class AlixSaxHandler extends DefaultHandler2 {
   private void startBook(Attributes atts) throws SAXException {
     if (fieldMode != FieldMode.NONE) throw new SAXException("alix:book inside alix:field");
     final String bookId = xmlId(atts);
-    doc.openDocument(AlixDocument.DocumentType.BOOK, bookId);
+    doc.openDocument(BOOK, bookId);
     bookOpen = true;
     bookEmitted = false;
   }
@@ -214,7 +216,7 @@ public final class AlixSaxHandler extends DefaultHandler2 {
     }
 
     final String chapId = xmlId(atts);
-    doc.openDocument(AlixDocument.DocumentType.CHAPTER, chapId);
+    doc.openDocument(CHAPTER, chapId);
     chapterOpen = true;
   }
 

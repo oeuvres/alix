@@ -12,6 +12,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 import org.xml.sax.SAXException;
 
+import com.github.oeuvres.alix.ingest.AlixDocument.AlixField;
 import com.github.oeuvres.alix.ingest.AlixSaxHandler.AlixDocumentConsumer;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportNull;
@@ -98,167 +99,148 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
     private final ZoneTextAnalyzer textAnalyzer;
     private final Report report;
     
-    private final boolean indexBookDocs;
-    private final boolean updateById;
-    
     public AlixLuceneIndexer(IndexWriter writer,
             ZoneTextAnalyzer textAnalyzer,
-            Report report,
-            boolean indexBookDocs,
-            boolean updateById)
+            Report report)
     {
         this.writer = Objects.requireNonNull(writer, "writer");
         this.textAnalyzer = Objects.requireNonNull(textAnalyzer, "textAnalyzer");
         this.report = (report != null) ? report : ReportNull.INSTANCE;
-        this.indexBookDocs = indexBookDocs;
-        this.updateById = updateById;
     }
     
     @Override
-    public void accept(AlixDocument d) throws SAXException
+    public void accept(AlixDocument alixDoc) throws SAXException
     {
-        if (d.documentType() == AlixDocument.DocumentType.BOOK && !indexBookDocs) return;
-
-        final Document doc = new Document();
-
-        final String docId = d.documentId();
+        
+        final Document luceneDoc = new Document();
+        
+        final String docId = alixDoc.docId();
         if (docId != null && !docId.isBlank()) {
-            doc.add(new StringField(ALIX_ID, docId, Field.Store.YES));
+            luceneDoc.add(new StringField(ALIX_ID, docId, Field.Store.YES));
         }
-
+        
         // CATEGORY uniqueness tracking (keep first per CATEGORY field name)
         // Small-N => linear scan storage.
         String[] seenCatNames = null;
         int seenCatCount = 0;
-
-        // Canonical order: STORE, INT, CATEGORY, FACET, META, TEXT
-        for (AlixDocument.FieldType t : AlixDocument.FieldType.CANONICAL_ORDER)
-        {
-            for (int i = 0; i < d.fieldCount(); i++)
-            {
-                final AlixDocument.AlixField f = d.fieldAt(i);
-                if (f.type != t) continue;
-                // can’t reuse char sequence
-                final CharSequence value = f.getCharSequence(d);
-                final String name = f.name;
-
-                try
-                {
-                    switch (f.type)
-                    {
-                        case STORE -> {
-                            doc.add(new StoredField(name, value, STORED_ONLY));
+        
+        for (int i = 0; i < alixDoc.fieldCount(); i++) {
+            final AlixField alixField = alixDoc.fieldAt(i);
+            // can’t reuse char sequence
+            final String value = alixField.getValueAsString();
+            final String name = alixField.name;
+            
+            try {
+                switch (alixField.type) {
+                    case STORE -> {
+                        luceneDoc.add(new StoredField(name, value, STORED_ONLY));
+                    }
+                    
+                    case INT -> {
+                        try {
+                            final int v = Integer.parseInt(value, 0, value.length(), 10);
+                            luceneDoc.add(new IntPoint(name, v));
+                            luceneDoc.add(new StoredField(name, v));
+                        } catch (NumberFormatException e) {
+                            report.warn(value + ": int parse error (docId=" + alixDoc.docId() + ")");
                         }
-
-                        case INT -> {
-                            try {
-                                final int v = Integer.parseInt(value, 0, value.length(), 10);
-                                doc.add(new IntPoint(name, v));
-                                doc.add(new StoredField(name, v));
-                            }
-                            catch (NumberFormatException e) {
-                                report.warn(value + ": int parse error (docId=" + d.documentId() +")");
-                            }
-                            // final int v = parseInt(f.getCharSequence(d)., int offset, int len);
-                        }
-
-                        case CATEGORY -> {
-                            // enforce unique per doc per CATEGORY field name
-                            boolean dup = false;
-                            if (seenCatNames != null) {
-                                for (int k = 0; k < seenCatCount; k++) {
-                                    if (seenCatNames[k].equals(f.name)) { dup = true; break; }
+                        // final int v = parseInt(f.getCharSequence(d)., int offset, int len);
+                    }
+                    
+                    case CATEGORY -> {
+                        // enforce unique per doc per CATEGORY field name
+                        boolean dup = false;
+                        if (seenCatNames != null) {
+                            for (int k = 0; k < seenCatCount; k++) {
+                                if (seenCatNames[k].equals(alixField.name)) {
+                                    dup = true;
+                                    break;
                                 }
                             }
-                            if (dup) {
-                                report.warn("docId=" + docId + " duplicate CATEGORY '" + f.name + "' (keeping first)");
-                                continue;
-                            }
-                            if (seenCatNames == null) seenCatNames = new String[8];
-                            if (seenCatCount == seenCatNames.length) {
-                                String[] n = new String[seenCatCount + (seenCatCount >> 1) + 1];
-                                System.arraycopy(seenCatNames, 0, n, 0, seenCatCount);
-                                seenCatNames = n;
-                            }
-                            seenCatNames[seenCatCount++] = f.name;
-
-                            // postings keyword for fast filtering
-                            doc.add(new Field(f.name, f.getCharSequence(d), KEYWORD_POSTINGS));
-
-                            // docvalues for sorting/faceting on category (single-valued)
-                            // Requires BytesRef => inevitable UTF-8 conversion; value is small.
-                            doc.add(new SortedDocValuesField(f.name, new BytesRef(f.getCharSequence(d).toString())));
                         }
-
-                        case FACET -> {
-                            // postings keyword for fast filtering
-                            doc.add(new Field(f.name, f.getCharSequence(d), KEYWORD_POSTINGS));
-
-                            // docvalues set for faceting/grouping
-                            doc.add(new SortedSetDocValuesField(f.name, new BytesRef(f.getCharSequence(d).toString())));
+                        if (dup) {
+                            report.warn("docId=" + docId + " duplicate CATEGORY '" + alixField.name + "' (keeping first)");
+                            continue;
                         }
-
-                        case META -> {
-                            // stored + indexed (tokenized) from CharSequence (uses IW analyzer)
-                            doc.add(new Field(f.name, f.getCharSequence(d), META_TEXT));
+                        if (seenCatNames == null)
+                            seenCatNames = new String[8];
+                        if (seenCatCount == seenCatNames.length) {
+                            String[] n = new String[seenCatCount + (seenCatCount >> 1) + 1];
+                            System.arraycopy(seenCatNames, 0, n, 0, seenCatCount);
+                            seenCatNames = n;
                         }
-
-                        case TEXT -> {
-                            if (f.source == null) {
-                                // Base TEXT: store under <name> + suffix, index under <name>
-                                doc.add(new StoredField(name, value, STORED_ONLY));
-
-                                try (Reader r = d.openReader(f.off, f.len)) {
-                                    TokenStream ts = textAnalyzer.tokenStream(f.name, r, f.include, f.exclude);
-                                    doc.add(new Field(f.name, ts, TEXT_INDEXED_TS));
+                        seenCatNames[seenCatCount++] = alixField.name;
+                        
+                        // postings keyword for fast filtering
+                        luceneDoc.add(new Field(alixField.name, value, KEYWORD_POSTINGS));
+                        
+                        // docvalues for sorting/faceting on category (single-valued)
+                        // Requires BytesRef => inevitable UTF-8 conversion; value is small.
+                        luceneDoc.add(new SortedDocValuesField(alixField.name, new BytesRef(value.toString())));
+                    }
+                    
+                    case FACET -> {
+                        // postings keyword for fast filtering
+                        luceneDoc.add(new Field(alixField.name, value, KEYWORD_POSTINGS));
+                        
+                        // docvalues set for faceting/grouping
+                        luceneDoc.add(new SortedSetDocValuesField(alixField.name, new BytesRef(value.toString())));
+                    }
+                    
+                    case META -> {
+                        // stored + indexed (tokenized) from CharSequence (uses IW analyzer)
+                        luceneDoc.add(new Field(alixField.name, value, META_TEXT));
+                    }
+                    
+                    case TEXT -> {
+                        if (alixField.source == null) {
+                            // Base TEXT: store under <name> + suffix, index under <name>
+                            luceneDoc.add(new StoredField(name, value, STORED_ONLY));
+                            
+                            Reader r = alixField.openReader(); // keep it open
+                            TokenStream ts = textAnalyzer.tokenStream(
+                                alixField.name, r, alixField.include, alixField.exclude);
+                            
+                                luceneDoc.add(new Field(alixField.name, ts, TEXT_INDEXED_TS));
+                            
+                            // Word-count/stats design note:
+                            // If you need word counts known at analysis time:
+                            // - wrap TokenStream with a counting TokenFilter and store counts externally,
+                            //   then update docvalues in a second step (IndexWriter.updateDocValues), OR
+                            // - run analysis twice (once to count, once to index).
+                        } else {
+                            // Derived TEXT: apply to ALL matching base sources if repeated
+                            int srcCount = 0;
+                            for (int j = 0; j < alixDoc.fieldCount(); j++) {
+                                AlixDocument.AlixField src = alixDoc.fieldAt(j);
+                                if (src.type == AlixDocument.FieldType.TEXT
+                                        && src.source == null
+                                        && alixField.source.equals(src.name))
+                                {
+                                    srcCount++;
+                                    Reader reader = src.openReader();
+                                    TokenStream ts = textAnalyzer.tokenStream(alixField.name, reader, alixField.include, alixField.exclude);
+                                    luceneDoc.add(new Field(alixField.name, ts, TEXT_INDEXED_TS));
                                 }
-
-                                // Word-count/stats design note:
-                                // If you need word counts known at analysis time:
-                                // - wrap TokenStream with a counting TokenFilter and store counts externally,
-                                //   then update docvalues in a second step (IndexWriter.updateDocValues), OR
-                                // - run analysis twice (once to count, once to index).
                             }
-                            else {
-                                // Derived TEXT: apply to ALL matching base sources if repeated
-                                int srcCount = 0;
-                                for (int j = 0; j < d.fieldCount(); j++) {
-                                    AlixDocument.AlixField src = d.fieldAt(j);
-                                    if (src.type == AlixDocument.FieldType.TEXT
-                                            && src.source == null
-                                            && f.source.equals(src.name)) {
-                                        srcCount++;
-                                        try (Reader r = d.openReader(src.off, src.len)) {
-                                            TokenStream ts = textAnalyzer.tokenStream(f.name, r, f.include, f.exclude);
-                                            doc.add(new Field(f.name, ts, TEXT_INDEXED_TS));
-                                        }
-                                    }
-                                }
-                                if (srcCount == 0) {
-                                    report.warn("docId=" + docId + " missing source='" + f.source
-                                            + "' for derived text field '" + f.name + "'");
-                                }
+                            if (srcCount == 0) {
+                                report.warn("docId=" + docId + " missing source='" + alixField.source
+                                        + "' for derived text field '" + alixField.name + "'");
                             }
                         }
                     }
                 }
-                catch (IOException e) {
-                    throw new SAXException("I/O while analyzing field '" + f.name + "'", e);
-                }
-                catch (RuntimeException e) {
-                    throw new SAXException("Error building Lucene fields from '" + f.name + "' type=" + f.type, e);
-                }
+            } catch (IOException e) {
+                throw new SAXException("I/O while analyzing field '" + alixField.name + "'", e);
+            } catch (RuntimeException e) {
+                throw new SAXException("Error building Lucene fields from '" + alixField.name + "' type=" + alixField.type, e);
             }
         }
-
+        
         try {
-            if (updateById && docId != null && !docId.isBlank()) {
-                writer.updateDocument(new Term(ALIX_ID, docId), doc);
-            } else {
-                writer.addDocument(doc);
-            }
-        }
-        catch (IOException e) {
+            writer.updateDocument(new Term(ALIX_ID, docId), luceneDoc);
+            // writer.addDocument(doc);
+        } catch (IOException e) {
             throw new SAXException("IndexWriter failure", e);
         }
     }
