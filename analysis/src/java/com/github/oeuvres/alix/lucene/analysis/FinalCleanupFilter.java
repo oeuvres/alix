@@ -39,11 +39,12 @@ import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
+import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
 
 /**
@@ -53,14 +54,14 @@ import com.github.oeuvres.alix.util.Char;
  * tokens are deleted. This allows simple computation of a token context (ex:
  * span queries, co-occurrences).
  */
-public class FilterCloud extends TokenFilter
+public class FinalCleanupFilter extends TokenFilter
 {
     /** The term provided by the Tokenizer */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** The position increment (inform it if positions are stripped) */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    /** A linguistic category as a short number, see {@link TagFr} */
-    private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
+    /** A linguistic category as a short number, see {@link Upos} */
+    private final PosAttribute posAtt = addAttribute(PosAttribute.class);
     /** keep right position order */
     private int holes;
 
@@ -69,7 +70,7 @@ public class FilterCloud extends TokenFilter
      * Default constructor.
      * @param input previous filter.
      */
-    public FilterCloud(TokenStream input) {
+    public FinalCleanupFilter(TokenStream input) {
         super(input);
     }
 
@@ -96,13 +97,13 @@ public class FilterCloud extends TokenFilter
      */
     protected boolean skip()
     {
-        final int flags = flagsAtt.getFlags();
+        final int pos = posAtt.getPos();
         // known word from dictionary, keep it
         // if (!lemAtt.isEmpty()) return false;
         // empty
         if (termAtt.isEmpty()) return true;
         // no position for XML between words M<sup>elle</sup>
-        if (flags == XML.code) return true;
+        if (pos == XML.code) return true;
         // unknown short word
         if (termAtt.length() < 3) return true;
         // < >
@@ -125,23 +126,14 @@ public class FilterCloud extends TokenFilter
      */
     protected boolean accept()
     {
-        final int flags = flagsAtt.getFlags();
+        final int pos = posAtt.getPos();
         // record an empty token at puctuation position for the rails
-        if (PUNCT.isPunct(flags)) {
-            if (flags == PUNCTclause.code) {
-            }
-            else if (flags == PUNCTsent.code) {
-            }
-            else if (flags == PUNCTpara.code || flags == PUNCTsection.code) {
-                // let it
-            }
-            else {
-            }
+        if (Upos.isPunct(pos)) {
             termAtt.setEmpty().append("");
             return true;
         }
         // unify numbers
-        if (flags == DIGIT.code || flags == NUM.code) {
+        if (pos == DIGIT.code || pos == NUM.code) {
             termAtt.setEmpty().append("#");
             return true;
         }

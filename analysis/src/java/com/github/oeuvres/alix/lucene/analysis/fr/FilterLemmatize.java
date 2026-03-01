@@ -55,7 +55,7 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
  * <p>
  * The original {@link CharTermAttribute} provide by the step before is not
  * modified, allowing further filters to choose which token to index, see for
- * example {@link FilterCloud}.
+ * example {@link FinalCleanupFilter}.
  * </p>
  * <p>
  * The found lemma+pos is dictionary based. No disambiguation is tried, so that
