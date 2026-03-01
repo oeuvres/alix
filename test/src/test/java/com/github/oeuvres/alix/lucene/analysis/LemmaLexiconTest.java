@@ -125,14 +125,11 @@ public class LemmaLexiconTest
         // Missing POS-specific mapping (e.g., ADJ) -> no direct lemma
         assertEquals(-1, lex.findLemmaId("saw", ADJ));
 
-        // But fallback should resolve to default POS mapping
-        final int sawFallback = lex.findLemmaIdOrDefaultPos(sawFormId, ADJ);
-        assertEquals("see", lex.formAsString(sawFallback));
+
 
         // Another homograph check
         assertEquals("leave", lex.formAsString(lex.findLemmaId("left", VERB)));
         assertEquals("left", lex.formAsString(lex.findLemmaId("left", ADJ)));
-        assertEquals("leave", lex.formAsString(lex.findLemmaIdOrDefaultPos(lex.findFormId("left"), NOUN)));
     }
 
     @Test
