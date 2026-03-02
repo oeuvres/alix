@@ -60,10 +60,10 @@
     </alix:field>
 
     <!-- Derived field: only observation zones -->
-    <alix:field name="observations" type="text" source="text" include="@data-tei-type='observation'"/>
+    <alix:field name="observations" type="text" source="text" include="@other-attribute='observation'"/>
 
     <!-- Derived field: exclude quoted zones -->
-    <alix:field name="text_noquotes" type="text" source="text" exclude="@other-type='quote'"/>
+    <alix:field name="text_noquotes" type="text" source="text" exclude="@data-tei-type='quote'"/>
 
   </alix:chapter>
 </alix:book>
