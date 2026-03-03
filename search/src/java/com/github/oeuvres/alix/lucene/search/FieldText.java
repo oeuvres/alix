@@ -55,9 +55,8 @@ import org.apache.lucene.util.SparseFixedBitSet;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
-import com.github.oeuvres.alix.common.Tag;
+import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.common.TagFilter;
-import com.github.oeuvres.alix.fr.TagFr;
 import com.github.oeuvres.alix.lucene.index.BytesDic;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Char;
@@ -86,8 +85,6 @@ public class FieldText extends FieldCharsAbstract
     protected int[] formId4tagNo;
     /** formId4isLoc.get(formId) == true: form is a locution. */
     private BitSet formId4isLoc;
-    /** Tag set TODO parameter */
-    private final Tag tag = TagFr.VERB;
     
     /**
      * Build the dictionaries and stats. Each form indexed for the field will be
@@ -214,16 +211,16 @@ public class FieldText extends FieldCharsAbstract
             char c = chain.charAt(0);
             if (Char.isPunctuation(c)) {
                 if (c == '§') {
-                    formId4tagNo[formId] = PUNsection.code;
+                    formId4tagNo[formId] = PUNCTsection.code;
                 }
                 else if (c == '¶') {
-                    formId4tagNo[formId] = PUNpara.code;
+                    formId4tagNo[formId] = PUNCTpara.code;
                 }
                 else if (c == '.' || c == '…' || c == '?' || c == '!' ) {
-                    formId4tagNo[formId] = PUNsent.code;
+                    formId4tagNo[formId] = PUNCTsent.code;
                 }
                 else {
-                    formId4tagNo[formId] = PUN.code;
+                    formId4tagNo[formId] = PUNCT.code;
                 }
                 punRecord.set(formId);
                 continue;
