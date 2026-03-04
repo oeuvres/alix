@@ -99,7 +99,8 @@ public final class TermLexicon implements Closeable
         Directory d = FSDirectory.open(indexDir);
         try (IndexInput in = d.openInput(fstName, IOContext.READONCE)) {
             PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-            FST<Long> fst = new FST<>(in, outputs);
+            FST.FSTMetadata<Long> md = FST.readMetadata(in, outputs);
+            FST<Long> fst = new FST<>(md, in);
             return new TermLexicon(d, fst, dat, off);
         } catch (IOException e) {
             d.close();
@@ -221,43 +222,47 @@ public final class TermLexicon implements Closeable
             String offFile,
             String fstFile) throws IOException
         {
-            PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-            Builder<Long> fstBuilder = new Builder<>(FST.INPUT_TYPE.BYTE1, outputs);
-            IntsRefBuilder ints = new IntsRefBuilder();
-            
+            final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
+            final FSTCompiler<Long> compiler =
+                new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build(); // Lucene 10.4 style
+            final IntsRefBuilder ints = new IntsRefBuilder();
+
             long id = 0;
             long datPos = 0;
-            
+
             try (IndexOutput datOut = outDir.createOutput(datFile, IOContext.DEFAULT);
-                    IndexOutput offOut = outDir.createOutput(offFile, IOContext.DEFAULT))
-            {
-                
-                // First offset always 0
+                 IndexOutput offOut = outDir.createOutput(offFile, IOContext.DEFAULT)) {
+
+                // offsets[0] = 0
                 offOut.writeLong(0L);
-                
+
                 TermsEnum te = terms.iterator();
                 BytesRef term;
                 while ((term = te.next()) != null) {
-                    // FST: term -> id
-                    fstBuilder.add(Util.toIntsRef(term, ints), id);
-                    
-                    // dat: term bytes
+                    // term -> id in FST
+                    compiler.add(Util.toIntsRef(term, ints), id++);
+
+                    // append bytes to .dat
                     datOut.writeBytes(term.bytes, term.offset, term.length);
                     datPos += term.length;
-                    
-                    // off: next offset
+
+                    // next offset
                     offOut.writeLong(datPos);
-                    
-                    id++;
                 }
             }
-            
-            FST<Long> fst = fstBuilder.finish();
+
+            // compile and save FST
+            final FST.FSTMetadata<Long> md = compiler.compile();
+            if (md == null) {
+                throw new IOException("No terms for field; cannot build FST");
+            }
+            final FST<Long> fst = FST.fromFSTReader(md, compiler.getFSTReader());
+
             try (IndexOutput fstOut = outDir.createOutput(fstFile, IOContext.DEFAULT)) {
-                fst.save(fstOut);
+                fst.save(fstOut, fstOut);
             }
         }
-        
+
         private static void safeDelete(Directory dir, String name)
         {
             try {
