@@ -139,12 +139,6 @@ public final class AlixDocument
         /** Optional source field name for derived fields; otherwise null. */
         public String source;
 
-        /** Optional include parameter (schema-defined semantics); otherwise null. */
-        public String include;
-
-        /** Optional exclude parameter (schema-defined semantics); otherwise null. */
-        public String exclude;
-
         /**
          * Internal: start offset while accumulating.
          * <ul>
@@ -165,8 +159,6 @@ public final class AlixDocument
             off = -1;
             len = -1;
             source = null;
-            include = null;
-            exclude = null;
             tmpOff = -1;
             cache = null;
         }
@@ -236,8 +228,6 @@ public final class AlixDocument
         {
             return "AlixField{name=" + name + ", type=" + type + ", off=" + off + ", len=" + len +
                 (source != null ? ", source=" + source : "") +
-                (include != null ? ", include=" + include : "") +
-                (exclude != null ? ", exclude=" + exclude : "") +
                 "}";
         }
     }
@@ -403,8 +393,6 @@ public final class AlixDocument
         f.name = Objects.requireNonNull(name, "field name");
         f.type = Objects.requireNonNull(type, "field type");
         f.source = source;
-        f.include = include;
-        f.exclude = exclude;
 
         f.tmpOff = length; // mark as open
         f.off = length;

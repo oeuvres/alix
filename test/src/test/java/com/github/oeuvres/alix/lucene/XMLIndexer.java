@@ -30,7 +30,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.oeuvres.alix.ingest;
+package com.github.oeuvres.alix.lucene;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -58,8 +58,6 @@ import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamSource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.ContentHandler;
@@ -72,8 +70,6 @@ import com.github.oeuvres.alix.xml.JarResolver;
  */
 public class XMLIndexer implements Runnable
 {
-    /** logger */
-    private static Logger LOGGER = LoggerFactory.getLogger(XMLIndexer.class);
     /** SAX factory */
     static final SAXParserFactory SAXFactory = SAXParserFactory.newInstance();
     static {
@@ -236,7 +232,6 @@ public class XMLIndexer implements Runnable
                 }
             }
             catch (Exception e) {
-                LOGGER.error(e.toString());
                 continue;
             }
             
@@ -291,7 +286,6 @@ public class XMLIndexer implements Runnable
             }
             catch (Exception e) {
                 e.printStackTrace();
-                LOGGER.error(e.toString());
                 continue;
             }
 

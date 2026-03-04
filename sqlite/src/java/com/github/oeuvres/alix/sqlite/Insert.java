@@ -59,9 +59,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.github.oeuvres.alix.lucene.analysis.FilterLemmatize;
 import com.github.oeuvres.alix.lucene.analysis.FilterFrPersname;
 import com.github.oeuvres.alix.lucene.analysis.TokenizerML;

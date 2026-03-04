@@ -48,8 +48,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -85,8 +83,6 @@ import com.github.oeuvres.alix.util.RowcolQueue;
 // ChronicleMap has been tested, but it is not more than x2 compared to lucene BinaryField, so stay in Lucene
 public class FieldRail  extends FieldCharsAbstract
 {
-    /** logger */
-    private static Logger LOGGER = LoggerFactory.getLogger(FieldRail.class);
     /** Keep the freqs for the field */
     private final FieldText fieldText;
     /** The path of underlaying file store */
@@ -413,21 +409,21 @@ public class FieldRail  extends FieldCharsAbstract
                 for (int i = 0, max = this.docId4len[docId]; i < max; i++) {
                     final int formId = bufInt.get();
                     final int flag = fieldText.formId4tagNo[formId];
-                    if (flag == PUNsection.code) {
+                    if (flag == PUNCTsection.code) {
                         out.write('\n');
                         out.write('\n');
                         continue;
                     }
-                    else if (flag == PUNpara.code) {
+                    else if (flag == PUNCTpara.code) {
                         out.write('\n');
                         out.write('\n');
                         continue;
                     }
-                    else if (flag == PUNsent.code) {
+                    else if (flag == PUNCTsent.code) {
                         // out.write(10);
                         continue;
                     }
-                    else if (PUN.isPunct(flag)) {
+                    else if (PUNCT.isPunct(flag)) {
                         continue;
                     }
                     else if (formFilter != null && !formFilter.get(formId)) {

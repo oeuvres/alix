@@ -2,8 +2,10 @@ package com.github.oeuvres.alix.ingest;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import java.util.Objects;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexOptions;
@@ -44,9 +46,6 @@ import static com.github.oeuvres.alix.common.Names.*;
  * - base text (source==null): stored under (name + storedTextSuffix) and indexed under name with TokenStream
  * - derived text (source!=null): indexed under name, using source text occurrences (all matches if repeated)
  *
- * include/exclude:
- * - forwarded to textAnalyzer per field.
- *
  * Notes:
  * - SortedDocValuesField does NOT allow multiple values per doc per field name; we enforce “keep first”.
  * - If a TEXT source field name is repeated, derived fields apply to ALL matching base occurrences
@@ -54,11 +53,6 @@ import static com.github.oeuvres.alix.common.Names.*;
  */
 public final class AlixLuceneIndexer implements AlixDocumentConsumer
 {
-    @FunctionalInterface
-    public interface ZoneTextAnalyzer
-    {
-        TokenStream tokenStream(String fieldName, Reader reader, String include, String exclude) throws IOException;
-    }
     
     private static final FieldType STORED_ONLY;
     private static final FieldType KEYWORD_POSTINGS;
@@ -96,11 +90,11 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
     }
     
     private final IndexWriter writer;
-    private final ZoneTextAnalyzer textAnalyzer;
+    private final Analyzer textAnalyzer;
     private final Report report;
     
     public AlixLuceneIndexer(IndexWriter writer,
-            ZoneTextAnalyzer textAnalyzer,
+            Analyzer textAnalyzer,
             Report report)
     {
         this.writer = Objects.requireNonNull(writer, "writer");
@@ -127,8 +121,8 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
         for (int i = 0; i < alixDoc.fieldCount(); i++) {
             final AlixField alixField = alixDoc.fieldAt(i);
             // can’t reuse char sequence
-            final String value = alixField.getValueAsString();
             final String name = alixField.name;
+            final String value = alixField.getValueAsString();
             
             try {
                 switch (alixField.type) {
@@ -197,11 +191,9 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
                             // Base TEXT: store under <name> + suffix, index under <name>
                             luceneDoc.add(new StoredField(name, value, STORED_ONLY));
                             
-                            Reader r = alixField.openReader(); // keep it open
-                            TokenStream ts = textAnalyzer.tokenStream(
-                                alixField.name, r, alixField.include, alixField.exclude);
-                            
-                                luceneDoc.add(new Field(alixField.name, ts, TEXT_INDEXED_TS));
+                            // Reader reader = alixField.openReader(); // keep it open
+                            TokenStream ts = textAnalyzer.tokenStream(alixField.name, value);
+                            luceneDoc.add(new Field(alixField.name, value, TEXT_INDEXED_TS));
                             
                             // Word-count/stats design note:
                             // If you need word counts known at analysis time:
@@ -212,15 +204,15 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
                             // Derived TEXT: apply to ALL matching base sources if repeated
                             int srcCount = 0;
                             for (int j = 0; j < alixDoc.fieldCount(); j++) {
-                                AlixDocument.AlixField src = alixDoc.fieldAt(j);
+                                AlixField src = alixDoc.fieldAt(j);
                                 if (src.type == AlixDocument.FieldType.TEXT
                                         && src.source == null
                                         && alixField.source.equals(src.name))
                                 {
                                     srcCount++;
-                                    Reader reader = src.openReader();
-                                    TokenStream ts = textAnalyzer.tokenStream(alixField.name, reader, alixField.include, alixField.exclude);
-                                    luceneDoc.add(new Field(alixField.name, ts, TEXT_INDEXED_TS));
+                                    Field luceneField = new Field(alixField.name, src.getValueAsString(), TEXT_INDEXED_TS);
+                                    // TokenStream ts = textAnalyzer.tokenStream(alixField.name, src.getValueAsString());
+                                    luceneDoc.add(luceneField);
                                 }
                             }
                             if (srcCount == 0) {
@@ -230,8 +222,6 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
                         }
                     }
                 }
-            } catch (IOException e) {
-                throw new SAXException("I/O while analyzing field '" + alixField.name + "'", e);
             } catch (RuntimeException e) {
                 throw new SAXException("Error building Lucene fields from '" + alixField.name + "' type=" + alixField.type, e);
             }
@@ -239,8 +229,8 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
         
         try {
             writer.updateDocument(new Term(ALIX_ID, docId), luceneDoc);
-            // writer.addDocument(doc);
         } catch (IOException e) {
+            System.err.println(luceneDoc);
             throw new SAXException("IndexWriter failure", e);
         }
     }

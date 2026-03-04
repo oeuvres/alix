@@ -40,14 +40,15 @@ import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.FieldType;
 
 import com.github.oeuvres.alix.lucene.analysis.FinalCleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.FilterLocution;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
+import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
@@ -60,9 +61,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
 {
     final static String POS_PATH = "/com/github/oeuvres/alix/fr/opennlp-fr-ud-gsd-pos-1.3-2.5.4.bin";
     private static final POSModel POS_MODEL = loadPosModel(POS_PATH);
-    final Analyzer asciiAnalyzer;
-    final Analyzer canonicAnalyzer;
-    
+    final Analyzer ascii;
+    final Analyzer canonic;
     
     /**
      * Default constructor.
@@ -70,25 +70,23 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public FrenchAnalyzer()
     {
         super(PER_FIELD_REUSE_STRATEGY);
-        canonicAnalyzer = new CanonicAnalyzer();
-        asciiAnalyzer = new AsciiAnalyzer();
+        canonic = new CanonicAnalyzer();
+        ascii = new AsciiAnalyzer();
     }
     
     @Override
     protected Analyzer getWrappedAnalyzer(String fieldName)
     {
         if (fieldName.endsWith("_ascii")) {
-            return asciiAnalyzer;
+            return ascii;
         } else {
-            return canonicAnalyzer;
+            return canonic;
         }
     }
-
-
-
+    
     public static class CanonicAnalyzer extends Analyzer
     {
-
+        
         public CanonicAnalyzer()
         {
             super();
@@ -98,7 +96,10 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new MarkupTokenizer();
-            TokenStream ts = tokenizer; // segment words
+            // segment words
+            TokenStream ts = tokenizer;
+            // resolve case of common word at start of senetence
+            ts = new SentenceStartLowerCaseFilter(ts, FrenchLexicons.getLemmaLexicon());
             // interpret html tags as token events like para or section
             ts = new MarkupBoundaryFilter(ts);
             // fr split on ’ and -
@@ -112,12 +113,12 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
             ts = new FinalCleanupFilter(ts);
             return new TokenStreamComponents(tokenizer, ts);
         }
-
+        
     }
     
     public static class AsciiAnalyzer extends Analyzer
     {
-
+        
         public AsciiAnalyzer()
         {
             super();
@@ -128,6 +129,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         {
             final Tokenizer tokenizer = new MarkupTokenizer();
             TokenStream ts = tokenizer; // segment words
+            // resolve case of common word at start of senetence
+            ts = new SentenceStartLowerCaseFilter(ts, FrenchLexicons.getLemmaLexicon());
             // interpret html tags as token events like para or section
             ts = new MarkupBoundaryFilter(ts);
             // fr split on ’ and -
@@ -143,15 +146,17 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
             ts = new ASCIIFoldingFilter(ts); // no accents
             return new TokenStreamComponents(tokenizer, ts);
         }
-
+        
     }
-
-    private static POSModel loadPosModel(String path) {
+    
+    private static POSModel loadPosModel(String path)
+    {
         try (InputStream in = FrenchAnalyzer.class.getResourceAsStream(path)) {
-          if (in == null) throw new IllegalStateException("Missing resource: " + path);
-          return new POSModel(in);
+            if (in == null)
+                throw new IllegalStateException("Missing resource: " + path);
+            return new POSModel(in);
         } catch (IOException e) {
-          throw new ExceptionInInitializerError(e);
+            throw new ExceptionInInitializerError(e);
         }
-      }
+    }
 }

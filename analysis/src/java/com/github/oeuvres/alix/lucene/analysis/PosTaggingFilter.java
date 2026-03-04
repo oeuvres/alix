@@ -110,7 +110,6 @@ public class PosTaggingFilter extends TokenFilter
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
 
     /** Probability attribute set from tagger confidence. */
-    @SuppressWarnings("unused")
     private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
 
     /** Buffered token states (one sentence/chunk). */
@@ -185,12 +184,6 @@ public class PosTaggingFilter extends TokenFilter
         super.reset();
         ensureQueue();
         queue.clear();
-    }
-
-    @Override
-    public void end() throws IOException
-    {
-        super.end();
     }
 
     private void ensureQueue()
@@ -300,7 +293,7 @@ public class PosTaggingFilter extends TokenFilter
         final String[] sentence = sentenceList.toArray(new String[m]);
         
         // debug, check how sentence is splitted
-        final CharTermAttribute termLast = queue.get(n-1).getAttribute(CharTermAttribute.class);
+        // final CharTermAttribute termLast = queue.get(n-1).getAttribute(CharTermAttribute.class);
         // termLast.setEmpty().append("$$$");
         // termLast.setEmpty().append(Arrays.toString(sentence));
 

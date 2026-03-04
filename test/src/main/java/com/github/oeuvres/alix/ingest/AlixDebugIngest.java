@@ -96,10 +96,6 @@ public final class AlixDebugIngest
                     }
                 }
                 
-                // include/exclude should only appear on TEXT (per current usage)
-                if ((alixField.include != null || alixField.exclude != null) && alixField.type != AlixDocument.FieldType.TEXT) {
-                    out.report(Severity.WARN, "Field '" + alixField.name + "': include/exclude set on non-text type " + alixField.type);
-                }
                 
                 // source resolution: source must exist in same document scope
                 if (alixField.source != null) {
@@ -164,10 +160,6 @@ public final class AlixDebugIngest
                 System.out.print("- " + alixField.type + " " + alixField.name);
                 if (alixField.source != null)
                     System.out.print(" source=" + alixField.source);
-                if (alixField.include != null)
-                    System.out.print(" include=" + alixField.include);
-                if (alixField.exclude != null)
-                    System.out.print(" exclude=" + alixField.exclude);
                 System.out.println(" len=" + alixField.len);
                 
                 if (alixField.len > 0) {
