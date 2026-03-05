@@ -50,13 +50,19 @@
             <version>2.5.7</version>
         </dependency>
 
+        <dependency>
+            <groupId>net.sf.saxon</groupId>
+            <artifactId>Saxon-HE</artifactId>
+            <version>12.9</version>
+        </dependency>
+
     </dependencies>
 
     <build>
         <sourceDirectory>src/java</sourceDirectory>
         <resources>
             <resource>
-               <directory>src/resources</directory>
+                <directory>src/resources</directory>
             </resource>
         </resources>
     </build>

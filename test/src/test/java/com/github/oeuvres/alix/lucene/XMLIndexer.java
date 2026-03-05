@@ -63,7 +63,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
-import com.github.oeuvres.alix.xml.JarResolver;
+import com.github.oeuvres.alix.util.XsltJarResolver;
 
 /**
  * A worker for parallel lucene indexing.
@@ -141,7 +141,7 @@ public class XMLIndexer implements Runnable
             preHandler = null;
         }
         // alix.xsl transformer
-        JarResolver resloader = new JarResolver();
+        XsltJarResolver resloader = new XsltJarResolver();
         StreamSource tei2alixSource = new StreamSource(resloader.stream("alix.xsl"));
         // need a specific proc with the jar uri resolver
         TransformerFactory proc = getXSLFactory();
@@ -176,7 +176,7 @@ public class XMLIndexer implements Runnable
         SAXTransformerFactory stf = (SAXTransformerFactory)TransformerFactory.newInstance();
         // alix.xsl transformer
         final TransformerHandler tei2alixHandler;
-        JarResolver resloader = new JarResolver();
+        XsltJarResolver resloader = new XsltJarResolver();
         StreamSource tei2alixSource = new StreamSource(resloader.stream("alix.xsl"));
         TransformerFactory proc = getXSLFactory();
         proc.setURIResolver(resloader);
