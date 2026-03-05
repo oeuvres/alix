@@ -86,21 +86,48 @@ public final class Dir
         if (glob == null)
             return null;
         
-        final Path g = new File(glob).toPath();
-        if (g.isAbsolute()) {
-            return g.normalize().toString();
+        final Path anchor;
+        if (base == null)
+            anchor = new File(".").toPath().toAbsolutePath().normalize();
+        else {
+            File a = base.isDirectory() ? base : base.getParentFile();
+            if (a == null)
+                throw new IOException("Cannot resolve glob against base with no parent: " + base);
+            anchor = a.toPath().toAbsolutePath().normalize();
         }
         
-        if (base == null) {
-            // Fall back to current working directory.
-            return new File(glob).toPath().toAbsolutePath().normalize().toString();
+        final int meta = indexOfGlobMeta(glob);
+        if (meta < 0) {
+            // No wildcards: treat as normal path.
+            Path p = new File(glob).toPath();
+            if (!p.isAbsolute())
+                p = anchor.resolve(p);
+            return p.normalize().toString();
         }
         
-        File anchor = base.isDirectory() ? base : base.getParentFile();
-        if (anchor == null)
-            throw new IOException("Cannot resolve glob against base with no parent: " + base);
+        // Wildcards present: resolve only the directory part (before last separator preceding first meta).
+        int sep = lastSeparatorBefore(glob, meta);
+        String dirPart = (sep >= 0) ? glob.substring(0, sep + 1) : "";
+        String tail = (sep >= 0) ? glob.substring(sep + 1) : glob;
         
-        return anchor.toPath().toAbsolutePath().normalize().resolve(glob).normalize().toString();
+        Path dir;
+        if (dirPart.isEmpty()) {
+            dir = anchor;
+        } else {
+            Path dp = new File(dirPart).toPath(); // safe: no meta in dirPart by construction
+            dir = dp.isAbsolute() ? dp.normalize() : anchor.resolve(dp).normalize();
+        }
+        
+        if (tail.isEmpty())
+            return dir.toString();
+        return dir.toString() + File.separator + tail;
+    }
+    
+    private static int lastSeparatorBefore(String s, int before)
+    {
+        int a = s.lastIndexOf('/', before);
+        int b = s.lastIndexOf('\\', before);
+        return Math.max(a, b);
     }
     
     /**

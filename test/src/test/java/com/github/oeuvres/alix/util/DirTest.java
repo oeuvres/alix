@@ -44,9 +44,11 @@ public class DirTest
         String g = Dir.globNorm("data/*.xml", cfgFile.toFile());
         assertNotNull(g);
         
-        // Must be absolute and contain cfgDir + data/*.xml
+        // Make separators comparable across OSes
+        String gn = g.replace('\\', '/');
+        
         assertTrue(new File(g).isAbsolute(), "globNorm should return an absolute path");
-        assertTrue(g.replace('\\', '/').contains("/cfg/data/*.xml"), "glob should be resolved against config parent");
+        assertTrue(gn.endsWith("/cfg/data/*.xml"), "glob should be resolved against config parent: " + gn);
     }
     
     @Test
