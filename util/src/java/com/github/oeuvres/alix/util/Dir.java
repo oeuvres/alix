@@ -43,237 +43,317 @@ import java.nio.file.PathMatcher;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Static tools to deal with directories (and files). Kept in java 7.
+ * File/directory utilities used by Alix CLI tools.
+ *
+ * <p>
+ * Scope: Java 7 compatible; uses {@code java.nio.file} for traversal and glob matching.
+ * </p>
+ *
+ * <h3>Glob conventions</h3>
+ * <ul>
+ * <li>Blank lines and lines starting with {@code #} are ignored (return {@code null}).</li>
+ * <li>Globs follow the {@code FileSystem.getPathMatcher("glob:...")} syntax.</li>
+ * <li>Relative globs can be normalized against a base directory.</li>
+ * </ul>
  */
-public class Dir
+public final class Dir
 {
-    static { // maybe useful to decode file names
-        System.setProperty("file.encoding", "UTF-8");
-    }
     
-    /**
-     * Avoid instantiation.
-     */
     private Dir()
     {
+        /* no instances */ }
         
-    }
-
     /**
-     * Resolve relative links for glob.
-     * 
-     * @param glob requested path as a glob.
-     * @param base file from which resolve relative links.
-     * @return an absolute glob.
-     * @throws IOException file exceptions.
+     * Normalize a possibly-relative glob against a base file/directory.
+     *
+     * <p>
+     * This is intended for config files where globs may be written relative to the config location.
+     * </p>
+     *
+     * @param glob a glob string (may include wildcards).
+     * @param base a file or directory used as resolution anchor; if a file, its parent is used.
+     * @return an absolute, normalized glob string; or {@code null} if blank/comment.
+     * @throws IOException if {@code base} has no parent or cannot be resolved.
      */
     public static String globNorm(String glob, File base) throws IOException
     {
-        glob = glob.trim();
-        if (glob.equals("")) {
+        glob = sanitizeGlobLine(glob);
+        if (glob == null)
             return null;
+        
+        final Path g = new File(glob).toPath();
+        if (g.isAbsolute()) {
+            return g.normalize().toString();
         }
-        if (glob.startsWith("#")) {
-            return null;
+        
+        if (base == null) {
+            // Fall back to current working directory.
+            return new File(glob).toPath().toAbsolutePath().normalize().toString();
         }
-        // File.separator regularisation needed
-        if (File.separatorChar == '\\') {
-            glob = glob.replaceAll("[/\\\\]", File.separator + File.separator);
-        }
-        else {
-            glob = glob.replaceAll("[/\\\\]", File.separator);
-        }
-        if (!new File(glob).isAbsolute()) {
-            File dir = base.getAbsoluteFile();
-            if (glob.startsWith("." + File.separator)) {
-                glob = glob.substring(2);
-            }
-            while (glob.startsWith(".." + File.separator)) {
-                dir = dir.getParentFile();
-                glob = glob.substring(3);
-            }
-            File f = new File(dir, glob);
-            return f.getAbsolutePath();
-        }
-        else {
-            return glob;
-        }
+        
+        File anchor = base.isDirectory() ? base : base.getParentFile();
+        if (anchor == null)
+            throw new IOException("Cannot resolve glob against base with no parent: " + base);
+        
+        return anchor.toPath().toAbsolutePath().normalize().resolve(glob).normalize().toString();
     }
-
+    
     /**
-     * Add files to a list with a glob.
+     * Expand a glob and append matching paths to {@code out}.
      *
-     * @param paths list of paths to populate.
-     * @param glob pattern of file to append.
-     * @return the list of paths completed.
-     * @throws IOException file errors.
+     * <p>
+     * Rules:
+     * </p>
+     * <ul>
+     * <li>If {@code glob} points to an existing file, it is added directly.</li>
+     * <li>Otherwise the filesystem is walked from a computed base directory, and matches are added.</li>
+     * <li>By default, directories/files starting with '.' or '_' are skipped (common corpus hygiene).</li>
+     * <li>Returned list is de-duplicated while preserving encounter order.</li>
+     * </ul>
+     *
+     * @param out  list to populate (must be mutable).
+     * @param glob glob pattern (absolute or relative).
+     * @return {@code out} for chaining.
+     * @throws IOException on traversal errors.
      */
-    public static List<Path> include(List<Path> paths, final String glob) throws IOException
+    public static List<Path> include(List<Path> out, String glob) throws IOException
     {
-        if (paths == null) {
-            throw new IOException("List<Path> paths is null, a list is needed to add Path");
-        }
-        if (glob == null) {
-            return paths;
-        }
-        // name encoding problem in linux WSL, with File or Path
-        Path basedir = new File(glob.replaceFirst("[\\[\\*\\?\\{].*", "") + "DUMMY").getParentFile().toPath();
-        File globFile = new File(glob);
-        if (globFile.exists()) {
-            paths.add(globFile.toPath());
-            return paths;
-        }
+        return include(out, glob, true);
+    }
     
-        String pattern = glob;
-        if (File.separator.equals("\\")) { // for Windows
-            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
+    /**
+     * Variant of {@link #include(List, String)} allowing control of "hidden" pruning.
+     *
+     * @param out                 list to populate.
+     * @param glob                glob pattern (absolute or relative).
+     * @param skipDotOrUnderscore if true, prunes directories/files starting with '.' or '_'.
+     */
+    public static List<Path> include(List<Path> out, String glob, final boolean skipDotOrUnderscore) throws IOException
+    {
+        if (out == null)
+            throw new IOException("out == null (need a mutable List<Path>)");
+        glob = sanitizeGlobLine(glob);
+        if (glob == null)
+            return out;
+        
+        // If it is a concrete existing file, add it and return.
+        final File direct = new File(glob);
+        if (direct.exists() && direct.isFile()) {
+            dedupAdd(out, direct.toPath());
+            return out;
         }
-        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // new File(glob)
-    
-        Files.walkFileTree(basedir, new SimpleFileVisitor<Path>() {
+        
+        // Walk from the directory that precedes the first glob metacharacter.
+        final Path baseDir = inferWalkBase(glob).toAbsolutePath().normalize();
+        if (!Files.exists(baseDir)) {
+            throw new IOException("Glob base directory does not exist: " + baseDir + " (glob=" + glob + ")");
+        }
+        
+        final PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + toMatcherPattern(glob));
+        
+        Files.walkFileTree(baseDir, new SimpleFileVisitor<Path>()
+        {
             @Override
-            public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
             {
-                String dirname = path.getFileName().toString();
-                if (dirname.startsWith(".") || dirname.startsWith("_")) {
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                return FileVisitResult.CONTINUE;
-            }
-    
-            @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException
-            {
-                String filename = path.getFileName().toString();
-                if (filename.startsWith(".") || filename.startsWith("_")) {
+                if (!skipDotOrUnderscore)
                     return FileVisitResult.CONTINUE;
-                }
-                if (pathMatcher.matches(path)) {
-                    paths.add(path);
+                Path name = dir.getFileName();
+                if (name != null) {
+                    String s = name.toString();
+                    if (s.startsWith(".") || s.startsWith("_"))
+                        return FileVisitResult.SKIP_SUBTREE;
                 }
                 return FileVisitResult.CONTINUE;
             }
-    
+            
             @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
             {
+                if (skipDotOrUnderscore) {
+                    Path name = file.getFileName();
+                    if (name != null) {
+                        String s = name.toString();
+                        if (s.startsWith(".") || s.startsWith("_"))
+                            return FileVisitResult.CONTINUE;
+                    }
+                }
+                if (matcher.matches(file))
+                    dedupAdd(out, file);
+                return FileVisitResult.CONTINUE;
+            }
+            
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc)
+            {
+                // Indexing should usually be best-effort across large corpora.
                 return FileVisitResult.CONTINUE;
             }
         });
-        return paths;
-    }
-
-    /**
-     * Delete files from a list by glob.
-     * 
-     * @param paths list of files.
-     * @param glob pattern to select files.
-     * @return list of selected paths.
-     * @throws IOException file errors.
-     */
-    static public  List<Path> exclude(final List<Path> paths, final String glob) throws IOException
-    {
-        if (glob == null) {
-            return paths;
-        }
-        String pattern = glob;
-        if (File.separator.equals("\\")) { // for Windows
-            pattern = new File(glob).toString().replaceAll("[/\\\\]+", "\\\\\\\\"); // yes all those '\' needed
-        }
-        final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
         
-        Iterator<Path> it = paths.iterator();
-        while (it.hasNext()) {
-            Path path = it.next();
-            if (pathMatcher.matches(path)) {
-                it.remove();
-            }
+        // Ensure de-dup stable ordering even if caller pre-populated the list.
+        stableDedup(out);
+        return out;
+    }
+    
+    /**
+     * Remove from {@code paths} any path matched by {@code glob}.
+     *
+     * @param paths list to mutate.
+     * @param glob  glob pattern; blank/comment is ignored.
+     * @return {@code paths}.
+     * @throws IOException if {@code paths} is null.
+     */
+    public static List<Path> exclude(List<Path> paths, String glob) throws IOException
+    {
+        if (paths == null)
+            throw new IOException("paths == null");
+        glob = sanitizeGlobLine(glob);
+        if (glob == null)
+            return paths;
+        
+        final PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + toMatcherPattern(glob));
+        
+        // Keep order; filter in-place.
+        for (int i = paths.size() - 1; i >= 0; i--) {
+            Path p = paths.get(i);
+            if (p != null && matcher.matches(p))
+                paths.remove(i);
         }
         return paths;
     }
-
+    
     /**
-     * List files by glob.
-     * 
-     * @param glob pattern to select files.
-     * @return list of selected paths.
-     * @throws IOException file errors.
+     * Convenience: list files matching a glob.
      */
-    public static List<Path> ls(final String glob) throws IOException
+    public static List<Path> ls(String glob) throws IOException
     {
         return include(new ArrayList<Path>(), glob);
     }
-
+    
     /**
-     * Delete a folder by path (use java.nio stream, should be faster then
-     * {@link #rm(File)})
-     * 
-     * @param path file to delete.
-     * @return true if exists and deleted, false otherwise.
-     * @throws IOException file error.
+     * Recursively delete a file or directory.
+     *
+     * @param path file/directory to delete
+     * @return true if it existed and was deleted, false if it did not exist.
      */
     public static boolean rm(Path path) throws IOException
     {
-        if (!Files.exists(path))
+        if (path == null || !Files.exists(path))
             return false;
+        
         if (Files.isDirectory(path)) {
-            DirectoryStream<Path> stream = Files.newDirectoryStream(path);
-            for (Path entry : stream) {
-                rm(entry);
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
+                for (Path entry : stream)
+                    rm(entry);
             }
-            stream.close();
         }
         Files.delete(path);
         return true;
     }
-
+    
     /**
-     * Delete a folder by File object (maybe a bit slow for lots of big folders).
-     * 
-     * @param file folder to delete.
-     * @return true if exists and deleted, false otherwise.
+     * Recursively delete a file or directory (legacy {@link File} API).
      */
     public static boolean rm(File file)
     {
-        if (!file.exists())
+        if (file == null || !file.exists())
             return false;
         if (file.isFile())
             return file.delete();
+        
         File[] ls = file.listFiles();
         if (ls != null) {
-            for (File f : ls) {
+            for (File f : ls)
                 rm(f);
-            }
         }
         return file.delete();
     }
-
-    /**
-     * Private collector of files to index.
-     * 
-     * @param dir
-     * @param pattern
-     * @return
-     */
-    @SuppressWarnings("unused")
-    private static void collect(File dir, PathMatcher matcher, int depth, final List<File> files)
+    
+    // ---------------- internal helpers ----------------
+    
+    private static String sanitizeGlobLine(String glob)
     {
-        File[] ls = dir.listFiles();
-        for (File entry : ls) {
-            String name = entry.getName();
-            if (name.startsWith("."))
-                continue; // ? find a way to work around ?
-            else if (entry.isDirectory()) {
-                if (depth > 1 || depth < 0)
-                    collect(entry, matcher, depth - 1, files);
-            } else if (!matcher.matches(entry.toPath()))
-                continue;
-            else
-                files.add(entry);
+        if (glob == null)
+            return null;
+        glob = glob.trim();
+        if (glob.isEmpty())
+            return null;
+        if (glob.startsWith("#"))
+            return null;
+        return glob;
+    }
+    
+    private static void stableDedup(List<Path> paths)
+    {
+        Set<Path> set = new LinkedHashSet<Path>(paths);
+        paths.clear();
+        paths.addAll(set);
+    }
+    
+    private static void dedupAdd(List<Path> out, Path p)
+    {
+        if (p == null)
+            return;
+        // Small corpora: contains() is ok. If you expect millions, switch callers to a Set<Path>.
+        if (!out.contains(p))
+            out.add(p);
+    }
+    
+    /**
+     * Infer a directory to start walking, by cutting the glob at the first metacharacter and taking its parent.
+     */
+    private static Path inferWalkBase(String glob)
+    {
+        int cut = indexOfGlobMeta(glob);
+        String prefix = (cut < 0) ? glob : glob.substring(0, cut);
+        
+        File f = new File(prefix);
+        if (f.isDirectory())
+            return f.toPath();
+        
+        File parent = f.getParentFile();
+        if (parent != null)
+            return parent.toPath();
+        
+        // Covers patterns like "*.xml" or "C:\*.xml" where parent may be null.
+        return new File(".").toPath();
+    }
+    
+    private static int indexOfGlobMeta(String s)
+    {
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '*':
+                case '?':
+                case '[':
+                case '{':
+                    return i;
+                default:
+                    // continue
+            }
         }
+        return -1;
+    }
+    
+    /**
+     * Normalize separators for the platform matcher. On Windows, backslash is both separator and glob escape,
+     * so callers should prefer forward slashes in config; we still accept both.
+     */
+    private static String toMatcherPattern(String glob)
+    {
+        if (File.separatorChar == '\\') {
+            // Convert / and \ runs to a single escaped backslash sequence for the glob syntax.
+            // (Yes: "glob:" treats '\' as escape; the matcher expects literal separators.)
+            return glob.replaceAll("[/\\\\]+", "\\\\\\\\");
+        }
+        // Unix-like: normalize any backslashes to '/' separator.
+        return glob.replace('\\', '/');
     }
 }
