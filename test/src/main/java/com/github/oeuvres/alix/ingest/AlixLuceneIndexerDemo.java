@@ -4,9 +4,6 @@ import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
 
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -31,22 +28,14 @@ public final class AlixLuceneIndexerDemo
         Path xml = (args.length >= 1) ? Path.of(args[0]) : Path.of("src/test/test-data/ingest-alix-test.xml");
         
         Directory dir = new ByteBuffersDirectory(); // lucene memory index
-        // IndexWriterConfig iwc = new IndexWriterConfig(new StandardAnalyzer());
         IndexWriterConfig iwc = new IndexWriterConfig(new FrenchAnalyzer());
         
         try (IndexWriter writer = new IndexWriter(dir, iwc)) {
             
-            // Text analyzer used by AlixLuceneIndexer for TEXT fields.
-            // This stub ignores include/exclude and just tokenizes the field content.
-            Analyzer textAnalyzer = new FrenchAnalyzer();
-            
             Report report = new ReportConsole();
             
             // Build the indexer (it is the AlixSaxHandler consumer)
-            AlixLuceneIndexer indexer = new AlixLuceneIndexer(
-                    writer,
-                    textAnalyzer,
-                    report);
+            AlixLuceneIndexer indexer = new AlixLuceneIndexer(writer, report);
             
             // Parse + index
             AlixDocument acc = new AlixDocument();

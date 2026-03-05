@@ -39,9 +39,6 @@ import static com.github.oeuvres.alix.common.Names.*;
  * - postings: keyword (not tokenized) under same name (fast filtering via postings)
  * - docvalues: SortedSetDocValuesField under same name (for faceting/grouping; not for fast filtering)
  *
- * META:
- * - stored + indexed (tokenized) under same name
- *
  * TEXT:
  * - base text (source==null): stored under (name + storedTextSuffix) and indexed under name with TokenStream
  * - derived text (source!=null): indexed under name, using source text occurrences (all matches if repeated)
@@ -56,7 +53,6 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
     
     private static final FieldType STORED_ONLY;
     private static final FieldType KEYWORD_POSTINGS;
-    private static final FieldType META_TEXT;
     private static final FieldType TEXT_INDEXED_TS;
     
     static {
@@ -74,13 +70,6 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
         kw.freeze();
         KEYWORD_POSTINGS = kw;
         
-        FieldType mt = new FieldType();
-        mt.setStored(true);
-        mt.setTokenized(true);
-        mt.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-        mt.freeze();
-        META_TEXT = mt;
-        
         FieldType ti = new FieldType();
         ti.setStored(false);
         ti.setTokenized(true);
@@ -90,15 +79,11 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
     }
     
     private final IndexWriter writer;
-    private final Analyzer textAnalyzer;
     private final Report report;
     
-    public AlixLuceneIndexer(IndexWriter writer,
-            Analyzer textAnalyzer,
-            Report report)
+    public AlixLuceneIndexer(IndexWriter writer, Report report)
     {
         this.writer = Objects.requireNonNull(writer, "writer");
-        this.textAnalyzer = Objects.requireNonNull(textAnalyzer, "textAnalyzer");
         this.report = (report != null) ? report : ReportNull.INSTANCE;
     }
     
@@ -181,18 +166,14 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
                         luceneDoc.add(new SortedSetDocValuesField(alixField.name, new BytesRef(value.toString())));
                     }
                     
-                    case META -> {
-                        // stored + indexed (tokenized) from CharSequence (uses IW analyzer)
-                        luceneDoc.add(new Field(alixField.name, value, META_TEXT));
-                    }
                     
                     case TEXT -> {
                         if (alixField.source == null) {
                             // Base TEXT: store under <name> + suffix, index under <name>
                             luceneDoc.add(new StoredField(name, value, STORED_ONLY));
                             
-                            // Reader reader = alixField.openReader(); // keep it open
-                            TokenStream ts = textAnalyzer.tokenStream(alixField.name, value);
+                            // feel field with a TokenStream break the Analyzer reuse logic
+                            // no need of a reader here, store need a string
                             luceneDoc.add(new Field(alixField.name, value, TEXT_INDEXED_TS));
                             
                             // Word-count/stats design note:
