@@ -1,12 +1,8 @@
 package com.github.oeuvres.alix.ingest;
 
 import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
 import java.util.Objects;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;

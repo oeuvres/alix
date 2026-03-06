@@ -5,7 +5,7 @@
 -->
 <xsl:transform version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns="http://www.w3.org/1999/xhtml" 
-  xmlns:alix="https://oeuvres.github.io/alix" 
+  xmlns:alix="https://github.com/oeuvres/alix/ns" 
   xmlns:epub="http://www.idpf.org/2007/ops"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
   exclude-result-prefixes="tei"
@@ -65,7 +65,7 @@
       <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability[@status='free']"/>
       <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:licence[contains(@target, 'creativecommons.org')]"/>
       <xsl:otherwise>
-        <alix:field name="rights" type="meta">
+        <alix:field name="rights" type="store">
           <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/*">
             <xsl:apply-templates select="."/>
           </xsl:for-each>
@@ -130,11 +130,11 @@
   <xsl:template match="/*">
     <xsl:choose>
       <xsl:when test="@type='article'">
-        <alix:article xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml">
+        <alix:document xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">article</xsl:with-param>
           </xsl:call-template>
-        </alix:article>
+        </alix:document>
       </xsl:when>
       <xsl:when test="@type='book'">
         <alix:book xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml">
@@ -426,9 +426,7 @@
         </article>
       </alix:field>
       <xsl:if test=".//*[@type = 'observation']">
-        <alix:field name="observations" type="text" source="text">
-          <alix:include attribute="data-tei-type" value="observation"/>
-        </alix:field>
+        <alix:field name="observations" type="text" source="text"/>
       </xsl:if>
       <!--
       <alix:field name="analytic" type="meta">

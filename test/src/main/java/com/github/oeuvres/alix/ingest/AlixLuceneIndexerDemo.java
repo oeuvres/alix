@@ -25,7 +25,8 @@ public final class AlixLuceneIndexerDemo
     public static void main(String[] args) throws Exception
     {
         // Input
-        Path xml = (args.length >= 1) ? Path.of(args[0]) : Path.of("src/test/test-data/ingest-alix-test.xml");
+        // Path xml = (args.length >= 1) ? Path.of(args[0]) : Path.of("src/test/test-data/ingest-alix-test.xml");
+        Path xml = (args.length >= 1) ? Path.of(args[0]) : Path.of("D:\\glorieuf\\Desktop\\test.xml");
         
         Directory dir = new ByteBuffersDirectory(); // lucene memory index
         IndexWriterConfig iwc = new IndexWriterConfig(new FrenchAnalyzer());

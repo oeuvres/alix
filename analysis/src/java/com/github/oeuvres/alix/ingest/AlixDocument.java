@@ -58,7 +58,7 @@ public final class AlixDocument
      */
     public enum FieldType
     {
-        STORE, INT, CATEGORY, FACET, META, TEXT;
+        STORE, INT, CATEGORY, FACET, TEXT;
 
         /**
          * Parse an XML attribute value into a {@link FieldType}.
@@ -81,8 +81,6 @@ public final class AlixDocument
                     return CATEGORY;
                 case "facet":
                     return FACET;
-                case "meta":
-                    return META;
                 case "text":
                     return TEXT;
                 default:
@@ -360,7 +358,7 @@ public final class AlixDocument
      */
     public void openField(String name, FieldType type)
     {
-        openField(name, type, null, null, null);
+        openField(name, type, null);
     }
 
     /**
@@ -373,12 +371,10 @@ public final class AlixDocument
      * @param name field name (non-null)
      * @param type field type (non-null)
      * @param source optional source field name for derived fields (nullable)
-     * @param include optional include parameter (nullable)
-     * @param exclude optional exclude parameter (nullable)
      * @throws NullPointerException if {@code name} or {@code type} is null
      * @throws IllegalStateException if another field is already open
      */
-    public void openField(String name, FieldType type, String source, String include, String exclude)
+    public void openField(String name, FieldType type, String source)
     {
         if (current != null)
             throw new IllegalStateException("Nested openField(): " + current.name);

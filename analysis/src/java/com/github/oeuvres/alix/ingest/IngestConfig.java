@@ -49,6 +49,9 @@ public final class IngestConfig
     /** Corpus id (defaults to config filename stem if missing). */
     public final String name;
     
+    /** Source TEI globs, for information. */
+    public final List<String> teiGlobs;
+    
     /** Required. Expanded TEI files after applying excludes. Absolute normalized, order preserved. */
     public final List<Path> teiFiles;
     
@@ -67,8 +70,11 @@ public final class IngestConfig
     /** Optional. Absolute normalized paths, config order preserved. */
     public final List<Path> stopfile;
     
+
+    
     private IngestConfig(
             String name,
+            List<String> teiGlobs,
             List<Path> teiFiles,
             Path indexroot,
             String label,
@@ -77,12 +83,13 @@ public final class IngestConfig
             List<Path> stopfile)
     {
         this.name = name;
+        this.teiGlobs = teiGlobs;
+        this.teiFiles = Collections.unmodifiableList(teiFiles);
         this.label = label;
         this.indexroot = indexroot;
         this.prexslt = prexslt;
         this.dicfile = Collections.unmodifiableList(dicfile);
         this.stopfile = Collections.unmodifiableList(stopfile);
-        this.teiFiles = Collections.unmodifiableList(teiFiles);
     }
     
     /**
@@ -108,38 +115,39 @@ public final class IngestConfig
         if (baseDir == null)
             throw new IllegalArgumentException("Config file has no parent dir: " + cfg);
         
-        Properties p = new Properties();
+        Properties properties = new Properties();
         try (InputStream in = Files.newInputStream(cfg)) {
-            p.loadFromXML(in);
+            properties.loadFromXML(in);
         }
         
-        String name = trimToNull(p.getProperty("name"));
+        String name = trimToNull(properties.getProperty("name"));
         if (name == null)
             name = fileStem(cfg);
         
-        String label = trimToNull(p.getProperty("label"));
+        String label = trimToNull(properties.getProperty("label"));
         
-        String indexrootStr = trimToNull(p.getProperty("indexroot"));
+        String indexrootStr = trimToNull(properties.getProperty("indexroot"));
         if (indexrootStr == null)
             throw new IllegalArgumentException("Missing required key: indexroot in " + cfg);
         Path indexroot = resolvePath(baseDir, indexrootStr);
         
         // Optional resources
         Path prexslt = null;
-        String prexsltStr = trimToNull(p.getProperty("prexslt"));
+        String prexsltStr = trimToNull(properties.getProperty("prexslt"));
         if (prexsltStr != null)
             prexslt = resolvePath(baseDir, prexsltStr);
         
-        List<Path> dicfile = resolveFiles(baseDir, lines(p, "dicfile"));
-        List<Path> stopfile = resolveFiles(baseDir, lines(p, "stopfile"));
+        List<Path> dicfile = resolveFiles(baseDir, lines(properties, "dicfile"));
+        List<Path> stopfile = resolveFiles(baseDir, lines(properties, "stopfile"));
         
         // Required tei globs
-        List<String> teiLines = lines(p, "tei");
+        List<String> teiLines = lines(properties, "tei");
         if (teiLines.isEmpty())
             throw new IllegalArgumentException("Missing/empty required key: tei in " + cfg);
         
         List<String> teiGlobs = normalizeGlobs(cfg, teiLines);
-        List<String> excludeGlobs = normalizeGlobs(cfg, lines(p, "exclude"));
+        
+        List<String> excludeGlobs = normalizeGlobs(cfg, lines(properties, "exclude"));
         
         // Expand in config order; report duplicates immediately.
         List<Path> teiFiles = expandTeiFiles(teiGlobs, rep);
@@ -149,7 +157,12 @@ public final class IngestConfig
             Dir.exclude(teiFiles, ex);
         }
         
-        return new IngestConfig(name, teiFiles, indexroot, label, prexslt, dicfile, stopfile);
+        if (teiFiles.isEmpty()) {
+            throw new IllegalArgumentException("No TEI files found, tei:\n" + String.join("\n", teiGlobs)
+            + "\nexclude: " + String.join("\n", excludeGlobs) + "\n" + cfg);
+        }
+        
+        return new IngestConfig(name, teiGlobs, teiFiles, indexroot, label, prexslt, dicfile, stopfile);
     }
     
     // ---- implementation details ----
@@ -253,7 +266,10 @@ public final class IngestConfig
         if (label != null)
             sb.append("  label=").append(label).append('\n');
         sb.append("  indexroot=").append(indexroot).append('\n');
-        appendList(sb, "teiFiles", teiFiles, -1);
+        sb.append("  tei files (" + teiFiles.size() + ")\n");
+        for (String glob: teiGlobs) {
+            sb.append("    - ").append(glob).append('\n');
+        }
         if (prexslt != null)
             sb.append("  prexslt=").append(prexslt).append('\n');
         

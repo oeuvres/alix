@@ -45,6 +45,8 @@ public final class Names
     public static final String ALIX_BOOKID = "alix.bookid";
     /** Mandatory field, XML source file name, used for update */
     public static final String ALIX_FILENAME = "alix.filename";
+    /** Optional int field, especially for chapters in books */
+    public static final String ALIX_ORD = "alix.ord";
     /** Mandatory field, unique id provide by user for all documents */
     public static final String ALIX_ID = "alix.id";
     /** Alix XML namespace */

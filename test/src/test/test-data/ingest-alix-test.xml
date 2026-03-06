@@ -5,7 +5,7 @@
     xmlns="http://www.w3.org/1999/xhtml"
     xml:id="demo-book">
 
-  <alix:field name="title" type="meta">Livre de tests</alix:field>
+  <alix:field name="title" type="text">Livre de tests</alix:field>
   <alix:field name="year" type="int" value="1959"/>
   <alix:field name="author" type="facet" value="Piaget, Jean "/>
   <alix:field name="author" type="facet" value="Inhelder, Bärbel"/>
@@ -21,7 +21,7 @@
 
   <alix:chapter xml:id="demo-book_ch1">
 
-    <alix:field name="title" type="meta">Chapitre I.</alix:field>
+    <alix:field name="title" type="text">Chapitre I.</alix:field>
     <alix:field name="year" type="int" value="1955"/>
     <alix:field name="author" type="facet" value="Piaget, Jean"/>
 

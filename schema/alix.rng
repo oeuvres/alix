@@ -71,7 +71,7 @@ Alix is XML friendly. Contents of fields can be clean HTML ready to display in a
 all Alix analyzers and searching helpers know how to deal with tags and avoid to break them.
     </p>
     <p>
-The proposed field types describe indexing uses understandable by an application developer (full text, lexical metadata, exact classifier, multi-valued facet, integer, stored payload), not the full complexity of Lucene internals.
+The proposed field types describe indexing uses understandable by an application developer (full text, exact classifier, multi-valued facet, integer, stored payload), not the full complexity of Lucene internals.
 Alix maps these logical types to Lucene field implementations and analyzers.
     </p>
     <p><strong>Global rule:</strong> all fields are stored. <code>@type</code> describes indexing/query/analysis behavior only.</p>
@@ -146,19 +146,6 @@ Alix maps these logical types to Lucene field implementations and analyzers.
       <td></td>
     </tr>
     <tr>
-      <th><code>meta</code></th>
-      <td>0..n</td>
-      <td>✓</td>
-      <td>✓</td>
-      <td></td>
-      <td>✓</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>tokenization + normalization (light)</td>
-      <td></td>
-    </tr>
-    <tr>
       <th><code>text</code></th>
       <td>0..n</td>
       <td>✓</td>
@@ -174,7 +161,8 @@ Alix maps these logical types to Lucene field implementations and analyzers.
   </tbody>
 </table>
 
-<p><strong>Notes:</strong> <code>facet</code> sort is technically possible in Lucene (selector on multi-valued field), but not enabled by default because semantics are ambiguous for users. <code>meta</code> is intentionally non-lemmatized and language-agnostic (default). <code>text</code> currently means French-quality linguistic indexing (<code>fr</code>); other languages require dedicated work.</p>
+<p><strong>Notes:</strong> <code>facet</code> sort is technically possible in Lucene (selector on multi-valued field), but not enabled by default because semantics are ambiguous for users. 
+ <code>text</code> currently means French-quality linguistic indexing (<code>fr</code>); other languages require dedicated work.</p>
 <p><em>* Help required to support other languages with quality comparable to French.</em></p>
     <p>
 According to Lucene model, there are 3 levels of objects inside Alix.
@@ -266,26 +254,15 @@ According to Lucene model, there are 3 levels of objects inside Alix.
   </define>
   <define name="field">
     <choice>
-      <ref name="field-text"/>
-      <ref name="field-meta"/>
       <ref name="field-store"/>
       <ref name="field-int"/>
       <ref name="field-category"/>
       <ref name="field-facet"/>
+      <ref name="field-text"/>
     </choice>
   </define>
 
-  <define name="zoneMatchExpr">
-    <a:documentation>
-Expression syntax for @include / @exclude (consumed by MarkupZoneFilter).
-This is NOT XPath. It is an OR-list of “atoms” separated by “|” (pipe).
-Atom forms:
-  - element name (local name): p, div, blockquote, teiHeader...
-  - attribute test: @attr='value' or @attr="value" (local attribute name)
-Whitespace is allowed around separators (e.g. "p | div").
-    </a:documentation>
-    <data type="token"/>
-  </define>
+
   <define name="field-text">
     <element name="field">
       <a:documentation>
@@ -298,21 +275,11 @@ If you need only lightweight token search (for example bibliographic strings), p
 @source (optional): derive this field from another field in the same document (the other field provides the XML/HTML payload).
 This is a field-to-field derivation (no payload duplication is implied by the schema).
 
-@include / @exclude (optional): zone filters applied during analysis, using the MarkupZoneFilter expression syntax
-(documented in <a:el>zoneMatchExpr</a:el>).
       </a:documentation>
       <ref name="name"/>
       <attribute name="type">
         <value>text</value>
       </attribute>
-
-      <optional>
-        <attribute name="include"><ref name="zoneMatchExpr"/></attribute>
-      </optional>
-      <optional>
-        <attribute name="exclude"><ref name="zoneMatchExpr"/></attribute>
-      </optional>
-
       <choice>
         <group>
           <attribute name="source">
@@ -324,19 +291,7 @@ This is a field-to-field derivation (no payload duplication is implied by the sc
       </choice>
     </element>
   </define>
-  <define name="field-meta">
-    <element name="field">
-      <a:documentation>
-Text (or XML) indexed as lightweight lexical tokens, without the heavy linguistic/full-text features of @type="text".
-Typical use: bibliographic citations, identifiers embedded in text strings, names, short metadata fields searchable by token.
-      </a:documentation>
-      <ref name="name"/>
-      <attribute name="type">
-        <value>meta</value>
-      </attribute>
-      <ref name="xml"/>
-    </element>
-  </define>
+
   <define name="field-store">
     <element name="field">
       <a:documentation>

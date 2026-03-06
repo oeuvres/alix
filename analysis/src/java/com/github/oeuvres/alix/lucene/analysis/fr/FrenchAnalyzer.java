@@ -47,6 +47,7 @@ import com.github.oeuvres.alix.lucene.analysis.FinalCleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 
@@ -63,6 +64,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     private static final POSModel POS_MODEL = loadPosModel(POS_PATH);
     final Analyzer ascii;
     final Analyzer canonic;
+    final Analyzer observation;
     
     /**
      * Default constructor.
@@ -72,11 +74,15 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         super(PER_FIELD_REUSE_STRATEGY);
         canonic = new CanonicAnalyzer();
         ascii = new AsciiAnalyzer();
+        observation = new ObservationAnalyzer();
     }
     
     @Override
     protected Analyzer getWrappedAnalyzer(String fieldName)
     {
+        if (fieldName.startsWith("obs")) {
+            return observation;
+        } else 
         if (fieldName.endsWith("_ascii")) {
             return ascii;
         } else {
@@ -115,6 +121,41 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         }
         
     }
+    
+    public static class ObservationAnalyzer extends Analyzer
+    {
+        
+        public ObservationAnalyzer()
+        {
+            super();
+        }
+        
+        @Override
+        public TokenStreamComponents createComponents(String field)
+        {
+            final Tokenizer tokenizer = new MarkupTokenizer();
+            // segment words
+            TokenStream ts = tokenizer;
+            // keep observations only
+            ts = new MarkupZoneFilter(ts, "@data-tei-type=\"observation\"", MarkupZoneFilter.Mode.INCLUDE);
+            // resolve case of common word at start of senetence
+            ts = new SentenceStartLowerCaseFilter(ts, FrenchLexicons.getLemmaLexicon());
+            // interpret html tags as token events like para or section
+            ts = new MarkupBoundaryFilter(ts);
+            // fr split on ’ and -
+            ts = new FrenchCliticSplitFilter(ts);
+            // pos tagging before lemmatize
+            ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
+            // provide lemma
+            ts = new LemmaFilter(ts, FrenchLexicons.getLemmaLexicon());
+            // TODO, multi word expression
+            // last filter prepare term to index
+            ts = new FinalCleanupFilter(ts);
+            return new TokenStreamComponents(tokenizer, ts);
+        }
+        
+    }
+
     
     public static class AsciiAnalyzer extends Analyzer
     {
