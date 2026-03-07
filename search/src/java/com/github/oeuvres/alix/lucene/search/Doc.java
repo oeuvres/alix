@@ -56,7 +56,7 @@ import org.apache.lucene.util.BytesRefHash;
 import static com.github.oeuvres.alix.common.Upos.*;
 import static com.github.oeuvres.alix.common.Names.*;
 import com.github.oeuvres.alix.common.TagFilter;
-import com.github.oeuvres.alix.lucene.index.BytesDic;
+import com.github.oeuvres.alix.lucene.terms.BytesDic;
 import com.github.oeuvres.alix.util.Top;
 
 /**

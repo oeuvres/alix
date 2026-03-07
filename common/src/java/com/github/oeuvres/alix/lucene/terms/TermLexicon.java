@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.terms;
 
 import org.apache.lucene.index.*;
 import org.apache.lucene.store.*;

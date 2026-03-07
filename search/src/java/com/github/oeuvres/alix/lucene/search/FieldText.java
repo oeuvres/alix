@@ -56,8 +56,8 @@ import org.apache.lucene.util.SparseFixedBitSet;
 import static com.github.oeuvres.alix.common.Upos.*;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.terms.BytesDic;
 import com.github.oeuvres.alix.common.TagFilter;
-import com.github.oeuvres.alix.lucene.index.BytesDic;
 import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.IntList;

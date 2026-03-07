@@ -90,7 +90,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
 import com.github.oeuvres.alix.fr.TagFr;
-import com.github.oeuvres.alix.lucene.index.BytesDic;
+import com.github.oeuvres.alix.lucene.terms.BytesDic;
 
 /**
  * <p>
