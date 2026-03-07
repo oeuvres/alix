@@ -40,8 +40,6 @@ import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.FieldType;
 
 import com.github.oeuvres.alix.lucene.analysis.FinalCleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
@@ -52,7 +50,6 @@ import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 
 import opennlp.tools.postag.POSModel;
-import opennlp.tools.postag.POSTaggerME;
 
 /**
  * Analysis scenario for French in Alix. The linguistic features of Alix are

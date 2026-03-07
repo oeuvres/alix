@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.LongBuffer;
+import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -35,12 +35,12 @@ import static java.lang.Math.toIntExact;
 /**
  * Immutable lookup table for one indexed field of one frozen Lucene directory.
  * <p>
- * The lexicon is stored in three files located directly in the Lucene directory:
+ * The lexicon is persisted in three files located directly in the Lucene directory:
  * </p>
  * <ul>
  *   <li><b>{@code &lt;field&gt;.terms.fst}</b>: exact lookup {@code term -> termId}</li>
  *   <li><b>{@code &lt;field&gt;.terms.dat}</b>: concatenated UTF-8 bytes of all terms in {@code termId} order</li>
- *   <li><b>{@code &lt;field&gt;.terms.off}</b>: big-endian {@code long} offsets into {@code .dat}</li>
+ *   <li><b>{@code &lt;field&gt;.terms.off}</b>: big-endian {@code int} offsets into {@code .dat}</li>
  * </ul>
  * <p>
  * Term ids are dense and stable for the frozen snapshot from which the lexicon was built.
@@ -48,15 +48,19 @@ import static java.lang.Math.toIntExact;
  * {@link TermsEnum} for the field.
  * </p>
  * <p>
- * This class exposes only two lifecycle operations:
+ * This class intentionally exposes only two lifecycle operations:
  * </p>
  * <ul>
  *   <li>{@link #write(Path, String)} or {@link #write(Path, IndexReader, String)} create the three files once</li>
  *   <li>{@link #open(Path, String)} opens the persisted lexicon for lookup</li>
  * </ul>
  * <p>
- * The string-based lookup assumes that the caller already provides the field's canonical indexed form.
+ * String lookup assumes that the caller already provides the field's canonical indexed form.
  * No analysis, normalization, stemming or lower-casing is applied here.
+ * </p>
+ * <p>
+ * This KISS implementation memory-maps the whole {@code .dat} file in one {@link ByteBuffer}.
+ * Consequently, it supports only lexicons whose {@code .dat} length fits in a signed 32-bit integer.
  * </p>
  */
 public final class TermLexicon {
@@ -79,7 +83,7 @@ public final class TermLexicon {
      * the term bytes are stored in {@code dat[off[i] .. off[i+1])}.
      * </p>
      */
-    private final LongBuffer off;
+    private final IntBuffer off;
 
     /** Number of distinct terms in the field. */
     private final int vocabSize;
@@ -100,7 +104,7 @@ public final class TermLexicon {
      * @param indexDir Lucene directory that contains the lexicon files
      * @param field indexed field name
      * @param fst exact mapping {@code term -> termId}
-     * @param dat memory-mapped term bytes file
+     * @param dat memory-mapped term-bytes file
      * @param off memory-mapped offsets file
      */
     private TermLexicon(
@@ -108,7 +112,7 @@ public final class TermLexicon {
         final String field,
         final FST<Long> fst,
         final ByteBuffer dat,
-        final LongBuffer off
+        final IntBuffer off
     ) {
         this.indexDir = indexDir;
         this.field = field;
@@ -116,6 +120,24 @@ public final class TermLexicon {
         this.dat = dat.asReadOnlyBuffer();
         this.off = off.asReadOnlyBuffer();
         this.vocabSize = off.capacity() - 1;
+    }
+
+    /**
+     * Returns {@code true} if the three persisted files for {@code field} exist as regular files.
+     * <p>
+     * This is a cheap presence test only. It does not validate sizes, mtimes or file contents.
+     * </p>
+     *
+     * @param indexDir Lucene directory
+     * @param field indexed field name
+     * @return {@code true} if {@code .fst}, {@code .dat} and {@code .off} are present
+     */
+    public static boolean exists(final Path indexDir, final String field) {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+        return Files.isRegularFile(fstPath(indexDir, field))
+            && Files.isRegularFile(datPath(indexDir, field))
+            && Files.isRegularFile(offPath(indexDir, field));
     }
 
     /**
@@ -208,18 +230,18 @@ public final class TermLexicon {
 
         final ByteBuffer dat = mapReadOnly(datPath);
         final ByteBuffer offBytes = mapReadOnly(offPath).order(ByteOrder.BIG_ENDIAN);
-        if ((offBytes.remaining() & 7) != 0) {
-            throw new IOException("Invalid offsets file (size is not a multiple of 8 bytes): " + offPath);
+        if ((offBytes.remaining() & 3) != 0) {
+            throw new IOException("Invalid offsets file (size is not a multiple of 4 bytes): " + offPath);
         }
-        final LongBuffer off = offBytes.asLongBuffer();
+        final IntBuffer off = offBytes.asIntBuffer();
         if (off.capacity() < 2) {
             throw new IOException("Invalid offsets file (need at least 2 offsets): " + offPath);
         }
 
-        final long datLength = dat.capacity();
-        final long first = off.get(0);
-        final long last = off.get(off.capacity() - 1);
-        if (first != 0L) {
+        final int datLength = dat.capacity();
+        final int first = off.get(0);
+        final int last = off.get(off.capacity() - 1);
+        if (first != 0) {
             throw new IOException("Invalid offsets file, off[0] != 0: " + offPath);
         }
         if (last != datLength) {
@@ -261,6 +283,18 @@ public final class TermLexicon {
     }
 
     /**
+     * Returns the in-memory size of the loaded FST, in bytes.
+     * <p>
+     * This does not include the memory-mapped {@code .dat} and {@code .off} files.
+     * </p>
+     *
+     * @return FST heap usage in bytes
+     */
+    public long fstRamBytesUsed() {
+        return fst.ramBytesUsed();
+    }
+
+    /**
      * Looks up a canonical indexed term represented as a Java string.
      *
      * @param term canonical indexed term form
@@ -299,16 +333,16 @@ public final class TermLexicon {
         checkTermId(termId);
         Objects.requireNonNull(reuse, "reuse");
 
-        final long start = off.get(termId);
-        final long end = off.get(termId + 1);
-        final int length = toIntExact(end - start);
+        final int start = off.get(termId);
+        final int end = off.get(termId + 1);
+        final int length = end - start;
 
         reuse.grow(length);
         final byte[] dst = reuse.bytes();
 
         final ByteBuffer dup = dat.duplicate();
-        dup.position(toIntExact(start));
-        dup.limit(toIntExact(end));
+        dup.position(start);
+        dup.limit(end);
         dup.get(dst, 0, length);
 
         reuse.setLength(length);
@@ -360,24 +394,32 @@ public final class TermLexicon {
         final FSTCompiler<Long> compiler = new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
         final IntsRefBuilder ints = new IntsRefBuilder();
 
-        long id = 0L;
-        long datPos = 0L;
+        int id = 0;
+        int datPos = 0;
 
         try (OutputStream datOs = new BufferedOutputStream(Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW));
              DataOutputStream offOut = new DataOutputStream(
                  new BufferedOutputStream(Files.newOutputStream(offPath, StandardOpenOption.CREATE_NEW))
              )) {
 
-            offOut.writeLong(0L);
+            offOut.writeInt(0);
 
             final TermsEnum te = terms.iterator();
             BytesRef term;
             while ((term = te.next()) != null) {
-                compiler.add(Util.toIntsRef(term, ints), id++);
+                if (id == Integer.MAX_VALUE) {
+                    throw new IOException("Too many terms for int term ids in field lexicon");
+                }
+                if (datPos > Integer.MAX_VALUE - term.length) {
+                    throw new IOException("Term bytes file would exceed 2GB; this implementation uses 32-bit offsets");
+                }
+
+                compiler.add(Util.toIntsRef(term, ints), (long) id);
 
                 datOs.write(term.bytes, term.offset, term.length);
                 datPos += term.length;
-                offOut.writeLong(datPos);
+                offOut.writeInt(datPos);
+                id++;
             }
         }
 
@@ -440,7 +482,11 @@ public final class TermLexicon {
      * @throws IOException if the move fails
      */
     private static void moveTemp(final Path source, final Path target) throws IOException {
-        Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+        try {
+            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            Files.move(source, target);
+        }
     }
 
     /**
@@ -524,14 +570,14 @@ public final class TermLexicon {
      * @param offPath offsets file path, used only in error messages
      * @throws IOException if checked offsets are not monotonic
      */
-    private static void monotonicityCheck(final LongBuffer off, final Path offPath) throws IOException {
+    private static void monotonicityCheck(final IntBuffer off, final Path offPath) throws IOException {
         final int n = off.capacity();
         final int head = Math.min(MONO_CHECK, n);
         final int tailStart = Math.max(0, n - MONO_CHECK);
 
-        long prev = off.get(0);
+        int prev = off.get(0);
         for (int i = 1; i < head; i++) {
-            final long cur = off.get(i);
+            final int cur = off.get(i);
             if (cur < prev) {
                 throw new IOException("Invalid offsets file, offsets decrease at head index " + i + ": " + offPath);
             }
@@ -540,7 +586,7 @@ public final class TermLexicon {
 
         prev = off.get(tailStart);
         for (int i = tailStart + 1; i < n; i++) {
-            final long cur = off.get(i);
+            final int cur = off.get(i);
             if (cur < prev) {
                 throw new IOException("Invalid offsets file, offsets decrease at tail index " + i + ": " + offPath);
             }

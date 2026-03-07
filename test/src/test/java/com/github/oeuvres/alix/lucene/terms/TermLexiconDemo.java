@@ -19,18 +19,14 @@ public final class TermLexiconDemo {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 3) {
-            System.err.println("Usage: TermLexiconDemo <indexDir> <field> <term>");
-            System.exit(1);
-        }
 
-        final Path indexDir = Path.of(args[0]);
-        final String field = args[1];
-        final String queryTerm = args[2];
+        final Path indexDir = Path.of("D:\\code\\piaget-labo\\lucene\\test");
+        final String field = "text";
+        final String queryTerm = "juste";
 
         // 1) Build the lexicon once if missing.
-        if (!java.nio.file.Files.exists(indexDir.resolve(field + ".terms.fst"))) {
-            TermLexicon.Builder.build(indexDir, field);
+        if (!TermLexicon.exists(indexDir, field)) {
+            TermLexicon.write(indexDir, field);
         }
 
         // 2) Open the lexicon and do the two core lookups.
