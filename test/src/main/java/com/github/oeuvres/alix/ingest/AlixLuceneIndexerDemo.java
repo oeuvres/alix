@@ -49,7 +49,7 @@ public final class AlixLuceneIndexerDemo
             }
             
             XMLReader xr = spf.newSAXParser().getXMLReader();
-            xr.setContentHandler(new AlixSaxHandler(acc, indexer));
+            xr.setContentHandler(new AlixSaxHandler(acc, indexer, null));
             
             try (InputStream in = new BufferedInputStream(new FileInputStream(xml.toFile()))) {
                 InputSource src = new InputSource(in);

@@ -56,7 +56,7 @@ public final class AlixSaxHandler extends DefaultHandler2
     {
         this.doc = Objects.requireNonNull(doc, "doc");
         this.consumer = Objects.requireNonNull(consumer, "consumer");
-        this.fileStem = requireNonBlank(fileStem, "fileStem");
+        this.fileStem = (fileStem == null || fileStem.isBlank())?"???":fileStem;
     }
     
     @Override
