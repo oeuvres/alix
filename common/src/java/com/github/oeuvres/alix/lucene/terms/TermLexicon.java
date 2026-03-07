@@ -48,12 +48,11 @@ import static java.lang.Math.toIntExact;
  * {@link TermsEnum} for the field.
  * </p>
  * <p>
- * This class is intentionally narrow:
+ * This class exposes only two lifecycle operations:
  * </p>
  * <ul>
- *   <li>{@link #id(String)} and {@link #id(BytesRef)} map a term to its integer id</li>
- *   <li>{@link #term(int)} and {@link #termBytes(int, BytesRefBuilder)} map an id back to the term</li>
- *   <li>{@link Builder} creates the three files once, offline, on a frozen index</li>
+ *   <li>{@link #write(Path, String)} or {@link #write(Path, IndexReader, String)} create the three files once</li>
+ *   <li>{@link #open(Path, String)} opens the persisted lexicon for lookup</li>
  * </ul>
  * <p>
  * The string-based lookup assumes that the caller already provides the field's canonical indexed form.
@@ -67,7 +66,7 @@ public final class TermLexicon {
     /** Indexed field for which this lexicon was built. */
     private final String field;
 
-    /** Exact immutable mapping from UTF-8 term bytes to dense term id. */
+    /** Exact immutable mapping from UTF-8 term bytes to dense term ids. */
     private final FST<Long> fst;
 
     /** Memory-mapped concatenation of all term bytes in term-id order. */
@@ -117,6 +116,73 @@ public final class TermLexicon {
         this.dat = dat.asReadOnlyBuffer();
         this.off = off.asReadOnlyBuffer();
         this.vocabSize = off.capacity() - 1;
+    }
+
+    /**
+     * Builds the lexicon files for one field using the latest committed state of the Lucene directory.
+     *
+     * @param indexDir Lucene directory that contains the frozen index
+     * @param field indexed field name
+     * @throws IOException if the index cannot be opened, if the field has no terms, or if one target file already exists
+     */
+    public static void write(final Path indexDir, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+
+        try (FSDirectory dir = FSDirectory.open(indexDir);
+             DirectoryReader reader = DirectoryReader.open(dir)) {
+            write(indexDir, reader, field);
+        }
+    }
+
+    /**
+     * Builds the lexicon files for one field from an already opened snapshot reader.
+     * <p>
+     * This overload is useful when the caller already controls which Lucene snapshot is being read,
+     * for example via {@code DirectoryReader.open(IndexCommit)}.
+     * </p>
+     *
+     * @param indexDir Lucene directory that will receive the {@code <field>.terms.*} files
+     * @param reader snapshot reader that defines the term universe and its lexicographic order
+     * @param field indexed field name
+     * @throws IOException if the field has no terms, if a target file already exists, or if writing fails
+     */
+    public static void write(final Path indexDir, final IndexReader reader, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(field, "field");
+
+        final Path fstPath = fstPath(indexDir, field);
+        final Path datPath = datPath(indexDir, field);
+        final Path offPath = offPath(indexDir, field);
+
+        ensureAbsent(fstPath);
+        ensureAbsent(datPath);
+        ensureAbsent(offPath);
+
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalArgumentException("Field not found or without terms: " + field);
+        }
+
+        final Path fstTmp = tmpPath(fstPath);
+        final Path datTmp = tmpPath(datPath);
+        final Path offTmp = tmpPath(offPath);
+        ensureAbsent(fstTmp);
+        ensureAbsent(datTmp);
+        ensureAbsent(offTmp);
+
+        try {
+            buildFiles(terms, fstTmp, datTmp, offTmp);
+            moveTemp(datTmp, datPath);
+            moveTemp(offTmp, offPath);
+            moveTemp(fstTmp, fstPath);
+        } catch (IOException | RuntimeException e) {
+            deleteIfExists(datTmp);
+            deleteIfExists(offTmp);
+            deleteIfExists(fstTmp);
+            throw e;
+        }
     }
 
     /**
@@ -202,6 +268,7 @@ public final class TermLexicon {
      * @throws IOException if the FST cannot be read
      */
     public int id(final String term) throws IOException {
+        Objects.requireNonNull(term, "term");
         final BytesRefBuilder bytes = TL_TERM_BYTES.get();
         bytes.copyChars(term);
         return id(bytes.get());
@@ -215,6 +282,7 @@ public final class TermLexicon {
      * @throws IOException if the FST cannot be read
      */
     public int id(final BytesRef term) throws IOException {
+        Objects.requireNonNull(term, "term");
         final Long value = Util.get(fst, term);
         return (value == null) ? -1 : toIntExact(value);
     }
@@ -260,164 +328,65 @@ public final class TermLexicon {
     }
 
     /**
-     * Checks whether a dense term id is valid for this lexicon.
+     * Checks that a term id is inside the valid range.
      *
-     * @param termId dense term id
-     * @throws IllegalArgumentException if {@code termId} is outside {@code [0, vocabSize)}
+     * @param termId dense term id to validate
+     * @throws IllegalArgumentException if the id is negative or outside the vocabulary size
      */
     private void checkTermId(final int termId) {
         if (termId < 0 || termId >= vocabSize) {
             throw new IllegalArgumentException(
-                "termId out of range: " + termId + " (vocabSize=" + vocabSize + ')'
+                "termId out of range: " + termId + " (vocabSize=" + vocabSize + ")"
             );
         }
     }
 
     /**
-     * Builder for the three {@code <field>.terms.*} files.
-     * <p>
-     * The builder is for offline use on a frozen index. It fails fast if one target file already exists.
-     * </p>
+     * Builds the three persisted files from the field's merged term dictionary.
+     *
+     * @param terms merged field terms
+     * @param fstPath target FST path
+     * @param datPath target term-bytes path
+     * @param offPath target offsets path
+     * @throws IOException if writing or FST compilation fails
      */
-    public static final class Builder {
-        /** Hidden constructor. */
-        private Builder() {
-        }
+    private static void buildFiles(
+        final Terms terms,
+        final Path fstPath,
+        final Path datPath,
+        final Path offPath
+    ) throws IOException {
+        final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
+        final FSTCompiler<Long> compiler = new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
+        final IntsRefBuilder ints = new IntsRefBuilder();
 
-        /**
-         * Builds the lexicon from the current visible state of a Lucene directory.
-         * <p>
-         * This is the minimal API for a frozen index: open the directory, enumerate the merged terms of the field,
-         * and materialize the three lexicon files next to the index.
-         * </p>
-         *
-         * @param indexDir Lucene directory
-         * @param field indexed field name
-         * @throws IOException if the index cannot be read or if one target file already exists
-         */
-        public static void build(final Path indexDir, final String field) throws IOException {
-            Objects.requireNonNull(indexDir, "indexDir");
-            Objects.requireNonNull(field, "field");
+        long id = 0L;
+        long datPos = 0L;
 
-            try (FSDirectory directory = FSDirectory.open(indexDir);
-                 DirectoryReader reader = DirectoryReader.open(directory)) {
-                build(indexDir, reader, field);
+        try (OutputStream datOs = new BufferedOutputStream(Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW));
+             DataOutputStream offOut = new DataOutputStream(
+                 new BufferedOutputStream(Files.newOutputStream(offPath, StandardOpenOption.CREATE_NEW))
+             )) {
+
+            offOut.writeLong(0L);
+
+            final TermsEnum te = terms.iterator();
+            BytesRef term;
+            while ((term = te.next()) != null) {
+                compiler.add(Util.toIntsRef(term, ints), id++);
+
+                datOs.write(term.bytes, term.offset, term.length);
+                datPos += term.length;
+                offOut.writeLong(datPos);
             }
         }
 
-        /**
-         * Builds the lexicon from an already opened snapshot reader.
-         * <p>
-         * This overload is useful when the caller already owns a reader on a specific commit.
-         * </p>
-         *
-         * @param indexDir Lucene directory where the files will be written
-         * @param snapshotReader reader on the frozen snapshot to materialize
-         * @param field indexed field name
-         * @throws IOException if the field has no terms, if one target file already exists, or on I/O failure
-         */
-        public static void build(final Path indexDir, final IndexReader snapshotReader, final String field)
-            throws IOException {
-            Objects.requireNonNull(indexDir, "indexDir");
-            Objects.requireNonNull(snapshotReader, "snapshotReader");
-            Objects.requireNonNull(field, "field");
-
-            final Path fstPath = fstPath(indexDir, field);
-            final Path datPath = datPath(indexDir, field);
-            final Path offPath = offPath(indexDir, field);
-
-            ensureMissing(fstPath);
-            ensureMissing(datPath);
-            ensureMissing(offPath);
-
-            final Terms terms = MultiTerms.getTerms(snapshotReader, field);
-            if (terms == null) {
-                throw new IllegalArgumentException("Field not found or without terms: " + field);
-            }
-
-            final Path tmpFst = fstPath.resolveSibling(fstPath.getFileName() + ".tmp");
-            final Path tmpDat = datPath.resolveSibling(datPath.getFileName() + ".tmp");
-            final Path tmpOff = offPath.resolveSibling(offPath.getFileName() + ".tmp");
-            ensureMissing(tmpFst);
-            ensureMissing(tmpDat);
-            ensureMissing(tmpOff);
-
-            try {
-                buildFiles(terms, tmpFst, tmpDat, tmpOff);
-                Files.move(tmpDat, datPath, StandardCopyOption.ATOMIC_MOVE);
-                Files.move(tmpOff, offPath, StandardCopyOption.ATOMIC_MOVE);
-                Files.move(tmpFst, fstPath, StandardCopyOption.ATOMIC_MOVE);
-            } catch (IOException e) {
-                safeDelete(tmpDat);
-                safeDelete(tmpOff);
-                safeDelete(tmpFst);
-                throw e;
-            }
+        final FST.FSTMetadata<Long> metadata = compiler.compile();
+        if (metadata == null) {
+            throw new IOException("Field has no terms; cannot build lexicon");
         }
-
-        /**
-         * Materializes the three files from one field vocabulary.
-         *
-         * @param terms merged field vocabulary
-         * @param fstPath temporary output path for {@code .fst}
-         * @param datPath temporary output path for {@code .dat}
-         * @param offPath temporary output path for {@code .off}
-         * @throws IOException on write failure or if the field contains no term
-         */
-        private static void buildFiles(
-            final Terms terms,
-            final Path fstPath,
-            final Path datPath,
-            final Path offPath
-        ) throws IOException {
-            final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-            final FSTCompiler<Long> compiler =
-                new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
-            final IntsRefBuilder ints = new IntsRefBuilder();
-
-            long termId = 0L;
-            long datPos = 0L;
-
-            try (OutputStream rawDat = Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-                 BufferedOutputStream datOut = new BufferedOutputStream(rawDat, 1 << 16);
-                 OutputStream rawOff = Files.newOutputStream(offPath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-                 DataOutputStream offOut = new DataOutputStream(new BufferedOutputStream(rawOff, 1 << 16))) {
-
-                offOut.writeLong(0L);
-
-                final TermsEnum te = terms.iterator();
-                BytesRef term;
-                while ((term = te.next()) != null) {
-                    compiler.add(Util.toIntsRef(term, ints), termId++);
-                    datOut.write(term.bytes, term.offset, term.length);
-                    datPos += term.length;
-                    offOut.writeLong(datPos);
-                }
-
-                datOut.flush();
-                offOut.flush();
-            }
-
-            final FST.FSTMetadata<Long> metadata = compiler.compile();
-            if (metadata == null) {
-                throw new IOException("Field has no terms; cannot build lexicon");
-            }
-            final FST<Long> fst = FST.fromFSTReader(metadata, compiler.getFSTReader());
-            fst.save(fstPath);
-        }
-
-        /**
-         * Deletes a temporary file and ignores any failure.
-         *
-         * @param path temporary file path
-         */
-        private static void safeDelete(final Path path) {
-            try {
-                Files.deleteIfExists(path);
-            } catch (IOException ignored) {
-                // best effort cleanup only
-            }
-        }
+        final FST<Long> fst = FST.fromFSTReader(metadata, compiler.getFSTReader());
+        fst.save(fstPath);
     }
 
     /**
@@ -432,7 +401,7 @@ public final class TermLexicon {
     }
 
     /**
-     * Returns the path of the data file for one field.
+     * Returns the path of the concatenated term-bytes file for one field.
      *
      * @param indexDir Lucene directory
      * @param field indexed field name
@@ -454,10 +423,44 @@ public final class TermLexicon {
     }
 
     /**
+     * Returns the temporary path used while writing one file.
+     *
+     * @param path final target path
+     * @return sibling temporary path with {@code .tmp} suffix
+     */
+    private static Path tmpPath(final Path path) {
+        return path.resolveSibling(path.getFileName().toString() + ".tmp");
+    }
+
+    /**
+     * Moves one temporary file into its final location.
+     *
+     * @param source temporary file path
+     * @param target final file path
+     * @throws IOException if the move fails
+     */
+    private static void moveTemp(final Path source, final Path target) throws IOException {
+        Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    /**
+     * Deletes a file if it exists.
+     *
+     * @param path path to delete
+     */
+    private static void deleteIfExists(final Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // best-effort cleanup only
+        }
+    }
+
+    /**
      * Ensures that a file exists and is a regular file.
      *
-     * @param path file path
-     * @throws IOException if the path does not exist or is not a regular file
+     * @param path path to check
+     * @throws IOException if the file does not exist or is not regular
      */
     private static void ensureRegularFile(final Path path) throws IOException {
         if (!Files.isRegularFile(path)) {
@@ -466,63 +469,60 @@ public final class TermLexicon {
     }
 
     /**
-     * Ensures that a file does not exist yet.
+     * Ensures that a file does not already exist.
      *
-     * @param path file path
-     * @throws FileAlreadyExistsException if the file already exists
+     * @param path target path
+     * @throws IOException if the target already exists
      */
-    private static void ensureMissing(final Path path) throws IOException {
+    private static void ensureAbsent(final Path path) throws IOException {
         if (Files.exists(path)) {
             throw new FileAlreadyExistsException(path.toString());
         }
     }
 
     /**
-     * Performs a cheap startup check that all lexicon files were written together.
+     * Memory-maps one file in read-only mode.
      *
-     * @param fstPath FST file path
-     * @param datPath data file path
-     * @param offPath offsets file path
-     * @throws IOException if mtimes are too far apart
+     * @param path file path
+     * @return read-only memory-mapped byte buffer
+     * @throws IOException if the file cannot be opened or mapped
      */
-    private static void checkMtimeCoherence(
-        final Path fstPath,
-        final Path datPath,
-        final Path offPath
-    ) throws IOException {
-        final long t1 = Files.getLastModifiedTime(fstPath).toMillis();
-        final long t2 = Files.getLastModifiedTime(datPath).toMillis();
-        final long t3 = Files.getLastModifiedTime(offPath).toMillis();
-        final long min = Math.min(t1, Math.min(t2, t3));
-        final long max = Math.max(t1, Math.max(t2, t3));
-        if (max - min > MTIME_TOLERANCE_MS) {
-            throw new IOException("Lexicon file mtimes differ too much for field files: " +
-                fstPath.getFileName() + ", " + datPath.getFileName() + ", " + offPath.getFileName());
+    private static ByteBuffer mapReadOnly(final Path path) throws IOException {
+        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
+            return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
         }
     }
 
     /**
-     * Memory-maps a file in read-only mode.
+     * Performs a cheap startup check against mixed file copies by comparing file modification times.
      *
-     * @param path file path
-     * @return read-only mapped byte buffer
-     * @throws IOException on I/O failure
+     * @param paths files that should have been produced together
+     * @throws IOException if the modification times differ by more than the configured tolerance
      */
-    private static ByteBuffer mapReadOnly(final Path path) throws IOException {
-        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
-            return channel.map(FileChannel.MapMode.READ_ONLY, 0L, channel.size());
+    private static void checkMtimeCoherence(final Path... paths) throws IOException {
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (Path path : paths) {
+            final long t = Files.getLastModifiedTime(path).toMillis();
+            min = Math.min(min, t);
+            max = Math.max(max, t);
+        }
+        if ((max - min) > MTIME_TOLERANCE_MS) {
+            throw new IOException(
+                "Lexicon files mtimes differ by " + (max - min) + "ms; possible partial copy or mixed versions"
+            );
         }
     }
 
     /**
      * Performs a bounded monotonicity check on the offsets file.
      * <p>
-     * This is not a full validation pass. It is only intended to catch obvious corruption cheaply at startup.
+     * This is intentionally not a full scan. It is a cheap startup guard against obvious corruption.
      * </p>
      *
      * @param off mapped offsets buffer
-     * @param offPath offsets file path
-     * @throws IOException if a decreasing offset is found in the checked prefix or suffix
+     * @param offPath offsets file path, used only in error messages
+     * @throws IOException if checked offsets are not monotonic
      */
     private static void monotonicityCheck(final LongBuffer off, final Path offPath) throws IOException {
         final int n = off.capacity();
@@ -533,7 +533,7 @@ public final class TermLexicon {
         for (int i = 1; i < head; i++) {
             final long cur = off.get(i);
             if (cur < prev) {
-                throw new IOException("Offsets decrease near start of file: " + offPath);
+                throw new IOException("Invalid offsets file, offsets decrease at head index " + i + ": " + offPath);
             }
             prev = cur;
         }
@@ -542,7 +542,7 @@ public final class TermLexicon {
         for (int i = tailStart + 1; i < n; i++) {
             final long cur = off.get(i);
             if (cur < prev) {
-                throw new IOException("Offsets decrease near end of file: " + offPath);
+                throw new IOException("Invalid offsets file, offsets decrease at tail index " + i + ": " + offPath);
             }
             prev = cur;
         }
