@@ -111,6 +111,7 @@ public final class AlixTeiIngestor
             }
             
             writer.commit();
+            writer.forceMerge(1);
         }
         
         swapIndexDirs(current, tmp, old);

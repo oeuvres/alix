@@ -2,9 +2,10 @@ package com.github.oeuvres.alix.lucene.terms;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.FSDirectory;
@@ -61,13 +62,13 @@ import java.util.Objects;
  *
  * <h2>Exact document lengths</h2>
  * <p>
- * Exact field lengths are read at build time from a numeric doc-values field. By default,
- * {@link #write(Path, String)} and {@link #write(Path, IndexReader, String)} expect that field
- * to be named {@code field + "__len"}.
+ * Exact field lengths are derived directly from the postings of the indexed field.
+ * For each live document, {@code docLens[docId]} is the sum of all term frequencies of that
+ * field in that document.
  * </p>
  * <p>
- * Other naming conventions may be used through the overloads that take an explicit
- * {@code lengthField} argument.
+ * This avoids any dependency on a separate length field and guarantees consistency with
+ * {@code totalTermFreq}, {@code termFreqs} and {@code docFreqs}.
  * </p>
  *
  * <h2>Persistence format</h2>
@@ -121,7 +122,6 @@ import java.util.Objects;
  *   <li>The field must exist and have terms.</li>
  *   <li>The field must store term frequencies. If frequencies are omitted at index time,
  *       total term frequencies are unavailable and this class cannot be built.</li>
- *   <li>An exact field-length numeric doc-values field must be available when writing the file.</li>
  * </ul>
  */
 public final class FieldStats implements ReferenceStats {
@@ -130,9 +130,6 @@ public final class FieldStats implements ReferenceStats {
 
     /** On-disk format version. */
     private static final int VERSION = 2;
-
-    /** Default suffix for the exact field-length numeric doc-values field. */
-    private static final String LENGTH_SUFFIX = "__len";
 
     /** Lucene directory that contains both the index and the {@code <field>.stats} file. */
     private final Path indexDir;
@@ -197,17 +194,6 @@ public final class FieldStats implements ReferenceStats {
     }
 
     /**
-     * Returns the default numeric doc-values field name used to store exact field lengths.
-     *
-     * @param field indexed field name
-     * @return default length-field name
-     */
-    public static String lengthField(final String field) {
-        Objects.requireNonNull(field, "field");
-        return field + LENGTH_SUFFIX;
-    }
-
-    /**
      * Returns {@code true} if the persisted statistics file for the field exists as a regular file.
      * <p>
      * This is a cheap presence test only. It does not validate the file content.
@@ -225,81 +211,38 @@ public final class FieldStats implements ReferenceStats {
 
     /**
      * Builds the statistics file for one field using the latest committed state of the Lucene directory.
-     * <p>
-     * Exact field lengths are read from the default numeric doc-values field
-     * {@code field + "__len"}.
-     * </p>
      *
      * @param indexDir Lucene directory that contains the frozen index
      * @param field indexed field name
      * @throws IOException if the index cannot be opened, if the field has no terms, if term frequencies
-     *         are unavailable, if exact field lengths are unavailable, or if the target file already exists
+     *         are unavailable, or if the target file already exists
      */
     public static void write(final Path indexDir, final String field) throws IOException {
-        write(indexDir, field, lengthField(field));
-    }
-
-    /**
-     * Builds the statistics file for one field using the latest committed state of the Lucene directory.
-     *
-     * @param indexDir Lucene directory that contains the frozen index
-     * @param field indexed field name
-     * @param lengthField numeric doc-values field that stores exact field lengths
-     * @throws IOException if the index cannot be opened, if the field has no terms, if term frequencies
-     *         are unavailable, if exact field lengths are unavailable, or if the target file already exists
-     */
-    public static void write(final Path indexDir, final String field, final String lengthField) throws IOException {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(field, "field");
-        Objects.requireNonNull(lengthField, "lengthField");
 
         try (FSDirectory dir = FSDirectory.open(indexDir);
              DirectoryReader reader = DirectoryReader.open(dir)) {
-            write(indexDir, reader, field, lengthField);
+            write(indexDir, reader, field);
         }
     }
 
     /**
      * Builds the statistics file for one field from an already opened snapshot reader.
      * <p>
-     * Exact field lengths are read from the default numeric doc-values field
-     * {@code field + "__len"}.
+     * This overload is useful when the caller already controls which Lucene snapshot is being read.
      * </p>
      *
      * @param indexDir Lucene directory that will receive the {@code <field>.stats} file
      * @param reader snapshot reader that defines the field statistics
      * @param field indexed field name
      * @throws IOException if the field has no terms, if term frequencies are unavailable,
-     *         if exact field lengths are unavailable, if a target file already exists, or if writing fails
+     *         if a target file already exists, or if writing fails
      */
     public static void write(final Path indexDir, final IndexReader reader, final String field) throws IOException {
-        write(indexDir, reader, field, lengthField(field));
-    }
-
-    /**
-     * Builds the statistics file for one field from an already opened snapshot reader.
-     * <p>
-     * This overload is useful when the caller already controls which Lucene snapshot is being read,
-     * and how exact field lengths are stored.
-     * </p>
-     *
-     * @param indexDir Lucene directory that will receive the {@code <field>.stats} file
-     * @param reader snapshot reader that defines the field statistics
-     * @param field indexed field name
-     * @param lengthField numeric doc-values field that stores exact field lengths
-     * @throws IOException if the field has no terms, if term frequencies are unavailable,
-     *         if exact field lengths are unavailable, if a target file already exists, or if writing fails
-     */
-    public static void write(
-        final Path indexDir,
-        final IndexReader reader,
-        final String field,
-        final String lengthField
-    ) throws IOException {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
-        Objects.requireNonNull(lengthField, "lengthField");
 
         final Path statsPath = statsPath(indexDir, field);
         ensureAbsent(statsPath);
@@ -326,7 +269,7 @@ public final class FieldStats implements ReferenceStats {
         ensureAbsent(tmp);
 
         try {
-            buildFile(tmp, reader, field, lengthField, vocabSize, docCount, maxDoc, totalTermFreq, terms);
+            buildFile(tmp, reader, field, vocabSize, docCount, maxDoc, totalTermFreq);
             moveTemp(tmp, statsPath);
         } catch (IOException | RuntimeException e) {
             deleteIfExists(tmp);
@@ -608,25 +551,38 @@ public final class FieldStats implements ReferenceStats {
      * @param path target temporary path
      * @param reader frozen snapshot reader
      * @param field indexed field
-     * @param lengthField numeric doc-values field that stores exact field lengths
      * @param vocabSize vocabulary size
      * @param docCount field document count
      * @param maxDoc reader maxDoc
      * @param totalTermFreq field total token count
-     * @param terms merged field terms
      * @throws IOException if writing fails
      */
     private static void buildFile(
         final Path path,
         final IndexReader reader,
         final String field,
-        final String lengthField,
         final int vocabSize,
         final int docCount,
         final int maxDoc,
-        final long totalTermFreq,
-        final Terms terms
+        final long totalTermFreq
     ) throws IOException {
+        final int[] docFreqs = new int[vocabSize];
+        final long[] termFreqs = new long[vocabSize];
+        final int[] docLens = new int[maxDoc];
+
+        fillStats(reader, field, vocabSize, docFreqs, termFreqs, docLens);
+
+        long docLensSum = 0L;
+        for (int docLen : docLens) {
+            docLensSum += docLen;
+        }
+        if (docLensSum != totalTermFreq) {
+            throw new IOException(
+                "Inconsistent field statistics for field '" + field + "': sum(docLens)=" + docLensSum +
+                ", totalTermFreq=" + totalTermFreq
+            );
+        }
+
         try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(path, StandardOpenOption.CREATE_NEW));
              DataOutputStream out = new DataOutputStream(os)) {
 
@@ -638,107 +594,107 @@ public final class FieldStats implements ReferenceStats {
             out.writeInt(maxDoc);
             out.writeLong(totalTermFreq);
 
-            TermsEnum te = terms.iterator();
-            BytesRef term;
-            int seen = 0;
-            while ((term = te.next()) != null) {
-                final int df = te.docFreq();
-                if (df < 0) {
-                    throw new IOException("Negative docFreq for term in field '" + field + "'");
-                }
-                out.writeInt(df);
-                seen++;
+            for (int docFreq : docFreqs) {
+                out.writeInt(docFreq);
             }
-            if (seen != vocabSize) {
-                throw new IOException(
-                    "Vocabulary size changed during stats build for field '" + field +
-                    "': header=" + vocabSize + ", seen=" + seen
-                );
+            for (long termFreq : termFreqs) {
+                out.writeLong(termFreq);
             }
-
-            te = terms.iterator();
-            seen = 0;
-            while ((term = te.next()) != null) {
-                final long tf = te.totalTermFreq();
-                if (tf < 0L) {
-                    throw new IOException(
-                        "Term frequencies are unavailable for field '" + field + "'; cannot build FieldStats"
-                    );
-                }
-                out.writeLong(tf);
-                seen++;
-            }
-            if (seen != vocabSize) {
-                throw new IOException(
-                    "Vocabulary size changed during stats build for field '" + field +
-                    "': header=" + vocabSize + ", seen=" + seen
-                );
-            }
-
-            final long docLensSum = writeDocLens(out, reader.leaves(), lengthField, maxDoc);
-            if (docLensSum != totalTermFreq) {
-                throw new IOException(
-                    "Inconsistent field lengths for field '" + field + "': sum(docLens)=" + docLensSum +
-                    ", totalTermFreq=" + totalTermFreq +
-                    ", lengthField='" + lengthField + "'"
-                );
+            for (int docLen : docLens) {
+                out.writeInt(docLen);
             }
         }
     }
 
     /**
-     * Writes exact field lengths by global doc id and returns their sum.
+     * Fills per-term and per-document statistics directly from the field postings.
      *
-     * @param out destination stream
-     * @param leaves reader leaves
-     * @param lengthField numeric doc-values field that stores exact field lengths
-     * @param maxDoc reader maxDoc
-     * @return sum of written document lengths
-     * @throws IOException if a doc-values read fails or if an invalid length is encountered
+     * @param reader frozen snapshot reader
+     * @param field indexed field
+     * @param vocabSize vocabulary size
+     * @param docFreqs destination per-term document frequencies
+     * @param termFreqs destination per-term total occurrences
+     * @param docLens destination per-document field lengths
+     * @throws IOException if term or postings traversal fails
      */
-    private static long writeDocLens(
-        final DataOutputStream out,
-        final List<LeafReaderContext> leaves,
-        final String lengthField,
-        final int maxDoc
+    private static void fillStats(
+        final IndexReader reader,
+        final String field,
+        final int vocabSize,
+        final int[] docFreqs,
+        final long[] termFreqs,
+        final int[] docLens
     ) throws IOException {
-        long sum = 0L;
-        int written = 0;
+        int termId = 0;
 
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalArgumentException("Field not found or without terms: " + field);
+        }
+
+        final TermsEnum te = terms.iterator();
+        BytesRef term;
+
+        while ((term = te.next()) != null) {
+            if (termId >= vocabSize) {
+                throw new IOException(
+                    "Vocabulary size changed during FieldStats build for field '" + field +
+                    "': seen more than " + vocabSize + " terms"
+                );
+            }
+
+            final int df = te.docFreq();
+            if (df < 0) {
+                throw new IOException("Negative docFreq for termId " + termId + " in field '" + field + "'");
+            }
+            docFreqs[termId] = df;
+
+            final long tf = te.totalTermFreq();
+            if (tf < 0L) {
+                throw new IOException(
+                    "Term frequencies are unavailable for field '" + field + "'; cannot build FieldStats"
+                );
+            }
+            termFreqs[termId] = tf;
+
+            termId++;
+        }
+
+        if (termId != vocabSize) {
+            throw new IOException(
+                "Vocabulary size mismatch during FieldStats build for field '" + field +
+                "': header=" + vocabSize + ", seen=" + termId
+            );
+        }
+
+        final List<LeafReaderContext> leaves = reader.leaves();
         for (LeafReaderContext ctx : leaves) {
-            final int leafMaxDoc = ctx.reader().maxDoc();
-            final Bits liveDocs = ctx.reader().getLiveDocs();
-            final NumericDocValues lengths = ctx.reader().getNumericDocValues(lengthField);
+            final LeafReader leaf = ctx.reader();
+            final Terms leafTerms = leaf.terms(field);
+            if (leafTerms == null) {
+                continue;
+            }
+            if (!leafTerms.hasFreqs()) {
+                throw new IOException(
+                    "Field '" + field + "' does not store term frequencies; cannot build FieldStats"
+                );
+            }
 
-            for (int docId = 0; docId < leafMaxDoc; docId++) {
-                final int value;
+            final Bits liveDocs = leaf.getLiveDocs();
+            final int docBase = ctx.docBase;
+            final TermsEnum leafEnum = leafTerms.iterator();
+            PostingsEnum postings = null;
 
-                if (liveDocs != null && !liveDocs.get(docId)) {
-                    value = 0;
-                } else if (lengths != null && lengths.advanceExact(docId)) {
-                    final long longValue = lengths.longValue();
-                    if (longValue < 0L || longValue > Integer.MAX_VALUE) {
-                        throw new IOException(
-                            "Invalid doc length " + longValue +
-                            " in numeric doc-values field '" + lengthField + "' at global docId " + (ctx.docBase + docId)
-                        );
+            while (leafEnum.next() != null) {
+                postings = leafEnum.postings(postings, PostingsEnum.FREQS);
+                for (int doc = postings.nextDoc(); doc != PostingsEnum.NO_MORE_DOCS; doc = postings.nextDoc()) {
+                    if (liveDocs != null && !liveDocs.get(doc)) {
+                        continue;
                     }
-                    value = (int) longValue;
-                } else {
-                    value = 0;
+                    docLens[docBase + doc] += postings.freq();
                 }
-
-                out.writeInt(value);
-                sum += value;
-                written++;
             }
         }
-
-        if (written != maxDoc) {
-            throw new IOException("docLen write count mismatch: written=" + written + ", maxDoc=" + maxDoc);
-        }
-
-        return sum;
     }
 
     /**
