@@ -141,7 +141,7 @@ public final class ThemeTerms {
         final TermStats stats,
         final int[] partByDocId,
         final long[] partTokenCounts,
-        final TermStats.Scorer scorer,
+        final TermScorer scorer,
         final Aggregation aggregation
     ) throws IOException {
         Objects.requireNonNull(stats, "stats");
@@ -309,7 +309,7 @@ public final class ThemeTerms {
         final int[] tfByPart,
         final long[] partTokenCounts,
         final long fieldTokenCount,
-        final TermStats.Scorer scorer,
+        final TermScorer scorer,
         final Aggregation aggregation
     ) {
         long fieldTf = 0L;
@@ -333,7 +333,7 @@ public final class ThemeTerms {
             final long b = fieldTf - a;
             final long N0 = fieldTokenCount - N1;
 
-            final double local = scorer.score(termId, a, 0, N1, b, 0, N0);
+            final double local = scorer.score(a, N1, b, N0);
 
             switch (aggregation) {
                 case SUM -> acc += local;

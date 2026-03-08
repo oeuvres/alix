@@ -305,7 +305,7 @@ public final class TermStats {
     public void score(
         final ReferenceStats reference,
         final ReferenceMode mode,
-        final Scorer scorer
+        final TermScorer scorer
     ) {
         Objects.requireNonNull(reference, "reference");
         Objects.requireNonNull(mode, "mode");
@@ -347,7 +347,7 @@ public final class TermStats {
                 df0 = DF - df1;
             }
 
-            scores[termId] = scorer.score(termId, a, df1, N1, b, df0, N0);
+            scores[termId] = scorer.score(a, N1, b, N0);
         }
     }
 
@@ -405,32 +405,5 @@ public final class TermStats {
         COMPLEMENT
     }
 
-    /**
-     * Per-term scoring function over subset and reference marginals.
-     * <p>
-     * Typical examples include:
-     * </p>
-     * <ul>
-     *   <li>G-test / log-likelihood ratio,</li>
-     *   <li>keyness measures,</li>
-     *   <li>relative frequency contrasts,</li>
-     *   <li>custom tf-idf-like weights.</li>
-     * </ul>
-     */
-    @FunctionalInterface
-    public interface Scorer {
-        /**
-         * Computes a score for one term.
-         *
-         * @param termId dense term identifier
-         * @param a subset term frequency
-         * @param df1 subset document frequency
-         * @param N1 subset total token count
-         * @param b reference or complement term frequency
-         * @param df0 reference or complement document frequency
-         * @param N0 reference or complement total token count
-         * @return score value
-         */
-        double score(int termId, int a, int df1, long N1, long b, int df0, long N0);
-    }
+
 }
