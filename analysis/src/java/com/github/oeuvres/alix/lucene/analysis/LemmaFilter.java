@@ -185,7 +185,7 @@ public final class LemmaFilter extends TokenFilter
         if (lemmaId < 0 || lemmaId == formId) return true;
 
         // Copy lemma 
-        lex.copyForm(lemmaId, lemAtt);
+        lex.copyForm(lemmaId, termAtt);
 
         return true;
     }

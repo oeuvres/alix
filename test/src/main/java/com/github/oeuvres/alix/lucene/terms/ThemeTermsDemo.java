@@ -27,7 +27,7 @@ import java.util.Locale;
  */
 public final class ThemeTermsDemo {
     /** Default number of token-balanced parts. */
-    private static final int DEFAULT_PARTS = 100;
+    private static final int DEFAULT_PARTS = 10;
 
     /** Default number of displayed terms. */
     private static final int DEFAULT_TOP_K = 50;
@@ -42,7 +42,7 @@ public final class ThemeTermsDemo {
         }
         */
 
-        final Path indexPath = Path.of("D:\\code\\piaget-labo\\lucene\\piaget");
+        final Path indexPath = Path.of("D:\\code\\piaget-labo\\lucene\\test");
         final String field = "text";
         final int partCount = (args.length >= 3) ? Integer.parseInt(args[2]) : DEFAULT_PARTS;
         final int topK = (args.length >= 4) ? Integer.parseInt(args[3]) : DEFAULT_TOP_K;
@@ -75,8 +75,9 @@ public final class ThemeTermsDemo {
                 partTokenCounts
             );
 
-            final TermScorer scorer = TermScorers.SIGNED_G;
-            final ThemeTerms.Aggregation aggregation = ThemeTerms.Aggregation.SUM_POSITIVE;
+            final TermScorer scorer = TermScorers.JACCARD;
+            // final TermScorer scorer = TermScorers.SIGNED_G;
+            final ThemeTerms.Aggregation aggregation = ThemeTerms.Aggregation.SUM;
 
             themeTerms.score(stats, partByDocId, partTokenCounts, scorer, aggregation);
 
@@ -177,10 +178,10 @@ public final class ThemeTermsDemo {
             top.push(termId, score);
         }
 
-        System.out.println("Top " + top.length() + " theme terms");
-        System.out.println("------------------------------");
+        // System.out.println("Top " + top.length() + " theme terms");
+        // System.out.println("------------------------------");
         for (TopArray.IdScore row : top) {
-            System.out.printf(Locale.ROOT, "%.6f\t%s%n", row.score(), lexicon.term(row.id()));
+            System.out.print(lexicon.term(row.id() ) + ", ");
         }
     }
 

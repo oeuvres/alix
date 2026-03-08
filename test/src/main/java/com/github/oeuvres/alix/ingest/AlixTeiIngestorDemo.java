@@ -25,7 +25,8 @@ public final class AlixTeiIngestorDemo
     {
         Report rep = new ReportConsole();
         AlixTeiIngestor ingestor = new AlixTeiIngestor(rep);
-        Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-piaget.xml");
+        // Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-piaget.xml");
+        Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-test.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, rep);
         rep.info(cfg.toString());
         ingestor.ingest(cfg);

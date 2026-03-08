@@ -35,6 +35,8 @@ public enum Upos implements Tag
     PUNCTsent(0x0B),
     /** [,;…] clause punctuation */
     PUNCTclause(0x0C),
+    /** https://universaldependencies.org/u/pos/X.html */
+    X(0x0F),
     
     // 1x, verbs
     /** https://universaldependencies.org/u/pos/VERB.html */
@@ -166,8 +168,6 @@ public enum Upos implements Tag
     REF(0xA2),
 
     // misc
-    /** https://universaldependencies.org/u/pos/X.html */
-    X(0xF0),
     /** https://universaldependencies.org/u/pos/INTJ.html */
     INTJ(0xF1),
     /** Abbreviation before resolution to a pos */

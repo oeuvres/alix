@@ -200,21 +200,34 @@ public class FinalCleanupFilter extends TokenFilter
     {
         final int pos = posAtt.getPos();
         final int len = termAtt.length();
-        if (len == 0) return true; // defensive, should already be handled in incrementToken()
 
         // Markup / structural artifacts injected by XML processing.
         if (pos == XML.code) return true;
 
-        // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
-        if (Char.isMath(termAtt.charAt(0))) return true;
+        // defensive, should already be handled in incrementToken(), no count
+        if (len == 0) return true;
+        
 
-        final char last = termAtt.charAt(len - 1);
+        // short function word, OK, not noise
+        if (termAtt.length() == 1) {
+            switch (Upos.get(pos) ) {
+                case ADP:
+                case AUX:
+                case PRON:
+                case VERB:
+                    return false;
+                default:
+                    return true;
+            }
+        }
 
-        // Truncated variables / elisions like "jusqu'" or any token ending with apostrophe.
-        if (last == '\'') return true;
-
-        // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
-        if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2))) return true;
+        if (termAtt.length() == 2) {
+            final char c2 = termAtt.charAt(1);
+            // a’ a', C. variables or initials not resolved to name
+            if (c2 == '\'' || c2 == '’' || c2 == '.') {
+                return true;
+            }
+        }
 
         // keep stop words (do not drop them here)
         return false;
@@ -238,17 +251,35 @@ public class FinalCleanupFilter extends TokenFilter
     protected boolean accept()
     {
         final int pos = posAtt.getPos();
-
+        final int len = termAtt.length();
+        
+        
         // Punctuation: drop, but preserve a positional gap (handled by pendingHoles).
         if (Upos.isPunct(pos)) {
             return false;
         }
 
+        // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
+        if (Char.isMath(termAtt.charAt(0))) return false;
+
+        final char last = termAtt.charAt(len - 1);
+
+        // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
+        // if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2))) return true;
+
+        /*
         // Numbers: normalize to a single marker.
         if (pos == DIGIT.code || pos == NUM.code) {
             termAtt.setEmpty().append(NUMBER_MARKER);
             return true;
         }
+        
+        // Return all know tokens
+        if (pos > X.code) {
+            return true;
+        }
+        */
+        
 
         // Default: keep token as-is (or rewritten by upstream filters).
         return true;
