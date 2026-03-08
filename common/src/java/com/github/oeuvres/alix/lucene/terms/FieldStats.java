@@ -2,10 +2,13 @@ package com.github.oeuvres.alix.lucene.terms;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.BufferedInputStream;
@@ -23,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -35,9 +39,11 @@ import java.util.Objects;
  * <h2>Stored statistics</h2>
  * <ul>
  *   <li><b>{@code docCount}</b>: number of documents that contain at least one term in the field</li>
+ *   <li><b>{@code maxDoc}</b>: Lucene document-address space size for the frozen reader snapshot</li>
  *   <li><b>{@code totalTermFreq}</b>: total number of tokens in the field</li>
  *   <li><b>{@code docFreqs[termId]}</b>: number of documents that contain the term</li>
  *   <li><b>{@code termFreqs[termId]}</b>: total number of occurrences of the term in the field</li>
+ *   <li><b>{@code docLens[docId]}</b>: exact token count of the field for one Lucene document id</li>
  * </ul>
  *
  * <h2>Intended use</h2>
@@ -49,8 +55,20 @@ import java.util.Objects;
  *   <li>subset-vs-reference tests such as G-test or log-likelihood ratio,</li>
  *   <li>relative frequencies and keyness measures,</li>
  *   <li>tf-idf-like weighting that needs field-level document frequency,</li>
+ *   <li>dispersion and other field-wide statistics that need exact per-document token counts,</li>
  *   <li>other derived per-term statistics over a frozen corpus snapshot.</li>
  * </ul>
+ *
+ * <h2>Exact document lengths</h2>
+ * <p>
+ * Exact field lengths are read at build time from a numeric doc-values field. By default,
+ * {@link #write(Path, String)} and {@link #write(Path, IndexReader, String)} expect that field
+ * to be named {@code field + "__len"}.
+ * </p>
+ * <p>
+ * Other naming conventions may be used through the overloads that take an explicit
+ * {@code lengthField} argument.
+ * </p>
  *
  * <h2>Persistence format</h2>
  * <p>
@@ -69,9 +87,11 @@ import java.util.Objects;
  *   <li>field-name UTF-8 bytes</li>
  *   <li>4-byte {@code vocabSize}</li>
  *   <li>4-byte {@code docCount}</li>
+ *   <li>4-byte {@code maxDoc}</li>
  *   <li>8-byte {@code totalTermFreq}</li>
  *   <li>{@code vocabSize} times 4-byte {@code docFreq}</li>
  *   <li>{@code vocabSize} times 8-byte {@code termFreq}</li>
+ *   <li>{@code maxDoc} times 4-byte {@code docLen}</li>
  * </ol>
  * <p>
  * Multi-byte values are written in big-endian order through {@link DataOutputStream}.
@@ -79,17 +99,21 @@ import java.util.Objects;
  *
  * <h2>Order compatibility</h2>
  * <p>
- * The persisted arrays follow Lucene's merged lexicographic {@link TermsEnum} order for the field.
+ * The persisted term arrays follow Lucene's merged lexicographic {@link TermsEnum} order for the field.
  * This is the same order used by {@link TermLexicon} when it assigns dense term ids, provided both
  * artifacts were written from the same frozen index snapshot.
+ * </p>
+ * <p>
+ * The persisted document-length array is indexed by Lucene global {@code docId} in the same frozen
+ * reader snapshot, on the range {@code [0, maxDoc)}.
  * </p>
  *
  * <h2>Performance model</h2>
  * <p>
  * The persisted file is a compact binary artifact on disk, but {@link #open(Path, String)} loads
- * the numeric arrays into ordinary heap arrays. This is intentional: repeated per-term scoring is
- * typically faster and more predictable on plain {@code int[]} and {@code long[]} than on
- * memory-mapped buffers.
+ * the numeric arrays into ordinary heap arrays. This is intentional: repeated per-term scoring and
+ * repeated {@code docId -> docLen} lookup are typically faster and more predictable on plain
+ * primitive arrays than on memory-mapped buffers.
  * </p>
  *
  * <h2>Preconditions</h2>
@@ -97,6 +121,7 @@ import java.util.Objects;
  *   <li>The field must exist and have terms.</li>
  *   <li>The field must store term frequencies. If frequencies are omitted at index time,
  *       total term frequencies are unavailable and this class cannot be built.</li>
+ *   <li>An exact field-length numeric doc-values field must be available when writing the file.</li>
  * </ul>
  */
 public final class FieldStats implements ReferenceStats {
@@ -104,7 +129,10 @@ public final class FieldStats implements ReferenceStats {
     private static final int MAGIC = 0x46535453;
 
     /** On-disk format version. */
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
+
+    /** Default suffix for the exact field-length numeric doc-values field. */
+    private static final String LENGTH_SUFFIX = "__len";
 
     /** Lucene directory that contains both the index and the {@code <field>.stats} file. */
     private final Path indexDir;
@@ -118,6 +146,9 @@ public final class FieldStats implements ReferenceStats {
     /** Number of documents that contain at least one term in the field. */
     private final int docCount;
 
+    /** Lucene document-address space size for this frozen reader snapshot. */
+    private final int maxDoc;
+
     /** Total number of tokens in the field. */
     private final long totalTermFreq;
 
@@ -127,6 +158,9 @@ public final class FieldStats implements ReferenceStats {
     /** Per-term total occurrences in the field, indexed by dense term id. */
     private final long[] termFreqs;
 
+    /** Exact field token counts, indexed by global Lucene doc id. */
+    private final int[] docLens;
+
     /**
      * Creates an opened immutable statistics object.
      *
@@ -134,26 +168,43 @@ public final class FieldStats implements ReferenceStats {
      * @param field indexed field
      * @param vocabSize number of distinct terms
      * @param docCount number of documents that contain the field
+     * @param maxDoc Lucene document-address space size
      * @param totalTermFreq total number of tokens in the field
      * @param docFreqs per-term document frequencies
      * @param termFreqs per-term total term frequencies
+     * @param docLens exact field token counts by global doc id
      */
     private FieldStats(
         final Path indexDir,
         final String field,
         final int vocabSize,
         final int docCount,
+        final int maxDoc,
         final long totalTermFreq,
         final int[] docFreqs,
-        final long[] termFreqs
+        final long[] termFreqs,
+        final int[] docLens
     ) {
         this.indexDir = indexDir;
         this.field = field;
         this.vocabSize = vocabSize;
         this.docCount = docCount;
+        this.maxDoc = maxDoc;
         this.totalTermFreq = totalTermFreq;
         this.docFreqs = docFreqs;
         this.termFreqs = termFreqs;
+        this.docLens = docLens;
+    }
+
+    /**
+     * Returns the default numeric doc-values field name used to store exact field lengths.
+     *
+     * @param field indexed field name
+     * @return default length-field name
+     */
+    public static String lengthField(final String field) {
+        Objects.requireNonNull(field, "field");
+        return field + LENGTH_SUFFIX;
     }
 
     /**
@@ -174,38 +225,81 @@ public final class FieldStats implements ReferenceStats {
 
     /**
      * Builds the statistics file for one field using the latest committed state of the Lucene directory.
+     * <p>
+     * Exact field lengths are read from the default numeric doc-values field
+     * {@code field + "__len"}.
+     * </p>
      *
      * @param indexDir Lucene directory that contains the frozen index
      * @param field indexed field name
      * @throws IOException if the index cannot be opened, if the field has no terms, if term frequencies
-     *         are unavailable, or if the target file already exists
+     *         are unavailable, if exact field lengths are unavailable, or if the target file already exists
      */
     public static void write(final Path indexDir, final String field) throws IOException {
+        write(indexDir, field, lengthField(field));
+    }
+
+    /**
+     * Builds the statistics file for one field using the latest committed state of the Lucene directory.
+     *
+     * @param indexDir Lucene directory that contains the frozen index
+     * @param field indexed field name
+     * @param lengthField numeric doc-values field that stores exact field lengths
+     * @throws IOException if the index cannot be opened, if the field has no terms, if term frequencies
+     *         are unavailable, if exact field lengths are unavailable, or if the target file already exists
+     */
+    public static void write(final Path indexDir, final String field, final String lengthField) throws IOException {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(field, "field");
+        Objects.requireNonNull(lengthField, "lengthField");
 
         try (FSDirectory dir = FSDirectory.open(indexDir);
              DirectoryReader reader = DirectoryReader.open(dir)) {
-            write(indexDir, reader, field);
+            write(indexDir, reader, field, lengthField);
         }
     }
 
     /**
      * Builds the statistics file for one field from an already opened snapshot reader.
      * <p>
-     * This overload is useful when the caller already controls which Lucene snapshot is being read.
+     * Exact field lengths are read from the default numeric doc-values field
+     * {@code field + "__len"}.
      * </p>
      *
      * @param indexDir Lucene directory that will receive the {@code <field>.stats} file
      * @param reader snapshot reader that defines the field statistics
      * @param field indexed field name
      * @throws IOException if the field has no terms, if term frequencies are unavailable,
-     *         if a target file already exists, or if writing fails
+     *         if exact field lengths are unavailable, if a target file already exists, or if writing fails
      */
     public static void write(final Path indexDir, final IndexReader reader, final String field) throws IOException {
+        write(indexDir, reader, field, lengthField(field));
+    }
+
+    /**
+     * Builds the statistics file for one field from an already opened snapshot reader.
+     * <p>
+     * This overload is useful when the caller already controls which Lucene snapshot is being read,
+     * and how exact field lengths are stored.
+     * </p>
+     *
+     * @param indexDir Lucene directory that will receive the {@code <field>.stats} file
+     * @param reader snapshot reader that defines the field statistics
+     * @param field indexed field name
+     * @param lengthField numeric doc-values field that stores exact field lengths
+     * @throws IOException if the field has no terms, if term frequencies are unavailable,
+     *         if exact field lengths are unavailable, if a target file already exists, or if writing fails
+     */
+    public static void write(
+        final Path indexDir,
+        final IndexReader reader,
+        final String field,
+        final String lengthField
+    ) throws IOException {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
+        Objects.requireNonNull(lengthField, "lengthField");
 
         final Path statsPath = statsPath(indexDir, field);
         ensureAbsent(statsPath);
@@ -226,11 +320,13 @@ public final class FieldStats implements ReferenceStats {
         }
 
         final int vocabSize = resolveVocabSize(terms);
+        final int maxDoc = reader.maxDoc();
+
         final Path tmp = tmpPath(statsPath);
         ensureAbsent(tmp);
 
         try {
-            buildFile(tmp, field, vocabSize, docCount, totalTermFreq, terms);
+            buildFile(tmp, reader, field, lengthField, vocabSize, docCount, maxDoc, totalTermFreq, terms);
             moveTemp(tmp, statsPath);
         } catch (IOException | RuntimeException e) {
             deleteIfExists(tmp);
@@ -283,6 +379,11 @@ public final class FieldStats implements ReferenceStats {
                 throw new IOException("Invalid docCount in stats file: " + docCount);
             }
 
+            final int maxDoc = in.readInt();
+            if (maxDoc < 0) {
+                throw new IOException("Invalid maxDoc in stats file: " + maxDoc);
+            }
+
             final long totalTermFreq = in.readLong();
             if (totalTermFreq < 0L) {
                 throw new IOException("Invalid totalTermFreq in stats file: " + totalTermFreq);
@@ -306,11 +407,29 @@ public final class FieldStats implements ReferenceStats {
                 termFreqs[i] = value;
             }
 
+            final int[] docLens = new int[maxDoc];
+            long docLensSum = 0L;
+            for (int docId = 0; docId < maxDoc; docId++) {
+                final int value = in.readInt();
+                if (value < 0) {
+                    throw new IOException("Invalid docLen at docId " + docId + ": " + value);
+                }
+                docLens[docId] = value;
+                docLensSum += value;
+            }
+
+            if (docLensSum != totalTermFreq) {
+                throw new IOException(
+                    "Inconsistent stats file: sum(docLens)=" + docLensSum +
+                    ", totalTermFreq=" + totalTermFreq + " for field '" + field + "'"
+                );
+            }
+
             if (in.read() != -1) {
                 throw new IOException("Trailing bytes in stats file: " + path);
             }
 
-            return new FieldStats(indexDir, field, vocabSize, docCount, totalTermFreq, docFreqs, termFreqs);
+            return new FieldStats(indexDir, field, vocabSize, docCount, maxDoc, totalTermFreq, docFreqs, termFreqs, docLens);
         } catch (EOFException e) {
             throw new IOException("Truncated stats file: " + path, e);
         }
@@ -330,6 +449,7 @@ public final class FieldStats implements ReferenceStats {
      *
      * @return field name
      */
+    @Override
     public String field() {
         return field;
     }
@@ -339,6 +459,7 @@ public final class FieldStats implements ReferenceStats {
      *
      * @return number of distinct terms in the field
      */
+    @Override
     public int vocabSize() {
         return vocabSize;
     }
@@ -348,8 +469,21 @@ public final class FieldStats implements ReferenceStats {
      *
      * @return field document count
      */
+    @Override
     public int docCount() {
         return docCount;
+    }
+
+    /**
+     * Returns the Lucene document-address space size for this frozen reader snapshot.
+     * <p>
+     * Valid global document ids for {@link #docLen(int)} are in {@code [0, maxDoc())}.
+     * </p>
+     *
+     * @return reader maxDoc
+     */
+    public int maxDoc() {
+        return maxDoc;
     }
 
     /**
@@ -357,8 +491,29 @@ public final class FieldStats implements ReferenceStats {
      *
      * @return field total term frequency
      */
+    @Override
     public long totalTermFreq() {
         return totalTermFreq;
+    }
+
+    /**
+     * Returns the exact token count of the field for one global Lucene document id.
+     * <p>
+     * The returned value is:
+     * </p>
+     * <ul>
+     *   <li>the exact number of indexed tokens of the field for that document,</li>
+     *   <li>{@code 0} if the document has no value for the field,</li>
+     *   <li>{@code 0} for deleted documents in the frozen snapshot.</li>
+     * </ul>
+     *
+     * @param docId global Lucene document id in {@code [0, maxDoc)}
+     * @return exact field token count for that document
+     * @throws IllegalArgumentException if {@code docId} is out of range
+     */
+    public int docLen(final int docId) {
+        checkDocId(docId);
+        return docLens[docId];
     }
 
     /**
@@ -368,6 +523,7 @@ public final class FieldStats implements ReferenceStats {
      * @return number of documents that contain the term
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
+    @Override
     public int docFreq(final int termId) {
         checkTermId(termId);
         return docFreqs[termId];
@@ -380,6 +536,7 @@ public final class FieldStats implements ReferenceStats {
      * @return total term frequency in the field
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
+    @Override
     public long termFreq(final int termId) {
         checkTermId(termId);
         return termFreqs[termId];
@@ -409,10 +566,12 @@ public final class FieldStats implements ReferenceStats {
      * This excludes object headers, references, the field string and JVM-specific overheads.
      * </p>
      *
-     * @return approximate bytes used by {@code docFreqs} and {@code termFreqs}
+     * @return approximate bytes used by {@code docFreqs}, {@code termFreqs} and {@code docLens}
      */
     public long arraysBytes() {
-        return (long) docFreqs.length * Integer.BYTES + (long) termFreqs.length * Long.BYTES;
+        return (long) docFreqs.length * Integer.BYTES
+            + (long) termFreqs.length * Long.BYTES
+            + (long) docLens.length * Integer.BYTES;
     }
 
     /**
@@ -430,21 +589,41 @@ public final class FieldStats implements ReferenceStats {
     }
 
     /**
+     * Checks that a document id is inside the valid range.
+     *
+     * @param docId global Lucene document id to validate
+     * @throws IllegalArgumentException if the id is negative or outside {@code maxDoc}
+     */
+    private void checkDocId(final int docId) {
+        if (docId < 0 || docId >= maxDoc) {
+            throw new IllegalArgumentException(
+                "docId out of range: " + docId + " (maxDoc=" + maxDoc + ')'
+            );
+        }
+    }
+
+    /**
      * Builds the persisted binary file.
      *
      * @param path target temporary path
+     * @param reader frozen snapshot reader
      * @param field indexed field
+     * @param lengthField numeric doc-values field that stores exact field lengths
      * @param vocabSize vocabulary size
      * @param docCount field document count
+     * @param maxDoc reader maxDoc
      * @param totalTermFreq field total token count
      * @param terms merged field terms
      * @throws IOException if writing fails
      */
     private static void buildFile(
         final Path path,
+        final IndexReader reader,
         final String field,
+        final String lengthField,
         final int vocabSize,
         final int docCount,
+        final int maxDoc,
         final long totalTermFreq,
         final Terms terms
     ) throws IOException {
@@ -456,6 +635,7 @@ public final class FieldStats implements ReferenceStats {
             writeUtf8(out, field);
             out.writeInt(vocabSize);
             out.writeInt(docCount);
+            out.writeInt(maxDoc);
             out.writeLong(totalTermFreq);
 
             TermsEnum te = terms.iterator();
@@ -494,7 +674,71 @@ public final class FieldStats implements ReferenceStats {
                     "': header=" + vocabSize + ", seen=" + seen
                 );
             }
+
+            final long docLensSum = writeDocLens(out, reader.leaves(), lengthField, maxDoc);
+            if (docLensSum != totalTermFreq) {
+                throw new IOException(
+                    "Inconsistent field lengths for field '" + field + "': sum(docLens)=" + docLensSum +
+                    ", totalTermFreq=" + totalTermFreq +
+                    ", lengthField='" + lengthField + "'"
+                );
+            }
         }
+    }
+
+    /**
+     * Writes exact field lengths by global doc id and returns their sum.
+     *
+     * @param out destination stream
+     * @param leaves reader leaves
+     * @param lengthField numeric doc-values field that stores exact field lengths
+     * @param maxDoc reader maxDoc
+     * @return sum of written document lengths
+     * @throws IOException if a doc-values read fails or if an invalid length is encountered
+     */
+    private static long writeDocLens(
+        final DataOutputStream out,
+        final List<LeafReaderContext> leaves,
+        final String lengthField,
+        final int maxDoc
+    ) throws IOException {
+        long sum = 0L;
+        int written = 0;
+
+        for (LeafReaderContext ctx : leaves) {
+            final int leafMaxDoc = ctx.reader().maxDoc();
+            final Bits liveDocs = ctx.reader().getLiveDocs();
+            final NumericDocValues lengths = ctx.reader().getNumericDocValues(lengthField);
+
+            for (int docId = 0; docId < leafMaxDoc; docId++) {
+                final int value;
+
+                if (liveDocs != null && !liveDocs.get(docId)) {
+                    value = 0;
+                } else if (lengths != null && lengths.advanceExact(docId)) {
+                    final long longValue = lengths.longValue();
+                    if (longValue < 0L || longValue > Integer.MAX_VALUE) {
+                        throw new IOException(
+                            "Invalid doc length " + longValue +
+                            " in numeric doc-values field '" + lengthField + "' at global docId " + (ctx.docBase + docId)
+                        );
+                    }
+                    value = (int) longValue;
+                } else {
+                    value = 0;
+                }
+
+                out.writeInt(value);
+                sum += value;
+                written++;
+            }
+        }
+
+        if (written != maxDoc) {
+            throw new IOException("docLen write count mismatch: written=" + written + ", maxDoc=" + maxDoc);
+        }
+
+        return sum;
     }
 
     /**
