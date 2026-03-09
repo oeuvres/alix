@@ -8,6 +8,7 @@ public final class TermScorers {
     }
 
     public static final TermScorer SIGNED_G = new SignedG();
+    public static final TermScorer G = new G();
     public static final TermScorer FREQ = new Freq();
     public static final TermScorer JACCARD = new Jaccard();
 
@@ -61,6 +62,63 @@ public final class TermScorers {
         }
 
         private double cell(final long observed, final double expected) {
+            if (observed <= 0L || expected <= 0d) return 0d;
+            return observed * Math.log(observed / expected);
+        }
+    }
+    
+    /**
+     * Unsigned G-test (log-likelihood ratio) on a 2x2 token contingency table.
+     *
+     * <pre>
+     *           term      not term
+     * target      a        N1 - a
+     * ref         b        N0 - b
+     * </pre>
+     *
+     * <p>
+     * The returned statistic is always non-negative.
+     * Larger values mean a stronger deviation from independence.
+     * </p>
+     *
+     * <p>
+     * This scorer does not encode direction. It makes no distinction between
+     * over-representation and under-representation in the target.
+     * </p>
+     */
+    public static final class G implements TermScorer {
+        @Override
+        public String name() {
+            return "G";
+        }
+
+        @Override
+        public double score(final int a, final long N1, final long b, final long N0) {
+            if (N1 <= 0L || N0 <= 0L) return 0d;
+
+            final long c = N1 - a;
+            final long d = N0 - b;
+            if (a < 0 || b < 0 || c < 0 || d < 0) return 0d;
+
+            final long row1 = (long) a + b;
+            final long row2 = c + d;
+            final long total = N1 + N0;
+            if (row1 <= 0L || row2 <= 0L || total <= 0L) return 0d;
+
+            final double eA = (double) N1 * row1 / total;
+            final double eB = (double) N0 * row1 / total;
+            final double eC = (double) N1 * row2 / total;
+            final double eD = (double) N0 * row2 / total;
+
+            return 2d * (
+                cell(a, eA) +
+                cell(b, eB) +
+                cell(c, eC) +
+                cell(d, eD)
+            );
+        }
+
+        private static double cell(final long observed, final double expected) {
             if (observed <= 0L || expected <= 0d) return 0d;
             return observed * Math.log(observed / expected);
         }

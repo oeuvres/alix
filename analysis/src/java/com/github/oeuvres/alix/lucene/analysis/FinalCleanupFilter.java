@@ -206,6 +206,7 @@ public class FinalCleanupFilter extends TokenFilter
 
         // defensive, should already be handled in incrementToken(), no count
         if (len == 0) return true;
+        final char last = termAtt.charAt(len - 1);
         
 
         // short function word, OK, not noise
@@ -222,12 +223,14 @@ public class FinalCleanupFilter extends TokenFilter
         }
 
         if (termAtt.length() == 2) {
-            final char c2 = termAtt.charAt(1);
             // a’ a', C. variables or initials not resolved to name
-            if (c2 == '\'' || c2 == '’' || c2 == '.') {
+            if (last == '\'' || last == '’' || last == '.') {
                 return true;
             }
         }
+
+        // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
+        if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2))) return true;
 
         // keep stop words (do not drop them here)
         return false;
@@ -264,8 +267,6 @@ public class FinalCleanupFilter extends TokenFilter
 
         final char last = termAtt.charAt(len - 1);
 
-        // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
-        // if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2))) return true;
 
         /*
         // Numbers: normalize to a single marker.
@@ -274,10 +275,7 @@ public class FinalCleanupFilter extends TokenFilter
             return true;
         }
         
-        // Return all know tokens
-        if (pos > X.code) {
-            return true;
-        }
+
         */
         
 
