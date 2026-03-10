@@ -6,6 +6,7 @@ import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -27,10 +28,10 @@ import java.util.Locale;
  */
 public final class ThemeTermsDemo {
     /** Default number of token-balanced parts. */
-    private static final int DEFAULT_PARTS = 100;
+    private static final int DEFAULT_PARTS = -1;
 
     /** Default number of displayed terms. */
-    private static final int DEFAULT_TOP_K = 50;
+    private static final int DEFAULT_TOP_K = 100;
 
     private ThemeTermsDemo() {
     }
@@ -45,12 +46,9 @@ public final class ThemeTermsDemo {
         // final Path indexPath = Path.of("D:\\code\\piaget-labo\\lucene\\test");
         final Path indexPath = Path.of("D:\\code\\piaget-labo\\lucene\\piaget");
         final String field = "text";
-        final int partCount = (args.length >= 3) ? Integer.parseInt(args[2]) : DEFAULT_PARTS;
         final int topK = (args.length >= 4) ? Integer.parseInt(args[3]) : DEFAULT_TOP_K;
 
-        if (partCount < 1) {
-            throw new IllegalArgumentException("partCount must be >= 1");
-        }
+
         if (topK < 1) {
             throw new IllegalArgumentException("topK must be >= 1");
         }
@@ -68,22 +66,29 @@ public final class ThemeTermsDemo {
             final FieldStats fieldStats = FieldStats.open(indexPath, field);
             final ThemeTerms themeTerms = new ThemeTerms(reader, lexicon, fieldStats);
             final TermStats stats = new TermStats(field, lexicon.vocabSize());
+            final int maxDoc = fieldStats.maxDoc();
 
-            final long[] partTokenCounts = new long[partCount];
-            final int[] partByDocId = ThemeTerms.quantiles(
-                fieldStats,
-                naturalOrder(fieldStats.maxDoc()),
-                partTokenCounts
-            );
+            List<TermScorer> scorers = List.of(new TermScorer.BM25(), new TermScorer.G(), new TermScorer.Jaccard());
+            // scorers[1] = new TermScorer.G();
+            // scorers[2] = new TermScorer.Jaccard();
+            
+            for (TermScorer scorer: scorers) {
+                System.out.println("\n\n" + scorer.getClass().getSimpleName()+ "\n");
+                themeTerms.score(stats, scorer, TermScorer.Aggregation.SUM_POSITIVE);
+                printTopScores(lexicon, stats.scores(), topK);
+                System.out.println("\n\n");
+                
+                final int partCount = 100;
+                final long[] partTokenCounts = new long[partCount];
+                final int[] partByDocId = ThemeTerms.quantiles(
+                    fieldStats,
+                    naturalOrder(fieldStats.maxDoc()),
+                    partTokenCounts
+                );
+                themeTerms.score(stats, scorer, TermScorer.Aggregation.SUM_POSITIVE, partByDocId, partTokenCounts);
+                printTopScores(lexicon, stats.scores(), topK);
+            }
 
-            // final TermScorer scorer = TermScorers.JACCARD;
-            // final ThemeTerms.Aggregation aggregation = ThemeTerms.Aggregation.SUM_POSITIVE;
-
-            TermScorer scorer = new TermScorer.G();
-            themeTerms.score(stats, partByDocId, partTokenCounts, scorer);
-
-            printContext(indexPath, fieldStats, partCount, scorer);
-            printTopScores(lexicon, stats.scores(), topK);
         }
     }
 
@@ -147,9 +152,9 @@ public final class ThemeTermsDemo {
         System.out.println("Index         : " + indexPath);
         System.out.println("Field         : " + fieldStats.field());
         System.out.println("maxDoc        : " + fieldStats.maxDoc());
-        System.out.println("docCount      : " + fieldStats.docCount());
+        System.out.println("docCount      : " + fieldStats.fieldDocs());
         System.out.println("vocabSize     : " + fieldStats.vocabSize());
-        System.out.println("totalTermFreq : " + fieldStats.totalTermFreq());
+        System.out.println("totalTermFreq : " + fieldStats.fieldTokens());
         System.out.println("parts         : " + partCount);
         System.out.println("scorer  : " + scorer.getClass().getName());
         System.out.println();

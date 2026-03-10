@@ -141,16 +141,16 @@ public final class FieldStats implements ReferenceStats {
     private final int vocabSize;
 
     /** Number of documents that contain at least one term in the field. */
-    private final int docCount;
+    private final int fieldDocs;
 
     /** Lucene document-address space size for this frozen reader snapshot. */
     private final int maxDoc;
 
     /** Total number of tokens in the field. */
-    private final long totalTermFreq;
+    private final long fieldTokens;
 
     /** Per-term document frequencies, indexed by dense term id. */
-    private final int[] docFreqs;
+    private final int[] termDocs;
 
     /** Per-term total occurrences in the field, indexed by dense term id. */
     private final long[] termFreqs;
@@ -175,22 +175,78 @@ public final class FieldStats implements ReferenceStats {
         final Path indexDir,
         final String field,
         final int vocabSize,
-        final int docCount,
+        final int fieldDocs,
         final int maxDoc,
-        final long totalTermFreq,
-        final int[] docFreqs,
+        final long fieldTokens,
+        final int[] termDocs,
         final long[] termFreqs,
         final int[] docLens
     ) {
         this.indexDir = indexDir;
         this.field = field;
         this.vocabSize = vocabSize;
-        this.docCount = docCount;
+        this.fieldDocs = fieldDocs;
         this.maxDoc = maxDoc;
-        this.totalTermFreq = totalTermFreq;
-        this.docFreqs = docFreqs;
+        this.fieldTokens = fieldTokens;
+        this.termDocs = termDocs;
         this.termFreqs = termFreqs;
         this.docLens = docLens;
+    }
+
+    /**
+     * Returns an approximate heap footprint of the numeric arrays only.
+     * <p>
+     * This excludes object headers, references, the field string and JVM-specific overheads.
+     * </p>
+     *
+     * @return approximate bytes used by {@code docFreqs}, {@code termFreqs} and {@code docLens}
+     */
+    public long arraysBytes() {
+        return (long) termDocs.length * Integer.BYTES
+            + (long) termFreqs.length * Long.BYTES
+            + (long) docLens.length * Integer.BYTES;
+    }
+
+    /**
+     * Returns the document frequency of one term.
+     *
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @return number of documents that contain the term
+     * @throws IllegalArgumentException if {@code termId} is out of range
+     */
+    @Override
+    public int docFreq(final int termId) {
+        checkTermId(termId);
+        return termDocs[termId];
+    }
+
+    /**
+     * Returns a defensive copy of the document-frequency vector.
+     *
+     * @return copied {@code docFreq} array
+     */
+    public int[] docFreqsCopy() {
+        return Arrays.copyOf(termDocs, termDocs.length);
+    }
+
+    /**
+     * Returns the exact token count of the field for one global Lucene document id.
+     * <p>
+     * The returned value is:
+     * </p>
+     * <ul>
+     *   <li>the exact number of indexed tokens of the field for that document,</li>
+     *   <li>{@code 0} if the document has no value for the field,</li>
+     *   <li>{@code 0} for deleted documents in the frozen snapshot.</li>
+     * </ul>
+     *
+     * @param docId global Lucene document id in {@code [0, maxDoc)}
+     * @return exact field token count for that document
+     * @throws IllegalArgumentException if {@code docId} is out of range
+     */
+    public int docLen(final int docId) {
+        checkDocId(docId);
+        return docLens[docId];
     }
 
     /**
@@ -207,6 +263,190 @@ public final class FieldStats implements ReferenceStats {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(field, "field");
         return Files.isRegularFile(statsPath(indexDir, field));
+    }
+
+    /**
+     * Returns the field name covered by these statistics.
+     *
+     * @return field name
+     */
+    @Override
+    public String field() {
+        return field;
+    }
+
+    /**
+     * Returns the number of documents that contain at least one term in the field.
+     *
+     * @return field document count
+     */
+    @Override
+    public int fieldDocs() {
+        return fieldDocs;
+    }
+
+    /**
+     * Returns the total number of tokens in the field.
+     *
+     * @return field total term frequency
+     */
+    @Override
+    public long fieldTokens() {
+        return fieldTokens;
+    }
+
+    /**
+     * Returns the Lucene directory from which these statistics were opened.
+     *
+     * @return Lucene directory path
+     */
+    public Path indexDir() {
+        return indexDir;
+    }
+
+    /**
+     * Returns the Lucene document-address space size for this frozen reader snapshot.
+     * <p>
+     * Valid global document ids for {@link #docLen(int)} are in {@code [0, maxDoc())}.
+     * </p>
+     *
+     * @return reader maxDoc
+     */
+    public int maxDoc() {
+        return maxDoc;
+    }
+
+    /**
+     * Opens the persisted statistics for one field from a frozen Lucene directory.
+     *
+     * @param indexDir Lucene directory that contains the index and the stats file
+     * @param field indexed field name
+     * @return opened immutable field statistics
+     * @throws IOException if the file is missing, inconsistent or unreadable
+     */
+    public static FieldStats open(final Path indexDir, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+    
+        final Path path = statsPath(indexDir, field);
+        ensureRegularFile(path);
+    
+        try (DataInputStream in = new DataInputStream(
+            new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ))
+        )) {
+            final int magic = in.readInt();
+            if (magic != MAGIC) {
+                throw new IOException("Invalid stats file magic: " + path);
+            }
+    
+            final int version = in.readInt();
+            if (version != VERSION) {
+                throw new IOException("Unsupported stats file version " + version + ": " + path);
+            }
+    
+            final String storedField = readUtf8(in);
+            if (!field.equals(storedField)) {
+                throw new IOException(
+                    "Field mismatch in stats file: requested '" + field + "', found '" + storedField + "'"
+                );
+            }
+    
+            final int vocabSize = in.readInt();
+            if (vocabSize < 0) {
+                throw new IOException("Invalid vocabSize in stats file: " + vocabSize);
+            }
+    
+            final int docCount = in.readInt();
+            if (docCount < 0) {
+                throw new IOException("Invalid docCount in stats file: " + docCount);
+            }
+    
+            final int maxDoc = in.readInt();
+            if (maxDoc < 0) {
+                throw new IOException("Invalid maxDoc in stats file: " + maxDoc);
+            }
+    
+            final long totalTermFreq = in.readLong();
+            if (totalTermFreq < 0L) {
+                throw new IOException("Invalid totalTermFreq in stats file: " + totalTermFreq);
+            }
+    
+            final int[] docFreqs = new int[vocabSize];
+            for (int i = 0; i < vocabSize; i++) {
+                final int value = in.readInt();
+                if (value < 0) {
+                    throw new IOException("Invalid docFreq at termId " + i + ": " + value);
+                }
+                docFreqs[i] = value;
+            }
+    
+            final long[] termFreqs = new long[vocabSize];
+            for (int i = 0; i < vocabSize; i++) {
+                final long value = in.readLong();
+                if (value < 0L) {
+                    throw new IOException("Invalid termFreq at termId " + i + ": " + value);
+                }
+                termFreqs[i] = value;
+            }
+    
+            final int[] docLens = new int[maxDoc];
+            long docLensSum = 0L;
+            for (int docId = 0; docId < maxDoc; docId++) {
+                final int value = in.readInt();
+                if (value < 0) {
+                    throw new IOException("Invalid docLen at docId " + docId + ": " + value);
+                }
+                docLens[docId] = value;
+                docLensSum += value;
+            }
+    
+            if (docLensSum != totalTermFreq) {
+                throw new IOException(
+                    "Inconsistent stats file: sum(docLens)=" + docLensSum +
+                    ", totalTermFreq=" + totalTermFreq + " for field '" + field + "'"
+                );
+            }
+    
+            if (in.read() != -1) {
+                throw new IOException("Trailing bytes in stats file: " + path);
+            }
+    
+            return new FieldStats(indexDir, field, vocabSize, docCount, maxDoc, totalTermFreq, docFreqs, termFreqs, docLens);
+        } catch (EOFException e) {
+            throw new IOException("Truncated stats file: " + path, e);
+        }
+    }
+
+    /**
+     * Returns the total number of occurrences of one term in the field.
+     *
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @return total term frequency in the field
+     * @throws IllegalArgumentException if {@code termId} is out of range
+     */
+    @Override
+    public long termFreq(final int termId) {
+        checkTermId(termId);
+        return termFreqs[termId];
+    }
+
+    /**
+     * Returns a defensive copy of the total-term-frequency vector.
+     *
+     * @return copied {@code termFreq} array
+     */
+    public long[] termFreqsCopy() {
+        return Arrays.copyOf(termFreqs, termFreqs.length);
+    }
+
+    /**
+     * Returns the vocabulary size.
+     *
+     * @return number of distinct terms in the field
+     */
+    @Override
+    public int vocabSize() {
+        return vocabSize;
     }
 
     /**
@@ -275,246 +515,6 @@ public final class FieldStats implements ReferenceStats {
             deleteIfExists(tmp);
             throw e;
         }
-    }
-
-    /**
-     * Opens the persisted statistics for one field from a frozen Lucene directory.
-     *
-     * @param indexDir Lucene directory that contains the index and the stats file
-     * @param field indexed field name
-     * @return opened immutable field statistics
-     * @throws IOException if the file is missing, inconsistent or unreadable
-     */
-    public static FieldStats open(final Path indexDir, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-
-        final Path path = statsPath(indexDir, field);
-        ensureRegularFile(path);
-
-        try (DataInputStream in = new DataInputStream(
-            new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ))
-        )) {
-            final int magic = in.readInt();
-            if (magic != MAGIC) {
-                throw new IOException("Invalid stats file magic: " + path);
-            }
-
-            final int version = in.readInt();
-            if (version != VERSION) {
-                throw new IOException("Unsupported stats file version " + version + ": " + path);
-            }
-
-            final String storedField = readUtf8(in);
-            if (!field.equals(storedField)) {
-                throw new IOException(
-                    "Field mismatch in stats file: requested '" + field + "', found '" + storedField + "'"
-                );
-            }
-
-            final int vocabSize = in.readInt();
-            if (vocabSize < 0) {
-                throw new IOException("Invalid vocabSize in stats file: " + vocabSize);
-            }
-
-            final int docCount = in.readInt();
-            if (docCount < 0) {
-                throw new IOException("Invalid docCount in stats file: " + docCount);
-            }
-
-            final int maxDoc = in.readInt();
-            if (maxDoc < 0) {
-                throw new IOException("Invalid maxDoc in stats file: " + maxDoc);
-            }
-
-            final long totalTermFreq = in.readLong();
-            if (totalTermFreq < 0L) {
-                throw new IOException("Invalid totalTermFreq in stats file: " + totalTermFreq);
-            }
-
-            final int[] docFreqs = new int[vocabSize];
-            for (int i = 0; i < vocabSize; i++) {
-                final int value = in.readInt();
-                if (value < 0) {
-                    throw new IOException("Invalid docFreq at termId " + i + ": " + value);
-                }
-                docFreqs[i] = value;
-            }
-
-            final long[] termFreqs = new long[vocabSize];
-            for (int i = 0; i < vocabSize; i++) {
-                final long value = in.readLong();
-                if (value < 0L) {
-                    throw new IOException("Invalid termFreq at termId " + i + ": " + value);
-                }
-                termFreqs[i] = value;
-            }
-
-            final int[] docLens = new int[maxDoc];
-            long docLensSum = 0L;
-            for (int docId = 0; docId < maxDoc; docId++) {
-                final int value = in.readInt();
-                if (value < 0) {
-                    throw new IOException("Invalid docLen at docId " + docId + ": " + value);
-                }
-                docLens[docId] = value;
-                docLensSum += value;
-            }
-
-            if (docLensSum != totalTermFreq) {
-                throw new IOException(
-                    "Inconsistent stats file: sum(docLens)=" + docLensSum +
-                    ", totalTermFreq=" + totalTermFreq + " for field '" + field + "'"
-                );
-            }
-
-            if (in.read() != -1) {
-                throw new IOException("Trailing bytes in stats file: " + path);
-            }
-
-            return new FieldStats(indexDir, field, vocabSize, docCount, maxDoc, totalTermFreq, docFreqs, termFreqs, docLens);
-        } catch (EOFException e) {
-            throw new IOException("Truncated stats file: " + path, e);
-        }
-    }
-
-    /**
-     * Returns the Lucene directory from which these statistics were opened.
-     *
-     * @return Lucene directory path
-     */
-    public Path indexDir() {
-        return indexDir;
-    }
-
-    /**
-     * Returns the field name covered by these statistics.
-     *
-     * @return field name
-     */
-    @Override
-    public String field() {
-        return field;
-    }
-
-    /**
-     * Returns the vocabulary size.
-     *
-     * @return number of distinct terms in the field
-     */
-    @Override
-    public int vocabSize() {
-        return vocabSize;
-    }
-
-    /**
-     * Returns the number of documents that contain at least one term in the field.
-     *
-     * @return field document count
-     */
-    @Override
-    public int docCount() {
-        return docCount;
-    }
-
-    /**
-     * Returns the Lucene document-address space size for this frozen reader snapshot.
-     * <p>
-     * Valid global document ids for {@link #docLen(int)} are in {@code [0, maxDoc())}.
-     * </p>
-     *
-     * @return reader maxDoc
-     */
-    public int maxDoc() {
-        return maxDoc;
-    }
-
-    /**
-     * Returns the total number of tokens in the field.
-     *
-     * @return field total term frequency
-     */
-    @Override
-    public long totalTermFreq() {
-        return totalTermFreq;
-    }
-
-    /**
-     * Returns the exact token count of the field for one global Lucene document id.
-     * <p>
-     * The returned value is:
-     * </p>
-     * <ul>
-     *   <li>the exact number of indexed tokens of the field for that document,</li>
-     *   <li>{@code 0} if the document has no value for the field,</li>
-     *   <li>{@code 0} for deleted documents in the frozen snapshot.</li>
-     * </ul>
-     *
-     * @param docId global Lucene document id in {@code [0, maxDoc)}
-     * @return exact field token count for that document
-     * @throws IllegalArgumentException if {@code docId} is out of range
-     */
-    public int docLen(final int docId) {
-        checkDocId(docId);
-        return docLens[docId];
-    }
-
-    /**
-     * Returns the document frequency of one term.
-     *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @return number of documents that contain the term
-     * @throws IllegalArgumentException if {@code termId} is out of range
-     */
-    @Override
-    public int docFreq(final int termId) {
-        checkTermId(termId);
-        return docFreqs[termId];
-    }
-
-    /**
-     * Returns the total number of occurrences of one term in the field.
-     *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @return total term frequency in the field
-     * @throws IllegalArgumentException if {@code termId} is out of range
-     */
-    @Override
-    public long termFreq(final int termId) {
-        checkTermId(termId);
-        return termFreqs[termId];
-    }
-
-    /**
-     * Returns a defensive copy of the document-frequency vector.
-     *
-     * @return copied {@code docFreq} array
-     */
-    public int[] docFreqsCopy() {
-        return Arrays.copyOf(docFreqs, docFreqs.length);
-    }
-
-    /**
-     * Returns a defensive copy of the total-term-frequency vector.
-     *
-     * @return copied {@code termFreq} array
-     */
-    public long[] termFreqsCopy() {
-        return Arrays.copyOf(termFreqs, termFreqs.length);
-    }
-
-    /**
-     * Returns an approximate heap footprint of the numeric arrays only.
-     * <p>
-     * This excludes object headers, references, the field string and JVM-specific overheads.
-     * </p>
-     *
-     * @return approximate bytes used by {@code docFreqs}, {@code termFreqs} and {@code docLens}
-     */
-    public long arraysBytes() {
-        return (long) docFreqs.length * Integer.BYTES
-            + (long) termFreqs.length * Long.BYTES
-            + (long) docLens.length * Integer.BYTES;
     }
 
     /**

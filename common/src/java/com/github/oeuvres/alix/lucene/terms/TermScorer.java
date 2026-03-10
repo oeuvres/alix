@@ -3,173 +3,180 @@ package com.github.oeuvres.alix.lucene.terms;
 /**
  * Local scorer for one term on one part.
  *
- * <p>The intended use is:</p>
+ * <p>Intended lifecycle:</p>
  * <ol>
- *   <li>prepare one scorer instance for one term, using global field statistics,</li>
+ *   <li>prepare one scorer instance for one term with corpus-level statistics,</li>
  *   <li>call {@link #score(long, long)} for each part,</li>
- *   <li>aggregate the local part scores outside this class.</li>
+ *   <li>aggregate local part scores outside this class.</li>
  * </ol>
  *
- * <p>The caller chooses what one "unit" is:</p>
- * <ul>
- *   <li>for document-wise scoring, {@code unitTokenCountAvg = tokenCountAll / docCountAll}</li>
- *   <li>for part-wise scoring, {@code unitTokenCountAvg = tokenCountAll / partCount}</li>
- * </ul>
- *
- * <p>This class is stateful. One instance must not be reused concurrently for different terms.</p>
+ * <p>This class is stateful. One instance must not be reused concurrently
+ * for different terms.</p>
  */
 public abstract class TermScorer {
-    /** Total frequency of the term in the whole field. */
-    protected long termFreqAll;
-
-    /** Number of documents containing the term in the whole field. */
-    protected int termDocFreqAll;
-
-    /** Total token count of the whole field. */
-    protected long tokenCountAll;
-
-    /** Total live document count of the whole field. */
-    protected int docCountAll;
-
     /**
-     * Average token count of one scoring unit.
-     * Caller decides the unit: document average, part average, etc.
+     * Aggregation rule used to reduce local part scores to one score per term.
      */
-    protected double unitTokenCountAvg;
+    public enum Aggregation {
+        /** Sum local scores over all parts. */
+        SUM,
 
-    /** Expected global rate of the term in the whole field: termFreqAll / tokenCountAll. */
-    protected double expectedTermRate;
+        /** Sum only positive local scores. */
+        SUM_POSITIVE,
 
-    /** Cached idf-like value for scorers that need it. */
-    protected double idf;
+        /** Maximum local score over all parts. */
+        MAX,
+
+        /** Maximum positive local score; negative local scores are ignored. */
+        MAX_POSITIVE,
+
+        /** Arithmetic mean of local scores over all parts. */
+        MEAN
+    }
+    /** Total token count of the full corpus/field. */
+    protected long corpusTokens;
+    
+    /** */
+    protected int corpusPartCount;
+    
+
+    /** Cached idf-like value derived from corpus statistics. */
+    protected double corpusIdf;
+
+    /** Average token count of one part. */
+    protected double partTokensAvg;
+    
+    /** Total occurrences of the current term in the full corpus/field. */
+    protected long corpusTermFreq;
+
+    /** Number of corpus documents containing the current term. */
+    protected int corpusTermDocs;
+
+    /** Global relative frequency of the current term in the corpus. */
+    protected double corpusTermRate;
+
 
     /**
-     * Prepare the scorer for one term.
+     * Prepare this scorer for one term.
      *
-     * @param termFreqAll total frequency of the term in the whole field
-     * @param termDocFreqAll number of docs containing the term in the whole field
-     * @param tokenCountAll total token count of the whole field
-     * @param docCountAll total live doc count of the whole field
-     * @param unitTokenCountAvg average token count of one scoring unit
+     * @param corpusTermFreq total occurrences of the term in the corpus
+     * @param corpusTermDocs number of corpus documents containing the term
+     * @param corpusTokens total token count in the corpus
+     * @param corpusDocs total live document count in the corpus
+     * @param avgPartTokens average token count of one part
      */
-    public final void prepare(
-        final long termFreqAll,
-        final int termDocFreqAll,
-        final long tokenCountAll,
-        final int docCountAll,
-        final double unitTokenCountAvg
+    public final void corpus(
+        final long corpusTokens,
+        final int corpusPartCount
     ) {
-        this.termFreqAll = termFreqAll;
-        this.termDocFreqAll = termDocFreqAll;
-        this.tokenCountAll = tokenCountAll;
-        this.docCountAll = docCountAll;
-        this.unitTokenCountAvg = unitTokenCountAvg;
+        this.corpusTokens = corpusTokens;
+        this.corpusPartCount = corpusPartCount;
+        this.partTokensAvg = (double) corpusTokens / (double) corpusPartCount;
 
-        this.expectedTermRate = 0d;
-        this.idf = 0d;
+        this.corpusTermRate = 0d;
+        this.corpusIdf = 0d;
 
-        expectation(termFreqAll, tokenCountAll);
-        idf(termDocFreqAll, docCountAll, tokenCountAll);
         configure();
     }
 
     /**
-     * Set the expected global term rate.
-     *
-     * @param termFreqAll total frequency of the term in the whole field
-     * @param tokenCountAll total token count of the whole field
+     * Initialize the global term rate of the current term:
+     * corpusTermFreq / corpusTokens.
      */
-    public void expectation(final long termFreqAll, final long tokenCountAll) {
-        if (tokenCountAll <= 0L) {
-            this.expectedTermRate = 0d;
+    public void term(
+        final long corpusTermFreq,
+        final int corpusTermDocs
+    ) {
+        this.corpusTermFreq = corpusTermFreq;
+        this.corpusTermDocs = corpusTermDocs;
+        if (corpusTokens <= 0L) {
+            this.corpusTermRate = 0d;
             return;
         }
-        this.expectedTermRate = (double) termFreqAll / (double) tokenCountAll;
+        this.corpusTermRate = (double) corpusTermFreq / (double) corpusTokens;
     }
 
     /**
-     * Set one idf-like value if the scorer needs it.
-     *
-     * @param termDocFreqAll number of docs containing the term in the whole field
-     * @param docCountAll total live doc count of the whole field
-     * @param tokenCountAll total token count of the whole field
-     */
-    public void idf(
-        final int termDocFreqAll,
-        final int docCountAll,
-        final long tokenCountAll
-    ) {
-        // default: no-op
-    }
-
-    /**
-     * Optional final configuration hook after expectation() and idf().
+     * Optional hook after corpusTermRate and corpusIdf have been initialized.
      */
     protected void configure() {
-        // default: no-op
+        // no-op
     }
 
     /**
-     * Local score of one part for the prepared term.
+     * Score one part for the prepared term.
      *
-     * @param termFreqPart frequency of the prepared term in the part
-     * @param tokenCountPart token count of the part
-     * @return local score for this part
+     * @param partTermFreq occurrences of the term in the part
+     * @param partTokens total token count of the part
+     * @return local score for that part
      */
-    public abstract double score(final long termFreqPart, final long tokenCountPart);
+    public abstract double score(final long partTermFreq, final long partTokens);
 
     /**
-     * Signed G contribution using global expectation:
+     * Signed G-style contribution against the global corpus expectation.
      *
+     * <p>Local expectation in one part:</p>
      * <pre>
-     * E = expectedTermRate * tokenCountPart
-     * G = 2 * termFreqPart * ln(termFreqPart / E)
+     * partExpectedTermFreq = corpusTermRate * partTokens
      * </pre>
      *
-     * <p>If the observed frequency is below expectation, the score is negative.</p>
+     * <p>Score:</p>
+     * <pre>
+     * 2 * partTermFreq * ln(partTermFreq / partExpectedTermFreq)
+     * </pre>
+     *
+     * <p>Positive when the term is over-represented in the part,
+     * negative when under-represented.</p>
      */
     public static final class G extends TermScorer {
         @Override
-        public double score(final long termFreqPart, final long tokenCountPart) {
-            if (termFreqPart <= 0L || tokenCountPart <= 0L || expectedTermRate <= 0d) {
+        public double score(final long partTermFreq, final long partTokens) {
+            if (partTokens <= 0L || corpusTermRate <= 0d) {
                 return 0d;
             }
-            final double expectedTermCountPart = expectedTermRate * (double) tokenCountPart;
-            if (expectedTermCountPart <= 0d) {
+
+            final double partExpectedTermFreq = corpusTermRate * (double) partTokens;
+
+            if (partExpectedTermFreq <= 0d || partTermFreq <= 0L) {
                 return 0d;
             }
-            return 2d * (double) termFreqPart * Math.log((double) termFreqPart / expectedTermCountPart);
+
+            return 2d * (double) partTermFreq
+                * Math.log((double) partTermFreq / partExpectedTermFreq);
         }
     }
 
     /**
-     * Count-form Jaccard coefficient:
+     * Count-form Jaccard coefficient.
      *
+     * <p>This is not an expectation scorer. It treats:</p>
      * <pre>
-     * J = termFreqPart / (tokenCountPart + termFreqAll - termFreqPart)
+     * intersection = partTermFreq
+     * union        = partTokens + corpusTermFreq - partTermFreq
      * </pre>
      *
-     * <p>This is not an expectation scorer. It is a bounded overlap-like coefficient in [0, 1].</p>
+     * <p>Result is in [0, 1] when inputs are coherent.</p>
      */
     public static final class Jaccard extends TermScorer {
         @Override
-        public double score(final long termFreqPart, final long tokenCountPart) {
-            if (termFreqPart <= 0L || tokenCountPart <= 0L || termFreqAll <= 0L) {
+        public double score(final long partTermFreq, final long partTokens) {
+            if (partTermFreq <= 0L || partTokens <= 0L || corpusTermFreq <= 0L) {
                 return 0d;
             }
-            final long union = tokenCountPart + termFreqAll - termFreqPart;
+
+            final long union = partTokens + corpusTermFreq - partTermFreq;
             if (union <= 0L) {
                 return 0d;
             }
-            return (double) termFreqPart / (double) union;
+
+            return (double) partTermFreq / (double) union;
         }
     }
 
     /**
      * BM25-like local score on one part.
      *
-     * <p>The normalization uses {@code unitTokenCountAvg}, chosen by the caller.
-     * For part-wise scoring, pass the average part length.</p>
+     * <p>Length normalization uses avgPartTokens.</p>
      */
     public static final class BM25 extends TermScorer {
         private final double k1;
@@ -191,28 +198,32 @@ public abstract class TermScorer {
         }
 
         @Override
-        public void idf(
-            final int termDocFreqAll,
-            final int docCountAll,
-            final long tokenCountAll
+        public final void term(
+            final long corpusTermFreq,
+            final int corpusTermDocs
         ) {
-            if (docCountAll <= 0) {
-                this.idf = 0d;
+            super.term(corpusTermFreq, corpusTermDocs);
+            if (corpusPartCount <= 0) {
+                this.corpusIdf = 0d;
                 return;
             }
-            this.idf = Math.log(1.0d + ((double) docCountAll - (double) termDocFreqAll + 0.5d)
-                / ((double) termDocFreqAll + 0.5d));
+
+            this.corpusIdf = Math.log(
+                1.0d + ((double) corpusPartCount - (double) corpusTermDocs + 0.5d)
+                    / ((double) corpusTermDocs + 0.5d)
+            );
         }
 
         @Override
-        public double score(final long termFreqPart, final long tokenCountPart) {
-            if (termFreqPart <= 0L || tokenCountPart <= 0L || unitTokenCountAvg <= 0d || idf <= 0d) {
+        public double score(final long partTermFreq, final long partTokens) {
+            if (partTermFreq <= 0L || partTokens <= 0L || partTokensAvg <= 0d || corpusIdf <= 0d) {
                 return 0d;
             }
 
-            final double tf = (double) termFreqPart;
-            final double lengthNorm = k1 * (1d - b + b * ((double) tokenCountPart / unitTokenCountAvg));
-            return idf * (tf * (k1 + 1d)) / (tf + lengthNorm);
+            final double tf = (double) partTermFreq;
+            final double norm = k1 * (1d - b + b * ((double) partTokens / partTokensAvg));
+
+            return corpusIdf * (tf * (k1 + 1d)) / (tf + norm);
         }
     }
 }

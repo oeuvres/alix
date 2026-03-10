@@ -11,6 +11,8 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
+import com.github.oeuvres.alix.lucene.terms.TermScorer.Aggregation;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -67,25 +69,6 @@ public final class ThemeTerms {
     private final FieldStats fieldStats;
     private final String field;
 
-    /**
-     * Aggregation rule used to reduce local part scores to one score per term.
-     */
-    public enum Aggregation {
-        /** Sum local scores over all parts. */
-        SUM,
-
-        /** Sum only positive local scores. */
-        SUM_POSITIVE,
-
-        /** Maximum local score over all parts. */
-        MAX,
-
-        /** Maximum positive local score; negative local scores are ignored. */
-        MAX_POSITIVE,
-
-        /** Arithmetic mean of local scores over all parts. */
-        MEAN
-    }
 
     /**
      * Binds the scorer to one frozen field snapshot.
@@ -124,6 +107,68 @@ public final class ThemeTerms {
         }
     }
 
+    public void score(
+        final TermStats stats,
+        final TermScorer scorer,
+        final Aggregation aggregation
+    ) throws IOException {
+        Objects.requireNonNull(stats, "stats");
+        Objects.requireNonNull(scorer, "scorer");
+        Objects.requireNonNull(aggregation, "aggregation");
+
+        if (!field.equals(stats.field())) {
+            throw new IllegalArgumentException(
+                "Field mismatch: themeTerms='" + field + "', stats='" + stats.field() + "'"
+            );
+        }
+        if (stats.vocabSize() != lexicon.vocabSize()) {
+            throw new IllegalArgumentException(
+                "vocabSize mismatch: themeTerms=" + lexicon.vocabSize() +
+                ", stats=" + stats.vocabSize()
+            );
+        }
+
+        final int maxDoc = fieldStats.maxDoc();
+        final int corpusDocs = fieldStats.fieldDocs();
+
+        if (corpusDocs <= 0) {
+            Arrays.fill(stats.scores(), 0d);
+            return;
+        }
+
+        final int[] partByDocId = new int[maxDoc];
+        final long[] partTokens = new long[corpusDocs];
+
+        int partId = 0;
+        for (int docId = 0; docId < maxDoc; docId++) {
+            final int docLen = fieldStats.docLen(docId);
+            if (docLen <= 0) {
+                partByDocId[docId] = 0;
+                continue;
+            }
+
+            if (partId >= corpusDocs) {
+                throw new IllegalStateException(
+                    "More positive docLen values than fieldStats.fieldDocs(): partId=" + partId +
+                    ", corpusDocs=" + corpusDocs
+                );
+            }
+
+            partByDocId[docId] = partId;
+            partTokens[partId] = docLen;
+            partId++;
+        }
+
+        if (partId != corpusDocs) {
+            throw new IllegalStateException(
+                "fieldStats.fieldDocs() mismatch: counted " + partId +
+                " docs with docLen > 0, expected " + corpusDocs
+            );
+        }
+
+        score(stats, scorer, aggregation, partByDocId, partTokens);
+    }
+    
     /**
      * Computes one score per term and writes it into {@code stats.scores()}.
      * <p>
@@ -140,19 +185,19 @@ public final class ThemeTerms {
      */
     public void score(
         final TermStats stats,
+        final TermScorer scorer,
         final int[] partByDocId,
-        final long[] partTokenCounts,
-        final TermScorer scorer
+        final long[] partTokenCounts
     ) throws IOException {
-        score(stats, partByDocId, partTokenCounts, scorer, Aggregation.SUM);
+        score(stats, scorer, Aggregation.SUM, partByDocId, partTokenCounts);
     }
 
     public void score(
         final TermStats stats,
-        final int[] partByDocId,
-        final long[] partTokenCounts,
         final TermScorer scorer,
-        final Aggregation aggregation
+        final Aggregation aggregation,
+        final int[] partByDocId,
+        final long[] partTokenCounts
     ) throws IOException {
         Objects.requireNonNull(stats, "stats");
         Objects.requireNonNull(partByDocId, "partByDocId");
@@ -204,11 +249,12 @@ public final class ThemeTerms {
             );
         }
 
-        final long fieldTokenCount = fieldStats.totalTermFreq();
-        final int docsAll = reader.numDocs();
+        final long corpusTokens = fieldStats.fieldTokens();
+        final int corpusDocs = fieldStats.fieldDocs();
+        scorer.corpus(corpusTokens, partCount);
 
         // One dense buffer reused for each term.
-        final long[] tfByPart = new long[partCount];
+        final long[] partTermFreq = new long[partCount];
 
         // Needed only to filter deleted docs when using MultiTerms postings.
         final int leafCount = leaves.size();
@@ -224,6 +270,9 @@ public final class ThemeTerms {
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
         BytesRef term;
+        
+        
+
 
         while ((term = tenum.next()) != null) {
             final int termId = lexicon.id(term);
@@ -231,10 +280,10 @@ public final class ThemeTerms {
                 continue;
             }
 
-            Arrays.fill(tfByPart, 0L);
+            Arrays.fill(partTermFreq, 0L);
 
-            long termTfAll = 0L;
-            int termHitsAll = 0;
+            long corpusTermFreq = 0L;
+            int corpusTermDocs = 0;
 
             postings = tenum.postings(postings, PostingsEnum.FREQS);
 
@@ -264,28 +313,21 @@ public final class ThemeTerms {
                 }
 
                 final int partId = partByDocId[globalDocId];
-                tfByPart[partId] += freq;
-                termTfAll += freq;
-                termHitsAll++;
+                partTermFreq[partId] += freq;
+                corpusTermFreq += freq;
+                corpusTermDocs++;
             }
 
-            if (termTfAll == 0L) {
+            if (corpusTermFreq == 0L) {
                 scores[termId] = 0d;
                 continue;
             }
 
-            /*
-             * Assumption:
-             * TermScorer follows the same two-phase contract as your old Distrib:
-             *   - idf(termHitsAll, docsAll, fieldTokenCount)
-             *   - expectation(termTfAll, fieldTokenCount)
-             *   - score(freqInPart, partTokenCount)
-             *
-             * If your actual interface uses different method names, only these
-             * setup calls and the local score call need adaptation.
-             */
-            // scorer.idf(termHitsAll, docsAll, fieldTokenCount);
-            scorer.expectation(termTfAll, fieldTokenCount);
+            int partTermDocs = 0;
+            for (int partId = 0; partId < partCount; partId++) {
+                if (partTermFreq[partId] > 0L) partTermDocs++;
+            }
+            scorer.term(corpusTermFreq, partTermDocs);
 
             double acc;
             switch (aggregation) {
@@ -303,12 +345,12 @@ public final class ThemeTerms {
             int usedParts = 0;
 
             for (int partId = 0; partId < partCount; partId++) {
-                final long partLen = partTokenCounts[partId];
-                if (partLen <= 0L) {
+                final long partTokens = partTokenCounts[partId];
+                if (partTokens <= 0L) {
                     continue;
                 }
 
-                final double local = scorer.score(tfByPart[partId], partLen);
+                final double local = scorer.score(partTermFreq[partId], partTokens);
 
                 switch (aggregation) {
                     case SUM:
@@ -382,7 +424,7 @@ public final class ThemeTerms {
         final int[] partByDocId = new int[maxDoc];
         Arrays.fill(partByDocId, -1);
 
-        final long totalTokens = fieldStats.totalTermFreq();
+        final long totalTokens = fieldStats.fieldTokens();
         int currentPart = 0;
         long nextThreshold = (partCount == 1) ? Long.MAX_VALUE : totalTokens / partCount;
         long seenTokens = 0L;

@@ -50,7 +50,7 @@ public interface ReferenceStats {
      *
      * @return reference document count
      */
-    int docCount();
+    int fieldDocs();
 
     /**
      * Returns the total token count in the reference population.
@@ -62,7 +62,7 @@ public interface ReferenceStats {
      *
      * @return total token count in the reference population
      */
-    long totalTermFreq();
+    long fieldTokens();
 
     /**
      * Returns the document frequency of one term in the reference population.

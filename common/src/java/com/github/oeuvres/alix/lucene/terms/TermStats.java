@@ -69,16 +69,16 @@ public final class TermStats {
     private final int vocabSize;
 
     /** Number of documents in the matched subset. */
-    private int matchedDocCount;
+    private int partDocs;
 
     /** Total token count in the matched subset. */
-    private long matchedTokenCount;
+    private long partTokens;
 
     /** Term occurrences in the matched subset, by term id. */
-    private final int[] termFreqs;
+    private final int[] partTermFreqs;
 
     /** Matched-document frequency in the matched subset, by term id. */
-    private final int[] docFreqs;
+    private final int[] partTermDocs;
 
     /** Writable per-term scores, by term id. */
     private final double[] scores;
@@ -97,9 +97,39 @@ public final class TermStats {
             throw new IllegalArgumentException("vocabSize=" + vocabSize + ", expected >= 0");
         }
         this.vocabSize = vocabSize;
-        this.termFreqs = new int[vocabSize];
-        this.docFreqs = new int[vocabSize];
+        this.partTermFreqs = new int[vocabSize];
+        this.partTermDocs = new int[vocabSize];
         this.scores = new double[vocabSize];
+    }
+
+    /**
+     * Adds occurrences to the subset term frequency of one term.
+     *
+     * @param termId dense term identifier
+     * @param freq positive occurrence count to add
+     * @throws IndexOutOfBoundsException if {@code termId} is invalid
+     * @throws IllegalArgumentException if {@code freq < 0}
+     */
+    public void addTermFreq(final int termId, final int freq) {
+        checkTermId(termId);
+        if (freq < 0) {
+            throw new IllegalArgumentException("freq=" + freq + ", expected >= 0");
+        }
+        partTermFreqs[termId] += freq;
+    }
+
+    /**
+     * Clears all subset statistics and all stored scores.
+     * <p>
+     * Backing arrays are retained for reuse.
+     * </p>
+     */
+    public void clear() {
+        partDocs = 0;
+        partTokens = 0L;
+        Arrays.fill(partTermFreqs, 0);
+        Arrays.fill(partTermDocs, 0);
+        Arrays.fill(scores, 0d);
     }
 
     /**
@@ -112,12 +142,27 @@ public final class TermStats {
     }
 
     /**
-     * Returns the vocabulary size.
+     * Increments the matched-document frequency of one term by one.
      *
-     * @return vocabulary size
+     * @param termId dense term identifier
+     * @throws IndexOutOfBoundsException if {@code termId} is invalid
      */
-    public int vocabSize() {
-        return vocabSize;
+    public void incrementDocFreq(final int termId) {
+        checkTermId(termId);
+        partTermDocs[termId]++;
+    }
+
+    /**
+     * Returns the number of terms with a strictly positive subset frequency.
+     *
+     * @return number of non-zero term frequencies
+     */
+    public int nonZeroTermCount() {
+        int n = 0;
+        for (int tf : partTermFreqs) {
+            if (tf > 0) n++;
+        }
+        return n;
     }
 
     /**
@@ -125,8 +170,8 @@ public final class TermStats {
      *
      * @return matched document count
      */
-    public int matchedDocCount() {
-        return matchedDocCount;
+    public int partDocs() {
+        return partDocs;
     }
 
     /**
@@ -135,11 +180,11 @@ public final class TermStats {
      * @param matchedDocCount matched document count
      * @throws IllegalArgumentException if {@code matchedDocCount < 0}
      */
-    public void matchedDocCount(final int matchedDocCount) {
+    public void partDocs(final int matchedDocCount) {
         if (matchedDocCount < 0) {
             throw new IllegalArgumentException("matchedDocCount=" + matchedDocCount + ", expected >= 0");
         }
-        this.matchedDocCount = matchedDocCount;
+        this.partDocs = matchedDocCount;
     }
 
     /**
@@ -147,69 +192,45 @@ public final class TermStats {
      *
      * @return matched token count
      */
-    public long matchedTokenCount() {
-        return matchedTokenCount;
+    public long partTokens() {
+        return partTokens;
     }
 
     /**
      * Sets the total token count in the matched subset.
      *
-     * @param matchedTokenCount matched token count
+     * @param partTokens matched token count
      * @throws IllegalArgumentException if {@code matchedTokenCount < 0}
      */
-    public void matchedTokenCount(final long matchedTokenCount) {
-        if (matchedTokenCount < 0L) {
-            throw new IllegalArgumentException("matchedTokenCount=" + matchedTokenCount + ", expected >= 0");
+    public void partTokens(final long partTokens) {
+        if (partTokens < 0L) {
+            throw new IllegalArgumentException("partTokens=" + partTokens + ", expected >= 0");
         }
-        this.matchedTokenCount = matchedTokenCount;
+        this.partTokens = partTokens;
     }
 
     /**
-     * Returns the dense subset term-frequency vector.
-     * <p>
-     * The returned array is mutable and owned by this object.
-     * </p>
-     *
-     * @return dense subset term frequencies
-     */
-    public int[] termFreqs() {
-        return termFreqs;
-    }
-
-    /**
-     * Returns the subset term frequency of one term.
+     * Returns the score currently stored for one term.
      *
      * @param termId dense term identifier
-     * @return occurrences of the term in the matched subset
+     * @return current score
      * @throws IndexOutOfBoundsException if {@code termId} is invalid
      */
-    public int termFreq(final int termId) {
+    public double score(final int termId) {
         checkTermId(termId);
-        return termFreqs[termId];
+        return scores[termId];
     }
 
     /**
-     * Returns the dense subset document-frequency vector.
-     * <p>
-     * The returned array is mutable and owned by this object.
-     * </p>
-     *
-     * @return dense subset document frequencies
-     */
-    public int[] docFreqs() {
-        return docFreqs;
-    }
-
-    /**
-     * Returns the number of matched documents that contain one term.
+     * Sets the score of one term.
      *
      * @param termId dense term identifier
-     * @return matched-document frequency of the term
+     * @param score score value to store
      * @throws IndexOutOfBoundsException if {@code termId} is invalid
      */
-    public int docFreq(final int termId) {
+    public void score(final int termId, final double score) {
         checkTermId(termId);
-        return docFreqs[termId];
+        scores[termId] = score;
     }
 
     /**
@@ -226,142 +247,60 @@ public final class TermStats {
     }
 
     /**
-     * Returns the score currently stored for one term.
+     * Returns the subset term frequency of one term.
      *
      * @param termId dense term identifier
-     * @return current score
+     * @return occurrences of the term in the matched subset
      * @throws IndexOutOfBoundsException if {@code termId} is invalid
      */
-    public double score(final int termId) {
+    public int termFreq(final int termId) {
         checkTermId(termId);
-        return scores[termId];
+        return partTermFreqs[termId];
     }
 
     /**
-     * Clears all subset statistics and all stored scores.
+     * Returns the dense subset term-frequency vector.
      * <p>
-     * Backing arrays are retained for reuse.
-     * </p>
-     */
-    public void clear() {
-        matchedDocCount = 0;
-        matchedTokenCount = 0L;
-        Arrays.fill(termFreqs, 0);
-        Arrays.fill(docFreqs, 0);
-        Arrays.fill(scores, 0d);
-    }
-
-    /**
-     * Adds occurrences to the subset term frequency of one term.
-     *
-     * @param termId dense term identifier
-     * @param freq positive occurrence count to add
-     * @throws IndexOutOfBoundsException if {@code termId} is invalid
-     * @throws IllegalArgumentException if {@code freq < 0}
-     */
-    public void addTermFreq(final int termId, final int freq) {
-        checkTermId(termId);
-        if (freq < 0) {
-            throw new IllegalArgumentException("freq=" + freq + ", expected >= 0");
-        }
-        termFreqs[termId] += freq;
-    }
-
-    /**
-     * Increments the matched-document frequency of one term by one.
-     *
-     * @param termId dense term identifier
-     * @throws IndexOutOfBoundsException if {@code termId} is invalid
-     */
-    public void incrementDocFreq(final int termId) {
-        checkTermId(termId);
-        docFreqs[termId]++;
-    }
-
-    /**
-     * Sets the score of one term.
-     *
-     * @param termId dense term identifier
-     * @param score score value to store
-     * @throws IndexOutOfBoundsException if {@code termId} is invalid
-     */
-    public void score(final int termId, final double score) {
-        checkTermId(termId);
-        scores[termId] = score;
-    }
-
-    /**
-     * Applies a scoring function against a reference population.
-     * <p>
-     * The method overwrites {@link #scores()} for all term ids.
+     * The returned array is mutable and owned by this object.
      * </p>
      *
-     * @param reference immutable reference statistics for the same field and vocabulary
-     * @param mode interpretation of the reference population
-     * @param scorer scoring function
-     * @throws NullPointerException if an argument is {@code null}
-     * @throws IllegalArgumentException if the field or vocabulary size is incompatible
+     * @return dense subset term frequencies
      */
-    public void score(
-        final ReferenceStats reference,
-        final ReferenceMode mode,
-        final TermScorer scorer
-    ) {
-        Objects.requireNonNull(reference, "reference");
-        Objects.requireNonNull(mode, "mode");
-        Objects.requireNonNull(scorer, "scorer");
-
-        if (!field.equals(reference.field())) {
-            throw new IllegalArgumentException(
-                "field mismatch: subset='" + field + "', reference='" + reference.field() + "'"
-            );
-        }
-        if (vocabSize != reference.vocabSize()) {
-            throw new IllegalArgumentException(
-                "vocabSize mismatch: subset=" + vocabSize + ", reference=" + reference.vocabSize()
-            );
-        }
-
-        final long N1 = matchedTokenCount;
-
-        for (int termId = 0; termId < vocabSize; termId++) {
-            final int a = termFreqs[termId];
-            final int df1 = docFreqs[termId];
-
-            final long B = reference.termFreq(termId);
-            final int DF = reference.docFreq(termId);
-            final long T = reference.totalTermFreq();
-            final int D = reference.docCount();
-
-            final long b;
-            final long N0;
-            final int df0;
-
-            if (mode == ReferenceMode.DIRECT) {
-                b = B;
-                N0 = T;
-                df0 = DF;
-            } else {
-                b = B - a;
-                N0 = T - N1;
-                df0 = DF - df1;
-            }
-
-            scores[termId] = scorer.score(a, N1, b, N0);
-        }
+    public int[] termFreqs() {
+        return partTermFreqs;
     }
 
     /**
-     * Returns the number of terms with a strictly positive subset frequency.
+     * Returns the number of matched documents that contain one term.
      *
-     * @return number of non-zero term frequencies
+     * @param termId dense term identifier
+     * @return matched-document frequency of the term
+     * @throws IndexOutOfBoundsException if {@code termId} is invalid
      */
-    public int nonZeroTermCount() {
-        int n = 0;
-        for (int tf : termFreqs) {
-            if (tf > 0) n++;
-        }
-        return n;
+    public int termDocs(final int termId) {
+        checkTermId(termId);
+        return partTermDocs[termId];
+    }
+
+    /**
+     * Returns the dense subset document-frequency vector.
+     * <p>
+     * The returned array is mutable and owned by this object.
+     * </p>
+     *
+     * @return dense subset document frequencies
+     */
+    public int[] termDocs() {
+        return partTermDocs;
+    }
+
+    /**
+     * Returns the vocabulary size.
+     *
+     * @return vocabulary size
+     */
+    public int vocabSize() {
+        return vocabSize;
     }
 
     /**

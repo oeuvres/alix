@@ -34,11 +34,16 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
+import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
 import com.github.oeuvres.alix.lucene.analysis.FinalCleanupFilter;
@@ -57,6 +62,18 @@ import opennlp.tools.postag.POSModel;
  */
 public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
 {
+    private static final CharArraySet STOP_SET = loadStopSet("/com/github/oeuvres/alix/fr/stop.csv");
+
+    private static CharArraySet loadStopSet(String resourcePath) {
+        try (InputStream in = FrenchAnalyzer.class.getResourceAsStream(resourcePath)) {
+            if (in == null) {
+                throw new IllegalStateException("Missing resource: " + resourcePath);
+            }
+            return WordlistLoader.getWordSet(in, StandardCharsets.UTF_8, "#");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
     final static String POS_PATH = "/com/github/oeuvres/alix/fr/opennlp-fr-ud-gsd-pos-1.3-2.5.4.bin";
     private static final POSModel POS_MODEL = loadPosModel(POS_PATH);
     final Analyzer ascii;
@@ -112,6 +129,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
             // provide lemma
             ts = new LemmaFilter(ts, FrenchLexicons.getLemmaLexicon());
             // TODO, multi word expression
+            
+            // stop words
+            ts = new StopFilter(ts, STOP_SET);
             // last filter prepare term to index
             ts = new FinalCleanupFilter(ts);
             return new TokenStreamComponents(tokenizer, ts);
