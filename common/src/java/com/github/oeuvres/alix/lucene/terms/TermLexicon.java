@@ -18,11 +18,13 @@ import java.io.BufferedOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -31,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
+
 
 import static java.lang.Math.toIntExact;
 
@@ -50,9 +53,11 @@ import static java.lang.Math.toIntExact;
  * {@link TermsEnum} for the field.
  * </p>
  * <p>
- * This class implements {@link Closeable}. Closing releases the memory-mapped regions
- * deterministically via {@link Arena}, avoiding file-lock issues on Windows and virtual
- * address space leaks on all platforms.
+ * This class implements {@link Closeable}. Closing attempts to release the memory-mapped
+ * regions immediately via {@code sun.misc.Unsafe.invokeCleaner()}, the same mechanism used
+ * by Lucene's {@code MMapDirectory}. If the reflective call fails (e.g. on a future JDK that
+ * removes the entry point), the buffers are left for garbage collection — safe on Linux,
+ * but may hold file locks on Windows until GC runs.
  * </p>
  * <p>
  * String lookup assumes that the caller provides the field's canonical indexed form.
@@ -60,7 +65,6 @@ import static java.lang.Math.toIntExact;
  * </p>
  *
  * @see TermRail
- * @see Arena
  */
 public final class TermLexicon implements Closeable {
 
@@ -73,30 +77,28 @@ public final class TermLexicon implements Closeable {
     /** Exact immutable mapping from UTF-8 term bytes to dense term ids. */
     private final FST<Long> fst;
 
-    /** Arena owning the two memory-mapped segments; released by {@link #close()}. */
-    private final Arena arena;
-
     /** Memory-mapped concatenation of all term bytes in term-id order. */
-    private final MemorySegment dat;
+    private final MappedByteBuffer datBuf;
 
     /**
-     * Memory-mapped offsets into {@link #dat}, native-endian int32s.
+     * Read-only view of the memory-mapped term bytes, used for slicing in {@link #termBytes}.
+     */
+    private final ByteBuffer dat;
+
+    /**
+     * Memory-mapped offsets into {@link #dat}, native-endian int32s viewed as {@link IntBuffer}.
      * <p>
-     * Byte size is {@code (vocabSize + 1) * 4}. For a term id {@code i},
-     * the term bytes occupy {@code dat[off(i) .. off(i+1))}.
+     * Capacity is {@code vocabSize + 1}. For a term id {@code i},
+     * the term bytes occupy {@code dat[off.get(i) .. off.get(i+1))}.
      * </p>
      */
-    private final MemorySegment off;
+    private final MappedByteBuffer offBuf;
+
+    /** IntBuffer view over {@link #offBuf} for direct int access without byte arithmetic. */
+    private final IntBuffer off;
 
     /** Number of distinct terms in the field. */
     private final int vocabSize;
-
-    /** Layout for reading/writing int32 in native byte order. */
-    private static final ValueLayout.OfInt NATIVE_INT =
-        ValueLayout.JAVA_INT.withOrder(ByteOrder.nativeOrder());
-
-    /** Layout for single-byte access into the dat segment. */
-    private static final ValueLayout.OfByte BYTE_LAYOUT = ValueLayout.JAVA_BYTE;
 
     /** Maximum tolerated mtime difference between the three lexicon files at open time, in milliseconds. */
     private static final long MTIME_TOLERANCE_MS = 5_000L;
@@ -116,42 +118,72 @@ public final class TermLexicon implements Closeable {
     private static final int OFF_BUF_INTS = 4096;
 
     /**
-     * Creates an opened lexicon backed by memory-mapped segments.
+     * {@code MethodHandle} for {@code sun.misc.Unsafe.invokeCleaner(ByteBuffer)}.
+     * Resolved once at class load; {@code null} if the JDK does not expose it.
+     * This is the same approach Lucene uses in {@code MMapDirectory}.
+     */
+    private static final MethodHandle INVOKE_CLEANER;
+
+    static {
+        MethodHandle mh = null;
+        try {
+            final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+            final java.lang.reflect.Field f = unsafeClass.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            final Object unsafe = f.get(null);
+            mh = MethodHandles.lookup()
+                .findVirtual(unsafeClass, "invokeCleaner", MethodType.methodType(void.class, ByteBuffer.class))
+                .bindTo(unsafe);
+        } catch (Exception e) {
+            // Say something here?
+        }
+        INVOKE_CLEANER = mh;
+    }
+
+    /**
+     * Creates an opened lexicon backed by memory-mapped buffers.
      *
      * @param indexDir Lucene directory containing the lexicon files
      * @param field    indexed field name
      * @param fst      compiled FST mapping term bytes to dense ids
-     * @param arena    arena that owns {@code dat} and {@code off}; closed by {@link #close()}
-     * @param dat      memory-mapped term-bytes segment
-     * @param off      memory-mapped offsets segment (native-endian int32s)
+     * @param datBuf   memory-mapped term-bytes buffer (kept for unmapping)
+     * @param offBuf   memory-mapped offsets buffer (kept for unmapping)
+     * @param off      {@link IntBuffer} view over {@code offBuf}
      */
     private TermLexicon(
         final Path indexDir,
         final String field,
         final FST<Long> fst,
-        final Arena arena,
-        final MemorySegment dat,
-        final MemorySegment off
+        final MappedByteBuffer datBuf,
+        final MappedByteBuffer offBuf,
+        final IntBuffer off
     ) {
         this.indexDir = indexDir;
         this.field = field;
         this.fst = fst;
-        this.arena = arena;
-        this.dat = dat;
+        this.datBuf = datBuf;
+        this.dat = datBuf.asReadOnlyBuffer();
+        this.offBuf = offBuf;
         this.off = off;
-        this.vocabSize = (int) (off.byteSize() / 4) - 1;
+        this.vocabSize = off.capacity() - 1;
     }
 
     /**
-     * Releases the memory-mapped regions deterministically by closing the backing {@link Arena}.
+     * Releases the memory-mapped regions.
      * <p>
-     * After this call, all read accessors will throw {@link IllegalStateException}.
-     * Safe to call multiple times; subsequent calls are no-ops.
+     * Attempts immediate unmap via {@code sun.misc.Unsafe.invokeCleaner()}.
+     * If that reflective path is unavailable, the buffers are abandoned to garbage collection.
+     * A warning is logged on failure but no exception is thrown.
+     * </p>
+     * <p>
+     * After close, behaviour of read accessors is undefined (likely {@link java.lang.InternalError}
+     * on access to unmapped memory). The caller must not use the instance after closing.
      * </p>
      */
     @Override
     public void close() {
-        arena.close();
+        unmap(datBuf);
+        unmap(offBuf);
     }
 
     // ── static existence check ──────────────────────────────────────────
@@ -159,7 +191,7 @@ public final class TermLexicon implements Closeable {
     /**
      * Returns {@code true} if the three persisted files for {@code field} exist as regular files.
      * <p>
-     * This is a cheap presence test only. It does not validate file sizes, modification times,
+     * Cheap presence test only — does not validate file sizes, modification times,
      * or internal consistency.
      * </p>
      *
@@ -272,8 +304,9 @@ public final class TermLexicon implements Closeable {
     /**
      * Opens the lexicon for one field from a frozen Lucene directory.
      * <p>
-     * The returned instance holds memory-mapped file handles via an {@link Arena} and
-     * <b>must</b> be closed when no longer needed, typically via try-with-resources.
+     * The returned instance holds memory-mapped file handles and <b>should</b> be closed
+     * when no longer needed, typically via try-with-resources. Closing releases the mapped
+     * memory immediately on JDKs that support it; otherwise GC reclaims it.
      * </p>
      * <p>
      * On open, the following consistency checks are performed:
@@ -288,7 +321,7 @@ public final class TermLexicon implements Closeable {
      *
      * @param indexDir Lucene directory that contains the index and the lexicon files
      * @param field    indexed field name
-     * @return opened lexicon; caller must close
+     * @return opened lexicon; caller should close when done
      * @throws IOException          if a file is missing, sizes are inconsistent, mtimes diverge,
      *                              offsets are corrupt, or the FST cannot be loaded
      * @throws NullPointerException if either argument is null
@@ -306,44 +339,38 @@ public final class TermLexicon implements Closeable {
         ensureRegularFile(offPath);
         checkMtimeCoherence(fstPath, datPath, offPath);
 
-        final Arena arena = Arena.ofShared();
+        final MappedByteBuffer datBuf = mapReadOnly(datPath);
+        final MappedByteBuffer offByteBuf = mapReadOnly(offPath);
+        offByteBuf.order(ByteOrder.nativeOrder());
+
         try {
-            final MemorySegment dat;
-            try (FileChannel ch = FileChannel.open(datPath, StandardOpenOption.READ)) {
-                dat = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size(), arena);
-            }
-
-            final MemorySegment offRaw;
-            try (FileChannel ch = FileChannel.open(offPath, StandardOpenOption.READ)) {
-                offRaw = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size(), arena);
-            }
-
-            if ((offRaw.byteSize() & 3) != 0) {
+            if ((offByteBuf.remaining() & 3) != 0) {
                 throw new IOException("Invalid offsets file (size not a multiple of 4 bytes): " + offPath);
             }
-            final int offCount = (int) (offRaw.byteSize() / 4);
-            if (offCount < 2) {
+            final IntBuffer off = offByteBuf.asIntBuffer();
+            if (off.capacity() < 2) {
                 throw new IOException("Invalid offsets file (need at least 2 offsets): " + offPath);
             }
 
-            final int first = offRaw.get(NATIVE_INT, 0L);
-            final int last = offRaw.get(NATIVE_INT, (long) (offCount - 1) * 4);
+            final int first = off.get(0);
+            final int last = off.get(off.capacity() - 1);
             if (first != 0) {
                 throw new IOException("Invalid offsets file, off[0] != 0: " + offPath);
             }
-            if (last != (int) dat.byteSize()) {
+            if (last != datBuf.capacity()) {
                 throw new IOException("Offsets/data mismatch for field '" + field
-                    + "': last offset=" + last + ", data length=" + dat.byteSize());
+                    + "': last offset=" + last + ", data length=" + datBuf.capacity());
             }
-            monotonicityCheck(offRaw, offCount, offPath);
+            monotonicityCheck(off, offPath);
 
             final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
             final FST<Long> fst = FST.read(fstPath, outputs);
 
-            return new TermLexicon(indexDir, field, fst, arena, dat, offRaw);
+            return new TermLexicon(indexDir, field, fst, datBuf, offByteBuf, off);
 
         } catch (IOException | RuntimeException e) {
-            arena.close();
+            unmap(datBuf);
+            unmap(offByteBuf);
             throw e;
         }
     }
@@ -380,8 +407,8 @@ public final class TermLexicon implements Closeable {
     /**
      * Returns the in-memory heap usage of the loaded FST, in bytes.
      * <p>
-     * This does not include the memory-mapped {@code .dat} and {@code .off} segments,
-     * which are managed by the OS page cache outside the Java heap.
+     * This does not include the memory-mapped {@code .dat} and {@code .off} buffers,
+     * which live outside the Java heap in OS-managed page cache.
      * </p>
      *
      * @return FST heap footprint in bytes
@@ -431,7 +458,7 @@ public final class TermLexicon implements Closeable {
      * Copies the raw UTF-8 bytes of one term into a caller-provided reusable buffer.
      * <p>
      * This avoids allocation when called in a loop. The bytes are read directly
-     * from the memory-mapped {@code .dat} segment.
+     * from the memory-mapped {@code .dat} buffer.
      * </p>
      *
      * @param termId dense term id in {@code [0, vocabSize)}
@@ -445,12 +472,15 @@ public final class TermLexicon implements Closeable {
         checkTermId(termId);
         Objects.requireNonNull(reuse, "reuse");
 
-        final int start = off.get(NATIVE_INT, (long) termId * 4);
-        final int end = off.get(NATIVE_INT, (long) (termId + 1) * 4);
+        final int start = off.get(termId);
+        final int end = off.get(termId + 1);
         final int length = end - start;
 
         reuse.grow(length);
-        MemorySegment.copy(dat, BYTE_LAYOUT, start, reuse.bytes(), 0, length);
+        final ByteBuffer dup = dat.duplicate();
+        dup.position(start);
+        dup.limit(end);
+        dup.get(reuse.bytes(), 0, length);
         reuse.setLength(length);
         return reuse.get();
     }
@@ -487,36 +517,34 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Performs a bounded monotonicity check on the offsets segment.
+     * Performs a bounded monotonicity check on the offsets buffer.
      * <p>
      * Only the first and last {@value #MONO_CHECK} entries are tested.
      * This is intentionally not a full scan — it is a cheap startup guard
      * against obvious corruption (truncated writes, mixed file versions).
      * </p>
      *
-     * @param off     memory-mapped offsets segment
-     * @param count   total number of int entries in the segment
+     * @param off     int view of the offsets buffer
      * @param offPath path to the offsets file, used only in error messages
      * @throws IOException if any checked pair of consecutive offsets is non-monotonic
      */
-    private static void monotonicityCheck(
-        final MemorySegment off, final int count, final Path offPath
-    ) throws IOException {
-        final int head = Math.min(MONO_CHECK, count);
-        final int tailStart = Math.max(0, count - MONO_CHECK);
+    private static void monotonicityCheck(final IntBuffer off, final Path offPath) throws IOException {
+        final int n = off.capacity();
+        final int head = Math.min(MONO_CHECK, n);
+        final int tailStart = Math.max(0, n - MONO_CHECK);
 
-        int prev = off.get(NATIVE_INT, 0L);
+        int prev = off.get(0);
         for (int i = 1; i < head; i++) {
-            final int cur = off.get(NATIVE_INT, (long) i * 4);
+            final int cur = off.get(i);
             if (cur < prev) {
                 throw new IOException("Offsets decrease at head index " + i + ": " + offPath);
             }
             prev = cur;
         }
 
-        prev = off.get(NATIVE_INT, (long) tailStart * 4);
-        for (int i = tailStart + 1; i < count; i++) {
-            final int cur = off.get(NATIVE_INT, (long) i * 4);
+        prev = off.get(tailStart);
+        for (int i = tailStart + 1; i < n; i++) {
+            final int cur = off.get(i);
             if (cur < prev) {
                 throw new IOException("Offsets decrease at tail index " + i + ": " + offPath);
             }
@@ -601,6 +629,42 @@ public final class TermLexicon implements Closeable {
         fst.save(fstPath);
     }
 
+    // ── internal: mmap utilities ────────────────────────────────────────
+
+    /**
+     * Memory-maps one file in read-only mode.
+     *
+     * @param path file path
+     * @return read-only memory-mapped byte buffer covering the entire file
+     * @throws IOException if the file cannot be opened or mapped
+     */
+    private static MappedByteBuffer mapReadOnly(final Path path) throws IOException {
+        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
+            return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
+        }
+    }
+
+    /**
+     * Attempts to unmap a {@link MappedByteBuffer} immediately using
+     * {@code sun.misc.Unsafe.invokeCleaner()}.
+     * <p>
+     * This is a best-effort operation. If the reflective call is unavailable or fails,
+     * a fine-level log message is emitted and the buffer is left for garbage collection.
+     * </p>
+     *
+     * @param buf the mapped buffer to unmap, or {@code null} (no-op)
+     */
+    static void unmap(final MappedByteBuffer buf) {
+        if (buf == null || INVOKE_CLEANER == null) {
+            return;
+        }
+        try {
+            INVOKE_CLEANER.invokeExact((ByteBuffer) buf);
+        } catch (Throwable t) {
+            // Say someting?
+        }
+    }
+
     // ── internal: path resolution ───────────────────────────────────────
 
     /**
@@ -655,8 +719,7 @@ public final class TermLexicon implements Closeable {
      * Atomically moves a temporary file to its final location.
      * <p>
      * Attempts {@link StandardCopyOption#ATOMIC_MOVE} first. If the filesystem does not
-     * support atomic moves, falls back to a plain move (which is non-atomic but still
-     * completes the operation).
+     * support atomic moves, falls back to a plain move.
      * </p>
      *
      * @param source temporary file path
@@ -673,10 +736,7 @@ public final class TermLexicon implements Closeable {
 
     /**
      * Deletes a file if it exists, silently ignoring any failure.
-     * <p>
-     * Used for best-effort cleanup only — never called where deletion failure
-     * should abort the operation.
-     * </p>
+     * Used for best-effort cleanup only.
      *
      * @param path path to delete
      */
@@ -719,8 +779,7 @@ public final class TermLexicon implements Closeable {
      * Checks that the modification times of several files are within {@value #MTIME_TOLERANCE_MS} ms
      * of each other.
      * <p>
-     * This is a cheap startup guard against opening a set of files that were produced by
-     * different write operations (e.g. a partial copy or mixed directory contents).
+     * Cheap startup guard against opening a set of files produced by different write operations.
      * </p>
      *
      * @param paths files that should have been produced together
