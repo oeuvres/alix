@@ -20,25 +20,14 @@ public class AlixWriter
     static {
         ftypeText.setTokenized(true);
         // freqs required, position needed for co-occurrences
+        // ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
         ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         ftypeText.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
-        ftypeText.setStoreTermVectors(true);
-        ftypeText.setStoreTermVectorPositions(true);
-        ftypeText.setStoreTermVectorOffsets(true);
+        // ftypeText.setStoreTermVectors(true);
+        // ftypeText.setStoreTermVectorPositions(true);
+        // ftypeText.setStoreTermVectorOffsets(true);
         ftypeText.setStored(false); // TokenStream fields cannot be stored
         ftypeText.freeze();
-    }
-    /** lucene field type for alix meta type */
-    public static final FieldType ftypeMeta = new FieldType();
-    static {
-        ftypeMeta.setTokenized(true); // token
-        ftypeMeta.setIndexOptions(IndexOptions.DOCS_AND_FREQS); // no position needed
-        ftypeMeta.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
-        ftypeMeta.setStoreTermVectors(true); // store term vectors, hilite by automat not robust enough
-        ftypeMeta.setStoreTermVectorPositions(true);
-        ftypeMeta.setStoreTermVectorOffsets(true);
-        ftypeMeta.setStored(false); // TokenStream fields cannot be stored
-        ftypeMeta.freeze();
     }
 
     public static IndexWriter writer(final Path path, final Analyzer analyzer) throws IOException

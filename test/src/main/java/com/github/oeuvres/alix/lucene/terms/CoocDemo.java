@@ -25,7 +25,6 @@ import org.apache.lucene.store.Directory;
  *   word1 + word2            → AND co-occurrents (all pivots must co-occur within the window)
  * </pre>
  * <p>
- * This is a flat, working sketch that covers:
  * Special commands:
  * </p>
  * <ul>
