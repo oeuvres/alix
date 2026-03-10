@@ -31,7 +31,7 @@ public final class ThemeTermsDemo {
     private static final int DEFAULT_PARTS = -1;
 
     /** Default number of displayed terms. */
-    private static final int DEFAULT_TOP_K = 100;
+    private static final int DEFAULT_TOP_K = 50;
 
     private ThemeTermsDemo() {
     }
@@ -68,25 +68,27 @@ public final class ThemeTermsDemo {
             final TermStats stats = new TermStats(field, lexicon.vocabSize());
             final int maxDoc = fieldStats.maxDoc();
 
-            List<TermScorer> scorers = List.of(new TermScorer.BM25(), new TermScorer.G(), new TermScorer.Jaccard());
+            List<TermScorer> scorers = List.of(new TermScorer.BM25(), new TermScorer.BM25(1.3), new TermScorer.G(), new TermScorer.Jaccard());
             // scorers[1] = new TermScorer.G();
             // scorers[2] = new TermScorer.Jaccard();
             
             for (TermScorer scorer: scorers) {
                 System.out.println("\n\n" + scorer.getClass().getSimpleName()+ "\n");
-                themeTerms.score(stats, scorer, TermScorer.Aggregation.SUM_POSITIVE);
+                themeTerms.score(stats, scorer);
                 printTopScores(lexicon, stats.scores(), topK);
-                System.out.println("\n\n");
                 
-                final int partCount = 100;
+                /*
+                System.out.println("\n\n");
+                final int partCount = fieldStats.maxDoc()/10;
                 final long[] partTokenCounts = new long[partCount];
                 final int[] partByDocId = ThemeTerms.quantiles(
                     fieldStats,
                     naturalOrder(fieldStats.maxDoc()),
                     partTokenCounts
                 );
-                themeTerms.score(stats, scorer, TermScorer.Aggregation.SUM_POSITIVE, partByDocId, partTokenCounts);
+                themeTerms.score(stats, scorer, partByDocId, partTokenCounts);
                 printTopScores(lexicon, stats.scores(), topK);
+                */
             }
 
         }
