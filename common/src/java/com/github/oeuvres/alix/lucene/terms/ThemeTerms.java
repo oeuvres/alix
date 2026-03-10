@@ -3,6 +3,7 @@ package com.github.oeuvres.alix.lucene.terms;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -141,6 +142,15 @@ public final class ThemeTerms {
         final TermStats stats,
         final int[] partByDocId,
         final long[] partTokenCounts,
+        final TermScorer scorer
+    ) throws IOException {
+        score(stats, partByDocId, partTokenCounts, scorer, Aggregation.SUM);
+    }
+
+    public void score(
+        final TermStats stats,
+        final int[] partByDocId,
+        final long[] partTokenCounts,
         final TermScorer scorer,
         final Aggregation aggregation
     ) throws IOException {
@@ -184,50 +194,157 @@ public final class ThemeTerms {
         final double[] scores = stats.scores();
         Arrays.fill(scores, 0d);
 
-        final int[] tfByPart = new int[partCount];
-        final long fieldTokenCount = fieldStats.totalTermFreq();
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            return;
+        }
+        if (!terms.hasFreqs()) {
+            throw new IllegalArgumentException(
+                "Field '" + field + "' does not store term frequencies"
+            );
+        }
 
-        for (LeafReaderContext ctx : leaves) {
-            final LeafReader leaf = ctx.reader();
-            final Terms terms = leaf.terms(field);
-            if (terms == null) {
+        final long fieldTokenCount = fieldStats.totalTermFreq();
+        final int docsAll = reader.numDocs();
+
+        // One dense buffer reused for each term.
+        final long[] tfByPart = new long[partCount];
+
+        // Needed only to filter deleted docs when using MultiTerms postings.
+        final int leafCount = leaves.size();
+        final int[] leafDocBases = new int[leafCount + 1];
+        final Bits[] liveDocsByLeaf = new Bits[leafCount];
+        for (int i = 0; i < leafCount; i++) {
+            final LeafReaderContext ctx = leaves.get(i);
+            leafDocBases[i] = ctx.docBase;
+            liveDocsByLeaf[i] = ctx.reader().getLiveDocs();
+        }
+        leafDocBases[leafCount] = reader.maxDoc();
+
+        final TermsEnum tenum = terms.iterator();
+        PostingsEnum postings = null;
+        BytesRef term;
+
+        while ((term = tenum.next()) != null) {
+            final int termId = lexicon.id(term);
+            if (termId < 0) {
                 continue;
             }
-            if (!terms.hasFreqs()) {
-                throw new IllegalArgumentException(
-                    "Field '" + field + "' does not store term frequencies"
-                );
-            }
 
-            final Bits liveDocs = leaf.getLiveDocs();
-            final int docBase = ctx.docBase;
-            final TermsEnum tenum = terms.iterator();
-            PostingsEnum postings = null;
-            BytesRef term;
+            Arrays.fill(tfByPart, 0L);
 
-            while ((term = tenum.next()) != null) {
-                final int termId = lexicon.id(term);
-                if (termId < 0) {
+            long termTfAll = 0L;
+            int termHitsAll = 0;
+
+            postings = tenum.postings(postings, PostingsEnum.FREQS);
+
+            int leafOrd = 0;
+            int leafBase = leafDocBases[0];
+            int nextLeafBase = leafDocBases[1];
+
+            for (int globalDocId = postings.nextDoc();
+                 globalDocId != DocIdSetIterator.NO_MORE_DOCS;
+                 globalDocId = postings.nextDoc()) {
+
+                while (globalDocId >= nextLeafBase) {
+                    leafOrd++;
+                    leafBase = leafDocBases[leafOrd];
+                    nextLeafBase = leafDocBases[leafOrd + 1];
+                }
+
+                final Bits liveDocs = liveDocsByLeaf[leafOrd];
+                final int leafDocId = globalDocId - leafBase;
+                if (liveDocs != null && !liveDocs.get(leafDocId)) {
                     continue;
                 }
 
-                Arrays.fill(tfByPart, 0);
-                postings = tenum.postings(postings, PostingsEnum.FREQS);
-
-                for (int doc = postings.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = postings.nextDoc()) {
-                    if (liveDocs != null && !liveDocs.get(doc)) {
-                        continue;
-                    }
-                    final int globalDocId = docBase + doc;
-                    final int partId = partByDocId[globalDocId];
-                    tfByPart[partId] += postings.freq();
+                final int freq = postings.freq();
+                if (freq <= 0) {
+                    continue;
                 }
 
-                scores[termId] = aggregate(termId, tfByPart, partTokenCounts, fieldTokenCount, scorer, aggregation);
+                final int partId = partByDocId[globalDocId];
+                tfByPart[partId] += freq;
+                termTfAll += freq;
+                termHitsAll++;
+            }
+
+            if (termTfAll == 0L) {
+                scores[termId] = 0d;
+                continue;
+            }
+
+            /*
+             * Assumption:
+             * TermScorer follows the same two-phase contract as your old Distrib:
+             *   - idf(termHitsAll, docsAll, fieldTokenCount)
+             *   - expectation(termTfAll, fieldTokenCount)
+             *   - score(freqInPart, partTokenCount)
+             *
+             * If your actual interface uses different method names, only these
+             * setup calls and the local score call need adaptation.
+             */
+            // scorer.idf(termHitsAll, docsAll, fieldTokenCount);
+            scorer.expectation(termTfAll, fieldTokenCount);
+
+            double acc;
+            switch (aggregation) {
+                case MAX:
+                    acc = Double.NEGATIVE_INFINITY;
+                    break;
+                case MAX_POSITIVE:
+                    acc = 0d;
+                    break;
+                default:
+                    acc = 0d;
+                    break;
+            }
+
+            int usedParts = 0;
+
+            for (int partId = 0; partId < partCount; partId++) {
+                final long partLen = partTokenCounts[partId];
+                if (partLen <= 0L) {
+                    continue;
+                }
+
+                final double local = scorer.score(tfByPart[partId], partLen);
+
+                switch (aggregation) {
+                    case SUM:
+                        acc += local;
+                        break;
+                    case SUM_POSITIVE:
+                        if (local > 0d) acc += local;
+                        break;
+                    case MAX:
+                        if (local > acc) acc = local;
+                        break;
+                    case MAX_POSITIVE:
+                        if (local > acc) acc = local;
+                        break;
+                    case MEAN:
+                        acc += local;
+                        break;
+                    default:
+                        throw new AssertionError("Unknown aggregation: " + aggregation);
+                }
+
+                usedParts++;
+            }
+
+            if (aggregation == Aggregation.MEAN) {
+                scores[termId] = (usedParts == 0) ? 0d : (acc / usedParts);
+            }
+            else if (aggregation == Aggregation.MAX && acc == Double.NEGATIVE_INFINITY) {
+                scores[termId] = 0d;
+            }
+            else {
+                scores[termId] = acc;
             }
         }
     }
-
+    
     /**
      * Builds a token-balanced partition in the order provided by {@code docIdsInOrder}.
      * <p>
@@ -293,69 +410,5 @@ public final class ThemeTerms {
         return partByDocId;
     }
 
-    /**
-     * Aggregates local part-vs-complement scores for one term.
-     *
-     * @param termId dense term identifier
-     * @param tfByPart term frequency by part
-     * @param partTokenCounts token count by part
-     * @param fieldTokenCount total token count of the field
-     * @param scorer local scorer
-     * @param aggregation aggregation rule
-     * @return one global score
-     */
-    private static double aggregate(
-        final int termId,
-        final int[] tfByPart,
-        final long[] partTokenCounts,
-        final long fieldTokenCount,
-        final TermScorer scorer,
-        final Aggregation aggregation
-    ) {
-        long fieldTf = 0L;
-        for (int tf : tfByPart) {
-            fieldTf += tf;
-        }
-
-        if (fieldTf == 0L) {
-            return 0d;
-        }
-
-        double acc;
-        switch (aggregation) {
-            case MAX, MAX_POSITIVE -> acc = Double.NEGATIVE_INFINITY;
-            default -> acc = 0d;
-        }
-
-        for (int partId = 0; partId < tfByPart.length; partId++) {
-            final int a = tfByPart[partId];
-            final long N1 = partTokenCounts[partId];
-            final long b = fieldTf - a;
-            final long N0 = fieldTokenCount - N1;
-
-            final double local = scorer.score(a, N1, b, N0);
-
-            switch (aggregation) {
-                case SUM -> acc += local;
-                case SUM_POSITIVE -> {
-                    if (local > 0d) acc += local;
-                }
-                case MAX -> {
-                    if (local > acc) acc = local;
-                }
-                case MAX_POSITIVE -> {
-                    if (local > 0d && local > acc) acc = local;
-                }
-                case MEAN -> acc += local;
-            }
-        }
-
-        if (aggregation == Aggregation.MEAN) {
-            return acc / tfByPart.length;
-        }
-        if (aggregation == Aggregation.MAX_POSITIVE && acc == Double.NEGATIVE_INFINITY) {
-            return 0d;
-        }
-        return acc;
-    }
+ 
 }

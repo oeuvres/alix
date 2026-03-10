@@ -77,12 +77,12 @@ public final class ThemeTermsDemo {
             );
 
             // final TermScorer scorer = TermScorers.JACCARD;
-            final TermScorer scorer = TermScorers.SIGNED_G;
-            final ThemeTerms.Aggregation aggregation = ThemeTerms.Aggregation.SUM_POSITIVE;
+            // final ThemeTerms.Aggregation aggregation = ThemeTerms.Aggregation.SUM_POSITIVE;
 
-            themeTerms.score(stats, partByDocId, partTokenCounts, scorer, aggregation);
+            TermScorer scorer = new TermScorer.G();
+            themeTerms.score(stats, partByDocId, partTokenCounts, scorer);
 
-            printContext(indexPath, fieldStats, partCount, aggregation, scorer);
+            printContext(indexPath, fieldStats, partCount, scorer);
             printTopScores(lexicon, stats.scores(), topK);
         }
     }
@@ -142,7 +142,6 @@ public final class ThemeTermsDemo {
         final Path indexPath,
         final FieldStats fieldStats,
         final int partCount,
-        final ThemeTerms.Aggregation aggregation,
         final TermScorer scorer
     ) {
         System.out.println("Index         : " + indexPath);
@@ -152,8 +151,7 @@ public final class ThemeTermsDemo {
         System.out.println("vocabSize     : " + fieldStats.vocabSize());
         System.out.println("totalTermFreq : " + fieldStats.totalTermFreq());
         System.out.println("parts         : " + partCount);
-        System.out.println("aggregation   : " + aggregation);
-        System.out.println("local scorer  : " + scorer.name());
+        System.out.println("scorer  : " + scorer.getClass().getName());
         System.out.println();
     }
 
