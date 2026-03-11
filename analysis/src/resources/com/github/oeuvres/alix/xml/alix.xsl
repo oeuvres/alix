@@ -228,7 +228,7 @@
       <xsl:otherwise>
         <!-- Do not copy tags for book field cover -->
         <xsl:copy-of select="$tags"/>
-        <alix:field name="text" type="text">
+        <alix:field name="content" type="text">
           <article>
             <xsl:choose>
               <xsl:when test="/*/tei:text/tei:front | /*/tei:text/tei:back">
@@ -412,7 +412,7 @@
       <alix:field name="toc" type="store">
         <xsl:call-template name="toclocal"/>
       </alix:field>
-      <alix:field name="text" type="text">
+      <alix:field name="content" type="text">
         <article>
           <xsl:apply-templates>
             <xsl:with-param name="level" select="1"/>
@@ -426,7 +426,7 @@
         </article>
       </alix:field>
       <xsl:if test=".//*[@type = 'observation']">
-        <alix:field name="observations" type="text" source="text"/>
+        <alix:field name="observations" type="text" source="content"/>
       </xsl:if>
       <!--
       <alix:field name="analytic" type="meta">
@@ -523,7 +523,7 @@
         </alix:field>
       </xsl:for-each>
       <xsl:for-each select="tei:bibl[@type = 'hit'][1]">
-        <alix:field name="hit" type="store">
+        <alix:field name="docline" type="store">
           <xsl:apply-templates/>
         </alix:field>
       </xsl:for-each>
