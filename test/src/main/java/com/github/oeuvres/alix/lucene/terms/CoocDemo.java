@@ -58,6 +58,11 @@ public class CoocDemo {
     }
 
     static final Scorer RAW = (cooc, tf, wc, tp) -> cooc;
+    
+    static final Scorer LMI = (cooc, tf, wc, tp) -> {
+        if (tf == 0 || wc == 0 || cooc == 0) return 0.0;
+        return cooc * Math.log((double) cooc * tp / ((double) wc * tf));
+    };
 
     static final Scorer PMI = (cooc, tf, wc, tp) -> {
         if (tf == 0 || wc == 0) return 0.0;
@@ -69,6 +74,11 @@ public class CoocDemo {
         double pmi = Math.log((double) cooc * tp / ((double) wc * tf));
         double logPxy = Math.log((double) cooc / tp);
         return -pmi / logPxy;
+    };
+    
+    static final Scorer LOG_DICE = (cooc, tf, wc, tp) -> {
+        if (tf == 0 || wc == 0 || cooc == 0) return 0.0;
+        return 14.0 + Math.log(2.0 * cooc / (wc + tf)) / Math.log(2);
     };
 
     // ── result holders ──────────────────────────────────────────────────
@@ -121,8 +131,8 @@ public class CoocDemo {
             int halfWindow = 20;
             int topN = 30;
             int minCount = 2;
-            Scorer scorer = NPMI;
-            String scorerName = "npmi";
+            Scorer scorer = LOG_DICE;
+            String scorerName = "raw";
 
             final BufferedReader in = new BufferedReader(
                 new InputStreamReader(System.in, StandardCharsets.UTF_8));
@@ -159,8 +169,10 @@ public class CoocDemo {
                             if (parts.length > 1) {
                                 scorerName = parts[1].toLowerCase();
                                 scorer = switch (scorerName) {
+                                    case "lmi" -> LMI;
                                     case "raw" -> RAW;
                                     case "pmi" -> PMI;
+                                    case "logdice" -> LOG_DICE;
                                     default -> { scorerName = "npmi"; yield NPMI; }
                                 };
                             }

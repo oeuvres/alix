@@ -873,4 +873,112 @@ public final class TermRail implements Closeable {
             this.positionCount = positionCount;
         }
     }
+    
+    public static void debugField(
+        final IndexReader reader,
+        final String field,
+        final int termLimit,
+        final int docLimit
+    ) throws IOException {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(field, "field");
+
+        if (termLimit < 0) {
+            throw new IllegalArgumentException("termLimit < 0: " + termLimit);
+        }
+        if (docLimit < 0) {
+            throw new IllegalArgumentException("docLimit < 0: " + docLimit);
+        }
+
+        final Terms terms = MultiTerms.getTerms(reader, field);
+
+        System.err.println("=== TermRail.debugField ===");
+        System.err.println("field=" + field);
+        System.err.println("reader.maxDoc=" + reader.maxDoc());
+        System.err.println("reader.numDocs=" + reader.numDocs());
+
+        if (terms == null) {
+            System.err.println("Terms: null");
+            System.err.println("===========================");
+            return;
+        }
+
+        System.err.println("Terms: present");
+        System.err.println("hasFreqs=" + terms.hasFreqs());
+        System.err.println("hasPositions=" + terms.hasPositions());
+        System.err.println("hasOffsets=" + terms.hasOffsets());
+        System.err.println("hasPayloads=" + terms.hasPayloads());
+        System.err.println("size=" + terms.size()); // may be -1 depending on codec
+
+        final TermsEnum te = terms.iterator();
+
+        long seenTerms = 0L;
+        long seenDocs = 0L;
+        long seenPositions = 0L;
+
+        BytesRef termBytes;
+        while ((termBytes = te.next()) != null) {
+            if (seenTerms >= termLimit) {
+                break;
+            }
+            seenTerms++;
+
+            final String termText = termBytes.utf8ToString();
+            final int docFreq = te.docFreq();
+            final long totalTermFreq = te.totalTermFreq();
+
+            System.err.println();
+            System.err.println("TERM #" + seenTerms + ": \"" + termText + "\"");
+            System.err.println("  docFreq=" + docFreq);
+            System.err.println("  totalTermFreq=" + totalTermFreq);
+
+            final PostingsEnum pe = te.postings(null, PostingsEnum.POSITIONS);
+            if (pe == null) {
+                System.err.println("  postings(POSITIONS)=null");
+                continue;
+            }
+
+            int shownDocsForTerm = 0;
+            int docId;
+            while ((docId = pe.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                seenDocs++;
+
+                final int freq = pe.freq();
+                final StringBuilder sb = new StringBuilder(128);
+                sb.append("  docId=").append(docId)
+                  .append(" freq=").append(freq)
+                  .append(" pos=[");
+
+                for (int i = 0; i < freq; i++) {
+                    final int pos = pe.nextPosition();
+                    seenPositions++;
+
+                    if (i > 0) sb.append(", ");
+                    sb.append(pos);
+                }
+                sb.append(']');
+
+                System.err.println(sb);
+
+                shownDocsForTerm++;
+                if (shownDocsForTerm >= docLimit) {
+                    if (docFreq > shownDocsForTerm) {
+                        System.err.println("  ... (" + (docFreq - shownDocsForTerm) + " more docs)");
+                    }
+                    break;
+                }
+            }
+
+            if (docFreq == 0) {
+                System.err.println("  WARNING: term enumerated with docFreq=0");
+            }
+        }
+
+        System.err.println();
+        System.err.println("SUMMARY");
+        System.err.println("  termsShown=" + seenTerms);
+        System.err.println("  docsShown=" + seenDocs);
+        System.err.println("  positionsShown=" + seenPositions);
+        System.err.println("===========================");
+    }
 }
