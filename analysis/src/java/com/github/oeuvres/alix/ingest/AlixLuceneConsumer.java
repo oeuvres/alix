@@ -43,7 +43,7 @@ import static com.github.oeuvres.alix.common.Names.*;
  * - If a TEXT source field name is repeated, derived fields apply to ALL matching base occurrences
  * (multi-valued Lucene field semantics).
  */
-public final class AlixLuceneIndexer implements AlixDocumentConsumer
+public final class AlixLuceneConsumer implements AlixDocumentConsumer
 {
     
     private static final FieldType STORED_ONLY;
@@ -76,7 +76,7 @@ public final class AlixLuceneIndexer implements AlixDocumentConsumer
     private final IndexWriter writer;
     private final Report report;
     
-    public AlixLuceneIndexer(IndexWriter writer, Report report)
+    public AlixLuceneConsumer(IndexWriter writer, Report report)
     {
         this.writer = Objects.requireNonNull(writer, "writer");
         this.report = (report != null) ? report : ReportNull.INSTANCE;

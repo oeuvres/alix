@@ -104,7 +104,7 @@ public final class TeiIngester
                 IndexWriter writer = new IndexWriter(dir, iwc))
         {
             
-            AlixLuceneIndexer indexer = new AlixLuceneIndexer(writer, rep);
+            AlixLuceneConsumer indexer = new AlixLuceneConsumer(writer, rep);
             
             for (Path tei : cfg.teiFiles) {
                 ingestOneFile(tei, preTpl, indexer);
@@ -127,7 +127,7 @@ public final class TeiIngester
         return stf.newTemplates(src);
     }
     
-    private void ingestOneFile(Path tei, Templates preTpl, AlixLuceneIndexer indexer) throws IOException, SAXException, ParserConfigurationException, TransformerConfigurationException
+    private void ingestOneFile(Path tei, Templates preTpl, AlixLuceneConsumer indexer) throws IOException, SAXException, ParserConfigurationException, TransformerConfigurationException
     {
         rep.info(tei.toString());
         String filename = tei.getFileName().toString();

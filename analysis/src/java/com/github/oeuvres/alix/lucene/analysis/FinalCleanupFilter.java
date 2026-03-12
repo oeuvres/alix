@@ -254,7 +254,7 @@ public class FinalCleanupFilter extends TokenFilter
     protected boolean accept()
     {
         final int pos = posAtt.getPos();
-        final int len = termAtt.length();
+        // final int len = termAtt.length();
         
         
         // Punctuation: drop, but preserve a positional gap (handled by pendingHoles).
@@ -265,7 +265,7 @@ public class FinalCleanupFilter extends TokenFilter
         // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
         if (Char.isMath(termAtt.charAt(0))) return false;
 
-        final char last = termAtt.charAt(len - 1);
+        // final char last = termAtt.charAt(len - 1);
 
 
         /*

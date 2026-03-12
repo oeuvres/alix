@@ -381,7 +381,7 @@ public final class MarkupZoneFilter extends TokenFilter
             if (ch == '>' || ch == '/') break;
 
             // attr qname [nameStart,nameEnd), plus localStart within it
-            final int nameStart = i;
+            // final int nameStart = i;
             int localStart = i;
 
             while (i < n) {

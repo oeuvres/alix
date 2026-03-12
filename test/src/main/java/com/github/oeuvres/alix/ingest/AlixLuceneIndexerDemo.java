@@ -36,7 +36,7 @@ public final class AlixLuceneIndexerDemo
             Report report = new ReportConsole();
             
             // Build the indexer (it is the AlixSaxHandler consumer)
-            AlixLuceneIndexer indexer = new AlixLuceneIndexer(writer, report);
+            AlixLuceneConsumer indexer = new AlixLuceneConsumer(writer, report);
             
             // Parse + index
             AlixDocument acc = new AlixDocument();
