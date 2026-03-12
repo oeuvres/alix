@@ -64,8 +64,12 @@ public class EdgeMatrix implements Iterable<Edge>
     /** Directed or not */
     protected final boolean directed;
     /** A mutual information equation for scoring edges */
-    protected MI mi;
+    protected Scorer scorer;
 
+    interface Scorer {
+        public double score(double  ab, double a, double b, double occsAll);
+    }
+    
     /**
      * Build matrix with a limited set of accepted values for nodes.
      * If this recorder is not directed, (3,6) == (6,3).
@@ -171,9 +175,9 @@ public class EdgeMatrix implements Iterable<Edge>
      * 
      * @param mi correlation implementation.
      */
-    public void mi(MI mi)
+    public void scorer(Scorer scorer)
     {
-        this.mi = mi;
+        this.scorer = scorer;
     }
     
     /**
@@ -316,12 +320,12 @@ public class EdgeMatrix implements Iterable<Edge>
                     if (edgeCount == 0) {
                         score = -Double.MAX_VALUE;
                     } 
-                    else if (mi != null) {
+                    else if (scorer != null) {
                         final long a = nodeOccs[sourceIndex];
                         final long b = nodeOccs[targetIndex];
                         // avoid NaN, edge count may have duplicates
                         final long ab = Math.min(edgeCount, Math.min(a, b));
-                        score = mi.score(ab, a, b, occsAll);
+                        score = scorer.score(ab, a, b, occsAll);
                     }
                     table[sourceIndex][targetIndex] = new Edge(directed).sourceId(nodeUniq[sourceIndex]).targetId( nodeUniq[targetIndex]).edgeId(cellIndex).count(edgeCount).score(score);
                 }
@@ -433,12 +437,12 @@ public class EdgeMatrix implements Iterable<Edge>
         EdgeIterator()
         {
             final TopArray top = new TopArray(cells.length);
-            if (mi != null) {
+            if (scorer != null) {
                 for (int cellIndex = 0; cellIndex < cells.length; cellIndex++) {
                     final int Oab = cells[cellIndex];
                     final long Oa = nodeOccs[sourceIndexByCellIndex(cellIndex)];
                     final long Ob = nodeOccs[targetIndexByCellIndex(cellIndex)];
-                    top.push(cellIndex, mi.score(Oab, Oa, Ob, occsAll));
+                    top.push(cellIndex, scorer.score(Oab, Oa, Ob, occsAll));
                 }
             }
             else {
