@@ -54,9 +54,6 @@ import static com.github.oeuvres.alix.common.Names.*;
  */
 public final class AlixSaxHandler extends DefaultHandler2
 {
-    /** The Alix XML namespace URI. */
-    public static final String ALIX_NS = "https://github.com/oeuvres/alix/ns";
-
     /** Cached reference to the standard {@code xml:} namespace URI. */
     private static final String XML_NS = XMLConstants.XML_NS_URI;
 
