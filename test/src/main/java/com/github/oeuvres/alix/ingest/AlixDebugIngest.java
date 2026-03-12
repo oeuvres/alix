@@ -124,7 +124,7 @@ public final class AlixDebugIngest
     
     // ---------------- Debug consumer ----------------
     
-    static final class DumpConsumer implements AlixSaxHandler.AlixDocumentConsumer
+    static final class DumpConsumer implements AlixDocumentConsumer
     {
         
         private final AlixDocumentValidator validator = new AlixDocumentValidator();
@@ -190,9 +190,9 @@ public final class AlixDebugIngest
         
         AlixDocument doc = new AlixDocument();
         boolean strict = true;
-        AlixSaxHandler.AlixDocumentConsumer consumer = new DumpConsumer(strict);
+        AlixDocumentConsumer consumer = new DumpConsumer(strict);
         
-        AlixFileIngester ing = new AlixFileIngester();
+        AlixXmlIngester ing = new AlixXmlIngester();
         ing.ingest(path, doc, consumer); // adapt signature if your ingester differs
     }
 }

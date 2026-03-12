@@ -15,21 +15,21 @@ import org.xml.sax.SAXException;
  * Minimal entry point:
  * java ... AlixTeiIndexMain config1.xml config2.xml ...
  */
-public final class AlixTeiIngestorDemo
+public final class TeiIngestorDemo
 {
-    private AlixTeiIngestorDemo()
+    private TeiIngestorDemo()
     {
     }
     
     public static void main(String[] args) throws IOException, TransformerException, SAXException, ParserConfigurationException
     {
         Report rep = new ReportConsole();
-        TeiIngestor ingestor = new TeiIngestor(rep);
+        TeiIngester ingester = new TeiIngester(rep);
         Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-piaget.xml");
         // Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-test.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, rep);
         rep.info(cfg.toString());
-        ingestor.ingest(cfg);
+        ingester.ingest(cfg);
     }
     
 }

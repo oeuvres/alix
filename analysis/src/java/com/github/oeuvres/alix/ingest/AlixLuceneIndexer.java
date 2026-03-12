@@ -11,7 +11,6 @@ import org.apache.lucene.util.BytesRef;
 import org.xml.sax.SAXException;
 
 import com.github.oeuvres.alix.ingest.AlixDocument.AlixField;
-import com.github.oeuvres.alix.ingest.AlixSaxHandler.AlixDocumentConsumer;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportNull;
 import static com.github.oeuvres.alix.common.Names.*;

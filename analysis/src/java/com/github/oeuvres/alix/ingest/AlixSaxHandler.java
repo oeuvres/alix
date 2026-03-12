@@ -16,11 +16,6 @@ public final class AlixSaxHandler extends DefaultHandler2
     public static final String ALIX_NS = "https://github.com/oeuvres/alix/ns";
     private static final String XML_NS = XMLConstants.XML_NS_URI;
     
-    @FunctionalInterface
-    public interface AlixDocumentConsumer
-    {
-        void accept(AlixDocument doc) throws SAXException;
-    }
     
     private final AlixDocument doc;
     private final AlixDocumentConsumer consumer;
@@ -520,11 +515,5 @@ public final class AlixSaxHandler extends DefaultHandler2
         return (n < 10) ? "0" + n : Integer.toString(n);
     }
     
-    private static String requireNonBlank(String s, String name)
-    {
-        if (s == null || s.isBlank()) {
-            throw new IllegalArgumentException(name + " must not be blank");
-        }
-        return s;
-    }
+
 }

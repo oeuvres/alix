@@ -12,12 +12,12 @@ import java.util.Objects;
  *
  * Uses an XMLReader (SAX) and streams events into {@link AlixSaxHandler}.
  */
-public final class AlixFileIngester
+public final class AlixXmlIngester
 {
     
     private final SAXParserFactory spf;
     
-    public AlixFileIngester()
+    public AlixXmlIngester()
     {
         spf = SAXParserFactory.newInstance();
         spf.setNamespaceAware(true);
@@ -30,7 +30,7 @@ public final class AlixFileIngester
         trySetFeature(spf, "http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
     }
     
-    public void ingest(Path file, AlixDocument doc, AlixSaxHandler.AlixDocumentConsumer consumer)
+    public void ingest(Path file, AlixDocument doc, AlixDocumentConsumer consumer)
         throws IOException,
         SAXException
     {
@@ -40,7 +40,7 @@ public final class AlixFileIngester
         }
     }
     
-    public void ingest(InputStream in, String systemId, AlixDocument doc, AlixSaxHandler.AlixDocumentConsumer consumer)
+    public void ingest(InputStream in, String systemId, AlixDocument doc, AlixDocumentConsumer consumer)
         throws IOException,
         SAXException
     {
