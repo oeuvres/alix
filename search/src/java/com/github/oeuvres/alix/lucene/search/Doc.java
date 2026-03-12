@@ -66,7 +66,7 @@ public class Doc
 {
     /** Just the mandatory fields */
     final static HashSet<String> FIELDS_REQUIRED = new HashSet<String>(
-            Arrays.asList(new String[] { ALIX_FILENAME, ALIX_BOOKID, ALIX_ID, ALIX_TYPE }));
+            Arrays.asList(new String[] { ALIX_FILESTEM, ALIX_BOOKID, ALIX_ID, ALIX_TYPE }));
     /** Format numbers with the dot */
     final static DecimalFormatSymbols ensyms = DecimalFormatSymbols.getInstance(Locale.ENGLISH);
     /** The lucene index to read in */

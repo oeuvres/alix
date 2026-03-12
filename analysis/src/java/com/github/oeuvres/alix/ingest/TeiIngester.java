@@ -1,6 +1,5 @@
 package com.github.oeuvres.alix.ingest;
 
-import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.XsltJarResolver;
 
@@ -29,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Objects;
 
 import static org.apache.lucene.index.IndexWriterConfig.OpenMode.CREATE;
 
@@ -77,7 +77,7 @@ public final class TeiIngester
      * @throws SAXException 
      * @throws TransformerConfigurationException 
      */
-    public void ingest(IngestConfig cfg) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException 
+    public void ingest(IngestConfig cfg, Analyzer analyzer) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException 
     {
         if (cfg == null)
             throw new IllegalArgumentException("cfg == null");
@@ -96,7 +96,7 @@ public final class TeiIngester
         Templates preTpl = compilePre(cfg.prexslt);
         
         // Analyzer choice: keep consistent with your demo; change here if needed.
-        Analyzer analyzer = new FrenchAnalyzer();
+        Objects.requireNonNull(analyzer, "analyzer");
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
         iwc.setOpenMode(CREATE);
         

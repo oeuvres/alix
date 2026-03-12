@@ -1,5 +1,6 @@
 package com.github.oeuvres.alix.ingest;
 
+import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
 
@@ -15,9 +16,9 @@ import org.xml.sax.SAXException;
  * Minimal entry point:
  * java ... AlixTeiIndexMain config1.xml config2.xml ...
  */
-public final class TeiIngestorDemo
+public final class TeiIngesterDemo
 {
-    private TeiIngestorDemo()
+    private TeiIngesterDemo()
     {
     }
     
@@ -29,7 +30,7 @@ public final class TeiIngestorDemo
         // Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-test.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, rep);
         rep.info(cfg.toString());
-        ingester.ingest(cfg);
+        ingester.ingest(cfg, new FrenchAnalyzer());
     }
     
 }
