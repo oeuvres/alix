@@ -66,7 +66,7 @@ import com.github.oeuvres.alix.util.Dir;
 /**
  * A txt indexer
  */
-public class AlixTxtIndexer
+public class TxtIngestor
 {
     final static DecimalFormatSymbols frsyms = DecimalFormatSymbols.getInstance(Locale.FRANCE);
     final static DecimalFormat df000 = new DecimalFormat("000", frsyms);
@@ -86,7 +86,7 @@ public class AlixTxtIndexer
      * Constructor.
      * @param writer A lucene index to write in.
      */
-    public AlixTxtIndexer(final IndexWriter writer) {
+    public TxtIngestor(final IndexWriter writer) {
         this.writer = writer;
         this.analyzer = writer.getAnalyzer();
     }
