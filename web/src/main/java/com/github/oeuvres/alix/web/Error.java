@@ -1,7 +1,5 @@
 package com.github.oeuvres.alix.web;
 
-import org.json.JSONWriter;
-
 /**
  * Error messages for Alix.
  */
@@ -118,7 +116,7 @@ public enum Error {
         sb.append(", \"title\": \"" + title + "\"");
         if (details != null) {
             args = norm(args);
-            sb.append(", \"detail\": " + JSONWriter.valueToString(String.format(details, args)));
+            sb.append(", \"detail\": " + String.format(details, args));
         }
         sb.append("}");
         return sb.toString();

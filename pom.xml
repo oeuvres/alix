@@ -23,11 +23,11 @@
 
 
     <modules>
-        <!-- generic data structure and algorithms, with no dependancies -->
+        <!-- generic data structure and algorithms, with no dependencies -->
         <module>util</module>
-        <!-- lexical resources with no dependancies -->
+        <!-- lexical resources with no dependencies -->
         <module>fr</module>
-        <!-- tools for lucene analysis, French token filter rely on fr -->
+        <!-- tools for lucene analysis, French token filters rely on fr -->
         <module>analysis</module>
         <!-- tools for lucene search -->
         <module>search</module>
