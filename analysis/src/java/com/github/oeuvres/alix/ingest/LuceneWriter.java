@@ -13,19 +13,19 @@ import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-public class AlixWriter
+public class LuceneWriter
 {
     /** Lucene field type for alix text field */
     public static final FieldType ftypeText = new FieldType();
     static {
         ftypeText.setTokenized(true);
         // freqs required, position needed for co-occurrences
-        // ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
-        ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+        ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+        // ftypeText.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         ftypeText.setOmitNorms(false); // keep norms for Similarity, http://makble.com/what-is-lucene-norms
-        // ftypeText.setStoreTermVectors(true);
-        // ftypeText.setStoreTermVectorPositions(true);
-        // ftypeText.setStoreTermVectorOffsets(true);
+        ftypeText.setStoreTermVectors(true);
+        ftypeText.setStoreTermVectorPositions(true);
+        ftypeText.setStoreTermVectorOffsets(true);
         ftypeText.setStored(false); // TokenStream fields cannot be stored
         ftypeText.freeze();
     }

@@ -41,37 +41,115 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * Filesystem utilities with cross-platform glob handling.
+ * Filesystem utilities: path manipulation, cross-platform glob handling,
+ * and directory operations.
  *
+ * <h2>Glob handling</h2>
  * <ul>
  *   <li>Globs may be absolute or relative.</li>
  *   <li>Relative globs can be normalized against a config file or directory.</li>
  *   <li>Glob matching is done on absolute normalized paths.</li>
- *   <li>Expansion walks from the longest non-glob prefix to avoid scanning the whole filesystem.</li>
- *   <li>Blank lines and comment lines are ignored.</li>
+ *   <li>Expansion walks from the longest non-glob prefix to avoid scanning
+ *       the whole filesystem.</li>
+ *   <li>Blank lines and comment lines ({@code #}, {@code //}) are ignored.</li>
  * </ul>
- * 
- * <p>Matching is done on absolute normalized path strings converted to '/'.
- * This avoids Windows backslash issues with NIO PathMatcher("glob:...").</p>
+ *
+ * <p>
+ * Matching is done on absolute normalized path strings converted to
+ * {@code '/'} separators. This avoids Windows backslash issues with
+ * {@code NIO PathMatcher("glob:...")}.
+ * </p>
  */
-public final class Dir {
+public final class Dir
+{
     private Dir() {
     }
 
+    // =====================================================================
+    // Public API — alphabetical order
+    // =====================================================================
+
     /**
-     * Normalize a possibly-relative glob against a base file/directory.
+     * Remove from {@code paths} any path matched by the given glob.
      *
      * <p>
-     * Intended for config files where globs may be written relative to the config location.
-     * Returned glob is absolute and normalized, with '/' separators for stable matching.
+     * The glob is normalized against the current directory. Blank or
+     * comment globs are silently ignored.
      * </p>
      *
-     * @param glob a glob string (may include wildcards).
-     * @param base a file or directory used as resolution anchor; if a file, its parent is used.
-     * @return an absolute, normalized glob string using '/' separators; or {@code null} if blank/comment.
-     * @throws IOException if {@code base} has no parent or cannot be resolved.
+     * @param paths mutable list to filter in place
+     * @param glob  glob pattern (absolute or relative); blank/comment ignored
+     * @return {@code paths}, for chaining
+     * @throws IOException on resolution errors
+     * @throws NullPointerException if {@code paths} is null
      */
-    public static String globNorm(String glob, File base) throws IOException {
+    public static List<Path> exclude(List<Path> paths, String glob) throws IOException
+    {
+        Objects.requireNonNull(paths, "paths");
+
+        String g = globNorm(glob, new File("."));
+        if (g == null) return paths;
+
+        Path literal = tryLiteralPath(g);
+        Pattern regex = globToRegex(g);
+
+        paths.removeIf(p -> {
+            if (p == null) return true;
+            Path abs = p.toAbsolutePath().normalize();
+            if (literal != null && abs.equals(literal)) return true;
+            String s = toSlash(abs.toString());
+            return regex.matcher(s).matches();
+        });
+
+        return paths;
+    }
+
+    /**
+     * Return the file extension (without the leading dot), or the empty
+     * string if the filename has no extension.
+     *
+     * <p>
+     * A dot at position 0 is not treated as an extension separator
+     * (e.g. {@code .gitignore} returns {@code ""}).
+     * </p>
+     *
+     * <pre>
+     * Dir.extension(Path.of("report.pdf"))     → "pdf"
+     * Dir.extension(Path.of("archive.tar.gz")) → "gz"
+     * Dir.extension(Path.of("Makefile"))       → ""
+     * Dir.extension(Path.of(".gitignore"))     → ""
+     * </pre>
+     *
+     * @param path a file path (only the last component is examined)
+     * @return the extension without dot, or {@code ""} if none
+     * @throws NullPointerException if {@code path} is null or has no filename
+     */
+    public static String extension(final Path path)
+    {
+        final String name = path.getFileName().toString();
+        final int dot = name.lastIndexOf('.');
+        return (dot > 0) ? name.substring(dot + 1) : "";
+    }
+
+    /**
+     * Normalize a possibly-relative glob against a base file or directory.
+     *
+     * <p>
+     * Intended for configuration files where globs are written relative
+     * to the config location. The returned glob is absolute and normalized,
+     * with {@code '/'} separators for stable matching.
+     * </p>
+     *
+     * @param glob a glob string (may include wildcards)
+     * @param base a file or directory used as resolution anchor;
+     *             if a regular file, its parent directory is used;
+     *             if {@code null}, the current working directory is used
+     * @return an absolute, normalized glob string with {@code '/'} separators,
+     *         or {@code null} if the input is blank or a comment line
+     * @throws IOException if {@code base} has no parent or cannot be resolved
+     */
+    public static String globNorm(String glob, File base) throws IOException
+    {
         String g = stripConfigSyntax(glob);
         if (g == null) return null;
 
@@ -101,38 +179,31 @@ public final class Dir {
     }
 
     /**
-     * Equivalent to {@code include(new ArrayList<Path>(), glob, true)}.
-     */
-    public static List<Path> ls(String glob) throws IOException {
-        return include(new ArrayList<Path>(), glob, true);
-    }
-
-    
-    /**
-     * Equivalent to {@code include(out, glob, true)}.
-     */
-    public static List<Path> include(List<Path> out, String glob) throws IOException {
-        return include(out, glob, true);
-    }
-
-    /**
      * Expand a glob and append matching paths to {@code out}.
      *
      * <p>Rules:</p>
      * <ul>
-     *   <li>If {@code glob} points to an existing file, it is added directly.</li>
-     *   <li>Otherwise the filesystem is walked from a computed base directory, and matches are added.</li>
-     *   <li>By default, directories/files starting with '.' or '_' are skipped.</li>
-     *   <li>Returned list is de-duplicated while preserving encounter order.</li>
+     *   <li>If the glob resolves to an existing regular file,
+     *       it is added directly.</li>
+     *   <li>Otherwise the filesystem is walked from the longest
+     *       non-glob prefix, and matching entries are appended.</li>
+     *   <li>Directories and files starting with {@code '.'} or {@code '_'}
+     *       are skipped when {@code skipHidden} is {@code true}.</li>
+     *   <li>Duplicates (by absolute normalized path) are suppressed,
+     *       preserving encounter order.</li>
      * </ul>
      *
-     * @param out list to populate (must be mutable).
-     * @param glob glob pattern (absolute or relative).
-     * @param skipDotOrUnderscore if true, prunes directories/files starting with '.' or '_'.
-     * @return {@code out} for chaining.
-     * @throws IOException on traversal errors.
+     * @param out        mutable list to populate
+     * @param glob       glob pattern (absolute or relative)
+     * @param skipHidden if {@code true}, prune entries starting with
+     *                   {@code '.'} or {@code '_'}
+     * @return {@code out}, for chaining
+     * @throws IOException          on traversal errors
+     * @throws NullPointerException if {@code out} is null
      */
-    public static List<Path> include(List<Path> out, String glob, final boolean skipDotOrUnderscore) throws IOException {
+    public static List<Path> include(List<Path> out, String glob, final boolean skipHidden)
+        throws IOException
+    {
         Objects.requireNonNull(out, "out");
 
         String g = globNorm(glob, new File("."));
@@ -162,8 +233,10 @@ public final class Dir {
 
         Files.walkFileTree(walkRoot, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                if (!dir.equals(walkRoot) && skipDotOrUnderscore && startsWithDotOrUnderscore(dir.getFileName())) {
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+            {
+                if (!dir.equals(walkRoot) && skipHidden
+                        && startsWithDotOrUnderscore(dir.getFileName())) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 String s = toSlash(dir.toAbsolutePath().normalize().toString());
@@ -174,8 +247,9 @@ public final class Dir {
             }
 
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                if (skipDotOrUnderscore && startsWithDotOrUnderscore(file.getFileName())) {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+            {
+                if (skipHidden && startsWithDotOrUnderscore(file.getFileName())) {
                     return FileVisitResult.CONTINUE;
                 }
                 String s = toSlash(file.toAbsolutePath().normalize().toString());
@@ -192,51 +266,80 @@ public final class Dir {
     }
 
     /**
-     * Remove from {@code paths} any path matched by {@code glob}.
+     * Equivalent to {@code include(out, glob, true)}.
      *
-     * @param paths list to mutate.
-     * @param glob glob pattern; blank/comment is ignored.
-     * @return {@code paths}.
-     * @throws IOException if {@code paths} is null.
+     * @see #include(List, String, boolean)
      */
-    public static List<Path> exclude(List<Path> paths, String glob) throws IOException {
-        Objects.requireNonNull(paths, "paths");
-
-        String g = globNorm(glob, new File("."));
-        if (g == null) return paths;
-
-        Path literal = tryLiteralPath(g);
-        Pattern regex = globToRegex(g);
-
-        paths.removeIf(p -> {
-            if (p == null) return true;
-            Path abs = p.toAbsolutePath().normalize();
-            if (literal != null && abs.equals(literal)) return true;
-            String s = toSlash(abs.toString());
-            return regex.matcher(s).matches();
-        });
-
-        return paths;
+    public static List<Path> include(List<Path> out, String glob) throws IOException
+    {
+        return include(out, glob, true);
     }
 
     /**
-     * Recursively delete a file or directory.
+     * Expand a glob and return matching paths as a new list.
      *
-     * @param path file/directory to delete
-     * @return true if it existed and was deleted, false if it did not exist.
+     * <p>Equivalent to {@code include(new ArrayList<>(), glob, true)}.</p>
+     *
+     * @param glob glob pattern (absolute or relative)
+     * @return list of matching paths, possibly empty
+     * @throws IOException on traversal errors
+     * @see #include(List, String, boolean)
      */
-    public static boolean rm(Path path) throws IOException {
+    public static List<Path> ls(String glob) throws IOException
+    {
+        return include(new ArrayList<>(), glob, true);
+    }
+
+    /**
+     * Resolve a possibly-relative path string against a base directory.
+     *
+     * <p>
+     * If the path is already absolute it is normalized and returned.
+     * Otherwise it is resolved against {@code baseDir}, then normalized.
+     * Leading and trailing whitespace in {@code relOrAbs} is stripped.
+     * </p>
+     *
+     * @param baseDir  the directory to resolve against
+     * @param relOrAbs a path string, absolute or relative
+     * @return the resolved, absolute, normalized path
+     * @throws NullPointerException if either argument is null
+     */
+    public static Path resolve(final Path baseDir, final String relOrAbs)
+    {
+        Objects.requireNonNull(baseDir, "baseDir");
+        Objects.requireNonNull(relOrAbs, "relOrAbs");
+        Path p = Path.of(relOrAbs.trim());
+        if (!p.isAbsolute()) {
+            p = baseDir.resolve(p);
+        }
+        return p.toAbsolutePath().normalize();
+    }
+
+    /**
+     * Recursively delete a file or directory tree.
+     *
+     * @param path file or directory to delete; if {@code null} or
+     *             nonexistent, this method returns {@code false}
+     * @return {@code true} if the path existed and was deleted
+     * @throws IOException on deletion failure
+     */
+    public static boolean rm(Path path) throws IOException
+    {
         if (path == null || !Files.exists(path)) return false;
 
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                throws IOException
+            {
                 Files.delete(file);
                 return FileVisitResult.CONTINUE;
             }
 
             @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
+                throws IOException
+            {
                 if (exc != null) throw exc;
                 Files.delete(dir);
                 return FileVisitResult.CONTINUE;
@@ -245,89 +348,41 @@ public final class Dir {
         return true;
     }
 
-    // ---------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------
-
-    private static String stripConfigSyntax(String s) {
-        if (s == null) return null;
-        String t = s.trim();
-        if (t.isEmpty()) return null;
-        if (t.startsWith("#")) return null;
-        if (t.startsWith("//")) return null;
-        return t;
-    }
-
-    private static boolean isAbsoluteGlob(String glob) {
-        if (glob == null || glob.isEmpty()) return false;
-        if (glob.startsWith("/") || glob.startsWith("\\")) return true;
-        return glob.length() >= 3
-            && Character.isLetter(glob.charAt(0))
-            && glob.charAt(1) == ':'
-            && isSep(glob.charAt(2));
-    }
-
     /**
-     * Lexical normalization only. Keeps glob metacharacters intact.
+     * Return the filename without its extension (the "stem").
+     *
+     * <p>
+     * A dot at position 0 is not treated as an extension separator:
+     * {@code .gitignore} has stem {@code ".gitignore"}, not
+     * {@code ""}.
+     * </p>
+     *
+     * <pre>
+     * Dir.stem(Path.of("alix-piaget.xml"))  → "alix-piaget"
+     * Dir.stem(Path.of("archive.tar.gz"))   → "archive.tar"
+     * Dir.stem(Path.of("Makefile"))         → "Makefile"
+     * Dir.stem(Path.of(".gitignore"))       → ".gitignore"
+     * </pre>
+     *
+     * <p>Analogous to Python's {@code pathlib.PurePath.stem}.</p>
+     *
+     * @param path a file path (only the last component is examined)
+     * @return the filename without extension
+     * @throws NullPointerException if {@code path} is null or has no filename
      */
-    private static String normalizeGlobLexically(String input) {
-        String s = input.replace('\\', '/');
-
-        String prefix = "";
-        int start = 0;
-
-        // UNC //server/share/...
-        if (s.startsWith("//")) {
-            prefix = "//";
-            start = 2;
-        }
-        // Drive absolute C:/...
-        else if (s.length() >= 3
-            && Character.isLetter(s.charAt(0))
-            && s.charAt(1) == ':'
-            && s.charAt(2) == '/') {
-            prefix = s.substring(0, 3); // "C:/"
-            start = 3;
-        }
-        // Unix root
-        else if (s.startsWith("/")) {
-            prefix = "/";
-            start = 1;
-        }
-
-        String rest = s.substring(start);
-        String[] raw = rest.split("/+");
-        Deque<String> stack = new ArrayDeque<>();
-
-        for (String part : raw) {
-            if (part.isEmpty() || ".".equals(part)) continue;
-            if ("..".equals(part)) {
-                if (!stack.isEmpty() && !"..".equals(stack.peekLast())) {
-                    stack.removeLast();
-                } else if (prefix.isEmpty()) {
-                    stack.addLast(part);
-                }
-            } else {
-                stack.addLast(part);
-            }
-        }
-
-        String joined = String.join("/", stack);
-        if (prefix.isEmpty()) return joined;
-        if (joined.isEmpty()) return prefix.endsWith("/") ? prefix.substring(0, prefix.length() - 1) : prefix;
-        return prefix.endsWith("/") ? prefix + joined : prefix + "/" + joined;
+    public static String stem(final Path path)
+    {
+        final String name = path.getFileName().toString();
+        final int dot = name.lastIndexOf('.');
+        return (dot > 0) ? name.substring(0, dot) : name;
     }
 
-    private static Path tryLiteralPath(String glob) {
-        if (containsMeta(glob)) return null;
-        try {
-            return Path.of(fromSlash(glob)).toAbsolutePath().normalize();
-        } catch (InvalidPathException e) {
-            return null;
-        }
-    }
+    // =====================================================================
+    // Private helpers
+    // =====================================================================
 
-    private static Path computeWalkRoot(String absoluteGlob) {
+    private static Path computeWalkRoot(String absoluteGlob)
+    {
         String prefix = nonGlobPrefixDir(absoluteGlob);
         if (prefix == null || prefix.isEmpty()) {
             return Path.of("").toAbsolutePath().normalize();
@@ -346,34 +401,13 @@ public final class Dir {
         return Files.isDirectory(p) ? p : p.getParent();
     }
 
-    private static String nonGlobPrefixDir(String glob) {
-        int firstMeta = firstMetaIndex(glob);
-        if (firstMeta < 0) {
-            Path p = Path.of(fromSlash(glob)).toAbsolutePath().normalize();
-            Path parent = p.getParent();
-            return toSlash((parent != null ? parent : p).toString());
-        }
-
-        int slash = glob.lastIndexOf('/', firstMeta);
-        if (slash < 0) {
-            if (isAbsoluteGlob(glob)) {
-                if (glob.startsWith("//")) return "//";
-                if (glob.length() >= 3 && Character.isLetter(glob.charAt(0)) && glob.charAt(1) == ':' && glob.charAt(2) == '/') {
-                    return glob.substring(0, 3);
-                }
-                if (glob.startsWith("/")) return "/";
-            }
-            return toSlash(Path.of("").toAbsolutePath().normalize().toString());
-        }
-
-        return glob.substring(0, slash);
-    }
-
-    private static boolean containsMeta(String s) {
+    private static boolean containsMeta(String s)
+    {
         return firstMetaIndex(s) >= 0;
     }
 
-    private static int firstMetaIndex(String s) {
+    private static int firstMetaIndex(String s)
+    {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             if (c == '*' || c == '?' || c == '[' || c == '{') return i;
@@ -381,37 +415,25 @@ public final class Dir {
         return -1;
     }
 
-    private static boolean startsWithDotOrUnderscore(Path name) {
-        if (name == null) return false;
-        String s = name.toString();
-        return !s.isEmpty() && (s.charAt(0) == '.' || s.charAt(0) == '_');
-    }
-
-    private static boolean isSep(char c) {
-        return c == '/' || c == '\\';
-    }
-
-    private static String toSlash(String s) {
-        return s.replace('\\', '/');
-    }
-
-    private static String fromSlash(String s) {
+    private static String fromSlash(String s)
+    {
         return File.separatorChar == '/' ? s : s.replace('/', '\\');
     }
 
     /**
-     * Minimal glob -> regex conversion on slash-normalized absolute paths.
+     * Minimal glob → regex conversion on slash-normalized absolute paths.
      *
-     * Supported:
-     * - *  : any chars except '/'
-     * - ** : any chars including '/'
-     * - ?  : one char except '/'
-     * - [abc], [a-z], [!abc]
-     * - {a,b,c}
-     *
-     * This is enough for normal filesystem use and your tests.
+     * <p>Supported metacharacters:</p>
+     * <ul>
+     *   <li>{@code *}  — any characters except {@code '/'}</li>
+     *   <li>{@code **} — any characters including {@code '/'}</li>
+     *   <li>{@code ?}  — one character except {@code '/'}</li>
+     *   <li>{@code [abc]}, {@code [a-z]}, {@code [!abc]}</li>
+     *   <li><code>{a,b,c}</code></li>
+     * </ul>
      */
-    private static Pattern globToRegex(String glob) {
+    private static Pattern globToRegex(String glob)
+    {
         StringBuilder rx = new StringBuilder(glob.length() * 2);
         rx.append("^");
 
@@ -488,5 +510,137 @@ public final class Dir {
         rx.append("$");
         return Pattern.compile(rx.toString());
     }
-}
 
+    private static boolean isAbsoluteGlob(String glob)
+    {
+        if (glob == null || glob.isEmpty()) return false;
+        if (glob.startsWith("/") || glob.startsWith("\\")) return true;
+        return glob.length() >= 3
+            && Character.isLetter(glob.charAt(0))
+            && glob.charAt(1) == ':'
+            && isSep(glob.charAt(2));
+    }
+
+    private static boolean isSep(char c)
+    {
+        return c == '/' || c == '\\';
+    }
+
+    /**
+     * Lexical normalization only. Keeps glob metacharacters intact.
+     */
+    private static String normalizeGlobLexically(String input)
+    {
+        String s = input.replace('\\', '/');
+
+        String prefix = "";
+        int start = 0;
+
+        // UNC //server/share/...
+        if (s.startsWith("//")) {
+            prefix = "//";
+            start = 2;
+        }
+        // Drive absolute C:/...
+        else if (s.length() >= 3
+            && Character.isLetter(s.charAt(0))
+            && s.charAt(1) == ':'
+            && s.charAt(2) == '/') {
+            prefix = s.substring(0, 3);
+            start = 3;
+        }
+        // Unix root
+        else if (s.startsWith("/")) {
+            prefix = "/";
+            start = 1;
+        }
+
+        String rest = s.substring(start);
+        String[] raw = rest.split("/+");
+        Deque<String> stack = new ArrayDeque<>();
+
+        for (String part : raw) {
+            if (part.isEmpty() || ".".equals(part)) continue;
+            if ("..".equals(part)) {
+                if (!stack.isEmpty() && !"..".equals(stack.peekLast())) {
+                    stack.removeLast();
+                } else if (prefix.isEmpty()) {
+                    stack.addLast(part);
+                }
+            } else {
+                stack.addLast(part);
+            }
+        }
+
+        String joined = String.join("/", stack);
+        if (prefix.isEmpty()) return joined;
+        if (joined.isEmpty()) {
+            return prefix.endsWith("/") ? prefix.substring(0, prefix.length() - 1) : prefix;
+        }
+        return prefix.endsWith("/") ? prefix + joined : prefix + "/" + joined;
+    }
+
+    private static String nonGlobPrefixDir(String glob)
+    {
+        int firstMeta = firstMetaIndex(glob);
+        if (firstMeta < 0) {
+            Path p = Path.of(fromSlash(glob)).toAbsolutePath().normalize();
+            Path parent = p.getParent();
+            return toSlash((parent != null ? parent : p).toString());
+        }
+
+        int slash = glob.lastIndexOf('/', firstMeta);
+        if (slash < 0) {
+            if (isAbsoluteGlob(glob)) {
+                if (glob.startsWith("//")) return "//";
+                if (glob.length() >= 3
+                        && Character.isLetter(glob.charAt(0))
+                        && glob.charAt(1) == ':'
+                        && glob.charAt(2) == '/') {
+                    return glob.substring(0, 3);
+                }
+                if (glob.startsWith("/")) return "/";
+            }
+            return toSlash(Path.of("").toAbsolutePath().normalize().toString());
+        }
+
+        return glob.substring(0, slash);
+    }
+
+    private static boolean startsWithDotOrUnderscore(Path name)
+    {
+        if (name == null) return false;
+        String s = name.toString();
+        return !s.isEmpty() && (s.charAt(0) == '.' || s.charAt(0) == '_');
+    }
+
+    /**
+     * Strip blank lines and comment lines ({@code #}, {@code //}).
+     *
+     * @return trimmed string, or {@code null} if blank or comment
+     */
+    private static String stripConfigSyntax(String s)
+    {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isEmpty()) return null;
+        if (t.startsWith("#")) return null;
+        if (t.startsWith("//")) return null;
+        return t;
+    }
+
+    private static String toSlash(String s)
+    {
+        return s.replace('\\', '/');
+    }
+
+    private static Path tryLiteralPath(String glob)
+    {
+        if (containsMeta(glob)) return null;
+        try {
+            return Path.of(fromSlash(glob)).toAbsolutePath().normalize();
+        } catch (InvalidPathException e) {
+            return null;
+        }
+    }
+}

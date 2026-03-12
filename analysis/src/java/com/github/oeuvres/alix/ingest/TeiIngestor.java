@@ -44,7 +44,7 @@ import static org.apache.lucene.index.IndexWriterConfig.OpenMode.CREATE;
  * - build into indexroot/name_tmp
  * - on success: move indexroot/name → indexroot/name_old (if exists), then name_tmp → name
  */
-public final class AlixTeiIngestor
+public final class TeiIngestor
 {
     
     private static final String ALIX_XSL_CLASSPATH = "/com/github/oeuvres/alix/xml/alix.xsl";
@@ -55,12 +55,12 @@ public final class AlixTeiIngestor
     private final Templates alixTpl;
     private final SAXParserFactory spf;
     
-    public AlixTeiIngestor(Report rep) throws TransformerException
+    public TeiIngestor(Report rep) throws TransformerException
     {
         this.rep = (rep != null) ? rep : Report.ReportNull.INSTANCE;
         
         this.stf = (SAXTransformerFactory) new TransformerFactoryImpl();
-        this.resolver = new XsltJarResolver(AlixTeiIngestor.class);
+        this.resolver = new XsltJarResolver(TeiIngestor.class);
         this.stf.setURIResolver(resolver);
         
         // Compile required alix.xsl from classpath with correct systemId

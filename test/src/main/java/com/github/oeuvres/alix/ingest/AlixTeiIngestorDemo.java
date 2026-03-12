@@ -24,7 +24,7 @@ public final class AlixTeiIngestorDemo
     public static void main(String[] args) throws IOException, TransformerException, SAXException, ParserConfigurationException
     {
         Report rep = new ReportConsole();
-        AlixTeiIngestor ingestor = new AlixTeiIngestor(rep);
+        TeiIngestor ingestor = new TeiIngestor(rep);
         Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-piaget.xml");
         // Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-test.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, rep);

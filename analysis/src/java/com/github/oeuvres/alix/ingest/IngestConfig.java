@@ -42,7 +42,6 @@ import java.util.*;
  * If multiple {@code tei} globs match the same file, the first occurrence is kept and subsequent ones
  * are reported via {@link Report#warn(String)} (no duplicate list is stored).
  * </p>
- * :contentReference[oaicite:2]{index=2}
  */
 public final class IngestConfig
 {
@@ -120,22 +119,22 @@ public final class IngestConfig
             properties.loadFromXML(in);
         }
         
-        String name = trimToNull(properties.getProperty("name"));
+        String name = trimOrNull(properties.getProperty("name"));
         if (name == null)
-            name = fileStem(cfg);
+            name = Dir.stem(cfg);
         
-        String label = trimToNull(properties.getProperty("label"));
+        String label = trimOrNull(properties.getProperty("label"));
         
-        String indexrootStr = trimToNull(properties.getProperty("indexroot"));
+        String indexrootStr = trimOrNull(properties.getProperty("indexroot"));
         if (indexrootStr == null)
             throw new IllegalArgumentException("Missing required key: indexroot in " + cfg);
-        Path indexroot = resolvePath(baseDir, indexrootStr);
+        Path indexroot = Dir.resolve(baseDir, indexrootStr);
         
         // Optional resources
         Path prexslt = null;
-        String prexsltStr = trimToNull(properties.getProperty("prexslt"));
+        String prexsltStr = trimOrNull(properties.getProperty("prexslt"));
         if (prexsltStr != null)
-            prexslt = resolvePath(baseDir, prexsltStr);
+            prexslt = Dir.resolve(baseDir, prexsltStr);
         
         List<Path> dicfile = resolveFiles(baseDir, lines(properties, "dicfile"));
         List<Path> stopfile = resolveFiles(baseDir, lines(properties, "stopfile"));
@@ -203,7 +202,8 @@ public final class IngestConfig
         return out;
     }
     
-    private static String trimToNull(String s)
+    /** Trim to null: returns null for null, empty, or whitespace-only strings. */
+    private static String trimOrNull(String s)
     {
         if (s == null)
             return null;
@@ -232,29 +232,14 @@ public final class IngestConfig
         return out;
     }
     
-    private static Path resolvePath(Path baseDir, String relOrAbs)
-    {
-        Path p = Path.of(relOrAbs.trim());
-        if (!p.isAbsolute())
-            p = baseDir.resolve(p);
-        return p.toAbsolutePath().normalize();
-    }
-    
     private static List<Path> resolveFiles(Path baseDir, List<String> relOrAbsList)
     {
         if (relOrAbsList.isEmpty())
             return Collections.emptyList();
         List<Path> out = new ArrayList<>(relOrAbsList.size());
         for (String s : relOrAbsList)
-            out.add(resolvePath(baseDir, s));
+            out.add(Dir.resolve(baseDir, s));
         return out;
-    }
-    
-    private static String fileStem(Path p)
-    {
-        String n = p.getFileName().toString();
-        int dot = n.lastIndexOf('.');
-        return (dot > 0) ? n.substring(0, dot) : n;
     }
     
     @Override
@@ -275,11 +260,6 @@ public final class IngestConfig
         
         appendList(sb, "dicfile", dicfile, 10);
         appendList(sb, "stopfile", stopfile, 10);
-        
-        // If you keep exclude globs only locally during load(), remove this line.
-        // If you store them, include them:
-        // appendStringList(sb, "exclude", excludeGlobs, 10);
-        
         
         sb.append('}');
         return sb.toString();

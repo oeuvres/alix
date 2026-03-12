@@ -232,10 +232,10 @@ public class AlixTxtIndexer
 
         book.add(new StoredField("bibl", bibl)); // (TokenStream fields cannot be stored)
         TokenStream ts = new AnalyzerMeta().tokenStream("meta", bibl); // renew token stream
-        book.add(new Field("bibl", ts, AlixWriter.ftypeMeta)); // indexation of the chosen tokens
+        book.add(new Field("bibl", ts, LuceneWriter.ftypeText)); // indexation of the chosen tokens
         chapter.add(new StoredField("bibl", bibl)); // (TokenStream fields cannot be stored)
         ts = new AnalyzerMeta().tokenStream("meta", bibl); // renew token stream
-        chapter.add(new Field("bibl", ts, AlixWriter.ftypeMeta)); // indexation of the chosen tokens
+        chapter.add(new Field("bibl", ts, LuceneWriter.ftypeText)); // indexation of the chosen tokens
 
         chapter.add(new IntPoint(name, val)); // to search
         chapter.add(new StoredField(name, val)); // to show
@@ -255,7 +255,7 @@ public class AlixTxtIndexer
 
         chapter.add(new StoredField(name, text)); // text has to be stored for snippets and conc
         TokenStream source = analyzer.tokenStream("stats", text);
-        chapter.add(new Field(name, source, AlixWriter.ftypeText)); // indexation of the chosen tokens
+        chapter.add(new Field(name, source, LuceneWriter.ftypeText)); // indexation of the chosen tokens
 
         // System.out.println(doc);
         writer.addDocument(chapter);
