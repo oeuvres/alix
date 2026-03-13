@@ -1,5 +1,7 @@
 target/
 work/
+/web/lucene/
+/web/conf/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup

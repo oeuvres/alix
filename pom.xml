@@ -17,7 +17,6 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
-        <lucene.version>10.4.0</lucene.version>
         <tests.skip>true</tests.skip>
     </properties>
 
@@ -53,13 +52,13 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
-                    <version>3.1.0</version>
+                    <version>3.6.3</version>
                 </plugin>
 
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.5.2</version>
+                    <version>3.5.5</version>
                 </plugin>
             </plugins>
         </pluginManagement>

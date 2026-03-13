@@ -1,18 +1,17 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.gson.stream.JsonWriter;
+
 import jakarta.servlet.ServletConfig;
-import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,345 +20,382 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.LuceneIndex.FieldProfile;
 
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.IndexOptions;
+
 /**
- * Main servlet for the Alix search API.
+ * Frontal servlet for the Alix search API.
  *
- * <p>
- * Routes all requests under the servlet mapping to the appropriate
- * index and operation. On startup, scans a configuration directory
- * for XML properties files and opens a {@link LuceneIndex} for each.
- * The loaded indices are cached in the {@link ServletContext} for the
- * lifetime of the webapp.
- * </p>
- *
- * <h2>URL schema</h2>
+ * <h2>URL patterns</h2>
  * <pre>
- * GET  {contextPath}/                — list available indices (JSON)
- * GET  {contextPath}/{index}         — metadata for one index (JSON)
- * GET  {contextPath}/{index}/{op}    — execute operation (future)
+ * /                     — list available indices
+ * /{index}              — index metadata and field inventory
+ * /{index}/{op}         — full HTML page with form (default)
+ * /{index}/{op}.json    — structured JSON
+ * /{index}/{op}.html    — HTML fragment for streaming insertion
+ * /{index}/{op}.jsonl   — JSON Lines
+ * /{index}/{op}.csv     — tabular export
  * </pre>
  *
- * <h2>Configuration</h2>
- * <p>The directory containing XML config files is resolved in order:</p>
- * <ol>
- *   <li>Servlet init-param {@code configDir}</li>
- *   <li>Context param {@code alix.configDir}</li>
- *   <li>Default: {@code WEB-INF/} inside the webapp</li>
- * </ol>
- * <p>
- * Every {@code *.xml} file in that directory is attempted as an
- * XML {@link java.util.Properties} config. Files that fail to load
- * (missing keys, missing index directory) are logged and skipped.
- * </p>
- *
- * @see LuceneIndex
+ * <h2>Init parameters</h2>
+ * <ul>
+ *   <li><b>{@code alix.conf.dir}</b> — directory containing {@code *.xml}
+ *       configuration files. Checked as servlet init-param first,
+ *       then as context-param. Relative paths resolve against the
+ *       JVM working directory.</li>
+ *   <li>If neither is set, defaults to {@code WEB-INF/}.</li>
+ * </ul>
  */
 public class AlixServlet extends HttpServlet
 {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = Logger.getLogger(AlixServlet.class.getName());
 
-    /** Key used to store the index registry in {@link ServletContext}. */
-    static final String CTX_REGISTRY = AlixServlet.class.getName() + ".registry";
+    /** Loaded indices, swapped atomically on reload. */
+    private volatile Map<String, LuceneIndex> indices = Map.of();
 
-    /** Loaded indices, keyed by name. Unmodifiable after init. */
-    private Map<String, LuceneIndex> registry = Collections.emptyMap();
+    /** Registered operations, keyed by name. */
+    private final Map<String, Op> ops = new LinkedHashMap<>();
 
-    // ---- lifecycle ----
+    /** Resolved config directory path. */
+    private Path configDir;
+
+    // ================================================================
+    // Lifecycle
+    // ================================================================
 
     @Override
     public void init(final ServletConfig config) throws ServletException
     {
         super.init(config);
-        final Path configDir = resolveConfigDir(config);
-        LOG.info("Loading index configurations from: " + configDir);
-
-        final Map<String, LuceneIndex> map = new LinkedHashMap<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(configDir, "*.xml")) {
-            for (Path xmlFile : stream) {
-                try {
-                    final LuceneIndex idx = LuceneIndex.open(xmlFile);
-                    final LuceneIndex prev = map.put(idx.name(), idx);
-                    if (prev != null) {
-                        prev.close();
-                        LOG.warning("Duplicate index name \"" + idx.name()
-                            + "\", previous definition replaced — " + xmlFile);
-                    }
-                    LOG.info("  " + idx);
-                }
-                catch (Exception e) {
-                    LOG.log(Level.WARNING, "Skipping config: " + xmlFile + " — " + e.getMessage(), e);
-                }
-            }
+        configDir = resolveConfigDir(config);
+        indices = loadIndices(configDir);
+        registerOps();
+        LOG.info("Alix started: " + indices.size() + " index(es) from " + configDir);
+        for (LuceneIndex idx : indices.values()) {
+            LOG.info("  " + idx);
         }
-        catch (IOException e) {
-            throw new ServletException("Cannot scan config directory: " + configDir, e);
-        }
-
-        if (map.isEmpty()) {
-            LOG.warning("No indices loaded from " + configDir);
-        }
-
-        this.registry = Collections.unmodifiableMap(map);
-        config.getServletContext().setAttribute(CTX_REGISTRY, this.registry);
     }
 
     @Override
     public void destroy()
     {
-        for (LuceneIndex idx : registry.values()) {
+        for (Map.Entry<String, LuceneIndex> e : indices.entrySet()) {
             try {
-                idx.close();
-                LOG.info("Closed: " + idx.name());
+                e.getValue().close();
             }
-            catch (IOException e) {
-                LOG.log(Level.WARNING, "Error closing index: " + idx.name(), e);
+            catch (IOException ex) {
+                LOG.log(Level.WARNING, "Error closing index: " + e.getKey(), ex);
             }
         }
-        getServletContext().removeAttribute(CTX_REGISTRY);
-        registry = Collections.emptyMap();
+        indices = Map.of();
     }
 
-    // ---- request handling ----
+    /**
+     * Register all operations. Add new ops here.
+     */
+    private void registerOps()
+    {
+        // register(new OpSearch());
+        // register(new OpKwic());
+        // register(new OpCooc());
+        // register(new OpFreqs());
+        // register(new OpTerms());
+        // register(new OpDoc());
+        // register(new OpSnippet());
+    }
+
+    private void register(final Op op) { ops.put(op.name(), op); }
+
+    // ================================================================
+    // Request handling
+    // ================================================================
 
     @Override
-    protected void doGet(final HttpServletRequest req, final HttpServletResponse resp)
-            throws ServletException, IOException
+    protected void doGet(
+        final HttpServletRequest req,
+        final HttpServletResponse resp
+    ) throws IOException
     {
-        // pathInfo: null for "/", "/{index}" for index meta, "/{index}/{op}" for operations
-        final String pathInfo = req.getPathInfo();
-        final String[] parts = splitPath(pathInfo);
+        final String pathInfo = (req.getPathInfo() != null) ? req.getPathInfo() : "/";
+        final String[] segments = pathInfo.split("/");
 
-        if (parts.length == 0) {
-            // GET / — list all indices
-            listIndices(resp);
+        if (segments.length <= 1 || segments[1].isEmpty()) {
+            listIndices(req, resp);
             return;
         }
 
-        final String indexName = parts[0];
-        final LuceneIndex idx = registry.get(indexName);
-        if (idx == null) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Unknown index: " + indexName);
+        final String indexName = segments[1];
+        final LuceneIndex index = indices.get(indexName);
+        if (index == null) {
+            sendError(resp, 404, "Unknown index: " + indexName);
             return;
         }
 
-        if (parts.length == 1) {
-            // GET /{index} — index metadata
-            indexMeta(idx, resp);
+        if (segments.length <= 2 || segments[2].isEmpty()) {
+            describeIndex(index, req, resp);
             return;
         }
 
-        final String op = parts[1];
-        // future: dispatch to operations
-        resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Unknown operation: " + op);
+        final String raw = segments[2];
+        final String[] opFormat = splitOpFormat(raw);
+        final String opName = opFormat[0];
+        final String format = opFormat[1];
+
+        final Op op = ops.get(opName);
+        if (op == null) {
+            sendError(resp, 404, "Unknown operation: " + opName);
+            return;
+        }
+
+        op.dispatch(index, format, req, resp);
     }
 
-    // ---- response writers ----
+    // ================================================================
+    // Built-in endpoints
+    // ================================================================
 
     /**
      * {@code GET /} — list available indices.
-     *
-     * <pre>{@code
-     * {
-     *   "indices": [
-     *     {"name": "piaget", "label": "Piaget", "docs": 342},
-     *     ...
-     *   ]
-     * }
-     * }</pre>
      */
-    private void listIndices(final HttpServletResponse resp) throws IOException
+    private void listIndices(
+        final HttpServletRequest req,
+        final HttpServletResponse resp
+    ) throws IOException
     {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        final PrintWriter out = resp.getWriter();
+        final JsonWriter jw = new JsonWriter(resp.getWriter());
+        jw.setIndent("  ");
 
-        out.print("{\"indices\":[");
-        boolean first = true;
-        for (LuceneIndex idx : registry.values()) {
-            if (!first) out.print(',');
-            first = false;
-            out.print('{');
-            jsonPair(out, "name", idx.name());
-            out.print(',');
-            jsonPair(out, "label", idx.label());
-            out.print(',');
-            jsonPair(out, "docs", idx.numDocs());
-            if (idx.content() != null) {
-                out.print(',');
-                jsonPair(out, "content", idx.content());
-            }
-            if (idx.docline() != null) {
-                out.print(',');
-                jsonPair(out, "docline", idx.docline());
-            }
-            out.print('}');
+        jw.beginObject();
+        for (LuceneIndex idx : indices.values()) {
+            jw.name(idx.name());
+            jw.beginObject();
+            jw.name("label").value(idx.label());
+            jw.name("numDocs").value(idx.numDocs());
+            if (idx.content() != null) jw.name("content").value(idx.content());
+            if (idx.docline() != null) jw.name("docline").value(idx.docline());
+            jw.endObject();
         }
-        out.print("]}");
-        out.flush();
+        jw.endObject();
+        jw.flush();
     }
 
     /**
-     * {@code GET /{index}} — full metadata for one index.
+     * {@code GET /{index}} — full metadata with field inventory.
      *
-     * <pre>{@code
-     * {
-     *   "name": "piaget",
-     *   "label": "Piaget",
-     *   "docs": 342,
-     *   "content": "text",
-     *   "docline": "docline",
-     *   "fields": {
-     *     "text": {"positions": true, "offsets": false, "docValues": false, "vectors": false},
-     *     "pubDate": {"positions": false, "offsets": false, "docValues": true, "vectors": false},
-     *     ...
-     *   }
-     * }
-     * }</pre>
+     * <p>
+     * Each field reports only its relevant, non-redundant properties.
+     * A stored-only field appears as {@code {"stored": true}}.
+     * An indexed field shows {@code indexOptions}, {@code docCount},
+     * and only the flags that are true or noteworthy.
+     * </p>
      */
-    private void indexMeta(final LuceneIndex idx, final HttpServletResponse resp) throws IOException
+    private void describeIndex(
+        final LuceneIndex index,
+        final HttpServletRequest req,
+        final HttpServletResponse resp
+    ) throws IOException
     {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        final PrintWriter out = resp.getWriter();
+        final JsonWriter jw = new JsonWriter(resp.getWriter());
+        jw.setIndent("  ");
 
-        out.print('{');
-        jsonPair(out, "name", idx.name());
-        out.print(',');
-        jsonPair(out, "label", idx.label());
-        out.print(',');
-        jsonPair(out, "docs", idx.numDocs());
+        jw.beginObject();
+        jw.name("name").value(index.name());
+        jw.name("label").value(index.label());
+        jw.name("numDocs").value(index.numDocs());
+        if (index.content() != null) jw.name("content").value(index.content());
+        if (index.docline() != null) jw.name("docline").value(index.docline());
 
-        if (idx.content() != null) {
-            out.print(',');
-            jsonPair(out, "content", idx.content());
+        jw.name("fields");
+        jw.beginObject();
+        for (FieldProfile fp : index.fields().values()) {
+            jw.name(fp.name());
+            writeFieldProfile(jw, fp);
         }
-        if (idx.docline() != null) {
-            out.print(',');
-            jsonPair(out, "docline", idx.docline());
-        }
+        jw.endObject();
 
-        // field inventory
-        out.print(",\"fields\":{");
-        boolean first = true;
-        for (Map.Entry<String, FieldProfile> e : idx.fields().entrySet()) {
-            if (!first) out.print(',');
-            first = false;
-            final FieldProfile fp = e.getValue();
-            out.print(jsonString(e.getKey()));
-            out.print(":{");
-            jsonPair(out, "indexOptions", fp.indexOptions().name());
-            out.print(',');
-            jsonPair(out, "positions", fp.hasPositions());
-            out.print(',');
-            jsonPair(out, "offsets", fp.hasOffsets());
-            out.print(',');
-            jsonPair(out, "docValues", fp.hasDocValues());
-            out.print(',');
-            jsonPair(out, "termVectors", fp.hasTermVectors());
-            out.print(',');
-            jsonPair(out, "norms", fp.hasNorms());
-            out.print('}');
-        }
-        out.print("}}");
-        out.flush();
+        jw.endObject();
+        jw.flush();
     }
 
-    // ---- config resolution ----
+    /**
+     * Write a single field profile, reporting only meaningful properties.
+     *
+     * <p>Rules:</p>
+     * <ul>
+     *   <li>Indexed: show {@code indexOptions} (readable label) and {@code docCount}.</li>
+     *   <li>Stored: show only when {@code true}.</li>
+     *   <li>DocValues: show with type label, only when present.</li>
+     *   <li>Points: show with dimension count and byte size.</li>
+     *   <li>TermVectors: show only when {@code true}.</li>
+     *   <li>Norms: show {@code false} only on indexed fields (absent norms
+     *       on an indexed field is the noteworthy case; present is default).</li>
+     *   <li>A field with no indexOptions, no docValues, no points
+     *       is stored-only: shows just {@code {"stored": true}}.</li>
+     * </ul>
+     */
+    private static void writeFieldProfile(final JsonWriter jw, final FieldProfile fp)
+        throws IOException
+    {
+        jw.beginObject();
+
+        if (fp.indexed()) {
+            jw.name("indexOptions").value(indexOptionsLabel(fp.indexOptions()));
+            jw.name("docCount").value(fp.docCount());
+        }
+
+        if (fp.stored()) {
+            jw.name("stored").value(true);
+        }
+
+        if (fp.hasDocValues()) {
+            jw.name("docValues").value(docValuesLabel(fp.docValuesType()));
+        }
+
+        if (fp.hasPoints()) {
+            jw.name("points");
+            jw.beginObject();
+            jw.name("dimensions").value(fp.pointDimensionCount());
+            jw.name("bytesPerDim").value(fp.pointNumBytes());
+            jw.endObject();
+        }
+
+        if (fp.hasTermVectors()) {
+            jw.name("termVectors").value(true);
+        }
+
+        if (fp.indexed() && !fp.hasNorms()) {
+            jw.name("norms").value(false);
+        }
+
+        jw.endObject();
+    }
+
+    private static String indexOptionsLabel(final IndexOptions opt)
+    {
+        return switch (opt) {
+            case DOCS                                     -> "docs";
+            case DOCS_AND_FREQS                           -> "docs+freqs";
+            case DOCS_AND_FREQS_AND_POSITIONS             -> "docs+freqs+positions";
+            case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS -> "docs+freqs+positions+offsets";
+            default                                       -> "none";
+        };
+    }
+
+    private static String docValuesLabel(final DocValuesType dvt)
+    {
+        return switch (dvt) {
+            case NUMERIC        -> "numeric";
+            case BINARY         -> "binary";
+            case SORTED         -> "sorted";
+            case SORTED_NUMERIC -> "sorted_numeric";
+            case SORTED_SET     -> "sorted_set";
+            default             -> "none";
+        };
+    }
+
+    // ================================================================
+    // URL parsing
+    // ================================================================
 
     /**
-     * Resolve the directory containing XML config files.
-     * Checks init-param, then context-param, then falls back to WEB-INF/.
+     * Split {@code "kwic.json"} into {@code {"kwic", "json"}}.
+     * Unknown extensions are kept as part of the op name.
+     * Bare {@code "kwic"} returns {@code {"kwic", null}}.
+     */
+    static String[] splitOpFormat(final String segment)
+    {
+        final int dot = segment.lastIndexOf('.');
+        if (dot > 0 && dot < segment.length() - 1) {
+            final String ext = segment.substring(dot + 1);
+            if ("json".equals(ext) || "jsonl".equals(ext)
+                    || "html".equals(ext) || "csv".equals(ext)) {
+                return new String[] { segment.substring(0, dot), ext };
+            }
+        }
+        return new String[] { segment, null };
+    }
+
+    // ================================================================
+    // Index loading
+    // ================================================================
+
+    private static Map<String, LuceneIndex> loadIndices(final Path configDir)
+    {
+        final Map<String, LuceneIndex> map = new LinkedHashMap<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(configDir, "*.xml")) {
+            for (Path xml : stream) {
+                if (!Files.isRegularFile(xml)) continue;
+                try {
+                    final LuceneIndex idx = LuceneIndex.open(xml);
+                    final LuceneIndex prev = map.put(idx.name(), idx);
+                    if (prev != null) {
+                        prev.close();
+                        LOG.warning("Duplicate index name '" + idx.name()
+                            + "', replaced by: " + xml);
+                    }
+                }
+                catch (Exception ex) {
+                    LOG.log(Level.WARNING, "Skipping " + xml + ": " + ex.getMessage(), ex);
+                }
+            }
+        }
+        catch (IOException ex) {
+            LOG.log(Level.SEVERE, "Cannot scan config directory: " + configDir, ex);
+        }
+        return map;
+    }
+
+    /**
+     * Resolve configDir from init-param, context-param, or WEB-INF fallback.
      */
     private Path resolveConfigDir(final ServletConfig config) throws ServletException
     {
-        // 1. servlet init-param
-        String dir = config.getInitParameter("configDir");
+        String dir = config.getInitParameter("alix.conf.dir");
         if (dir == null || dir.isBlank()) {
-            // 2. context-param
-            dir = config.getServletContext().getInitParameter("alix.configDir");
+            dir = config.getServletContext().getInitParameter("alix.conf.dir");
         }
         if (dir != null && !dir.isBlank()) {
             final Path p = Path.of(dir.trim()).toAbsolutePath().normalize();
             if (!Files.isDirectory(p)) {
-                throw new ServletException("configDir is not a directory: " + p);
+                throw new ServletException("alix.conf.dir is not a directory: " + p);
             }
             return p;
         }
-        // 3. default: WEB-INF/
         final String webInf = config.getServletContext().getRealPath("/WEB-INF");
         if (webInf == null) {
             throw new ServletException(
-                "No configDir specified and WEB-INF real path unavailable (exploded war required)");
+                "No alix.conf.dir specified and WEB-INF real path unavailable"
+                + " (exploded war required)");
         }
         return Path.of(webInf);
     }
 
-    // ---- path parsing ----
+    // ================================================================
+    // Error handling
+    // ================================================================
 
     /**
-     * Split pathInfo into non-empty segments.
-     * {@code null} or "/" → empty array.
-     * "/piaget" → ["piaget"].
-     * "/piaget/kwic" → ["piaget", "kwic"].
+     * Send an error response as JSON.
      */
-    private static String[] splitPath(final String pathInfo)
+    static void sendError(
+        final HttpServletResponse resp,
+        final int status,
+        final String message
+    ) throws IOException
     {
-        if (pathInfo == null || pathInfo.equals("/")) {
-            return new String[0];
-        }
-        final String trimmed = pathInfo.startsWith("/") ? pathInfo.substring(1) : pathInfo;
-        return trimmed.split("/");
-    }
-
-    // ---- minimal JSON helpers (no dependency) ----
-
-    private static void jsonPair(final PrintWriter out, final String key, final String value)
-    {
-        out.print(jsonString(key));
-        out.print(':');
-        out.print(value == null ? "null" : jsonString(value));
-    }
-
-    private static void jsonPair(final PrintWriter out, final String key, final int value)
-    {
-        out.print(jsonString(key));
-        out.print(':');
-        out.print(value);
-    }
-
-    private static void jsonPair(final PrintWriter out, final String key, final boolean value)
-    {
-        out.print(jsonString(key));
-        out.print(':');
-        out.print(value);
-    }
-
-    /**
-     * Minimal JSON string escaping. Handles quotes, backslash,
-     * and control characters. Not a full JSON library.
-     */
-    private static String jsonString(final String s)
-    {
-        final StringBuilder sb = new StringBuilder(s.length() + 2);
-        sb.append('"');
-        for (int i = 0; i < s.length(); i++) {
-            final char c = s.charAt(i);
-            switch (c) {
-                case '"':  sb.append("\\\""); break;
-                case '\\': sb.append("\\\\"); break;
-                case '\n': sb.append("\\n");  break;
-                case '\r': sb.append("\\r");  break;
-                case '\t': sb.append("\\t");  break;
-                default:
-                    if (c < 0x20) {
-                        sb.append(String.format("\\u%04x", (int) c));
-                    } else {
-                        sb.append(c);
-                    }
-            }
-        }
-        sb.append('"');
-        return sb.toString();
+        resp.setStatus(status);
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+        final JsonWriter jw = new JsonWriter(resp.getWriter());
+        jw.beginObject();
+        jw.name("error").value(message);
+        jw.name("status").value(status);
+        jw.endObject();
+        jw.flush();
     }
 }
