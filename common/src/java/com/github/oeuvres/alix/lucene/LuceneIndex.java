@@ -27,6 +27,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.FSDirectory;
 
@@ -54,21 +55,21 @@ import org.apache.lucene.store.FSDirectory;
  * <h2>Field inventory</h2>
  * <p>
  * At open time, field metadata is inferred from {@link FieldInfo} across
- * all segments. Stored-field detection is done reliably by probing an actual
- * document that contains each field (not just document 0). Fields are
- * exposed alphabetically via {@link FieldProfile}.
+ * all segments. Stored-field detection is done reliably by finding a
+ * document that actually contains each field (via postings for indexed
+ * fields, via doc-values iterators for doc-values-only fields, via
+ * point-values traversal for point-only fields) and probing its stored
+ * fields. Fields are sorted alphabetically.
  * </p>
  *
  * <h2>Heavy statistics</h2>
  * <p>
- * Per-field term statistics ({@link FieldStats}) are loaded lazily on first
- * access via {@link #fieldStats(String)} and cached for the lifetime of
- * this instance.
+ * Per-field term statistics ({@link FieldStats}) are loaded lazily via
+ * {@link #fieldStats(String)} and cached for the lifetime of this instance.
  * </p>
  *
- * <p>Thread safety: {@link IndexSearcher} is safe for concurrent queries.
- * {@link #fieldStats(String)} is safe for concurrent callers (uses
- * {@link ConcurrentHashMap}).</p>
+ * <p>Thread safety: {@link IndexSearcher} and {@link #fieldStats(String)}
+ * are safe for concurrent use.</p>
  */
 public final class LuceneIndex implements Closeable
 {
@@ -111,9 +112,9 @@ public final class LuceneIndex implements Closeable
      *
      * <p>
      * The index directory is resolved as {@code indexroot/name/} relative
-     * to the config file location. Field metadata is inferred from
-     * {@link FieldInfo} across all segments, enriched with stored-field
-     * detection and per-field document counts.
+     * to the config file location. Field metadata is inferred from all
+     * segments, enriched with stored-field detection and per-field
+     * document counts.
      * </p>
      *
      * @param configXml path to the XML properties file
@@ -185,7 +186,7 @@ public final class LuceneIndex implements Closeable
 
     /**
      * Field inventory inferred from the index.
-     * Unmodifiable, alphabetically sorted by field name.
+     * Unmodifiable, sorted alphabetically by field name.
      *
      * @return field name → profile
      */
@@ -195,13 +196,12 @@ public final class LuceneIndex implements Closeable
      * Lazily load and cache heavy per-field term statistics.
      *
      * <p>
-     * Looks for a persisted {@code <field>.stats} sidecar file in
-     * the index directory. Returns {@code null} if no statistics file
-     * exists for the given field.
+     * Looks for a persisted {@code <field>.stats} sidecar file in the
+     * index directory. Returns {@code null} if no statistics file exists.
      * </p>
      *
      * @param fieldName indexed field name
-     * @return cached statistics, or {@code null} if no sidecar file exists
+     * @return cached statistics, or {@code null} if absent
      * @throws UncheckedIOException if the file exists but cannot be read
      */
     public FieldStats fieldStats(final String fieldName)
@@ -253,20 +253,31 @@ public final class LuceneIndex implements Closeable
      *
      * <p>
      * Combines {@link FieldInfo} metadata (index options, doc values type,
-     * point dimensions, term vectors, norms) with probed data:
-     * stored-field detection (by finding a document that actually has
-     * the field, not just document 0) and per-field document count.
+     * point dimensions, term vectors, norms) with probed data: reliable
+     * stored-field detection and per-field document count.
      * </p>
      *
      * <p>
-     * Properties that are logically implied are not exposed redundantly:
-     * if {@link #indexOptions()} is {@link IndexOptions#NONE NONE},
-     * positions and offsets are necessarily absent and need not be checked.
+     * Stored-field detection works by finding a document that actually
+     * contains the field (not just document 0), then probing its stored
+     * fields. For indexed fields, the first document from the postings is
+     * used. For doc-values-only fields, the first document from the
+     * doc-values iterator. For point-only fields, the first document from
+     * the point-values iterator.
      * </p>
      *
      * <p>
-     * A field that has no {@link IndexOptions}, no {@link DocValuesType},
-     * and no point dimensions can only be a stored-only field.
+     * A field with no {@link IndexOptions}, no {@link DocValuesType},
+     * and no point dimensions can only be stored.
+     * </p>
+     *
+     * <p>
+     * Point type is reported as a string: {@code "int"} (4 bytes per
+     * dimension — could be {@code IntPoint} or {@code FloatPoint},
+     * indistinguishable at this level), {@code "long"} (8 bytes —
+     * could be {@code LongPoint} or {@code DoublePoint}), or
+     * {@code "point"} for other byte widths. Multi-dimensional points
+     * append the dimension count (e.g. {@code "int2"}).
      * </p>
      */
     public static final class FieldProfile
@@ -279,9 +290,8 @@ public final class LuceneIndex implements Closeable
         private final boolean hasTermVectors;
         private final boolean hasNorms;
         private boolean stored;
-        private int docCount;
+        private int docs;
 
-        /** From {@link FieldInfo} (indexed, doc-values, or point fields). */
         FieldProfile(final FieldInfo fi)
         {
             this.name = fi.name;
@@ -295,11 +305,11 @@ public final class LuceneIndex implements Closeable
 
         /**
          * Number of documents with at least one indexed term in this field.
-         * Zero for stored-only or point-only fields.
+         * Zero for stored-only, doc-values-only, or point-only fields.
          */
-        public int docCount() { return docCount; }
+        public int docs() { return docs; }
 
-        /** Doc values type ({@code NONE}, {@code NUMERIC}, {@code SORTED}, {@code SORTED_SET}, …). */
+        /** Doc values type ({@code NONE}, {@code NUMERIC}, {@code SORTED}, …). */
         public DocValuesType docValuesType() { return docValuesType; }
 
         /** True if character offsets are indexed. */
@@ -316,8 +326,8 @@ public final class LuceneIndex implements Closeable
         public boolean hasNorms() { return hasNorms; }
 
         /**
-         * True if the field has point data ({@code IntPoint}, {@code LongPoint},
-         * {@code FloatPoint}, {@code DoublePoint}).
+         * True if the field has point data ({@code IntPoint},
+         * {@code LongPoint}, {@code FloatPoint}, {@code DoublePoint}).
          */
         public boolean hasPoints() { return pointDimensionCount > 0; }
 
@@ -331,7 +341,7 @@ public final class LuceneIndex implements Closeable
         /** True if term vectors are stored. */
         public boolean hasTermVectors() { return hasTermVectors; }
 
-        /** True if the field is indexed at all (inverted). */
+        /** True if the field is indexed (inverted). */
         public boolean indexed() { return indexOptions != IndexOptions.NONE; }
 
         /** Lucene index options ({@code NONE}, {@code DOCS}, {@code DOCS_AND_FREQS}, …). */
@@ -340,31 +350,53 @@ public final class LuceneIndex implements Closeable
         /** Field name as declared in the index. */
         public String name() { return name; }
 
-        /**
-         * Number of point data dimensions, or 0 if no point data.
-         * For standard numeric points ({@code IntPoint}, etc.) this is 1.
-         */
+        /** Number of point dimensions, or 0 if no point data. */
         public int pointDimensionCount() { return pointDimensionCount; }
 
-        /**
-         * Number of bytes per point dimension, or 0 if no point data.
-         * 4 for {@code IntPoint}/{@code FloatPoint},
-         * 8 for {@code LongPoint}/{@code DoublePoint}.
-         */
+        /** Bytes per point dimension, or 0 if no point data. */
         public int pointNumBytes() { return pointNumBytes; }
+
+        /**
+         * Human-readable point type label.
+         *
+         * <p>
+         * {@code "int"} for 4 bytes/dim (IntPoint or FloatPoint),
+         * {@code "long"} for 8 bytes/dim (LongPoint or DoublePoint),
+         * {@code "point"} otherwise. Multi-dimensional points append
+         * the count: {@code "int2"}, {@code "long3"}.
+         * Returns {@code null} if the field has no points.
+         * </p>
+         *
+         * @return label, or {@code null}
+         */
+        public String pointLabel()
+        {
+            if (pointDimensionCount <= 0) return null;
+            String base;
+            switch (pointNumBytes) {
+                case 4:  base = "int";   break;
+                case 8:  base = "long";  break;
+                default: base = "point"; break;
+            }
+            if (pointDimensionCount == 1) return base;
+            return base + pointDimensionCount;
+        }
 
         /**
          * True if the field has stored values.
          *
          * <p>
-         * For indexed fields, detection is done by probing the stored fields
-         * of the first document that actually contains a term in this field.
-         * For fields with only doc values or points, the first document with
-         * a value is probed similarly.
-         * For fields with no index options, no doc values, and no points,
-         * stored is inferred as {@code true} (no other way for such a field
-         * to appear in {@link FieldInfo}).
+         * Detection strategy:
          * </p>
+         * <ul>
+         *   <li>Indexed fields: probe the first document from postings.</li>
+         *   <li>Doc-values-only: probe the first document from the
+         *       doc-values iterator.</li>
+         *   <li>Point-only: probe the first document from the
+         *       point-values iterator.</li>
+         *   <li>No index, no doc-values, no points: inferred as stored
+         *       (no other way for the field to appear).</li>
+         * </ul>
          */
         public boolean stored() { return stored; }
     }
@@ -376,12 +408,11 @@ public final class LuceneIndex implements Closeable
     /**
      * Build field inventory from segment metadata, then enrich with
      * stored-field detection and per-field doc counts.
-     * Fields are sorted alphabetically by name.
+     * Sorted alphabetically by field name.
      */
     private static Map<String, FieldProfile> inferFields(final DirectoryReader reader)
         throws IOException
     {
-        // TreeMap for alphabetical order
         final Map<String, FieldProfile> map = new TreeMap<>();
 
         // 1. collect from FieldInfo across all segments
@@ -391,17 +422,18 @@ public final class LuceneIndex implements Closeable
             }
         }
 
-        // 2. detect stored + docCount per field
+        // 2. stored detection + docs
         for (FieldProfile fp : map.values()) {
             if (fp.indexed()) {
-                // indexed field: get docCount, find first doc to probe stored
-                fp.docCount = reader.getDocCount(fp.name);
-                fp.stored = probeStoredForIndexedField(reader, fp.name);
+                fp.docs = reader.getDocCount(fp.name);
+                fp.stored = probeStoredViaPostings(reader, fp.name);
             }
-            else if (fp.hasDocValues() || fp.hasPoints()) {
-                // doc-values-only or point-only: can't get docCount from
-                // inverted index. Probe stored by checking first doc with value.
-                fp.stored = probeStoredForNonIndexedField(reader, fp.name);
+            else if (fp.hasDocValues()) {
+                fp.stored = probeStoredViaDocValues(reader, fp.name, fp.docValuesType);
+            }
+            else if (fp.hasPoints()) {
+                fp.stored = probeStoredViaPoints(reader, fp.name);
+                fp.docs = pointDocs(reader, fp.name);
             }
             else {
                 // no indexOptions, no docValues, no points:
@@ -414,12 +446,28 @@ public final class LuceneIndex implements Closeable
     }
 
     /**
-     * For an indexed field: find the first document that has a posting,
-     * then check if that doc also has a stored value for the same field name.
-     *
-     * @return {@code true} if the field is stored in at least one document
+     * Sum point-values doc counts across all leaves.
+     * Each document belongs to exactly one segment, so the sum is correct.
      */
-    private static boolean probeStoredForIndexedField(
+    private static int pointDocs(final IndexReader reader, final String fieldName)
+        throws IOException
+    {
+        int count = 0;
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final var pv = ctx.reader().getPointValues(fieldName);
+            if (pv != null) {
+                count += pv.getDocCount();
+            }
+        }
+        return count;
+    }
+    // ---- stored-field probing strategies ----
+
+    /**
+     * Find the first document with a posting for this field,
+     * then check if it also has a stored value.
+     */
+    private static boolean probeStoredViaPostings(
         final IndexReader reader, final String fieldName
     ) throws IOException
     {
@@ -429,29 +477,82 @@ public final class LuceneIndex implements Closeable
             if (terms == null) continue;
             final TermsEnum te = terms.iterator();
             if (te.next() == null) continue;
-            // get first doc with this term
             final PostingsEnum pe = te.postings(null, PostingsEnum.NONE);
             final int localDoc = pe.nextDoc();
             if (localDoc == PostingsEnum.NO_MORE_DOCS) continue;
-            final int globalDoc = ctx.docBase + localDoc;
-            return isFieldStored(reader, globalDoc, fieldName);
+            return isFieldStored(reader, ctx.docBase + localDoc, fieldName);
         }
         return false;
     }
 
     /**
-     * For a non-indexed field (doc-values-only or point-only):
-     * probe document 0. This is a rough heuristic; doc-values-only fields
-     * are rarely also stored, but it's worth checking.
-     *
-     * @return {@code true} if the field is stored in document 0
+     * Find the first document with a doc-values entry for this field,
+     * then check if it also has a stored value.
      */
-    private static boolean probeStoredForNonIndexedField(
+    private static boolean probeStoredViaDocValues(
+        final IndexReader reader, final String fieldName, final DocValuesType dvType
+    ) throws IOException
+    {
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final LeafReader leaf = ctx.reader();
+            final int localDoc = firstDocWithDocValues(leaf, fieldName, dvType);
+            if (localDoc < 0) continue;
+            return isFieldStored(reader, ctx.docBase + localDoc, fieldName);
+        }
+        return false;
+    }
+
+    /**
+     * Return the first docId that has a doc-values entry in this leaf,
+     * or -1 if none.
+     */
+    private static int firstDocWithDocValues(
+        final LeafReader leaf, final String field, final DocValuesType dvType
+    ) throws IOException
+    {
+        DocIdSetIterator iter = null;
+        switch (dvType) {
+            case NUMERIC:        iter = leaf.getNumericDocValues(field);      break;
+            case SORTED:         iter = leaf.getSortedDocValues(field);       break;
+            case SORTED_NUMERIC: iter = leaf.getSortedNumericDocValues(field);break;
+            case SORTED_SET:     iter = leaf.getSortedSetDocValues(field);    break;
+            case BINARY:         iter = leaf.getBinaryDocValues(field);       break;
+            default: return -1;
+        }
+        if (iter == null) return -1;
+        final int doc = iter.nextDoc();
+        return (doc == DocIdSetIterator.NO_MORE_DOCS) ? -1 : doc;
+    }
+
+    /**
+     * Find the first document with point values for this field,
+     * then check if it also has a stored value.
+     *
+     * <p>
+     * Scans docIds sequentially in each leaf that has point values.
+     * {@code PointValues} exposes {@code getDocCount()} but no iterator;
+     * however, the leaf reader is small enough that scanning a few
+     * docs is cheap.
+     * </p>
+     */
+    private static boolean probeStoredViaPoints(
         final IndexReader reader, final String fieldName
     ) throws IOException
     {
-        if (reader.numDocs() == 0) return false;
-        return isFieldStored(reader, 0, fieldName);
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final LeafReader leaf = ctx.reader();
+            if (leaf.getPointValues(fieldName) == null) continue;
+            // this leaf has point data for the field;
+            // scan docs looking for one with a stored value
+            final int maxDoc = leaf.maxDoc();
+            final int probeLimit = Math.min(maxDoc, 256);
+            for (int i = 0; i < probeLimit; i++) {
+                if (isFieldStored(reader, ctx.docBase + i, fieldName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -468,8 +569,6 @@ public final class LuceneIndex implements Closeable
     /**
      * Elect the default content field: first alphabetical field with
      * positional indexing.
-     *
-     * @return field name, or {@code null} if no positional field exists
      */
     private static String electContentField(final Map<String, FieldProfile> fields)
     {

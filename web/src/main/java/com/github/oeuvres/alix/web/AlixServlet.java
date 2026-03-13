@@ -188,7 +188,7 @@ public class AlixServlet extends HttpServlet
      * <p>
      * Each field reports only its relevant, non-redundant properties.
      * A stored-only field appears as {@code {"stored": true}}.
-     * An indexed field shows {@code indexOptions}, {@code docCount},
+     * An indexed field shows {@code indexOptions}, {@code docs},
      * and only the flags that are true or noteworthy.
      * </p>
      */
@@ -227,10 +227,10 @@ public class AlixServlet extends HttpServlet
      *
      * <p>Rules:</p>
      * <ul>
-     *   <li>Indexed: show {@code indexOptions} (readable label) and {@code docCount}.</li>
+     *   <li>Indexed: show {@code indexOptions} (readable label) and {@code docs}.</li>
      *   <li>Stored: show only when {@code true}.</li>
      *   <li>DocValues: show with type label, only when present.</li>
-     *   <li>Points: show with dimension count and byte size.</li>
+     *   <li>Points: show type label ({@code "int"}, {@code "long"}, etc.).</li>
      *   <li>TermVectors: show only when {@code true}.</li>
      *   <li>Norms: show {@code false} only on indexed fields (absent norms
      *       on an indexed field is the noteworthy case; present is default).</li>
@@ -243,9 +243,12 @@ public class AlixServlet extends HttpServlet
     {
         jw.beginObject();
 
+        if (fp.docs()> 0) {
+            jw.name("docs").value(fp.docs());
+        }
+
         if (fp.indexed()) {
             jw.name("indexOptions").value(indexOptionsLabel(fp.indexOptions()));
-            jw.name("docCount").value(fp.docCount());
         }
 
         if (fp.stored()) {
@@ -257,11 +260,7 @@ public class AlixServlet extends HttpServlet
         }
 
         if (fp.hasPoints()) {
-            jw.name("points");
-            jw.beginObject();
-            jw.name("dimensions").value(fp.pointDimensionCount());
-            jw.name("bytesPerDim").value(fp.pointNumBytes());
-            jw.endObject();
+            jw.name("point").value(fp.pointLabel());
         }
 
         if (fp.hasTermVectors()) {
