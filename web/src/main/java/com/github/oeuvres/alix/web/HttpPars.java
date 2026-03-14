@@ -151,80 +151,6 @@ public class HttpPars
         }
     }
 
-    /**
-     * Escape a character sequence for safe inclusion in a double-quoted
-     * HTML attribute. Escapes {@code " < > &}.
-     * 
-     * @param cs characters to escape, may be null.
-     * @return the escaped string, or empty string if cs is null.
-     */
-    public static String escape(final CharSequence cs)
-    {
-        if (cs == null)
-            return "";
-        final int len = cs.length();
-        final StringBuilder out = new StringBuilder(Math.max(16, len));
-        for (int i = 0; i < len; i++) {
-            char c = cs.charAt(i);
-            switch (c) {
-            case '"':
-                out.append("&quot;");
-                break;
-            case '<':
-                out.append("&lt;");
-                break;
-            case '>':
-                out.append("&gt;");
-                break;
-            case '&':
-                out.append("&amp;");
-                break;
-            default:
-                out.append(c);
-            }
-        }
-        return out.toString();
-    }
-
-    /**
-     * Escape a string for safe inclusion in a double-quoted HTML attribute
-     * that contains a URL. Like {@link #escape(CharSequence)}, but also
-     * encodes {@code +} as {@code %2B} to prevent its interpretation as
-     * a space in query strings.
-     * 
-     * @param s URL string to escape, may be null.
-     * @return the escaped string, or empty string if s is null.
-     */
-    public static String escapeUrl(final String s)
-    {
-        if (s == null)
-            return "";
-        final int len = s.length();
-        final StringBuilder out = new StringBuilder(Math.max(16, len));
-        for (int i = 0; i < len; i++) {
-            char c = s.charAt(i);
-            switch (c) {
-            case '"':
-                out.append("&quot;");
-                break;
-            case '<':
-                out.append("&lt;");
-                break;
-            case '>':
-                out.append("&gt;");
-                break;
-            case '&':
-                out.append("&amp;");
-                break;
-            case '+':
-                out.append("%2B");
-                break;
-            default:
-                out.append(c);
-            }
-        }
-        return out.toString();
-    }
 
     /**
      * Resolve a request parameter as a boolean.
@@ -853,12 +779,11 @@ public class HttpPars
 
     /**
      * Minimally percent-encode a query-string component (name or value).
-     * Only characters that have structural meaning in a query string are
-     * encoded: {@code &amp;} → {@code %26}, {@code =} → {@code %3D},
-     * {@code +} → {@code %2B}, {@code #} → {@code %23},
-     * space → {@code %20}.
+     * Encodes characters that are structural in a query string
+     * ({@code &amp; = + #}, space) and characters that are URI delimiters
+     * per RFC 3986 §2.2 ({@code " < >}).
      * All other characters, including non-ASCII Unicode, pass through
-     * unchanged as UTF-8.
+     * unchanged as UTF-8, keeping URLs human-readable.
      * 
      * @param s the raw component string.
      * @return the encoded string.
@@ -873,6 +798,7 @@ public class HttpPars
             char c = s.charAt(i);
             String esc;
             switch (c) {
+            // query-string structural
             case '&':
                 esc = "%26";
                 break;
@@ -887,6 +813,16 @@ public class HttpPars
                 break;
             case ' ':
                 esc = "%20";
+                break;
+            // RFC 3986 §2.2 delimiters, unsafe in HTML attributes
+            case '"':
+                esc = "%22";
+                break;
+            case '<':
+                esc = "%3C";
+                break;
+            case '>':
+                esc = "%3E";
                 break;
             default:
                 if (sb != null) sb.append(c);
