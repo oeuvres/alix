@@ -24,6 +24,13 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
  *       format methods you need.</li>
  *   <li>Register it in {@code AlixServlet.registerOps()}.</li>
  * </ol>
+ *
+ * <h2>Parameter resolution</h2>
+ * <p>
+ * Subclasses should use {@link HttpPars} for typed parameter access
+ * with fallback and optional cookie persistence, rather than reading
+ * raw request parameters directly.
+ * </p>
  */
 public abstract class Op
 {
@@ -96,37 +103,7 @@ public abstract class Op
         AlixServlet.sendError(resp, 406, name() + ": csv not implemented");
     }
 
-    // ---- shared utilities ----
-
-    /** Read the "q" parameter, or null if absent/blank. */
-    protected static String qParam(final HttpServletRequest req)
-    {
-        final String q = req.getParameter("q");
-        return (q != null && !q.isBlank()) ? q.trim() : null;
-    }
-
-    /** Read an integer parameter, or {@code def} if absent/unparseable. */
-    protected static int intParam(
-        final HttpServletRequest req, final String name, final int def)
-    {
-        final String s = req.getParameter(name);
-        if (s == null) return def;
-        try { return Integer.parseInt(s.trim()); }
-        catch (NumberFormatException e) { return def; }
-    }
-
-    /** Pagination: 0-based start offset. */
-    protected static int start(final HttpServletRequest req)
-    {
-        return Math.max(0, intParam(req, "start", 0));
-    }
-
-    /** Pagination: result limit, clamped to [1, max]. */
-    protected static int limit(
-        final HttpServletRequest req, final int def, final int max)
-    {
-        return Math.max(1, Math.min(intParam(req, "limit", def), max));
-    }
+    // ---- response utilities ----
 
     /** Open a Gson {@link JsonWriter} on the response. */
     protected static JsonWriter jsonWriter(final HttpServletResponse resp)

@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.web.op;
+package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.util.List;
@@ -8,11 +8,11 @@ import com.google.gson.stream.JsonWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TermRow;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
-import com.github.oeuvres.alix.web.AlixServlet;
 
 /**
  * {@code /{index}/terms} — ranked term lists.
@@ -37,11 +37,11 @@ import com.github.oeuvres.alix.web.AlixServlet;
  */
 public final class OpTerms extends Op
 {
+    /** Clamping range for the {@code top} parameter. */
+    private static final int[] TOP_RANGE = { 1, 500 };
+
     /** Default number of returned terms. */
     private static final int DEFAULT_TOP = 50;
-
-    /** Hard ceiling on returned terms. */
-    private static final int MAX_TOP = 500;
 
     /** Default BM25 IDF exponent. */
     private static final double DEFAULT_IDF_EXP = 1.3d;
@@ -56,10 +56,11 @@ public final class OpTerms extends Op
         final HttpServletResponse resp
     ) throws IOException
     {
-        // ---- parameter parsing ----
-        final String field = fieldParam(index, req);
-        final int topK = topParam(req);
-        final String q = qParam(req);
+        final HttpPars pars = new HttpPars(req);
+
+        final String field = pars.getString("field", index.content());
+        final int topK = pars.getInt("top", TOP_RANGE, DEFAULT_TOP);
+        final String q = pars.getString("q", null);
 
         // ---- dispatch to producer ----
         final List<TermRow> rows;
@@ -72,88 +73,35 @@ public final class OpTerms extends Op
         }
         else {
             // Theme terms mode
-            final ThemeTerms themeTerms = index.themeTerms(field);
+            final FlucText fluc = index.fieldText(field);
+            if (fluc == null) {
+                AlixServlet.sendError(resp, 404,
+                    "terms: field '" + field + "' not found or not a text field");
+                return;
+            }
+            final ThemeTerms themeTerms = fluc.themeTerms();
             if (themeTerms == null) {
                 AlixServlet.sendError(resp, 503,
                     "terms: lexicon or field statistics not available for field '"
                     + field + "'");
                 return;
             }
-            final double idfExp = doubleParam(req, "idfExp", DEFAULT_IDF_EXP);
+            final double idfExp = pars.getDouble("idfExp", DEFAULT_IDF_EXP);
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             rows = themeTerms.topTerms(scorer, topK);
         }
 
         // ---- serialize ----
-        writeTermRows(resp, rows);
-    }
-
-    // ================================================================
-    // Serialization
-    // ================================================================
-
-    /**
-     * Write a list of term rows as a JSON array.
-     */
-    private static void writeTermRows(
-        final HttpServletResponse resp,
-        final List<TermRow> rows
-    ) throws IOException
-    {
-        final JsonWriter jw = jsonWriter(resp);
-        jw.beginArray();
-        for (TermRow row : rows) {
-            jw.beginObject();
-            jw.name("term").value(row.term());
-            jw.name("count").value(row.count());
-            jw.name("score").value(row.score());
-            jw.endObject();
-        }
-        jw.endArray();
-        jw.flush();
-    }
-
-    // ================================================================
-    // Parameter helpers
-    // ================================================================
-
-    /**
-     * Resolve the target field: explicit {@code field} param, or index default.
-     */
-    private static String fieldParam(
-        final LuceneIndex index,
-        final HttpServletRequest req
-    ) {
-        final String param = req.getParameter("field");
-        if (param != null && !param.isBlank()) {
-            return param.trim();
-        }
-        return index.content();
-    }
-
-    /**
-     * Read the {@code top} parameter, clamped to {@code [1, MAX_TOP]}.
-     */
-    private static int topParam(final HttpServletRequest req)
-    {
-        return Math.max(1, Math.min(intParam(req, "top", DEFAULT_TOP), MAX_TOP));
-    }
-
-    /**
-     * Read a double parameter, or {@code def} if absent/unparseable.
-     */
-    private static double doubleParam(
-        final HttpServletRequest req,
-        final String name,
-        final double def
-    ) {
-        final String s = req.getParameter(name);
-        if (s == null) return def;
-        try {
-            return Double.parseDouble(s.trim());
-        }
-        catch (NumberFormatException e) {
-            return def;
+        try (JsonWriter jw = jsonWriter(resp)) {
+            jw.beginArray();
+            for (TermRow row : rows) {
+                jw.beginObject();
+                jw.name("term").value(row.term());
+                jw.name("count").value(row.count());
+                jw.name("score").value(row.score());
+                jw.endObject();
+            }
+            jw.endArray();
         }
     }
 }

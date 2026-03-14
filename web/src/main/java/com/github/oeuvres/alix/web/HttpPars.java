@@ -274,18 +274,18 @@ public class HttpPars
     }
 
     /**
-     * Resolve a request parameter as a float.
+     * Resolve a request parameter as a double.
      * 
      * @param name     parameter name.
      * @param fallback value returned when absent or unparseable.
-     * @return resolved float.
+     * @return resolved double.
      */
-    public float getFloat(final String name, final float fallback)
+    public double getDouble(final String name, final double fallback)
     {
         String value = request.getParameter(name);
         if (hasValue(value)) {
             try {
-                return Float.parseFloat(value);
+                return Double.parseDouble(value);
             } catch (NumberFormatException e) {
                 // fall through
             }
@@ -294,21 +294,21 @@ public class HttpPars
     }
 
     /**
-     * Resolve a request parameter as a float with cookie persistence.
+     * Resolve a request parameter as a double with cookie persistence.
      * Priority: request parameter → cookie → fallback.
      * An empty (non-null) parameter resets the cookie.
      * 
      * @param name     parameter name.
-     * @param fallback value returned when neither parameter nor cookie yield a valid float.
+     * @param fallback value returned when neither parameter nor cookie yield a valid double.
      * @param cookie   cookie name for persistence.
-     * @return resolved float.
+     * @return resolved double.
      */
-    public float getFloat(final String name, final float fallback, final String cookie)
+    public double getDouble(final String name, final double fallback, final String cookie)
     {
         String value = request.getParameter(name);
         if (hasValue(value)) {
             try {
-                float ret = Float.parseFloat(value);
+                double ret = Double.parseDouble(value);
                 cookie(cookie, "" + ret);
                 return ret;
             } catch (NumberFormatException e) {
@@ -323,7 +323,7 @@ public class HttpPars
         if (value == null)
             return fallback;
         try {
-            return Float.parseFloat(value);
+            return Double.parseDouble(value);
         } catch (NumberFormatException e) {
             cookie(cookie, null);
             return fallback;
