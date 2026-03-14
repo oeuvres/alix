@@ -43,22 +43,17 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
-import jakarta.servlet.jsp.JspWriter;
-import jakarta.servlet.jsp.PageContext;
 
 /**
  * Jsp toolbox.
  */
-public class JspTools
+public class WebPars
 {
-    /** Jsp page context */
-    public final PageContext page;
-    /** Original request */
+
+    /** Original request, to get parameters */
     public final HttpServletRequest request;
-    /** Original response */
+    /** Original response, to set cookie persistence */
     public final HttpServletResponse response;
-    /** Where to write */
-    public final JspWriter out;
     /** Cookie */
     HashMap<String, String> cookies;
     /** for cookies */
@@ -68,11 +63,9 @@ public class JspTools
      * Wrap the global jsp variables.
      * @param page jsp page context.
      */
-    public JspTools(final PageContext page) {
-        this.request = (HttpServletRequest) page.getRequest();
-        this.response = (HttpServletResponse) page.getResponse();
-        this.out = page.getOut();
-        this.page = page;
+    public WebPars(final HttpServletRequest request, final HttpServletResponse response) {
+        this.request = request;
+        this.response = response;
     }
 
     /**
