@@ -12,20 +12,15 @@ import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TermRow;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
-import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
 
 /**
  * {@code /{index}/terms} — ranked term lists.
  *
  * <p>
- * Always returns a JSON array of {@code {term, count, score}} objects.
- * The source of the ranking depends on query parameters:
+ * Returns a JSON document with top-level {@code meta} and {@code data} keys.
+ * On error, the document contains {@code errors} instead of (or alongside)
+ * {@code data}.
  * </p>
- * <ul>
- *   <li>No {@code q}: corpus-level theme terms (summed BM25).</li>
- *   <li>{@code q} present: co-occurrence ranking (future).</li>
- *   <li>Partition parameters (future): subset keyness.</li>
- * </ul>
  *
  * <h2>Parameters</h2>
  * <table>
@@ -34,6 +29,20 @@ import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
  *   <tr><td>{@code idfExp}</td><td>BM25 IDF exponent; default 1.3 (theme terms only)</td></tr>
  *   <tr><td>{@code q}</td><td>query terms for co-occurrence mode (future)</td></tr>
  * </table>
+ *
+ * <h2>Response</h2>
+ * <pre>
+ * {
+ *   "meta": {
+ *     "QTime": 42,
+ *     "params": { "field": "text", "top": 50, "idfExp": 1.3 }
+ *   },
+ *   "data": [
+ *     { "term": "enfant", "count": 8234, "score": 12.47 },
+ *     …
+ *   ]
+ * }
+ * </pre>
  */
 public final class OpTerms extends Op
 {
@@ -64,9 +73,11 @@ public final class OpTerms extends Op
 
         // ---- dispatch to producer ----
         final List<TermRow> rows;
+        final double idfExp;
+        final long t0 = System.nanoTime();
 
         if (q != null) {
-            // Co-occurrence mode — placeholder for Cooc integration
+            // Co-occurrence mode — placeholder
             AlixServlet.sendError(resp, 501,
                 "terms: co-occurrence mode not yet implemented");
             return;
@@ -79,20 +90,36 @@ public final class OpTerms extends Op
                     "terms: field '" + field + "' not found or not a text field");
                 return;
             }
-            final ThemeTerms themeTerms = fluc.themeTerms();
-            if (themeTerms == null) {
-                AlixServlet.sendError(resp, 503,
-                    "terms: lexicon or field statistics not available for field '"
-                    + field + "'");
-                return;
-            }
-            final double idfExp = pars.getDouble("idfExp", DEFAULT_IDF_EXP);
+            idfExp = pars.getDouble("idfExp", DEFAULT_IDF_EXP);
             final TermScorer scorer = new TermScorer.BM25(idfExp);
-            rows = themeTerms.topTerms(scorer, topK);
+            rows = fluc.themeTerms().topTerms(scorer, topK);
         }
+
+        final long qTime = (System.nanoTime() - t0) / 1_000_000;
 
         // ---- serialize ----
         try (JsonWriter jw = jsonWriter(resp)) {
+            jw.beginObject();
+
+            // meta
+            jw.name("meta");
+            jw.beginObject();
+            jw.name("QTime").value(qTime);
+            jw.name("params");
+            jw.beginObject();
+            jw.name("field").value(field);
+            jw.name("top").value(topK);
+            if (q != null) {
+                jw.name("q").value(q);
+            }
+            else {
+                jw.name("idfExp").value(idfExp);
+            }
+            jw.endObject(); // params
+            jw.endObject(); // meta
+
+            // data
+            jw.name("data");
             jw.beginArray();
             for (TermRow row : rows) {
                 jw.beginObject();
@@ -102,6 +129,8 @@ public final class OpTerms extends Op
                 jw.endObject();
             }
             jw.endArray();
+
+            jw.endObject();
         }
     }
 }

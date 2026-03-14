@@ -16,8 +16,9 @@ import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
  * A tokenized field with positions: the primary Alix field type.
  *
  * <p>
- * Lazily loads and caches per-field analysis resources from sidecar
- * files stored alongside the Lucene index:
+ * Lazily loads per-field analysis resources from sidecar files stored
+ * alongside the Lucene index. If a sidecar file does not exist, it is
+ * built from the frozen reader on first access.
  * </p>
  * <ul>
  *   <li>{@link FieldStats} — immutable reference statistics
@@ -31,25 +32,25 @@ import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
  * </ul>
  *
  * <p>
- * Each resource is loaded at most once. If the sidecar files do not
- * exist, the accessor returns {@code null}. A frozen index guarantees
- * that presence is stable across the lifetime of this object.
+ * Each resource is loaded at most once. Build order respects dependencies:
+ * TermRail requires TermLexicon; ThemeTerms requires both FieldStats
+ * and TermLexicon.
  * </p>
  *
  * <h2>Thread safety</h2>
  * <p>
- * Lazy initialization is synchronized. Once loaded, all resources
- * are immutable or read-only and safe for concurrent access.
+ * Lazy initialization is synchronized on this instance. Once loaded,
+ * all resources are immutable or read-only and safe for concurrent access.
  * </p>
  *
  * @see Fluc#inferFields
  */
 public final class FlucText extends Fluc
 {
-    /** Frozen reader, held for ThemeTerms construction. */
+    /** Frozen reader, held for sidecar building and ThemeTerms construction. */
     private final IndexReader reader;
 
-    // ---- lazy resources (guarded by synchronized) ----
+    // ---- lazy resources ----
 
     private FieldStats fieldStats;
     private boolean fieldStatsResolved;
@@ -80,7 +81,7 @@ public final class FlucText extends Fluc
      * @param stored   whether the field has stored values
      * @param docs     number of documents with at least one indexed term
      * @param indexDir Lucene index directory
-     * @param reader   frozen index reader (retained for ThemeTerms)
+     * @param reader   frozen index reader
      */
     public FlucText(
         final FieldInfo fi,
@@ -94,96 +95,84 @@ public final class FlucText extends Fluc
     }
 
     // ================================================================
-    // Resource accessors (lazy, synchronized)
+    // Resource accessors
     // ================================================================
 
     /**
      * Immutable reference statistics for this field.
+     * Built from postings if the sidecar file does not exist.
      *
-     * @return field statistics, or {@code null} if no
-     *         {@code <field>.stats} sidecar file exists
-     * @throws UncheckedIOException if the file exists but cannot be read
+     * @return field statistics, never {@code null}
+     * @throws UncheckedIOException if building or reading fails
      */
     public synchronized FieldStats fieldStats()
     {
         if (!fieldStatsResolved) {
             fieldStatsResolved = true;
-            try {
-                if (FieldStats.exists(indexDir, name())) {
-                    fieldStats = FieldStats.open(indexDir, name());
-                }
-            }
-            catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+            fieldStats = ensureOpen(
+                FieldStats.exists(indexDir, name()),
+                () -> FieldStats.write(indexDir, reader, name()),
+                () -> FieldStats.open(indexDir, name())
+            );
         }
         return fieldStats;
     }
 
     /**
      * Dense term lexicon (FST + memory-mapped term data).
+     * Built from postings if the sidecar files do not exist.
      *
-     * @return lexicon, or {@code null} if no lexicon sidecar files exist
-     * @throws UncheckedIOException if the files exist but cannot be read
+     * @return lexicon, never {@code null}
+     * @throws UncheckedIOException if building or reading fails
      */
     public synchronized TermLexicon termLexicon()
     {
         if (!lexiconResolved) {
             lexiconResolved = true;
-            try {
-                if (TermLexicon.exists(indexDir, name())) {
-                    lexicon = TermLexicon.open(indexDir, name());
-                }
-            }
-            catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+            lexicon = ensureOpen(
+                TermLexicon.exists(indexDir, name()),
+                () -> TermLexicon.write(indexDir, reader, name()),
+                () -> TermLexicon.open(indexDir, name())
+            );
         }
         return lexicon;
     }
 
     /**
      * Forward positional rail (memory-mapped).
+     * Built from postings if the sidecar files do not exist.
+     * Ensures the {@link #termLexicon()} is available first.
      *
-     * @return rail, or {@code null} if no rail sidecar files exist
-     * @throws UncheckedIOException if the files exist but cannot be read
+     * @return rail, never {@code null}
+     * @throws UncheckedIOException if building or reading fails
      */
     public synchronized TermRail termRail()
     {
         if (!railResolved) {
             railResolved = true;
-            try {
-                if (TermRail.exists(indexDir, name())) {
-                    rail = TermRail.open(indexDir, name());
-                }
-            }
-            catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+            final TermLexicon lex = termLexicon();
+            rail = ensureOpen(
+                TermRail.exists(indexDir, name()),
+                () -> TermRail.write(indexDir, reader, name(), lex),
+                () -> TermRail.open(indexDir, name())
+            );
         }
         return rail;
     }
 
     /**
      * Corpus-level keyword scorer.
+     * Ensures both {@link #fieldStats()} and {@link #termLexicon()}
+     * are available first.
      *
-     * <p>
-     * Requires both {@link #fieldStats()} and {@link #termLexicon()}
-     * to be available. Returns {@code null} if either is absent.
-     * </p>
-     *
-     * @return theme terms scorer, or {@code null} if prerequisites are absent
+     * @return theme terms scorer, never {@code null}
      * @throws UncheckedIOException if underlying resources cannot be loaded
      */
     public synchronized ThemeTerms themeTerms()
     {
         if (!themeTermsResolved) {
             themeTermsResolved = true;
-            final FieldStats fs = fieldStats();
-            final TermLexicon lex = termLexicon();
-            if (fs != null && lex != null) {
-                themeTerms = new ThemeTerms(reader, lex, fs);
-            }
+            themeTerms = new ThemeTerms(reader, termLexicon(), fieldStats());
         }
         return themeTerms;
     }
@@ -221,5 +210,38 @@ public final class FlucText extends Fluc
 
         fieldStats = null;
         fieldStatsResolved = false;
+    }
+
+    // ================================================================
+    // Internal helper
+    // ================================================================
+
+    @FunctionalInterface
+    private interface IORunnable {
+        void run() throws IOException;
+    }
+
+    @FunctionalInterface
+    private interface IOSupplier<T> {
+        T get() throws IOException;
+    }
+
+    /**
+     * If the resource does not exist, build it, then open it.
+     */
+    private static <T> T ensureOpen(
+        final boolean exists,
+        final IORunnable writer,
+        final IOSupplier<T> opener
+    ) {
+        try {
+            if (!exists) {
+                writer.run();
+            }
+            return opener.get();
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

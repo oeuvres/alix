@@ -378,6 +378,12 @@ public class AlixServlet extends HttpServlet
 
     /**
      * Send an error response as JSON.
+     *
+     * <p>
+     * Uses the {@code errors} array convention: the top-level document
+     * contains a single {@code errors} key with an array of error objects,
+     * each carrying {@code status} and {@code message}.
+     * </p>
      */
     static void sendError(
         final HttpServletResponse resp,
@@ -390,8 +396,13 @@ public class AlixServlet extends HttpServlet
         resp.setCharacterEncoding("UTF-8");
         try (JsonWriter jw = new JsonWriter(resp.getWriter())) {
             jw.beginObject();
-            jw.name("error").value(message);
+            jw.name("errors");
+            jw.beginArray();
+            jw.beginObject();
             jw.name("status").value(status);
+            jw.name("message").value(message);
+            jw.endObject();
+            jw.endArray();
             jw.endObject();
         }
     }
