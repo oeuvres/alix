@@ -32,6 +32,8 @@
  */
 package com.github.oeuvres.alix.web;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -61,7 +63,7 @@ public class HttpPars
 
     /** Wrapped request, source of parameters and attributes. */
     public final HttpServletRequest request;
-    /** Wrapped response, used for cookie persistence. */
+    /** Wrapped response, used for cookie persistence (null for read-only / JSON usage). */
     public final HttpServletResponse response;
     /** Lazily populated cookie cache, keyed by cookie name. */
     private HashMap<String, String> cookies;
@@ -70,6 +72,7 @@ public class HttpPars
 
     /**
      * Construct a parameter helper for the given request/response pair.
+     * Cookie persistence requires a non-null response.
      * 
      * @param request  the current HTTP request.
      * @param response the current HTTP response (used for setting cookies).
@@ -78,6 +81,18 @@ public class HttpPars
     {
         this.request = request;
         this.response = response;
+    }
+
+    /**
+     * Construct a read-only parameter helper (no cookie persistence).
+     * Cookie-writing calls become no-ops. Suitable for JSON endpoints
+     * where response cookie management is unwanted.
+     * 
+     * @param request the current HTTP request.
+     */
+    public HttpPars(final HttpServletRequest request)
+    {
+        this(request, null);
     }
 
     /**
@@ -123,12 +138,12 @@ public class HttpPars
     }
 
     /**
-     * Set or delete a cookie on the response. A null value deletes the cookie
-     * (max-age=0). Non-null values are persisted for {@value #COOKIE_MAX_AGE_SECONDS}
-     * seconds with HttpOnly and SameSite=Strict.
+     * Set or delete a cookie on the response using the Jakarta {@link Cookie} API.
+     * A null value deletes the cookie (max-age=0). Non-null values are persisted
+     * for {@value #COOKIE_MAX_AGE_SECONDS} seconds with HttpOnly and SameSite=Strict.
      * 
-     * <p><b>Warning:</b> builds a raw {@code Set-Cookie} header. Callers must
-     * ensure name and value contain no control characters or semicolons.</p>
+     * <p>No-op if this instance was constructed without a response
+     * (see {@link #WebPars(HttpServletRequest)}).</p>
      * 
      * @param name  cookie name.
      * @param value cookie value, or null to delete.
@@ -137,13 +152,22 @@ public class HttpPars
     {
         if (!hasValue(name))
             return;
+        if (response == null)
+            return;
         if (value == null) {
-            if (cookie(name) != null)
-                response.addHeader("Set-Cookie", name + "=" + value
-                        + "; HttpOnly; SameSite=strict; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT");
+            if (cookie(name) == null)
+                return;
+            Cookie c = new Cookie(name, "");
+            c.setMaxAge(0);
+            c.setHttpOnly(true);
+            c.setAttribute("SameSite", "Strict");
+            response.addCookie(c);
         } else {
-            response.addHeader("Set-Cookie",
-                    name + "=" + value + "; Max-Age=" + COOKIE_MAX_AGE_SECONDS + "; HttpOnly; SameSite=strict");
+            Cookie c = new Cookie(name, value);
+            c.setMaxAge(COOKIE_MAX_AGE_SECONDS);
+            c.setHttpOnly(true);
+            c.setAttribute("SameSite", "Strict");
+            response.addCookie(c);
         }
     }
 
@@ -745,30 +769,39 @@ public class HttpPars
     }
 
     /**
-     * Build an HTML-escaped query string from the given parameter names,
-     * reading values from the current request. Separators are {@code &amp;}
-     * (HTML entity), suitable for direct inclusion in {@code href} attributes.
-     * Does not include a leading {@code ?}.
+     * Build a query string from the given parameter names, reading values
+     * from the current request. Values are percent-encoded per RFC 3986.
+     * Pairs are joined with {@code &}. Does not include a leading {@code ?}.
      * 
-     * @param pars parameter names to include.
+     * <p>The returned string is a raw query string suitable for programmatic
+     * URI construction (redirects, JavaScript, {@code Location} headers).
+     * For embedding in an HTML attribute, wrap the result with
+     * {@link #escape(CharSequence)}:</p>
+     * <pre>{@code
+     *   String href = "search?" + escape(pars.toQueryString("q", "sort"));
+     * }</pre>
+     * 
+     * @param names parameter names to include (null values are skipped).
      * @return the query string fragment, or empty string if no parameters have values.
      */
-    public String queryString(final String[] pars)
+    public String toQueryString(final String... names)
     {
-        StringBuilder href = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         boolean first = true;
-        for (String par : pars) {
-            String value = request.getParameter(par);
+        for (String name : names) {
+            String value = request.getParameter(name);
             if (value == null)
                 continue;
             if (first) {
                 first = false;
             } else {
-                href.append("&amp;");
+                sb.append('&');
             }
-            href.append(par).append("=").append(escape(value));
+            sb.append(URLEncoder.encode(name, StandardCharsets.UTF_8));
+            sb.append('=');
+            sb.append(URLEncoder.encode(value, StandardCharsets.UTF_8));
         }
-        return href.toString();
+        return sb.toString();
     }
 
     /**
