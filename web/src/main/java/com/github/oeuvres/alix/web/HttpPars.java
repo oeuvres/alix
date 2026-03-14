@@ -32,8 +32,6 @@
  */
 package com.github.oeuvres.alix.web;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,23 +45,25 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Stateful helper for HTTP request parameter resolution, wrapping an
- * {@link HttpServletRequest} and {@link HttpServletResponse} pair.
+ * {@link HttpServletRequest} and an optional {@link HttpServletResponse}.
  * 
  * <p>Each typed getter resolves a parameter value through a priority chain:
  * <b>request parameter → request attribute → cookie → fallback</b>.
  * When a cookie name is supplied, the resolved value is persisted as a cookie;
  * an empty (non-null) parameter resets that cookie.
+ * Cookie persistence requires a non-null response; instances constructed
+ * with {@link #HttpPars(HttpServletRequest)} silently skip all cookie writes.
  * </p>
  * 
- * <p>Also provides static utilities for HTML escaping
- * and parameter value checking.</p>
+ * <p>Also provides static utilities for HTML escaping, query-string building,
+ * and parameter value testing.</p>
  */
 public class HttpPars
 {
 
     /** Wrapped request, source of parameters and attributes. */
     public final HttpServletRequest request;
-    /** Wrapped response, used for cookie persistence (null for read-only / JSON usage). */
+    /** Wrapped response, used for cookie persistence (null for read-only usage). */
     public final HttpServletResponse response;
     /** Lazily populated cookie cache, keyed by cookie name. */
     private HashMap<String, String> cookies;
@@ -71,11 +71,10 @@ public class HttpPars
     private static final int COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
     /**
-     * Construct a parameter helper for the given request/response pair.
-     * Cookie persistence requires a non-null response.
+     * Construct a parameter helper with cookie persistence.
      * 
      * @param request  the current HTTP request.
-     * @param response the current HTTP response (used for setting cookies).
+     * @param response the current HTTP response (receives Set-Cookie headers).
      */
     public HttpPars(final HttpServletRequest request, final HttpServletResponse response)
     {
@@ -85,8 +84,8 @@ public class HttpPars
 
     /**
      * Construct a read-only parameter helper (no cookie persistence).
-     * Cookie-writing calls become no-ops. Suitable for JSON endpoints
-     * where response cookie management is unwanted.
+     * Cookie-writing calls become silent no-ops. Suitable for JSON endpoints
+     * where server-side cookie management is unwanted.
      * 
      * @param request the current HTTP request.
      */
@@ -96,26 +95,7 @@ public class HttpPars
     }
 
     /**
-     * Test whether a string carries a usable parameter value.
-     * Returns {@code false} for null, blank, or the literal {@code "null"}.
-     * 
-     * @param s string to test.
-     * @return true if the string is non-null, non-blank, and not {@code "null"}.
-     */
-    public static boolean hasValue(String s)
-    {
-        if (s == null)
-            return false;
-        s = s.trim();
-        if (s.isEmpty())
-            return false;
-        if ("null".equals(s))
-            return false;
-        return true;
-    }
-
-    /**
-     * Get a cookie value by name. Lazily caches all cookies from the request
+     * Get a cookie value by name. Lazily caches all request cookies
      * on first call.
      * 
      * @param name cookie name.
@@ -143,12 +123,12 @@ public class HttpPars
      * for {@value #COOKIE_MAX_AGE_SECONDS} seconds with HttpOnly and SameSite=Strict.
      * 
      * <p>No-op if this instance was constructed without a response
-     * (see {@link #WebPars(HttpServletRequest)}).</p>
+     * (see {@link #HttpPars(HttpServletRequest)}).</p>
      * 
      * @param name  cookie name.
      * @param value cookie value, or null to delete.
      */
-    public void cookie(String name, String value)
+    public void cookie(final String name, final String value)
     {
         if (!hasValue(name))
             return;
@@ -172,8 +152,8 @@ public class HttpPars
     }
 
     /**
-     * Escape a character sequence for safe inclusion in an HTML attribute
-     * (double-quoted). Escapes {@code " < > &}.
+     * Escape a character sequence for safe inclusion in a double-quoted
+     * HTML attribute. Escapes {@code " < > &}.
      * 
      * @param cs characters to escape, may be null.
      * @return the escaped string, or empty string if cs is null.
@@ -207,9 +187,10 @@ public class HttpPars
     }
 
     /**
-     * Escape a string for safe inclusion in an HTML attribute that contains
-     * a URL. Like {@link #escape(CharSequence)}, but also encodes {@code +}
-     * as {@code %2B} to prevent interpretation as a space in query strings.
+     * Escape a string for safe inclusion in a double-quoted HTML attribute
+     * that contains a URL. Like {@link #escape(CharSequence)}, but also
+     * encodes {@code +} as {@code %2B} to prevent its interpretation as
+     * a space in query strings.
      * 
      * @param s URL string to escape, may be null.
      * @return the escaped string, or empty string if s is null.
@@ -277,12 +258,10 @@ public class HttpPars
     public boolean getBoolean(final String name, final boolean fallback, final String cookie)
     {
         String value = request.getParameter(name);
-        // value explicitly defined to false, set a cookie
         if ("false".equals(value) || "0".equals(value) || "null".equals(value)) {
             cookie(cookie, "0");
             return false;
         }
-        // some content, we are true
         if (hasValue(value)) {
             cookie(cookie, "1");
             return true;
@@ -292,21 +271,20 @@ public class HttpPars
             cookie(cookie, null);
             return fallback;
         }
-        // try to deal with cookie
+        // try cookie
         value = cookie(cookie);
         if ("0".equals(value))
             return false;
         if (hasValue(value))
             return true;
-        // cookie has a problem, reset it
         cookie(cookie, null);
         return fallback;
     }
 
     /**
      * Resolve a request parameter as an {@link Enum} constant.
-     * Uses {@link Enum#valueOf(Class, String)} to match the parameter value;
-     * returns the fallback on mismatch or absence.
+     * Uses {@link Enum#valueOf(Class, String)} to match; returns
+     * the fallback on mismatch or absence.
      * 
      * @param name     parameter name.
      * @param fallback default value (must not be null — its declaring class is used for lookup).
@@ -317,7 +295,7 @@ public class HttpPars
     {
         if (fallback == null) {
             throw new IllegalArgumentException(
-                    "fallback can't be null, a value is needed to get the exact class name of Enum");
+                    "fallback can't be null, a value is needed to get the declaring class of the Enum");
         }
         String value = request.getParameter(name);
         if (!hasValue(value)) {
@@ -345,7 +323,7 @@ public class HttpPars
     {
         if (fallback == null) {
             throw new IllegalArgumentException(
-                    "fallback can't be null, a value is needed to get the exact class name of Enum");
+                    "fallback can't be null, a value is needed to get the declaring class of the Enum");
         }
         String value = request.getParameter(name);
         if (hasValue(value)) {
@@ -357,17 +335,14 @@ public class HttpPars
                 // bad param, fall through
             }
         }
-        // param is empty but not null, reset cookie
         if (value != null) {
             cookie(cookie, null);
             return fallback;
         }
-        // try cookie
         value = cookie(cookie);
         try {
             return Enum.valueOf(fallback.getDeclaringClass(), value);
         } catch (Exception e) {
-            // cookie has a bad value, reset it
             cookie(cookie, null);
             return fallback;
         }
@@ -415,7 +390,6 @@ public class HttpPars
                 // fall through
             }
         }
-        // reset cookie on empty param
         if (value != null && !hasValue(value)) {
             cookie(cookie, null);
             return fallback;
@@ -424,7 +398,7 @@ public class HttpPars
         if (value == null)
             return fallback;
         try {
-            return Float.parseFloat(value); // BUG FIX: was Integer.parseInt
+            return Float.parseFloat(value);
         } catch (NumberFormatException e) {
             cookie(cookie, null);
             return fallback;
@@ -462,7 +436,7 @@ public class HttpPars
      * @param name     parameter name.
      * @param range    {@code [min, max]} bounds (inclusive), or null for unclamped.
      * @param fallback default value.
-     * @return resolved int, clamped to range if provided. Priority: request → fallback.
+     * @return resolved int, clamped to range if provided.
      */
     public int getInt(final String name, final int[] range, final int fallback)
     {
@@ -493,25 +467,19 @@ public class HttpPars
         final String parString = request.getParameter(name);
         Integer value = parseInt(parString);
 
-        // handle cookie logic
         if (hasValue(cookie)) {
-            // param has an empty value, client wants to reset cookie
             if (parString != null && !hasValue(parString)) {
                 cookie(cookie, null);
-            }
-            // valid value in range, persist to cookie
-            else if (value != null && value >= min && value <= max) {
+            } else if (value != null && value >= min && value <= max) {
                 cookie(cookie, "" + value);
             } else if (value == null) {
                 value = parseInt(cookie(cookie));
-                // if cookie not valid in range, unset
                 if (value != null && (value < min || value > max)) {
                     value = null;
                     cookie(cookie, null);
                 }
             }
         }
-        // try attribute fallback
         if (value == null) {
             value = getIntegerAtt(name);
         }
@@ -540,12 +508,11 @@ public class HttpPars
     }
 
     /**
-     * Parse a comma-separated or multi-valued parameter as an int range,
-     * clamped to the given bounds. Returns an array of length 0 (no valid values),
-     * 1 (single value), or 2 ({@code [lower, upper]}, guaranteed lower ≤ upper).
-     * 
-     * <p>Open-ended ranges are supported: if one of the two values is missing,
-     * the corresponding bound defaults to min or max.</p>
+     * Parse a multi-valued parameter as an int range, clamped to bounds.
+     * Returns an array of length 0 (no valid values), 1 (single value),
+     * or 2 ({@code [lower, upper]}, guaranteed lower ≤ upper).
+     * Open-ended ranges are supported: a missing lower defaults to min,
+     * a missing upper defaults to max.
      * 
      * @param name  parameter name.
      * @param range {@code [min, max]} bounds (inclusive), or null for unclamped.
@@ -584,19 +551,15 @@ public class HttpPars
         } catch (NumberFormatException e) {
             // leave null
         }
-        // two null values, nothing to return
         if (value0 == null && value1 == null) {
             return new int[0];
         }
         final int[] data = new int[2];
-        // [,upper]
         if (value0 == null) {
             if (value1 < min) return new int[0];
             data[0] = min;
             data[1] = Integer.min(value1, max);
-        }
-        // [lower,]
-        else if (value1 == null) {
+        } else if (value1 == null) {
             if (value0 > max) return new int[0];
             data[0] = Integer.max(value0, min);
             data[1] = max;
@@ -677,7 +640,7 @@ public class HttpPars
     public String getString(final String name, final String fallback, final Set<String> set, final String cookie)
     {
         String par = request.getParameter(name);
-        // no cookie name, answer fast
+        // no cookie, answer fast
         if (!hasValue(cookie) && hasValue(par)) {
             if (set == null) {
                 return par;
@@ -693,7 +656,6 @@ public class HttpPars
         if (o instanceof String) {
             att = (String) o;
         }
-        // no cookie name, answer fast
         if (!hasValue(cookie) && hasValue(att)) {
             if (set == null) {
                 return att;
@@ -703,19 +665,16 @@ public class HttpPars
                 att = null;
             }
         }
-        // no cookie, no value, return fallback
         if (!hasValue(cookie)) {
             return fallback;
         }
 
-        // now deal with cookie name
+        // cookie path
         final String cookieValue = cookie(cookie);
-        // set cookie with a valid param
         if (hasValue(par)) {
             cookie(cookie, par);
             return par;
         }
-        // param is empty (but not null), reset cookie
         if (par != null) {
             cookie(cookie, null);
         }
@@ -769,39 +728,22 @@ public class HttpPars
     }
 
     /**
-     * Build a query string from the given parameter names, reading values
-     * from the current request. Values are percent-encoded per RFC 3986.
-     * Pairs are joined with {@code &}. Does not include a leading {@code ?}.
+     * Test whether a string carries a usable parameter value.
+     * Returns {@code false} for null, blank, or the literal {@code "null"}.
      * 
-     * <p>The returned string is a raw query string suitable for programmatic
-     * URI construction (redirects, JavaScript, {@code Location} headers).
-     * For embedding in an HTML attribute, wrap the result with
-     * {@link #escape(CharSequence)}:</p>
-     * <pre>{@code
-     *   String href = "search?" + escape(pars.toQueryString("q", "sort"));
-     * }</pre>
-     * 
-     * @param names parameter names to include (null values are skipped).
-     * @return the query string fragment, or empty string if no parameters have values.
+     * @param s string to test.
+     * @return true if the string is non-null, non-blank, and not {@code "null"}.
      */
-    public String toQueryString(final String... names)
+    public static boolean hasValue(String s)
     {
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (String name : names) {
-            String value = request.getParameter(name);
-            if (value == null)
-                continue;
-            if (first) {
-                first = false;
-            } else {
-                sb.append('&');
-            }
-            sb.append(URLEncoder.encode(name, StandardCharsets.UTF_8));
-            sb.append('=');
-            sb.append(URLEncoder.encode(value, StandardCharsets.UTF_8));
-        }
-        return sb.toString();
+        if (s == null)
+            return false;
+        s = s.trim();
+        if (s.isEmpty())
+            return false;
+        if ("null".equals(s))
+            return false;
+        return true;
     }
 
     /**
@@ -833,11 +775,130 @@ public class HttpPars
     /**
      * Return the wrapped response.
      * 
-     * @return the HTTP response.
+     * @return the HTTP response, or null if constructed read-only.
      */
     public HttpServletResponse response()
     {
         return response;
+    }
+
+    /**
+     * Build a query string from the given parameter names, reading values
+     * from the current request. Pairs are joined with {@code &amp;}.
+     * Does not include a leading {@code ?}.
+     * 
+     * <p>Values are minimally encoded: only the characters that are structural
+     * in a query string ({@code &amp; = + #} and space) are percent-encoded.
+     * Unicode characters (accented letters, CJK, etc.) are preserved as
+     * UTF-8, keeping URLs readable — e.g. {@code q=État&sort=date}
+     * rather than {@code q=%C3%89tat&sort=date}.</p>
+     * 
+     * <p>The returned string is suitable for direct inclusion in a
+     * double-quoted HTML {@code href} attribute, since {@code &amp;} is used
+     * as separator and values are HTML-safe after encoding.
+     * For contexts that need a raw {@code &amp;} separator (redirects,
+     * JavaScript), use {@link #toQueryStringRaw(String...)} instead.</p>
+     * 
+     * @param names parameter names to include (absent parameters are skipped).
+     * @return the query string fragment, or empty string if no parameters have values.
+     * @see #toQueryStringRaw(String...)
+     */
+    public String toQueryString(final String... names)
+    {
+        return toQueryString(true, names);
+    }
+
+    /**
+     * Build a query string with raw {@code &} separators, suitable for
+     * programmatic URI construction (redirects, {@code Location} headers,
+     * JavaScript). Same encoding rules as {@link #toQueryString(String...)},
+     * but without HTML entity escaping of the separator.
+     * 
+     * @param names parameter names to include (absent parameters are skipped).
+     * @return the query string fragment, or empty string if no parameters have values.
+     * @see #toQueryString(String...)
+     */
+    public String toQueryStringRaw(final String... names)
+    {
+        return toQueryString(false, names);
+    }
+
+    /**
+     * Internal query-string builder.
+     * 
+     * @param htmlSep if true, join pairs with {@code &amp;}; otherwise {@code &}.
+     * @param names   parameter names.
+     * @return the query string fragment.
+     */
+    private String toQueryString(final boolean htmlSep, final String... names)
+    {
+        final String sep = htmlSep ? "&amp;" : "&";
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (String name : names) {
+            String value = request.getParameter(name);
+            if (value == null)
+                continue;
+            if (first) {
+                first = false;
+            } else {
+                sb.append(sep);
+            }
+            sb.append(encodeQueryComponent(name));
+            sb.append('=');
+            sb.append(encodeQueryComponent(value));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Minimally percent-encode a query-string component (name or value).
+     * Only characters that have structural meaning in a query string are
+     * encoded: {@code &amp;} → {@code %26}, {@code =} → {@code %3D},
+     * {@code +} → {@code %2B}, {@code #} → {@code %23},
+     * space → {@code %20}.
+     * All other characters, including non-ASCII Unicode, pass through
+     * unchanged as UTF-8.
+     * 
+     * @param s the raw component string.
+     * @return the encoded string.
+     */
+    static String encodeQueryComponent(final String s)
+    {
+        if (s == null)
+            return "";
+        final int len = s.length();
+        StringBuilder sb = null; // lazy — most values need no encoding
+        for (int i = 0; i < len; i++) {
+            char c = s.charAt(i);
+            String esc;
+            switch (c) {
+            case '&':
+                esc = "%26";
+                break;
+            case '=':
+                esc = "%3D";
+                break;
+            case '+':
+                esc = "%2B";
+                break;
+            case '#':
+                esc = "%23";
+                break;
+            case ' ':
+                esc = "%20";
+                break;
+            default:
+                if (sb != null) sb.append(c);
+                continue;
+            }
+            if (sb == null) {
+                sb = new StringBuilder(len + 8);
+                sb.append(s, 0, i);
+            }
+            sb.append(esc);
+        }
+        return (sb != null) ? sb.toString() : s;
     }
 
 }
