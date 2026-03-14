@@ -10,7 +10,10 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
+import com.github.oeuvres.alix.util.TopArray;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -248,6 +251,59 @@ public final class ThemeTerms {
             }
             scores[termId] = scorer.result();
         }
+    }
+
+    // =========================================================================
+    // Top-terms convenience
+    // =========================================================================
+
+    /**
+     * Score all terms and return the top-ranked results as an immutable list.
+     *
+     * <p>This is a convenience method that allocates a temporary {@link TermStats},
+     * runs the full postings scan via {@link #score(TermStats, TermScorer)},
+     * extracts the top-K positive scores, and resolves term strings from
+     * the bound lexicon. The returned list is ordered by descending score.</p>
+     *
+     * <p>Thread-safe: each call allocates its own {@code TermStats} and
+     * uses the caller-supplied {@code TermScorer}, so concurrent calls
+     * with independent scorers are safe.</p>
+     *
+     * @param scorer local scorer (e.g. {@code new TermScorer.BM25(1.3)})
+     * @param topK   maximum number of results to return
+     * @return immutable list of top-ranked terms, ordered by descending score
+     * @throws IOException if Lucene term or postings iteration fails
+     * @throws IllegalArgumentException if {@code topK < 1}
+     */
+    public List<TermRow> topTerms(final TermScorer scorer, final int topK) throws IOException {
+        Objects.requireNonNull(scorer, "scorer");
+        if (topK < 1) {
+            throw new IllegalArgumentException("topK=" + topK + ", expected >= 1");
+        }
+
+        final int vocabSize = lexicon.vocabSize();
+        final TermStats stats = new TermStats(field, vocabSize);
+        score(stats, scorer);
+
+        final TopArray top = new TopArray(topK);
+        final double[] scores = stats.scores();
+        for (int termId = 0; termId < vocabSize; termId++) {
+            final double s = scores[termId];
+            if (!Double.isNaN(s) && s > 0d) {
+                top.push(termId, s);
+            }
+        }
+
+        final List<TermRow> rows = new ArrayList<>(top.length());
+        for (TopArray.IdScore entry : top) {
+            rows.add(new TermRow(
+                entry.id(),
+                lexicon.term(entry.id()),
+                fieldStats.termFreq(entry.id()),
+                entry.score()
+            ));
+        }
+        return List.copyOf(rows);
     }
 
     // =========================================================================

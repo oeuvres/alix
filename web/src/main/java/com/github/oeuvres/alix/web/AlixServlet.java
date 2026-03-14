@@ -100,7 +100,7 @@ public class AlixServlet extends HttpServlet
         // register(new OpKwic());
         // register(new OpCooc());
         // register(new OpFreqs());
-        // register(new OpTerms());
+        register(new OpTerms());
         // register(new OpDoc());
         // register(new OpSnippet());
     }

@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.web;
+package com.github.oeuvres.alix.web.op;
 
 import java.io.IOException;
 import java.util.List;
@@ -12,6 +12,7 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TermRow;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
+import com.github.oeuvres.alix.web.AlixServlet;
 
 /**
  * {@code /{index}/terms} — ranked term lists.
