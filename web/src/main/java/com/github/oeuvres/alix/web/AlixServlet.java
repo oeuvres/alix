@@ -17,8 +17,8 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.github.oeuvres.alix.lucene.Fluc;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.LuceneIndex.FieldProfile;
 
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
@@ -165,21 +165,20 @@ public class AlixServlet extends HttpServlet
     {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        final JsonWriter jw = new JsonWriter(resp.getWriter());
-        jw.setIndent("  ");
-
-        jw.beginObject();
-        for (LuceneIndex idx : indices.values()) {
-            jw.name(idx.name());
+        try (JsonWriter jw = new JsonWriter(resp.getWriter())) {
+            jw.setIndent("  ");
             jw.beginObject();
-            jw.name("label").value(idx.label());
-            jw.name("numDocs").value(idx.numDocs());
-            if (idx.content() != null) jw.name("content").value(idx.content());
-            if (idx.docline() != null) jw.name("docline").value(idx.docline());
+            for (LuceneIndex idx : indices.values()) {
+                jw.name(idx.name());
+                jw.beginObject();
+                jw.name("label").value(idx.label());
+                jw.name("numDocs").value(idx.numDocs());
+                if (idx.content() != null) jw.name("content").value(idx.content());
+                if (idx.docline() != null) jw.name("docline").value(idx.docline());
+                jw.endObject();
+            }
             jw.endObject();
         }
-        jw.endObject();
-        jw.flush();
     }
 
     /**
@@ -200,30 +199,29 @@ public class AlixServlet extends HttpServlet
     {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        final JsonWriter jw = new JsonWriter(resp.getWriter());
-        jw.setIndent("  ");
+        try (JsonWriter jw = new JsonWriter(resp.getWriter())) {
+            jw.setIndent("  ");
+            jw.beginObject();
+            jw.name("name").value(index.name());
+            jw.name("label").value(index.label());
+            jw.name("numDocs").value(index.numDocs());
+            if (index.content() != null) jw.name("content").value(index.content());
+            if (index.docline() != null) jw.name("docline").value(index.docline());
 
-        jw.beginObject();
-        jw.name("name").value(index.name());
-        jw.name("label").value(index.label());
-        jw.name("numDocs").value(index.numDocs());
-        if (index.content() != null) jw.name("content").value(index.content());
-        if (index.docline() != null) jw.name("docline").value(index.docline());
+            jw.name("fields");
+            jw.beginObject();
+            for (Fluc f : index.fields().values()) {
+                jw.name(f.name());
+                writeField(jw, f);
+            }
+            jw.endObject();
 
-        jw.name("fields");
-        jw.beginObject();
-        for (FieldProfile fp : index.fields().values()) {
-            jw.name(fp.name());
-            writeFieldProfile(jw, fp);
+            jw.endObject();
         }
-        jw.endObject();
-
-        jw.endObject();
-        jw.flush();
     }
 
     /**
-     * Write a single field profile, reporting only meaningful properties.
+     * Write a single field descriptor, reporting only meaningful properties.
      *
      * <p>Rules:</p>
      * <ul>
@@ -238,36 +236,36 @@ public class AlixServlet extends HttpServlet
      *       is stored-only: shows just {@code {"stored": true}}.</li>
      * </ul>
      */
-    private static void writeFieldProfile(final JsonWriter jw, final FieldProfile fp)
+    private static void writeField(final JsonWriter jw, final Fluc f)
         throws IOException
     {
         jw.beginObject();
 
-        if (fp.docs()> 0) {
-            jw.name("docs").value(fp.docs());
+        if (f.docs() > 0) {
+            jw.name("docs").value(f.docs());
         }
 
-        if (fp.indexed()) {
-            jw.name("indexOptions").value(indexOptionsLabel(fp.indexOptions()));
+        if (f.indexed()) {
+            jw.name("indexOptions").value(indexOptionsLabel(f.indexOptions()));
         }
 
-        if (fp.stored()) {
+        if (f.stored()) {
             jw.name("stored").value(true);
         }
 
-        if (fp.hasDocValues()) {
-            jw.name("docValues").value(docValuesLabel(fp.docValuesType()));
+        if (f.hasDocValues()) {
+            jw.name("docValues").value(docValuesLabel(f.docValuesType()));
         }
 
-        if (fp.hasPoints()) {
-            jw.name("point").value(fp.pointLabel());
+        if (f.hasPoints()) {
+            jw.name("point").value(f.pointLabel());
         }
 
-        if (fp.hasTermVectors()) {
+        if (f.hasTermVectors()) {
             jw.name("termVectors").value(true);
         }
 
-        if (fp.indexed() && !fp.hasNorms()) {
+        if (f.indexed() && !f.hasNorms()) {
             jw.name("norms").value(false);
         }
 
@@ -390,11 +388,11 @@ public class AlixServlet extends HttpServlet
         resp.setStatus(status);
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        final JsonWriter jw = new JsonWriter(resp.getWriter());
-        jw.beginObject();
-        jw.name("error").value(message);
-        jw.name("status").value(status);
-        jw.endObject();
-        jw.flush();
+        try (JsonWriter jw = new JsonWriter(resp.getWriter())) {
+            jw.beginObject();
+            jw.name("error").value(message);
+            jw.name("status").value(status);
+            jw.endObject();
+        }
     }
 }
