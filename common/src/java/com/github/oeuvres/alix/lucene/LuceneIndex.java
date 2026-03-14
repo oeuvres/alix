@@ -15,6 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon;
+import com.github.oeuvres.alix.lucene.terms.TermRail;
+import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -64,11 +67,13 @@ import org.apache.lucene.store.FSDirectory;
  *
  * <h2>Heavy statistics</h2>
  * <p>
- * Per-field term statistics ({@link FieldStats}) are loaded lazily via
- * {@link #fieldStats(String)} and cached for the lifetime of this instance.
+ * Per-field term statistics ({@link FieldStats}), term lexicons
+ * ({@link TermLexicon}), forward rails ({@link TermRail}), and
+ * theme-term scorers ({@link ThemeTerms}) are loaded lazily and
+ * cached for the lifetime of this instance.
  * </p>
  *
- * <p>Thread safety: {@link IndexSearcher} and {@link #fieldStats(String)}
+ * <p>Thread safety: {@link IndexSearcher} and all lazy accessors
  * are safe for concurrent use.</p>
  */
 public final class LuceneIndex implements Closeable
@@ -87,6 +92,15 @@ public final class LuceneIndex implements Closeable
 
     /** Lazy cache for heavy per-field statistics. */
     private final ConcurrentHashMap<String, FieldStats> statsCache = new ConcurrentHashMap<>();
+
+    /** Lazy cache for per-field dense term lexicons. */
+    private final ConcurrentHashMap<String, TermLexicon> lexiconCache = new ConcurrentHashMap<>();
+
+    /** Lazy cache for per-field forward positional rails. */
+    private final ConcurrentHashMap<String, TermRail> railCache = new ConcurrentHashMap<>();
+
+    /** Lazy cache for per-field theme-term scorers. */
+    private final ConcurrentHashMap<String, ThemeTerms> themeTermsCache = new ConcurrentHashMap<>();
 
     private LuceneIndex(
         String name, String label, String content, String docline,
@@ -176,7 +190,28 @@ public final class LuceneIndex implements Closeable
     // ================================================================
 
     @Override
-    public void close() throws IOException { reader.close(); }
+    public void close() throws IOException
+    {
+        // Close term rails (mmap)
+        for (TermRail rail : railCache.values()) {
+            if (rail != null) rail.close();
+        }
+        railCache.clear();
+
+        // Close term lexicons (mmap)
+        for (TermLexicon lex : lexiconCache.values()) {
+            if (lex != null) lex.close();
+        }
+        lexiconCache.clear();
+
+        // ThemeTerms holds only references, no close needed
+        themeTermsCache.clear();
+
+        // statsCache holds heap arrays, no close needed
+        statsCache.clear();
+
+        reader.close();
+    }
 
     /** Default search field name, or {@code null}. */
     public String content() { return content; }
@@ -236,6 +271,84 @@ public final class LuceneIndex implements Closeable
 
     /** {@link IndexSearcher}, thread-safe. */
     public IndexSearcher searcher() { return searcher; }
+
+    /**
+     * Lazily load and cache the dense term lexicon for one field.
+     *
+     * <p>
+     * Looks for persisted lexicon sidecar files in the index directory.
+     * Returns {@code null} if no lexicon files exist.
+     * </p>
+     *
+     * @param fieldName indexed field name
+     * @return cached lexicon, or {@code null} if absent
+     * @throws UncheckedIOException if the files exist but cannot be read
+     */
+    public TermLexicon termLexicon(final String fieldName)
+    {
+        return lexiconCache.computeIfAbsent(fieldName, f -> {
+            try {
+                if (TermLexicon.exists(indexDir, f)) {
+                    return TermLexicon.open(indexDir, f);
+                }
+                return null;
+            }
+            catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+    }
+
+    /**
+     * Lazily load and cache the forward positional rail for one field.
+     *
+     * <p>
+     * Looks for persisted rail sidecar files in the index directory.
+     * Returns {@code null} if no rail files exist.
+     * </p>
+     *
+     * @param fieldName indexed field name
+     * @return cached rail, or {@code null} if absent
+     * @throws UncheckedIOException if the files exist but cannot be read
+     */
+    public TermRail termRail(final String fieldName)
+    {
+        return railCache.computeIfAbsent(fieldName, f -> {
+            try {
+                if (TermRail.exists(indexDir, f)) {
+                    return TermRail.open(indexDir, f);
+                }
+                return null;
+            }
+            catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+    }
+
+    /**
+     * Lazily construct and cache a {@link ThemeTerms} scorer for one field.
+     *
+     * <p>
+     * Requires both {@link #fieldStats(String)} and {@link #termLexicon(String)}
+     * to be available. Returns {@code null} if either is absent.
+     * </p>
+     *
+     * @param fieldName indexed field name
+     * @return cached scorer, or {@code null} if prerequisites are absent
+     * @throws UncheckedIOException if underlying resources cannot be loaded
+     */
+    public ThemeTerms themeTerms(final String fieldName)
+    {
+        return themeTermsCache.computeIfAbsent(fieldName, f -> {
+            final FieldStats fs = fieldStats(f);
+            final TermLexicon lex = termLexicon(f);
+            if (fs == null || lex == null) {
+                return null;
+            }
+            return new ThemeTerms(reader, lex, fs);
+        });
+    }
 
     @Override
     public String toString()
