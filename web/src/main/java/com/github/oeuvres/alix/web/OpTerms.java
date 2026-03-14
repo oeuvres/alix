@@ -104,7 +104,7 @@ public final class OpTerms extends Op
             // meta
             jw.name("meta");
             jw.beginObject();
-            jw.name("QTime").value(qTime);
+            jw.name("time").value(qTime);
             jw.name("params");
             jw.beginObject();
             jw.name("field").value(field);
