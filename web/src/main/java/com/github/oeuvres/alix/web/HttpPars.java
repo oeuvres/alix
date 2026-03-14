@@ -55,7 +55,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * with {@link #HttpPars(HttpServletRequest)} silently skip all cookie writes.
  * </p>
  * 
- * <p>Also provides static utilities for HTML escaping, query-string building,
+ * <p>Also provides static utilities for query-string building
  * and parameter value testing.</p>
  */
 public class HttpPars
@@ -150,7 +150,6 @@ public class HttpPars
             response.addCookie(c);
         }
     }
-
 
     /**
      * Resolve a request parameter as a boolean.
@@ -778,6 +777,39 @@ public class HttpPars
     }
 
     /**
+     * Encode a single {@code name=value} query-string pair, using the same
+     * minimal percent-encoding as {@link #toQueryString(String...)}.
+     * Useful for building a per-row varying part outside of the request context,
+     * e.g. in a KWIC loop:
+     * <pre>{@code
+     *   String base = pars.toQueryString("q", "cat", "sort");
+     *   for (Hit hit : hits) {
+     *       String href = base + "&amp;" + HttpPars.encodeParam("doc", hit.docId);
+     *   }
+     * }</pre>
+     * 
+     * @param name  parameter name.
+     * @param value parameter value.
+     * @return the encoded pair, e.g. {@code "doc=1234"} or {@code "q=État"}.
+     */
+    public static String encodeParam(final String name, final String value)
+    {
+        return encodeQueryComponent(name) + '=' + encodeQueryComponent(value);
+    }
+
+    /**
+     * Convenience overload of {@link #encodeParam(String, String)} for int values.
+     * 
+     * @param name  parameter name.
+     * @param value parameter value.
+     * @return the encoded pair, e.g. {@code "doc=1234"}.
+     */
+    public static String encodeParam(final String name, final int value)
+    {
+        return encodeQueryComponent(name) + '=' + value;
+    }
+
+    /**
      * Minimally percent-encode a query-string component (name or value).
      * Encodes characters that are structural in a query string
      * ({@code &amp; = + #}, space) and characters that are URI delimiters
@@ -788,7 +820,7 @@ public class HttpPars
      * @param s the raw component string.
      * @return the encoded string.
      */
-    static String encodeQueryComponent(final String s)
+    static public String encodeQueryComponent(final String s)
     {
         if (s == null)
             return "";
