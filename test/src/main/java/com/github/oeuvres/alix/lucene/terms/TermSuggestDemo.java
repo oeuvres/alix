@@ -51,11 +51,12 @@ public final class TermSuggestDemo
             final long buildMs = (System.nanoTime() - t0) / 1_000_000;
 
             System.err.printf("Suggest index built in %,d ms for %,d terms%n",
-                buildMs, suggest.vocabSize());
+                buildMs, lexicon.vocabSize());
             System.err.println();
             System.err.println("Type a query, empty line or Ctrl-D to quit.");
             System.err.printf("  1–%d chars → prefix search%n", TermSuggest.INFIX_THRESHOLD - 1);
             System.err.printf("  %d+  chars → infix (substring) search%n", TermSuggest.INFIX_THRESHOLD);
+            System.out.println(Char.toAscii("Parce que") + Char.toAscii(" Prénom, nom"));
             System.err.println();
 
             final BufferedReader reader = new BufferedReader(

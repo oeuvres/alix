@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.github.oeuvres.alix.util.Char;
+
 /**
  * Diacritic-insensitive term suggestion for one indexed field.
  * <p>
@@ -33,6 +35,16 @@ import java.util.Objects;
  * The folded form may be longer than the original ({@code cœur → coeur}).
  * </p>
  *
+ * <h2>Highlighting</h2>
+ * <p>
+ * When the folded form is longer than the original (ligatures present),
+ * a parallel "work" string is built by inserting {@code '\0'} dummies
+ * after each expanding character. This makes the work string the same
+ * length as the folded form, so match positions transfer directly.
+ * After tag insertion, dummies are stripped. This approach handles any
+ * expansion length (1→2 for {@code œ→oe}, 1→3 for {@code ﬃ→ffi}).
+ * </p>
+ *
  * <h2>Memory layout</h2>
  * <p>
  * The internal string has the form {@code "\0term0\0term1\0…\0termN\0"}.
@@ -54,8 +66,10 @@ public final class TermSuggest
     private static final String DEFAULT_MARK_BEFORE = "<mark>";
     private static final String DEFAULT_MARK_AFTER = "</mark>";
 
-    /** Separator between terms in {@link #ascii}. Cannot appear in any folded term. */
+    /** Separator between terms in {@link #ascii}; also used as ligature padding dummy. */
     private static final char SEP = '\0';
+
+    private static final String SEP_STRING = String.valueOf(SEP);
 
     private final TermLexicon lexicon;
     private final FieldStats stats;
@@ -130,7 +144,7 @@ public final class TermSuggest
         for (int id = 0; id < vocabSize; id++) {
             sb.append(SEP);
             offsets[id] = sb.length();
-            sb.append(asciiFold(lexicon.term(id)));
+            sb.append(Char.toAscii(lexicon.term(id)));
         }
         sb.append(SEP);
         offsets[vocabSize] = sb.length();
@@ -162,7 +176,7 @@ public final class TermSuggest
         Objects.requireNonNull(query, "query");
         if (limit <= 0) return List.of();
 
-        final String foldedQuery = asciiFold(query);
+        final String foldedQuery = Char.toAscii(query);
         if (foldedQuery.isEmpty()) return List.of();
 
         final boolean prefixOnly = foldedQuery.length() < INFIX_THRESHOLD;
@@ -184,7 +198,6 @@ public final class TermSuggest
                 continue;
             }
             top.offer(termId, (int) Math.min(stats.termFreq(termId), Integer.MAX_VALUE));
-            // Advance to next term boundary to avoid duplicate hits in same term
             fromIndex = offsets[termId + 1] - 1;
         }
 
@@ -199,182 +212,70 @@ public final class TermSuggest
             final String term = lexicon.term(termId);
             final long count = stats.termFreq(termId);
             final String termFolded = ascii.substring(offsets[termId], offsets[termId + 1] - 1);
-            final String hilite = hilite(term, termFolded, foldedQuery, prefixOnly);
+            final String hilite = mark(term, termFolded, foldedQuery);
             results.add(new TermRow(termId, term, count, 0.0, hilite));
         }
         return Collections.unmodifiableList(results);
     }
 
-    /**
-     * Returns the vocabulary size.
-     *
-     * @return number of distinct terms
-     */
-    public int vocabSize()
-    {
-        return vocabSize;
-    }
+
 
     /**
-     * Folds a string to ASCII lower-case via Unicode NFKD decomposition,
-     * removing all combining marks.
+     * Highlights all non-overlapping occurrences of a folded query in
+     * the original term string.
      * <p>
-     * Handles ligature decomposition: {@code œ → oe}, {@code æ → ae}.
-     * Handles diacritics: {@code é → e}, {@code ç → c}, {@code ï → i}.
-     * </p>
-     * <p>
-     * This is a generic utility; consider moving to {@code Char.toASCIILower}
-     * if needed elsewhere.
-     * </p>
-     *
-     * @param s input string
-     * @return folded ASCII lower-case string, may be longer than input
-     */
-    static String asciiFold(final String s)
-    {
-        final String nfkd = Normalizer.normalize(s, Normalizer.Form.NFKD);
-        final StringBuilder sb = new StringBuilder(nfkd.length());
-        for (int i = 0; i < nfkd.length(); i++) {
-            final char c = nfkd.charAt(i);
-            final int type = Character.getType(c);
-            if (type == Character.NON_SPACING_MARK) {
-                continue;
-            }
-            sb.append(Character.toLowerCase(c));
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Builds a cumulative map from original character positions to folded
-     * character positions.
-     * <p>
-     * {@code map[i]} is the folded index where original char {@code i} starts.
-     * {@code map[original.length()]} is the total folded length.
-     * For diacritics ({@code é → e}) the mapping is 1:1.
-     * For ligatures ({@code œ → oe}) one original char maps to 2+ folded chars.
-     * </p>
-     *
-     * @param original the indexed term
-     * @return cumulative offset array of length {@code original.length() + 1}
-     */
-    static int[] foldMap(final String original)
-    {
-        final int len = original.length();
-        final int[] map = new int[len + 1];
-        int foldedPos = 0;
-        for (int i = 0; i < len; i++) {
-            map[i] = foldedPos;
-            final String nfkd = Normalizer.normalize(
-                String.valueOf(original.charAt(i)), Normalizer.Form.NFKD);
-            int count = 0;
-            for (int j = 0; j < nfkd.length(); j++) {
-                if (Character.getType(nfkd.charAt(j)) != Character.NON_SPACING_MARK) {
-                    count++;
-                }
-            }
-            foldedPos += count;
-        }
-        map[len] = foldedPos;
-        return map;
-    }
-
-    /**
-     * Builds the highlighted form of a term, marking all non-overlapping
-     * occurrences of the folded query.
-     * <p>
-     * When folded and original lengths match (no ligatures, the common
-     * case in French), positions map 1:1 without computing {@link #foldMap}.
+     * When the original and folded forms have different lengths (ligatures),
+     * a parallel "work" string is built by inserting {@code '\0'} dummies
+     * after each character whose fold is longer than 1 character. This makes
+     * {@code work.length() == termFolded.length()}, so {@code indexOf}
+     * positions on the folded string correspond directly to positions in
+     * the work string. After tag insertion, dummies are stripped.
      * </p>
      *
      * @param term        original indexed term
-     * @param termFolded  ASCII-folded form of the term
-     * @param foldedQuery ASCII-folded query string
-     * @param prefixOnly  if {@code true}, match only at position 0
-     * @return term string with matched spans wrapped in markup
+     * @param termFolded  ASCII-folded form (from the concatenated string)
+     * @param foldedQuery the folded user query
+     * @return term with matched spans wrapped in {@link #markBefore}/{@link #markAfter}
      */
-    private String hilite(
-        final String term,
-        final String termFolded,
-        final String foldedQuery,
-        final boolean prefixOnly
-    ) {
-        final int origLen = term.length();
-        final int nLen = foldedQuery.length();
-        final boolean simple = (termFolded.length() == origLen);
+    private String mark(final String term, final String termFolded, final String foldedQuery)
+    {
+        final boolean ligature = (term.length() != termFolded.length());
 
-        // Build boolean mask over original characters
-        final boolean[] mask = new boolean[origLen];
-
-        if (prefixOnly) {
-            // Single match at position 0
-            final int fEnd = nLen;
-            if (simple) {
-                for (int i = 0; i < fEnd && i < origLen; i++) mask[i] = true;
+        // Build work string parallel to termFolded
+        final String work;
+        if (ligature) {
+            final StringBuilder wb = new StringBuilder(termFolded.length());
+            for (int i = 0; i < term.length(); i++) {
+                wb.append(term.charAt(i));
+                final int foldedLen = Char.toAscii(String.valueOf(term.charAt(i))).length();
+                for (int pad = 1; pad < foldedLen; pad++) {
+                    wb.append(SEP);
+                }
             }
-            else {
-                final int[] map = foldMap(term);
-                final int oTo = origCharAt(map, fEnd - 1) + 1;
-                for (int i = 0; i < oTo && i < origLen; i++) mask[i] = true;
-            }
+            work = wb.toString();
         }
         else {
-            // Find all non-overlapping occurrences
-            final int[] map = simple ? null : foldMap(term);
-            int pos = 0;
-            while (pos <= termFolded.length() - nLen) {
-                final int found = termFolded.indexOf(foldedQuery, pos);
-                if (found < 0) break;
-                final int fFrom = found;
-                final int fTo = found + nLen;
-                if (simple) {
-                    for (int i = fFrom; i < fTo && i < origLen; i++) mask[i] = true;
-                }
-                else {
-                    final int oFrom = origCharAt(map, fFrom);
-                    final int oTo = origCharAt(map, fTo - 1) + 1;
-                    for (int i = oFrom; i < oTo && i < origLen; i++) mask[i] = true;
-                }
-                pos = fTo;
-            }
+            work = term;
         }
 
-        // Walk mask transitions to build marked-up string
-        final StringBuilder sb = new StringBuilder(
-            origLen + markBefore.length() + markAfter.length());
-        boolean inMark = false;
-        for (int i = 0; i < origLen; i++) {
-            if (mask[i] && !inMark) {
-                sb.append(markBefore);
-                inMark = true;
-            }
-            else if (!mask[i] && inMark) {
-                sb.append(markAfter);
-                inMark = false;
-            }
-            sb.append(term.charAt(i));
-        }
-        if (inMark) {
+        // Find all non-overlapping matches and insert marks
+        final int qLen = foldedQuery.length();
+        final StringBuilder sb = new StringBuilder(work.length() + markBefore.length() + markAfter.length());
+        int fromIndex = 0;
+        while (true) {
+            final int index = termFolded.indexOf(foldedQuery, fromIndex);
+            if (index < 0) break;
+            sb.append(work, fromIndex, index);
+            sb.append(markBefore);
+            sb.append(work, index, index + qLen);
             sb.append(markAfter);
+            fromIndex = index + qLen;
+        }
+        sb.append(work, fromIndex, work.length());
+
+        if (ligature) {
+            return sb.toString().replace(SEP_STRING, "");
         }
         return sb.toString();
-    }
-
-    /**
-     * Finds the original character index containing a given folded position.
-     * Reverse linear scan; terms are short.
-     *
-     * @param map       cumulative fold-offset array from {@link #foldMap}
-     * @param foldedPos position in the folded string
-     * @return original character index
-     */
-    private static int origCharAt(final int[] map, final int foldedPos)
-    {
-        for (int i = map.length - 2; i >= 0; i--) {
-            if (map[i] <= foldedPos) {
-                return i;
-            }
-        }
-        return 0;
     }
 }
