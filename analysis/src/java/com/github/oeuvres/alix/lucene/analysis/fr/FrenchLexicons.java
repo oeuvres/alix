@@ -93,7 +93,8 @@ public class FrenchLexicons
     {
         CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm.csv", false);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", false);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", true);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", true);
         for (String file : localFiles) {
             LexiconHelper.loadMap(map, Path.of(file), true);
         }
