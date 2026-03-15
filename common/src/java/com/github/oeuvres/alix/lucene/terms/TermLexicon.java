@@ -210,181 +210,13 @@ public final class TermLexicon implements Closeable {
 
     // ── write ───────────────────────────────────────────────────────────
 
-    /**
-     * Builds the lexicon files for one field using the latest committed state of the Lucene directory.
-     * <p>
-     * Opens a {@link DirectoryReader} internally, builds the files, then closes the reader.
-     * If the final target files already exist, an exception is thrown.
-     * </p>
-     *
-     * @param indexDir Lucene directory that contains the frozen index
-     * @param field    indexed field name
-     * @throws IOException              if the index cannot be opened, the field has no terms,
-     *                                  a target file already exists, or writing fails
-     * @throws NullPointerException     if either argument is null
-     * @throws IllegalArgumentException if the field has no terms in the index
-     */
-    public static void write(final Path indexDir, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-        try (FSDirectory dir = FSDirectory.open(indexDir);
-             DirectoryReader reader = DirectoryReader.open(dir)) {
-            write(indexDir, reader, field);
-        }
-    }
-
-    /**
-     * Builds the lexicon files for one field from an already opened snapshot reader.
-     * <p>
-     * This overload is useful when the caller controls which Lucene snapshot is being read,
-     * for example via {@code DirectoryReader.open(IndexCommit)}.
-     * </p>
-     * <p>
-     * Stale temporary files from a previous crashed write are silently cleaned up before
-     * writing begins. If a final target file already exists, an exception is thrown —
-     * call {@link #exists(Path, String)} and delete manually if overwrite semantics are needed.
-     * </p>
-     * <p>
-     * On failure, both temporary and any already-committed final files are cleaned up
-     * to avoid leaving a partial file set.
-     * </p>
-     *
-     * @param indexDir Lucene directory that will receive the {@code <field>.terms.*} files
-     * @param reader   snapshot reader that defines the term universe and its lexicographic order
-     * @param field    indexed field name
-     * @throws IOException              if the field has no terms, a final target file already exists, or writing fails
-     * @throws NullPointerException     if any argument is null
-     * @throws IllegalArgumentException if the field has no terms in the reader
-     */
-    public static void write(final Path indexDir, final IndexReader reader, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(field, "field");
-
-        final Path fstFinal = fstPath(indexDir, field);
-        final Path datFinal = datPath(indexDir, field);
-        final Path offFinal = offPath(indexDir, field);
-
-        ensureAbsent(fstFinal);
-        ensureAbsent(datFinal);
-        ensureAbsent(offFinal);
-
-        final Terms terms = MultiTerms.getTerms(reader, field);
-        if (terms == null) {
-            throw new IllegalArgumentException("Field not found or without terms: " + field);
-        }
-
-        final Path fstTmp = tmpPath(fstFinal);
-        final Path datTmp = tmpPath(datFinal);
-        final Path offTmp = tmpPath(offFinal);
-
-        // Clean up stale temps from a previous crash
-        deleteIfExists(fstTmp);
-        deleteIfExists(datTmp);
-        deleteIfExists(offTmp);
-
-        try {
-            buildFiles(terms, fstTmp, datTmp, offTmp);
-            moveTemp(datTmp, datFinal);
-            moveTemp(offTmp, offFinal);
-            moveTemp(fstTmp, fstFinal);
-        } catch (IOException | RuntimeException e) {
-            deleteIfExists(fstTmp);
-            deleteIfExists(datTmp);
-            deleteIfExists(offTmp);
-            deleteIfExists(fstFinal);
-            deleteIfExists(datFinal);
-            deleteIfExists(offFinal);
-            throw e;
-        }
-    }
+    
 
     // ── open ────────────────────────────────────────────────────────────
 
-    /**
-     * Opens the lexicon for one field from a frozen Lucene directory.
-     * <p>
-     * The returned instance holds memory-mapped file handles and <b>should</b> be closed
-     * when no longer needed, typically via try-with-resources. Closing releases the mapped
-     * memory immediately on JDKs that support it; otherwise GC reclaims it.
-     * </p>
-     * <p>
-     * On open, the following consistency checks are performed:
-     * </p>
-     * <ul>
-     *   <li>All three files must exist as regular files.</li>
-     *   <li>File modification times must be within {@value #MTIME_TOLERANCE_MS} ms of each other.</li>
-     *   <li>The offsets file size must be a multiple of 4 bytes and contain at least 2 entries.</li>
-     *   <li>The first offset must be 0 and the last must equal the data file size.</li>
-     *   <li>A bounded monotonicity check is run on the first and last {@value #MONO_CHECK} offsets.</li>
-     * </ul>
-     *
-     * @param indexDir Lucene directory that contains the index and the lexicon files
-     * @param field    indexed field name
-     * @return opened lexicon; caller should close when done
-     * @throws IOException          if a file is missing, sizes are inconsistent, mtimes diverge,
-     *                              offsets are corrupt, or the FST cannot be loaded
-     * @throws NullPointerException if either argument is null
-     */
-    public static TermLexicon open(final Path indexDir, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-
-        final Path fstPath = fstPath(indexDir, field);
-        final Path datPath = datPath(indexDir, field);
-        final Path offPath = offPath(indexDir, field);
-
-        ensureRegularFile(fstPath);
-        ensureRegularFile(datPath);
-        ensureRegularFile(offPath);
-        checkMtimeCoherence(fstPath, datPath, offPath);
-
-        final MappedByteBuffer datBuf = mapReadOnly(datPath);
-        final MappedByteBuffer offByteBuf = mapReadOnly(offPath);
-        offByteBuf.order(ByteOrder.nativeOrder());
-
-        try {
-            if ((offByteBuf.remaining() & 3) != 0) {
-                throw new IOException("Invalid offsets file (size not a multiple of 4 bytes): " + offPath);
-            }
-            final IntBuffer off = offByteBuf.asIntBuffer();
-            if (off.capacity() < 2) {
-                throw new IOException("Invalid offsets file (need at least 2 offsets): " + offPath);
-            }
-
-            final int first = off.get(0);
-            final int last = off.get(off.capacity() - 1);
-            if (first != 0) {
-                throw new IOException("Invalid offsets file, off[0] != 0: " + offPath);
-            }
-            if (last != datBuf.capacity()) {
-                throw new IOException("Offsets/data mismatch for field '" + field
-                    + "': last offset=" + last + ", data length=" + datBuf.capacity());
-            }
-            monotonicityCheck(off, offPath);
-
-            final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-            final FST<Long> fst = FST.read(fstPath, outputs);
-
-            return new TermLexicon(indexDir, field, fst, datBuf, offByteBuf, off);
-
-        } catch (IOException | RuntimeException e) {
-            unmap(datBuf);
-            unmap(offByteBuf);
-            throw e;
-        }
-    }
+    
 
     // ── accessors ───────────────────────────────────────────────────────
-
-    /**
-     * Returns the Lucene directory from which this lexicon was opened.
-     *
-     * @return Lucene directory path, never null
-     */
-    public Path indexDir() {
-        return indexDir;
-    }
 
     /**
      * Returns the indexed field name covered by this lexicon.
@@ -393,15 +225,6 @@ public final class TermLexicon implements Closeable {
      */
     public String field() {
         return field;
-    }
-
-    /**
-     * Returns the number of distinct terms in the field.
-     *
-     * @return vocabulary size (always &gt; 0 for a valid lexicon)
-     */
-    public int vocabSize() {
-        return vocabSize;
     }
 
     /**
@@ -453,6 +276,106 @@ public final class TermLexicon implements Closeable {
         final Long value = Util.get(fst, term);
         return (value == null) ? -1 : toIntExact(value);
     }
+    
+    /**
+     * Returns the Lucene directory from which this lexicon was opened.
+     *
+     * @return Lucene directory path, never null
+     */
+    public Path indexDir() {
+        return indexDir;
+    }
+
+    
+    /**
+     * Opens the lexicon for one field from a frozen Lucene directory.
+     * <p>
+     * The returned instance holds memory-mapped file handles and <b>should</b> be closed
+     * when no longer needed, typically via try-with-resources. Closing releases the mapped
+     * memory immediately on JDKs that support it; otherwise GC reclaims it.
+     * </p>
+     * <p>
+     * On open, the following consistency checks are performed:
+     * </p>
+     * <ul>
+     *   <li>All three files must exist as regular files.</li>
+     *   <li>File modification times must be within {@value #MTIME_TOLERANCE_MS} ms of each other.</li>
+     *   <li>The offsets file size must be a multiple of 4 bytes and contain at least 2 entries.</li>
+     *   <li>The first offset must be 0 and the last must equal the data file size.</li>
+     *   <li>A bounded monotonicity check is run on the first and last {@value #MONO_CHECK} offsets.</li>
+     * </ul>
+     *
+     * @param indexDir Lucene directory that contains the index and the lexicon files
+     * @param field    indexed field name
+     * @return opened lexicon; caller should close when done
+     * @throws IOException          if a file is missing, sizes are inconsistent, mtimes diverge,
+     *                              offsets are corrupt, or the FST cannot be loaded
+     * @throws NullPointerException if either argument is null
+     */
+    public static TermLexicon open(final Path indexDir, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+    
+        final Path fstPath = fstPath(indexDir, field);
+        final Path datPath = datPath(indexDir, field);
+        final Path offPath = offPath(indexDir, field);
+    
+        ensureRegularFile(fstPath);
+        ensureRegularFile(datPath);
+        ensureRegularFile(offPath);
+        checkMtimeCoherence(fstPath, datPath, offPath);
+    
+        final MappedByteBuffer datBuf = mapReadOnly(datPath);
+        final MappedByteBuffer offByteBuf = mapReadOnly(offPath);
+        offByteBuf.order(ByteOrder.nativeOrder());
+    
+        try {
+            if ((offByteBuf.remaining() & 3) != 0) {
+                throw new IOException("Invalid offsets file (size not a multiple of 4 bytes): " + offPath);
+            }
+            final IntBuffer off = offByteBuf.asIntBuffer();
+            if (off.capacity() < 2) {
+                throw new IOException("Invalid offsets file (need at least 2 offsets): " + offPath);
+            }
+    
+            final int first = off.get(0);
+            final int last = off.get(off.capacity() - 1);
+            if (first != 0) {
+                throw new IOException("Invalid offsets file, off[0] != 0: " + offPath);
+            }
+            if (last != datBuf.capacity()) {
+                throw new IOException("Offsets/data mismatch for field '" + field
+                    + "': last offset=" + last + ", data length=" + datBuf.capacity());
+            }
+            monotonicityCheck(off, offPath);
+    
+            final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
+            final FST<Long> fst = FST.read(fstPath, outputs);
+    
+            return new TermLexicon(indexDir, field, fst, datBuf, offByteBuf, off);
+    
+        } catch (IOException | RuntimeException e) {
+            unmap(datBuf);
+            unmap(offByteBuf);
+            throw e;
+        }
+    }
+
+    /**
+     * Returns the term string for one dense term id.
+     * <p>
+     * Uses a per-thread scratch buffer internally. Suitable for moderate use
+     * (e.g. resolving 50 term ids for display). For tight loops over the full
+     * vocabulary, prefer {@link #termBytes(int, BytesRefBuilder)} with a caller-owned buffer.
+     * </p>
+     *
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @return decoded UTF-8 term string, never null
+     * @throws IllegalArgumentException if {@code termId} is out of range
+     */
+    public String term(final int termId) {
+        return termBytes(termId, TL_TERM_STRING.get()).utf8ToString();
+    }
 
     /**
      * Copies the raw UTF-8 bytes of one term into a caller-provided reusable buffer.
@@ -485,23 +408,121 @@ public final class TermLexicon implements Closeable {
         return reuse.get();
     }
 
-    /**
-     * Returns the term string for one dense term id.
-     * <p>
-     * Uses a per-thread scratch buffer internally. Suitable for moderate use
-     * (e.g. resolving 50 term ids for display). For tight loops over the full
-     * vocabulary, prefer {@link #termBytes(int, BytesRefBuilder)} with a caller-owned buffer.
-     * </p>
-     *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @return decoded UTF-8 term string, never null
-     * @throws IllegalArgumentException if {@code termId} is out of range
-     */
-    public String term(final int termId) {
-        return termBytes(termId, TL_TERM_STRING.get()).utf8ToString();
-    }
+    
 
     // ── internal: validation ────────────────────────────────────────────
+
+    // ── write ───────────────────────────────────────────────────────────
+    
+    // ── write ───────────────────────────────────────────────────────────
+    
+    
+    
+    // ── open ────────────────────────────────────────────────────────────
+    
+    
+    
+    // ── accessors ───────────────────────────────────────────────────────
+    
+    /**
+     * Returns the number of distinct terms in the field.
+     *
+     * @return vocabulary size (always &gt; 0 for a valid lexicon)
+     */
+    public int vocabSize() {
+        return vocabSize;
+    }
+
+    /**
+     * Builds the lexicon files for one field using the latest committed state of the Lucene directory.
+     * <p>
+     * Opens a {@link DirectoryReader} internally, builds the files, then closes the reader.
+     * If the final target files already exist, an exception is thrown.
+     * </p>
+     *
+     * @param indexDir Lucene directory that contains the frozen index
+     * @param field    indexed field name
+     * @throws IOException              if the index cannot be opened, the field has no terms,
+     *                                  a target file already exists, or writing fails
+     * @throws NullPointerException     if either argument is null
+     * @throws IllegalArgumentException if the field has no terms in the index
+     */
+    public static void write(final Path indexDir, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+        try (FSDirectory dir = FSDirectory.open(indexDir);
+             DirectoryReader reader = DirectoryReader.open(dir)) {
+            write(indexDir, reader, field);
+        }
+    }
+
+    // ── write ───────────────────────────────────────────────────────────
+    
+    /**
+     * Builds the lexicon files for one field from an already opened snapshot reader.
+     * <p>
+     * This overload is useful when the caller controls which Lucene snapshot is being read,
+     * for example via {@code DirectoryReader.open(IndexCommit)}.
+     * </p>
+     * <p>
+     * Stale temporary files from a previous crashed write are silently cleaned up before
+     * writing begins. If a final target file already exists, an exception is thrown —
+     * call {@link #exists(Path, String)} and delete manually if overwrite semantics are needed.
+     * </p>
+     * <p>
+     * On failure, both temporary and any already-committed final files are cleaned up
+     * to avoid leaving a partial file set.
+     * </p>
+     *
+     * @param indexDir Lucene directory that will receive the {@code <field>.terms.*} files
+     * @param reader   snapshot reader that defines the term universe and its lexicographic order
+     * @param field    indexed field name
+     * @throws IOException              if the field has no terms, a final target file already exists, or writing fails
+     * @throws NullPointerException     if any argument is null
+     * @throws IllegalArgumentException if the field has no terms in the reader
+     */
+    public static void write(final Path indexDir, final IndexReader reader, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(field, "field");
+    
+        final Path fstFinal = fstPath(indexDir, field);
+        final Path datFinal = datPath(indexDir, field);
+        final Path offFinal = offPath(indexDir, field);
+    
+        ensureAbsent(fstFinal);
+        ensureAbsent(datFinal);
+        ensureAbsent(offFinal);
+    
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalArgumentException("Field not found or without terms: " + field);
+        }
+    
+        final Path fstTmp = tmpPath(fstFinal);
+        final Path datTmp = tmpPath(datFinal);
+        final Path offTmp = tmpPath(offFinal);
+    
+        // Clean up stale temps from a previous crash
+        deleteIfExists(fstTmp);
+        deleteIfExists(datTmp);
+        deleteIfExists(offTmp);
+    
+        try {
+            buildFiles(terms, fstTmp, datTmp, offTmp);
+            moveTemp(datTmp, datFinal);
+            moveTemp(offTmp, offFinal);
+            moveTemp(fstTmp, fstFinal);
+        } catch (IOException | RuntimeException e) {
+            deleteIfExists(fstTmp);
+            deleteIfExists(datTmp);
+            deleteIfExists(offTmp);
+            deleteIfExists(fstFinal);
+            deleteIfExists(datFinal);
+            deleteIfExists(offFinal);
+            throw e;
+        }
+    }
 
     /**
      * Checks that a term id falls within the valid range {@code [0, vocabSize)}.
