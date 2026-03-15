@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import com.github.oeuvres.alix.util.Char;
+
 /**
  * Diacritic-insensitive term suggestion for one indexed field.
  * <p>
@@ -112,7 +114,7 @@ public final class TermSuggest
         final String[] foldedStrings = new String[vocabSize];
         int totalBytes = 0;
         for (int id = 0; id < vocabSize; id++) {
-            foldedStrings[id] = asciiFold(lexicon.term(id));
+            foldedStrings[id] = Char.toAscii(lexicon.term(id));
             totalBytes += foldedStrings[id].length();
         }
 
@@ -151,7 +153,7 @@ public final class TermSuggest
         Objects.requireNonNull(query, "query");
         if (limit <= 0) return List.of();
 
-        final String foldedQuery = asciiFold(query);
+        final String foldedQuery = Char.toAscii(query);
         if (foldedQuery.isEmpty()) return List.of();
 
         final byte[] needle = foldedQuery.getBytes(StandardCharsets.US_ASCII);
@@ -194,33 +196,7 @@ public final class TermSuggest
         return vocabSize;
     }
 
-    /**
-     * Folds a string to ASCII lower-case via Unicode NFKD decomposition,
-     * removing all combining marks.
-     * <p>
-     * Handles ligature decomposition: {@code œ → oe}, {@code æ → ae}.
-     * Handles diacritics: {@code é → e}, {@code ç → c}, {@code ï → i}.
-     * </p>
-     *
-     * @param s input string
-     * @return folded ASCII lower-case string, may be longer than input
-     */
-    static String asciiFold(final String s)
-    {
-        final String nfkd = Normalizer.normalize(s, Normalizer.Form.NFKD);
-        final StringBuilder sb = new StringBuilder(nfkd.length());
-        for (int i = 0; i < nfkd.length(); i++) {
-            final char c = nfkd.charAt(i);
-            final int type = Character.getType(c);
-            if (type == Character.NON_SPACING_MARK
-                || type == Character.COMBINING_SPACING_MARK
-                || type == Character.ENCLOSING_MARK) {
-                continue;
-            }
-            sb.append(Character.toLowerCase(c));
-        }
-        return sb.toString();
-    }
+
 
     /**
      * Builds a cumulative map from original character positions to folded
@@ -284,6 +260,75 @@ public final class TermSuggest
     }
 
     /**
+     * Builds the highlighted form of a term, marking all occurrences of
+     * the folded query in the original string.
+     * <p>
+     * Folds the term, finds all non-overlapping needle positions in the
+     * folded form, maps each back to original character ranges (handling
+     * ligature expansion), then inserts {@link #markBefore}/{@link #markAfter}
+     * around each range. Adjacent or overlapping original ranges are merged.
+     * </p>
+     *
+     * @param term        original indexed term
+     * @param foldedQuery ASCII-folded query string
+     * @param prefixOnly  if {@code true}, match only at position 0
+     * @return term string with matched spans wrapped in markup
+     */
+    private String hilite(final String term, final String foldedQuery, final boolean prefixOnly)
+    {
+        final String termFolded = Char.toAscii(term);
+        final int nLen = foldedQuery.length();
+        final int[] map = foldMap(term);
+    
+        // Collect original-char ranges [from, to) for each match
+        // Use a boolean mask: true = this original char is highlighted
+        final int origLen = term.length();
+        final boolean[] mask = new boolean[origLen];
+    
+        if (prefixOnly) {
+            if (termFolded.startsWith(foldedQuery)) {
+                final int oFrom = 0;
+                final int oTo = origCharAt(map, nLen - 1) + 1;
+                for (int i = oFrom; i < oTo && i < origLen; i++) {
+                    mask[i] = true;
+                }
+            }
+        }
+        else {
+            int pos = 0;
+            while (pos <= termFolded.length() - nLen) {
+                final int found = termFolded.indexOf(foldedQuery, pos);
+                if (found < 0) break;
+                final int oFrom = origCharAt(map, found);
+                final int oTo = origCharAt(map, found + nLen - 1) + 1;
+                for (int i = oFrom; i < oTo && i < origLen; i++) {
+                    mask[i] = true;
+                }
+                pos = found + nLen;
+            }
+        }
+    
+        // Build highlighted string from mask transitions
+        final StringBuilder sb = new StringBuilder(origLen + markBefore.length() + markAfter.length());
+        boolean inMark = false;
+        for (int i = 0; i < origLen; i++) {
+            if (mask[i] && !inMark) {
+                sb.append(markBefore);
+                inMark = true;
+            }
+            else if (!mask[i] && inMark) {
+                sb.append(markAfter);
+                inMark = false;
+            }
+            sb.append(term.charAt(i));
+        }
+        if (inMark) {
+            sb.append(markAfter);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Finds the original character index that contains a given folded position.
      * Reverse linear scan; terms are short.
      *
@@ -314,74 +359,5 @@ public final class TermSuggest
             if (hay[from + j] != needle[j]) return false;
         }
         return true;
-    }
-
-    /**
-     * Builds the highlighted form of a term, marking all occurrences of
-     * the folded query in the original string.
-     * <p>
-     * Folds the term, finds all non-overlapping needle positions in the
-     * folded form, maps each back to original character ranges (handling
-     * ligature expansion), then inserts {@link #markBefore}/{@link #markAfter}
-     * around each range. Adjacent or overlapping original ranges are merged.
-     * </p>
-     *
-     * @param term        original indexed term
-     * @param foldedQuery ASCII-folded query string
-     * @param prefixOnly  if {@code true}, match only at position 0
-     * @return term string with matched spans wrapped in markup
-     */
-    private String hilite(final String term, final String foldedQuery, final boolean prefixOnly)
-    {
-        final String termFolded = asciiFold(term);
-        final int nLen = foldedQuery.length();
-        final int[] map = foldMap(term);
-
-        // Collect original-char ranges [from, to) for each match
-        // Use a boolean mask: true = this original char is highlighted
-        final int origLen = term.length();
-        final boolean[] mask = new boolean[origLen];
-
-        if (prefixOnly) {
-            if (termFolded.startsWith(foldedQuery)) {
-                final int oFrom = 0;
-                final int oTo = origCharAt(map, nLen - 1) + 1;
-                for (int i = oFrom; i < oTo && i < origLen; i++) {
-                    mask[i] = true;
-                }
-            }
-        }
-        else {
-            int pos = 0;
-            while (pos <= termFolded.length() - nLen) {
-                final int found = termFolded.indexOf(foldedQuery, pos);
-                if (found < 0) break;
-                final int oFrom = origCharAt(map, found);
-                final int oTo = origCharAt(map, found + nLen - 1) + 1;
-                for (int i = oFrom; i < oTo && i < origLen; i++) {
-                    mask[i] = true;
-                }
-                pos = found + nLen;
-            }
-        }
-
-        // Build highlighted string from mask transitions
-        final StringBuilder sb = new StringBuilder(origLen + markBefore.length() + markAfter.length());
-        boolean inMark = false;
-        for (int i = 0; i < origLen; i++) {
-            if (mask[i] && !inMark) {
-                sb.append(markBefore);
-                inMark = true;
-            }
-            else if (!mask[i] && inMark) {
-                sb.append(markAfter);
-                inMark = false;
-            }
-            sb.append(term.charAt(i));
-        }
-        if (inMark) {
-            sb.append(markAfter);
-        }
-        return sb.toString();
     }
 }

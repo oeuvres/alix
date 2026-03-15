@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 
+import com.github.oeuvres.alix.util.Char;
+
 /**
  * Interactive CLI for testing {@link TermSuggest}.
  * <p>
@@ -35,8 +37,8 @@ public final class TermSuggestDemo
 
         System.err.println("Opening lexicon and stats for field '" + field + "' …");
 
-        try (TermLexicon lexicon = TermLexicon.open(indexPath, field)) {
-            final FieldStats stats = FieldStats.open(indexPath, field);
+        try (TermLexicon lexicon = TermLexicon.openOrBuild(indexPath, field)) {
+            final FieldStats stats = FieldStats.openOrBuild(indexPath, field);
 
             System.err.printf("Lexicon: %,d terms, FST heap %,d bytes%n",
                 lexicon.vocabSize(), lexicon.fstRamBytesUsed());
@@ -73,7 +75,7 @@ public final class TermSuggestDemo
                 final List<TermRow> results = suggest.suggest(query, limit);
                 final long elapsedUs = (System.nanoTime() - qt0) / 1_000;
 
-                final String mode = TermSuggest.asciiFold(query).length() < TermSuggest.INFIX_THRESHOLD
+                final String mode = Char.toAscii(query).length() < TermSuggest.INFIX_THRESHOLD
                     ? "prefix" : "infix";
 
                 System.out.printf("%d hit%s in %,d µs [%s]%n",
