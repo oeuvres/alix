@@ -3,43 +3,43 @@ package com.github.oeuvres.alix.lucene.terms;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Diacritic-insensitive term suggestion for one indexed field.
  * <p>
- * Builds a flat ASCII-folded byte array from a {@link TermLexicon},
- * then matches user input against it with prefix search for short
- * queries (1–2 characters) and infix (substring) search for queries
- * of 3+ characters. All matching is case- and diacritic-insensitive.
+ * Builds a flat ASCII-folded byte array from a {@link TermLexicon}.
+ * User queries are matched against this array: prefix for 1–2 folded
+ * characters, infix (substring) for 3+. All matching is case- and
+ * diacritic-insensitive.
+ * </p>
+ * <p>
+ * This class holds references to {@link TermLexicon} and {@link FieldStats}
+ * without copying their data. Term strings and frequencies are resolved
+ * through those references only for the final ranked results.
  * </p>
  *
  * <h2>Folding</h2>
  * <p>
- * Unicode NFKD decomposition followed by removal of combining marks
- * and lower-casing. This maps {@code œ → oe}, {@code æ → ae},
- * {@code é → e}, {@code ç → c}, etc. The folded form may be longer
- * than the original (e.g. {@code cœur → coeur}), so highlight offsets
- * in the original string are computed via a per-character expansion map.
+ * Unicode NFKD decomposition, removal of combining marks, lower-casing.
+ * Maps {@code œ → oe}, {@code æ → ae}, {@code é → e}, {@code ç → c}, etc.
+ * The folded form may be longer than the original ({@code cœur → coeur}),
+ * so highlight offsets are computed via a per-character expansion map,
+ * applied only to the final top-k results.
  * </p>
  *
  * <h2>Memory</h2>
  * <p>
- * For a 30K-term lemmatized vocabulary the folded byte array is ~200–300 KB.
- * The original term strings are held as a {@code String[]} for display
- * and highlight computation (~300 KB). Total footprint under 1 MB.
- * </p>
- *
- * <h2>Performance</h2>
- * <p>
- * Linear scan over 30K short byte sequences completes in well under 1 ms
- * on modern hardware, meeting typeahead latency requirements.
+ * For a 30K-term lemmatized vocabulary: ~200–300 KB for the folded byte
+ * array and ~120 KB for offsets. Term strings and frequencies live in
+ * {@link TermLexicon} and {@link FieldStats} respectively; no duplication.
  * </p>
  *
  * @see TermLexicon
  * @see FieldStats
+ * @see TopTerms
  */
 public final class TermSuggest
 {
@@ -47,12 +47,15 @@ public final class TermSuggest
      * Minimum query length (in folded characters) for infix matching.
      * Shorter queries use prefix matching only.
      */
-    private static final int INFIX_THRESHOLD = 3;
+    static final int INFIX_THRESHOLD = 3;
 
-    /** Original indexed terms in termId order. */
-    private final String[] terms;
+    /** The term lexicon for original-form resolution. */
+    private final TermLexicon lexicon;
 
-    /** ASCII-folded, lowercased concatenation of all terms. */
+    /** Corpus-wide statistics for frequency access. */
+    private final FieldStats stats;
+
+    /** ASCII-folded, lowercased concatenation of all terms in termId order. */
     private final byte[] folded;
 
     /**
@@ -61,9 +64,6 @@ public final class TermSuggest
      * {@code folded[off[i] .. off[i+1])}.
      */
     private final int[] off;
-
-    /** Corpus-wide term frequencies by termId. */
-    private final long[] freqs;
 
     /** Number of distinct terms. */
     private final int vocabSize;
@@ -88,12 +88,13 @@ public final class TermSuggest
     /**
      * Builds the suggest index from a lexicon and its field statistics.
      * <p>
-     * Both must cover the same field and snapshot; vocabulary sizes must match.
-     * Construction is O(vocabSize) and allocates ~1 MB for a 30K-term field.
+     * Iterates the lexicon once to fold all terms. No term strings or
+     * frequencies are copied; the originals are accessed through their
+     * owning objects at query time.
      * </p>
      *
      * @param lexicon opened term lexicon
-     * @param stats   opened field statistics
+     * @param stats   opened field statistics for the same field and snapshot
      * @throws IllegalArgumentException if vocabulary sizes differ
      * @throws NullPointerException     if either argument is null
      */
@@ -101,34 +102,32 @@ public final class TermSuggest
     {
         Objects.requireNonNull(lexicon, "lexicon");
         Objects.requireNonNull(stats, "stats");
+        this.lexicon = lexicon;
+        this.stats = stats;
         this.vocabSize = lexicon.vocabSize();
         if (stats.vocabSize() != vocabSize) {
             throw new IllegalArgumentException(
                 "Vocabulary size mismatch: lexicon=" + vocabSize + ", stats=" + stats.vocabSize());
         }
 
-        this.terms = new String[vocabSize];
-        this.freqs = new long[vocabSize];
-
-        // First pass: fold each term, measure total folded length
+        // Single pass: fold each term, measure total folded byte length
         final String[] foldedStrings = new String[vocabSize];
         int totalBytes = 0;
         for (int id = 0; id < vocabSize; id++) {
-            terms[id] = lexicon.term(id);
-            freqs[id] = stats.termFreq(id);
-            foldedStrings[id] = asciiFold(terms[id]);
+            foldedStrings[id] = asciiFold(lexicon.term(id));
             totalBytes += foldedStrings[id].length();
         }
 
-        // Second pass: pack into contiguous byte array
+        // Pack into contiguous byte array
         this.folded = new byte[totalBytes];
         this.off = new int[vocabSize + 1];
         int pos = 0;
         for (int id = 0; id < vocabSize; id++) {
             off[id] = pos;
-            final byte[] bytes = foldedStrings[id].getBytes(StandardCharsets.US_ASCII);
-            System.arraycopy(bytes, 0, folded, pos, bytes.length);
-            pos += bytes.length;
+            final String s = foldedStrings[id];
+            for (int i = 0; i < s.length(); i++) {
+                folded[pos++] = (byte) s.charAt(i);
+            }
         }
         off[vocabSize] = pos;
     }
@@ -136,7 +135,7 @@ public final class TermSuggest
     /**
      * Returns the vocabulary size.
      *
-     * @return number of distinct terms in the index
+     * @return number of distinct terms
      */
     public int vocabSize()
     {
@@ -144,32 +143,22 @@ public final class TermSuggest
     }
 
     /**
-     * Returns the original indexed term for one id.
-     *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @return original term string
-     * @throws IllegalArgumentException if out of range
-     */
-    public String term(final int termId)
-    {
-        if (termId < 0 || termId >= vocabSize) {
-            throw new IllegalArgumentException("termId out of range: " + termId);
-        }
-        return terms[termId];
-    }
-
-    /**
-     * Searches for terms matching the user query, with diacritic-insensitive
-     * and case-insensitive matching.
+     * Searches for terms matching the user query.
      * <p>
-     * For queries of 1–2 folded characters, prefix matching is used.
-     * For 3+ characters, infix (substring) matching is used.
-     * Results are ordered by descending corpus frequency.
+     * Matching is diacritic- and case-insensitive. For queries of 1–2
+     * folded characters, only prefix matches are returned. For 3+,
+     * infix (substring) matching is used. Results are ordered by
+     * descending corpus frequency, capped at {@code limit}.
+     * </p>
+     * <p>
+     * Highlight offsets are computed only for the final ranked results,
+     * not for all scan hits.
      * </p>
      *
      * @param query user input (folded internally)
      * @param limit maximum number of results
-     * @return matching terms with highlight offsets, sorted by frequency
+     * @return matching terms with highlight offsets, sorted by frequency;
+     *         empty list if query folds to empty or limit &le; 0
      * @throws NullPointerException if query is null
      */
     public List<SuggestRow> suggest(final String query, final int limit)
@@ -183,37 +172,53 @@ public final class TermSuggest
         final byte[] needle = foldedQuery.getBytes(StandardCharsets.US_ASCII);
         final boolean prefixOnly = needle.length < INFIX_THRESHOLD;
 
-        final List<SuggestRow> hits = new ArrayList<>();
+        // Phase 1: linear scan, collect into bounded min-heap by frequency
+        final TopTerms top = new TopTerms(limit);
         for (int id = 0; id < vocabSize; id++) {
             final int from = off[id];
             final int to = off[id + 1];
-            final int matchPos;
-            if (prefixOnly) {
-                matchPos = prefixMatch(folded, from, to, needle);
+            final boolean hit = prefixOnly
+                ? prefixMatch(folded, from, to, needle)
+                : infixMatch(folded, from, to, needle) >= 0;
+            if (hit) {
+                // Safe narrowing: single-term freq < 2^31 for corpora up to ~2B tokens
+                top.offer(id, (int) Math.min(stats.termFreq(id), Integer.MAX_VALUE));
+            }
+        }
+
+        if (top.isEmpty()) return List.of();
+        top.sort();
+
+        // Phase 2: resolve strings and highlights for ranked terms only
+        final int n = top.size();
+        final List<SuggestRow> results = new ArrayList<>(n);
+        for (int rank = 0; rank < n; rank++) {
+            final int termId = top.termId(rank);
+            final String term = lexicon.term(termId);
+            final long count = stats.termFreq(termId);
+
+            // Re-fold this single term to locate needle
+            final String termFolded = asciiFold(term);
+            final int matchPos = prefixOnly
+                ? (termFolded.startsWith(foldedQuery) ? 0 : -1)
+                : termFolded.indexOf(foldedQuery);
+
+            final int hlFrom;
+            final int hlTo;
+            if (matchPos >= 0) {
+                final int[] map = foldMap(term);
+                hlFrom = origCharAt(map, matchPos);
+                hlTo = origCharAt(map, matchPos + needle.length - 1) + 1;
             }
             else {
-                matchPos = infixMatch(folded, from, to, needle);
+                // Defensive: should not happen since term was matched during scan
+                hlFrom = 0;
+                hlTo = term.length();
             }
-            if (matchPos < 0) {
-                continue;
-            }
 
-            // Matched byte offset relative to this term's folded start
-            final int foldedOffset = matchPos - from;
-
-            // Map folded match range back to original char range
-            final int[] map = foldMap(terms[id]);
-            final int hlFrom = origCharAt(map, foldedOffset);
-            final int hlTo = origCharAt(map, foldedOffset + needle.length - 1) + 1;
-
-            hits.add(new SuggestRow(id, terms[id], freqs[id], hlFrom, hlTo));
+            results.add(new SuggestRow(termId, term, count, hlFrom, hlTo));
         }
-
-        hits.sort(Comparator.comparingLong(SuggestRow::count).reversed());
-        if (hits.size() > limit) {
-            return new ArrayList<>(hits.subList(0, limit));
-        }
-        return hits;
+        return Collections.unmodifiableList(results);
     }
 
     // ── folding ────────────────────────────────────────────────────────
@@ -222,12 +227,12 @@ public final class TermSuggest
      * Folds a string to ASCII lower-case via Unicode NFKD decomposition,
      * removing all combining marks.
      * <p>
-     * Examples: {@code "Cœur" → "coeur"}, {@code "Éric" → "eric"},
-     * {@code "Loïc" → "loic"}, {@code "naïve" → "naive"}.
+     * Handles ligature decomposition: {@code œ → oe}, {@code æ → ae}.
+     * Handles diacritics: {@code é → e}, {@code ç → c}, {@code ï → i}.
      * </p>
      *
      * @param s input string
-     * @return folded ASCII lower-case string
+     * @return folded ASCII lower-case string, may be longer than input
      */
     static String asciiFold(final String s)
     {
@@ -235,7 +240,6 @@ public final class TermSuggest
         final StringBuilder sb = new StringBuilder(nfkd.length());
         for (int i = 0; i < nfkd.length(); i++) {
             final char c = nfkd.charAt(i);
-            // Skip combining marks (Unicode general category M)
             final int type = Character.getType(c);
             if (type == Character.NON_SPACING_MARK
                 || type == Character.COMBINING_SPACING_MARK
@@ -250,12 +254,13 @@ public final class TermSuggest
     // ── highlight mapping ──────────────────────────────────────────────
 
     /**
-     * Builds a cumulative offset map from original char indices to folded char positions.
+     * Builds a cumulative map from original character positions to folded
+     * character positions.
      * <p>
-     * {@code map[i]} is the folded char index where original char {@code i} begins.
+     * {@code map[i]} is the folded char index where original char {@code i} starts.
      * {@code map[original.length()]} is the total folded length.
-     * For single-char expansions (é→e) the mapping is 1:1; for ligature
-     * decompositions (œ→oe) one original char spans 2 folded positions.
+     * For diacritics ({@code é → e}) the mapping is 1:1.
+     * For ligatures ({@code œ → oe}) one original char maps to 2+ folded chars.
      * </p>
      *
      * @param original the indexed term
@@ -268,7 +273,6 @@ public final class TermSuggest
         int foldedPos = 0;
         for (int i = 0; i < len; i++) {
             map[i] = foldedPos;
-            // Fold this single character and count non-mark output chars
             final String nfkd = Normalizer.normalize(
                 String.valueOf(original.charAt(i)), Normalizer.Form.NFKD);
             int count = 0;
@@ -287,24 +291,16 @@ public final class TermSuggest
     }
 
     /**
-     * Finds the original character index that contains a given folded position.
-     * <p>
-     * Scans the cumulative offset map for the largest {@code i} where
-     * {@code map[i] <= foldedPos}. When a folded position falls inside
-     * a multi-char expansion (e.g. position 1 of "oe" from "œ"), the
-     * whole original character is returned.
-     * </p>
+     * Finds the original character index containing a given folded position.
+     * Reverse linear scan — terms are short, no binary search needed.
      *
      * @param map       cumulative fold-offset array from {@link #foldMap}
-     * @param foldedPos position in the folded byte sequence
+     * @param foldedPos position in the folded string
      * @return original character index
      */
     private static int origCharAt(final int[] map, final int foldedPos)
     {
-        // map.length = originalLen + 1
-        // Linear scan is fine for short terms (~5–15 chars)
-        final int origLen = map.length - 1;
-        for (int i = origLen - 1; i >= 0; i--) {
+        for (int i = map.length - 2; i >= 0; i--) {
             if (map[i] <= foldedPos) {
                 return i;
             }
@@ -317,30 +313,29 @@ public final class TermSuggest
     /**
      * Tests whether the haystack region starts with the needle.
      *
-     * @return {@code from} if prefix matches, {@code -1} otherwise
+     * @return {@code true} if prefix matches
      */
-    private static int prefixMatch(
+    private static boolean prefixMatch(
         final byte[] hay, final int from, final int to, final byte[] needle
     ) {
-        final int hLen = to - from;
-        if (needle.length > hLen) return -1;
+        if (needle.length > to - from) return false;
         for (int j = 0; j < needle.length; j++) {
-            if (hay[from + j] != needle[j]) return -1;
+            if (hay[from + j] != needle[j]) return false;
         }
-        return from;
+        return true;
     }
 
     /**
      * Finds the first occurrence of needle in the haystack region.
      *
-     * @return absolute byte offset of the match start, or {@code -1}
+     * @return byte offset of the match start relative to {@code from},
+     *         or {@code -1} if not found
      */
     private static int infixMatch(
         final byte[] hay, final int from, final int to, final byte[] needle
     ) {
-        final int hLen = to - from;
         final int nLen = needle.length;
-        if (nLen > hLen) return -1;
+        if (nLen > to - from) return -1;
         final int end = to - nLen;
         for (int i = from; i <= end; i++) {
             boolean match = true;
@@ -350,7 +345,7 @@ public final class TermSuggest
                     break;
                 }
             }
-            if (match) return i;
+            if (match) return i - from;
         }
         return -1;
     }

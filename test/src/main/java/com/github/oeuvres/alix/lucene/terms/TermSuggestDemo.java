@@ -12,8 +12,8 @@ import java.util.List;
  * <p>
  * Opens a frozen Lucene index, builds the suggest index from
  * {@link TermLexicon} and {@link FieldStats}, then loops reading
- * queries from stdin. Results are printed with ANSI bold+underline
- * highlighting on the matched substring.
+ * queries from stdin. Results are printed with ANSI highlight
+ * on the matched substring.
  * </p>
  *
  * <pre>
@@ -61,9 +61,9 @@ public final class TermSuggestDemo
             System.err.printf("Suggest index built in %,d ms for %,d terms%n",
                 buildMs, suggest.vocabSize());
             System.err.println();
-            System.err.println("Type a query, empty line to quit.");
-            System.err.println("  1–2 chars → prefix search");
-            System.err.println("  3+  chars → infix (substring) search");
+            System.err.println("Type a query, empty line or Ctrl-D to quit.");
+            System.err.printf("  1–%d chars → prefix search%n", TermSuggest.INFIX_THRESHOLD - 1);
+            System.err.printf("  %d+  chars → infix (substring) search%n", TermSuggest.INFIX_THRESHOLD);
             System.err.println();
 
             final BufferedReader reader = new BufferedReader(
@@ -81,20 +81,19 @@ public final class TermSuggestDemo
 
                 final long qt0 = System.nanoTime();
                 final List<TermSuggest.SuggestRow> results = suggest.suggest(query, limit);
-                final long elapsed = (System.nanoTime() - qt0) / 1_000;
+                final long elapsedUs = (System.nanoTime() - qt0) / 1_000;
 
-                final String mode = TermSuggest.asciiFold(query).length() < 3
+                final String mode = TermSuggest.asciiFold(query).length() < TermSuggest.INFIX_THRESHOLD
                     ? "prefix" : "infix";
 
                 System.out.printf("%d hit%s in %,d µs [%s]%n",
                     results.size(),
                     results.size() == 1 ? "" : "s",
-                    elapsed,
+                    elapsedUs,
                     mode);
 
                 for (final TermSuggest.SuggestRow row : results) {
-                    final String marked = highlight(row);
-                    System.out.printf("  %,12d  %s%n", row.count(), marked);
+                    System.out.printf("  %,12d  %s%n", row.count(), highlight(row));
                 }
                 System.out.println();
             }
