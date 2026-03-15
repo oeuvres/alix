@@ -104,7 +104,7 @@ public final class ThemeTermsDemo {
     private static void ensureLexicon(final Path indexPath, final String field) throws IOException {
         if (!TermLexicon.exists(indexPath, field)) {
             System.out.println("Lexicon files not found for field '" + field + "'. Building them...");
-            TermLexicon.write(indexPath, field);
+            TermLexicon.build(indexPath, field);
         }
     }
 
@@ -118,7 +118,7 @@ public final class ThemeTermsDemo {
     private static void ensureFieldStats(final Path indexPath, final String field) throws IOException {
         if (!FieldStats.exists(indexPath, field)) {
             System.out.println("FieldStats file not found for field '" + field + "'. Building it...");
-            FieldStats.write(indexPath, field);
+            FieldStats.build(indexPath, field);
         }
     }
 

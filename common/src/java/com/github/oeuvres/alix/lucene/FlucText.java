@@ -100,7 +100,7 @@ public final class FlucText extends Fluc
     {
         return fieldStatsHolder.get(
             () -> FieldStats.exists(indexDir, name()),
-            () -> FieldStats.write(indexDir, reader, name()),
+            () -> FieldStats.build(indexDir, reader, name()),
             () -> FieldStats.open(indexDir, name())
         );
     }
@@ -116,7 +116,7 @@ public final class FlucText extends Fluc
     {
         return lexiconHolder.get(
             () -> TermLexicon.exists(indexDir, name()),
-            () -> TermLexicon.write(indexDir, reader, name()),
+            () -> TermLexicon.build(indexDir, reader, name()),
             () -> TermLexicon.open(indexDir, name())
         );
     }

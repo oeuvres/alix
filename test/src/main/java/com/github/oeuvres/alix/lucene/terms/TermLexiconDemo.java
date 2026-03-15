@@ -26,7 +26,7 @@ public final class TermLexiconDemo {
 
         // 1) Build the lexicon once if missing.
         if (!TermLexicon.exists(indexDir, field)) {
-            TermLexicon.write(indexDir, field);
+            TermLexicon.build(indexDir, field);
         }
 
         // 2) Open the lexicon and do the two core lookups.

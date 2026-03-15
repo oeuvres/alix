@@ -208,6 +208,74 @@ public final class FieldStats implements ReferenceStats {
     }
 
     /**
+     * Builds the statistics file for one field using the latest committed state of the Lucene directory.
+     *
+     * @param indexDir Lucene directory that contains the frozen index
+     * @param field indexed field name
+     * @throws IOException if the index cannot be opened, if the field has no terms, if term frequencies
+     *         are unavailable, or if the target file already exists
+     */
+    public static void build(final Path indexDir, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+    
+        try (FSDirectory dir = FSDirectory.open(indexDir);
+             DirectoryReader reader = DirectoryReader.open(dir)) {
+            build(indexDir, reader, field);
+        }
+    }
+
+    /**
+     * Builds the statistics file for one field from an already opened snapshot reader.
+     * <p>
+     * This overload is useful when the caller already controls which Lucene snapshot is being read.
+     * </p>
+     *
+     * @param indexDir Lucene directory that will receive the {@code <field>.stats} file
+     * @param reader snapshot reader that defines the field statistics
+     * @param field indexed field name
+     * @throws IOException if the field has no terms, if term frequencies are unavailable,
+     *         if a target file already exists, or if writing fails
+     */
+    public static void build(final Path indexDir, final IndexReader reader, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(field, "field");
+    
+        final Path statsPath = statsPath(indexDir, field);
+        ensureAbsent(statsPath);
+    
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalArgumentException("Field not found or without terms: " + field);
+        }
+    
+        final int docCount = terms.getDocCount();
+        if (docCount < 0) {
+            throw new IOException("Field docCount is unavailable: " + field);
+        }
+    
+        final long totalTermFreq = terms.getSumTotalTermFreq();
+        if (totalTermFreq < 0L) {
+            throw new IOException("Field totalTermFreq is unavailable; term frequencies are required: " + field);
+        }
+    
+        final int vocabSize = resolveVocabSize(terms);
+        final int maxDoc = reader.maxDoc();
+    
+        final Path tmp = tmpPath(statsPath);
+        ensureAbsent(tmp);
+    
+        try {
+            buildFile(tmp, reader, field, vocabSize, docCount, maxDoc, totalTermFreq);
+            moveTemp(tmp, statsPath);
+        } catch (IOException | RuntimeException e) {
+            deleteIfExists(tmp);
+            throw e;
+        }
+    }
+
+    /**
      * Returns the document frequency of one term.
      *
      * @param termId dense term id in {@code [0, vocabSize)}
@@ -416,6 +484,46 @@ public final class FieldStats implements ReferenceStats {
             throw new IOException("Truncated stats file: " + path, e);
         }
     }
+    
+    /**
+     * Opens the field statistics, building the sidecar file first if it does not exist.
+     * <p>
+     * Opens a {@link DirectoryReader} internally if building is needed.
+     * When both {@code FieldStats} and {@code TermLexicon} need building
+     * for the same field, prefer the overload that accepts an
+     * {@link IndexReader} to avoid opening the index twice.
+     * </p>
+     *
+     * @param indexDir Lucene directory containing the frozen index
+     * @param field    indexed field name
+     * @return opened immutable field statistics
+     * @throws IOException if building or opening fails
+     */
+    public static FieldStats openOrBuild(final Path indexDir, final String field) throws IOException {
+        if (!exists(indexDir, field)) {
+            build(indexDir, field);
+        }
+        return open(indexDir, field);
+    }
+
+    /**
+     * Opens the field statistics, building the sidecar file first if it does not exist,
+     * using an already opened reader.
+     *
+     * @param indexDir Lucene directory that will receive the sidecar file
+     * @param reader   snapshot reader for building (ignored if file exists)
+     * @param field    indexed field name
+     * @return opened immutable field statistics
+     * @throws IOException if building or opening fails
+     */
+    public static FieldStats openOrBuild(final Path indexDir, final IndexReader reader, final String field)
+        throws IOException
+    {
+        if (!exists(indexDir, field)) {
+            build(indexDir, reader, field);
+        }
+        return open(indexDir, field);
+    }
 
     /**
      * Returns the total number of occurrences of one term in the field.
@@ -450,102 +558,6 @@ public final class FieldStats implements ReferenceStats {
     }
 
     /**
-     * Builds the statistics file for one field using the latest committed state of the Lucene directory.
-     *
-     * @param indexDir Lucene directory that contains the frozen index
-     * @param field indexed field name
-     * @throws IOException if the index cannot be opened, if the field has no terms, if term frequencies
-     *         are unavailable, or if the target file already exists
-     */
-    public static void write(final Path indexDir, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-
-        try (FSDirectory dir = FSDirectory.open(indexDir);
-             DirectoryReader reader = DirectoryReader.open(dir)) {
-            write(indexDir, reader, field);
-        }
-    }
-
-    /**
-     * Builds the statistics file for one field from an already opened snapshot reader.
-     * <p>
-     * This overload is useful when the caller already controls which Lucene snapshot is being read.
-     * </p>
-     *
-     * @param indexDir Lucene directory that will receive the {@code <field>.stats} file
-     * @param reader snapshot reader that defines the field statistics
-     * @param field indexed field name
-     * @throws IOException if the field has no terms, if term frequencies are unavailable,
-     *         if a target file already exists, or if writing fails
-     */
-    public static void write(final Path indexDir, final IndexReader reader, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(field, "field");
-
-        final Path statsPath = statsPath(indexDir, field);
-        ensureAbsent(statsPath);
-
-        final Terms terms = MultiTerms.getTerms(reader, field);
-        if (terms == null) {
-            throw new IllegalArgumentException("Field not found or without terms: " + field);
-        }
-
-        final int docCount = terms.getDocCount();
-        if (docCount < 0) {
-            throw new IOException("Field docCount is unavailable: " + field);
-        }
-
-        final long totalTermFreq = terms.getSumTotalTermFreq();
-        if (totalTermFreq < 0L) {
-            throw new IOException("Field totalTermFreq is unavailable; term frequencies are required: " + field);
-        }
-
-        final int vocabSize = resolveVocabSize(terms);
-        final int maxDoc = reader.maxDoc();
-
-        final Path tmp = tmpPath(statsPath);
-        ensureAbsent(tmp);
-
-        try {
-            buildFile(tmp, reader, field, vocabSize, docCount, maxDoc, totalTermFreq);
-            moveTemp(tmp, statsPath);
-        } catch (IOException | RuntimeException e) {
-            deleteIfExists(tmp);
-            throw e;
-        }
-    }
-
-    /**
-     * Checks that a term id is inside the valid range.
-     *
-     * @param termId dense term id to validate
-     * @throws IllegalArgumentException if the id is negative or outside the vocabulary size
-     */
-    private void checkTermId(final int termId) {
-        if (termId < 0 || termId >= vocabSize) {
-            throw new IllegalArgumentException(
-                "termId out of range: " + termId + " (vocabSize=" + vocabSize + ')'
-            );
-        }
-    }
-
-    /**
-     * Checks that a document id is inside the valid range.
-     *
-     * @param docId global Lucene document id to validate
-     * @throws IllegalArgumentException if the id is negative or outside {@code maxDoc}
-     */
-    private void checkDocId(final int docId) {
-        if (docId < 0 || docId >= maxDoc) {
-            throw new IllegalArgumentException(
-                "docId out of range: " + docId + " (maxDoc=" + maxDoc + ')'
-            );
-        }
-    }
-
-    /**
      * Builds the persisted binary file.
      *
      * @param path target temporary path
@@ -569,9 +581,9 @@ public final class FieldStats implements ReferenceStats {
         final int[] docFreqs = new int[vocabSize];
         final long[] termFreqs = new long[vocabSize];
         final int[] docLens = new int[maxDoc];
-
+    
         fillStats(reader, field, vocabSize, docFreqs, termFreqs, docLens);
-
+    
         long docLensSum = 0L;
         for (int docLen : docLens) {
             docLensSum += docLen;
@@ -582,10 +594,10 @@ public final class FieldStats implements ReferenceStats {
                 ", totalTermFreq=" + totalTermFreq
             );
         }
-
+    
         try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(path, StandardOpenOption.CREATE_NEW));
              DataOutputStream out = new DataOutputStream(os)) {
-
+    
             out.writeInt(MAGIC);
             out.writeInt(VERSION);
             writeUtf8(out, field);
@@ -593,7 +605,7 @@ public final class FieldStats implements ReferenceStats {
             out.writeInt(docCount);
             out.writeInt(maxDoc);
             out.writeLong(totalTermFreq);
-
+    
             for (int docFreq : docFreqs) {
                 out.writeInt(docFreq);
             }
@@ -603,6 +615,71 @@ public final class FieldStats implements ReferenceStats {
             for (int docLen : docLens) {
                 out.writeInt(docLen);
             }
+        }
+    }
+
+    /**
+     * Checks that a document id is inside the valid range.
+     *
+     * @param docId global Lucene document id to validate
+     * @throws IllegalArgumentException if the id is negative or outside {@code maxDoc}
+     */
+    private void checkDocId(final int docId) {
+        if (docId < 0 || docId >= maxDoc) {
+            throw new IllegalArgumentException(
+                "docId out of range: " + docId + " (maxDoc=" + maxDoc + ')'
+            );
+        }
+    }
+
+    /**
+     * Checks that a term id is inside the valid range.
+     *
+     * @param termId dense term id to validate
+     * @throws IllegalArgumentException if the id is negative or outside the vocabulary size
+     */
+    private void checkTermId(final int termId) {
+        if (termId < 0 || termId >= vocabSize) {
+            throw new IllegalArgumentException(
+                "termId out of range: " + termId + " (vocabSize=" + vocabSize + ')'
+            );
+        }
+    }
+
+    /**
+     * Deletes a file if it exists.
+     *
+     * @param path path to delete
+     */
+    private static void deleteIfExists(final Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // best-effort cleanup only
+        }
+    }
+
+    /**
+     * Ensures that a file does not already exist.
+     *
+     * @param path target path
+     * @throws FileAlreadyExistsException if the path already exists
+     */
+    private static void ensureAbsent(final Path path) throws FileAlreadyExistsException {
+        if (Files.exists(path)) {
+            throw new FileAlreadyExistsException(path.toString());
+        }
+    }
+
+    /**
+     * Ensures that a file exists and is a regular file.
+     *
+     * @param path path to check
+     * @throws IOException if the file does not exist or is not regular
+     */
+    private static void ensureRegularFile(final Path path) throws IOException {
+        if (!Files.isRegularFile(path)) {
+            throw new NoSuchFileException(path.toString());
         }
     }
 
@@ -698,6 +775,21 @@ public final class FieldStats implements ReferenceStats {
     }
 
     /**
+     * Moves one temporary file into its final location.
+     *
+     * @param source temporary file path
+     * @param target final file path
+     * @throws IOException if the move fails
+     */
+    private static void moveTemp(final Path source, final Path target) throws IOException {
+        try {
+            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            Files.move(source, target);
+        }
+    }
+
+    /**
      * Resolves the vocabulary size of a field.
      * <p>
      * If Lucene exposes {@link Terms#size()}, that value is used directly.
@@ -726,19 +818,6 @@ public final class FieldStats implements ReferenceStats {
             count++;
         }
         return count;
-    }
-
-    /**
-     * Writes one UTF-8 string preceded by its byte length.
-     *
-     * @param out destination stream
-     * @param s string to write
-     * @throws IOException if writing fails
-     */
-    private static void writeUtf8(final DataOutputStream out, final String s) throws IOException {
-        final byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
-        out.writeInt(bytes.length);
-        out.write(bytes);
     }
 
     /**
@@ -780,54 +859,15 @@ public final class FieldStats implements ReferenceStats {
     }
 
     /**
-     * Moves one temporary file into its final location.
+     * Writes one UTF-8 string preceded by its byte length.
      *
-     * @param source temporary file path
-     * @param target final file path
-     * @throws IOException if the move fails
+     * @param out destination stream
+     * @param s string to write
+     * @throws IOException if writing fails
      */
-    private static void moveTemp(final Path source, final Path target) throws IOException {
-        try {
-            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-            Files.move(source, target);
-        }
-    }
-
-    /**
-     * Deletes a file if it exists.
-     *
-     * @param path path to delete
-     */
-    private static void deleteIfExists(final Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-            // best-effort cleanup only
-        }
-    }
-
-    /**
-     * Ensures that a file exists and is a regular file.
-     *
-     * @param path path to check
-     * @throws IOException if the file does not exist or is not regular
-     */
-    private static void ensureRegularFile(final Path path) throws IOException {
-        if (!Files.isRegularFile(path)) {
-            throw new NoSuchFileException(path.toString());
-        }
-    }
-
-    /**
-     * Ensures that a file does not already exist.
-     *
-     * @param path target path
-     * @throws FileAlreadyExistsException if the path already exists
-     */
-    private static void ensureAbsent(final Path path) throws FileAlreadyExistsException {
-        if (Files.exists(path)) {
-            throw new FileAlreadyExistsException(path.toString());
-        }
+    private static void writeUtf8(final DataOutputStream out, final String s) throws IOException {
+        final byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+        out.writeInt(bytes.length);
+        out.write(bytes);
     }
 }

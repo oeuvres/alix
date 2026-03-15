@@ -100,7 +100,7 @@ public class CoocDemo {
         
 
         if (!TermLexicon.exists(indexDir, fieldName)) {
-            TermLexicon.write(indexDir, fieldName);
+            TermLexicon.build(indexDir, fieldName);
         }
         if (!TermRail.exists(indexDir, fieldName)) {
             try(TermLexicon lexicon = TermLexicon.open(indexDir, fieldName);
