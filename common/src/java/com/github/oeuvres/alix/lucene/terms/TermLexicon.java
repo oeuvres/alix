@@ -186,8 +186,6 @@ public final class TermLexicon implements Closeable {
         unmap(offBuf);
     }
 
-    // ── static existence check ──────────────────────────────────────────
-
     /**
      * Returns {@code true} if the three persisted files for {@code field} exist as regular files.
      * <p>
@@ -207,16 +205,6 @@ public final class TermLexicon implements Closeable {
             && Files.isRegularFile(datPath(indexDir, field))
             && Files.isRegularFile(offPath(indexDir, field));
     }
-
-    // ── write ───────────────────────────────────────────────────────────
-
-    
-
-    // ── open ────────────────────────────────────────────────────────────
-
-    
-
-    // ── accessors ───────────────────────────────────────────────────────
 
     /**
      * Returns the indexed field name covered by this lexicon.
@@ -409,21 +397,6 @@ public final class TermLexicon implements Closeable {
     }
 
     
-
-    // ── internal: validation ────────────────────────────────────────────
-
-    // ── write ───────────────────────────────────────────────────────────
-    
-    // ── write ───────────────────────────────────────────────────────────
-    
-    
-    
-    // ── open ────────────────────────────────────────────────────────────
-    
-    
-    
-    // ── accessors ───────────────────────────────────────────────────────
-    
     /**
      * Returns the number of distinct terms in the field.
      *
@@ -455,8 +428,6 @@ public final class TermLexicon implements Closeable {
             write(indexDir, reader, field);
         }
     }
-
-    // ── write ───────────────────────────────────────────────────────────
     
     /**
      * Builds the lexicon files for one field from an already opened snapshot reader.
@@ -523,6 +494,105 @@ public final class TermLexicon implements Closeable {
             throw e;
         }
     }
+    
+    /**
+     * Builds the three persisted files from the field's merged term dictionary.
+     * <p>
+     * Iterates the {@link TermsEnum} in lexicographic order, assigning a dense id
+     * to each term starting from 0. The FST, concatenated term bytes, and native-endian
+     * offset array are written to the respective temporary paths.
+     * </p>
+     *
+     * @param terms   merged terms for the field
+     * @param fstPath target path for the compiled FST
+     * @param datPath target path for the concatenated term bytes
+     * @param offPath target path for the native-endian offsets
+     * @throws IOException if writing or FST compilation fails, or if limits are exceeded
+     */
+    private static void buildFiles(
+        final Terms terms,
+        final Path fstPath,
+        final Path datPath,
+        final Path offPath
+    ) throws IOException {
+        final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
+        final FSTCompiler<Long> compiler =
+            new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
+        final IntsRefBuilder ints = new IntsRefBuilder();
+    
+        int id = 0;
+        int datPos = 0;
+    
+        final ByteBuffer offBuf = ByteBuffer.allocate(OFF_BUF_INTS * 4).order(ByteOrder.nativeOrder());
+    
+        try (OutputStream datOs = new BufferedOutputStream(
+                 Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW));
+             FileChannel offCh = FileChannel.open(offPath,
+                 StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+    
+            offBuf.putInt(0);
+    
+            final TermsEnum te = terms.iterator();
+            BytesRef term;
+            while ((term = te.next()) != null) {
+                if (id == Integer.MAX_VALUE) {
+                    throw new IOException("Too many terms for int term ids");
+                }
+                if (datPos > Integer.MAX_VALUE - term.length) {
+                    throw new IOException("Term bytes exceed 2 GiB; 32-bit offsets insufficient");
+                }
+    
+                compiler.add(Util.toIntsRef(term, ints), (long) id);
+    
+                datOs.write(term.bytes, term.offset, term.length);
+                datPos += term.length;
+    
+                if (!offBuf.hasRemaining()) {
+                    offBuf.flip();
+                    offCh.write(offBuf);
+                    offBuf.clear();
+                }
+                offBuf.putInt(datPos);
+                id++;
+            }
+    
+            if (offBuf.position() > 0) {
+                offBuf.flip();
+                offCh.write(offBuf);
+            }
+        }
+    
+        final FST.FSTMetadata<Long> metadata = compiler.compile();
+        if (metadata == null) {
+            throw new IOException("Field has no terms; cannot build lexicon");
+        }
+        final FST<Long> fst = FST.fromFSTReader(metadata, compiler.getFSTReader());
+        fst.save(fstPath);
+    }
+
+    /**
+     * Checks that the modification times of several files are within {@value #MTIME_TOLERANCE_MS} ms
+     * of each other.
+     * <p>
+     * Cheap startup guard against opening a set of files produced by different write operations.
+     * </p>
+     *
+     * @param paths files that should have been produced together
+     * @throws IOException if the mtime spread exceeds the tolerance
+     */
+    private static void checkMtimeCoherence(final Path... paths) throws IOException {
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (Path path : paths) {
+            final long t = Files.getLastModifiedTime(path).toMillis();
+            min = Math.min(min, t);
+            max = Math.max(max, t);
+        }
+        if ((max - min) > MTIME_TOLERANCE_MS) {
+            throw new IOException(
+                "Lexicon file mtimes differ by " + (max - min) + "ms; possible partial copy or mixed versions");
+        }
+    }
 
     /**
      * Checks that a term id falls within the valid range {@code [0, vocabSize)}.
@@ -534,6 +604,82 @@ public final class TermLexicon implements Closeable {
         if (termId < 0 || termId >= vocabSize) {
             throw new IllegalArgumentException(
                 "termId out of range: " + termId + " (vocabSize=" + vocabSize + ")");
+        }
+    }
+
+    /**
+     * Returns the path of the concatenated term-bytes file for one field.
+     *
+     * @param indexDir Lucene directory
+     * @param field    indexed field name
+     * @return {@code <indexDir>/<field>.terms.dat}
+     */
+    private static Path datPath(final Path indexDir, final String field) {
+        return indexDir.resolve(field + ".terms.dat");
+    }
+
+    /**
+     * Deletes a file if it exists, silently ignoring any failure.
+     * Used for best-effort cleanup only.
+     *
+     * @param path path to delete
+     */
+    private static void deleteIfExists(final Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // best-effort cleanup
+        }
+    }
+
+    /**
+     * Asserts that a path does not already exist.
+     * <p>
+     * Used before writing to prevent accidental overwrite of existing lexicon files.
+     * </p>
+     *
+     * @param path target path that must not exist
+     * @throws FileAlreadyExistsException if the path already exists
+     */
+    private static void ensureAbsent(final Path path) throws IOException {
+        if (Files.exists(path)) {
+            throw new FileAlreadyExistsException(path.toString());
+        }
+    }
+
+    /**
+     * Asserts that a path points to an existing regular file.
+     *
+     * @param path path to check
+     * @throws NoSuchFileException if the file does not exist or is not a regular file
+     */
+    private static void ensureRegularFile(final Path path) throws IOException {
+        if (!Files.isRegularFile(path)) {
+            throw new NoSuchFileException(path.toString());
+        }
+    }
+
+    /**
+     * Returns the path of the FST file for one field.
+     *
+     * @param indexDir Lucene directory
+     * @param field    indexed field name
+     * @return {@code <indexDir>/<field>.terms.fst}
+     */
+    private static Path fstPath(final Path indexDir, final String field) {
+        return indexDir.resolve(field + ".terms.fst");
+    }
+    
+    /**
+     * Memory-maps one file in read-only mode.
+     *
+     * @param path file path
+     * @return read-only memory-mapped byte buffer covering the entire file
+     * @throws IOException if the file cannot be opened or mapped
+     */
+    private static MappedByteBuffer mapReadOnly(final Path path) throws IOException {
+        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
+            return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
         }
     }
 
@@ -573,143 +719,25 @@ public final class TermLexicon implements Closeable {
         }
     }
 
-    // ── internal: build ─────────────────────────────────────────────────
-
     /**
-     * Builds the three persisted files from the field's merged term dictionary.
+     * Atomically moves a temporary file to its final location.
      * <p>
-     * Iterates the {@link TermsEnum} in lexicographic order, assigning a dense id
-     * to each term starting from 0. The FST, concatenated term bytes, and native-endian
-     * offset array are written to the respective temporary paths.
+     * Attempts {@link StandardCopyOption#ATOMIC_MOVE} first. If the filesystem does not
+     * support atomic moves, falls back to a plain move.
      * </p>
      *
-     * @param terms   merged terms for the field
-     * @param fstPath target path for the compiled FST
-     * @param datPath target path for the concatenated term bytes
-     * @param offPath target path for the native-endian offsets
-     * @throws IOException if writing or FST compilation fails, or if limits are exceeded
+     * @param source temporary file path
+     * @param target final file path
+     * @throws IOException if the move fails even with fallback
      */
-    private static void buildFiles(
-        final Terms terms,
-        final Path fstPath,
-        final Path datPath,
-        final Path offPath
-    ) throws IOException {
-        final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-        final FSTCompiler<Long> compiler =
-            new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
-        final IntsRefBuilder ints = new IntsRefBuilder();
-
-        int id = 0;
-        int datPos = 0;
-
-        final ByteBuffer offBuf = ByteBuffer.allocate(OFF_BUF_INTS * 4).order(ByteOrder.nativeOrder());
-
-        try (OutputStream datOs = new BufferedOutputStream(
-                 Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW));
-             FileChannel offCh = FileChannel.open(offPath,
-                 StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-
-            offBuf.putInt(0);
-
-            final TermsEnum te = terms.iterator();
-            BytesRef term;
-            while ((term = te.next()) != null) {
-                if (id == Integer.MAX_VALUE) {
-                    throw new IOException("Too many terms for int term ids");
-                }
-                if (datPos > Integer.MAX_VALUE - term.length) {
-                    throw new IOException("Term bytes exceed 2 GiB; 32-bit offsets insufficient");
-                }
-
-                compiler.add(Util.toIntsRef(term, ints), (long) id);
-
-                datOs.write(term.bytes, term.offset, term.length);
-                datPos += term.length;
-
-                if (!offBuf.hasRemaining()) {
-                    offBuf.flip();
-                    offCh.write(offBuf);
-                    offBuf.clear();
-                }
-                offBuf.putInt(datPos);
-                id++;
-            }
-
-            if (offBuf.position() > 0) {
-                offBuf.flip();
-                offCh.write(offBuf);
-            }
-        }
-
-        final FST.FSTMetadata<Long> metadata = compiler.compile();
-        if (metadata == null) {
-            throw new IOException("Field has no terms; cannot build lexicon");
-        }
-        final FST<Long> fst = FST.fromFSTReader(metadata, compiler.getFSTReader());
-        fst.save(fstPath);
-    }
-
-    // ── internal: mmap utilities ────────────────────────────────────────
-
-    /**
-     * Memory-maps one file in read-only mode.
-     *
-     * @param path file path
-     * @return read-only memory-mapped byte buffer covering the entire file
-     * @throws IOException if the file cannot be opened or mapped
-     */
-    private static MappedByteBuffer mapReadOnly(final Path path) throws IOException {
-        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
-            return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
-        }
-    }
-
-    /**
-     * Attempts to unmap a {@link MappedByteBuffer} immediately using
-     * {@code sun.misc.Unsafe.invokeCleaner()}.
-     * <p>
-     * This is a best-effort operation. If the reflective call is unavailable or fails,
-     * a fine-level log message is emitted and the buffer is left for garbage collection.
-     * </p>
-     *
-     * @param buf the mapped buffer to unmap, or {@code null} (no-op)
-     */
-    static void unmap(final MappedByteBuffer buf) {
-        if (buf == null || INVOKE_CLEANER == null) {
-            return;
-        }
+    private static void moveTemp(final Path source, final Path target) throws IOException {
         try {
-            INVOKE_CLEANER.invokeExact((ByteBuffer) buf);
-        } catch (Throwable t) {
-            // Say someting?
+            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            Files.move(source, target);
         }
     }
-
-    // ── internal: path resolution ───────────────────────────────────────
-
-    /**
-     * Returns the path of the FST file for one field.
-     *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code <indexDir>/<field>.terms.fst}
-     */
-    private static Path fstPath(final Path indexDir, final String field) {
-        return indexDir.resolve(field + ".terms.fst");
-    }
-
-    /**
-     * Returns the path of the concatenated term-bytes file for one field.
-     *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code <indexDir>/<field>.terms.dat}
-     */
-    private static Path datPath(final Path indexDir, final String field) {
-        return indexDir.resolve(field + ".terms.dat");
-    }
-
+    
     /**
      * Returns the path of the offsets file for one field.
      *
@@ -734,89 +762,24 @@ public final class TermLexicon implements Closeable {
         return path.resolveSibling(path.getFileName().toString() + ".tmp");
     }
 
-    // ── internal: file operations ───────────────────────────────────────
-
     /**
-     * Atomically moves a temporary file to its final location.
+     * Attempts to unmap a {@link MappedByteBuffer} immediately using
+     * {@code sun.misc.Unsafe.invokeCleaner()}.
      * <p>
-     * Attempts {@link StandardCopyOption#ATOMIC_MOVE} first. If the filesystem does not
-     * support atomic moves, falls back to a plain move.
+     * This is a best-effort operation. If the reflective call is unavailable or fails,
+     * a fine-level log message is emitted and the buffer is left for garbage collection.
      * </p>
      *
-     * @param source temporary file path
-     * @param target final file path
-     * @throws IOException if the move fails even with fallback
+     * @param buf the mapped buffer to unmap, or {@code null} (no-op)
      */
-    private static void moveTemp(final Path source, final Path target) throws IOException {
+    static void unmap(final MappedByteBuffer buf) {
+        if (buf == null || INVOKE_CLEANER == null) {
+            return;
+        }
         try {
-            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-            Files.move(source, target);
-        }
-    }
-
-    /**
-     * Deletes a file if it exists, silently ignoring any failure.
-     * Used for best-effort cleanup only.
-     *
-     * @param path path to delete
-     */
-    private static void deleteIfExists(final Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-            // best-effort cleanup
-        }
-    }
-
-    /**
-     * Asserts that a path points to an existing regular file.
-     *
-     * @param path path to check
-     * @throws NoSuchFileException if the file does not exist or is not a regular file
-     */
-    private static void ensureRegularFile(final Path path) throws IOException {
-        if (!Files.isRegularFile(path)) {
-            throw new NoSuchFileException(path.toString());
-        }
-    }
-
-    /**
-     * Asserts that a path does not already exist.
-     * <p>
-     * Used before writing to prevent accidental overwrite of existing lexicon files.
-     * </p>
-     *
-     * @param path target path that must not exist
-     * @throws FileAlreadyExistsException if the path already exists
-     */
-    private static void ensureAbsent(final Path path) throws IOException {
-        if (Files.exists(path)) {
-            throw new FileAlreadyExistsException(path.toString());
-        }
-    }
-
-    /**
-     * Checks that the modification times of several files are within {@value #MTIME_TOLERANCE_MS} ms
-     * of each other.
-     * <p>
-     * Cheap startup guard against opening a set of files produced by different write operations.
-     * </p>
-     *
-     * @param paths files that should have been produced together
-     * @throws IOException if the mtime spread exceeds the tolerance
-     */
-    private static void checkMtimeCoherence(final Path... paths) throws IOException {
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (Path path : paths) {
-            final long t = Files.getLastModifiedTime(path).toMillis();
-            min = Math.min(min, t);
-            max = Math.max(max, t);
-        }
-        if ((max - min) > MTIME_TOLERANCE_MS) {
-            throw new IOException(
-                "Lexicon file mtimes differ by " + (max - min) + "ms; possible partial copy or mixed versions");
+            INVOKE_CLEANER.invokeExact((ByteBuffer) buf);
+        } catch (Throwable t) {
+            // Say someting?
         }
     }
 }
