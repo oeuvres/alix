@@ -106,7 +106,7 @@ public class CoocDemo {
             try(TermLexicon lexicon = TermLexicon.open(indexDir, fieldName);
                 Directory directory = FSDirectory.open(indexDir);
                 DirectoryReader indexReader = DirectoryReader.open(directory)) {
-                TermRail.write(indexDir, indexReader, fieldName, lexicon);
+                TermRail.build(indexDir, indexReader, fieldName, lexicon);
             }
         }
 

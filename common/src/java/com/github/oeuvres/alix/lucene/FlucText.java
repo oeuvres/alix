@@ -134,7 +134,7 @@ public final class FlucText extends Fluc
         final TermLexicon lex = termLexicon();
         return railHolder.get(
             () -> TermRail.exists(indexDir, name()),
-            () -> TermRail.write(indexDir, reader, name(), lex),
+            () -> TermRail.build(indexDir, reader, name(), lex),
             () -> TermRail.open(indexDir, name())
         );
     }
