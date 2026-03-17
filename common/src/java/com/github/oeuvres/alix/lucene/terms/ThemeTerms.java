@@ -246,7 +246,7 @@ public final class ThemeTerms {
             // --- prepare term-level statistics (IDF for BM25) ---
             scorer.term(corpusTermFreq, hitCount);
             for (int i = 0; i < hitCount; i++) {
-                final long docTokens = fieldStats.docLen(bufDocIds[i]);
+                final long docTokens = fieldStats.docWidth(bufDocIds[i]);
                 scorer.score(bufFreqs[i], docTokens);
             }
             scores[termId] = scorer.result();
@@ -505,7 +505,7 @@ public final class ThemeTerms {
             }
 
             partByDocId[docId] = currentPart;
-            final int docLen = fieldStats.docLen(docId);
+            final int docLen = fieldStats.docWidth(docId);
             partTokenCounts[currentPart] += docLen;
             seenTokens += docLen;
         }
