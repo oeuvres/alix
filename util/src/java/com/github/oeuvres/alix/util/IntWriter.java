@@ -4,31 +4,88 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
-public interface IntWriter extends Closeable
+/**
+ * Random-access writer for a flat file of {@code int} values,
+ * supporting files larger than 2&nbsp;GB.
+ *
+ * <p>Uses positioned {@link FileChannel} I/O with a single direct
+ * {@link ByteBuffer} page, avoiding {@code MappedByteBuffer} and its
+ * platform-specific unmap issues. The file is fully released on
+ * {@link #close()}.</p>
+ *
+ * <p>Typical usage:</p>
+ * <pre>{@code
+ * try (IntWriter w = IntWriter.open(path, totalInts, ByteOrder.LITTLE_ENDIAN, 1 << 20)) {
+ *     w.fill(0);
+ *     w.put(42L, 7);
+ * }
+ * }</pre>
+ */
+public final class IntWriter implements Closeable
 {
+    private final FileChannel channel;
+    private final long totalInts;
+    private final long totalBytes;
+    private final ByteOrder byteOrder;
+    private final int pageBytes;
+    private final ByteBuffer page;
 
-    void fill(int value) throws IOException;
+    private long pageStart = -1L;
+    private int pageLen = 0;
+    private boolean dirty = false;
 
-    void put(long intIndex, int value) throws IOException;
+    private IntWriter(
+        final FileChannel channel,
+        final long totalInts,
+        final ByteOrder byteOrder,
+        final int pageBytes
+    ) {
+        this.channel = channel;
+        this.totalInts = totalInts;
+        this.totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
+        this.byteOrder = byteOrder;
+        this.pageBytes = pageBytes;
+        this.page = ByteBuffer.allocateDirect(pageBytes).order(byteOrder);
+    }
 
-    static IntWriter open(
+    /**
+     * Open (create or overwrite) a file for random int writes.
+     *
+     * <p>The file is pre-allocated to {@code totalInts * 4} bytes.
+     * The returned writer must be {@link #close() closed} to flush pending
+     * writes and release the underlying channel.</p>
+     *
+     * @param path      destination file.
+     * @param totalInts number of {@code int} slots; the file size will be
+     *                  {@code totalInts * Integer.BYTES}.
+     * @param byteOrder byte order for stored ints.
+     * @param pageSize  hint for the internal page buffer size in bytes;
+     *                  will be rounded up to an {@code Integer.BYTES} boundary
+     *                  (minimum {@code Integer.BYTES}).
+     * @return a new writer; caller must close it.
+     * @throws IOException              if the file cannot be opened or sized.
+     * @throws IllegalArgumentException if {@code totalInts < 0}.
+     * @throws ArithmeticException      if {@code totalInts * 4} overflows {@code long}.
+     */
+    public static IntWriter open(
         final Path path,
         final long totalInts,
         final ByteOrder byteOrder,
         int pageSize
     ) throws IOException {
         Objects.requireNonNull(path, "path");
-        Objects.requireNonNull(byteOrder, "order");
+        Objects.requireNonNull(byteOrder, "byteOrder");
+
         if (totalInts < 0L) {
             throw new IllegalArgumentException("totalInts < 0: " + totalInts);
         }
-        final long totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
+
+        pageSize = normalizePageSize(pageSize);
 
         final FileChannel channel = FileChannel.open(
             path,
@@ -37,22 +94,12 @@ public interface IntWriter extends Closeable
             StandardOpenOption.READ,
             StandardOpenOption.WRITE
         );
-        
-        // if (pageSize < 1 << 28) pageSize = 1 << 28;
-        pageSize = Math.min(Calcul.nextSquare(pageSize), Integer.MAX_VALUE);
-        
+
         boolean ok = false;
         try {
+            final long totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
             ensureFileSize(channel, totalBytes);
-
-            final IntWriter writer;
-            if (totalBytes <= pageSize) {
-                writer = new SingleMapIntWriter(channel, totalInts, byteOrder);
-            }
-            else {
-                writer = new PagedIntWriter(channel, totalInts, byteOrder, pageSize);
-            }
-
+            final IntWriter writer = new IntWriter(channel, totalInts, byteOrder, pageSize);
             ok = true;
             return writer;
         }
@@ -62,151 +109,186 @@ public interface IntWriter extends Closeable
             }
         }
     }
-    
-    final class PagedIntWriter implements IntWriter
-    {
-        private final FileChannel ch;
-        private final long totalInts;
-        private final long totalBytes;
-        private final ByteOrder byteOrder;
-        private final int pageBytes;
 
-        private long mapStart = -1L;
-        private long mapSize = 0L;
-        private MappedByteBuffer map;
-
-        PagedIntWriter(
-            final FileChannel ch,
-            final long totalInts,
-            final ByteOrder byteOrder,
-            final int pageBytes
-        ) {
-            this.ch = ch;
-            this.totalInts = totalInts;
-            this.totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
-            this.byteOrder = byteOrder;
-            this.pageBytes = pageBytes;
-        }
-
-        @Override
-        public void fill(final int value) throws IOException
-        {
-            if (totalInts == 0L) {
-                return;
-            }
-
-            long doneBytes = 0L;
-            while (doneBytes < totalBytes) {
-                remap(doneBytes);
-
-                final long remainBytes = totalBytes - doneBytes;
-                final int bytesThisPage = (int) Math.min(mapSize, remainBytes);
-                final int intsThisPage = bytesThisPage >>> 2;
-
-                map.position(0);
-                for (int i = 0; i < intsThisPage; i++) {
-                    map.putInt(value);
-                }
-
-                doneBytes += bytesThisPage;
-            }
-        }
-
-        @Override
-        public void put(final long intIndex, final int value) throws IOException
-        {
-            if (intIndex < 0L || intIndex >= totalInts) {
-                throw new IllegalArgumentException("intIndex out of range: " + intIndex);
-            }
-
-            final long bytePos = intIndex << 2;
-            if (map == null || bytePos < mapStart || bytePos + Integer.BYTES > mapStart + mapSize) {
-                remap(bytePos);
-            }
-
-            final int rel = (int) (bytePos - mapStart);
-            map.putInt(rel, value);
-        }
-
-        private void remap(final long bytePos) throws IOException
-        {
-            final long start = (bytePos / pageBytes) * pageBytes;
-            final long remain = totalBytes - start;
-            final long size = Math.min((long) pageBytes, remain);
-
-            if (map != null) {
-                map.force();
-            }
-
-            this.mapStart = start;
-            this.mapSize = size;
-            this.map = ch.map(FileChannel.MapMode.READ_WRITE, start, size);
-            this.map.order(byteOrder);
-        }
-
-        @Override
-        public void close() throws IOException
-        {
-            if (map != null) {
-                map.force();
-            }
-        }
-    }
-    
-    final class SingleMapIntWriter implements IntWriter
-    {
-        private final long totalInts;
-        private final MappedByteBuffer map;
-
-        SingleMapIntWriter(
-            final FileChannel ch,
-            final long totalInts,
-            final ByteOrder byteOrder
-        ) throws IOException {
-            this.totalInts = totalInts;
-            final long totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
-
-            if (totalBytes > Integer.MAX_VALUE) {
-                throw new IllegalArgumentException(
-                    "SingleMapIntWriter cannot map more than Integer.MAX_VALUE bytes: " + totalBytes
-                );
-            }
-
-            this.map = ch.map(FileChannel.MapMode.READ_WRITE, 0L, totalBytes);
-            this.map.order(byteOrder);
-        }
-
-        @Override
-        public void fill(final int value)
-        {
-            map.position(0);
-            for (long i = 0; i < totalInts; i++) {
-                map.putInt(value);
-            }
-        }
-
-        @Override
-        public void put(final long intIndex, final int value)
-        {
-            if (intIndex < 0L || intIndex >= totalInts) {
-                throw new IllegalArgumentException("intIndex out of range: " + intIndex);
-            }
-            map.putInt((int) (intIndex << 2), value);
-        }
-
-        @Override
-        public void close() throws IOException
-        {
-            map.force();
-        }
-    }
-    
     /**
-     * Ensure file size before mmap.
-     * truncate() does not grow, so extend explicitly if needed.
+     * Fill the entire file with a constant {@code int} value.
+     * Invalidates any cached page; the next {@link #put} will reload from disk.
+     *
+     * @param value the value to write at every position.
+     * @throws IOException if a write fails.
+     */
+    public void fill(final int value) throws IOException
+    {
+        flush();
+
+        if (totalInts == 0L) {
+            return;
+        }
+
+        final ByteBuffer fillPage = ByteBuffer.allocateDirect(pageBytes).order(byteOrder);
+        while (fillPage.remaining() >= Integer.BYTES) {
+            fillPage.putInt(value);
+        }
+
+        long writtenBytes = 0L;
+        while (writtenBytes < totalBytes) {
+            final int len = (int) Math.min((long) pageBytes, totalBytes - writtenBytes);
+
+            final ByteBuffer src = fillPage.duplicate().order(byteOrder);
+            src.clear();
+            src.limit(len);
+
+            long pos = writtenBytes;
+            while (src.hasRemaining()) {
+                final int n = channel.write(src, pos);
+                if (n <= 0) {
+                    throw new IOException("Failed to write at byte position " + pos);
+                }
+                pos += n;
+            }
+
+            writtenBytes += len;
+        }
+
+        // invalidate cached page
+        pageStart = -1L;
+        pageLen = 0;
+        dirty = false;
+    }
+
+    /**
+     * Write a single {@code int} at the given logical index.
+     *
+     * @param intIndex zero-based index in the int array, must be in {@code [0, totalInts)}.
+     * @param value    the value to write.
+     * @throws IOException              if a read or write fails.
+     * @throws IllegalArgumentException if {@code intIndex} is out of range.
+     */
+    public void put(final long intIndex, final int value) throws IOException
+    {
+        if (intIndex < 0L || intIndex >= totalInts) {
+            throw new IllegalArgumentException("intIndex out of range: " + intIndex);
+        }
+
+        final long bytePos = Math.multiplyExact(intIndex, (long) Integer.BYTES);
+        final long wantedPageStart = pageStart(bytePos);
+
+        if (wantedPageStart != pageStart) {
+            flush();
+            loadPage(wantedPageStart);
+        }
+
+        final int rel = (int) (bytePos - pageStart);
+        page.putInt(rel, value);
+        dirty = true;
+    }
+
+    /** Align a byte position down to the start of its page. */
+    private long pageStart(final long bytePos)
+    {
+        return (bytePos / pageBytes) * (long) pageBytes;
+    }
+
+    /**
+     * Load the page starting at {@code newPageStart} from the channel.
+     * Bytes beyond EOF (if any) are zero-filled.
+     */
+    private void loadPage(final long newPageStart) throws IOException
+    {
+        final long remaining = totalBytes - newPageStart;
+        final int len = (int) Math.min((long) pageBytes, remaining);
+
+        page.clear();
+        page.limit(len);
+
+        long pos = newPageStart;
+        while (page.hasRemaining()) {
+            final int n = channel.read(page, pos);
+            if (n <= 0) {
+                break;
+            }
+            pos += n;
+        }
+
+        // zero-fill any bytes not read (sparse / newly extended region)
+        while (page.hasRemaining()) {
+            page.put((byte) 0);
+        }
+
+        pageStart = newPageStart;
+        pageLen = len;
+        dirty = false;
+    }
+
+    /** Write the current page back to the channel if dirty. */
+    private void flush() throws IOException
+    {
+        if (!dirty || pageStart < 0L) {
+            return;
+        }
+
+        final ByteBuffer src = page.duplicate().order(byteOrder);
+        src.clear();
+        src.limit(pageLen);
+
+        long pos = pageStart;
+        while (src.hasRemaining()) {
+            final int n = channel.write(src, pos);
+            if (n <= 0) {
+                throw new IOException("Failed to flush page at byte position " + pos);
+            }
+            pos += n;
+        }
+
+        dirty = false;
+    }
+
+    /**
+     * Flush pending writes, force channel to disk, and close the channel.
+     */
+    @Override
+    public void close() throws IOException
+    {
+        try {
+            flush();
+            channel.force(true);
+        }
+        finally {
+            channel.close();
+        }
+    }
+
+    /**
+     * Round {@code pageSize} up to the next {@link Integer#BYTES} boundary,
+     * with a minimum of {@code Integer.BYTES}.
+     */
+    static int normalizePageSize(int pageSize)
+    {
+        if (pageSize < Integer.BYTES) {
+            pageSize = Integer.BYTES;
+        }
+        final int rem = pageSize & (Integer.BYTES - 1);
+        if (rem != 0) {
+            pageSize += Integer.BYTES - rem;
+        }
+        return pageSize;
+    }
+
+    /**
+     * Set the file to exactly {@code size} bytes.
+     * {@link FileChannel#truncate} does not grow, so an explicit
+     * single-byte write at {@code size - 1} extends when needed.
+     *
+     * @param channel an open read/write channel.
+     * @param size    desired file size in bytes (&ge; 0).
+     * @throws IOException              on I/O failure.
+     * @throws IllegalArgumentException if {@code size < 0}.
      */
     static void ensureFileSize(final FileChannel channel, final long size) throws IOException
     {
+        if (size < 0L) {
+            throw new IllegalArgumentException("size < 0: " + size);
+        }
         if (size == 0L) {
             channel.truncate(0L);
             return;
@@ -222,9 +304,10 @@ public interface IntWriter extends Closeable
         }
 
         final ByteBuffer one = ByteBuffer.allocate(1);
-        channel.position(size - 1);
         one.put((byte) 0);
         one.flip();
+
+        channel.position(size - 1L);
         while (one.hasRemaining()) {
             channel.write(one);
         }
