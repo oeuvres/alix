@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -755,7 +756,31 @@ public final class FieldStats implements ReferenceStats
         return (int)size;
     }
 
+    /** Build a global live-doc bitset aligned on top-level docIds. */
+    public static BitSet liveDocs(final IndexReader reader) throws IOException
+    {
+        final int maxDoc = reader.maxDoc();
+        final BitSet live = new BitSet(maxDoc);
 
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final LeafReader leaf = ctx.reader();
+            final Bits bits = leaf.getLiveDocs();
+            final int leafMax = leaf.maxDoc();
+            final int base = ctx.docBase;
+
+            if (bits == null) {
+                live.set(base, base + leafMax);
+            }
+            else {
+                for (int segDoc = 0; segDoc < leafMax; segDoc++) {
+                    if (bits.get(segDoc)) {
+                        live.set(base + segDoc);
+                    }
+                }
+            }
+        }
+        return live;
+    }
     
     /**
      * Checks that a document id is inside the valid range.

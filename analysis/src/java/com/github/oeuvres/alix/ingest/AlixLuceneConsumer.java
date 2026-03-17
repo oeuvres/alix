@@ -66,9 +66,12 @@ public final class AlixLuceneConsumer implements AlixDocumentConsumer
         KEYWORD_POSTINGS = kw;
         
         FieldType ti = new FieldType();
-        ti.setStored(false);
+        ti.setStored(false); // handled by code
         ti.setTokenized(true);
         ti.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+        ti.setStoreTermVectors(true);
+        ti.setStoreTermVectorPositions(true); // for rails
+        ti.setStoreTermVectorOffsets(true); // for highlights
         ti.freeze();
         TEXT_INDEXED_TS = ti;
     }
