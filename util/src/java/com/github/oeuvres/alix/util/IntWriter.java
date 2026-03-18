@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -23,6 +24,8 @@ import java.util.Objects;
  * try (IntWriter w = IntWriter.open(path, totalInts, ByteOrder.LITTLE_ENDIAN, 1 << 20)) {
  *     w.fill(0);
  *     w.put(42L, 7);
+ *     int[] block = {10, 20, 30};
+ *     w.put(100L, block, 0, block.length);
  * }
  * }</pre>
  */
@@ -159,7 +162,11 @@ public final class IntWriter implements Closeable
     /**
      * Write a single {@code int} at the given logical index.
      *
-     * @param intIndex zero-based index in the int array, must be in {@code [0, totalInts)}.
+     * <p>Uses the internal page buffer; if {@code intIndex} falls outside
+     * the currently cached page, the dirty page is flushed and the target
+     * page is loaded from disk.</p>
+     *
+     * @param intIndex zero-based index, must be in {@code [0, totalInts)}.
      * @param value    the value to write.
      * @throws IOException              if a read or write fails.
      * @throws IllegalArgumentException if {@code intIndex} is out of range.
@@ -181,6 +188,72 @@ public final class IntWriter implements Closeable
         final int rel = (int) (bytePos - pageStart);
         page.putInt(rel, value);
         dirty = true;
+    }
+
+    /**
+     * Bulk-write {@code len} ints from {@code src} starting at file position
+     * {@code intIndex}.
+     *
+     * <p>Writes directly to the channel in page-sized chunks, bypassing
+     * the single-int page cache (which is flushed and invalidated first).
+     * No read-before-write: the source array is the sole data source,
+     * making this the fastest path for sequential block writes.</p>
+     *
+     * @param intIndex first file index to write, in {@code [0, totalInts - len]}.
+     * @param src      source array.
+     * @param off      offset into {@code src}.
+     * @param len      number of ints to write.
+     * @throws IOException               if a write fails.
+     * @throws IllegalArgumentException  if file indices are out of range.
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are out of
+     *                                   bounds for {@code src}.
+     */
+    public void put(final long intIndex, final int[] src, final int off, final int len) throws IOException
+    {
+        Objects.checkFromIndexSize(off, len, src.length);
+        if (len == 0) {
+            return;
+        }
+        if (intIndex < 0L || intIndex + (long) len > totalInts) {
+            throw new IllegalArgumentException(
+                "intIndex=" + intIndex + " len=" + len + " totalInts=" + totalInts
+            );
+        }
+
+        // flush and invalidate the single-int page cache
+        flush();
+        pageStart = -1L;
+        pageLen = 0;
+        dirty = false;
+
+        final int intsPerChunk = pageBytes / Integer.BYTES;
+        long bytePos = Math.multiplyExact(intIndex, (long) Integer.BYTES);
+        int srcPos = off;
+        int remaining = len;
+
+        while (remaining > 0) {
+            final int count = Math.min(remaining, intsPerChunk);
+            final int chunkBytes = count * Integer.BYTES;
+
+            page.clear();
+            page.limit(chunkBytes);
+
+            final IntBuffer ib = page.asIntBuffer();
+            ib.put(src, srcPos, count);
+
+            long pos = bytePos;
+            while (page.hasRemaining()) {
+                final int n = channel.write(page, pos);
+                if (n <= 0) {
+                    throw new IOException("Failed to write at byte position " + pos);
+                }
+                pos += n;
+            }
+
+            bytePos += chunkBytes;
+            srcPos += count;
+            remaining -= count;
+        }
     }
 
     /** Align a byte position down to the start of its page. */
@@ -245,6 +318,7 @@ public final class IntWriter implements Closeable
 
     /**
      * Flush pending writes, force channel to disk, and close the channel.
+     * After this call the file is fully released (deletable, renamable).
      */
     @Override
     public void close() throws IOException
@@ -276,8 +350,12 @@ public final class IntWriter implements Closeable
 
     /**
      * Set the file to exactly {@code size} bytes.
+     *
+     * <p>Pre-allocates the file before any positioned writes so that
+     * each write does not individually extend the file (which would cause
+     * repeated metadata updates and potential fragmentation).
      * {@link FileChannel#truncate} does not grow, so an explicit
-     * single-byte write at {@code size - 1} extends when needed.
+     * single-byte write at {@code size - 1} extends when needed.</p>
      *
      * @param channel an open read/write channel.
      * @param size    desired file size in bytes (&ge; 0).
