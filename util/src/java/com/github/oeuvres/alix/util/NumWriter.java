@@ -4,35 +4,52 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
 /**
- * Random-access writer for a flat file of {@code int} values,
+ * Random-access writer for flat binary files of primitive values,
  * supporting files larger than 2&nbsp;GB.
  *
+ * <p>All positions are <em>byte offsets</em>. The caller is responsible
+ * for computing byte positions from logical element indices
+ * (e.g.&nbsp;{@code intIndex * Integer.BYTES}).
+ * Bulk writes require positions aligned to the element size.</p>
+ *
  * <p>Uses positioned {@link FileChannel} I/O with a single direct
- * {@link ByteBuffer} page, avoiding {@code MappedByteBuffer} and its
- * platform-specific unmap issues. The file is fully released on
- * {@link #close()}.</p>
+ * {@link ByteBuffer} page. No {@code MappedByteBuffer} is used,
+ * so the file is fully released on {@link #close()}
+ * (safe on Windows).</p>
+ *
+ * <p>Defaults: {@link ByteOrder#LITTLE_ENDIAN}, page size 1&nbsp;MB.</p>
  *
  * <p>Typical usage:</p>
  * <pre>{@code
- * try (IntWriter w = IntWriter.open(path, totalInts, ByteOrder.LITTLE_ENDIAN, 1 << 20)) {
- *     w.fill(0);
- *     w.put(42L, 7);
+ * long totalInts = 600_000_000L;
+ * long totalBytes = totalInts * Integer.BYTES;
+ * try (NumWriter w = NumWriter.open(path, totalBytes)) {
+ *     w.fill((byte) 0);
+ *     w.putInt(42L * Integer.BYTES, 7);
  *     int[] block = {10, 20, 30};
- *     w.put(100L, block, 0, block.length);
+ *     w.put(100L * Integer.BYTES, block, 0, block.length);
  * }
  * }</pre>
  */
 public final class NumWriter implements Closeable
 {
+    /** Default page size: 1 MB. */
+    public static final int DEFAULT_PAGE_SIZE = 1 << 20;
+
+    /** Default byte order: little-endian (x86-64, ARM). */
+    public static final ByteOrder DEFAULT_BYTE_ORDER = ByteOrder.LITTLE_ENDIAN;
+
     private final FileChannel channel;
-    private final long totalInts;
     private final long totalBytes;
     private final ByteOrder byteOrder;
     private final int pageBytes;
@@ -44,48 +61,81 @@ public final class NumWriter implements Closeable
 
     private NumWriter(
         final FileChannel channel,
-        final long totalInts,
+        final long totalBytes,
         final ByteOrder byteOrder,
         final int pageBytes
     ) {
         this.channel = channel;
-        this.totalInts = totalInts;
-        this.totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
+        this.totalBytes = totalBytes;
         this.byteOrder = byteOrder;
         this.pageBytes = pageBytes;
         this.page = ByteBuffer.allocateDirect(pageBytes).order(byteOrder);
     }
 
     /**
-     * Open (create or overwrite) a file for random int writes.
+     * Open (create or overwrite) a file for random primitive writes,
+     * with default byte order and page size.
      *
-     * <p>The file is pre-allocated to {@code totalInts * 4} bytes.
-     * The returned writer must be {@link #close() closed} to flush pending
-     * writes and release the underlying channel.</p>
-     *
-     * @param path      destination file.
-     * @param totalInts number of {@code int} slots; the file size will be
-     *                  {@code totalInts * Integer.BYTES}.
-     * @param byteOrder byte order for stored ints.
-     * @param pageSize  hint for the internal page buffer size in bytes;
-     *                  will be rounded up to an {@code Integer.BYTES} boundary
-     *                  (minimum {@code Integer.BYTES}).
+     * @param path       destination file.
+     * @param totalBytes exact file size in bytes.
      * @return a new writer; caller must close it.
      * @throws IOException              if the file cannot be opened or sized.
-     * @throws IllegalArgumentException if {@code totalInts < 0}.
-     * @throws ArithmeticException      if {@code totalInts * 4} overflows {@code long}.
+     * @throws IllegalArgumentException if {@code totalBytes < 0}.
      */
     public static NumWriter open(
         final Path path,
-        final long totalInts,
+        final long totalBytes
+    ) throws IOException {
+        return open(path, totalBytes, DEFAULT_BYTE_ORDER, DEFAULT_PAGE_SIZE);
+    }
+
+    /**
+     * Open (create or overwrite) a file for random primitive writes,
+     * with explicit byte order and default page size.
+     *
+     * @param path       destination file.
+     * @param totalBytes exact file size in bytes.
+     * @param byteOrder  byte order for stored values.
+     * @return a new writer; caller must close it.
+     * @throws IOException              if the file cannot be opened or sized.
+     * @throws IllegalArgumentException if {@code totalBytes < 0}.
+     */
+    public static NumWriter open(
+        final Path path,
+        final long totalBytes,
+        final ByteOrder byteOrder
+    ) throws IOException {
+        return open(path, totalBytes, byteOrder, DEFAULT_PAGE_SIZE);
+    }
+
+    /**
+     * Open (create or overwrite) a file for random primitive writes.
+     *
+     * <p>The file is pre-allocated to {@code totalBytes}.
+     * The returned writer must be {@link #close() closed} to flush pending
+     * writes and release the underlying channel.</p>
+     *
+     * @param path       destination file.
+     * @param totalBytes exact file size in bytes.
+     * @param byteOrder  byte order for stored values.
+     * @param pageSize   internal page buffer size in bytes;
+     *                   rounded up to a {@link Long#BYTES} boundary
+     *                   (minimum {@code Long.BYTES}).
+     * @return a new writer; caller must close it.
+     * @throws IOException              if the file cannot be opened or sized.
+     * @throws IllegalArgumentException if {@code totalBytes < 0}.
+     */
+    public static NumWriter open(
+        final Path path,
+        final long totalBytes,
         final ByteOrder byteOrder,
         int pageSize
     ) throws IOException {
         Objects.requireNonNull(path, "path");
         Objects.requireNonNull(byteOrder, "byteOrder");
 
-        if (totalInts < 0L) {
-            throw new IllegalArgumentException("totalInts < 0: " + totalInts);
+        if (totalBytes < 0L) {
+            throw new IllegalArgumentException("totalBytes < 0: " + totalBytes);
         }
 
         pageSize = normalizePageSize(pageSize);
@@ -100,9 +150,8 @@ public final class NumWriter implements Closeable
 
         boolean ok = false;
         try {
-            final long totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
             ensureFileSize(channel, totalBytes);
-            final NumWriter writer = new NumWriter(channel, totalInts, byteOrder, pageSize);
+            final NumWriter writer = new NumWriter(channel, totalBytes, byteOrder, pageSize);
             ok = true;
             return writer;
         }
@@ -113,31 +162,34 @@ public final class NumWriter implements Closeable
         }
     }
 
+    // ---- fill -------------------------------------------------------------
+
     /**
-     * Fill the entire file with a constant {@code int} value.
-     * Invalidates any cached page; the next {@link #put} will reload from disk.
+     * Fill the entire file with a constant byte value.
+     * Typical use: {@code fill((byte) 0)} to zero the file.
+     * Invalidates any cached page.
      *
-     * @param value the value to write at every position.
+     * @param value the byte to write at every position.
      * @throws IOException if a write fails.
      */
-    public void fill(final int value) throws IOException
+    public void fill(final byte value) throws IOException
     {
         flush();
 
-        if (totalInts == 0L) {
+        if (totalBytes == 0L) {
             return;
         }
 
-        final ByteBuffer fillPage = ByteBuffer.allocateDirect(pageBytes).order(byteOrder);
-        while (fillPage.remaining() >= Integer.BYTES) {
-            fillPage.putInt(value);
+        final ByteBuffer fillPage = ByteBuffer.allocateDirect(pageBytes);
+        while (fillPage.hasRemaining()) {
+            fillPage.put(value);
         }
 
         long writtenBytes = 0L;
         while (writtenBytes < totalBytes) {
             final int len = (int) Math.min((long) pageBytes, totalBytes - writtenBytes);
 
-            final ByteBuffer src = fillPage.duplicate().order(byteOrder);
+            final ByteBuffer src = fillPage.duplicate();
             src.clear();
             src.limit(len);
 
@@ -153,81 +205,105 @@ public final class NumWriter implements Closeable
             writtenBytes += len;
         }
 
-        // invalidate cached page
         pageStart = -1L;
         pageLen = 0;
         dirty = false;
     }
 
+    // ---- single-element puts ----------------------------------------------
+
     /**
-     * Write a single {@code int} at the given logical index.
+     * Write a single {@code int} at the given byte position.
      *
-     * <p>Uses the internal page buffer; if {@code intIndex} falls outside
-     * the currently cached page, the dirty page is flushed and the target
-     * page is loaded from disk.</p>
-     *
-     * @param intIndex zero-based index, must be in {@code [0, totalInts)}.
-     * @param value    the value to write.
+     * @param bytePos byte offset, must be in {@code [0, totalBytes - 4)}.
+     * @param value   the value to write.
      * @throws IOException              if a read or write fails.
-     * @throws IllegalArgumentException if {@code intIndex} is out of range.
+     * @throws IllegalArgumentException if {@code bytePos} is out of range.
      */
-    public void put(final long intIndex, final int value) throws IOException
+    public void put(final long bytePos, final int value) throws IOException
     {
-        if (intIndex < 0L || intIndex >= totalInts) {
-            throw new IllegalArgumentException("intIndex out of range: " + intIndex);
-        }
-
-        final long bytePos = Math.multiplyExact(intIndex, (long) Integer.BYTES);
-        final long wantedPageStart = pageStart(bytePos);
-
-        if (wantedPageStart != pageStart) {
-            flush();
-            loadPage(wantedPageStart);
-        }
-
-        final int rel = (int) (bytePos - pageStart);
-        page.putInt(rel, value);
+        checkRange(bytePos, Integer.BYTES);
+        ensurePage(bytePos);
+        page.putInt((int) (bytePos - pageStart), value);
         dirty = true;
     }
 
     /**
-     * Bulk-write {@code len} ints from {@code src} starting at file position
-     * {@code intIndex}.
+     * Write a single {@code long} at the given byte position.
      *
-     * <p>Writes directly to the channel in page-sized chunks, bypassing
-     * the single-int page cache (which is flushed and invalidated first).
-     * No read-before-write: the source array is the sole data source,
-     * making this the fastest path for sequential block writes.</p>
-     *
-     * @param intIndex first file index to write, in {@code [0, totalInts - len]}.
-     * @param src      source array.
-     * @param off      offset into {@code src}.
-     * @param len      number of ints to write.
-     * @throws IOException               if a write fails.
-     * @throws IllegalArgumentException  if file indices are out of range.
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are out of
-     *                                   bounds for {@code src}.
+     * @param bytePos byte offset, must be in {@code [0, totalBytes - 8)}.
+     * @param value   the value to write.
+     * @throws IOException              if a read or write fails.
+     * @throws IllegalArgumentException if {@code bytePos} is out of range.
      */
-    public void put(final long intIndex, final int[] src, final int off, final int len) throws IOException
+    public void put(final long bytePos, final long value) throws IOException
+    {
+        checkRange(bytePos, Long.BYTES);
+        ensurePage(bytePos);
+        page.putLong((int) (bytePos - pageStart), value);
+        dirty = true;
+    }
+
+    /**
+     * Write a single {@code double} at the given byte position.
+     *
+     * @param bytePos byte offset, must be in {@code [0, totalBytes - 8)}.
+     * @param value   the value to write.
+     * @throws IOException              if a read or write fails.
+     * @throws IllegalArgumentException if {@code bytePos} is out of range.
+     */
+    public void put(final long bytePos, final double value) throws IOException
+    {
+        checkRange(bytePos, Double.BYTES);
+        ensurePage(bytePos);
+        page.putDouble((int) (bytePos - pageStart), value);
+        dirty = true;
+    }
+
+    /**
+     * Write a single {@code char} at the given byte position.
+     *
+     * @param bytePos byte offset, must be in {@code [0, totalBytes - 2)}.
+     * @param value   the value to write.
+     * @throws IOException              if a read or write fails.
+     * @throws IllegalArgumentException if {@code bytePos} is out of range.
+     */
+    public void put(final long bytePos, final char value) throws IOException
+    {
+        checkRange(bytePos, Character.BYTES);
+        ensurePage(bytePos);
+        page.putChar((int) (bytePos - pageStart), value);
+        dirty = true;
+    }
+
+    // ---- bulk puts --------------------------------------------------------
+
+    /**
+     * Bulk-write {@code len} ints starting at the given byte position.
+     *
+     * <p>Writes directly to the channel in page-sized chunks.
+     * No read-before-write. The single-element page cache is
+     * flushed and invalidated.</p>
+     *
+     * @param bytePos byte offset (must be {@code int}-aligned).
+     * @param src     source array.
+     * @param off     offset into {@code src}.
+     * @param len     number of ints to write.
+     * @throws IOException               if a write fails.
+     * @throws IllegalArgumentException  if byte range exceeds file bounds.
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} exceed {@code src}.
+     */
+    public void put(final long bytePos, final int[] src, final int off, final int len) throws IOException
     {
         Objects.checkFromIndexSize(off, len, src.length);
         if (len == 0) {
             return;
         }
-        if (intIndex < 0L || intIndex + (long) len > totalInts) {
-            throw new IllegalArgumentException(
-                "intIndex=" + intIndex + " len=" + len + " totalInts=" + totalInts
-            );
-        }
-
-        // flush and invalidate the single-int page cache
-        flush();
-        pageStart = -1L;
-        pageLen = 0;
-        dirty = false;
+        checkRange(bytePos, (long) len * Integer.BYTES);
+        invalidate();
 
         final int intsPerChunk = pageBytes / Integer.BYTES;
-        long bytePos = Math.multiplyExact(intIndex, (long) Integer.BYTES);
+        long pos = bytePos;
         int srcPos = off;
         int remaining = len;
 
@@ -237,22 +313,181 @@ public final class NumWriter implements Closeable
 
             page.clear();
             page.limit(chunkBytes);
+            page.asIntBuffer().put(src, srcPos, count);
 
-            final IntBuffer ib = page.asIntBuffer();
-            ib.put(src, srcPos, count);
+            writePage(pos, chunkBytes);
 
-            long pos = bytePos;
-            while (page.hasRemaining()) {
-                final int n = channel.write(page, pos);
-                if (n <= 0) {
-                    throw new IOException("Failed to write at byte position " + pos);
-                }
-                pos += n;
-            }
-
-            bytePos += chunkBytes;
+            pos += chunkBytes;
             srcPos += count;
             remaining -= count;
+        }
+    }
+
+    /**
+     * Bulk-write {@code len} longs starting at the given byte position.
+     *
+     * @param bytePos byte offset (must be {@code long}-aligned).
+     * @param src     source array.
+     * @param off     offset into {@code src}.
+     * @param len     number of longs to write.
+     * @throws IOException               if a write fails.
+     * @throws IllegalArgumentException  if byte range exceeds file bounds.
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} exceed {@code src}.
+     */
+    public void put(final long bytePos, final long[] src, final int off, final int len) throws IOException
+    {
+        Objects.checkFromIndexSize(off, len, src.length);
+        if (len == 0) {
+            return;
+        }
+        checkRange(bytePos, (long) len * Long.BYTES);
+        invalidate();
+
+        final int longsPerChunk = pageBytes / Long.BYTES;
+        long pos = bytePos;
+        int srcPos = off;
+        int remaining = len;
+
+        while (remaining > 0) {
+            final int count = Math.min(remaining, longsPerChunk);
+            final int chunkBytes = count * Long.BYTES;
+
+            page.clear();
+            page.limit(chunkBytes);
+            page.asLongBuffer().put(src, srcPos, count);
+
+            writePage(pos, chunkBytes);
+
+            pos += chunkBytes;
+            srcPos += count;
+            remaining -= count;
+        }
+    }
+
+    /**
+     * Bulk-write {@code len} doubles starting at the given byte position.
+     *
+     * @param bytePos byte offset (must be {@code double}-aligned).
+     * @param src     source array.
+     * @param off     offset into {@code src}.
+     * @param len     number of doubles to write.
+     * @throws IOException               if a write fails.
+     * @throws IllegalArgumentException  if byte range exceeds file bounds.
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} exceed {@code src}.
+     */
+    public void put(final long bytePos, final double[] src, final int off, final int len) throws IOException
+    {
+        Objects.checkFromIndexSize(off, len, src.length);
+        if (len == 0) {
+            return;
+        }
+        checkRange(bytePos, (long) len * Double.BYTES);
+        invalidate();
+
+        final int doublesPerChunk = pageBytes / Double.BYTES;
+        long pos = bytePos;
+        int srcPos = off;
+        int remaining = len;
+
+        while (remaining > 0) {
+            final int count = Math.min(remaining, doublesPerChunk);
+            final int chunkBytes = count * Double.BYTES;
+
+            page.clear();
+            page.limit(chunkBytes);
+            page.asDoubleBuffer().put(src, srcPos, count);
+
+            writePage(pos, chunkBytes);
+
+            pos += chunkBytes;
+            srcPos += count;
+            remaining -= count;
+        }
+    }
+
+    /**
+     * Bulk-write {@code len} chars starting at the given byte position.
+     *
+     * @param bytePos byte offset (must be {@code char}-aligned).
+     * @param src     source array.
+     * @param off     offset into {@code src}.
+     * @param len     number of chars to write.
+     * @throws IOException               if a write fails.
+     * @throws IllegalArgumentException  if byte range exceeds file bounds.
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} exceed {@code src}.
+     */
+    public void put(final long bytePos, final char[] src, final int off, final int len) throws IOException
+    {
+        Objects.checkFromIndexSize(off, len, src.length);
+        if (len == 0) {
+            return;
+        }
+        checkRange(bytePos, (long) len * Character.BYTES);
+        invalidate();
+
+        final int charsPerChunk = pageBytes / Character.BYTES;
+        long pos = bytePos;
+        int srcPos = off;
+        int remaining = len;
+
+        while (remaining > 0) {
+            final int count = Math.min(remaining, charsPerChunk);
+            final int chunkBytes = count * Character.BYTES;
+
+            page.clear();
+            page.limit(chunkBytes);
+            page.asCharBuffer().put(src, srcPos, count);
+
+            writePage(pos, chunkBytes);
+
+            pos += chunkBytes;
+            srcPos += count;
+            remaining -= count;
+        }
+    }
+
+    // ---- internal I/O -----------------------------------------------------
+
+    /** Check that {@code [bytePos, bytePos + size)} fits in the file. */
+    private void checkRange(final long bytePos, final long size)
+    {
+        if (bytePos < 0L || bytePos + size > totalBytes) {
+            throw new IllegalArgumentException(
+                "bytePos=" + bytePos + " size=" + size + " totalBytes=" + totalBytes
+            );
+        }
+    }
+
+    /** Ensure the page covers {@code bytePos}; flush and reload if needed. */
+    private void ensurePage(final long bytePos) throws IOException
+    {
+        final long wanted = pageStart(bytePos);
+        if (wanted != pageStart) {
+            flush();
+            loadPage(wanted);
+        }
+    }
+
+    /** Flush dirty page, then invalidate it (for bulk writes). */
+    private void invalidate() throws IOException
+    {
+        flush();
+        pageStart = -1L;
+        pageLen = 0;
+        dirty = false;
+    }
+
+    /** Write {@code len} bytes from the page buffer to the channel at {@code pos}. */
+    private void writePage(long pos, final int len) throws IOException
+    {
+        page.clear();
+        page.limit(len);
+        while (page.hasRemaining()) {
+            final int n = channel.write(page, pos);
+            if (n <= 0) {
+                throw new IOException("Failed to write at byte position " + pos);
+            }
+            pos += n;
         }
     }
 
@@ -264,7 +499,7 @@ public final class NumWriter implements Closeable
 
     /**
      * Load the page starting at {@code newPageStart} from the channel.
-     * Bytes beyond EOF (if any) are zero-filled.
+     * Bytes beyond EOF are zero-filled.
      */
     private void loadPage(final long newPageStart) throws IOException
     {
@@ -283,7 +518,6 @@ public final class NumWriter implements Closeable
             pos += n;
         }
 
-        // zero-fill any bytes not read (sparse / newly extended region)
         while (page.hasRemaining()) {
             page.put((byte) 0);
         }
@@ -337,17 +571,18 @@ public final class NumWriter implements Closeable
     }
 
     /**
-     * Round {@code pageSize} up to the next {@link Integer#BYTES} boundary,
-     * with a minimum of {@code Integer.BYTES}.
+     * Round {@code pageSize} up to the next {@link Long#BYTES} boundary,
+     * with a minimum of {@code Long.BYTES} (8). This guarantees alignment
+     * for all supported primitive types.
      */
     static int normalizePageSize(int pageSize)
     {
-        if (pageSize < Integer.BYTES) {
-            pageSize = Integer.BYTES;
+        if (pageSize < Long.BYTES) {
+            pageSize = Long.BYTES;
         }
-        final int rem = pageSize & (Integer.BYTES - 1);
+        final int rem = pageSize & (Long.BYTES - 1);
         if (rem != 0) {
-            pageSize += Integer.BYTES - rem;
+            pageSize += Long.BYTES - rem;
         }
         return pageSize;
     }
@@ -355,11 +590,9 @@ public final class NumWriter implements Closeable
     /**
      * Set the file to exactly {@code size} bytes.
      *
-     * <p>Pre-allocates the file before any positioned writes so that
-     * each write does not individually extend the file (which would cause
-     * repeated metadata updates and potential fragmentation).
-     * {@link FileChannel#truncate} does not grow, so an explicit
-     * single-byte write at {@code size - 1} extends when needed.</p>
+     * <p>Pre-allocates the file so that positioned writes do not
+     * individually extend it (avoiding repeated metadata updates
+     * and fragmentation).</p>
      *
      * @param channel an open read/write channel.
      * @param size    desired file size in bytes (&ge; 0).

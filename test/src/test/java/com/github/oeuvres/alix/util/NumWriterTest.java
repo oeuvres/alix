@@ -21,240 +21,227 @@ public class NumWriterTest
     @TempDir
     Path tempDir;
 
-    // ---- basic fill + put ------------------------------------------------
+    // ---- int: single put --------------------------------------------------
 
     @Test
-    void fillAndPut_bigEndian() throws IOException
+    void putInt_basic() throws IOException
     {
-        final Path path = tempDir.resolve("fill-put-be.dat");
-        try (NumWriter w = NumWriter.open(path, 6, ByteOrder.BIG_ENDIAN, 64)) {
-            w.fill(-1);
-            w.put(1, 10);
-            w.put(4, 20);
+        final Path path = tempDir.resolve("int-basic.dat");
+        final int n = 6;
+        final long totalBytes = (long) n * Integer.BYTES;
+        try (NumWriter w = NumWriter.open(path, totalBytes)) {
+            w.fill((byte) 0);
+            w.put(1L * Integer.BYTES, 10);
+            w.put(4L * Integer.BYTES, 20);
         }
-        assertEquals(6L * Integer.BYTES, Files.size(path));
+        assertEquals(totalBytes, Files.size(path));
         assertArrayEquals(
-            new int[] { -1, 10, -1, -1, 20, -1 },
-            readAllInts(path, ByteOrder.BIG_ENDIAN)
+            new int[] { 0, 10, 0, 0, 20, 0 },
+            readAllInts(path)
         );
     }
 
     @Test
-    void fillAndPut_littleEndian() throws IOException
+    void putInt_paged_randomAccess() throws IOException
     {
-        final Path path = tempDir.resolve("fill-put-le.dat");
-        try (NumWriter w = NumWriter.open(path, 4, ByteOrder.LITTLE_ENDIAN, 64)) {
-            w.fill(0);
-            w.put(0, 0x01020304);
-            w.put(3, 0x11223344);
+        final Path path = tempDir.resolve("int-random.dat");
+        final int n = 20;
+        final long totalBytes = (long) n * Integer.BYTES;
+        // page 16 => 4 ints/page
+        try (NumWriter w = NumWriter.open(path, totalBytes, ByteOrder.LITTLE_ENDIAN, 16)) {
+            w.fill((byte) 0);
+            w.put(18L * Integer.BYTES, 18);  // page 4
+            w.put(2L * Integer.BYTES, 2);     // page 0
+            w.put(19L * Integer.BYTES, 19);   // page 4
+            w.put(8L * Integer.BYTES, 8);     // page 2
+        }
+        final int[] result = readAllInts(path);
+        assertEquals(0, result[0]);
+        assertEquals(2, result[2]);
+        assertEquals(8, result[8]);
+        assertEquals(18, result[18]);
+        assertEquals(19, result[19]);
+    }
+
+    // ---- int: bulk put ----------------------------------------------------
+
+    @Test
+    void bulkInt_wholeFile() throws IOException
+    {
+        final Path path = tempDir.resolve("int-bulk-whole.dat");
+        final int[] data = { 10, 20, 30, 40, 50, 60, 70, 80 };
+        try (NumWriter w = NumWriter.open(path, (long) data.length * Integer.BYTES)) {
+            w.put(0L, data, 0, data.length);
+        }
+        assertArrayEquals(data, readAllInts(path));
+    }
+
+    @Test
+    void bulkInt_withOffset() throws IOException
+    {
+        final Path path = tempDir.resolve("int-bulk-off.dat");
+        final int[] src = { 99, 99, 1, 2, 3, 99 };
+        final int n = 5;
+        try (NumWriter w = NumWriter.open(path, (long) n * Integer.BYTES)) {
+            w.fill((byte) 0);
+            w.put(1L * Integer.BYTES, src, 2, 3);
         }
         assertArrayEquals(
-            new int[] { 0x01020304, 0, 0, 0x11223344 },
-            readAllInts(path, ByteOrder.LITTLE_ENDIAN)
+            new int[] { 0, 1, 2, 3, 0 },
+            readAllInts(path)
         );
     }
 
-    // ---- paging -----------------------------------------------------------
+    @Test
+    void bulkInt_crossesPages() throws IOException
+    {
+        final Path path = tempDir.resolve("int-bulk-cross.dat");
+        final int[] src = { 20, 30, 40, 50, 60, 70, 80 };
+        final int n = 12;
+        try (NumWriter w = NumWriter.open(path, (long) n * Integer.BYTES, ByteOrder.LITTLE_ENDIAN, 16)) {
+            w.fill((byte) 0xFF);
+            w.put(2L * Integer.BYTES, src, 0, src.length);
+        }
+        final int[] result = readAllInts(path);
+        assertEquals(-1, result[0]);  // 0xFF fill => -1 for int
+        assertEquals(-1, result[1]);
+        assertEquals(20, result[2]);
+        assertEquals(80, result[8]);
+        assertEquals(-1, result[9]);
+    }
 
     @Test
-    void paged_crossPageBoundary() throws IOException
+    void bulkInt_thenSinglePut() throws IOException
     {
-        final Path path = tempDir.resolve("paged.dat");
-        // 10 ints = 40 bytes, page 16 => 4 ints/page
-        try (NumWriter w = NumWriter.open(path, 10, ByteOrder.BIG_ENDIAN, 16)) {
-            w.fill(-1);
-            w.put(0, 100);
-            w.put(3, 103);
-            w.put(4, 104);
-            w.put(9, 109);
+        final Path path = tempDir.resolve("int-bulk-then-single.dat");
+        final int[] src = { 1, 2, 3, 4 };
+        try (NumWriter w = NumWriter.open(path, 8L * Integer.BYTES, ByteOrder.LITTLE_ENDIAN, 16)) {
+            w.fill((byte) 0);
+            w.put(0L, src, 0, src.length);
+            w.put(2L * Integer.BYTES, 99);
         }
         assertArrayEquals(
-            new int[] { 100, -1, -1, 103, 104, -1, -1, -1, -1, 109 },
-            readAllInts(path, ByteOrder.BIG_ENDIAN)
+            new int[] { 1, 2, 99, 4, 0, 0, 0, 0 },
+            readAllInts(path)
         );
     }
 
-    @Test
-    void paged_randomAccess_flushesCorrectly() throws IOException
-    {
-        final Path path = tempDir.resolve("random.dat");
-        // 20 ints, page 16 => 4 ints/page, 5 pages
-        try (NumWriter w = NumWriter.open(path, 20, ByteOrder.BIG_ENDIAN, 16)) {
-            w.fill(0);
-            w.put(18, 18);  // page 4
-            w.put(2, 2);    // page 0 — flushes page 4
-            w.put(19, 19);  // page 4 — flushes page 0
-            w.put(8, 8);    // page 2 — flushes page 4
-            w.put(9, 9);    // page 2 — same page
-            w.put(0, 0);    // page 0 — flushes page 2
-        }
-        final int[] expected = new int[20];
-        expected[0] = 0;
-        expected[2] = 2;
-        expected[8] = 8;
-        expected[9] = 9;
-        expected[18] = 18;
-        expected[19] = 19;
-        assertArrayEquals(expected, readAllInts(path, ByteOrder.BIG_ENDIAN));
-    }
-
-    // ---- overwrite --------------------------------------------------------
+    // ---- long -------------------------------------------------------------
 
     @Test
-    void put_overwritesSameIndex() throws IOException
+    void putLong_single() throws IOException
     {
-        final Path path = tempDir.resolve("overwrite.dat");
-        try (NumWriter w = NumWriter.open(path, 4, ByteOrder.BIG_ENDIAN, 64)) {
-            w.fill(0);
-            w.put(1, 111);
-            w.put(1, 222);
+        final Path path = tempDir.resolve("long-single.dat");
+        final long totalBytes = 4L * Long.BYTES;
+        try (NumWriter w = NumWriter.open(path, totalBytes)) {
+            w.fill((byte) 0);
+            w.put(0L, Long.MIN_VALUE);
+            w.put(3L * Long.BYTES, Long.MAX_VALUE);
         }
-        assertArrayEquals(
-            new int[] { 0, 222, 0, 0 },
-            readAllInts(path, ByteOrder.BIG_ENDIAN)
-        );
+        final long[] result = readAllLongs(path);
+        assertEquals(Long.MIN_VALUE, result[0]);
+        assertEquals(0L, result[1]);
+        assertEquals(0L, result[2]);
+        assertEquals(Long.MAX_VALUE, result[3]);
     }
 
-    // ---- fill after put ---------------------------------------------------
+    @Test
+    void bulkLong() throws IOException
+    {
+        final Path path = tempDir.resolve("long-bulk.dat");
+        final long[] data = { 100L, 200L, 300L, 400L, 500L };
+        try (NumWriter w = NumWriter.open(path, (long) data.length * Long.BYTES)) {
+            w.put(0L, data, 0, data.length);
+        }
+        assertArrayEquals(data, readAllLongs(path));
+    }
+
+    // ---- double -----------------------------------------------------------
+
+    @Test
+    void putDouble_single() throws IOException
+    {
+        final Path path = tempDir.resolve("double-single.dat");
+        final long totalBytes = 3L * Double.BYTES;
+        try (NumWriter w = NumWriter.open(path, totalBytes)) {
+            w.fill((byte) 0);
+            w.put(0L, Math.PI);
+            w.put(2L * Double.BYTES, Double.NaN);
+        }
+        final double[] result = readAllDoubles(path);
+        assertEquals(Math.PI, result[0], 0.0);
+        assertEquals(0.0, result[1], 0.0);
+        assertTrue(Double.isNaN(result[2]));
+    }
+
+    @Test
+    void bulkDouble() throws IOException
+    {
+        final Path path = tempDir.resolve("double-bulk.dat");
+        final double[] data = { 1.1, 2.2, 3.3, 4.4 };
+        try (NumWriter w = NumWriter.open(path, (long) data.length * Double.BYTES)) {
+            w.put(0L, data, 0, data.length);
+        }
+        final double[] result = readAllDoubles(path);
+        assertArrayEquals(data, result, 0.0);
+    }
+
+    // ---- char -------------------------------------------------------------
+
+    @Test
+    void putChar_single() throws IOException
+    {
+        final Path path = tempDir.resolve("char-single.dat");
+        final long totalBytes = 4L * Character.BYTES;
+        try (NumWriter w = NumWriter.open(path, totalBytes)) {
+            w.fill((byte) 0);
+            w.put(0L, 'A');
+            w.put(3L * Character.BYTES, '\u00E9'); // é
+        }
+        final char[] result = readAllChars(path);
+        assertEquals('A', result[0]);
+        assertEquals('\0', result[1]);
+        assertEquals('\0', result[2]);
+        assertEquals('\u00E9', result[3]);
+    }
+
+    @Test
+    void bulkChar() throws IOException
+    {
+        final Path path = tempDir.resolve("char-bulk.dat");
+        final char[] data = "Piaget".toCharArray();
+        try (NumWriter w = NumWriter.open(path, (long) data.length * Character.BYTES)) {
+            w.put(0L, data, 0, data.length);
+        }
+        assertArrayEquals(data, readAllChars(path));
+    }
+
+    // ---- fill -------------------------------------------------------------
+
+    @Test
+    void fill_zero() throws IOException
+    {
+        final Path path = tempDir.resolve("fill-zero.dat");
+        try (NumWriter w = NumWriter.open(path, 32L)) {
+            w.fill((byte) 0);
+        }
+        final byte[] bytes = Files.readAllBytes(path);
+        for (byte b : bytes) {
+            assertEquals(0, b);
+        }
+    }
 
     @Test
     void fill_afterPut_resetsFile() throws IOException
     {
-        final Path path = tempDir.resolve("fill-after-put.dat");
-        try (NumWriter w = NumWriter.open(path, 8, ByteOrder.BIG_ENDIAN, 16)) {
-            w.fill(0);
-            w.put(3, 99);
-            w.put(7, 77);
-            w.fill(5);
+        final Path path = tempDir.resolve("fill-reset.dat");
+        try (NumWriter w = NumWriter.open(path, 8L * Integer.BYTES, ByteOrder.LITTLE_ENDIAN, 16)) {
+            w.fill((byte) 0);
+            w.put(3L * Integer.BYTES, 99);
+            w.fill((byte) 0);
         }
-        final int[] expected = new int[8];
-        java.util.Arrays.fill(expected, 5);
-        assertArrayEquals(expected, readAllInts(path, ByteOrder.BIG_ENDIAN));
-    }
-
-    @Test
-    void put_afterFill_usesNewValue() throws IOException
-    {
-        final Path path = tempDir.resolve("put-after-fill.dat");
-        try (NumWriter w = NumWriter.open(path, 12, ByteOrder.BIG_ENDIAN, 16)) {
-            w.fill(1);
-            w.fill(2);
-            w.put(5, 99);
-        }
-        final int[] result = readAllInts(path, ByteOrder.BIG_ENDIAN);
-        assertEquals(2, result[0]);
-        assertEquals(2, result[4]);
-        assertEquals(99, result[5]);
-        assertEquals(2, result[11]);
-    }
-
-    // ---- sequential write (no fill) ---------------------------------------
-
-    @Test
-    void sequentialPut_noFill() throws IOException
-    {
-        final Path path = tempDir.resolve("sequential.dat");
-        final int n = 25;
-        try (NumWriter w = NumWriter.open(path, n, ByteOrder.LITTLE_ENDIAN, 16)) {
-            for (int i = 0; i < n; i++) {
-                w.put(i, i * 10);
-            }
-        }
-        final int[] result = readAllInts(path, ByteOrder.LITTLE_ENDIAN);
-        assertEquals(n, result.length);
-        for (int i = 0; i < n; i++) {
-            assertEquals(i * 10, result[i], "index " + i);
-        }
-    }
-
-    // ---- bulk put ---------------------------------------------------------
-
-    @Test
-    void bulkPut_wholeFile() throws IOException
-    {
-        final Path path = tempDir.resolve("bulk-whole.dat");
-        final int[] data = { 10, 20, 30, 40, 50, 60, 70, 80 };
-        try (NumWriter w = NumWriter.open(path, data.length, ByteOrder.BIG_ENDIAN, 16)) {
-            w.put(0L, data, 0, data.length);
-        }
-        assertArrayEquals(data, readAllInts(path, ByteOrder.BIG_ENDIAN));
-    }
-
-    @Test
-    void bulkPut_withOffset() throws IOException
-    {
-        final Path path = tempDir.resolve("bulk-offset.dat");
-        final int[] src = { 99, 99, 1, 2, 3, 99 };
-        try (NumWriter w = NumWriter.open(path, 5, ByteOrder.LITTLE_ENDIAN, 64)) {
-            w.fill(0);
-            w.put(1L, src, 2, 3); // writes {1, 2, 3} at file indices 1..3
-        }
-        assertArrayEquals(
-            new int[] { 0, 1, 2, 3, 0 },
-            readAllInts(path, ByteOrder.LITTLE_ENDIAN)
-        );
-    }
-
-    @Test
-    void bulkPut_crossesPages() throws IOException
-    {
-        final Path path = tempDir.resolve("bulk-cross.dat");
-        // page 16 => 4 ints/page; write 7 ints starting at index 2
-        // spans page 0 (indices 2-3), page 1 (4-7), page 2 (8)
-        final int[] src = { 20, 30, 40, 50, 60, 70, 80 };
-        try (NumWriter w = NumWriter.open(path, 12, ByteOrder.BIG_ENDIAN, 16)) {
-            w.fill(-1);
-            w.put(2L, src, 0, src.length);
-        }
-        assertArrayEquals(
-            new int[] { -1, -1, 20, 30, 40, 50, 60, 70, 80, -1, -1, -1 },
-            readAllInts(path, ByteOrder.BIG_ENDIAN)
-        );
-    }
-
-    @Test
-    void bulkPut_thenSinglePut_reloadsPage() throws IOException
-    {
-        final Path path = tempDir.resolve("bulk-then-single.dat");
-        final int[] src = { 1, 2, 3, 4 };
-        try (NumWriter w = NumWriter.open(path, 8, ByteOrder.BIG_ENDIAN, 16)) {
-            w.fill(0);
-            w.put(0L, src, 0, src.length);
-            // single put on same page — must reload from disk
-            w.put(2, 99);
-        }
-        assertArrayEquals(
-            new int[] { 1, 2, 99, 4, 0, 0, 0, 0 },
-            readAllInts(path, ByteOrder.BIG_ENDIAN)
-        );
-    }
-
-    @Test
-    void bulkPut_zeroLength_noOp() throws IOException
-    {
-        final Path path = tempDir.resolve("bulk-zero.dat");
-        try (NumWriter w = NumWriter.open(path, 4, ByteOrder.BIG_ENDIAN, 64)) {
-            w.fill(7);
-            w.put(0L, new int[0], 0, 0);
-        }
-        final int[] result = readAllInts(path, ByteOrder.BIG_ENDIAN);
-        for (int v : result) {
-            assertEquals(7, v);
-        }
-    }
-
-    @Test
-    void bulkPut_outOfRange_throws() throws IOException
-    {
-        final Path path = tempDir.resolve("bulk-range.dat");
-        try (NumWriter w = NumWriter.open(path, 5, ByteOrder.BIG_ENDIAN, 64)) {
-            final int[] src = { 1, 2, 3 };
-            // starts at 4, len 3 => ends at 7 > totalInts 5
-            assertThrows(IllegalArgumentException.class, () -> w.put(4L, src, 0, 3));
-            // negative index
-            assertThrows(IllegalArgumentException.class, () -> w.put(-1L, src, 0, 1));
-            // src bounds
-            assertThrows(IndexOutOfBoundsException.class, () -> w.put(0L, src, 2, 3));
+        for (int v : readAllInts(path)) {
+            assertEquals(0, v);
         }
     }
 
@@ -264,43 +251,67 @@ public class NumWriterTest
     void zeroLength_createsEmptyFile() throws IOException
     {
         final Path path = tempDir.resolve("empty.dat");
-        try (NumWriter w = NumWriter.open(path, 0, ByteOrder.BIG_ENDIAN, 64)) {
-            w.fill(-1);
+        try (NumWriter w = NumWriter.open(path, 0L)) {
+            w.fill((byte) 0);
         }
         assertEquals(0L, Files.size(path));
     }
 
     @Test
-    void singleInt() throws IOException
-    {
-        final Path path = tempDir.resolve("single.dat");
-        try (NumWriter w = NumWriter.open(path, 1, ByteOrder.BIG_ENDIAN, 64)) {
-            w.put(0, Integer.MIN_VALUE);
-        }
-        assertArrayEquals(
-            new int[] { Integer.MIN_VALUE },
-            readAllInts(path, ByteOrder.BIG_ENDIAN)
-        );
-    }
-
-    @Test
-    void put_outOfRange_throws() throws IOException
+    void putInt_outOfRange_throws() throws IOException
     {
         final Path path = tempDir.resolve("range.dat");
-        try (NumWriter w = NumWriter.open(path, 3, ByteOrder.BIG_ENDIAN, 64)) {
-            assertThrows(IllegalArgumentException.class, () -> w.put(-1, 7));
-            assertThrows(IllegalArgumentException.class, () -> w.put(3, 7));
-            assertThrows(IllegalArgumentException.class, () -> w.put(Long.MAX_VALUE, 7));
+        try (NumWriter w = NumWriter.open(path, 12L)) {
+            assertThrows(IllegalArgumentException.class,
+                () -> w.put(-1L, 7));
+            // byte 12 + 4 > 12
+            assertThrows(IllegalArgumentException.class,
+                () -> w.put(12L, 7));
+            // byte 10 + 4 > 12
+            assertThrows(IllegalArgumentException.class,
+                () -> w.put(10L, 7));
         }
     }
 
     @Test
-    void open_negativeTotalInts_throws()
+    void bulkInt_outOfRange_throws() throws IOException
+    {
+        final Path path = tempDir.resolve("bulk-range.dat");
+        try (NumWriter w = NumWriter.open(path, 20L)) {
+            final int[] src = { 1, 2, 3 };
+            assertThrows(IllegalArgumentException.class,
+                () -> w.put(12L, src, 0, 3)); // 12 + 12 > 20
+            assertThrows(IllegalArgumentException.class,
+                () -> w.put(-1L, src, 0, 1));
+            assertThrows(IndexOutOfBoundsException.class,
+                () -> w.put(0L, src, 2, 3));
+        }
+    }
+
+    @Test
+    void open_negativeTotalBytes_throws()
     {
         final Path path = tempDir.resolve("negative.dat");
         assertThrows(IllegalArgumentException.class,
-            () -> NumWriter.open(path, -1, ByteOrder.BIG_ENDIAN, 64)
+            () -> NumWriter.open(path, -1L)
         );
+    }
+
+    // ---- defaults ---------------------------------------------------------
+
+    @Test
+    void open_defaultByteOrder_isLittleEndian() throws IOException
+    {
+        final Path path = tempDir.resolve("default-order.dat");
+        try (NumWriter w = NumWriter.open(path, 4L)) {
+            w.put(0L, 0x01020304);
+        }
+        final byte[] bytes = Files.readAllBytes(path);
+        // little-endian: least significant byte first
+        assertEquals(0x04, bytes[0] & 0xFF);
+        assertEquals(0x03, bytes[1] & 0xFF);
+        assertEquals(0x02, bytes[2] & 0xFF);
+        assertEquals(0x01, bytes[3] & 0xFF);
     }
 
     // ---- channel close ----------------------------------------------------
@@ -309,48 +320,41 @@ public class NumWriterTest
     void close_releasesFile() throws IOException
     {
         final Path path = tempDir.resolve("close-release.dat");
-        final NumWriter w = NumWriter.open(path, 10, ByteOrder.BIG_ENDIAN, 64);
-        w.put(0, 1);
+        final NumWriter w = NumWriter.open(path, 40L);
+        w.put(0L, 1);
         w.close();
-        // on Windows this fails if the channel is still held
-        assertTrue(Files.deleteIfExists(path), "file should be deletable after close");
+        assertTrue(Files.deleteIfExists(path));
     }
 
     @Test
     void close_thenRename() throws IOException
     {
-        final Path src = tempDir.resolve("before-rename.dat");
-        final Path dst = tempDir.resolve("after-rename.dat");
-        final NumWriter w = NumWriter.open(src, 4, ByteOrder.BIG_ENDIAN, 64);
-        w.fill(42);
+        final Path src = tempDir.resolve("before.dat");
+        final Path dst = tempDir.resolve("after.dat");
+        final NumWriter w = NumWriter.open(src, 16L);
+        w.fill((byte) 42);
         w.close();
-        // on Windows this fails if the channel is still held
         Files.move(src, dst);
         assertTrue(Files.exists(dst));
         assertFalse(Files.exists(src));
-        assertArrayEquals(
-            new int[] { 42, 42, 42, 42 },
-            readAllInts(dst, ByteOrder.BIG_ENDIAN)
-        );
     }
 
     @Test
     void put_afterClose_throws() throws IOException
     {
         final Path path = tempDir.resolve("after-close.dat");
-        final NumWriter w = NumWriter.open(path, 4, ByteOrder.BIG_ENDIAN, 64);
+        final NumWriter w = NumWriter.open(path, 16L);
         w.close();
-        assertThrows(ClosedChannelException.class, () -> w.put(0, 1));
+        assertThrows(ClosedChannelException.class, () -> w.put(0L, 1));
     }
 
     @Test
     void close_idempotent() throws IOException
     {
         final Path path = tempDir.resolve("double-close.dat");
-        final NumWriter w = NumWriter.open(path, 4, ByteOrder.BIG_ENDIAN, 64);
-        w.fill(0);
+        final NumWriter w = NumWriter.open(path, 16L);
+        w.fill((byte) 0);
         w.close();
-        // second close must not throw
         assertDoesNotThrow(w::close);
     }
 
@@ -359,114 +363,131 @@ public class NumWriterTest
     @Test
     void normalizePageSize_minimum()
     {
-        assertEquals(Integer.BYTES, NumWriter.normalizePageSize(0));
-        assertEquals(Integer.BYTES, NumWriter.normalizePageSize(1));
-        assertEquals(Integer.BYTES, NumWriter.normalizePageSize(Integer.BYTES));
+        assertEquals(Long.BYTES, NumWriter.normalizePageSize(0));
+        assertEquals(Long.BYTES, NumWriter.normalizePageSize(1));
+        assertEquals(Long.BYTES, NumWriter.normalizePageSize((int) Long.BYTES));
     }
 
     @Test
     void normalizePageSize_roundsUp()
     {
-        assertEquals(8, NumWriter.normalizePageSize(5));
-        assertEquals(8, NumWriter.normalizePageSize(6));
-        assertEquals(8, NumWriter.normalizePageSize(7));
-        assertEquals(8, NumWriter.normalizePageSize(8));
-        assertEquals(12, NumWriter.normalizePageSize(9));
-    }
-
-    // ---- ensureFileSize ---------------------------------------------------
-
-    @Test
-    void ensureFileSize_grow_shrink_exact() throws IOException
-    {
-        final Path path = tempDir.resolve("ensure.dat");
-        try (FileChannel ch = FileChannel.open(path,
-                StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            NumWriter.ensureFileSize(ch, 100L);
-            assertEquals(100L, ch.size());
-            NumWriter.ensureFileSize(ch, 100L);
-            assertEquals(100L, ch.size());
-            NumWriter.ensureFileSize(ch, 40L);
-            assertEquals(40L, ch.size());
-            NumWriter.ensureFileSize(ch, 0L);
-            assertEquals(0L, ch.size());
-        }
-    }
-
-    @Test
-    void ensureFileSize_negativeSize_throws() throws IOException
-    {
-        final Path path = tempDir.resolve("neg-size.dat");
-        try (FileChannel ch = FileChannel.open(path,
-                StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
-            assertThrows(IllegalArgumentException.class,
-                () -> NumWriter.ensureFileSize(ch, -1L)
-            );
-        }
+        assertEquals(16, NumWriter.normalizePageSize(9));
+        assertEquals(16, NumWriter.normalizePageSize(15));
+        assertEquals(16, NumWriter.normalizePageSize(16));
+        assertEquals(24, NumWriter.normalizePageSize(17));
     }
 
     // ---- >2 GB ------------------------------------------------------------
 
-    /**
-     * Write first and last int in a file larger than 2&nbsp;GB,
-     * close, reopen, and verify both values.
-     * Skipped automatically if disk space is insufficient.
-     */
     @Test
     @Tag("heavy")
-    void largerThan2GB_writeAndReadBack() throws IOException
+    void largerThan2GB_intWriteAndReadBack() throws IOException
     {
-        // 536_870_913 ints * 4 = 2_147_483_652 bytes (4 bytes over Integer.MAX_VALUE)
-        final long totalInts = 536_870_913L;
-        final long totalBytes = totalInts * (long) Integer.BYTES;
+        final long totalInts = 536_870_913L; // * 4 = 4 bytes over Integer.MAX_VALUE
+        final long totalBytes = totalInts * Integer.BYTES;
 
         final long usable = Files.getFileStore(tempDir).getUsableSpace();
-        assumeTrue(usable >= totalBytes + (1L << 20), "insufficient disk space for >2GB test");
+        assumeTrue(usable >= totalBytes + (1L << 20), "insufficient disk space");
 
         final Path path = tempDir.resolve("large.dat");
         final int firstVal = 0xCAFEBABE;
-        final long lastIndex = totalInts - 1;
+        final long lastBytePos = (totalInts - 1L) * Integer.BYTES;
         final int lastVal = 0xDEADBEEF;
 
-        try (NumWriter w = NumWriter.open(path, totalInts, ByteOrder.BIG_ENDIAN, 1 << 20)) {
+        try (NumWriter w = NumWriter.open(path, totalBytes)) {
             w.put(0L, firstVal);
-            w.put(lastIndex, lastVal);
+            w.put(lastBytePos, lastVal);
         }
 
         assertEquals(totalBytes, Files.size(path));
 
-        // reopen with raw channel and read back
-        final ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES).order(ByteOrder.BIG_ENDIAN);
+        final ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES).order(ByteOrder.LITTLE_ENDIAN);
         try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
-            // first int
             ch.read(buf, 0L);
             buf.flip();
             assertEquals(firstVal, buf.getInt());
 
-            // last int — byte position exceeds Integer.MAX_VALUE
             buf.clear();
-            ch.read(buf, lastIndex * (long) Integer.BYTES);
+            ch.read(buf, lastBytePos);
             buf.flip();
             assertEquals(lastVal, buf.getInt());
         }
 
-        // verify close released the file
         assertTrue(Files.deleteIfExists(path));
     }
 
-    // ---- helper -----------------------------------------------------------
+    // ---- mixed types in same file -----------------------------------------
 
-    private static int[] readAllInts(final Path path, final ByteOrder order) throws IOException
+    @Test
+    void mixedTypes_headerThenInts() throws IOException
+    {
+        final Path path = tempDir.resolve("mixed.dat");
+        // header: 1 long (version) + 1 int (count), then 4 ints
+        final long headerBytes = Long.BYTES + Integer.BYTES; // 12
+        final int count = 4;
+        final long totalBytes = headerBytes + (long) count * Integer.BYTES;
+
+        try (NumWriter w = NumWriter.open(path, totalBytes)) {
+            w.fill((byte) 0);
+            w.put(0L, 42L);                    // version
+            w.put(Long.BYTES, count);             // count
+            int[] data = { 100, 200, 300, 400 };
+            w.put(headerBytes, data, 0, data.length);
+        }
+
+        final byte[] bytes = Files.readAllBytes(path);
+        final ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        assertEquals(42L, buf.getLong());
+        assertEquals(4, buf.getInt());
+        assertEquals(100, buf.getInt());
+        assertEquals(200, buf.getInt());
+        assertEquals(300, buf.getInt());
+        assertEquals(400, buf.getInt());
+    }
+
+    // ---- helpers ----------------------------------------------------------
+
+    private static int[] readAllInts(final Path path) throws IOException
     {
         final byte[] bytes = Files.readAllBytes(path);
-        if ((bytes.length & 3) != 0) {
-            throw new AssertionError("File size not a multiple of 4: " + bytes.length);
-        }
-        final ByteBuffer buf = ByteBuffer.wrap(bytes).order(order);
-        final int[] ints = new int[bytes.length >>> 2];
+        final ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        final int[] ints = new int[bytes.length / Integer.BYTES];
         for (int i = 0; i < ints.length; i++) {
             ints[i] = buf.getInt();
         }
         return ints;
+    }
+
+    private static long[] readAllLongs(final Path path) throws IOException
+    {
+        final byte[] bytes = Files.readAllBytes(path);
+        final ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        final long[] longs = new long[bytes.length / Long.BYTES];
+        for (int i = 0; i < longs.length; i++) {
+            longs[i] = buf.getLong();
+        }
+        return longs;
+    }
+
+    private static double[] readAllDoubles(final Path path) throws IOException
+    {
+        final byte[] bytes = Files.readAllBytes(path);
+        final ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        final double[] doubles = new double[bytes.length / Double.BYTES];
+        for (int i = 0; i < doubles.length; i++) {
+            doubles[i] = buf.getDouble();
+        }
+        return doubles;
+    }
+
+    private static char[] readAllChars(final Path path) throws IOException
+    {
+        final byte[] bytes = Files.readAllBytes(path);
+        final ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        final char[] chars = new char[bytes.length / Character.BYTES];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = buf.getChar();
+        }
+        return chars;
     }
 }
