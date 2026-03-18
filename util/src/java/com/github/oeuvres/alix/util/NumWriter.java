@@ -29,7 +29,7 @@ import java.util.Objects;
  * }
  * }</pre>
  */
-public final class IntWriter implements Closeable
+public final class NumWriter implements Closeable
 {
     private final FileChannel channel;
     private final long totalInts;
@@ -42,7 +42,7 @@ public final class IntWriter implements Closeable
     private int pageLen = 0;
     private boolean dirty = false;
 
-    private IntWriter(
+    private NumWriter(
         final FileChannel channel,
         final long totalInts,
         final ByteOrder byteOrder,
@@ -75,7 +75,7 @@ public final class IntWriter implements Closeable
      * @throws IllegalArgumentException if {@code totalInts < 0}.
      * @throws ArithmeticException      if {@code totalInts * 4} overflows {@code long}.
      */
-    public static IntWriter open(
+    public static NumWriter open(
         final Path path,
         final long totalInts,
         final ByteOrder byteOrder,
@@ -102,7 +102,7 @@ public final class IntWriter implements Closeable
         try {
             final long totalBytes = Math.multiplyExact(totalInts, (long) Integer.BYTES);
             ensureFileSize(channel, totalBytes);
-            final IntWriter writer = new IntWriter(channel, totalInts, byteOrder, pageSize);
+            final NumWriter writer = new NumWriter(channel, totalInts, byteOrder, pageSize);
             ok = true;
             return writer;
         }
@@ -319,10 +319,14 @@ public final class IntWriter implements Closeable
     /**
      * Flush pending writes, force channel to disk, and close the channel.
      * After this call the file is fully released (deletable, renamable).
+     * Idempotent: subsequent calls are no-ops.
      */
     @Override
     public void close() throws IOException
     {
+        if (!channel.isOpen()) {
+            return;
+        }
         try {
             flush();
             channel.force(true);
