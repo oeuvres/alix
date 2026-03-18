@@ -48,9 +48,12 @@ import static java.lang.Math.toIntExact;
  *   <li><b>{@code <field>.terms.off}</b> — native-endian {@code int} offsets into {@code .dat}</li>
  * </ul>
  * <p>
- * Term ids are dense and stable for the frozen snapshot from which the lexicon was built.
- * The id assignment follows the lexicographic iteration order returned by Lucene's merged
- * {@link TermsEnum} for the field.
+ * Term id 0 is reserved and represents the absence of a term (empty position).
+ * Real term ids start at 1 and are dense and stable for the frozen snapshot from which the
+ * lexicon was built. The id assignment follows the lexicographic iteration order returned by
+ * Lucene's merged {@link TermsEnum} for the field. The reserved id is stored as a zero-length
+ * phantom entry in the {@code .dat}/{@code .off} files so that {@link #term(int) term(0)}
+ * returns {@code ""} and all sidecar files remain self-consistent.
  * </p>
  * <p>
  * This class implements {@link Closeable}. Closing attempts to release the memory-mapped
@@ -74,7 +77,7 @@ public final class TermLexicon implements Closeable {
     /** Indexed field for which this lexicon was built. */
     private final String field;
 
-    /** Exact immutable mapping from UTF-8 term bytes to dense term ids. */
+    /** Exact immutable mapping from UTF-8 term bytes to dense term ids in {@code [1, vocabSize)}. */
     private final FST<Long> fst;
 
     /** Memory-mapped concatenation of all term bytes in term-id order. */
@@ -97,7 +100,7 @@ public final class TermLexicon implements Closeable {
     /** IntBuffer view over {@link #offBuf} for direct int access without byte arithmetic. */
     private final IntBuffer off;
 
-    /** Number of distinct terms in the field. */
+    /** Number of entries including the reserved id 0; valid ids span {@code [0, vocabSize)}. */
     private final int vocabSize;
 
     /** Maximum tolerated mtime difference between the three lexicon files at open time, in milliseconds. */
@@ -325,7 +328,7 @@ public final class TermLexicon implements Closeable {
      * </p>
      *
      * @param term canonical indexed term form, must match the analyzer output exactly
-     * @return dense term id in {@code [0, vocabSize)}, or {@code -1} if the term is absent
+     * @return dense term id in {@code [1, vocabSize)}, or {@code -1} if the term is absent
      * @throws IOException          if the FST read fails
      * @throws NullPointerException if {@code term} is null
      */
@@ -344,7 +347,7 @@ public final class TermLexicon implements Closeable {
      * </p>
      *
      * @param term canonical indexed term as UTF-8 bytes
-     * @return dense term id in {@code [0, vocabSize)}, or {@code -1} if the term is absent
+     * @return dense term id in {@code [1, vocabSize)}, or {@code -1} if the term is absent
      * @throws IOException          if the FST read fails
      * @throws NullPointerException if {@code term} is null
      */
@@ -377,7 +380,8 @@ public final class TermLexicon implements Closeable {
      * <ul>
      *   <li>All three files must exist as regular files.</li>
      *   <li>File modification times must be within {@value #MTIME_TOLERANCE_MS} ms of each other.</li>
-     *   <li>The offsets file size must be a multiple of 4 bytes and contain at least 2 entries.</li>
+     *   <li>The offsets file size must be a multiple of 4 bytes and contain at least 3 entries
+     *       (the reserved phantom slot plus at least one real term).</li>
      *   <li>The first offset must be 0 and the last must equal the data file size.</li>
      *   <li>A bounded monotonicity check is run on the first and last {@value #MONO_CHECK} offsets.</li>
      * </ul>
@@ -411,8 +415,8 @@ public final class TermLexicon implements Closeable {
                 throw new IOException("Invalid offsets file (size not a multiple of 4 bytes): " + offPath);
             }
             final IntBuffer off = offByteBuf.asIntBuffer();
-            if (off.capacity() < 2) {
-                throw new IOException("Invalid offsets file (need at least 2 offsets): " + offPath);
+            if (off.capacity() < 3) {
+                throw new IOException("Invalid offsets file (need at least 3 offsets: phantom + one real term): " + offPath);
             }
     
             final int first = off.get(0);
@@ -486,13 +490,14 @@ public final class TermLexicon implements Closeable {
     /**
      * Returns the term string for one dense term id.
      * <p>
+     * {@code term(0)} returns the empty string (reserved absent-term slot).
      * Uses a per-thread scratch buffer internally. Suitable for moderate use
      * (e.g. resolving 50 term ids for display). For tight loops over the full
      * vocabulary, prefer {@link #termBytes(int, BytesRefBuilder)} with a caller-owned buffer.
      * </p>
      *
      * @param termId dense term id in {@code [0, vocabSize)}
-     * @return decoded UTF-8 term string, never null
+     * @return decoded UTF-8 term string, never null; empty for the reserved id 0
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
     public String term(final int termId) {
@@ -532,9 +537,13 @@ public final class TermLexicon implements Closeable {
 
     
     /**
-     * Returns the number of distinct terms in the field.
+     * Returns the number of entries in the lexicon, including the reserved id 0.
+     * <p>
+     * Real terms occupy ids {@code [1, vocabSize)}. The count of real terms
+     * is therefore {@code vocabSize() - 1}.
+     * </p>
      *
-     * @return vocabulary size (always &gt; 0 for a valid lexicon)
+     * @return vocabulary size (always &gt; 1 for a valid lexicon)
      */
     public int vocabSize() {
         return vocabSize;
@@ -544,8 +553,10 @@ public final class TermLexicon implements Closeable {
      * Builds the three persisted files from the field's merged term dictionary.
      * <p>
      * Iterates the {@link TermsEnum} in lexicographic order, assigning a dense id
-     * to each term starting from 0. The FST, concatenated term bytes, and native-endian
-     * offset array are written to the respective temporary paths.
+     * to each term starting from 1. Id 0 is reserved as an absent-term sentinel:
+     * the offset file begins with a zero-length phantom entry ({@code off[0] == off[1] == 0})
+     * so that downstream consumers can use 0 to mean "no term at this position".
+     * The FST stores canonical term ids directly — no post-lookup adjustment is needed.
      * </p>
      *
      * @param terms   merged terms for the field
@@ -565,7 +576,7 @@ public final class TermLexicon implements Closeable {
             new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
         final IntsRefBuilder ints = new IntsRefBuilder();
     
-        int id = 0;
+        int id = 1;
         int datPos = 0;
     
         final ByteBuffer offBuf = ByteBuffer.allocate(OFF_BUF_INTS * 4).order(ByteOrder.nativeOrder());
@@ -575,8 +586,9 @@ public final class TermLexicon implements Closeable {
              FileChannel offCh = FileChannel.open(offPath,
                  StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
     
-            offBuf.putInt(0);
-    
+            offBuf.putInt(0);              // off[0]: start of phantom empty-term slot
+            offBuf.putInt(0);              // off[1]: end   of phantom — zero length
+
             final TermsEnum te = terms.iterator();
             BytesRef term;
             while ((term = te.next()) != null) {
