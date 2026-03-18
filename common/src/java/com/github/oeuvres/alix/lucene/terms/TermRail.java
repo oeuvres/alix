@@ -1,12 +1,18 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
+
+import com.github.oeuvres.alix.util.Calcul;
+import com.github.oeuvres.alix.util.NumWriter;
+import com.github.oeuvres.alix.util.Report;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -22,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Objects;
 
 /**
@@ -98,29 +105,26 @@ import java.util.Objects;
  */
 public final class TermRail implements Closeable {
 
-    /** Sentinel value stored in positions that are present in the rail but carry no term. */
-    public static final int NO_TERM = -1;
-
-    /** Lucene directory that contains both the index and the rail files. */
-    private final Path indexDir;
-
-    /** Indexed field covered by this rail. */
-    private final String field;
+    /** Directory that contains both the index and the rail files. */
+    private final Path dataDir;
 
     /** Mapped buffer for {@code <field>.rail.dat}; retained for explicit unmapping on close. */
     private final MappedByteBuffer datBuf;
 
+    /** Number of documents represented by this rail. */
+    private final int docCount;
+
     /** Int view over {@link #datBuf}. */
     private final IntBuffer dat;
 
-    /** Mapped buffer for {@code <field>.rail.off}; retained for explicit unmapping on close. */
-    private final MappedByteBuffer offBuf;
+    /** Indexed field covered by this rail. */
+    private final String field;
 
     /** Int view over {@link #offBuf}. */
     private final IntBuffer off;
 
-    /** Number of documents represented by this rail. */
-    private final int docCount;
+    /** Mapped buffer for {@code <field>.rail.off}; retained for explicit unmapping on close. */
+    private final MappedByteBuffer offBuf;
 
     /** Total number of stored positions across all documents. */
     private final int totalPositions;
@@ -128,11 +132,8 @@ public final class TermRail implements Closeable {
     /** Maximum tolerated mtime difference between the two rail files. */
     private static final long MTIME_TOLERANCE_MS = 5_000L;
 
-    /** Buffered write chunk size, in ints. */
-    private static final int BUF_INTS = 8192;
-
     private TermRail(
-        final Path indexDir,
+        final Path dataDir,
         final String field,
         final MappedByteBuffer datBuf,
         final IntBuffer dat,
@@ -141,7 +142,7 @@ public final class TermRail implements Closeable {
         final int docCount,
         final int totalPositions
     ) {
-        this.indexDir = indexDir;
+        this.dataDir = dataDir;
         this.field = field;
         this.datBuf = datBuf;
         this.dat = dat;
@@ -149,36 +150,6 @@ public final class TermRail implements Closeable {
         this.off = off;
         this.docCount = docCount;
         this.totalPositions = totalPositions;
-    }
-
-    /**
-     * Releases the mapped regions.
-     * <p>
-     * After close, all accessors on this instance are invalid.
-     * </p>
-     */
-    @Override
-    public void close() {
-        TermLexicon.unmap(datBuf);
-        TermLexicon.unmap(offBuf);
-    }
-
-    /**
-     * Tests whether both rail files for a field exist as regular files.
-     * <p>
-     * This is a presence check only. It does not validate consistency, sizes,
-     * offsets, or modification times.
-     * </p>
-     *
-     * @param indexDir Lucene directory
-     * @param field indexed field name
-     * @return {@code true} if both rail files exist as regular files
-     */
-    public static boolean exists(final Path indexDir, final String field) {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-        return Files.isRegularFile(datPath(indexDir, field))
-            && Files.isRegularFile(offPath(indexDir, field));
     }
 
     /**
@@ -209,37 +180,92 @@ public final class TermRail implements Closeable {
      * are also removed.
      * </p>
      *
-     * @param indexDir Lucene directory that will receive the rail files
+     * @param dataDir Lucene directory that will receive the rail files
      * @param reader snapshot reader
      * @param field indexed field name
      * @param lexicon lexicon built from the same field and snapshot
      * @throws IOException if build fails or output files already exist
      */
-    public static void write(
-        final Path indexDir,
+    public static void build(
+        final Path dataDir,
         final IndexReader reader,
         final String field,
-        final TermLexicon lexicon
+        final TermLexicon lexicon,
+        Report report
     ) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(dataDir, "dataDir");
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
         Objects.requireNonNull(lexicon, "lexicon");
-
-        final Path datFinal = datPath(indexDir, field);
-        final Path offFinal = offPath(indexDir, field);
-
-        ensureAbsent(datFinal);
+        if (report == null) report = Report.ReportNull.INSTANCE;
+    
+        final Path offFinal = offPath(dataDir, field);
         ensureAbsent(offFinal);
-
-        final Path datTmp = tmpPath(datFinal);
         final Path offTmp = tmpPath(offFinal);
-
-        deleteIfExists(datTmp);
         deleteIfExists(offTmp);
+        
+        final int maxDoc = reader.maxDoc();
+        final BitSet liveDocs = FieldStats.liveDocs(reader);
+        
+        // get fresh doc width (position max + 1), establish offsets
+        int[] docWidths = FieldStats.docWidths(reader, field, report);
+        int widthMax = -1;
+        final long[] offsets = new long[docWidths.length + 1];
+        long totalSlots = 0L;
+        for (int docId = 0; docId < maxDoc; docId++) {
+            final int width = (docWidths[docId] < 0 || !liveDocs.get(docId)) ? 0 : docWidths[docId];
+            if (width > widthMax) widthMax = width;
+            offsets[docId] = totalSlots;
+            totalSlots += width * Integer.BYTES;
+        }
+        offsets[maxDoc] = totalSlots;
+        try (NumWriter offsetsWriter = NumWriter.open(offTmp, (long) offsets.length * Long.BYTES)) {
+            offsetsWriter.put(0L, offsets, 0, offsets.length);
+        }
+        
+        final Path datFinal = datPath(dataDir, field);
+        ensureAbsent(datFinal);
+        final Path datTmp = tmpPath(datFinal);
+        deleteIfExists(datTmp);
 
+        try (NumWriter railWriter = NumWriter.open(datTmp, totalSlots)) {
+            int[] rail = new int[widthMax];
+            final TermVectors termVectors = reader.termVectors();
+            for (int docId = 0; docId < maxDoc; docId++) {
+                final int docWidth = docWidths[docId];
+                if (docWidth == 0) {
+                    continue;
+                }
+                final Fields fields = termVectors.get(docId);
+                if (fields == null) {
+                    continue;
+                }
+                final Terms terms = fields.terms(field);
+                if (terms == null) {
+                    continue;
+                }
+                // zero the region — guards against position gaps and stale data
+                Arrays.fill(rail, 0, rail.length, 0);
+
+                final TermsEnum termsEnum = terms.iterator();
+                BytesRef term;
+                while ((term = termsEnum.next()) != null) {
+                    final int termId = lexicon.id(term);
+                    final PostingsEnum postings = termsEnum.postings(null, PostingsEnum.POSITIONS);
+                    postings.nextDoc();
+                    final int freq = postings.freq();
+                    for (int i = 0; i < freq; i++) {
+                        rail[postings.nextPosition()] = termId;
+                    }
+                }
+
+                railWriter.put(offsets[docId], rail, 0, docWidth);
+            }
+
+
+        }
+    
         try {
-            buildFiles(reader, field, lexicon, datTmp, offTmp);
             moveTemp(datTmp, datFinal);
             moveTemp(offTmp, offFinal);
         } catch (IOException | RuntimeException e) {
@@ -252,96 +278,51 @@ public final class TermRail implements Closeable {
     }
 
     /**
-     * Opens an existing rail from disk and validates basic structural consistency.
+     * Releases the mapped regions.
      * <p>
-     * Checks performed on open:
+     * After close, all accessors on this instance are invalid.
      * </p>
-     * <ul>
-     *   <li>both files exist as regular files</li>
-     *   <li>their modification times are sufficiently close</li>
-     *   <li>their byte sizes are multiples of 4</li>
-     *   <li>the offsets file contains at least two ints</li>
-     *   <li>{@code off[0] == 0}</li>
-     *   <li>offsets are monotonic</li>
-     *   <li>{@code off[last] == dat.length}</li>
-     * </ul>
-     *
-     * @param indexDir Lucene directory that contains the rail files
-     * @param field indexed field name
-     * @return opened rail
-     * @throws IOException if files are missing or structurally inconsistent
      */
-    public static TermRail open(final Path indexDir, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-
-        final Path datPath = datPath(indexDir, field);
-        final Path offPath = offPath(indexDir, field);
-
-        ensureRegularFile(datPath);
-        ensureRegularFile(offPath);
-        checkMtimeCoherence(datPath, offPath);
-
-        final MappedByteBuffer datMapped = mapReadOnly(datPath);
-        datMapped.order(ByteOrder.nativeOrder());
-        final MappedByteBuffer offMapped = mapReadOnly(offPath);
-        offMapped.order(ByteOrder.nativeOrder());
-
-        try {
-            if ((datMapped.remaining() & 3) != 0) {
-                throw new IOException("Invalid rail data file (size not a multiple of 4 bytes): " + datPath);
-            }
-            if ((offMapped.remaining() & 3) != 0) {
-                throw new IOException("Invalid rail offsets file (size not a multiple of 4 bytes): " + offPath);
-            }
-
-            final IntBuffer dat = datMapped.asIntBuffer();
-            final IntBuffer off = offMapped.asIntBuffer();
-
-            if (off.capacity() < 2) {
-                throw new IOException("Invalid rail offsets file (need at least 2 entries): " + offPath);
-            }
-
-            final int first = off.get(0);
-            final int last = off.get(off.capacity() - 1);
-
-            if (first != 0) {
-                throw new IOException("Invalid rail offsets, off[0] != 0: " + offPath);
-            }
-            if (last != dat.capacity()) {
-                throw new IOException(
-                    "Rail offsets/data mismatch: last offset=" + last + ", data int count=" + dat.capacity()
-                );
-            }
-
-            int prev = first;
-            for (int i = 1; i < off.capacity(); i++) {
-                final int cur = off.get(i);
-                if (cur < prev) {
-                    throw new IOException(
-                        "Invalid rail offsets, not monotonic at index " + i +
-                        ": " + prev + " -> " + cur + " in " + offPath
-                    );
-                }
-                prev = cur;
-            }
-
-            final int docCount = off.capacity() - 1;
-            final int totalPositions = dat.capacity();
-
-            return new TermRail(indexDir, field, datMapped, dat, offMapped, off, docCount, totalPositions);
-        } catch (IOException | RuntimeException e) {
-            TermLexicon.unmap(datMapped);
-            TermLexicon.unmap(offMapped);
-            throw e;
-        }
+    @Override
+    public void close() {
+        TermLexicon.unmap(datBuf);
+        TermLexicon.unmap(offBuf);
     }
 
     /**
-     * Returns the Lucene directory from which this rail was opened.
+     * Returns the number of documents represented by this rail.
      */
-    public Path indexDir() {
-        return indexDir;
+    public int docCount() {
+        return docCount;
+    }
+
+    /**
+     * Returns a read-only view of the flat term-id array.
+     * <p>
+     * Intended for bulk sequential scans. Use {@link #docOffset(int)} and
+     * {@link #docLength(int)} to locate each document slice.
+     * </p>
+     */
+    public IntBuffer datBuffer() {
+        return dat.asReadOnlyBuffer();
+    }
+
+    /**
+     * Tests whether both rail files for a field exist as regular files.
+     * <p>
+     * This is a presence check only. It does not validate consistency, sizes,
+     * offsets, or modification times.
+     * </p>
+     *
+     * @param indexDir Lucene directory
+     * @param field indexed field name
+     * @return {@code true} if both rail files exist as regular files
+     */
+    public static boolean exists(final Path indexDir, final String field) {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+        return Files.isRegularFile(datPath(indexDir, field))
+            && Files.isRegularFile(offPath(indexDir, field));
     }
 
     /**
@@ -352,10 +333,10 @@ public final class TermRail implements Closeable {
     }
 
     /**
-     * Returns the number of documents represented by this rail.
+     * Returns the Lucene directory from which this rail was opened.
      */
-    public int docCount() {
-        return docCount;
+    public Path indexDir() {
+        return dataDir;
     }
 
     /**
@@ -418,14 +399,89 @@ public final class TermRail implements Closeable {
     }
 
     /**
-     * Returns a read-only view of the flat term-id array.
+     * Opens an existing rail from disk and validates basic structural consistency.
      * <p>
-     * Intended for bulk sequential scans. Use {@link #docOffset(int)} and
-     * {@link #docLength(int)} to locate each document slice.
+     * Checks performed on open:
      * </p>
+     * <ul>
+     *   <li>both files exist as regular files</li>
+     *   <li>their modification times are sufficiently close</li>
+     *   <li>their byte sizes are multiples of 4</li>
+     *   <li>the offsets file contains at least two ints</li>
+     *   <li>{@code off[0] == 0}</li>
+     *   <li>offsets are monotonic</li>
+     *   <li>{@code off[last] == dat.length}</li>
+     * </ul>
+     *
+     * @param indexDir Lucene directory that contains the rail files
+     * @param field indexed field name
+     * @return opened rail
+     * @throws IOException if files are missing or structurally inconsistent
      */
-    public IntBuffer datBuffer() {
-        return dat.asReadOnlyBuffer();
+    public static TermRail open(final Path indexDir, final String field) throws IOException {
+        Objects.requireNonNull(indexDir, "indexDir");
+        Objects.requireNonNull(field, "field");
+    
+        final Path datPath = datPath(indexDir, field);
+        final Path offPath = offPath(indexDir, field);
+    
+        ensureRegularFile(datPath);
+        ensureRegularFile(offPath);
+        checkMtimeCoherence(datPath, offPath);
+    
+        final MappedByteBuffer datMapped = mapReadOnly(datPath);
+        datMapped.order(ByteOrder.nativeOrder());
+        final MappedByteBuffer offMapped = mapReadOnly(offPath);
+        offMapped.order(ByteOrder.nativeOrder());
+    
+        try {
+            if ((datMapped.remaining() & 3) != 0) {
+                throw new IOException("Invalid rail data file (size not a multiple of 4 bytes): " + datPath);
+            }
+            if ((offMapped.remaining() & 3) != 0) {
+                throw new IOException("Invalid rail offsets file (size not a multiple of 4 bytes): " + offPath);
+            }
+    
+            final IntBuffer dat = datMapped.asIntBuffer();
+            final IntBuffer off = offMapped.asIntBuffer();
+    
+            if (off.capacity() < 2) {
+                throw new IOException("Invalid rail offsets file (need at least 2 entries): " + offPath);
+            }
+    
+            final int first = off.get(0);
+            final int last = off.get(off.capacity() - 1);
+    
+            if (first != 0) {
+                throw new IOException("Invalid rail offsets, off[0] != 0: " + offPath);
+            }
+            if (last != dat.capacity()) {
+                throw new IOException(
+                    "Rail offsets/data mismatch: last offset=" + last + ", data int count=" + dat.capacity()
+                );
+            }
+    
+            int prev = first;
+            for (int i = 1; i < off.capacity(); i++) {
+                final int cur = off.get(i);
+                if (cur < prev) {
+                    throw new IOException(
+                        "Invalid rail offsets, not monotonic at index " + i +
+                        ": " + prev + " -> " + cur + " in " + offPath
+                    );
+                }
+                prev = cur;
+            }
+    
+            final int docCount = off.capacity() - 1;
+            final int totalPositions = dat.capacity();
+    
+            return new TermRail(indexDir, field, datMapped, dat, offMapped, off, docCount, totalPositions);
+        } catch (IOException | RuntimeException e) {
+            TermLexicon.unmap(datMapped);
+            TermLexicon.unmap(offMapped);
+            throw e;
+        }
     }
 
     private void checkDocId(final int docId) {
@@ -435,300 +491,11 @@ public final class TermRail implements Closeable {
             );
         }
     }
+    
 
-    /**
-     * Builds the two persisted files from postings with positions.
-     */
-    private static void buildFiles(
-        final IndexReader reader,
-        final String field,
-        final TermLexicon lexicon,
-        final Path datPath,
-        final Path offPath
-    ) throws IOException {
-        final Terms terms = MultiTerms.getTerms(reader, field);
-        if (terms == null) {
-            throw new IOException("Field not found or has no terms: " + field);
-        }
-        if (!terms.hasPositions()) {
-            throw new IOException(
-                "Field '" + field + "' has no positions indexed; " +
-                "TermRail requires IndexOptions.DOCS_AND_FREQS_AND_POSITIONS or higher"
-            );
-        }
 
-        final int maxDoc = reader.maxDoc();
-        if (maxDoc < 0) {
-            throw new IOException("Invalid reader.maxDoc() for field '" + field + "': " + maxDoc);
-        }
 
-        final Pass1Stats p1 = scanPass1(terms, field, maxDoc);
-        final int[] offsets = buildOffsets(p1.maxPos, field);
-        final int totalPositions = offsets[maxDoc];
 
-        final int[] data = new int[totalPositions];
-        Arrays.fill(data, NO_TERM);
-
-        final Pass2Stats p2 = scanPass2(terms, field, lexicon, offsets, data);
-
-        if (p1.termCount != p2.termCount) {
-            throw new IOException(
-                "TermRail pass mismatch on field '" + field +
-                "': pass1 termCount=" + p1.termCount +
-                ", pass2 termCount=" + p2.termCount
-            );
-        }
-        if (p1.docHitCount != p2.docHitCount) {
-            throw new IOException(
-                "TermRail pass mismatch on field '" + field +
-                "': pass1 docHitCount=" + p1.docHitCount +
-                ", pass2 docHitCount=" + p2.docHitCount
-            );
-        }
-        if (p1.positionCount != p2.positionCount) {
-            throw new IOException(
-                "TermRail pass mismatch on field '" + field +
-                "': pass1 positionCount=" + p1.positionCount +
-                ", pass2 positionCount=" + p2.positionCount
-            );
-        }
-        if (p2.positionCount == 0L) {
-            throw new IOException(
-                "TermRail build produced zero positions for field '" + field +
-                "' (terms existed, but no positioned postings were recorded)"
-            );
-        }
-
-        writeIntFile(datPath, data);
-        writeIntFile(offPath, offsets);
-    }
-
-    /**
-     * Pass 1: determine the maximum position reached in each document.
-     */
-    private static Pass1Stats scanPass1(
-        final Terms terms,
-        final String field,
-        final int maxDoc
-    ) throws IOException {
-        final int[] maxPos = new int[maxDoc];
-        Arrays.fill(maxPos, -1);
-
-        long termCount = 0L;
-        long docHitCount = 0L;
-        long positionCount = 0L;
-
-        final TermsEnum te = terms.iterator();
-        BytesRef termBytes;
-        while ((termBytes = te.next()) != null) {
-            termCount++;
-
-            final PostingsEnum pe = te.postings(null, PostingsEnum.POSITIONS);
-            if (pe == null) {
-                throw new IOException(
-                    "PostingsEnum.POSITIONS returned null for field '" + field +
-                    "', term='" + termBytes.utf8ToString() + "'"
-                );
-            }
-
-            int docId;
-            while ((docId = pe.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                if (docId < 0 || docId >= maxDoc) {
-                    throw new IOException(
-                        "Invalid docId from postings for field '" + field +
-                        "': " + docId + " (maxDoc=" + maxDoc + ")"
-                    );
-                }
-
-                docHitCount++;
-
-                final int freq = pe.freq();
-                if (freq <= 0) {
-                    throw new IOException(
-                        "Invalid postings freq for field '" + field +
-                        "', term='" + termBytes.utf8ToString() +
-                        "', docId=" + docId + ": " + freq
-                    );
-                }
-
-                for (int i = 0; i < freq; i++) {
-                    final int pos = pe.nextPosition();
-                    if (pos < 0) {
-                        throw new IOException(
-                            "Invalid negative position for field '" + field +
-                            "', term='" + termBytes.utf8ToString() +
-                            "', docId=" + docId + ": " + pos
-                        );
-                    }
-                    if (pos > maxPos[docId]) {
-                        maxPos[docId] = pos;
-                    }
-                    positionCount++;
-                }
-            }
-        }
-
-        if (termCount == 0L) {
-            throw new IOException("Field has Terms but zero enumerated terms: " + field);
-        }
-        if (positionCount == 0L) {
-            throw new IOException(
-                "Field '" + field + "' has terms and reports positions, but pass 1 read zero positions"
-            );
-        }
-
-        return new Pass1Stats(maxPos, termCount, docHitCount, positionCount);
-    }
-
-    /**
-     * Pass 2: fill the flat data array with {@code termId} values.
-     * <p>
-     * Duplicate writes to the same slot are rejected. This catches stacked tokens
-     * and any other violation of the one-term-per-position contract.
-     * </p>
-     */
-    private static Pass2Stats scanPass2(
-        final Terms terms,
-        final String field,
-        final TermLexicon lexicon,
-        final int[] offsets,
-        final int[] data
-    ) throws IOException {
-        long termCount = 0L;
-        long docHitCount = 0L;
-        long positionCount = 0L;
-
-        final TermsEnum te = terms.iterator();
-        BytesRef termBytes;
-        while ((termBytes = te.next()) != null) {
-            termCount++;
-
-            final int termId = lexicon.id(termBytes);
-            if (termId < 0) {
-                throw new IOException(
-                    "Term from postings absent in lexicon for field '" + field +
-                    "': '" + termBytes.utf8ToString() + "'"
-                );
-            }
-
-            final PostingsEnum pe = te.postings(null, PostingsEnum.POSITIONS);
-            if (pe == null) {
-                throw new IOException(
-                    "PostingsEnum.POSITIONS returned null in pass 2 for field '" + field +
-                    "', term='" + termBytes.utf8ToString() + "'"
-                );
-            }
-
-            int docId;
-            while ((docId = pe.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                docHitCount++;
-
-                final int base = offsets[docId];
-                final int limit = offsets[docId + 1];
-                final int docLen = limit - base;
-
-                final int freq = pe.freq();
-                if (freq <= 0) {
-                    throw new IOException(
-                        "Invalid postings freq in pass 2 for field '" + field +
-                        "', term='" + termBytes.utf8ToString() +
-                        "', docId=" + docId + ": " + freq
-                    );
-                }
-
-                for (int i = 0; i < freq; i++) {
-                    final int pos = pe.nextPosition();
-                    if (pos < 0) {
-                        throw new IOException(
-                            "Invalid negative position in pass 2 for field '" + field +
-                            "', term='" + termBytes.utf8ToString() +
-                            "', docId=" + docId + ": " + pos
-                        );
-                    }
-                    if (pos >= docLen) {
-                        throw new IOException(
-                            "Pass 2 position exceeds pass 1 doc length for field '" + field +
-                            "', term='" + termBytes.utf8ToString() +
-                            "', docId=" + docId +
-                            ", pos=" + pos +
-                            ", docLen=" + docLen
-                        );
-                    }
-
-                    final int slot = base + pos;
-                    final int prev = data[slot];
-                    if (prev != NO_TERM) {
-                        throw new IOException(
-                            "Duplicate write to rail slot for field '" + field +
-                            "', docId=" + docId +
-                            ", pos=" + pos +
-                            ", existingTermId=" + prev +
-                            ", newTermId=" + termId +
-                            ", term='" + termBytes.utf8ToString() + "'"
-                        );
-                    }
-
-                    data[slot] = termId;
-                    positionCount++;
-                }
-            }
-        }
-
-        return new Pass2Stats(termCount, docHitCount, positionCount);
-    }
-
-    /**
-     * Builds the CSR-style offsets array from per-document maximum positions.
-     */
-    private static int[] buildOffsets(final int[] maxPos, final String field) throws IOException {
-        final int[] offsets = new int[maxPos.length + 1];
-        long total = 0L;
-        offsets[0] = 0;
-
-        for (int d = 0; d < maxPos.length; d++) {
-            final long docLen = (maxPos[d] < 0) ? 0L : ((long) maxPos[d] + 1L);
-            total += docLen;
-            if (total > Integer.MAX_VALUE) {
-                throw new IOException(
-                    "TermRail too large for int offsets on field '" + field +
-                    "': totalPositions=" + total
-                );
-            }
-            offsets[d + 1] = (int) total;
-        }
-
-        return offsets;
-    }
-
-    /**
-     * Writes an int array to disk in native byte order.
-     */
-    private static void writeIntFile(final Path path, final int[] values) throws IOException {
-        try (FileChannel ch = FileChannel.open(
-            path,
-            StandardOpenOption.CREATE_NEW,
-            StandardOpenOption.WRITE
-        )) {
-            final ByteBuffer buf = ByteBuffer.allocate(BUF_INTS * Integer.BYTES)
-                .order(ByteOrder.nativeOrder());
-
-            for (int value : values) {
-                if (buf.remaining() < Integer.BYTES) {
-                    buf.flip();
-                    writeFully(ch, buf);
-                    buf.clear();
-                }
-                buf.putInt(value);
-            }
-
-            if (buf.position() > 0) {
-                buf.flip();
-                writeFully(ch, buf);
-            }
-
-            ch.force(true);
-        }
-    }
 
     /**
      * Writes the full remaining content of a buffer to a channel.
@@ -832,153 +599,5 @@ public final class TermRail implements Closeable {
             );
         }
     }
-
-    /**
-     * Pass 1 accounting.
-     */
-    private static final class Pass1Stats {
-        final int[] maxPos;
-        final long termCount;
-        final long docHitCount;
-        final long positionCount;
-
-        Pass1Stats(
-            final int[] maxPos,
-            final long termCount,
-            final long docHitCount,
-            final long positionCount
-        ) {
-            this.maxPos = maxPos;
-            this.termCount = termCount;
-            this.docHitCount = docHitCount;
-            this.positionCount = positionCount;
-        }
-    }
-
-    /**
-     * Pass 2 accounting.
-     */
-    private static final class Pass2Stats {
-        final long termCount;
-        final long docHitCount;
-        final long positionCount;
-
-        Pass2Stats(
-            final long termCount,
-            final long docHitCount,
-            final long positionCount
-        ) {
-            this.termCount = termCount;
-            this.docHitCount = docHitCount;
-            this.positionCount = positionCount;
-        }
-    }
     
-    public static void debugField(
-        final IndexReader reader,
-        final String field,
-        final int termLimit,
-        final int docLimit
-    ) throws IOException {
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(field, "field");
-
-        if (termLimit < 0) {
-            throw new IllegalArgumentException("termLimit < 0: " + termLimit);
-        }
-        if (docLimit < 0) {
-            throw new IllegalArgumentException("docLimit < 0: " + docLimit);
-        }
-
-        final Terms terms = MultiTerms.getTerms(reader, field);
-
-        System.err.println("=== TermRail.debugField ===");
-        System.err.println("field=" + field);
-        System.err.println("reader.maxDoc=" + reader.maxDoc());
-        System.err.println("reader.numDocs=" + reader.numDocs());
-
-        if (terms == null) {
-            System.err.println("Terms: null");
-            System.err.println("===========================");
-            return;
-        }
-
-        System.err.println("Terms: present");
-        System.err.println("hasFreqs=" + terms.hasFreqs());
-        System.err.println("hasPositions=" + terms.hasPositions());
-        System.err.println("hasOffsets=" + terms.hasOffsets());
-        System.err.println("hasPayloads=" + terms.hasPayloads());
-        System.err.println("size=" + terms.size()); // may be -1 depending on codec
-
-        final TermsEnum te = terms.iterator();
-
-        long seenTerms = 0L;
-        long seenDocs = 0L;
-        long seenPositions = 0L;
-
-        BytesRef termBytes;
-        while ((termBytes = te.next()) != null) {
-            if (seenTerms >= termLimit) {
-                break;
-            }
-            seenTerms++;
-
-            final String termText = termBytes.utf8ToString();
-            final int docFreq = te.docFreq();
-            final long totalTermFreq = te.totalTermFreq();
-
-            System.err.println();
-            System.err.println("TERM #" + seenTerms + ": \"" + termText + "\"");
-            System.err.println("  docFreq=" + docFreq);
-            System.err.println("  totalTermFreq=" + totalTermFreq);
-
-            final PostingsEnum pe = te.postings(null, PostingsEnum.POSITIONS);
-            if (pe == null) {
-                System.err.println("  postings(POSITIONS)=null");
-                continue;
-            }
-
-            int shownDocsForTerm = 0;
-            int docId;
-            while ((docId = pe.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                seenDocs++;
-
-                final int freq = pe.freq();
-                final StringBuilder sb = new StringBuilder(128);
-                sb.append("  docId=").append(docId)
-                  .append(" freq=").append(freq)
-                  .append(" pos=[");
-
-                for (int i = 0; i < freq; i++) {
-                    final int pos = pe.nextPosition();
-                    seenPositions++;
-
-                    if (i > 0) sb.append(", ");
-                    sb.append(pos);
-                }
-                sb.append(']');
-
-                System.err.println(sb);
-
-                shownDocsForTerm++;
-                if (shownDocsForTerm >= docLimit) {
-                    if (docFreq > shownDocsForTerm) {
-                        System.err.println("  ... (" + (docFreq - shownDocsForTerm) + " more docs)");
-                    }
-                    break;
-                }
-            }
-
-            if (docFreq == 0) {
-                System.err.println("  WARNING: term enumerated with docFreq=0");
-            }
-        }
-
-        System.err.println();
-        System.err.println("SUMMARY");
-        System.err.println("  termsShown=" + seenTerms);
-        System.err.println("  docsShown=" + seenDocs);
-        System.err.println("  positionsShown=" + seenPositions);
-        System.err.println("===========================");
-    }
 }
