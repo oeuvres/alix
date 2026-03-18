@@ -1,5 +1,7 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
@@ -153,38 +155,37 @@ public final class TermRail implements Closeable {
     }
 
     /**
-     * Builds the rail files for one field from postings and a matching lexicon.
-     * <p>
-     * Preconditions:
-     * </p>
-     * <ul>
-     *   <li>the field must exist in the supplied reader</li>
-     *   <li>the field must expose positions in postings</li>
-     *   <li>the lexicon must come from the same field and index snapshot</li>
-     *   <li>the target rail files must not already exist</li>
-     * </ul>
-     * <p>
-     * Build fails fast if:
-     * </p>
-     * <ul>
-     *   <li>the field has no terms</li>
-     *   <li>positions are unavailable</li>
-     *   <li>pass 1 sees zero positions</li>
-     *   <li>a postings term is absent from the lexicon</li>
-     *   <li>pass 2 disagrees with pass 1</li>
-     *   <li>two postings target the same {@code (docId, position)} slot</li>
-     * </ul>
-     * <p>
-     * On failure, temporary files are cleaned up. Because final targets are required
-     * to be absent before build starts, any final files created during a failed write
-     * are also removed.
-     * </p>
+     * Build a term-id rail for the given field and write it to disk.
      *
-     * @param dataDir Lucene directory that will receive the rail files
-     * @param reader snapshot reader
-     * @param field indexed field name
-     * @param lexicon lexicon built from the same field and snapshot
-     * @throws IOException if build fails or output files already exist
+     * <p>Produces two files under {@code dataDir}:</p>
+     * <ul>
+     *   <li><b>offsets</b> ({@link #offPath offPath(dataDir, field)}) —
+     *       a {@code long[maxDoc + 1]} array of byte offsets into the data file.
+     *       {@code offsets[docId]} is the byte position where the rail for
+     *       {@code docId} begins; the rail length in ints is
+     *       {@code (offsets[docId + 1] - offsets[docId]) / Integer.BYTES}.
+     *       Deleted documents and documents without the field have
+     *       {@code offsets[docId] == offsets[docId + 1]}.</li>
+     *   <li><b>data</b> ({@link #datPath datPath(dataDir, field)}) —
+     *       a flat {@code int[]} rail where each slot holds the
+     *       {@link TermLexicon} id of the term at that position,
+     *       or {@code 0} for unfilled positions (position gaps).
+     *       Files may exceed 2&nbsp;GB.</li>
+     * </ul>
+     *
+     * <p>Both files are written to temporary paths first and atomically
+     * renamed on success. On failure, all temporary and final files are
+     * cleaned up.</p>
+     *
+     * @param dataDir  directory for the output files.
+     * @param reader   index reader (must have term vectors with positions
+     *                 for {@code field}).
+     * @param field    indexed field name.
+     * @param lexicon  FST lexicon mapping terms to integer ids;
+     *                 id {@code 0} should be reserved as a sentinel
+     *                 (no term at position).
+     * @param report   progress reporter; may be {@code null}.
+     * @throws IOException if an I/O error occurs during reading or writing.
      */
     public static void build(
         final Path dataDir,
@@ -198,38 +199,46 @@ public final class TermRail implements Closeable {
         Objects.requireNonNull(field, "field");
         Objects.requireNonNull(lexicon, "lexicon");
         if (report == null) report = Report.ReportNull.INSTANCE;
-    
+        final FieldInfo fi = FieldInfos.getMergedFieldInfos(reader).fieldInfo(field);
+        if (fi == null || !fi.hasTermVectors()) {
+            throw new IllegalArgumentException("field \"" + field + "\" has no term vectors");
+        }
+
         final Path offFinal = offPath(dataDir, field);
         ensureAbsent(offFinal);
         final Path offTmp = tmpPath(offFinal);
         deleteIfExists(offTmp);
-        
+
         final int maxDoc = reader.maxDoc();
         final BitSet liveDocs = FieldStats.liveDocs(reader);
-        
-        // get fresh doc width (position max + 1), establish offsets
-        int[] docWidths = FieldStats.docWidths(reader, field, report);
-        int widthMax = -1;
-        final long[] offsets = new long[docWidths.length + 1];
-        long totalSlots = 0L;
+
+        final int[] docWidths = FieldStats.docWidths(reader, field, report);
+        int widthMax = 0;
+        final long[] offsets = new long[maxDoc + 1];
+        long totalBytes = 0L;
         for (int docId = 0; docId < maxDoc; docId++) {
-            final int width = (docWidths[docId] < 0 || !liveDocs.get(docId)) ? 0 : docWidths[docId];
-            if (width > widthMax) widthMax = width;
-            offsets[docId] = totalSlots;
-            totalSlots += width * Integer.BYTES;
+            if (docWidths[docId] <= 0 || !liveDocs.get(docId)) {
+                docWidths[docId] = 0; // zero in-place so the write loop skips this doc
+            }
+            offsets[docId] = totalBytes;
+            if (docWidths[docId] > widthMax) {
+                widthMax = docWidths[docId];
+            }
+            totalBytes += (long) docWidths[docId] * Integer.BYTES;
         }
-        offsets[maxDoc] = totalSlots;
+        offsets[maxDoc] = totalBytes;
+
         try (NumWriter offsetsWriter = NumWriter.open(offTmp, (long) offsets.length * Long.BYTES)) {
             offsetsWriter.put(0L, offsets, 0, offsets.length);
         }
-        
+
         final Path datFinal = datPath(dataDir, field);
         ensureAbsent(datFinal);
         final Path datTmp = tmpPath(datFinal);
         deleteIfExists(datTmp);
 
-        try (NumWriter railWriter = NumWriter.open(datTmp, totalSlots)) {
-            int[] rail = new int[widthMax];
+        try (NumWriter railWriter = NumWriter.open(datTmp, totalBytes)) {
+            final int[] rail = new int[widthMax];
             final TermVectors termVectors = reader.termVectors();
             for (int docId = 0; docId < maxDoc; docId++) {
                 final int docWidth = docWidths[docId];
@@ -244,8 +253,12 @@ public final class TermRail implements Closeable {
                 if (terms == null) {
                     continue;
                 }
-                // zero the region — guards against position gaps and stale data
-                Arrays.fill(rail, 0, rail.length, 0);
+                if (!terms.hasPositions()) {
+                    throw new IllegalArgumentException(
+                        "field \"" + field + "\" term vectors for docId=" + docId + " have no positions"
+                    );
+                }
+                Arrays.fill(rail, 0, docWidth, 0);
 
                 final TermsEnum termsEnum = terms.iterator();
                 BytesRef term;
@@ -261,10 +274,8 @@ public final class TermRail implements Closeable {
 
                 railWriter.put(offsets[docId], rail, 0, docWidth);
             }
-
-
         }
-    
+
         try {
             moveTemp(datTmp, datFinal);
             moveTemp(offTmp, offFinal);
