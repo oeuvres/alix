@@ -4,31 +4,23 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
-import com.github.oeuvres.alix.util.Calcul;
 import com.github.oeuvres.alix.util.NumWriter;
 import com.github.oeuvres.alix.util.Report;
+import com.github.oeuvres.alix.util.SideFiles;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
@@ -100,7 +92,7 @@ import java.util.Objects;
  * <h2>Lifecycle</h2>
  * <p>
  * Instances memory-map the two rail files. Call {@link #close()} when finished.
- * Close is best-effort and delegates to {@link TermLexicon#unmap(MappedByteBuffer)}.
+ * Close is best-effort and delegates to {@link SideFiles#unmap(MappedByteBuffer)}.
  * </p>
  *
  * @see TermLexicon
@@ -205,9 +197,9 @@ public final class TermRail implements Closeable {
         }
 
         final Path offFinal = offPath(dataDir, field);
-        ensureAbsent(offFinal);
-        final Path offTmp = tmpPath(offFinal);
-        deleteIfExists(offTmp);
+        SideFiles.ensureAbsent(offFinal);
+        final Path offTmp = SideFiles.tmpPath(offFinal);
+        SideFiles.deleteIfExists(offTmp);
 
         final int maxDoc = reader.maxDoc();
         final BitSet liveDocs = FieldStats.liveDocs(reader);
@@ -233,9 +225,9 @@ public final class TermRail implements Closeable {
         }
 
         final Path datFinal = datPath(dataDir, field);
-        ensureAbsent(datFinal);
-        final Path datTmp = tmpPath(datFinal);
-        deleteIfExists(datTmp);
+        SideFiles.ensureAbsent(datFinal);
+        final Path datTmp = SideFiles.tmpPath(datFinal);
+        SideFiles.deleteIfExists(datTmp);
 
         try (NumWriter railWriter = NumWriter.open(datTmp, totalBytes)) {
             final int[] rail = new int[widthMax];
@@ -277,13 +269,13 @@ public final class TermRail implements Closeable {
         }
 
         try {
-            moveTemp(datTmp, datFinal);
-            moveTemp(offTmp, offFinal);
+            SideFiles.moveTemp(datTmp, datFinal);
+            SideFiles.moveTemp(offTmp, offFinal);
         } catch (IOException | RuntimeException e) {
-            deleteIfExists(datTmp);
-            deleteIfExists(offTmp);
-            deleteIfExists(datFinal);
-            deleteIfExists(offFinal);
+            SideFiles.deleteIfExists(datTmp);
+            SideFiles.deleteIfExists(offTmp);
+            SideFiles.deleteIfExists(datFinal);
+            SideFiles.deleteIfExists(offFinal);
             throw e;
         }
     }
@@ -296,8 +288,8 @@ public final class TermRail implements Closeable {
      */
     @Override
     public void close() {
-        TermLexicon.unmap(datBuf);
-        TermLexicon.unmap(offBuf);
+        SideFiles.unmap(datBuf);
+        SideFiles.unmap(offBuf);
     }
 
     /**
@@ -436,13 +428,13 @@ public final class TermRail implements Closeable {
         final Path datPath = datPath(indexDir, field);
         final Path offPath = offPath(indexDir, field);
     
-        ensureRegularFile(datPath);
-        ensureRegularFile(offPath);
-        checkMtimeCoherence(datPath, offPath);
+        SideFiles.ensureRegularFile(datPath);
+        SideFiles.ensureRegularFile(offPath);
+        SideFiles.checkMtimeCoherence(MTIME_TOLERANCE_MS, datPath, offPath);
     
-        final MappedByteBuffer datMapped = mapReadOnly(datPath);
+        final MappedByteBuffer datMapped = SideFiles.mapReadOnly(datPath);
         datMapped.order(ByteOrder.nativeOrder());
-        final MappedByteBuffer offMapped = mapReadOnly(offPath);
+        final MappedByteBuffer offMapped = SideFiles.mapReadOnly(offPath);
         offMapped.order(ByteOrder.nativeOrder());
     
         try {
@@ -489,8 +481,8 @@ public final class TermRail implements Closeable {
     
             return new TermRail(indexDir, field, datMapped, dat, offMapped, off, docCount, totalPositions);
         } catch (IOException | RuntimeException e) {
-            TermLexicon.unmap(datMapped);
-            TermLexicon.unmap(offMapped);
+            SideFiles.unmap(datMapped);
+            SideFiles.unmap(offMapped);
             throw e;
         }
     }
@@ -502,29 +494,7 @@ public final class TermRail implements Closeable {
             );
         }
     }
-    
 
-
-
-
-
-    /**
-     * Writes the full remaining content of a buffer to a channel.
-     */
-    private static void writeFully(final FileChannel ch, final ByteBuffer buf) throws IOException {
-        while (buf.hasRemaining()) {
-            ch.write(buf);
-        }
-    }
-
-    /**
-     * Maps one file in read-only mode.
-     */
-    private static MappedByteBuffer mapReadOnly(final Path path) throws IOException {
-        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
-            return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
-        }
-    }
 
     /**
      * Returns {@code <indexDir>/<field>.rail.dat}.
@@ -539,76 +509,4 @@ public final class TermRail implements Closeable {
     private static Path offPath(final Path indexDir, final String field) {
         return indexDir.resolve(field + ".rail.off");
     }
-
-    /**
-     * Returns a sibling temporary path used during write.
-     */
-    private static Path tmpPath(final Path path) {
-        return path.resolveSibling(path.getFileName().toString() + ".tmp");
-    }
-
-    /**
-     * Moves a temporary file to its final location.
-     * <p>
-     * Atomic move is attempted first and plain move is used as fallback.
-     * </p>
-     */
-    private static void moveTemp(final Path source, final Path target) throws IOException {
-        try {
-            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-            Files.move(source, target);
-        }
-    }
-
-    /**
-     * Deletes a file if it exists. Failures are ignored because this is cleanup only.
-     */
-    private static void deleteIfExists(final Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-        }
-    }
-
-    /**
-     * Ensures that a path exists and is a regular file.
-     */
-    private static void ensureRegularFile(final Path path) throws IOException {
-        if (!Files.isRegularFile(path)) {
-            throw new NoSuchFileException(path.toString());
-        }
-    }
-
-    /**
-     * Ensures that a path does not already exist.
-     */
-    private static void ensureAbsent(final Path path) throws IOException {
-        if (Files.exists(path)) {
-            throw new FileAlreadyExistsException(path.toString());
-        }
-    }
-
-    /**
-     * Checks that all supplied paths have close modification times.
-     * <p>
-     * This is a cheap guard against mixing a data file and an offsets file from
-     * different writes.
-     * </p>
-     */
-    private static void checkMtimeCoherence(final Path... paths) throws IOException {
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (Path path : paths) {
-            final long t = Files.getLastModifiedTime(path).toMillis();
-            min = Math.min(min, t);
-            max = Math.max(max, t);
-        }
-        if ((max - min) > MTIME_TOLERANCE_MS) {
-            throw new IOException(
-                "Rail file mtimes differ by " + (max - min) + "ms; possible partial copy or mixed versions"
-            );
-        }
-    }
-    
 }

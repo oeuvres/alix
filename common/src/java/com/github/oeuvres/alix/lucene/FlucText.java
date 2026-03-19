@@ -10,6 +10,7 @@ import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
+import com.github.oeuvres.alix.util.Report;
 
 /**
  * A tokenized field with positions: the primary Alix field type.
@@ -100,8 +101,8 @@ public final class FlucText extends Fluc
     {
         return fieldStatsHolder.get(
             () -> FieldStats.exists(indexDir, name()),
-            () -> FieldStats.build(indexDir, reader, name()),
-            () -> FieldStats.open(indexDir, name())
+            () -> FieldStats.build(indexDir, reader, name(), Report.ReportNull.INSTANCE),
+            () -> FieldStats.open(indexDir, reader, name())
         );
     }
 
@@ -134,7 +135,7 @@ public final class FlucText extends Fluc
         final TermLexicon lex = termLexicon();
         return railHolder.get(
             () -> TermRail.exists(indexDir, name()),
-            () -> TermRail.build(indexDir, reader, name(), lex),
+            () -> TermRail.build(indexDir, reader, name(), lex, Report.ReportNull.INSTANCE),
             () -> TermRail.open(indexDir, name())
         );
     }

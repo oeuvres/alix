@@ -14,23 +14,19 @@ import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
 import org.apache.lucene.util.fst.Util;
 
+import com.github.oeuvres.alix.util.SideFiles;
+
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
@@ -57,8 +53,8 @@ import static java.lang.Math.toIntExact;
  * </p>
  * <p>
  * This class implements {@link Closeable}. Closing attempts to release the memory-mapped
- * regions immediately via {@code sun.misc.Unsafe.invokeCleaner()}, the same mechanism used
- * by Lucene's {@code MMapDirectory}. If the reflective call fails (e.g. on a future JDK that
+ * regions immediately via {@link SideFiles#unmap(MappedByteBuffer)}.
+ * If the reflective call fails (e.g. on a future JDK that
  * removes the entry point), the buffers are left for garbage collection — safe on Linux,
  * but may hold file locks on Windows until GC runs.
  * </p>
@@ -119,29 +115,6 @@ public final class TermLexicon implements Closeable {
 
     /** Capacity of the write buffer for the offset file, in number of ints (each 4 bytes). */
     private static final int OFF_BUF_INTS = 4096;
-
-    /**
-     * {@code MethodHandle} for {@code sun.misc.Unsafe.invokeCleaner(ByteBuffer)}.
-     * Resolved once at class load; {@code null} if the JDK does not expose it.
-     * This is the same approach Lucene uses in {@code MMapDirectory}.
-     */
-    private static final MethodHandle INVOKE_CLEANER;
-
-    static {
-        MethodHandle mh = null;
-        try {
-            final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-            final java.lang.reflect.Field f = unsafeClass.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            final Object unsafe = f.get(null);
-            mh = MethodHandles.lookup()
-                .findVirtual(unsafeClass, "invokeCleaner", MethodType.methodType(void.class, ByteBuffer.class))
-                .bindTo(unsafe);
-        } catch (Exception e) {
-            // Say something here?
-        }
-        INVOKE_CLEANER = mh;
-    }
 
     /**
      * Creates an opened lexicon backed by memory-mapped buffers.
@@ -226,36 +199,36 @@ public final class TermLexicon implements Closeable {
         final Path datFinal = datPath(indexDir, field);
         final Path offFinal = offPath(indexDir, field);
     
-        ensureAbsent(fstFinal);
-        ensureAbsent(datFinal);
-        ensureAbsent(offFinal);
+        SideFiles.ensureAbsent(fstFinal);
+        SideFiles.ensureAbsent(datFinal);
+        SideFiles.ensureAbsent(offFinal);
     
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
             throw new IllegalArgumentException("Field not found or without terms: " + field);
         }
     
-        final Path fstTmp = tmpPath(fstFinal);
-        final Path datTmp = tmpPath(datFinal);
-        final Path offTmp = tmpPath(offFinal);
+        final Path fstTmp = SideFiles.tmpPath(fstFinal);
+        final Path datTmp = SideFiles.tmpPath(datFinal);
+        final Path offTmp = SideFiles.tmpPath(offFinal);
     
         // Clean up stale temps from a previous crash
-        deleteIfExists(fstTmp);
-        deleteIfExists(datTmp);
-        deleteIfExists(offTmp);
+        SideFiles.deleteIfExists(fstTmp);
+        SideFiles.deleteIfExists(datTmp);
+        SideFiles.deleteIfExists(offTmp);
     
         try {
             buildFiles(terms, fstTmp, datTmp, offTmp);
-            moveTemp(datTmp, datFinal);
-            moveTemp(offTmp, offFinal);
-            moveTemp(fstTmp, fstFinal);
+            SideFiles.moveTemp(datTmp, datFinal);
+            SideFiles.moveTemp(offTmp, offFinal);
+            SideFiles.moveTemp(fstTmp, fstFinal);
         } catch (IOException | RuntimeException e) {
-            deleteIfExists(fstTmp);
-            deleteIfExists(datTmp);
-            deleteIfExists(offTmp);
-            deleteIfExists(fstFinal);
-            deleteIfExists(datFinal);
-            deleteIfExists(offFinal);
+            SideFiles.deleteIfExists(fstTmp);
+            SideFiles.deleteIfExists(datTmp);
+            SideFiles.deleteIfExists(offTmp);
+            SideFiles.deleteIfExists(fstFinal);
+            SideFiles.deleteIfExists(datFinal);
+            SideFiles.deleteIfExists(offFinal);
             throw e;
         }
     }
@@ -263,9 +236,8 @@ public final class TermLexicon implements Closeable {
     /**
      * Releases the memory-mapped regions.
      * <p>
-     * Attempts immediate unmap via {@code sun.misc.Unsafe.invokeCleaner()}.
+     * Attempts immediate unmap via {@link SideFiles#unmap(MappedByteBuffer)}.
      * If that reflective path is unavailable, the buffers are abandoned to garbage collection.
-     * A warning is logged on failure but no exception is thrown.
      * </p>
      * <p>
      * After close, behaviour of read accessors is undefined (likely {@link java.lang.InternalError}
@@ -274,8 +246,8 @@ public final class TermLexicon implements Closeable {
      */
     @Override
     public void close() {
-        unmap(datBuf);
-        unmap(offBuf);
+        SideFiles.unmap(datBuf);
+        SideFiles.unmap(offBuf);
     }
 
     /**
@@ -401,13 +373,13 @@ public final class TermLexicon implements Closeable {
         final Path datPath = datPath(indexDir, field);
         final Path offPath = offPath(indexDir, field);
     
-        ensureRegularFile(fstPath);
-        ensureRegularFile(datPath);
-        ensureRegularFile(offPath);
-        checkMtimeCoherence(fstPath, datPath, offPath);
+        SideFiles.ensureRegularFile(fstPath);
+        SideFiles.ensureRegularFile(datPath);
+        SideFiles.ensureRegularFile(offPath);
+        SideFiles.checkMtimeCoherence(MTIME_TOLERANCE_MS, fstPath, datPath, offPath);
     
-        final MappedByteBuffer datBuf = mapReadOnly(datPath);
-        final MappedByteBuffer offByteBuf = mapReadOnly(offPath);
+        final MappedByteBuffer datBuf = SideFiles.mapReadOnly(datPath);
+        final MappedByteBuffer offByteBuf = SideFiles.mapReadOnly(offPath);
         offByteBuf.order(ByteOrder.nativeOrder());
     
         try {
@@ -436,8 +408,8 @@ public final class TermLexicon implements Closeable {
             return new TermLexicon(indexDir, field, fst, datBuf, offByteBuf, off);
     
         } catch (IOException | RuntimeException e) {
-            unmap(datBuf);
-            unmap(offByteBuf);
+            SideFiles.unmap(datBuf);
+            SideFiles.unmap(offByteBuf);
             throw e;
         }
     }
@@ -628,30 +600,6 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Checks that the modification times of several files are within {@value #MTIME_TOLERANCE_MS} ms
-     * of each other.
-     * <p>
-     * Cheap startup guard against opening a set of files produced by different write operations.
-     * </p>
-     *
-     * @param paths files that should have been produced together
-     * @throws IOException if the mtime spread exceeds the tolerance
-     */
-    private static void checkMtimeCoherence(final Path... paths) throws IOException {
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (Path path : paths) {
-            final long t = Files.getLastModifiedTime(path).toMillis();
-            min = Math.min(min, t);
-            max = Math.max(max, t);
-        }
-        if ((max - min) > MTIME_TOLERANCE_MS) {
-            throw new IOException(
-                "Lexicon file mtimes differ by " + (max - min) + "ms; possible partial copy or mixed versions");
-        }
-    }
-
-    /**
      * Checks that a term id falls within the valid range {@code [0, vocabSize)}.
      *
      * @param termId dense term id to validate
@@ -676,47 +624,6 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Deletes a file if it exists, silently ignoring any failure.
-     * Used for best-effort cleanup only.
-     *
-     * @param path path to delete
-     */
-    private static void deleteIfExists(final Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-            // best-effort cleanup
-        }
-    }
-
-    /**
-     * Asserts that a path does not already exist.
-     * <p>
-     * Used before writing to prevent accidental overwrite of existing lexicon files.
-     * </p>
-     *
-     * @param path target path that must not exist
-     * @throws FileAlreadyExistsException if the path already exists
-     */
-    private static void ensureAbsent(final Path path) throws IOException {
-        if (Files.exists(path)) {
-            throw new FileAlreadyExistsException(path.toString());
-        }
-    }
-
-    /**
-     * Asserts that a path points to an existing regular file.
-     *
-     * @param path path to check
-     * @throws NoSuchFileException if the file does not exist or is not a regular file
-     */
-    private static void ensureRegularFile(final Path path) throws IOException {
-        if (!Files.isRegularFile(path)) {
-            throw new NoSuchFileException(path.toString());
-        }
-    }
-
-    /**
      * Returns the path of the FST file for one field.
      *
      * @param indexDir Lucene directory
@@ -725,19 +632,6 @@ public final class TermLexicon implements Closeable {
      */
     private static Path fstPath(final Path indexDir, final String field) {
         return indexDir.resolve(field + ".terms.fst");
-    }
-    
-    /**
-     * Memory-maps one file in read-only mode.
-     *
-     * @param path file path
-     * @return read-only memory-mapped byte buffer covering the entire file
-     * @throws IOException if the file cannot be opened or mapped
-     */
-    private static MappedByteBuffer mapReadOnly(final Path path) throws IOException {
-        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
-            return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
-        }
     }
 
     /**
@@ -777,25 +671,6 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Atomically moves a temporary file to its final location.
-     * <p>
-     * Attempts {@link StandardCopyOption#ATOMIC_MOVE} first. If the filesystem does not
-     * support atomic moves, falls back to a plain move.
-     * </p>
-     *
-     * @param source temporary file path
-     * @param target final file path
-     * @throws IOException if the move fails even with fallback
-     */
-    private static void moveTemp(final Path source, final Path target) throws IOException {
-        try {
-            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-            Files.move(source, target);
-        }
-    }
-    
-    /**
      * Returns the path of the offsets file for one field.
      *
      * @param indexDir Lucene directory
@@ -804,39 +679,5 @@ public final class TermLexicon implements Closeable {
      */
     private static Path offPath(final Path indexDir, final String field) {
         return indexDir.resolve(field + ".terms.off");
-    }
-
-    /**
-     * Returns a temporary sibling path used during atomic write.
-     * <p>
-     * The temporary path has the same name as the final target with a {@code .tmp} suffix appended.
-     * </p>
-     *
-     * @param path final target path
-     * @return sibling path with {@code .tmp} suffix
-     */
-    private static Path tmpPath(final Path path) {
-        return path.resolveSibling(path.getFileName().toString() + ".tmp");
-    }
-
-    /**
-     * Attempts to unmap a {@link MappedByteBuffer} immediately using
-     * {@code sun.misc.Unsafe.invokeCleaner()}.
-     * <p>
-     * This is a best-effort operation. If the reflective call is unavailable or fails,
-     * a fine-level log message is emitted and the buffer is left for garbage collection.
-     * </p>
-     *
-     * @param buf the mapped buffer to unmap, or {@code null} (no-op)
-     */
-    static void unmap(final MappedByteBuffer buf) {
-        if (buf == null || INVOKE_CLEANER == null) {
-            return;
-        }
-        try {
-            INVOKE_CLEANER.invokeExact((ByteBuffer) buf);
-        } catch (Throwable t) {
-            // Say someting?
-        }
     }
 }

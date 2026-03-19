@@ -54,14 +54,14 @@ import java.nio.file.StandardOpenOption;
  * <h2>Typical write sequence</h2>
  * <pre>{@code
  * Path target = dir.resolve("data.bin");
- * SafeFiles.ensureAbsent(target);
- * Path tmp = SafeFiles.tmpPath(target);
- * SafeFiles.deleteIfExists(tmp);       // clean stale temp from previous crash
+ * SideFiles.ensureAbsent(target);
+ * Path tmp = SideFiles.tmpPath(target);
+ * SideFiles.deleteIfExists(tmp);       // clean stale temp from previous crash
  * try {
  *     // ... write to tmp ...
- *     SafeFiles.moveTemp(tmp, target);
+ *     SideFiles.moveTemp(tmp, target);
  * } catch (IOException | RuntimeException e) {
- *     SafeFiles.deleteIfExists(tmp);
+ *     SideFiles.deleteIfExists(tmp);
  *     throw e;
  * }
  * }</pre>

@@ -13,6 +13,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 import com.github.oeuvres.alix.util.Report;
+import com.github.oeuvres.alix.util.SideFiles;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -21,12 +22,8 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -170,13 +167,14 @@ public final class FieldStats implements ReferenceStats
      *
      * @param dataDir      Lucene directory that contains the index and the stats file
      * @param field         indexed field
-     * @param vocabSize     number of distinct terms
-     * @param docCount      number of documents that contain the field
      * @param maxDoc        Lucene document-address space size
-     * @param totalTermFreq total number of tokens in the field
-     * @param docFreqs      per-term document frequencies
+     * @param docWidths     exact field token counts by global doc id
+     * @param fieldWidth    sum of all docWidths
+     * @param vocabSize     number of distinct terms
+     * @param fieldDocs     number of documents that contain the field
+     * @param fieldTokens   total number of tokens in the field
+     * @param termDocs      per-term document frequencies
      * @param termFreqs     per-term total term frequencies
-     * @param posLens       exact field token counts by global doc id
      */
     private FieldStats(
             final Path dataDir,
@@ -190,8 +188,6 @@ public final class FieldStats implements ReferenceStats
             final int[] termDocs,
             final long[] termFreqs
     ) {
-        
-        
         this.dataDir = dataDir;
         this.field = field;
         this.maxDoc = maxDoc;
@@ -220,8 +216,6 @@ public final class FieldStats implements ReferenceStats
                 ;
     }
     
-
-    
     /**
      * Builds the statistics file for one field from an already opened snapshot reader.
      * <p>
@@ -231,6 +225,7 @@ public final class FieldStats implements ReferenceStats
      * @param dataDir directory that will receive the {@code <field>.stats} file
      * @param reader  snapshot reader that defines the field statistics
      * @param field   indexed field name
+     * @param report  progress reporter; may be {@code null}
      * @throws IOException if the field has no terms, if term frequencies are unavailable,
      *                     if a target file already exists, or if writing fails
      */
@@ -246,15 +241,15 @@ public final class FieldStats implements ReferenceStats
         ByTermStats byTerm = byTermStats(reader, field, report);
         // write data
         final Path statsPath = statsPath(dataDir, field);
-        ensureAbsent(statsPath);
-        final Path tmp = tmpPath(statsPath);
-        ensureAbsent(tmp);
+        SideFiles.ensureAbsent(statsPath);
+        final Path tmp = SideFiles.tmpPath(statsPath);
+        SideFiles.ensureAbsent(tmp);
         try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp, StandardOpenOption.CREATE_NEW));
                 DataOutputStream out = new DataOutputStream(os))
         {
             out.writeInt(MAGIC);
             out.writeInt(VERSION);
-            writeUtf8(out, field);
+            SideFiles.writeUtf8(out, field);
             // by doc stats
             out.writeInt(maxDoc);
             for (int docWidth : docWidths) {
@@ -270,12 +265,11 @@ public final class FieldStats implements ReferenceStats
             for (long termFreq : byTerm.termFreqs) {
                 out.writeLong(termFreq);
             }
-            moveTemp(tmp, statsPath);
+            SideFiles.moveTemp(tmp, statsPath);
         } catch (IOException | RuntimeException e) {
-            deleteIfExists(tmp);
+            SideFiles.deleteIfExists(tmp);
             throw e;
         }
-
     }
     
     /**
@@ -304,7 +298,6 @@ public final class FieldStats implements ReferenceStats
     
     /**
      * Returns the number of token positions of the field for one global Lucene document id.
-
      */
     public int docWidth(final int docId)
     {
@@ -362,6 +355,8 @@ public final class FieldStats implements ReferenceStats
         return fieldTokens;
     }
     
+    
+    
     /**
      * Returns the Lucene directory from which these statistics were opened.
      *
@@ -388,8 +383,9 @@ public final class FieldStats implements ReferenceStats
     /**
      * Opens the persisted statistics for one field from a frozen Lucene directory.
      *
-     * @param dataDir Lucene directory that contains the index and the stats file
-     * @param field    indexed field name
+     * @param dataDir directory that contains the stats file
+     * @param reader  snapshot reader used to cross-check maxDoc
+     * @param field   indexed field name
      * @return opened immutable field statistics
      * @throws IOException if the file is missing, inconsistent or unreadable
      */
@@ -399,7 +395,7 @@ public final class FieldStats implements ReferenceStats
         Objects.requireNonNull(field, "field");
         
         final Path path = statsPath(dataDir, field);
-        ensureRegularFile(path);
+        SideFiles.ensureRegularFile(path);
         
         try (DataInputStream in = new DataInputStream(
                 new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ))))
@@ -414,7 +410,7 @@ public final class FieldStats implements ReferenceStats
                 throw new IOException("Unsupported stats file version " + version + ": " + path);
             }
             
-            final String fieldFound = readUtf8(in);
+            final String fieldFound = SideFiles.readUtf8(in);
             if (!field.equals(fieldFound)) {
                 throw new IOException(
                         "Field mismatch in stats file: requested '" + field + "', found '" + fieldFound + "'");
@@ -482,6 +478,7 @@ public final class FieldStats implements ReferenceStats
      * @param indexDir Lucene directory that will receive the sidecar file
      * @param reader   snapshot reader for building (ignored if file exists)
      * @param field    indexed field name
+     * @param report   progress reporter; may be {@code null}
      * @return opened immutable field statistics
      * @throws IOException if building or opening fails
      */
@@ -712,7 +709,9 @@ public final class FieldStats implements ReferenceStats
      * Otherwise the method counts terms by iteration.
      * </p>
      *
-     * @param terms merged field terms
+     * @param reader index reader
+     * @param field  indexed field name
+     * @param report progress reporter
      * @return vocabulary size
      * @throws IOException if term iteration fails
      */
@@ -811,81 +810,6 @@ public final class FieldStats implements ReferenceStats
     }
     
     /**
-     * Deletes a file if it exists.
-     *
-     * @param path path to delete
-     */
-    private static void deleteIfExists(final Path path)
-    {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-            // best-effort cleanup only
-        }
-    }
-    
-    /**
-     * Ensures that a file does not already exist.
-     *
-     * @param path target path
-     * @throws FileAlreadyExistsException if the path already exists
-     */
-    private static void ensureAbsent(final Path path) throws FileAlreadyExistsException
-    {
-        if (Files.exists(path)) {
-            throw new FileAlreadyExistsException(path.toString());
-        }
-    }
-    
-    /**
-     * Ensures that a file exists and is a regular file.
-     *
-     * @param path path to check
-     * @throws IOException if the file does not exist or is not regular
-     */
-    private static void ensureRegularFile(final Path path) throws IOException
-    {
-        if (!Files.isRegularFile(path)) {
-            throw new NoSuchFileException(path.toString());
-        }
-    }
-    
-    
-    /**
-     * Moves one temporary file into its final location.
-     *
-     * @param source temporary file path
-     * @param target final file path
-     * @throws IOException if the move fails
-     */
-    private static void moveTemp(final Path source, final Path target) throws IOException
-    {
-        try {
-            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (IOException e) {
-            Files.move(source, target);
-        }
-    }
-    
-    /**
-     * Reads one UTF-8 string preceded by its byte length.
-     *
-     * @param in source stream
-     * @return decoded string
-     * @throws IOException if reading fails or if the encoded length is invalid
-     */
-    private static String readUtf8(final DataInputStream in) throws IOException
-    {
-        final int length = in.readInt();
-        if (length < 0) {
-            throw new IOException("Negative UTF-8 byte length: " + length);
-        }
-        final byte[] bytes = new byte[length];
-        in.readFully(bytes);
-        return new String(bytes, StandardCharsets.UTF_8);
-    }
-    
-    /**
      * Returns the path of the persisted statistics file for one field.
      *
      * @param indexDir Lucene directory
@@ -895,30 +819,5 @@ public final class FieldStats implements ReferenceStats
     private static Path statsPath(final Path indexDir, final String field)
     {
         return indexDir.resolve(field + ".stats");
-    }
-    
-    /**
-     * Returns the temporary path used while writing one file.
-     *
-     * @param path final target path
-     * @return sibling temporary path with {@code .tmp} suffix
-     */
-    private static Path tmpPath(final Path path)
-    {
-        return path.resolveSibling(path.getFileName().toString() + ".tmp");
-    }
-    
-    /**
-     * Writes one UTF-8 string preceded by its byte length.
-     *
-     * @param out destination stream
-     * @param s   string to write
-     * @throws IOException if writing fails
-     */
-    private static void writeUtf8(final DataOutputStream out, final String s) throws IOException
-    {
-        final byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
-        out.writeInt(bytes.length);
-        out.write(bytes);
     }
 }

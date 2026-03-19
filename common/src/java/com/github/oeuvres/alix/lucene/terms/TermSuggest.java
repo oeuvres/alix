@@ -1,6 +1,5 @@
 package com.github.oeuvres.alix.lucene.terms;
 
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
