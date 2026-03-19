@@ -13,7 +13,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 import com.github.oeuvres.alix.util.Report;
-import com.github.oeuvres.alix.util.SideFiles;
+import com.github.oeuvres.alix.util.IOUtil;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -241,15 +241,15 @@ public final class FieldStats implements ReferenceStats
         ByTermStats byTerm = byTermStats(reader, field, report);
         // write data
         final Path statsPath = statsPath(dataDir, field);
-        SideFiles.ensureAbsent(statsPath);
-        final Path tmp = SideFiles.tmpPath(statsPath);
-        SideFiles.ensureAbsent(tmp);
+        IOUtil.ensureAbsent(statsPath);
+        final Path tmp = IOUtil.tmpPath(statsPath);
+        IOUtil.ensureAbsent(tmp);
         try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp, StandardOpenOption.CREATE_NEW));
                 DataOutputStream out = new DataOutputStream(os))
         {
             out.writeInt(MAGIC);
             out.writeInt(VERSION);
-            SideFiles.writeUtf8(out, field);
+            IOUtil.writeUtf8(out, field);
             // by doc stats
             out.writeInt(maxDoc);
             for (int docWidth : docWidths) {
@@ -265,9 +265,9 @@ public final class FieldStats implements ReferenceStats
             for (long termFreq : byTerm.termFreqs) {
                 out.writeLong(termFreq);
             }
-            SideFiles.moveTemp(tmp, statsPath);
+            IOUtil.moveTemp(tmp, statsPath);
         } catch (IOException | RuntimeException e) {
-            SideFiles.deleteIfExists(tmp);
+            IOUtil.deleteIfExists(tmp);
             throw e;
         }
     }
@@ -395,7 +395,7 @@ public final class FieldStats implements ReferenceStats
         Objects.requireNonNull(field, "field");
         
         final Path path = statsPath(dataDir, field);
-        SideFiles.ensureRegularFile(path);
+        IOUtil.ensureRegularFile(path);
         
         try (DataInputStream in = new DataInputStream(
                 new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ))))
@@ -410,7 +410,7 @@ public final class FieldStats implements ReferenceStats
                 throw new IOException("Unsupported stats file version " + version + ": " + path);
             }
             
-            final String fieldFound = SideFiles.readUtf8(in);
+            final String fieldFound = IOUtil.readUtf8(in);
             if (!field.equals(fieldFound)) {
                 throw new IOException(
                         "Field mismatch in stats file: requested '" + field + "', found '" + fieldFound + "'");

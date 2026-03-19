@@ -12,7 +12,7 @@ import org.apache.lucene.util.BytesRef;
 
 import com.github.oeuvres.alix.util.NumWriter;
 import com.github.oeuvres.alix.util.Report;
-import com.github.oeuvres.alix.util.SideFiles;
+import com.github.oeuvres.alix.util.IOUtil;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -92,7 +92,7 @@ import java.util.Objects;
  * <h2>Lifecycle</h2>
  * <p>
  * Instances memory-map the two rail files. Call {@link #close()} when finished.
- * Close is best-effort and delegates to {@link SideFiles#unmap(MappedByteBuffer)}.
+ * Close is best-effort and delegates to {@link IOUtil#unmap(MappedByteBuffer)}.
  * </p>
  *
  * @see TermLexicon
@@ -197,9 +197,9 @@ public final class TermRail implements Closeable {
         }
 
         final Path offFinal = offPath(dataDir, field);
-        SideFiles.ensureAbsent(offFinal);
-        final Path offTmp = SideFiles.tmpPath(offFinal);
-        SideFiles.deleteIfExists(offTmp);
+        IOUtil.ensureAbsent(offFinal);
+        final Path offTmp = IOUtil.tmpPath(offFinal);
+        IOUtil.deleteIfExists(offTmp);
 
         final int maxDoc = reader.maxDoc();
         final BitSet liveDocs = FieldStats.liveDocs(reader);
@@ -225,9 +225,9 @@ public final class TermRail implements Closeable {
         }
 
         final Path datFinal = datPath(dataDir, field);
-        SideFiles.ensureAbsent(datFinal);
-        final Path datTmp = SideFiles.tmpPath(datFinal);
-        SideFiles.deleteIfExists(datTmp);
+        IOUtil.ensureAbsent(datFinal);
+        final Path datTmp = IOUtil.tmpPath(datFinal);
+        IOUtil.deleteIfExists(datTmp);
 
         try (NumWriter railWriter = NumWriter.open(datTmp, totalBytes)) {
             final int[] rail = new int[widthMax];
@@ -269,13 +269,13 @@ public final class TermRail implements Closeable {
         }
 
         try {
-            SideFiles.moveTemp(datTmp, datFinal);
-            SideFiles.moveTemp(offTmp, offFinal);
+            IOUtil.moveTemp(datTmp, datFinal);
+            IOUtil.moveTemp(offTmp, offFinal);
         } catch (IOException | RuntimeException e) {
-            SideFiles.deleteIfExists(datTmp);
-            SideFiles.deleteIfExists(offTmp);
-            SideFiles.deleteIfExists(datFinal);
-            SideFiles.deleteIfExists(offFinal);
+            IOUtil.deleteIfExists(datTmp);
+            IOUtil.deleteIfExists(offTmp);
+            IOUtil.deleteIfExists(datFinal);
+            IOUtil.deleteIfExists(offFinal);
             throw e;
         }
     }
@@ -288,8 +288,8 @@ public final class TermRail implements Closeable {
      */
     @Override
     public void close() {
-        SideFiles.unmap(datBuf);
-        SideFiles.unmap(offBuf);
+        IOUtil.unmap(datBuf);
+        IOUtil.unmap(offBuf);
     }
 
     /**
@@ -428,13 +428,13 @@ public final class TermRail implements Closeable {
         final Path datPath = datPath(indexDir, field);
         final Path offPath = offPath(indexDir, field);
     
-        SideFiles.ensureRegularFile(datPath);
-        SideFiles.ensureRegularFile(offPath);
-        SideFiles.checkMtimeCoherence(MTIME_TOLERANCE_MS, datPath, offPath);
+        IOUtil.ensureRegularFile(datPath);
+        IOUtil.ensureRegularFile(offPath);
+        IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, datPath, offPath);
     
-        final MappedByteBuffer datMapped = SideFiles.mapReadOnly(datPath);
+        final MappedByteBuffer datMapped = IOUtil.mapReadOnly(datPath);
         datMapped.order(ByteOrder.nativeOrder());
-        final MappedByteBuffer offMapped = SideFiles.mapReadOnly(offPath);
+        final MappedByteBuffer offMapped = IOUtil.mapReadOnly(offPath);
         offMapped.order(ByteOrder.nativeOrder());
     
         try {
@@ -481,8 +481,8 @@ public final class TermRail implements Closeable {
     
             return new TermRail(indexDir, field, datMapped, dat, offMapped, off, docCount, totalPositions);
         } catch (IOException | RuntimeException e) {
-            SideFiles.unmap(datMapped);
-            SideFiles.unmap(offMapped);
+            IOUtil.unmap(datMapped);
+            IOUtil.unmap(offMapped);
             throw e;
         }
     }

@@ -14,7 +14,7 @@ import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
 import org.apache.lucene.util.fst.Util;
 
-import com.github.oeuvres.alix.util.SideFiles;
+import com.github.oeuvres.alix.util.IOUtil;
 
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
@@ -53,7 +53,7 @@ import static java.lang.Math.toIntExact;
  * </p>
  * <p>
  * This class implements {@link Closeable}. Closing attempts to release the memory-mapped
- * regions immediately via {@link SideFiles#unmap(MappedByteBuffer)}.
+ * regions immediately via {@link IOUtil#unmap(MappedByteBuffer)}.
  * If the reflective call fails (e.g. on a future JDK that
  * removes the entry point), the buffers are left for garbage collection — safe on Linux,
  * but may hold file locks on Windows until GC runs.
@@ -199,36 +199,36 @@ public final class TermLexicon implements Closeable {
         final Path datFinal = datPath(indexDir, field);
         final Path offFinal = offPath(indexDir, field);
     
-        SideFiles.ensureAbsent(fstFinal);
-        SideFiles.ensureAbsent(datFinal);
-        SideFiles.ensureAbsent(offFinal);
+        IOUtil.ensureAbsent(fstFinal);
+        IOUtil.ensureAbsent(datFinal);
+        IOUtil.ensureAbsent(offFinal);
     
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
             throw new IllegalArgumentException("Field not found or without terms: " + field);
         }
     
-        final Path fstTmp = SideFiles.tmpPath(fstFinal);
-        final Path datTmp = SideFiles.tmpPath(datFinal);
-        final Path offTmp = SideFiles.tmpPath(offFinal);
+        final Path fstTmp = IOUtil.tmpPath(fstFinal);
+        final Path datTmp = IOUtil.tmpPath(datFinal);
+        final Path offTmp = IOUtil.tmpPath(offFinal);
     
         // Clean up stale temps from a previous crash
-        SideFiles.deleteIfExists(fstTmp);
-        SideFiles.deleteIfExists(datTmp);
-        SideFiles.deleteIfExists(offTmp);
+        IOUtil.deleteIfExists(fstTmp);
+        IOUtil.deleteIfExists(datTmp);
+        IOUtil.deleteIfExists(offTmp);
     
         try {
             buildFiles(terms, fstTmp, datTmp, offTmp);
-            SideFiles.moveTemp(datTmp, datFinal);
-            SideFiles.moveTemp(offTmp, offFinal);
-            SideFiles.moveTemp(fstTmp, fstFinal);
+            IOUtil.moveTemp(datTmp, datFinal);
+            IOUtil.moveTemp(offTmp, offFinal);
+            IOUtil.moveTemp(fstTmp, fstFinal);
         } catch (IOException | RuntimeException e) {
-            SideFiles.deleteIfExists(fstTmp);
-            SideFiles.deleteIfExists(datTmp);
-            SideFiles.deleteIfExists(offTmp);
-            SideFiles.deleteIfExists(fstFinal);
-            SideFiles.deleteIfExists(datFinal);
-            SideFiles.deleteIfExists(offFinal);
+            IOUtil.deleteIfExists(fstTmp);
+            IOUtil.deleteIfExists(datTmp);
+            IOUtil.deleteIfExists(offTmp);
+            IOUtil.deleteIfExists(fstFinal);
+            IOUtil.deleteIfExists(datFinal);
+            IOUtil.deleteIfExists(offFinal);
             throw e;
         }
     }
@@ -236,7 +236,7 @@ public final class TermLexicon implements Closeable {
     /**
      * Releases the memory-mapped regions.
      * <p>
-     * Attempts immediate unmap via {@link SideFiles#unmap(MappedByteBuffer)}.
+     * Attempts immediate unmap via {@link IOUtil#unmap(MappedByteBuffer)}.
      * If that reflective path is unavailable, the buffers are abandoned to garbage collection.
      * </p>
      * <p>
@@ -246,8 +246,8 @@ public final class TermLexicon implements Closeable {
      */
     @Override
     public void close() {
-        SideFiles.unmap(datBuf);
-        SideFiles.unmap(offBuf);
+        IOUtil.unmap(datBuf);
+        IOUtil.unmap(offBuf);
     }
 
     /**
@@ -373,13 +373,13 @@ public final class TermLexicon implements Closeable {
         final Path datPath = datPath(indexDir, field);
         final Path offPath = offPath(indexDir, field);
     
-        SideFiles.ensureRegularFile(fstPath);
-        SideFiles.ensureRegularFile(datPath);
-        SideFiles.ensureRegularFile(offPath);
-        SideFiles.checkMtimeCoherence(MTIME_TOLERANCE_MS, fstPath, datPath, offPath);
+        IOUtil.ensureRegularFile(fstPath);
+        IOUtil.ensureRegularFile(datPath);
+        IOUtil.ensureRegularFile(offPath);
+        IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, fstPath, datPath, offPath);
     
-        final MappedByteBuffer datBuf = SideFiles.mapReadOnly(datPath);
-        final MappedByteBuffer offByteBuf = SideFiles.mapReadOnly(offPath);
+        final MappedByteBuffer datBuf = IOUtil.mapReadOnly(datPath);
+        final MappedByteBuffer offByteBuf = IOUtil.mapReadOnly(offPath);
         offByteBuf.order(ByteOrder.nativeOrder());
     
         try {
@@ -408,8 +408,8 @@ public final class TermLexicon implements Closeable {
             return new TermLexicon(indexDir, field, fst, datBuf, offByteBuf, off);
     
         } catch (IOException | RuntimeException e) {
-            SideFiles.unmap(datBuf);
-            SideFiles.unmap(offByteBuf);
+            IOUtil.unmap(datBuf);
+            IOUtil.unmap(offByteBuf);
             throw e;
         }
     }

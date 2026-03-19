@@ -3,6 +3,7 @@ package com.github.oeuvres.alix.util;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -16,6 +17,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.util.Objects;
 
 /**
  * Static file-handling primitives that complement {@link java.nio.file.Files}.
@@ -66,7 +68,7 @@ import java.nio.file.StandardOpenOption;
  * }
  * }</pre>
  */
-public final class SideFiles
+public final class IOUtil
 {
     /**
      * {@link MethodHandle} for {@code sun.misc.Unsafe.invokeCleaner(ByteBuffer)}.
@@ -95,13 +97,42 @@ public final class SideFiles
     }
 
     /** Non-instantiable utility class. */
-    private SideFiles()
+    private IOUtil()
     {
     }
-
-    // -------------------------------------------------------------------------
-    //  precondition guards
-    // -------------------------------------------------------------------------
+    
+    /**
+     * Checks that the modification times of several files are within a given tolerance.
+     * <p>
+     * This is a cheap startup guard against opening a set of files that were produced by
+     * different write operations, partially copied, or mixed from different snapshots. It does
+     * not guarantee logical consistency — the caller's own format validation (magic bytes,
+     * version fields, cross-file size checks) provides the hard guarantee.
+     * </p>
+     *
+     * @param toleranceMs maximum tolerated mtime spread, in milliseconds
+     * @param paths       files that should have been produced together (at least two)
+     * @throws IOException              if the mtime spread exceeds {@code toleranceMs}
+     * @throws IllegalArgumentException if {@code toleranceMs} is negative
+     */
+    public static void checkMtimeCoherence(final long toleranceMs, final Path... paths) throws IOException
+    {
+        if (toleranceMs < 0) {
+            throw new IllegalArgumentException("toleranceMs must be >= 0: " + toleranceMs);
+        }
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (final Path path : paths) {
+            final long t = Files.getLastModifiedTime(path).toMillis();
+            min = Math.min(min, t);
+            max = Math.max(max, t);
+        }
+        if ((max - min) > toleranceMs) {
+            throw new IOException(
+                "File mtimes differ by " + (max - min) + "ms (tolerance " + toleranceMs + "ms);"
+                    + " possible partial copy or mixed versions");
+        }
+    }
 
     /**
      * Ensures that a path does not already exist.
@@ -137,10 +168,6 @@ public final class SideFiles
         }
     }
 
-    // -------------------------------------------------------------------------
-    //  best-effort cleanup
-    // -------------------------------------------------------------------------
-
     /**
      * Deletes a file if it exists, silently ignoring any failure.
      * <p>
@@ -162,26 +189,6 @@ public final class SideFiles
         catch (IOException ignored) {
             // best-effort cleanup only
         }
-    }
-
-    // -------------------------------------------------------------------------
-    //  atomic-write-via-temp
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns a temporary sibling path for use during atomic write.
-     * <p>
-     * The returned path has the same parent and file name as {@code path} with a {@code .tmp}
-     * suffix appended. This convention allows stale temporaries from a previous crash to be
-     * recognised and cleaned up before a new write begins.
-     * </p>
-     *
-     * @param path final target path
-     * @return sibling path with {@code .tmp} suffix
-     */
-    public static Path tmpPath(final Path path)
-    {
-        return path.resolveSibling(path.getFileName().toString() + ".tmp");
     }
 
     /**
@@ -206,47 +213,6 @@ public final class SideFiles
         }
     }
 
-    // -------------------------------------------------------------------------
-    //  multi-file coherence
-    // -------------------------------------------------------------------------
-
-    /**
-     * Checks that the modification times of several files are within a given tolerance.
-     * <p>
-     * This is a cheap startup guard against opening a set of files that were produced by
-     * different write operations, partially copied, or mixed from different snapshots. It does
-     * not guarantee logical consistency — the caller's own format validation (magic bytes,
-     * version fields, cross-file size checks) provides the hard guarantee.
-     * </p>
-     *
-     * @param toleranceMs maximum tolerated mtime spread, in milliseconds
-     * @param paths       files that should have been produced together (at least two)
-     * @throws IOException              if the mtime spread exceeds {@code toleranceMs}
-     * @throws IllegalArgumentException if {@code toleranceMs} is negative
-     */
-    public static void checkMtimeCoherence(final long toleranceMs, final Path... paths) throws IOException
-    {
-        if (toleranceMs < 0) {
-            throw new IllegalArgumentException("toleranceMs must be >= 0: " + toleranceMs);
-        }
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (final Path path : paths) {
-            final long t = Files.getLastModifiedTime(path).toMillis();
-            min = Math.min(min, t);
-            max = Math.max(max, t);
-        }
-        if ((max - min) > toleranceMs) {
-            throw new IOException(
-                "File mtimes differ by " + (max - min) + "ms (tolerance " + toleranceMs + "ms);"
-                    + " possible partial copy or mixed versions");
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    //  memory mapping
-    // -------------------------------------------------------------------------
-
     /**
      * Memory-maps one file in read-only mode, covering its entire content.
      * <p>
@@ -263,6 +229,64 @@ public final class SideFiles
         try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
             return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
         }
+    }
+
+    /**
+     * Resolve and open a classpath resource as an {@link InputStream}.
+     *
+     * @param anchor       anchor class used to resolve the resource
+     * @param resourcePath classpath resource path
+     * @return an open {@link InputStream} for the resource
+     * @throws IOException if the resource cannot be found
+     */
+    public static InputStream openResource(final Class<?> anchor, final String resourcePath) throws IOException
+    {
+        Objects.requireNonNull(anchor);
+        Objects.requireNonNull(resourcePath);
+
+        final InputStream is = anchor.getResourceAsStream(resourcePath);
+        if (is == null) {
+            throw new IOException("Resource not found: " + resourcePath);
+        }
+        return is;
+    }
+    
+    /**
+     * Reads one UTF-8 string preceded by its 4-byte big-endian byte length.
+     * <p>
+     * Wire format: {@code int32 n} then {@code n} UTF-8 bytes.
+     * This is the encoding written by {@link #writeUtf8(DataOutputStream, String)}.
+     * </p>
+     *
+     * @param in source stream, positioned just before the 4-byte length prefix
+     * @return decoded string, never {@code null}
+     * @throws IOException if reading fails or if the encoded length is negative
+     */
+    public static String readUtf8(final DataInputStream in) throws IOException
+    {
+        final int length = in.readInt();
+        if (length < 0) {
+            throw new IOException("Negative UTF-8 byte length: " + length);
+        }
+        final byte[] bytes = new byte[length];
+        in.readFully(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+    
+    /**
+     * Returns a temporary sibling path for use during atomic write.
+     * <p>
+     * The returned path has the same parent and file name as {@code path} with a {@code .tmp}
+     * suffix appended. This convention allows stale temporaries from a previous crash to be
+     * recognised and cleaned up before a new write begins.
+     * </p>
+     *
+     * @param path final target path
+     * @return sibling path with {@code .tmp} suffix
+     */
+    public static Path tmpPath(final Path path)
+    {
+        return path.resolveSibling(path.getFileName().toString() + ".tmp");
     }
 
     /**
@@ -290,32 +314,6 @@ public final class SideFiles
         catch (Throwable ignored) {
             // best-effort — buffer will be reclaimed by GC
         }
-    }
-
-    // -------------------------------------------------------------------------
-    //  length-prefixed UTF-8 encoding
-    // -------------------------------------------------------------------------
-
-    /**
-     * Reads one UTF-8 string preceded by its 4-byte big-endian byte length.
-     * <p>
-     * Wire format: {@code int32 n} then {@code n} UTF-8 bytes.
-     * This is the encoding written by {@link #writeUtf8(DataOutputStream, String)}.
-     * </p>
-     *
-     * @param in source stream, positioned just before the 4-byte length prefix
-     * @return decoded string, never {@code null}
-     * @throws IOException if reading fails or if the encoded length is negative
-     */
-    public static String readUtf8(final DataInputStream in) throws IOException
-    {
-        final int length = in.readInt();
-        if (length < 0) {
-            throw new IOException("Negative UTF-8 byte length: " + length);
-        }
-        final byte[] bytes = new byte[length];
-        in.readFully(bytes);
-        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     /**
