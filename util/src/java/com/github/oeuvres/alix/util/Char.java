@@ -34,6 +34,7 @@
 package com.github.oeuvres.alix.util;
 
 import java.text.Normalizer;
+import java.util.Objects;
 
 /**
  * <p>
@@ -324,6 +325,30 @@ public class Char
     public static short props(final char c)
     {
         return CHARS[c];
+    }
+
+    /**
+     * Trim characters from the right of a mutable string.
+     *
+     * @param sb         mutable text to trim (modified in place)
+     * @param stripChars characters to remove from the right edge; if null or
+     *                   empty, nothing is done
+     * @throws NullPointerException if {@code sb} is null
+     */
+    public static void rtrim(final StringBuilder sb, final String stripChars)
+    {
+        Objects.requireNonNull(sb, "sb");
+        if (stripChars == null || stripChars.isEmpty())
+            return;
+        
+        int len = sb.length();
+        while (len > 0) {
+            final char c = sb.charAt(len - 1);
+            if (stripChars.indexOf(c) < 0)
+                break;
+            len--;
+        }
+        sb.setLength(len);
     }
 
     /**

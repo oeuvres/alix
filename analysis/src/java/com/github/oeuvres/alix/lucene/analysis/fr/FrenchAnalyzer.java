@@ -36,8 +36,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 import org.apache.lucene.analysis.StopFilter;
@@ -48,11 +50,14 @@ import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
 import com.github.oeuvres.alix.lucene.analysis.FinalCleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
+import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
+import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
+import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
 
 import opennlp.tools.postag.POSModel;
 
@@ -62,35 +67,46 @@ import opennlp.tools.postag.POSModel;
  */
 public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
 {
-    private static final CharArraySet STOP_SET = loadStopSet("/com/github/oeuvres/alix/fr/stop.csv");
-
-    private static CharArraySet loadStopSet(String resourcePath) {
-        try (InputStream in = FrenchAnalyzer.class.getResourceAsStream(resourcePath)) {
-            if (in == null) {
-                throw new IllegalStateException("Missing resource: " + resourcePath);
-            }
-            return WordlistLoader.getWordSet(in, StandardCharsets.UTF_8, "#");
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
     final static String POS_PATH = "/com/github/oeuvres/alix/fr/opennlp-fr-ud-gsd-pos-1.3-2.5.4.bin";
-    private static final POSModel POS_MODEL = loadPosModel(POS_PATH);
+    private static final POSModel POS_MODEL = LexiconHelper.loadPosModel(FrenchAnalyzer.class, POS_PATH);
+
     final Analyzer ascii;
     final Analyzer canonic;
     final Analyzer observation;
+    /** Stopwords list */
+    final CharArraySet stopwords;
+    /** Term normalizer */
+    final CharArrayMap<char[]> normalizer;
+    /** Big dic */
+    final LemmaLexicon lemmaLexicon;
     
     /**
      * Default constructor.
+     * @throws IOException 
      */
-    public FrenchAnalyzer()
+    public FrenchAnalyzer() throws IOException
     {
         super(PER_FIELD_REUSE_STRATEGY);
+        stopwords = new CharArraySet(500, false);
+        normalizer = FrenchLexicons.buildWordNormalizer();
+        LexiconHelper.loadSet(stopwords, getClass(), "/com/github/oeuvres/alix/fr/stop.csv");
+        lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
+        
         canonic = new CanonicAnalyzer();
         ascii = new AsciiAnalyzer();
         observation = new ObservationAnalyzer();
     }
     
+    public void addStopWords(Path... files) throws IOException {
+        for (Path path: files) {
+            LexiconHelper.loadSet(stopwords, path);
+        }
+    }
+    public void addNormalizations(Path... files) throws IOException {
+        for (Path path: files) {
+            LexiconHelper.loadMap(normalizer, path, LexiconHelper.OnDuplicate.REPLACE);
+        }
+    }    
     @Override
     protected Analyzer getWrappedAnalyzer(String fieldName)
     {
@@ -104,7 +120,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         }
     }
     
-    public static class CanonicAnalyzer extends Analyzer
+    public class CanonicAnalyzer extends Analyzer
     {
         
         public CanonicAnalyzer()
@@ -116,30 +132,13 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new MarkupTokenizer();
-            // segment words
-            TokenStream ts = tokenizer;
-            // resolve case of common word at start of senetence
-            ts = new SentenceStartLowerCaseFilter(ts, FrenchLexicons.getLemmaLexicon());
-            // interpret html tags as token events like para or section
-            ts = new MarkupBoundaryFilter(ts);
-            // fr split on ’ and -
-            ts = new FrenchCliticSplitFilter(ts);
-            // pos tagging before lemmatize
-            ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
-            // provide lemma
-            ts = new LemmaFilter(ts, FrenchLexicons.getLemmaLexicon());
-            // TODO, multi word expression
-            
-            // stop words
-            ts = new StopFilter(ts, STOP_SET);
-            // last filter prepare term to index
-            ts = new FinalCleanupFilter(ts);
+            TokenStream ts = canonicChain(tokenizer);
             return new TokenStreamComponents(tokenizer, ts);
         }
         
     }
     
-    public static class ObservationAnalyzer extends Analyzer
+    public class ObservationAnalyzer extends Analyzer
     {
         
         public ObservationAnalyzer()
@@ -151,30 +150,17 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new MarkupTokenizer();
-            // segment words
             TokenStream ts = tokenizer;
             // keep observations only
             ts = new MarkupZoneFilter(ts, "@data-tei-type=\"observation\"", MarkupZoneFilter.Mode.INCLUDE);
-            // resolve case of common word at start of senetence
-            ts = new SentenceStartLowerCaseFilter(ts, FrenchLexicons.getLemmaLexicon());
-            // interpret html tags as token events like para or section
-            ts = new MarkupBoundaryFilter(ts);
-            // fr split on ’ and -
-            ts = new FrenchCliticSplitFilter(ts);
-            // pos tagging before lemmatize
-            ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
-            // provide lemma
-            ts = new LemmaFilter(ts, FrenchLexicons.getLemmaLexicon());
-            // TODO, multi word expression
-            // last filter prepare term to index
-            ts = new FinalCleanupFilter(ts);
+            ts = canonicChain(ts);
             return new TokenStreamComponents(tokenizer, ts);
         }
         
     }
 
     
-    public static class AsciiAnalyzer extends Analyzer
+    public class AsciiAnalyzer extends Analyzer
     {
         
         public AsciiAnalyzer()
@@ -186,35 +172,38 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         public TokenStreamComponents createComponents(String field)
         {
             final Tokenizer tokenizer = new MarkupTokenizer();
-            TokenStream ts = tokenizer; // segment words
-            // resolve case of common word at start of senetence
-            ts = new SentenceStartLowerCaseFilter(ts, FrenchLexicons.getLemmaLexicon());
-            // interpret html tags as token events like para or section
-            ts = new MarkupBoundaryFilter(ts);
-            // fr split on ’ and -
-            ts = new FrenchCliticSplitFilter(ts);
-            // pos tagging before lemmatize
-            ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
-            // provide lemma
-            ts = new LemmaFilter(ts, FrenchLexicons.getLemmaLexicon());
-            // TODO, multi word expression
-            // last filter prepare term to index
-            ts = new FinalCleanupFilter(ts);
-            // no accents
+            TokenStream ts = canonicChain(tokenizer);
             ts = new ASCIIFoldingFilter(ts); // no accents
             return new TokenStreamComponents(tokenizer, ts);
         }
         
     }
     
-    private static POSModel loadPosModel(String path)
+    /**
+     * Build the shared canonic filter chain starting from an arbitrary upstream.
+     * Optionally fold accents for _ascii fields.
+     */
+    private TokenStream canonicChain(TokenStream ts)
     {
-        try (InputStream in = FrenchAnalyzer.class.getResourceAsStream(path)) {
-            if (in == null)
-                throw new IllegalStateException("Missing resource: " + path);
-            return new POSModel(in);
-        } catch (IOException e) {
-            throw new ExceptionInInitializerError(e);
-        }
+        // resolve case of common word at start of sentence
+        ts = new SentenceStartLowerCaseFilter(ts, lemmaLexicon);
+        // interpret html tags as token events like para or section
+        ts = new MarkupBoundaryFilter(ts);
+        // fr split on ’ and -
+        ts = new FrenchCliticSplitFilter(ts);
+        // normalizations
+        ts = new TermReplaceFilter(ts, normalizer);
+        // pos tagging before lemmatize
+        ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
+        // provide lemma
+        ts = new LemmaFilter(ts, lemmaLexicon);
+        // TODO, multi word expression
+        
+        // stop words
+        ts = new StopFilter(ts, stopwords);
+        // last filter prepare term to index
+        ts = new FinalCleanupFilter(ts);
+
+        return ts;
     }
 }

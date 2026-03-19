@@ -1,6 +1,8 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,8 +13,12 @@ import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.Char;
+import com.github.oeuvres.alix.util.Report;
+
+import opennlp.tools.postag.POSModel;
 
 /**
  * Utility methods to load lexical resources from CSV-like files into
@@ -34,7 +40,36 @@ import com.github.oeuvres.alix.util.Char;
  */
 public final class LexiconHelper
 {
+    public enum CsvHeader {SKIP, KEEP};
     
+    /**
+     * Duplicate handling policy.
+     */
+    public enum OnDuplicate
+    {
+        /**
+         * Keep the existing mapping and ignore the new one.
+         *
+         * <p>If the key is absent, insert the new mapping.</p>
+         */
+        IGNORE,
+
+        /**
+         * Replace any existing mapping with the new one.
+         */
+        REPLACE,
+
+        /**
+         * Keep the existing mapping and report the duplicates.
+         */
+        REPORT,
+
+        /**
+         * Insert only if absent; if a mapping already exists for the same key, throw an
+         * exception.
+         */
+        ERROR
+    }
     /**
      * Utility class; no instance.
      */
@@ -58,9 +93,9 @@ public final class LexiconHelper
          * {@link #forEachDataRow(CSVReader, int, int, boolean, CsvRowHandler)}.
          *
          * @param csv CSV reader positioned on the current row
-         * @throws IOException if processing needs to propagate an I/O error
+         * @throws UncheckedIOException if processing needs to propagate an I/O error
          */
-        protected abstract boolean accept(CSVReader csv) throws IOException;
+        protected abstract boolean accept(CSVReader csv) throws UncheckedIOException;
     }
     
     /**
@@ -74,22 +109,46 @@ public final class LexiconHelper
      * @param anchor       class used to resolve the resource path
      * @param resourcePath classpath resource path
      * @param replace      if {@code true}, overwrite existing keys; otherwise keep existing entries
-     * @throws IOException          on read error
+     * @throws UncheckedIOException          on read error
      * @throws NullPointerException if {@code map}, {@code anchor}, or {@code resourcePath} is null
      */
     public static void loadMap(
         final CharArrayMap<char[]> map,
         final Class<?> anchor,
         final String resourcePath,
-        final boolean replace)
-        throws IOException
+        final OnDuplicate policy)
+        throws UncheckedIOException
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
         try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
-            loadMap(map, csv, replace);
+            loadMap(map, anchor, resourcePath, policy, CsvHeader.SKIP, 0, 1, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
+    
+    public static void loadMap(
+        final CharArrayMap<char[]> map,
+        final Class<?> anchor,
+        final String resourcePath,
+        final OnDuplicate policy,
+        final CsvHeader csvHeader,
+        final int keyCol,
+        final int valueCol,
+        final Report report
+    )
+        throws UncheckedIOException
+    {
+        Objects.requireNonNull(anchor, "anchor");
+        Objects.requireNonNull(resourcePath, "resourcePath");
+        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
+            loadMap(map, csv, policy, csvHeader, keyCol, valueCol, report);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     
     /**
      * Load a 2-column CSV file into a {@link CharArrayMap}.
@@ -101,37 +160,34 @@ public final class LexiconHelper
      * @param file    CSV file path
      * @param replace if {@code true}, overwrite existing keys; otherwise keep
      *                existing entries
-     * @throws IOException          on read error
+     * @throws UncheckedIOException          on read error
      * @throws NullPointerException if {@code map} or {@code file} is null
      */
-    public static void loadMap(final CharArrayMap<char[]> map, final Path file, final boolean replace)
-        throws IOException
+    public static void loadMap(final CharArrayMap<char[]> map, final Path file, final OnDuplicate policy)
+        throws UncheckedIOException
     {
-        Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file, ',', 2)) {
-            loadMap(map, csv, replace);
-        }
+        loadMap(map, file, policy, CsvHeader.SKIP, 0, 1, null);
     }
     
-    /**
-     * Load a 2-column CSV reader into a {@link CharArrayMap}, skipping the
-     * first row (header).
-     * <p>
-     * Column 0 = key, column 1 = value.
-     * </p>
-     *
-     * @param map     target map (key -&gt; char[] value)
-     * @param csv     CSV reader
-     * @param replace if {@code true}, overwrite existing keys; otherwise keep
-     *                existing entries
-     * @throws IOException          on read error
-     * @throws NullPointerException if {@code map} or {@code csv} is null
-     */
-    public static void loadMap(final CharArrayMap<char[]> map, final CSVReader csv, final boolean replace)
-        throws IOException
-    {
-        loadMap(map, csv, replace, true);
-    }
+    public static void loadMap(
+        final CharArrayMap<char[]> map, 
+        final Path file, 
+        final OnDuplicate policy, 
+        final CsvHeader csvHeader, 
+        final int keyCol, 
+        final int valueCol,
+        Report report)
+            throws UncheckedIOException
+        {
+            Objects.requireNonNull(file, "file");
+            final int minCols = Math.max(keyCol, valueCol) + 1;
+            try (CSVReader csv = new CSVReader(file, ',', minCols)) {
+                loadMap(map, csv, policy, csvHeader, keyCol, valueCol, report);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
     
     /**
      * Load a 2-column CSV reader into a {@link CharArrayMap}.
@@ -144,37 +200,55 @@ public final class LexiconHelper
      * @param replace    if {@code true}, overwrite existing keys; otherwise
      *                   keep existing entries
      * @param skipHeader if {@code true}, the first row is skipped
-     * @throws IOException          on read error
+     * @throws UncheckedIOException          on read error
      * @throws NullPointerException if {@code map} or {@code csv} is null
      */
     public static void loadMap(
         final CharArrayMap<char[]> map,
         final CSVReader csv,
-        final boolean replace,
-        final boolean skipHeader)
-        throws IOException
+        final OnDuplicate policy,
+        final CsvHeader csvHeader,
+        final int keyCol,
+        final int valueCol,
+        Report report
+    )
+        throws UncheckedIOException
     {
         Objects.requireNonNull(map, "map");
         Objects.requireNonNull(csv, "csv");
         
-        final int keyCol = 0;
-        final int valueCol = 1;
-        final int minCols = 2;
+        final int minCols = Math.max(keyCol, valueCol) + 1;
         
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
-            protected boolean accept(final CSVReader row) throws IOException
+            protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
-                final StringBuilder form = row.getCell(keyCol);
-                if (!replace && map.containsKey(form))
-                    return false;
-                map.put(form, row.getCellToCharArray(valueCol));
+                final StringBuilder key = row.getCell(keyCol);
+                if (map.containsKey(key)) {
+                    if (policy == OnDuplicate.IGNORE) {
+                        return false;
+                    }
+                    if (policy == OnDuplicate.REPLACE) {
+                        map.put(key, row.getCellToCharArray(valueCol));
+                        return true;
+                    }
+                    String msg = "LexiconHelper.loadMap " + row.getSpec() + "#l" + row.getRowNo() 
+                        + " duplicate key=" + key + " oldValue=" + new String(map.get(key)) + " newValue=" + row.getCell(valueCol);
+                    if (policy == OnDuplicate.ERROR) {
+                        throw new RuntimeException(msg);
+                    }
+                    if (report != null && policy == OnDuplicate.REPORT) {
+                        report.warn(msg);
+                        return false;
+                    }
+                }
+                map.put(key, row.getCellToCharArray(valueCol));
                 return true;
             }
         };
         
-        forEachDataRow(csv, minCols, keyCol, skipHeader, handler);
+        forEachDataRow(csv, minCols, keyCol, csvHeader, handler);
     }
     
     /**
@@ -188,7 +262,32 @@ public final class LexiconHelper
      * @param rtrimChars   characters to trim on the right of the selected cell
      *                     before insertion (may be {@code null} for no
      *                     trimming)
-     * @throws IOException              on read error
+     * @throws UncheckedIOException              on read error
+     * @throws NullPointerException     if {@code set}, {@code anchor}, or
+     *                                  {@code resourcePath} is null
+     * @throws IllegalArgumentException if {@code col < 0}
+     */
+    public static void loadSet(
+        final CharArraySet set,
+        final Class<?> anchor,
+        final String resourcePath)
+        throws UncheckedIOException
+    {
+        loadSet(set, anchor, resourcePath, 0, CsvHeader.SKIP, null);
+    }
+    
+    /**
+     * Load a CSV resource into a {@link CharArraySet} from a classpath
+     * resource.
+     *
+     * @param set          target set
+     * @param anchor       class used to resolve the resource path
+     * @param resourcePath classpath resource path
+     * @param col          column index containing the form to add
+     * @param rtrimChars   characters to trim on the right of the selected cell
+     *                     before insertion (may be {@code null} for no
+     *                     trimming)
+     * @throws UncheckedIOException              on read error
      * @throws NullPointerException     if {@code set}, {@code anchor}, or
      *                                  {@code resourcePath} is null
      * @throws IllegalArgumentException if {@code col < 0}
@@ -198,13 +297,16 @@ public final class LexiconHelper
         final Class<?> anchor,
         final String resourcePath,
         final int col,
+        final CsvHeader csvHeader,
         final String rtrimChars)
-        throws IOException
+        throws UncheckedIOException
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
         try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', Math.max(2, col + 1))) {
-            loadSet(set, csv, col, rtrimChars);
+            loadSet(set, csv, col, csvHeader, rtrimChars);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
     
@@ -216,37 +318,44 @@ public final class LexiconHelper
      * @param col        column index containing the form to add
      * @param rtrimChars characters to trim on the right of the selected cell
      *                   before insertion (may be {@code null} for no trimming)
-     * @throws IOException              on read error
+     * @throws UncheckedIOException              on read error
      * @throws NullPointerException     if {@code set} or {@code file} is null
      * @throws IllegalArgumentException if {@code col < 0}
      */
-    public static void loadSet(final CharArraySet set, final Path file, final int col, final String rtrimChars)
-        throws IOException
+    public static void loadSet(final CharArraySet set, final Path file)
+        throws UncheckedIOException
     {
-        Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file, ',', Math.max(2, col + 1))) {
-            loadSet(set, csv, col, rtrimChars);
-        }
+        loadSet(set, file, 0, CsvHeader.SKIP, null);
     }
-    
     /**
-     * Load a CSV reader into a {@link CharArraySet}, skipping the first row
-     * (header).
+     * Load a CSV file into a {@link CharArraySet}.
      *
      * @param set        target set
-     * @param csv        CSV reader
+     * @param file       CSV file path
      * @param col        column index containing the form to add
      * @param rtrimChars characters to trim on the right of the selected cell
      *                   before insertion (may be {@code null} for no trimming)
-     * @throws IOException              on read error
-     * @throws NullPointerException     if {@code set} or {@code csv} is null
+     * @throws UncheckedIOException              on read error
+     * @throws NullPointerException     if {@code set} or {@code file} is null
      * @throws IllegalArgumentException if {@code col < 0}
      */
-    public static void loadSet(final CharArraySet set, final CSVReader csv, final int col, final String rtrimChars)
-        throws IOException
+    public static void loadSet(
+        final CharArraySet set, 
+        final Path file, 
+        final int col,
+        final CsvHeader header,
+        final String rtrimChars)
+        throws UncheckedIOException
     {
-        loadSet(set, csv, col, rtrimChars, true);
-    }
+        Objects.requireNonNull(file, "file");
+        try (CSVReader csv = new CSVReader(file, ',', Math.max(2, col + 1))) {
+            loadSet(set, csv, col, CsvHeader.SKIP, rtrimChars);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    } 
+    
+
     
     /**
      * Load a CSV reader into a {@link CharArraySet}.
@@ -257,7 +366,7 @@ public final class LexiconHelper
      * @param rtrimChars characters to trim on the right of the selected cell
      *                   before insertion (may be {@code null} for no trimming)
      * @param skipHeader if {@code true}, the first row is skipped
-     * @throws IOException              on read error
+     * @throws UncheckedIOException              on read error
      * @throws NullPointerException     if {@code set} or {@code csv} is null
      * @throws IllegalArgumentException if {@code col < 0}
      */
@@ -265,9 +374,9 @@ public final class LexiconHelper
         final CharArraySet set,
         final CSVReader csv,
         final int col,
-        final String rtrimChars,
-        final boolean skipHeader)
-        throws IOException
+        final CsvHeader csvHeader,
+        final String rtrimChars)
+        throws UncheckedIOException
     {
         Objects.requireNonNull(set, "set");
         Objects.requireNonNull(csv, "csv");
@@ -278,10 +387,10 @@ public final class LexiconHelper
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
-            protected boolean accept(final CSVReader row) throws IOException
+            protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
                 final StringBuilder form = row.getCell(col);
-                rtrim(form, rtrimChars);
+                Char.rtrim(form, rtrimChars);
                 if (form.length() == 0)
                     return false; // rtrim may empty the cell
                 set.add(form);
@@ -289,7 +398,7 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, minCols, keyCol, skipHeader, handler);
+        forEachDataRow(csv, minCols, keyCol, csvHeader, handler);
     }
     
     /**
@@ -310,7 +419,7 @@ public final class LexiconHelper
      * @param posCol       column of POS name
      * @param lemmaCol     column of lemma form
      * 
-     * @throws IOException              on read error
+     * @throws UncheckedIOException              on read error
      * @throws NullPointerException     if any required argument is null
      * @throws IllegalArgumentException if any column index is negative
      */
@@ -320,19 +429,21 @@ public final class LexiconHelper
         final Class<?> anchor,
         final String resourcePath,
         final char sep,
-        final boolean skipHeader,
+        final CsvHeader csvHeader,
         final int formCol,
         final int posCol,
         final int lemmaCol,
         PosResolver posResolver)
-        throws IOException
+        throws UncheckedIOException
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
         
         final int maxCol = maxRequiredCol(formCol, posCol, lemmaCol);
         try (CSVReader csv = new CSVReader(anchor, resourcePath, sep, maxCol)) {
-            loadLemma(lex, policy, csv, skipHeader, formCol, posCol, lemmaCol, posResolver);
+            loadLemma(lex, policy, csv, csvHeader, formCol, posCol, lemmaCol, posResolver);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
     
@@ -369,7 +480,7 @@ public final class LexiconHelper
      * @param lemmaCol      column of lemma form
      * @param posNormalizer optional POS normalization function applied before aliasing and Upos lookup
      *
-     * @throws IOException              on read error
+     * @throws UncheckedIOException              on read error
      * @throws NullPointerException     if {@code lex}, {@code policy}, or {@code csv} is null
      * @throws IllegalArgumentException if a column index is negative
      */
@@ -377,12 +488,12 @@ public final class LexiconHelper
         final LemmaLexicon lex,
         final LemmaLexicon.OnDuplicate policy,
         final CSVReader csv,
-        final boolean skipHeader,
+        final CsvHeader csvHeader,
         final int formCol,
         final int posCol,
         final int lemmaCol,
         final PosResolver posResolver)
-        throws IOException
+        throws UncheckedIOException
     {
         Objects.requireNonNull(lex, "lex");
         Objects.requireNonNull(policy, "policy");
@@ -404,7 +515,7 @@ public final class LexiconHelper
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
-            protected boolean accept(final CSVReader row) throws IOException
+            protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
                 final String rawPosName = row.getCellAsString(posCol);
                 int posId = pr.posInt(rawPosName);
@@ -422,34 +533,35 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, minCols, keyCol, skipHeader, handler);
+        forEachDataRow(csv, minCols, keyCol, csvHeader, handler);
         pr.endFile(null);
     }
     
-    /**
-     * Trim characters from the right of a mutable string.
-     *
-     * @param sb         mutable text to trim (modified in place)
-     * @param stripChars characters to remove from the right edge; if null or
-     *                   empty, nothing is done
-     * @throws NullPointerException if {@code sb} is null
-     */
-    public static void rtrim(final StringBuilder sb, final String stripChars)
+    public static POSModel loadPosModel(final Class<?> anchor, String path)
     {
-        Objects.requireNonNull(sb, "sb");
-        if (stripChars == null || stripChars.isEmpty())
-            return;
-        
-        int len = sb.length();
-        while (len > 0) {
-            final char c = sb.charAt(len - 1);
-            if (stripChars.indexOf(c) < 0)
-                break;
-            len--;
+        try (InputStream in = anchor.getResourceAsStream(path)) {
+            if (in == null)
+                throw new IllegalStateException("Missing resource: " + path);
+            return new POSModel(in);
+        } catch (IOException e) {
+            throw new ExceptionInInitializerError(e);
         }
-        sb.setLength(len);
     }
     
+    /**
+     * Validate a single zero-based column index.
+     *
+     * @param col  column index
+     * @param name parameter name for error messages
+     * @throws IllegalArgumentException if {@code col < 0}
+     */
+    private static void checkColumnIndex(final int col, final String name)
+    {
+        if (col < 0) {
+            throw new IllegalArgumentException(name + " must be >= 0, got: " + col);
+        }
+    }
+
     /**
      * Iterate over CSV rows with shared boilerplate checks.
      * <p>
@@ -467,7 +579,7 @@ public final class LexiconHelper
      * @param keyCol     column used to detect blank/comment rows
      * @param skipHeader if {@code true}, skip the first row
      * @param handler    row consumer called for accepted rows
-     * @throws IOException              on read error
+     * @throws UncheckedIOException              on read error
      * @throws NullPointerException     if {@code csv} or {@code handler} is null
      * @throws IllegalArgumentException if {@code minCols < 1} or {@code keyCol < 0}
      */
@@ -475,32 +587,35 @@ public final class LexiconHelper
         final CSVReader csv,
         final int minCols,
         final int keyCol,
-        final boolean skipHeader,
+        final CsvHeader csvHeader,
         final CsvRowHandler handler)
-        throws IOException
+        
     {
         Objects.requireNonNull(csv, "csv");
         Objects.requireNonNull(handler, "handler");
         if (minCols < 1)
             throw new IllegalArgumentException("minCols must be >= 1: " + minCols);
         checkColumnIndex(keyCol, "keyCol");
-        
-        if (skipHeader && !csv.readRow()) {
-            return; // empty file
-        }
-        
-        while (csv.readRow()) {
-            handler.read++;
-            if (csv.getCellCount() < minCols) {
-                
-                continue;
+
+        try {
+            if (csvHeader == CsvHeader.SKIP && !csv.readRow()) {
+                return; // empty file
             }
             
-            final StringBuilder key = csv.getCell(keyCol);
-            if (isBlankOrComment(key))
-                continue;
-            
-            handler.accept(csv);
+            while (csv.readRow()) {
+                handler.read++;
+                if (csv.getCellCount() < minCols) {
+                    continue;
+                }
+                
+                final StringBuilder key = csv.getCell(keyCol);
+                if (isBlankOrComment(key))
+                    continue;
+                
+                handler.accept(csv);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
     
@@ -534,20 +649,6 @@ public final class LexiconHelper
                 max = c;
         }
         return max + 1;
-    }
-    
-    /**
-     * Validate a single zero-based column index.
-     *
-     * @param col  column index
-     * @param name parameter name for error messages
-     * @throws IllegalArgumentException if {@code col < 0}
-     */
-    private static void checkColumnIndex(final int col, final String name)
-    {
-        if (col < 0) {
-            throw new IllegalArgumentException(name + " must be >= 0, got: " + col);
-        }
     }
     
     /**

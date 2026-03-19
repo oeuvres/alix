@@ -34,9 +34,6 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.analysis.CharArrayMap;
@@ -45,75 +42,32 @@ import org.apache.lucene.analysis.CharArraySet;
 import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
-import com.github.oeuvres.alix.util.Cache;
 
 public class FrenchLexicons
 {
     private FrenchLexicons()
     {
     }
-    
-    public static CharArraySet getDotEndingWords(String... localFiles)
-    {
-        CharArraySet m = (CharArraySet) Cache.get(FrenchLexicons.class, "brevidot",
-         p -> {
-            try {
-                return dotEndingWords(p);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }, localFiles);
-        return m;
-    }
 
-    private static CharArraySet dotEndingWords(List<String> localFiles) throws IOException
+    public static CharArraySet buildBrevidot() throws IOException
     {
         // set ignore case
         CharArraySet map = new CharArraySet(100, true);
-        LexiconHelper.loadSet(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidot.csv", 0, ".");
-        for (String file : localFiles) {
-            LexiconHelper.loadSet(map, Path.of(file), 0, ".");
-        }
+        LexiconHelper.loadSet(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidot.csv", 0, LexiconHelper.CsvHeader.SKIP, ".");
         return map;
     }
 
-    static CharArrayMap<char[]> getWordNormalizer(String... localFiles)
-    {
-        CharArrayMap<char[]> m = (CharArrayMap<char[]>) Cache.get(FrenchLexicons.class, "norm", p -> {
-            try {
-                return wordNormalizer(p);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }, localFiles);
-        return m;
-    }
-
-    private static CharArrayMap<char[]> wordNormalizer(List<String> localFiles) throws IOException
+    public static CharArrayMap<char[]> buildWordNormalizer()
     {
         CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm.csv", false);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", true);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", true);
-        for (String file : localFiles) {
-            LexiconHelper.loadMap(map, Path.of(file), true);
-        }
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
         return map;
     }
     
-    static LemmaLexicon getLemmaLexicon(String... localFiles)
-    {
-        LemmaLexicon m = (LemmaLexicon) Cache.get(FrenchLexicons.class, "words", p -> {
-            try {
-                return lemmaLexicon(p);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }, localFiles);
-        return m;
-    }
 
-    private static LemmaLexicon lemmaLexicon(List<String> localFiles) throws IOException
+    public static LemmaLexicon buildLemmaLexicon()
     {
         LemmaLexicon lex = new LemmaLexicon(500_000);
         final Map<String, String> posList = Map.ofEntries(
@@ -170,7 +124,7 @@ public class FrenchLexicons
             FrenchLexicons.class,
             "/com/github/oeuvres/alix/fr/word.csv",
             ',',
-            true,
+            LexiconHelper.CsvHeader.SKIP,
             0,
             1,
             2,

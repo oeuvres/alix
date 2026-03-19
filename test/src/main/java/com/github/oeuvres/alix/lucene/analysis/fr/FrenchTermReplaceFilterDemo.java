@@ -37,10 +37,11 @@ public class FrenchTermReplaceFilterDemo
             protected TokenStreamComponents createComponents(String fieldName)
             {
                 Tokenizer tokenizer = new StandardTokenizer();
-                TokenStream stream = tokenizer;
-                stream = new TermReplaceFilter(stream, FrenchLexicons.getWordNormalizer());
-                stream = new LemmaFilter(stream, FrenchLexicons.getLemmaLexicon());
-                return new TokenStreamComponents(tokenizer, stream);
+                TokenStream ts = tokenizer;
+                ts = new FrenchCliticSplitFilter(ts);
+                ts = new TermReplaceFilter(ts, FrenchLexicons.buildWordNormalizer());
+                ts = new LemmaFilter(ts, FrenchLexicons.buildLemmaLexicon());
+                return new TokenStreamComponents(tokenizer, ts);
             }
         };
     }

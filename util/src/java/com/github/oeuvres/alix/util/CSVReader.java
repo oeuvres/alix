@@ -39,6 +39,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * A lightweight CSV reader optimised for dictionary-like resources.
@@ -95,10 +96,8 @@ import java.util.ArrayList;
  */
 public final class CSVReader implements Closeable
 {
-    // -------------------------------------------------------------------------
-    // Input sources (exactly one is non-null)
-    // -------------------------------------------------------------------------
-
+    private static final int  DEFAULT_CHAR_BUFFER_SIZE = 64 * 1024;
+    private static final int  DEFAULT_BYTE_BUFFER_SIZE = 64 * 1024;
     /**
      * Underlying character source (Reader mode).
      * <p>
@@ -206,6 +205,11 @@ public final class CSVReader implements Closeable
      * Number of cells in the last row successfully read by {@link #readRow()}.
      */
     private int cellCount = 0;
+    
+    /** Name of the resource, for logging */
+    private String spec;
+    /** Count of lines */
+    private int rowNo;
 
     // -------------------------------------------------------------------------
     // Constructors (Reader mode)
@@ -215,7 +219,8 @@ public final class CSVReader implements Closeable
             final char separator,
             final int cellMax) throws IOException
     {
-        this(openFile(path), separator, cellMax, '"', 64 * 1024, 64 * 1024);
+        this(openFile(path), separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE, DEFAULT_BYTE_BUFFER_SIZE);
+        spec = path.toString();
     }
     
     
@@ -252,7 +257,7 @@ public final class CSVReader implements Closeable
      */
     public CSVReader(final Reader in, final char separator)
     {
-        this(in, separator, -1, '"', 8192);
+        this(in, separator, -1, '"', DEFAULT_CHAR_BUFFER_SIZE);
     }
 
     /**
@@ -315,6 +320,7 @@ public final class CSVReader implements Closeable
         for (int i = 0; i < initialCells; i++) {
             cells.add(new StringBuilder(64));
         }
+        this.spec = "reader";
     }
 
     // -------------------------------------------------------------------------
@@ -354,7 +360,8 @@ public final class CSVReader implements Closeable
                      final char separator,
                      final int cellMax) throws IOException
     {
-        this(openResource(anchor, resourcePath), separator, cellMax, '"', 64 * 1024, 64 * 1024);
+        this(IOUtil.openResource(anchor, resourcePath), separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE, DEFAULT_BYTE_BUFFER_SIZE);
+        spec = resourcePath;
     }
 
     /**
@@ -375,19 +382,14 @@ public final class CSVReader implements Closeable
                      final char separator,
                      final int cellMax,
                      final char quote,
-                     final int charBufferSize,
-                     final int byteBufferSize)
+                     int charBufferSize,
+                     int byteBufferSize)
     {
-        if (utf8Stream == null) {
-            throw new NullPointerException("InputStream is null");
-        }
-        if (charBufferSize <= 0) {
-            throw new IllegalArgumentException("charBufferSize <= 0");
-        }
-        if (byteBufferSize <= 0) {
-            throw new IllegalArgumentException("byteBufferSize <= 0");
-        }
+        Objects.requireNonNull(utf8Stream);
+        if (charBufferSize <= 0)  charBufferSize = DEFAULT_CHAR_BUFFER_SIZE;
+        if (byteBufferSize <= 0) byteBufferSize = DEFAULT_BYTE_BUFFER_SIZE;
 
+        this.spec = "utf8Stream";
         this.in = null;
         this.bin = utf8Stream;
         this.bbuf = new byte[byteBufferSize];
@@ -406,25 +408,6 @@ public final class CSVReader implements Closeable
         }
     }
 
-    /**
-     * Resolve and open a classpath resource as an {@link InputStream}.
-     *
-     * @param anchor       anchor class used to resolve the resource
-     * @param resourcePath classpath resource path
-     * @return an open {@link InputStream} for the resource
-     * @throws IOException if the resource cannot be found
-     */
-    public static InputStream openResource(final Class<?> anchor, final String resourcePath) throws IOException
-    {
-        if (anchor == null) throw new NullPointerException("anchor is null");
-        if (resourcePath == null) throw new NullPointerException("resourcePath is null");
-
-        final InputStream is = anchor.getResourceAsStream(resourcePath);
-        if (is == null) {
-            throw new IOException("Resource not found: " + resourcePath);
-        }
-        return is;
-    }
 
     private static InputStream openFile(final Path path) throws IOException {
         if (path == null) throw new NullPointerException("path is null");
@@ -472,6 +455,7 @@ public final class CSVReader implements Closeable
         boolean inQuotes = false;
         boolean atCellStart = true;
         boolean sawAny = false;
+        rowNo++;
 
         // Handle BOM once at stream start (faster than checking per char)
         if (atStart) {
@@ -708,11 +692,26 @@ public final class CSVReader implements Closeable
         return dst;
     }
 
+    /**
+     * Returns current row number, for logging.
+     * @return {@link #rowNo}
+     */
+    public int getRowNo()
+    {
+        return rowNo;
+    }
     
-    // -------------------------------------------------------------------------
-    // Resource management
-    // -------------------------------------------------------------------------
+    /**
+     * Returns an identifying String, especially if the reader was open with a {@link Path} or a classpath resource.
+     * Returns null if the reader was open directly with a {@link Reader} or {@link InputStream}
+     * @return {@link #spec}
+     */
+    public String getSpec()
+    {
+        return spec;
+    }
 
+ 
     /**
      * Closes the underlying input (Reader mode or InputStream mode).
      *
