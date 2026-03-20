@@ -86,7 +86,7 @@ public class RewriteFilterBenchmark
     public void setup() throws Exception
     {
         termMap = new CharArrayMap<char[]>(1000, false);
-        LexiconHelper.loadMap(termMap, Path.of(mappingCsv), false);
+        LexiconHelper.loadMap(termMap, Path.of(mappingCsv), LexiconHelper.OnDuplicate.IGNORE);
         synMap = buildSynonymMap(termMap);
 
         // Load tokens once; one token per line.

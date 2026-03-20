@@ -49,7 +49,7 @@ public class FrenchLexicons
     {
     }
 
-    public static CharArraySet buildBrevidot() throws IOException
+    public static CharArraySet buildBrevidot()
     {
         // set ignore case
         CharArraySet map = new CharArraySet(100, true);
@@ -57,12 +57,14 @@ public class FrenchLexicons
         return map;
     }
 
-    public static CharArrayMap<char[]> buildWordNormalizer()
+    public static CharArrayMap<char[]> buildNormalizer()
     {
         CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-names.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-misc.csv", LexiconHelper.OnDuplicate.REPLACE);
         return map;
     }
     

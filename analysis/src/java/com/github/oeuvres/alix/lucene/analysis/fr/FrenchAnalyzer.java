@@ -88,7 +88,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     {
         super(PER_FIELD_REUSE_STRATEGY);
         stopwords = new CharArraySet(500, false);
-        normalizer = FrenchLexicons.buildWordNormalizer();
+        normalizer = FrenchLexicons.buildNormalizer();
         LexiconHelper.loadSet(stopwords, getClass(), "/com/github/oeuvres/alix/fr/stop.csv");
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
         

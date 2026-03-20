@@ -53,6 +53,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
+import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
@@ -67,16 +68,17 @@ import opennlp.tools.postag.POSModel;
 public class FrenchLemmaRun
 {
     private static Analyzer buildAnalyzer(final POSModel model) {
+        LemmaLexicon lemmas = FrenchLexicons.buildLemmaLexicon();
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.getDotEndingWords());
+                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidot());
                 TokenStream stream = tokenizer;
                 stream = new MarkupBoundaryFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
-                stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
+                stream = new SentenceStartLowerCaseFilter(stream, lemmas);
                 stream = new PosTaggingFilter(stream, model, PosTaggingFilter.HYPHEN_REWRITER);
-                stream = new LemmaFilter(stream, FrenchLexicons.getLemmaLexicon());
+                stream = new LemmaFilter(stream, lemmas);
                 /* here, to think, switches and forks for different fields */
                 return new TokenStreamComponents(tokenizer, stream);
             }

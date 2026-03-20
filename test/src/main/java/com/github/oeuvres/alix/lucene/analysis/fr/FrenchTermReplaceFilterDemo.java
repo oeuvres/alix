@@ -1,23 +1,17 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
 
-import opennlp.tools.postag.POSModel;
-import opennlp.tools.postag.POSTaggerME;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
 
 public class FrenchTermReplaceFilterDemo
@@ -39,7 +33,7 @@ public class FrenchTermReplaceFilterDemo
                 Tokenizer tokenizer = new StandardTokenizer();
                 TokenStream ts = tokenizer;
                 ts = new FrenchCliticSplitFilter(ts);
-                ts = new TermReplaceFilter(ts, FrenchLexicons.buildWordNormalizer());
+                ts = new TermReplaceFilter(ts, FrenchLexicons.buildNormalizer());
                 ts = new LemmaFilter(ts, FrenchLexicons.buildLemmaLexicon());
                 return new TokenStreamComponents(tokenizer, ts);
             }

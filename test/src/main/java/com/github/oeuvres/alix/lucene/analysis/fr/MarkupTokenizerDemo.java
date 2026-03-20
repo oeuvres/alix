@@ -85,7 +85,7 @@ public class MarkupTokenizerDemo
         final String which = (args.length == 0) ? "orig" : args[0]; // orig | (reserved for future modes)
         switch (which) {
             case "orig" -> {
-                Analyzer a = AnalyzerFactory.forTokenizer(() -> new MarkupTokenizer(FrenchLexicons.getDotEndingWords()));
+                Analyzer a = AnalyzerFactory.forTokenizer(() -> new MarkupTokenizer(FrenchLexicons.buildBrevidot()));
                 AnalysisDemoHelper.runAll(a, "f", CASES);
             }
             default -> {

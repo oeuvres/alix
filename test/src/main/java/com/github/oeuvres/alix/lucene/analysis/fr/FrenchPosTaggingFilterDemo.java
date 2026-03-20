@@ -72,11 +72,11 @@ public final class FrenchPosTaggingFilterDemo {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.getDotEndingWords());
+                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidot());
                 TokenStream stream = tokenizer;
                 stream = new MarkupBoundaryFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
-                stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.getLemmaLexicon());
+                stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.buildLemmaLexicon());
                 stream = new PosTaggingFilter(stream, model, PosTaggingFilter.HYPHEN_REWRITER);
                 return new TokenStreamComponents(tokenizer, stream);
             }
