@@ -1,6 +1,5 @@
 package com.github.oeuvres.alix.lucene.terms;
 
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -8,7 +7,6 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
@@ -27,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -229,7 +226,7 @@ public final class FieldStats implements ReferenceStats
      * @throws IOException if the field has no terms, if term frequencies are unavailable,
      *                     if a target file already exists, or if writing fails
      */
-    public static void build(final Path dataDir, final IndexReader reader, final String field, Report report) throws IOException
+    public static void build(final IndexReader reader, final Path dataDir, final String field, Report report) throws IOException
     {
         Objects.requireNonNull(dataDir, "dataDir");
         Objects.requireNonNull(reader, "reader");
@@ -383,13 +380,13 @@ public final class FieldStats implements ReferenceStats
     /**
      * Opens the persisted statistics for one field from a frozen Lucene directory.
      *
-     * @param dataDir directory that contains the stats file
      * @param reader  snapshot reader used to cross-check maxDoc
+     * @param dataDir directory that contains the stats file
      * @param field   indexed field name
      * @return opened immutable field statistics
      * @throws IOException if the file is missing, inconsistent or unreadable
      */
-    public static FieldStats open(final Path dataDir, final IndexReader reader, final String field) throws IOException
+    public static FieldStats open(final IndexReader reader, final Path dataDir, final String field) throws IOException
     {
         Objects.requireNonNull(dataDir, "indexDir");
         Objects.requireNonNull(field, "field");
@@ -475,20 +472,20 @@ public final class FieldStats implements ReferenceStats
      * Opens the field statistics, building the sidecar file first if it does not exist,
      * using an already opened reader.
      *
-     * @param indexDir Lucene directory that will receive the sidecar file
      * @param reader   snapshot reader for building (ignored if file exists)
+     * @param dataDir Lucene directory that will receive the sidecar file
      * @param field    indexed field name
      * @param report   progress reporter; may be {@code null}
      * @return opened immutable field statistics
      * @throws IOException if building or opening fails
      */
-    public static FieldStats openOrBuild(final Path indexDir, final IndexReader reader, final String field, final Report report)
+    public static FieldStats openOrBuild(final IndexReader reader, final Path dataDir, final String field, final Report report)
         throws IOException
     {
-        if (!exists(indexDir, field)) {
-            build(indexDir, reader, field, report);
+        if (!exists(dataDir, field)) {
+            build(reader, dataDir, field, report);
         }
-        return open(indexDir, reader, field);
+        return open(reader, dataDir, field);
     }
     
     /**

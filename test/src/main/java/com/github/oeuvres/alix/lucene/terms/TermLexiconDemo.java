@@ -20,8 +20,8 @@ public final class TermLexiconDemo {
 
     public static void main(String[] args) throws Exception {
 
-        final Path indexDir = Path.of("D:\\code\\piaget-labo\\lucene\\test");
-        final String field = "text";
+        final Path indexDir = Path.of("../web/lucene/piaget");
+        final String field = "content";
         final String queryTerm = "juste";
 
         // 1) Build the lexicon once if missing.

@@ -6,16 +6,13 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.standard.StandardTokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
 
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
-import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
-import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
 
 public class FrenchStopwordsDemo
 {
@@ -33,7 +30,7 @@ public class FrenchStopwordsDemo
             @Override
             protected TokenStreamComponents createComponents(String fieldName)
             {
-                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidot());
+                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidots());
                 TokenStream ts = tokenizer;
                 // stop words
                 ts = new CleanupFilter(ts);

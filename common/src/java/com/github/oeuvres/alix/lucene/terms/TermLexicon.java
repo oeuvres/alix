@@ -145,29 +145,6 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Builds the lexicon files for one field using the latest committed state of the Lucene directory.
-     * <p>
-     * Opens a {@link DirectoryReader} internally, builds the files, then closes the reader.
-     * If the final target files already exist, an exception is thrown.
-     * </p>
-     *
-     * @param indexDir Lucene directory that contains the frozen index
-     * @param field    indexed field name
-     * @throws IOException              if the index cannot be opened, the field has no terms,
-     *                                  a target file already exists, or writing fails
-     * @throws NullPointerException     if either argument is null
-     * @throws IllegalArgumentException if the field has no terms in the index
-     */
-    public static void build(final Path indexDir, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-        try (FSDirectory dir = FSDirectory.open(indexDir);
-             DirectoryReader reader = DirectoryReader.open(dir)) {
-            build(indexDir, reader, field);
-        }
-    }
-
-    /**
      * Builds the lexicon files for one field from an already opened snapshot reader.
      * <p>
      * This overload is useful when the caller controls which Lucene snapshot is being read,
@@ -183,21 +160,21 @@ public final class TermLexicon implements Closeable {
      * to avoid leaving a partial file set.
      * </p>
      *
-     * @param indexDir Lucene directory that will receive the {@code <field>.terms.*} files
      * @param reader   snapshot reader that defines the term universe and its lexicographic order
+     * @param dataDir Lucene directory that will receive the {@code <field>.terms.*} files
      * @param field    indexed field name
      * @throws IOException              if the field has no terms, a final target file already exists, or writing fails
      * @throws NullPointerException     if any argument is null
      * @throws IllegalArgumentException if the field has no terms in the reader
      */
-    public static void build(final Path indexDir, final IndexReader reader, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
+    public static void build(final IndexReader reader, final Path dataDir, final String field) throws IOException {
         Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(dataDir, "dataDir");
         Objects.requireNonNull(field, "field");
     
-        final Path fstFinal = fstPath(indexDir, field);
-        final Path datFinal = datPath(indexDir, field);
-        final Path offFinal = offPath(indexDir, field);
+        final Path fstFinal = fstPath(dataDir, field);
+        final Path datFinal = datPath(dataDir, field);
+        final Path offFinal = offPath(dataDir, field);
     
         IOUtil.ensureAbsent(fstFinal);
         IOUtil.ensureAbsent(datFinal);
@@ -414,28 +391,6 @@ public final class TermLexicon implements Closeable {
         }
     }
     
-    /**
-     * Opens the lexicon, building the sidecar files first if they do not exist.
-     * <p>
-     * Equivalent to calling {@link #build(Path, String)} then {@link #open(Path, String)},
-     * but skips the write when the files are already present.
-     * Opens a {@link DirectoryReader} internally if building is needed.
-     * When both {@code TermLexicon} and {@code FieldStats} need building
-     * for the same field, prefer the overload that accepts an
-     * {@link IndexReader} to avoid opening the index twice.
-     * </p>
-     *
-     * @param indexDir Lucene directory containing the frozen index
-     * @param field    indexed field name
-     * @return opened lexicon; caller should close when done
-     * @throws IOException if building or opening fails
-     */
-    public static TermLexicon openOrBuild(final Path indexDir, final String field) throws IOException {
-        if (!exists(indexDir, field)) {
-            build(indexDir, field);
-        }
-        return open(indexDir, field);
-    }
 
     /**
      * Opens the lexicon, building the sidecar files first if they do not exist,
@@ -444,19 +399,19 @@ public final class TermLexicon implements Closeable {
      * The reader is used only for building; it is not closed by this method.
      * </p>
      *
-     * @param indexDir Lucene directory that will receive the sidecar files
+     * @param dataDir Lucene directory that will receive the sidecar files
      * @param reader   snapshot reader for building (ignored if files exist)
      * @param field    indexed field name
      * @return opened lexicon; caller should close when done
      * @throws IOException if building or opening fails
      */
-    public static TermLexicon openOrBuild(final Path indexDir, final IndexReader reader, final String field)
+    public static TermLexicon openOrBuild(final IndexReader reader, final Path dataDir, final String field)
         throws IOException
     {
-        if (!exists(indexDir, field)) {
-            build(indexDir, reader, field);
+        if (!exists(dataDir, field)) {
+            build(reader, dataDir, field);
         }
-        return open(indexDir, field);
+        return open(dataDir, field);
     }
 
     /**

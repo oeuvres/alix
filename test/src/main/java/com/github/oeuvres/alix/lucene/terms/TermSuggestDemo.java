@@ -7,7 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.store.FSDirectory;
+
 import com.github.oeuvres.alix.util.Char;
+import com.github.oeuvres.alix.util.Report;
+import com.github.oeuvres.alix.util.Report.ReportConsole;
 
 /**
  * Interactive CLI for testing {@link TermSuggest}.
@@ -36,9 +41,15 @@ public final class TermSuggestDemo
         final int limit = (args.length >= 3) ? Integer.parseInt(args[2]) : 20;
 
         System.err.println("Opening lexicon and stats for field '" + field + "' …");
+        Report report = new ReportConsole();
 
-        try (TermLexicon lexicon = TermLexicon.openOrBuild(indexPath, field)) {
-            final FieldStats stats = FieldStats.openOrBuild(indexPath, field);
+        try (
+            final FSDirectory dir = FSDirectory.open(indexPath);
+            final DirectoryReader reader = DirectoryReader.open(dir);
+            final TermLexicon lexicon = TermLexicon.openOrBuild(reader, indexPath, field);
+            final FieldStats stats = FieldStats.openOrBuild(reader, indexPath, field, report);
+        ) {
+            
 
             System.err.printf("Lexicon: %,d terms, FST heap %,d bytes%n",
                 lexicon.vocabSize(), lexicon.fstRamBytesUsed());

@@ -72,7 +72,7 @@ public class FrenchLemmaRun
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidot());
+                Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidots());
                 TokenStream stream = tokenizer;
                 stream = new MarkupBoundaryFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
