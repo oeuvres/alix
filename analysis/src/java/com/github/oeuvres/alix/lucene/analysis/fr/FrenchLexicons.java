@@ -49,12 +49,20 @@ public class FrenchLexicons
     {
     }
 
+    public static CharArraySet buildStopwords()
+    {
+        // set ignore case
+        CharArraySet set = new CharArraySet(1500, true);
+        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/stop.csv");
+        return set;
+    }
+
     public static CharArraySet buildBrevidot()
     {
         // set ignore case
-        CharArraySet map = new CharArraySet(100, true);
-        LexiconHelper.loadSet(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidot.csv", 0, LexiconHelper.CsvHeader.SKIP, ".");
-        return map;
+        CharArraySet set = new CharArraySet(100, true);
+        LexiconHelper.loadSet(set, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidot.csv", 0, LexiconHelper.CsvHeader.SKIP, ".");
+        return set;
     }
 
     public static CharArrayMap<char[]> buildNormalizer()

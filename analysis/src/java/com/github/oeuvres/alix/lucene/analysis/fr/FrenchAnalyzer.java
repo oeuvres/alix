@@ -48,7 +48,7 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
-import com.github.oeuvres.alix.lucene.analysis.FinalCleanupFilter;
+import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
@@ -87,9 +87,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public FrenchAnalyzer() throws IOException
     {
         super(PER_FIELD_REUSE_STRATEGY);
-        stopwords = new CharArraySet(500, false);
+        stopwords = FrenchLexicons.buildStopwords();
         normalizer = FrenchLexicons.buildNormalizer();
-        LexiconHelper.loadSet(stopwords, getClass(), "/com/github/oeuvres/alix/fr/stop.csv");
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
         
         canonic = new CanonicAnalyzer();
@@ -202,8 +201,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         // stop words
         ts = new StopFilter(ts, stopwords);
         // last filter prepare term to index
-        ts = new FinalCleanupFilter(ts);
-
+        ts = new CleanupFilter(ts);
         return ts;
     }
 }

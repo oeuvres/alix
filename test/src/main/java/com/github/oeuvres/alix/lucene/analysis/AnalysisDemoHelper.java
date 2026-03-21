@@ -5,6 +5,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.Attribute;
 
 import com.github.oeuvres.alix.common.Upos;
@@ -76,22 +77,23 @@ public final class AnalysisDemoHelper {
 
         final CharTermAttribute termAtt = ts.getAttribute(CharTermAttribute.class);
         final OffsetAttribute offAtt = ts.getAttribute(OffsetAttribute.class);
+        final PositionIncrementAttribute posIncrAtt = ts.addAttribute(PositionIncrementAttribute.class);
         final PosAttribute posAtt = ts.hasAttribute(PosAttribute.class) ? ts.getAttribute(PosAttribute.class) : null;
         final ProbAttribute probAtt = ts.hasAttribute(ProbAttribute.class) ? ts.getAttribute(ProbAttribute.class) : null;;
         final LemmaAttribute lemAtt = ts.hasAttribute(LemmaAttribute.class) ? ts.getAttribute(LemmaAttribute.class) : null;;
 
         ts.reset();
         try {
-            int i = 0;
+            int position = -1;
             while (ts.incrementToken()) {
                 final int start = offAtt.startOffset();
                 final int end = offAtt.endOffset();
                 final int pos = (posAtt != null)?posAtt.getPos():0;
                 final String prob = (probAtt != null)?String.format(java.util.Locale.ROOT, "%.5f",probAtt.getProb()):"";
-
+                position += posIncrAtt.getPositionIncrement();
                 System.out.printf(
                     "%5d\t[%d,%d)\t|%s|\t%s\t%s\t%s\t%s%n",
-                    i++,
+                    position,
                     start, end,
                     safeSlice(input, start, end),
                     escape(termAtt.toString()),

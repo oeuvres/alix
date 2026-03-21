@@ -78,7 +78,7 @@ import com.github.oeuvres.alix.util.Char;
  *   <li>This filter is compatible with "no synonyms / no overlap" canonical fields; {@code getNumOverlap()} is expected to be 0.</li>
  * </ul>
  */
-public class FinalCleanupFilter extends TokenFilter
+public class CleanupFilter extends TokenFilter
 {
     /** The term provided by the upstream TokenStream. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -111,7 +111,7 @@ public class FinalCleanupFilter extends TokenFilter
     /**
      * @param input upstream token stream (tokenizer or previous filters)
      */
-    public FinalCleanupFilter(TokenStream input) {
+    public CleanupFilter(TokenStream input) {
         super(input);
     }
 
