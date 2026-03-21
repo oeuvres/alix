@@ -24,28 +24,26 @@ public final class TermLexiconDemo {
         final String field = "content";
         final String queryTerm = "juste";
 
-        // 1) Build the lexicon once if missing.
-        if (!TermLexicon.exists(indexDir, field)) {
-            TermLexicon.build(indexDir, field);
-        }
+        try (
+            FSDirectory directory = FSDirectory.open(indexDir);
+            DirectoryReader reader = DirectoryReader.open(directory);
+        ) {
 
-        // 2) Open the lexicon and do the two core lookups.
-        final TermLexicon lexicon = TermLexicon.open(indexDir, field);
-        System.out.println("field     = " + lexicon.field());
-        System.out.println("vocabSize = " + lexicon.vocabSize());
 
-        final int termId = lexicon.id(queryTerm);
-        System.out.println("id(" + queryTerm + ") = " + termId);
-        if (termId < 0) {
-            System.out.println("term not found");
-            return;
-        }
+            // 2) Open the lexicon and do the two core lookups.
+            final TermLexicon lexicon = TermLexicon.openOrBuild(reader, indexDir, field);
+            System.out.println("field     = " + lexicon.field());
+            System.out.println("vocabSize = " + lexicon.vocabSize());
+    
+            final int termId = lexicon.id(queryTerm);
+            System.out.println("id(" + queryTerm + ") = " + termId);
+            if (termId < 0) {
+                System.out.println("term not found");
+                return;
+            }
+    
+            System.out.println("term(" + termId + ") = " + lexicon.term(termId));
 
-        System.out.println("term(" + termId + ") = " + lexicon.term(termId));
-
-        // 3) Show that the same bytes can be used directly with postings.
-        try (FSDirectory directory = FSDirectory.open(indexDir);
-             DirectoryReader reader = DirectoryReader.open(directory)) {
 
             final BytesRef termBytes = new BytesRef(lexicon.term(termId));
             final PostingsEnum postings = MultiTerms.getTermPostingsEnum(

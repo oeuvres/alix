@@ -164,7 +164,9 @@ public final class ThemeTerms {
 
         final int maxDoc = fieldStats.maxDoc();
         final int corpusDocs = fieldStats.fieldDocs();
-        final long corpusTokens = fieldStats.fieldTokens();
+        final long corpusTokens = fieldStats.fieldWidth();
+        // System.out.println("fieldTokens=" + corpusTokens);
+        // System.out.println("fieldWidth=" + fieldStats.fieldWidth());
 
         final double[] scores = stats.scores();
         Arrays.fill(scores, 0d);

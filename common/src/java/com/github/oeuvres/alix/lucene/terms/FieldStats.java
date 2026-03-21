@@ -129,39 +129,39 @@ public final class FieldStats implements ReferenceStats
     private static final int VERSION = 2;
     
     /** Lucene directory that contains both the index and the {@code <field>.stats} file. */
-    private final Path dataDir;
-    
-    /** Indexed field covered by these statistics. */
-    private final String field;
-    
-    /** Lucene document-address space size for this frozen reader snapshot. */
-    private final int maxDoc;
+    private final Path sideDir;
     
     /** Per-document field width (max position + 1), indexed by global doc id; 0 for docs without the field. */
     private final int[] docWidths;
-    
-    /** Sum of all {@code docWidths}: total position count across the field. */
-    private final long fieldWidth;
-    
-    /** Number of distinct terms in the field. */
-    private final int vocabSize;
-    
-    /** Per-term document frequencies, indexed by dense term id. */
-    private final int[] termDocs;
-    
-    /** Per-term total occurrences in the field, indexed by dense term id. */
-    private final long[] termFreqs;
+
+    /** Indexed field covered by these statistics. */
+    private final String field;
     
     /** Number of documents that contain at least one term in the field. */
     private final int fieldDocs;
-    
+
+    /** Sum of all {@code docWidths}: total position count across the field. */
+    private final long fieldWidth;
+
     /** Total number of tokens in the field. */
     private final long fieldTokens;
+
+    /** Lucene document-address space size for this frozen reader snapshot. */
+    private final int maxDoc;
+    
+    /** Per-term document frequencies, indexed by dense term id. */
+    private final int[] termDocs;
+
+    /** Per-term total occurrences in the field, indexed by dense term id. */
+    private final long[] termFreqs;
+
+    /** Number of distinct terms in the field. */
+    private final int vocabSize;
     
     /**
      * Creates an immutable statistics object from already-loaded arrays.
      *
-     * @param dataDir      Lucene directory that contains the index and the stats file
+     * @param sideDir      Lucene directory that contains the index and the stats file
      * @param field        indexed field
      * @param maxDoc       Lucene document-address space size
      * @param docWidths    exact field token counts by global doc id
@@ -173,7 +173,7 @@ public final class FieldStats implements ReferenceStats
      * @param termFreqs    per-term total term frequencies
      */
     private FieldStats(
-            final Path dataDir,
+            final Path sideDir,
             final String field,
             final int maxDoc,
             final int[] docWidths,
@@ -184,7 +184,7 @@ public final class FieldStats implements ReferenceStats
             final int[] termDocs,
             final long[] termFreqs
     ) {
-        this.dataDir = dataDir;
+        this.sideDir = sideDir;
         this.field = field;
         this.maxDoc = maxDoc;
         this.docWidths = docWidths;
@@ -221,15 +221,15 @@ public final class FieldStats implements ReferenceStats
      * </p>
      *
      * @param reader   snapshot reader that defines the field statistics
-     * @param dataDir  directory that will receive the {@code <field>.stats} file
+     * @param sideDir  directory that will receive the {@code <field>.stats} file
      * @param field    indexed field name
      * @param report   progress reporter; may be {@code null}
      * @throws IOException if the field has no terms, if term frequencies are unavailable,
      *                     if a target file already exists, or if writing fails
      */
-    public static void build(final IndexReader reader, final Path dataDir, final String field, Report report) throws IOException
+    public static void build(final IndexReader reader, final Path sideDir, final String field, Report report) throws IOException
     {
-        Objects.requireNonNull(dataDir, "dataDir");
+        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
         if (report == null) report = Report.ReportNull.INSTANCE;
@@ -238,7 +238,7 @@ public final class FieldStats implements ReferenceStats
         final int[] docWidths = docWidths(reader, field, report);
         final ByTermStats byTerm = byTermStats(reader, field, report);
         // write to tmp, close stream fully, then rename atomically
-        final Path statsPath = statsPath(dataDir, field);
+        final Path statsPath = statsPath(sideDir, field);
         IOUtil.ensureAbsent(statsPath);
         final Path tmp = IOUtil.tmpPath(statsPath);
         IOUtil.ensureAbsent(tmp);
@@ -334,47 +334,39 @@ public final class FieldStats implements ReferenceStats
         return Files.isRegularFile(statsPath(indexDir, field));
     }
     
-    /**
-     * Returns the field name covered by these statistics.
-     *
-     * @return field name
-     */
     @Override
     public String field()
     {
         return field;
     }
     
-    /**
-     * Returns the number of documents that contain at least one term in the field.
-     *
-     * @return field document count
-     */
+
     @Override
     public int fieldDocs()
     {
         return fieldDocs;
     }
     
-    /**
-     * Returns the total number of tokens in the field.
-     *
-     * @return field total term frequency
-     */
     @Override
     public long fieldTokens()
     {
         return fieldTokens;
     }
-    
+
+    @Override
+    public long fieldWidth()
+    {
+        return fieldWidth;
+    }
+
     /**
-     * Returns the Lucene directory from which these statistics were opened.
+     * Returns the directory from which these statistics were opened.
      *
      * @return Lucene directory path
      */
-    public Path indexDir()
+    public Path sideDir()
     {
-        return dataDir;
+        return sideDir;
     }
     
     /**
@@ -394,17 +386,17 @@ public final class FieldStats implements ReferenceStats
      * Opens the persisted statistics for one field from a frozen Lucene directory.
      *
      * @param reader  snapshot reader used to cross-check maxDoc
-     * @param dataDir directory that contains the stats file
+     * @param sideDir directory that contains the stats file
      * @param field   indexed field name
      * @return opened immutable field statistics
      * @throws IOException if the file is missing, inconsistent or unreadable
      */
-    public static FieldStats open(final IndexReader reader, final Path dataDir, final String field) throws IOException
+    public static FieldStats open(final IndexReader reader, final Path sideDir, final String field) throws IOException
     {
-        Objects.requireNonNull(dataDir, "dataDir");
+        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
         
-        final Path path = statsPath(dataDir, field);
+        final Path path = statsPath(sideDir, field);
         IOUtil.ensureRegularFile(path);
         
         try (DataInputStream in = new DataInputStream(
@@ -462,7 +454,7 @@ public final class FieldStats implements ReferenceStats
             }
             
             return new FieldStats(
-                dataDir, 
+                sideDir, 
                 field,
                 maxDoc, 
                 docWidths,
@@ -483,19 +475,39 @@ public final class FieldStats implements ReferenceStats
      * using an already opened reader.
      *
      * @param reader   snapshot reader for building (ignored if file exists)
-     * @param dataDir  Lucene directory that will receive the sidecar file
+     * @param sideDir  Lucene directory that will receive the sidecar file
      * @param field    indexed field name
      * @param report   progress reporter; may be {@code null}
      * @return opened immutable field statistics
      * @throws IOException if building or opening fails
      */
-    public static FieldStats openOrBuild(final IndexReader reader, final Path dataDir, final String field, final Report report)
+    public static FieldStats openOrBuild(final IndexReader reader, final Path sideDir, final String field)
         throws IOException
     {
-        if (!exists(dataDir, field)) {
-            build(reader, dataDir, field, report);
+        if (!exists(sideDir, field)) {
+            build(reader, sideDir, field, null);
         }
-        return open(reader, dataDir, field);
+        return open(reader, sideDir, field);
+    }
+    
+    /**
+     * Opens the field statistics, building the sidecar file first if it does not exist,
+     * using an already opened reader.
+     *
+     * @param reader   snapshot reader for building (ignored if file exists)
+     * @param sideDir  Lucene directory that will receive the sidecar file
+     * @param field    indexed field name
+     * @param report   progress reporter; may be {@code null}
+     * @return opened immutable field statistics
+     * @throws IOException if building or opening fails
+     */
+    public static FieldStats openOrBuild(final IndexReader reader, final Path sideDir, final String field, final Report report)
+        throws IOException
+    {
+        if (!exists(sideDir, field)) {
+            build(reader, sideDir, field, report);
+        }
+        return open(reader, sideDir, field);
     }
     
     /**
@@ -699,7 +711,7 @@ public final class FieldStats implements ReferenceStats
         if (terms == null) {
             throw new IllegalArgumentException("Field not found or without terms: " + field);
         }
-        long fieldDocs = terms.getSumDocFreq();
+        long fieldDocs = terms.getDocCount();
         if (fieldDocs > Integer.MAX_VALUE) {
             throw new ArrayIndexOutOfBoundsException(
                     "Too much documents for field=" + field +

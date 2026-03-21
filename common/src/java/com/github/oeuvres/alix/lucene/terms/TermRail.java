@@ -100,7 +100,7 @@ import java.util.Objects;
 public final class TermRail implements Closeable {
 
     /** Directory that contains both the index and the rail files. */
-    private final Path dataDir;
+    private final Path sideDir;
 
     /** Mapped buffer for {@code <field>.rail.dat}; retained for explicit unmapping on close. */
     private final MappedByteBuffer datBuf;
@@ -127,7 +127,7 @@ public final class TermRail implements Closeable {
     private static final long MTIME_TOLERANCE_MS = 5_000L;
 
     private TermRail(
-        final Path dataDir,
+        final Path sideDir,
         final String field,
         final MappedByteBuffer datBuf,
         final IntBuffer dat,
@@ -136,7 +136,7 @@ public final class TermRail implements Closeable {
         final int docCount,
         final int totalPositions
     ) {
-        this.dataDir = dataDir;
+        this.sideDir = sideDir;
         this.field = field;
         this.datBuf = datBuf;
         this.dat = dat;
@@ -149,16 +149,16 @@ public final class TermRail implements Closeable {
     /**
      * Build a term-id rail for the given field and write it to disk.
      *
-     * <p>Produces two files under {@code dataDir}:</p>
+     * <p>Produces two files under {@code sideDir}:</p>
      * <ul>
-     *   <li><b>offsets</b> ({@link #offPath offPath(dataDir, field)}) —
+     *   <li><b>offsets</b> ({@link #offPath offPath(sideDir, field)}) —
      *       a {@code long[maxDoc + 1]} array of byte offsets into the data file.
      *       {@code offsets[docId]} is the byte position where the rail for
      *       {@code docId} begins; the rail length in ints is
      *       {@code (offsets[docId + 1] - offsets[docId]) / Integer.BYTES}.
      *       Deleted documents and documents without the field have
      *       {@code offsets[docId] == offsets[docId + 1]}.</li>
-     *   <li><b>data</b> ({@link #datPath datPath(dataDir, field)}) —
+     *   <li><b>data</b> ({@link #datPath datPath(sideDir, field)}) —
      *       a flat {@code int[]} rail where each slot holds the
      *       {@link TermLexicon} id of the term at that position,
      *       or {@code 0} for unfilled positions (position gaps).
@@ -169,9 +169,9 @@ public final class TermRail implements Closeable {
      * renamed on success. On failure, all temporary and final files are
      * cleaned up.</p>
      *
-     * @param dataDir  directory for the output files.
      * @param reader   index reader (must have term vectors with positions
      *                 for {@code field}).
+     * @param sideDir  directory for the output files.
      * @param field    indexed field name.
      * @param lexicon  FST lexicon mapping terms to integer ids;
      *                 id {@code 0} should be reserved as a sentinel
@@ -180,14 +180,14 @@ public final class TermRail implements Closeable {
      * @throws IOException if an I/O error occurs during reading or writing.
      */
     public static void build(
-        final Path dataDir,
         final IndexReader reader,
+        final Path sideDir,
         final String field,
         final TermLexicon lexicon,
         Report report
     ) throws IOException {
-        Objects.requireNonNull(dataDir, "dataDir");
         Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
         Objects.requireNonNull(lexicon, "lexicon");
         if (report == null) report = Report.ReportNull.INSTANCE;
@@ -196,7 +196,7 @@ public final class TermRail implements Closeable {
             throw new IllegalArgumentException("field \"" + field + "\" has no term vectors");
         }
 
-        final Path offFinal = offPath(dataDir, field);
+        final Path offFinal = offPath(sideDir, field);
         IOUtil.ensureAbsent(offFinal);
         final Path offTmp = IOUtil.tmpPath(offFinal);
         IOUtil.deleteIfExists(offTmp);
@@ -224,7 +224,7 @@ public final class TermRail implements Closeable {
             offsetsWriter.put(0L, offsets, 0, offsets.length);
         }
 
-        final Path datFinal = datPath(dataDir, field);
+        final Path datFinal = datPath(sideDir, field);
         IOUtil.ensureAbsent(datFinal);
         final Path datTmp = IOUtil.tmpPath(datFinal);
         IOUtil.deleteIfExists(datTmp);
@@ -317,15 +317,15 @@ public final class TermRail implements Closeable {
      * offsets, or modification times.
      * </p>
      *
-     * @param indexDir Lucene directory
+     * @param sideDir Lucene directory
      * @param field indexed field name
      * @return {@code true} if both rail files exist as regular files
      */
-    public static boolean exists(final Path indexDir, final String field) {
-        Objects.requireNonNull(indexDir, "indexDir");
+    public static boolean exists(final Path sideDir, final String field) {
+        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
-        return Files.isRegularFile(datPath(indexDir, field))
-            && Files.isRegularFile(offPath(indexDir, field));
+        return Files.isRegularFile(datPath(sideDir, field))
+            && Files.isRegularFile(offPath(sideDir, field));
     }
 
     /**
@@ -336,10 +336,10 @@ public final class TermRail implements Closeable {
     }
 
     /**
-     * Returns the Lucene directory from which this rail was opened.
+     * Returns the directory from which this rail was opened.
      */
-    public Path indexDir() {
-        return dataDir;
+    public Path sideDir() {
+        return sideDir;
     }
 
     /**

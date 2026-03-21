@@ -27,8 +27,6 @@ import java.util.Locale;
  * </ul>
  */
 public final class ThemeTermsDemo {
-    /** Default number of token-balanced parts. */
-    private static final int DEFAULT_PARTS = -1;
 
     /** Default number of displayed terms. */
     private static final int DEFAULT_TOP_K = 50;
@@ -43,9 +41,8 @@ public final class ThemeTermsDemo {
         }
         */
 
-        // final Path indexPath = Path.of("D:\\code\\piaget-labo\\lucene\\test");
-        final Path indexPath = Path.of("D:\\code\\piaget-labo\\lucene\\piaget");
-        final String field = "text";
+        final Path indexPath = Path.of("D:\\code\\alix\\web\\lucene\\piaget");
+        final String field = "content";
         final int topK = (args.length >= 4) ? Integer.parseInt(args[3]) : DEFAULT_TOP_K;
 
 
@@ -55,20 +52,18 @@ public final class ThemeTermsDemo {
 
         
         
-        ensureLexicon(indexPath, field);
-        ensureFieldStats(indexPath, field);
 
         try (
-            FSDirectory dir = FSDirectory.open(indexPath);
-            DirectoryReader reader = DirectoryReader.open(dir)
+            final FSDirectory dir = FSDirectory.open(indexPath);
+            final DirectoryReader luceneReader = DirectoryReader.open(dir);
+            final TermLexicon lexicon = TermLexicon.openOrBuild(luceneReader, indexPath, field);
         ) {
-            final TermLexicon lexicon = TermLexicon.open(indexPath, field);
-            final FieldStats fieldStats = FieldStats.open(indexPath, field);
-            final ThemeTerms themeTerms = new ThemeTerms(reader, lexicon, fieldStats);
+            final FieldStats fieldStats = FieldStats.openOrBuild(luceneReader, indexPath, field);
+            final ThemeTerms themeTerms = new ThemeTerms(luceneReader, lexicon, fieldStats);
             final TermStats stats = new TermStats(field, lexicon.vocabSize());
             final int maxDoc = fieldStats.maxDoc();
 
-            List<TermScorer> scorers = List.of(new TermScorer.BM25(), new TermScorer.BM25(1.3), new TermScorer.G(), new TermScorer.Jaccard());
+            List<TermScorer> scorers = List.of(new TermScorer.BM25(0.8), new TermScorer.BM25(1), new TermScorer.G(), new TermScorer.Jaccard());
             // scorers[1] = new TermScorer.G();
             // scorers[2] = new TermScorer.Jaccard();
             
@@ -76,49 +71,8 @@ public final class ThemeTermsDemo {
                 System.out.println("\n\n" + scorer.getClass().getSimpleName()+ "\n");
                 themeTerms.score(stats, scorer);
                 printTopScores(lexicon, stats.scores(), topK);
-                
-                /*
-                System.out.println("\n\n");
-                final int partCount = fieldStats.maxDoc()/10;
-                final long[] partTokenCounts = new long[partCount];
-                final int[] partByDocId = ThemeTerms.quantiles(
-                    fieldStats,
-                    naturalOrder(fieldStats.maxDoc()),
-                    partTokenCounts
-                );
-                themeTerms.score(stats, scorer, partByDocId, partTokenCounts);
-                printTopScores(lexicon, stats.scores(), topK);
-                */
             }
 
-        }
-    }
-
-    /**
-     * Ensures that the term lexicon exists for one field.
-     *
-     * @param indexPath Lucene index directory
-     * @param field indexed field
-     * @throws IOException if creation fails
-     */
-    private static void ensureLexicon(final Path indexPath, final String field) throws IOException {
-        if (!TermLexicon.exists(indexPath, field)) {
-            System.out.println("Lexicon files not found for field '" + field + "'. Building them...");
-            TermLexicon.build(indexPath, field);
-        }
-    }
-
-    /**
-     * Ensures that the field statistics exist for one field.
-     *
-     * @param indexPath Lucene index directory
-     * @param field indexed field
-     * @throws IOException if creation fails
-     */
-    private static void ensureFieldStats(final Path indexPath, final String field) throws IOException {
-        if (!FieldStats.exists(indexPath, field)) {
-            System.out.println("FieldStats file not found for field '" + field + "'. Building it...");
-            FieldStats.build(indexPath, field);
         }
     }
 
@@ -191,13 +145,5 @@ public final class ThemeTermsDemo {
         }
     }
 
-    /**
-     * Prints usage and exits with code 2.
-     */
-    private static void usageAndExit() {
-        System.err.println("Usage:");
-        System.err.println("  ThemeTermsDemo <indexPath> <field>");
-        System.err.println("  ThemeTermsDemo <indexPath> <field> <partCount> <topK>");
-        System.exit(2);
-    }
+
 }

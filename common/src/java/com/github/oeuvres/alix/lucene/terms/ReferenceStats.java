@@ -54,15 +54,18 @@ public interface ReferenceStats {
 
     /**
      * Returns the total token count in the reference population.
-     * <p>
-     * This is the reference marginal usually noted {@code N0} when the reference
-     * is used directly, or {@code T} when it represents the full population from
-     * which a complement will be derived.
-     * </p>
      *
      * @return total token count in the reference population
      */
     long fieldTokens();
+    
+    /**
+     * Returns the total positions count, including tokens and possible non indexed stopwords.
+     *
+     * @return total token count in the reference population
+     */
+    long fieldWidth();
+
 
     /**
      * Returns the document frequency of one term in the reference population.

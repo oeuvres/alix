@@ -48,8 +48,10 @@ import com.github.oeuvres.alix.util.Report;
  */
 public final class FlucText extends Fluc
 {
-    /** Frozen reader, held for sidecar building and ThemeTerms construction. */
+    /** Frozen reader, held for sidecar building and rail construction. */
     private final IndexReader reader;
+    /** Directory for sidecar file access in subclasses. */
+    protected final Path sideDir;
 
     private final LazyResource<FieldStats> fieldStatsHolder = new LazyResource<>();
     private final LazyResource<TermLexicon> lexiconHolder = new LazyResource<>();
@@ -72,23 +74,23 @@ public final class FlucText extends Fluc
      * @param fi       segment-level field metadata
      * @param stored   whether the field has stored values
      * @param docs     number of documents with at least one indexed term
-     * @param indexDir Lucene index directory
+     * @param sideDir Lucene index directory
      * @param reader   frozen index reader
      */
     public FlucText(
+        final IndexReader reader,
         final FieldInfo fi,
         final boolean stored,
         final int docs,
-        final Path indexDir,
-        final IndexReader reader
+        final Path sideDir
     ) {
-        super(fi, stored, docs, indexDir);
+        super(fi, stored, docs);
         this.reader = reader;
+        this.sideDir = sideDir;
     }
 
-    // ================================================================
-    // Resource accessors
-    // ================================================================
+    /** Lucene index directory. */
+    public Path sideDir() { return sideDir; }
 
     /**
      * Immutable reference statistics for this field.
@@ -100,9 +102,9 @@ public final class FlucText extends Fluc
     public synchronized FieldStats fieldStats()
     {
         return fieldStatsHolder.get(
-            () -> FieldStats.exists(indexDir, name()),
-            () -> FieldStats.build(indexDir, reader, name(), Report.ReportNull.INSTANCE),
-            () -> FieldStats.open(indexDir, reader, name())
+            () -> FieldStats.exists(sideDir, name()),
+            () -> FieldStats.build(reader, sideDir, name(), Report.ReportNull.INSTANCE),
+            () -> FieldStats.open(reader, sideDir, name())
         );
     }
 
@@ -116,9 +118,9 @@ public final class FlucText extends Fluc
     public synchronized TermLexicon termLexicon()
     {
         return lexiconHolder.get(
-            () -> TermLexicon.exists(indexDir, name()),
-            () -> TermLexicon.build(indexDir, reader, name()),
-            () -> TermLexicon.open(indexDir, name())
+            () -> TermLexicon.exists(sideDir, name()),
+            () -> TermLexicon.build(reader, sideDir, name()),
+            () -> TermLexicon.open(sideDir, name())
         );
     }
 
@@ -134,9 +136,9 @@ public final class FlucText extends Fluc
     {
         final TermLexicon lex = termLexicon();
         return railHolder.get(
-            () -> TermRail.exists(indexDir, name()),
-            () -> TermRail.build(indexDir, reader, name(), lex, Report.ReportNull.INSTANCE),
-            () -> TermRail.open(indexDir, name())
+            () -> TermRail.exists(sideDir, name()),
+            () -> TermRail.build(reader, sideDir, name(), lex, Report.ReportNull.INSTANCE),
+            () -> TermRail.open(sideDir, name())
         );
     }
 

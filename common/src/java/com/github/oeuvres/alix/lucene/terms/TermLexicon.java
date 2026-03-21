@@ -1,11 +1,9 @@
 package com.github.oeuvres.alix.lucene.terms;
 
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -161,20 +159,20 @@ public final class TermLexicon implements Closeable {
      * </p>
      *
      * @param reader   snapshot reader that defines the term universe and its lexicographic order
-     * @param dataDir Lucene directory that will receive the {@code <field>.terms.*} files
+     * @param sideDir Lucene directory that will receive the {@code <field>.terms.*} files
      * @param field    indexed field name
      * @throws IOException              if the field has no terms, a final target file already exists, or writing fails
      * @throws NullPointerException     if any argument is null
      * @throws IllegalArgumentException if the field has no terms in the reader
      */
-    public static void build(final IndexReader reader, final Path dataDir, final String field) throws IOException {
+    public static void build(final IndexReader reader, final Path sideDir, final String field) throws IOException {
         Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(dataDir, "dataDir");
+        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
     
-        final Path fstFinal = fstPath(dataDir, field);
-        final Path datFinal = datPath(dataDir, field);
-        final Path offFinal = offPath(dataDir, field);
+        final Path fstFinal = fstPath(sideDir, field);
+        final Path datFinal = datPath(sideDir, field);
+        final Path offFinal = offPath(sideDir, field);
     
         IOUtil.ensureAbsent(fstFinal);
         IOUtil.ensureAbsent(datFinal);
@@ -399,19 +397,19 @@ public final class TermLexicon implements Closeable {
      * The reader is used only for building; it is not closed by this method.
      * </p>
      *
-     * @param dataDir Lucene directory that will receive the sidecar files
      * @param reader   snapshot reader for building (ignored if files exist)
+     * @param sideDir Lucene directory that will receive the sidecar files
      * @param field    indexed field name
      * @return opened lexicon; caller should close when done
      * @throws IOException if building or opening fails
      */
-    public static TermLexicon openOrBuild(final IndexReader reader, final Path dataDir, final String field)
+    public static TermLexicon openOrBuild(final IndexReader reader, final Path sideDir, final String field)
         throws IOException
     {
-        if (!exists(dataDir, field)) {
-            build(reader, dataDir, field);
+        if (!exists(sideDir, field)) {
+            build(reader, sideDir, field);
         }
-        return open(dataDir, field);
+        return open(sideDir, field);
     }
 
     /**

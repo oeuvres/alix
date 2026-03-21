@@ -90,9 +90,6 @@ public abstract class Fluc implements Closeable
      */
     private final int docs;
 
-    /** Lucene index directory (for sidecar file access in subclasses). */
-    protected final Path indexDir;
-
     // ================================================================
     // Constructor
     // ================================================================
@@ -110,13 +107,12 @@ public abstract class Fluc implements Closeable
      * @param fi      segment-level field metadata
      * @param stored  whether the field has stored values
      * @param docs    number of documents with at least one value
-     * @param indexDir Lucene index directory
+     * @param sideDir Lucene index directory
      */
     protected Fluc(
         final FieldInfo fi,
         final boolean stored,
-        final int docs,
-        final Path indexDir
+        final int docs
     ) {
         this.name = fi.name;
         this.indexOptions = fi.getIndexOptions();
@@ -127,7 +123,6 @@ public abstract class Fluc implements Closeable
         this.hasNorms = fi.hasNorms();
         this.stored = stored;
         this.docs = docs;
-        this.indexDir = indexDir;
     }
 
     // ================================================================
@@ -189,9 +184,6 @@ public abstract class Fluc implements Closeable
 
     /** True if the field is indexed (inverted). */
     public boolean indexed() { return indexOptions != IndexOptions.NONE; }
-
-    /** Lucene index directory. */
-    public Path indexDir() { return indexDir; }
 
     /** Lucene index options ({@code NONE}, {@code DOCS}, {@code DOCS_AND_FREQS}, …). */
     public IndexOptions indexOptions() { return indexOptions; }
@@ -260,13 +252,13 @@ public abstract class Fluc implements Closeable
      * </p>
      *
      * @param reader   frozen directory reader
-     * @param indexDir Lucene index directory (for sidecar file access)
+     * @param sideDir directory for sidecar file access
      * @return unmodifiable field name → {@code Fluc} map
      * @throws IOException if segment metadata or stored-field probing fails
      */
     public static Map<String, Fluc> inferFields(
         final DirectoryReader reader,
-        final Path indexDir
+        final Path sideDir
     ) throws IOException
     {
         // --- pass 1: collect FieldInfo across all segments ---
@@ -311,12 +303,17 @@ public abstract class Fluc implements Closeable
             final Fluc fluc;
             if (hasPositions) {
                 fluc = new FlucText(
-                    fieldIndo, stored, docs, indexDir, reader);
+                    reader,
+                    fieldIndo, 
+                    stored, 
+                    docs, 
+                    sideDir
+                );
             }
             // future: else if (hasPoints) fluc = new FlucPoint(fi, stored, docs, indexDir);
             // future: else if (hasDocValues) fluc = new FlucFacet(fi, stored, docs, indexDir, reader);
             else {
-                fluc = new FlucStored(fieldIndo, stored, docs, indexDir);
+                fluc = new FlucStored(fieldIndo, stored, docs);
             }
 
             map.put(fieldIndo.name, fluc);
@@ -438,23 +435,4 @@ public abstract class Fluc implements Closeable
         return doc.getField(fieldName) != null;
     }
 
-    // ================================================================
-    // Minimal stored-only implementation
-    // ================================================================
-
-    /**
-     * A field with no indexed terms, no doc values, no points —
-     * only stored values. Holds no resources.
-     */
-    static final class FlucStored extends Fluc
-    {
-        FlucStored(
-            final FieldInfo fi,
-            final boolean stored,
-            final int docs,
-            final Path indexDir
-        ) {
-            super(fi, stored, docs, indexDir);
-        }
-    }
 }
