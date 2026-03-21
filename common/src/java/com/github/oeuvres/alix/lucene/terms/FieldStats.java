@@ -36,12 +36,12 @@ import java.util.Objects;
  *
  * <h2>Stored statistics</h2>
  * <ul>
- * <li><b>{@code docCount}</b>: number of documents that contain at least one term in the field</li>
+ * <li><b>{@code fieldDocs}</b>: number of documents that contain at least one term in the field</li>
  * <li><b>{@code maxDoc}</b>: Lucene document-address space size for the frozen reader snapshot</li>
- * <li><b>{@code totalTermFreq}</b>: total number of tokens in the field</li>
- * <li><b>{@code docFreqs[termId]}</b>: number of documents that contain the term</li>
+ * <li><b>{@code fieldTokens}</b>: total number of tokens in the field</li>
+ * <li><b>{@code termDocs[termId]}</b>: number of documents that contain the term</li>
  * <li><b>{@code termFreqs[termId]}</b>: total number of occurrences of the term in the field</li>
- * <li><b>{@code posLens[docId]}</b>: exact token count of the field for one Lucene document id</li>
+ * <li><b>{@code docWidths[docId]}</b>: exact token count of the field for one Lucene document id</li>
  * </ul>
  *
  * <h2>Intended use</h2>
@@ -60,12 +60,12 @@ import java.util.Objects;
  * <h2>Exact document lengths</h2>
  * <p>
  * Exact field lengths are derived directly from the postings of the indexed field.
- * For each live document, {@code posLens[docId]} is the sum of all term frequencies of that
+ * For each live document, {@code docWidths[docId]} is the sum of all term frequencies of that
  * field in that document.
  * </p>
  * <p>
  * This avoids any dependency on a separate length field and guarantees consistency with
- * {@code totalTermFreq}, {@code termFreqs} and {@code docFreqs}.
+ * {@code fieldTokens}, {@code termFreqs} and {@code termDocs}.
  * </p>
  *
  * <h2>Persistence format</h2>
@@ -79,17 +79,16 @@ import java.util.Objects;
  * Binary layout, in order:
  * </p>
  * <ol>
- * <li>4-byte magic</li>
+ * <li>4-byte magic ({@code 0x46535453}, ASCII "FSTS")</li>
  * <li>4-byte format version</li>
- * <li>4-byte UTF-8 field-name byte length</li>
- * <li>field-name UTF-8 bytes</li>
- * <li>4-byte {@code vocabSize}</li>
- * <li>4-byte {@code docCount}</li>
+ * <li>4-byte UTF-8 field-name byte length, followed by the field-name UTF-8 bytes</li>
  * <li>4-byte {@code maxDoc}</li>
- * <li>8-byte {@code totalTermFreq}</li>
- * <li>{@code vocabSize} times 4-byte {@code docFreq}</li>
- * <li>{@code vocabSize} times 8-byte {@code termFreq}</li>
- * <li>{@code maxDoc} times 4-byte {@code docLen}</li>
+ * <li>{@code maxDoc} times 4-byte {@code docWidth} (indexed by global doc id)</li>
+ * <li>4-byte {@code vocabSize}</li>
+ * <li>4-byte {@code fieldDocs}</li>
+ * <li>8-byte {@code fieldTokens}</li>
+ * <li>{@code vocabSize} times 4-byte {@code termDoc} (document frequency per term id)</li>
+ * <li>{@code vocabSize} times 8-byte {@code termFreq} (total frequency per term id)</li>
  * </ol>
  * <p>
  * Multi-byte values are written in big-endian order through {@link DataOutputStream}.
@@ -102,15 +101,15 @@ import java.util.Objects;
  * artifacts were written from the same frozen index snapshot.
  * </p>
  * <p>
- * The persisted document-length array is indexed by Lucene global {@code docId} in the same frozen
+ * The persisted document-width array is indexed by Lucene global {@code docId} in the same frozen
  * reader snapshot, on the range {@code [0, maxDoc)}.
  * </p>
  *
  * <h2>Performance model</h2>
  * <p>
- * The persisted file is a compact binary artifact on disk, but {@link #open(Path, String)} loads
- * the numeric arrays into ordinary heap arrays. This is intentional: repeated per-term scoring and
- * repeated {@code docId -> docLen} lookup are typically faster and more predictable on plain
+ * The persisted file is a compact binary artifact on disk, but {@link #open(IndexReader, Path, String)}
+ * loads the numeric arrays into ordinary heap arrays. This is intentional: repeated per-term scoring
+ * and repeated {@code docId -> docWidth} lookup are typically faster and more predictable on plain
  * primitive arrays than on memory-mapped buffers.
  * </p>
  *
@@ -138,10 +137,10 @@ public final class FieldStats implements ReferenceStats
     /** Lucene document-address space size for this frozen reader snapshot. */
     private final int maxDoc;
     
-    /** Per doc, count of positions used */
+    /** Per-document field width (max position + 1), indexed by global doc id; 0 for docs without the field. */
     private final int[] docWidths;
     
-    /** For the, sum of max positions */
+    /** Sum of all {@code docWidths}: total position count across the field. */
     private final long fieldWidth;
     
     /** Number of distinct terms in the field. */
@@ -160,18 +159,18 @@ public final class FieldStats implements ReferenceStats
     private final long fieldTokens;
     
     /**
-     * Creates an opened immutable statistics object.
+     * Creates an immutable statistics object from already-loaded arrays.
      *
      * @param dataDir      Lucene directory that contains the index and the stats file
-     * @param field         indexed field
-     * @param maxDoc        Lucene document-address space size
-     * @param docWidths     exact field token counts by global doc id
-     * @param fieldWidth    sum of all docWidths
-     * @param vocabSize     number of distinct terms
-     * @param fieldDocs     number of documents that contain the field
-     * @param fieldTokens   total number of tokens in the field
-     * @param termDocs      per-term document frequencies
-     * @param termFreqs     per-term total term frequencies
+     * @param field        indexed field
+     * @param maxDoc       Lucene document-address space size
+     * @param docWidths    exact field token counts by global doc id
+     * @param fieldWidth   sum of all docWidths
+     * @param vocabSize    number of distinct terms
+     * @param fieldDocs    number of documents that contain the field
+     * @param fieldTokens  total number of tokens in the field
+     * @param termDocs     per-term document frequencies
+     * @param termFreqs    per-term total term frequencies
      */
     private FieldStats(
             final Path dataDir,
@@ -203,7 +202,7 @@ public final class FieldStats implements ReferenceStats
      * This excludes object headers, references, the field string and JVM-specific overheads.
      * </p>
      *
-     * @return approximate bytes used by {@code docFreqs}, {@code termFreqs} and {@code posLens}
+     * @return approximate bytes used by {@code docWidths}, {@code termDocs} and {@code termFreqs}
      */
     public long arraysBytes()
     {
@@ -217,12 +216,14 @@ public final class FieldStats implements ReferenceStats
      * Builds the statistics file for one field from an already opened snapshot reader.
      * <p>
      * This overload is useful when the caller already controls which Lucene snapshot is being read.
+     * The file is written atomically via a temporary path: the final {@code <field>.stats} file
+     * appears only after the stream is fully closed and flushed.
      * </p>
      *
-     * @param dataDir directory that will receive the {@code <field>.stats} file
-     * @param reader  snapshot reader that defines the field statistics
-     * @param field   indexed field name
-     * @param report  progress reporter; may be {@code null}
+     * @param reader   snapshot reader that defines the field statistics
+     * @param dataDir  directory that will receive the {@code <field>.stats} file
+     * @param field    indexed field name
+     * @param report   progress reporter; may be {@code null}
      * @throws IOException if the field has no terms, if term frequencies are unavailable,
      *                     if a target file already exists, or if writing fails
      */
@@ -232,11 +233,11 @@ public final class FieldStats implements ReferenceStats
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
         if (report == null) report = Report.ReportNull.INSTANCE;
-        // get data
+        // gather data
         final int maxDoc = reader.maxDoc();
         final int[] docWidths = docWidths(reader, field, report);
-        ByTermStats byTerm = byTermStats(reader, field, report);
-        // write data
+        final ByTermStats byTerm = byTermStats(reader, field, report);
+        // write to tmp, close stream fully, then rename atomically
         final Path statsPath = statsPath(dataDir, field);
         IOUtil.ensureAbsent(statsPath);
         final Path tmp = IOUtil.tmpPath(statsPath);
@@ -247,12 +248,12 @@ public final class FieldStats implements ReferenceStats
             out.writeInt(MAGIC);
             out.writeInt(VERSION);
             IOUtil.writeUtf8(out, field);
-            // by doc stats
+            // by-doc stats
             out.writeInt(maxDoc);
             for (int docWidth : docWidths) {
                 out.writeInt(docWidth);
             }
-            // by term stats
+            // by-term stats
             out.writeInt(byTerm.vocabSize);
             out.writeInt(byTerm.fieldDocs);
             out.writeLong(byTerm.fieldTokens);
@@ -262,6 +263,13 @@ public final class FieldStats implements ReferenceStats
             for (long termFreq : byTerm.termFreqs) {
                 out.writeLong(termFreq);
             }
+            // stream is flushed and closed by try-with-resources before the rename below
+        } catch (IOException | RuntimeException e) {
+            IOUtil.deleteIfExists(tmp);
+            throw e;
+        }
+        // rename only after the stream is fully closed and flushed
+        try {
             IOUtil.moveTemp(tmp, statsPath);
         } catch (IOException | RuntimeException e) {
             IOUtil.deleteIfExists(tmp);
@@ -286,7 +294,7 @@ public final class FieldStats implements ReferenceStats
     /**
      * Returns a defensive copy of the document-frequency vector.
      *
-     * @return copied {@code docFreq} array
+     * @return copied {@code termDocs} array, indexed by dense term id
      */
     public int[] docFreqsCopy()
     {
@@ -294,7 +302,14 @@ public final class FieldStats implements ReferenceStats
     }
     
     /**
-     * Returns the number of token positions of the field for one global Lucene document id.
+     * Returns the field width (max position + 1) for one global Lucene document id.
+     * <p>
+     * Returns {@code 0} for documents that do not contain the field.
+     * </p>
+     *
+     * @param docId global Lucene document id in {@code [0, maxDoc)}
+     * @return number of token positions in the field for that document, or {@code 0}
+     * @throws IllegalArgumentException if {@code docId} is out of range
      */
     public int docWidth(final int docId)
     {
@@ -352,8 +367,6 @@ public final class FieldStats implements ReferenceStats
         return fieldTokens;
     }
     
-    
-    
     /**
      * Returns the Lucene directory from which these statistics were opened.
      *
@@ -388,7 +401,7 @@ public final class FieldStats implements ReferenceStats
      */
     public static FieldStats open(final IndexReader reader, final Path dataDir, final String field) throws IOException
     {
-        Objects.requireNonNull(dataDir, "indexDir");
+        Objects.requireNonNull(dataDir, "dataDir");
         Objects.requireNonNull(field, "field");
         
         final Path path = statsPath(dataDir, field);
@@ -412,7 +425,7 @@ public final class FieldStats implements ReferenceStats
                 throw new IOException(
                         "Field mismatch in stats file: requested '" + field + "', found '" + fieldFound + "'");
             }
-            // by doc stats
+            // by-doc stats
             final int maxDoc = in.readInt();
             if (maxDoc != reader.maxDoc()) {
                 throw new IOException("Read maxDoc=" + maxDoc + " inconsistent with Lucene IndexReader.maxDoc()=" + reader.maxDoc());
@@ -422,13 +435,12 @@ public final class FieldStats implements ReferenceStats
             for (int docId = 0; docId < maxDoc; docId++) {
                 final int value = in.readInt();
                 if (value < 0) {
-                    throw new IOException("Invalid width=" + value +" for docId=" + docId + ": " + value);
+                    throw new IOException("Invalid width=" + value + " for docId=" + docId);
                 }
                 docWidths[docId] = value;
                 fieldWidth += value;
             }
-
-            // by term stats
+            // by-term stats
             final int vocabSize = in.readInt();
             if (vocabSize < 0) {
                 throw new IOException("Invalid vocabSize in stats file: " + vocabSize);
@@ -438,14 +450,12 @@ public final class FieldStats implements ReferenceStats
             final long fieldTokens = in.readLong();
             final int[] termDocs = new int[vocabSize];
             for (int termId = 0; termId < vocabSize; termId++) {
-                final int value = in.readInt();
-                termDocs[termId] = value;
+                termDocs[termId] = in.readInt();
             }
             
             final long[] termFreqs = new long[vocabSize];
             for (int termId = 0; termId < vocabSize; termId++) {
-                final long value = in.readLong();
-                termFreqs[termId] = value;
+                termFreqs[termId] = in.readLong();
             }
             if (in.read() != -1) {
                 throw new IOException("Trailing bytes in stats file: " + path);
@@ -473,7 +483,7 @@ public final class FieldStats implements ReferenceStats
      * using an already opened reader.
      *
      * @param reader   snapshot reader for building (ignored if file exists)
-     * @param dataDir Lucene directory that will receive the sidecar file
+     * @param dataDir  Lucene directory that will receive the sidecar file
      * @param field    indexed field name
      * @param report   progress reporter; may be {@code null}
      * @return opened immutable field statistics
@@ -505,7 +515,7 @@ public final class FieldStats implements ReferenceStats
     /**
      * Returns a defensive copy of the total-term-frequency vector.
      *
-     * @return copied {@code termFreq} array
+     * @return copied {@code termFreqs} array, indexed by dense term id
      */
     public long[] termFreqsCopy()
     {
@@ -522,7 +532,22 @@ public final class FieldStats implements ReferenceStats
     {
         return vocabSize;
     }
-    
+
+    /**
+     * Builds the per-document width array for one field from a snapshot reader.
+     * <p>
+     * For each live document, the width is defined as the highest position index seen across
+     * all terms of the field, plus one. Documents without the field retain their default value
+     * of {@code 0}.
+     * </p>
+     *
+     * @param reader  snapshot reader
+     * @param field   indexed field name
+     * @param report  progress reporter; may be {@code null}
+     * @return array of length {@code reader.maxDoc()}, indexed by global doc id
+     * @throws IOException              if term or position iteration fails
+     * @throws IllegalArgumentException if the field exists but has no positions
+     */
     public static int[] docWidths(final IndexReader reader, final String field, Report report)
         throws IOException
     {
@@ -573,7 +598,6 @@ public final class FieldStats implements ReferenceStats
                 for (int localDocId = pe.nextDoc(); localDocId != PostingsEnum.NO_MORE_DOCS; localDocId = pe
                         .nextDoc())
                 {
-                    
                     if (liveDocs != null && !liveDocs.get(localDocId)) {
                         deletedPostingsSkipped++;
                         continue;
@@ -645,10 +669,24 @@ public final class FieldStats implements ReferenceStats
         return posLen;
     }
     
+    /** Aggregate term-level statistics returned by {@link #byTermStats}. */
     public record ByTermStats(int vocabSize, int fieldDocs, long fieldTokens, int[] termDocs, long[] termFreqs){}
     
-    
-    public static ByTermStats byTermStats (
+    /**
+     * Collects per-term document frequencies and total term frequencies for one field.
+     * <p>
+     * The arrays in the returned record are indexed by dense term id in Lucene's merged
+     * lexicographic order, matching the order produced by {@link TermLexicon} for the same snapshot.
+     * </p>
+     *
+     * @param reader  snapshot reader
+     * @param field   indexed field name
+     * @param report  progress reporter; must not be {@code null}
+     * @return aggregate term statistics
+     * @throws IOException              if term iteration fails or term frequencies are unavailable
+     * @throws IllegalArgumentException if the field does not exist or has no terms
+     */
+    public static ByTermStats byTermStats(
         final IndexReader reader, 
         final String field,
         Report report
