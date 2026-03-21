@@ -45,10 +45,10 @@ public final class TermSuggestDemo
 
         try (
             final FSDirectory dir = FSDirectory.open(indexPath);
-            final DirectoryReader reader = DirectoryReader.open(dir);
-            final TermLexicon lexicon = TermLexicon.openOrBuild(reader, indexPath, field);
-            final FieldStats stats = FieldStats.openOrBuild(reader, indexPath, field, report);
+            final DirectoryReader luceneReader = DirectoryReader.open(dir);
+            final TermLexicon lexicon = TermLexicon.openOrBuild(luceneReader, indexPath, field);
         ) {
+            final FieldStats stats = FieldStats.openOrBuild(luceneReader, indexPath, field, report);
             
 
             System.err.printf("Lexicon: %,d terms, FST heap %,d bytes%n",
@@ -67,7 +67,6 @@ public final class TermSuggestDemo
             System.err.println("Type a query, empty line or Ctrl-D to quit.");
             System.err.printf("  1–%d chars → prefix search%n", TermSuggest.INFIX_THRESHOLD - 1);
             System.err.printf("  %d+  chars → infix (substring) search%n", TermSuggest.INFIX_THRESHOLD);
-            System.out.println(Char.toAscii("Parce que") + Char.toAscii(" Prénom, nom"));
             System.err.println();
 
             final BufferedReader reader = new BufferedReader(

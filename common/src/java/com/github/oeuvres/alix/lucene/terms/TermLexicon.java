@@ -503,7 +503,7 @@ public final class TermLexicon implements Closeable {
             new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
         final IntsRefBuilder ints = new IntsRefBuilder();
     
-        int id = 1;
+        int termId = 1;
         int datPos = 0;
     
         final ByteBuffer offBuf = ByteBuffer.allocate(OFF_BUF_INTS * 4).order(ByteOrder.nativeOrder());
@@ -519,14 +519,14 @@ public final class TermLexicon implements Closeable {
             final TermsEnum te = terms.iterator();
             BytesRef term;
             while ((term = te.next()) != null) {
-                if (id == Integer.MAX_VALUE) {
+                if (termId == Integer.MAX_VALUE) {
                     throw new IOException("Too many terms for int term ids");
                 }
                 if (datPos > Integer.MAX_VALUE - term.length) {
                     throw new IOException("Term bytes exceed 2 GiB; 32-bit offsets insufficient");
                 }
     
-                compiler.add(Util.toIntsRef(term, ints), (long) id);
+                compiler.add(Util.toIntsRef(term, ints), (long) termId);
     
                 datOs.write(term.bytes, term.offset, term.length);
                 datPos += term.length;
@@ -537,7 +537,7 @@ public final class TermLexicon implements Closeable {
                     offBuf.clear();
                 }
                 offBuf.putInt(datPos);
-                id++;
+                termId++;
             }
     
             if (offBuf.position() > 0) {

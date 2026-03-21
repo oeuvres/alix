@@ -675,8 +675,9 @@ public final class FieldStats implements ReferenceStats
     /**
      * Collects per-term document frequencies and total term frequencies for one field.
      * <p>
-     * The arrays in the returned record are indexed by dense term id in Lucene's merged
-     * lexicographic order, matching the order produced by {@link TermLexicon} for the same snapshot.
+     * The arrays in the returned record are indexed by dense term id, matching the order produced by
+     * {@link TermLexicon} for the same snapshot. Iterates the {@link TermsEnum} in lexicographic order, 
+     * to each term starting from 1. Id 0 is reserved as an absent-term sentinel.
      * </p>
      *
      * @param reader  snapshot reader
@@ -708,7 +709,7 @@ public final class FieldStats implements ReferenceStats
         final int vocabSize = vocabSize(terms, report);
         int[] termDocs = new int[vocabSize];
         long[] termFreqs = new long[vocabSize];
-        int termId = 0;
+        int termId = 1; // Important, termId=0 means empty position
         final TermsEnum te = terms.iterator();
         @SuppressWarnings("unused")
         BytesRef term;
@@ -750,11 +751,11 @@ public final class FieldStats implements ReferenceStats
      * @return vocabulary size
      * @throws IOException if term iteration fails
      */
-    public static int vocabSize(final IndexReader reader, final String field, final Report report) throws IOException
+    public static int vocabSize(final IndexReader reader, final String field, Report report) throws IOException
     {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
-        Objects.requireNonNull(report, "report");
+        if (report == null) report = Report.ReportNull.INSTANCE;
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
             report.warn("No terms for field=" + field);
@@ -773,10 +774,10 @@ public final class FieldStats implements ReferenceStats
             throw new ArrayIndexOutOfBoundsException("vocabSize=" + size + ", bigger than array size limit=" + Integer.MAX_VALUE);
         }
         if (size >= 0L) {
-            return (int)size;
+            return (int)size + 1;
         }
         report.debug("No terms.size() for field=" + report.getAttribute("field", "?"));
-        size = 0L;
+        size = 1L;
         final TermsEnum te = terms.iterator();
         for (BytesRef term = te.next(); term != null; term = te.next()) {
             size++;
@@ -784,8 +785,8 @@ public final class FieldStats implements ReferenceStats
         if (size >= Integer.MAX_VALUE) {
             throw new ArrayIndexOutOfBoundsException("vocabSize=" + size + ", bigger than array size limit=" + Integer.MAX_VALUE);
         }
-        if (size == 0L) {
-            report.warn("vacabSize=0 field=" + report.getAttribute("field", "?"));
+        if (size == 1L) {
+            report.warn("No terms field=" + report.getAttribute("field", "?"));
         }
         return (int)size;
     }
