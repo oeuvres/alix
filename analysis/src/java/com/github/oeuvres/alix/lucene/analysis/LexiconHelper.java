@@ -13,7 +13,6 @@ import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.common.Upos;
-import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.Report;

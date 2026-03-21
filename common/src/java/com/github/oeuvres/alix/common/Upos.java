@@ -156,7 +156,7 @@ public enum Upos implements Tag
     NUM(0xA0),
     /** Ordinal */
     NUMord(0xA1),
-    /** https://universaldependencies.org/u/pos/SYM.html  */
+    /** https://universaldependencies.org/u/pos/SYM.html */
     SYM(0xA8),
     /** [0-9\-] numbers */
     DIGIT(0x07),
@@ -184,6 +184,7 @@ public enum Upos implements Tag
     {
         this.code = code;
     }
+    
     static public boolean isPunct(final int code)
     {
         return (code == PUNCT.code 
@@ -193,6 +194,12 @@ public enum Upos implements Tag
           || code == PUNCTclause.code
         );
     }
+    
+    static public boolean isNum(final int code)
+    {
+        return (code >= 0xA0 && code <= 0xAF);
+    }
+
     
     static public Upos get(final int code)
     {

@@ -228,7 +228,7 @@ public abstract class TermScorer {
         private final double idfExp;
         
         public BM25() {
-            this(1);
+            this(0.9); // best for Piaget
         }
 
         /**

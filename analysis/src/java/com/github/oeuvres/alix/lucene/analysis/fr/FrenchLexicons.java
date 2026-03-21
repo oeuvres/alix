@@ -33,7 +33,6 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.apache.lucene.analysis.CharArrayMap;

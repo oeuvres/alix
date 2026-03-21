@@ -46,7 +46,7 @@ public class FrenchStopwordsDemo
         
         new Case(
                 "Name",
-                "<p>Les <a href=\"pop\">bons amis</a>, il faut aimer y aller.</p>",
+                "<p>Les 11 <a href=\"pop\">bons amis</a>, il faut aimer y aller.</p>",
                 "explanation")
         
        

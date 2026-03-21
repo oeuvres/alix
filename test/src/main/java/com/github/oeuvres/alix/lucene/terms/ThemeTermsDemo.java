@@ -4,10 +4,8 @@ import com.github.oeuvres.alix.util.TopArray;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Minimal demo for {@link ThemeTerms}.
@@ -63,7 +61,11 @@ public final class ThemeTermsDemo {
             final TermStats stats = new TermStats(field, lexicon.vocabSize());
             final int maxDoc = fieldStats.maxDoc();
 
-            List<TermScorer> scorers = List.of(new TermScorer.BM25(0.8), new TermScorer.BM25(1), new TermScorer.G(), new TermScorer.Jaccard());
+            List<TermScorer> scorers = List.of(
+                new TermScorer.BM25(0.9),
+                new TermScorer.G(),
+                new TermScorer.Jaccard()
+            );
             // scorers[1] = new TermScorer.G();
             // scorers[2] = new TermScorer.Jaccard();
             

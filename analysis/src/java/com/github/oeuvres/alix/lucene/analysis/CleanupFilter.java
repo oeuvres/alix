@@ -263,21 +263,17 @@ public class CleanupFilter extends TokenFilter
         }
 
         // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
-        if (Char.isMath(termAtt.charAt(0))) return false;
-
-        // final char last = termAtt.charAt(len - 1);
-
-
-        /*
-        // Numbers: normalize to a single marker.
-        if (pos == DIGIT.code || pos == NUM.code) {
+        if (Char.isMath(termAtt.charAt(0))) {
+            return false;
+        }
+        
+        // unify numbers
+        if (Upos.isNum(pos)) {
             termAtt.setEmpty().append(NUMBER_MARKER);
             return true;
         }
-        
 
-        */
-        
+        // final char last = termAtt.charAt(len - 1);
 
         // Default: keep token as-is (or rewritten by upstream filters).
         return true;

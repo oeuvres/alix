@@ -197,10 +197,10 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new LemmaFilter(ts, lemmaLexicon);
         // TODO, multi word expression
         
-        // stop words
-        ts = new StopFilter(ts, stopwords);
-        // last filter prepare term to index
+        // delete positions of xml tags and punctuation
         ts = new CleanupFilter(ts);
+        // clean stop words but keep positions
+        ts = new StopFilter(ts, stopwords);
         return ts;
     }
 }

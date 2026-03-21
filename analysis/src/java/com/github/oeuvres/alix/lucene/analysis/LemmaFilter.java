@@ -169,6 +169,12 @@ public final class LemmaFilter extends TokenFilter
         if (posId == XML.code || Upos.isPunct(posId)) {
             return true;
         }
+        // unify numbers
+        if (Upos.isNum(posId)) {
+            termAtt.setLength(0).append("#");
+            return true;
+        }
+        
         // Surface known ?
         final int formId = lex.findFormId(termAtt);
         if (formId < 0) return true;
