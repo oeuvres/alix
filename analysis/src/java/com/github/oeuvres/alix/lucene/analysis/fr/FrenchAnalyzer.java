@@ -33,9 +33,6 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -45,7 +42,6 @@ import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
 import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
@@ -74,11 +70,13 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     final Analyzer canonic;
     final Analyzer observation;
     /** Stopwords list */
-    final CharArraySet stopwords;
+    public final CharArraySet stopwords;
+    /** Words with ending dots */
+    public final CharArraySet brevidots;
     /** Term normalizer */
-    final CharArrayMap<char[]> normalizer;
+    public final CharArrayMap<char[]> normalizer;
     /** Big dic */
-    final LemmaLexicon lemmaLexicon;
+    public final LemmaLexicon lemmaLexicon;
     
     /**
      * Default constructor.
@@ -90,6 +88,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         stopwords = FrenchLexicons.buildStopwords();
         normalizer = FrenchLexicons.buildNormalizer();
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
+        brevidots = FrenchLexicons.buildBrevidots();
         
         canonic = new CanonicAnalyzer();
         ascii = new AsciiAnalyzer();
@@ -130,7 +129,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer();
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = canonicChain(tokenizer);
             return new TokenStreamComponents(tokenizer, ts);
         }
@@ -148,7 +147,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer();
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = tokenizer;
             // keep observations only
             ts = new MarkupZoneFilter(ts, "@data-tei-type=\"observation\"", MarkupZoneFilter.Mode.INCLUDE);
@@ -170,7 +169,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         public TokenStreamComponents createComponents(String field)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer();
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = canonicChain(tokenizer);
             ts = new ASCIIFoldingFilter(ts); // no accents
             return new TokenStreamComponents(tokenizer, ts);

@@ -18,7 +18,7 @@ import java.util.*;
  * <li><b>indexroot</b> (required): directory containing multiple Lucene index directories.</li>
  * <li><b>exclude</b> (optional): multi-line list of glob patterns removing files from the expanded inputs.</li>
  * <li><b>prexslt</b> (optional): path to an XSLT stylesheet, resolved relative to the config file directory.</li>
- * <li><b>dicfile</b> (optional): multi-line list of dictionary file paths, resolved relative to the config file directory.</li>
+ * <li><b>normfile</b> (optional): multi-line list of dictionary file paths, resolved relative to the config file directory.</li>
  * <li><b>stopfile</b> (optional): multi-line list of stopword file paths, resolved relative to the config file directory.</li>
  * <li><b>name</b> (optional): corpus id; if absent, defaults to the config filename stem.</li>
  * <li><b>label</b> (optional): display label.</li>
@@ -64,7 +64,7 @@ public final class IngestConfig
     public final Path prexslt;
     
     /** Optional. Absolute normalized paths, config order preserved. */
-    public final List<Path> dicfile;
+    public final List<Path> normfile;
     
     /** Optional. Absolute normalized paths, config order preserved. */
     public final List<Path> stopfile;
@@ -78,7 +78,7 @@ public final class IngestConfig
             Path indexroot,
             String label,
             Path prexslt,
-            List<Path> dicfile,
+            List<Path> normfile,
             List<Path> stopfile)
     {
         this.name = name;
@@ -87,7 +87,7 @@ public final class IngestConfig
         this.label = label;
         this.indexroot = indexroot;
         this.prexslt = prexslt;
-        this.dicfile = Collections.unmodifiableList(dicfile);
+        this.normfile = Collections.unmodifiableList(normfile);
         this.stopfile = Collections.unmodifiableList(stopfile);
     }
     
@@ -95,14 +95,14 @@ public final class IngestConfig
      * Load, resolve, expand globs, apply excludes, and report duplicates via {@code rep}.
      *
      * @param configXml XML properties file
-     * @param rep       reporter for warnings/errors; if null, uses {@link Report.ReportNull}
+     * @param report       reporter for warnings/errors; if null, uses {@link Report.ReportNull}
      * @throws IOException              IO failures
      * @throws IllegalArgumentException missing required keys or invalid config
      */
-    public static IngestConfig load(Path configXml, Report rep) throws IOException
+    public static IngestConfig load(Path configXml, Report report) throws IOException
     {
-        if (rep == null)
-            rep = Report.ReportNull.INSTANCE;
+        if (report == null)
+            report = Report.ReportNull.INSTANCE;
         if (configXml == null)
             throw new IllegalArgumentException("configXml == null");
         
@@ -136,8 +136,10 @@ public final class IngestConfig
         if (prexsltStr != null)
             prexslt = Dir.resolve(baseDir, prexsltStr);
         
-        List<Path> dicfile = resolveFiles(baseDir, lines(properties, "dicfile"));
-        List<Path> stopfile = resolveFiles(baseDir, lines(properties, "stopfile"));
+        report.setAttribute("key", "normfile");
+        List<Path> normfile = resolveFiles(baseDir, lines(properties, "normfile"), report);
+        report.setAttribute("key", "stopfile");
+        List<Path> stopfile = resolveFiles(baseDir, lines(properties, "stopfile"), report);
         
         // Required tei globs
         List<String> teiLines = lines(properties, "tei");
@@ -149,7 +151,7 @@ public final class IngestConfig
         List<String> excludeGlobs = normalizeGlobs(cfg, lines(properties, "exclude"));
         
         // Expand in config order; report duplicates immediately.
-        List<Path> teiFiles = expandTeiFiles(teiGlobs, rep);
+        List<Path> teiFiles = expandTeiFiles(teiGlobs, report);
         
         // Apply excludes (config order). Keep order of survivors.
         for (String ex : excludeGlobs) {
@@ -161,7 +163,7 @@ public final class IngestConfig
             + "\nexclude: " + String.join("\n", excludeGlobs) + "\n" + cfg);
         }
         
-        return new IngestConfig(name, teiGlobs, teiFiles, indexroot, label, prexslt, dicfile, stopfile);
+        return new IngestConfig(name, teiGlobs, teiFiles, indexroot, label, prexslt, normfile, stopfile);
     }
     
     // ---- implementation details ----
@@ -232,13 +234,19 @@ public final class IngestConfig
         return out;
     }
     
-    private static List<Path> resolveFiles(Path baseDir, List<String> relOrAbsList)
+    private static List<Path> resolveFiles(Path baseDir, List<String> relOrAbsList, Report report)
     {
         if (relOrAbsList.isEmpty())
             return Collections.emptyList();
         List<Path> out = new ArrayList<>(relOrAbsList.size());
-        for (String s : relOrAbsList)
-            out.add(Dir.resolve(baseDir, s));
+        for (String s : relOrAbsList) {
+            Path path = Dir.resolve(baseDir, s);
+            if (!Files.isRegularFile(path)) {
+                report.warn(path + " for " + report.getAttribute("key", "?") + " not exists");
+                continue;
+            }
+            out.add(path);
+        }
         return out;
     }
     
@@ -258,7 +266,7 @@ public final class IngestConfig
         if (prexslt != null)
             sb.append("  prexslt=").append(prexslt).append('\n');
         
-        appendList(sb, "dicfile", dicfile, 10);
+        appendList(sb, "normfile", normfile, 10);
         appendList(sb, "stopfile", stopfile, 10);
         
         sb.append('}');

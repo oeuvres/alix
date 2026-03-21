@@ -1,5 +1,6 @@
 package com.github.oeuvres.alix.ingest;
 
+import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
@@ -25,12 +26,14 @@ public final class TeiIngesterDemo
     public static void main(String[] args) throws IOException, TransformerException, SAXException, ParserConfigurationException
     {
         Report rep = new ReportConsole();
-        TeiIngester ingester = new TeiIngester(rep);
-        Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-piaget.xml");
+        Path cfgPath = Path.of("../web/conf/alix-piaget.xml");
         // Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-test.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, rep);
+        FrenchAnalyzer analyzer = new FrenchAnalyzer();
+        for (Path path: cfg.normfile) LexiconHelper.loadMap(analyzer.normalizer, path, LexiconHelper.OnDuplicate.REPLACE);
         rep.info(cfg.toString());
-        ingester.ingest(cfg, new FrenchAnalyzer());
+        TeiIngester ingester = new TeiIngester(rep);
+        ingester.ingest(cfg, analyzer);
     }
     
 }

@@ -79,7 +79,7 @@ public interface Report
         @Override
         public String getAttribute(final String key, final String ifabsent)
         {
-            if (!context.containsKey(key))
+            if (context == null || !context.containsKey(key))
                 return ifabsent;
             return context.get(key);
         }
@@ -87,6 +87,7 @@ public interface Report
         @Override
         public void setAttribute(final String key, final String value)
         {
+            if (context == null) context = new HashMap<String, String>();
             context.put(key, value);
         }
         
