@@ -111,28 +111,33 @@ public final class LexiconHelper
     public static void loadExpressions(
         final MweLexicon lexicon,
         final CSVReader csv,
-        final int col,
+        final int colExpression,
+        final int colCanonical,
         final CsvHeader csvHeader)
     {
         Objects.requireNonNull(lexicon, "lexicon");
         Objects.requireNonNull(csv, "csv");
-        checkColumnIndex(col, "col");
+        checkColumnIndex(colExpression, "colExpression");
+        checkColumnIndex(colCanonical, "colCanonical");
         
-        final int minCols = col + 1;
-        final int keyCol = col;
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
             protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
-                final StringBuilder form = row.getCell(col);
-                if (form.length() == 0) return false;
-                lexicon.addExpression(form);
+                final StringBuilder expression = row.getCell(colExpression);
+                if (expression.length() == 0) return false;
+                final StringBuilder canonical = row.getCell(colCanonical);
+                if (canonical.length() > 0) {
+                    lexicon.addExpression(expression, canonical);
+                    return true;
+                }
+                lexicon.addExpression(expression);
                 return true;
             }
         };
         
-        forEachDataRow(csv, minCols, keyCol, csvHeader, handler);
+        forEachDataRow(csv, csvHeader, handler);
     }
 
     
@@ -154,8 +159,8 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 1)) {
-            loadExpressions(lexicon, csv, 0, CsvHeader.SKIP);
+        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
+            loadExpressions(lexicon, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -177,8 +182,8 @@ public final class LexiconHelper
     )
     {
         Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file, ',', 1)) {
-            loadExpressions(lexicon, csv, 0, CsvHeader.SKIP);
+        try (CSVReader csv = new CSVReader(file, ',', 2)) {
+            loadExpressions(lexicon, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -214,8 +219,6 @@ public final class LexiconHelper
         Objects.requireNonNull(map, "map");
         Objects.requireNonNull(csv, "csv");
         
-        final int minCols = Math.max(keyCol, valueCol) + 1;
-        
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
@@ -245,7 +248,7 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, minCols, keyCol, csvHeader, handler);
+        forEachDataRow(csv, csvHeader, handler);
     }
 
 
@@ -469,8 +472,6 @@ public final class LexiconHelper
         Objects.requireNonNull(csv, "csv");
         checkColumnIndex(col, "col");
         
-        final int minCols = col + 1;
-        final int keyCol = col; // blank/comment checks are applied to the selected column
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
@@ -485,7 +486,7 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, minCols, keyCol, csvHeader, handler);
+        forEachDataRow(csv, csvHeader, handler);
     }
     
     /**
@@ -596,9 +597,6 @@ public final class LexiconHelper
         else pr = posResolver;
         pr.reset();
         
-        final int minCols = maxRequiredCol(formCol, posCol, lemmaCol);
-        final int keyCol = formCol; // ignore blank/comment rows based on the form column
-        
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
@@ -620,7 +618,7 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, minCols, keyCol, csvHeader, handler);
+        forEachDataRow(csv, csvHeader, handler);
         pr.endFile(null);
     }
     
@@ -672,17 +670,12 @@ public final class LexiconHelper
      */
     private static void forEachDataRow(
         final CSVReader csv,
-        final int minCols,
-        final int keyCol,
         final CsvHeader csvHeader,
         final CsvRowHandler handler)
         
     {
         Objects.requireNonNull(csv, "csv");
         Objects.requireNonNull(handler, "handler");
-        if (minCols < 1)
-            throw new IllegalArgumentException("minCols must be >= 1: " + minCols);
-        checkColumnIndex(keyCol, "keyCol");
 
         try {
             if (csvHeader == CsvHeader.SKIP && !csv.readRow()) {
@@ -691,14 +684,8 @@ public final class LexiconHelper
             
             while (csv.readRow()) {
                 handler.read++;
-                if (csv.getCellCount() < minCols) {
-                    continue;
-                }
                 // check if first col is not a comment
                 if (csv.getCell(0).length() > 0 && csv.getCell(0).charAt(0) == '#') continue;
-                // check if has at a “key” value
-                if(csv.getCell(keyCol).length() == 0) continue;
-                
                 handler.accept(csv);
             }
         } catch (IOException e) {

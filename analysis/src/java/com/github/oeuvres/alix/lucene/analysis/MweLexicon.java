@@ -35,6 +35,7 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Objects;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -114,21 +115,36 @@ public final class MweLexicon
         if (idsBuf != null) throw new IllegalStateException("not frozen");
         return auto.accept(state);
     }
+    
+    /**
+     * Tokenizes {@code expression} with the analyzer, registers each component token
+     * in the vocabulary, canonical=expression.
+     * 
+     * @param expression
+     */
+    public void addExpression(final CharSequence expression)
+    {
+        addExpression(expression, expression);
+    }
+
 
     /**
      * Tokenizes {@code expression} with the analyzer, registers each component token
      * in the vocabulary, and adds the token-id sequence to the automaton with the
-     * canonical form ordinal as accept value.
+     * {@code canonical} form ordinal as accept value.
      *
      * <p>Expressions that yield fewer than two tokens are silently skipped.
      * If the same token sequence is added more than once, the last canonical form wins.</p>
      *
-     * @param expression canonical MWE string (e.g. {@code "machine learning"})
+     * @param expression a multi-word expressions to analyze (e.g. {@code "Artificial Intellignece"})
+     * @param canonical version of the expression (e.g. {@code "AI"})
      * @throws IOException           if the analyzer throws during tokenization
      * @throws IllegalStateException if {@link #freeze()} has already been called
      */
-    public void addExpression(final CharSequence expression) 
+    public void addExpression(final CharSequence expression, final CharSequence canonical) 
     {
+        Objects.requireNonNull(expression);
+        Objects.requireNonNull(canonical);
         if (idsBuf == null) throw new IllegalStateException("frozen");
         if (expression == null || expression.length() == 0) return;
 
@@ -151,7 +167,7 @@ public final class MweLexicon
         if (len < 2) return;
 
         // Register canonical form only after confirming the expression is valid.
-        final int formOrd = ord(vocab.add(expression));
+        final int formOrd = ord(vocab.add(canonical));
         auto.add(idsBuf, len, formOrd);
     }
 
