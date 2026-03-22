@@ -34,6 +34,7 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -49,7 +50,7 @@ import com.github.oeuvres.alix.util.IntAutomaton;
  * <p>The {@link CharsDic} holds both component tokens (automaton arc labels, by ordinal)
  * and canonical MWE forms (automaton accept values, also ordinals). A caller that receives
  * an accept ordinal from {@link #accept(int)} can copy the canonical form into a
- * {@link CharTermAttribute} via {@link #fillTerm(int, CharTermAttribute)} without allocation.</p>
+ * {@link CharTermAttribute} via {@link #formToAttribute(int, CharTermAttribute)} without allocation.</p>
  *
  * <p>Lifecycle:</p>
  * <ol>
@@ -101,7 +102,18 @@ public final class MweLexicon
         this.idsBuf    = new int[8];
     }
 
-    // ---- Build API -----------------------------------------------------------
+    /**
+     * Returns the {@link CharsDic} ordinal of the canonical form if {@code state} is
+     * accepting, or -1 if non-accepting.
+     * Pass the result to {@link #formToAttribute(int, CharTermAttribute)} to write the form into a term attribute.
+     *
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
+    public int accept(final int state)
+    {
+        if (idsBuf != null) throw new IllegalStateException("not frozen");
+        return auto.accept(state);
+    }
 
     /**
      * Tokenizes {@code expression} with the analyzer, registers each component token
@@ -115,9 +127,9 @@ public final class MweLexicon
      * @throws IOException           if the analyzer throws during tokenization
      * @throws IllegalStateException if {@link #freeze()} has already been called
      */
-    public void addExpression(final CharSequence expression) throws IOException
+    public void addExpression(final CharSequence expression) 
     {
-        if (idsBuf == null) throw new IllegalStateException("frozen");
+        checkFrozen();
         if (expression == null || expression.length() == 0) return;
 
         // Tokenize first: only register in vocab if the sequence is a valid MWE (>= 2 tokens).
@@ -132,6 +144,8 @@ public final class MweLexicon
                 idsBuf[len++] = tokOrd;
             }
             ts.end();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
 
         if (len < 2) return;
@@ -139,6 +153,44 @@ public final class MweLexicon
         // Register canonical form only after confirming the expression is valid.
         final int formOrd = ord(vocab.add(expression));
         auto.add(idsBuf, len, formOrd);
+    }
+
+    /**
+     * Check that {@link #freeze()} has been called or send an exception
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
+    public void checkFrozen() {
+        if (!isFrozen()) throw new IllegalStateException("not frozen");
+    }
+
+    /**
+     * Returns the canonical form identified by {@code acceptOrd} as a new String.
+     * Prefers {@link #formToAttribute(int,CharTermAttribute)} in a {@link TokenFilter}.
+     * @param acceptOrd
+     * @return form of contained expression
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
+    public String formAsString(final int acceptOrd)
+    {
+        checkFrozen();
+        return vocab.getAsString(acceptOrd);
+    }
+
+    /**
+     * Copies the canonical form identified by {@code acceptOrd} into {@code termAtt},
+     * resizing its buffer as needed. No allocation beyond the buffer resize when needed.
+     *
+     * @param acceptOrd ordinal returned by {@link #accept(int)}
+     * @param termAtt   term attribute to fill
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
+    public void formToAttribute(final int acceptOrd, final CharTermAttribute termAtt)
+    {
+        checkFrozen();
+        final int    len = vocab.termLength(acceptOrd);
+        final char[] buf = termAtt.resizeBuffer(len);
+        vocab.get(acceptOrd, buf, 0);
+        termAtt.setLength(len);
     }
 
     /**
@@ -151,8 +203,26 @@ public final class MweLexicon
         auto.freeze(false);
         idsBuf = null;
     }
+    
+    /**
+     * Verify that {@link #freeze()} has been called
+     * @return true if frozen
+     */
+    public boolean isFrozen() {
+        return (idsBuf == null);
+    }
 
-    // ---- Runtime API ---------------------------------------------------------
+    /**
+     * Upper bound on MWE length in tokens.
+     * Use to size the token filter's lookahead buffer ({@code maxLen() + 1}).
+     *
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
+    public int maxLen()
+    {
+        if (idsBuf != null) throw new IllegalStateException("not frozen");
+        return auto.maxLen();
+    }
 
     /**
      * Root state; pass as the initial state to the first {@link #step} call per position.
@@ -161,7 +231,7 @@ public final class MweLexicon
      */
     public int root()
     {
-        if (idsBuf != null) throw new IllegalStateException("not frozen");
+        checkFrozen();
         return auto.root();
     }
 
@@ -186,48 +256,13 @@ public final class MweLexicon
     }
 
     /**
-     * Returns the {@link CharsDic} ordinal of the canonical form if {@code state} is
-     * accepting, or -1 if non-accepting.
-     * Pass the result to {@link #fillTerm(int, CharTermAttribute)} to write the form into a term attribute.
-     *
-     * @throws IllegalStateException if {@link #freeze()} has not been called
+     * Give access to the underlying dictionary.
+     * @return {@link #vocab}
      */
-    public int accept(final int state)
+    protected CharsDic vocab()
     {
-        if (idsBuf != null) throw new IllegalStateException("not frozen");
-        return auto.accept(state);
+        return vocab;
     }
-
-    /**
-     * Upper bound on MWE length in tokens.
-     * Use to size the token filter's lookahead buffer ({@code maxLen() + 1}).
-     *
-     * @throws IllegalStateException if {@link #freeze()} has not been called
-     */
-    public int maxLen()
-    {
-        if (idsBuf != null) throw new IllegalStateException("not frozen");
-        return auto.maxLen();
-    }
-
-    /**
-     * Copies the canonical form identified by {@code acceptOrd} into {@code termAtt},
-     * resizing its buffer as needed. No allocation beyond the buffer resize when needed.
-     *
-     * @param acceptOrd ordinal returned by {@link #accept(int)}
-     * @param termAtt   term attribute to fill
-     * @throws IllegalStateException if {@link #freeze()} has not been called
-     */
-    public void fillTerm(final int acceptOrd, final CharTermAttribute termAtt)
-    {
-        if (idsBuf != null) throw new IllegalStateException("not frozen");
-        final int    len = vocab.termLength(acceptOrd);
-        final char[] buf = termAtt.resizeBuffer(len);
-        vocab.get(acceptOrd, buf, 0);
-        termAtt.setLength(len);
-    }
-
-    // ---- Internal ------------------------------------------------------------
 
     /** Recovers a {@link CharsDic} ordinal from the raw return value of {@code add()}. */
     static int ord(final int raw)

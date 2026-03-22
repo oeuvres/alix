@@ -181,8 +181,7 @@ public final class MweFilter extends TokenFilter
         // Restore all attributes from first component (posIncr, startOffset, flags, ...).
         queue.restoreTo(this, 0);
 
-        // Override term with canonical form — direct char copy, no String allocation.
-        lexicon.fillTerm(matchOrd, termAtt);
+        lexicon.formToAttribute(matchOrd, termAtt);
 
         // Fix endOffset and type.
         offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
