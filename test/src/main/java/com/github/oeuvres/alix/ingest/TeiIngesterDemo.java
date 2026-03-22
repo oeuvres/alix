@@ -1,6 +1,5 @@
 package com.github.oeuvres.alix.ingest;
 
-import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
@@ -30,7 +29,9 @@ public final class TeiIngesterDemo
         // Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-test.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, rep);
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
-        for (Path path: cfg.normfile) LexiconHelper.loadMap(analyzer.normalizer, path, LexiconHelper.OnDuplicate.REPLACE);
+        analyzer.addNormalizations(cfg.normfile);
+        analyzer.addExpressions(cfg.expressionfile);
+        analyzer.addStopWords(cfg.stopfile);
         rep.info(cfg.toString());
         TeiIngester ingester = new TeiIngester(rep);
         ingester.ingest(cfg, analyzer);

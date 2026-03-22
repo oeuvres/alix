@@ -69,6 +69,8 @@ public final class IngestConfig
     /** Optional. Absolute normalized paths, config order preserved. */
     public final List<Path> stopfile;
     
+    /** Optional. Absolute normalized paths, config order preserved. */
+    public final List<Path> expressionfile;
 
     
     private IngestConfig(
@@ -79,7 +81,8 @@ public final class IngestConfig
             String label,
             Path prexslt,
             List<Path> normfile,
-            List<Path> stopfile)
+            List<Path> stopfile,
+            List<Path> expressionfile)
     {
         this.name = name;
         this.teiGlobs = teiGlobs;
@@ -89,6 +92,7 @@ public final class IngestConfig
         this.prexslt = prexslt;
         this.normfile = Collections.unmodifiableList(normfile);
         this.stopfile = Collections.unmodifiableList(stopfile);
+        this.expressionfile = Collections.unmodifiableList(expressionfile);
     }
     
     /**
@@ -136,10 +140,12 @@ public final class IngestConfig
         if (prexsltStr != null)
             prexslt = Dir.resolve(baseDir, prexsltStr);
         
-        report.setAttribute("key", "normfile");
-        List<Path> normfile = resolveFiles(baseDir, lines(properties, "normfile"), report);
         report.setAttribute("key", "stopfile");
         List<Path> stopfile = resolveFiles(baseDir, lines(properties, "stopfile"), report);
+        report.setAttribute("key", "normfile");
+        List<Path> normfile = resolveFiles(baseDir, lines(properties, "normfile"), report);
+        report.setAttribute("key", "expressionfile");
+        List<Path> expressionfile = resolveFiles(baseDir, lines(properties, "expressionfile"), report);
         
         // Required tei globs
         List<String> teiLines = lines(properties, "tei");
@@ -163,7 +169,17 @@ public final class IngestConfig
             + "\nexclude: " + String.join("\n", excludeGlobs) + "\n" + cfg);
         }
         
-        return new IngestConfig(name, teiGlobs, teiFiles, indexroot, label, prexslt, normfile, stopfile);
+        return new IngestConfig(
+            name,
+            teiGlobs,
+            teiFiles,
+            indexroot,
+            label,
+            prexslt,
+            normfile,
+            stopfile,
+            expressionfile
+        );
     }
     
     // ---- implementation details ----

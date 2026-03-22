@@ -1,7 +1,9 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
+import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweLexicon;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -32,14 +34,15 @@ public final class FrenchMweFilterDemo {
 
         new AnalysisDemoHelper.Case(
             "Clitique",
-            "L’homme est l’Avenir de l’Apocalypse à l’abord du désastre.",
+            " c’est parce que l’homme est d’abord cause désastre du chemin de fer d'intérêt local.",
             null
         )    );
 
     public static void main(String[] args) throws Exception {
         MweLexicon lexicon = new MweLexicon(expressionAnalyzer(), "mwe", 2000);
-        
-        try (Analyzer analyzer = buildAnalyzer()) {
+        LexiconHelper.loadExpressions(lexicon, LexiconHelper.class, "/com/github/oeuvres/alix/fr/expressions.csv");
+        lexicon.freeze();
+        try (Analyzer analyzer = buildAnalyzer(lexicon)) {
             
             
             
@@ -53,21 +56,22 @@ public final class FrenchMweFilterDemo {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new WhitespaceTokenizer();
-                TokenStream stream = new FrenchCliticSplitFilter(tokenizer);
-                return new TokenStreamComponents(tokenizer, stream);
+                TokenStream ts = new FrenchCliticSplitFilter(tokenizer);
+                return new TokenStreamComponents(tokenizer, ts);
             }
         };
     }
 
 
     /** Minimal Analyzer for MLTokenizer -> FrenchCliticSplitFilter. */
-    private static Analyzer buildAnalyzer() {
+    private static Analyzer buildAnalyzer(MweLexicon lexicon) {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidots());
-                TokenStream stream = new FrenchCliticSplitFilter(tokenizer);
-                return new TokenStreamComponents(tokenizer, stream);
+                TokenStream ts = new FrenchCliticSplitFilter(tokenizer);
+                ts = new MweFilter(ts, lexicon);
+                return new TokenStreamComponents(tokenizer, ts);
             }
         };
     }

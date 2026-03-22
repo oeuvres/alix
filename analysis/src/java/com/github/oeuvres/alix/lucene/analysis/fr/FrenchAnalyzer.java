@@ -34,6 +34,7 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
@@ -51,6 +52,8 @@ import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
+import com.github.oeuvres.alix.lucene.analysis.MweFilter;
+import com.github.oeuvres.alix.lucene.analysis.MweLexicon;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
@@ -75,6 +78,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public final CharArraySet brevidots;
     /** Term normalizer */
     public final CharArrayMap<char[]> normalizer;
+    /** Multi-Word Expressions */
+    public final MweLexicon expressions;
     /** Big dic */
     public final LemmaLexicon lemmaLexicon;
     
@@ -89,22 +94,29 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         normalizer = FrenchLexicons.buildNormalizer();
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
         brevidots = FrenchLexicons.buildBrevidots();
+        expressions = FrenchLexicons.buildMweLexicon();
         
         canonic = new CanonicAnalyzer();
         ascii = new AsciiAnalyzer();
         observation = new ObservationAnalyzer();
     }
     
-    public void addStopWords(Path... files) throws IOException {
+    public void addStopWords(List<Path> files) throws IOException {
         for (Path path: files) {
             LexiconHelper.loadSet(stopwords, path);
         }
     }
-    public void addNormalizations(Path... files) throws IOException {
+    public void addNormalizations(List<Path> files) throws IOException {
         for (Path path: files) {
             LexiconHelper.loadMap(normalizer, path, LexiconHelper.OnDuplicate.REPLACE);
         }
-    }    
+    }
+    public void addExpressions(List<Path> files) throws IOException {
+        for (Path path: files) {
+            LexiconHelper.loadExpressions(expressions, path);
+        }
+        expressions.freeze();
+    }
     @Override
     protected Analyzer getWrappedAnalyzer(String fieldName)
     {
@@ -195,8 +207,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
         // provide lemma
         ts = new LemmaFilter(ts, lemmaLexicon);
-        // TODO, multi word expression
-        
+        // multi word expression
+        ts = new MweFilter(ts, expressions);
         // delete positions of xml tags and punctuation
         ts = new CleanupFilter(ts);
         // clean stop words but keep positions

@@ -35,25 +35,22 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.util.Map;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
+import com.github.oeuvres.alix.lucene.analysis.MweLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
 
 public class FrenchLexicons
 {
     private FrenchLexicons()
     {
-    }
-
-    public static CharArraySet buildStopwords()
-    {
-        // set ignore case
-        CharArraySet set = new CharArraySet(1500, true);
-        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/stop.csv");
-        return set;
     }
 
     public static CharArraySet buildBrevidots()
@@ -63,18 +60,6 @@ public class FrenchLexicons
         LexiconHelper.loadSet(set, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidots.csv", 0, LexiconHelper.CsvHeader.SKIP, ".");
         return set;
     }
-
-    public static CharArrayMap<char[]> buildNormalizer()
-    {
-        CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-names.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-misc.csv", LexiconHelper.OnDuplicate.REPLACE);
-        return map;
-    }
-    
 
     public static LemmaLexicon buildLemmaLexicon()
     {
@@ -120,7 +105,7 @@ public class FrenchLexicons
             Map.entry("DET", "DET"), // 1
             Map.entry("", "")
         );
-
+    
         PosResolver posResolver = new PosResolver() {
             protected String posRewrite(String posName)
             {
@@ -140,6 +125,40 @@ public class FrenchLexicons
             posResolver
         );
         return lex;
+    }
+    
+    public static MweLexicon buildMweLexicon()
+    {
+        MweLexicon lexicon = new MweLexicon(new Analyzer() {
+            @Override
+            protected TokenStreamComponents createComponents(String fieldName) {
+                Tokenizer tokenizer = new WhitespaceTokenizer();
+                TokenStream ts = new FrenchCliticSplitFilter(tokenizer);
+                return new TokenStreamComponents(tokenizer, ts);
+            }
+        }, "mwe", 2000);
+        LexiconHelper.loadExpressions(lexicon, LexiconHelper.class, "/com/github/oeuvres/alix/fr/expressions.csv");
+        return lexicon;
+    }
+
+
+    public static CharArrayMap<char[]> buildNormalizer()
+    {
+        CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-names.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-misc.csv", LexiconHelper.OnDuplicate.REPLACE);
+        return map;
+    }
+
+    public static CharArraySet buildStopwords()
+    {
+        // set ignore case
+        CharArraySet set = new CharArraySet(1500, true);
+        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/stop.csv");
+        return set;
     }
 
 }

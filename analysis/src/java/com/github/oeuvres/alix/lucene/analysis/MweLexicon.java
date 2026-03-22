@@ -129,7 +129,7 @@ public final class MweLexicon
      */
     public void addExpression(final CharSequence expression) 
     {
-        checkFrozen();
+        if (idsBuf == null) throw new IllegalStateException("frozen");
         if (expression == null || expression.length() == 0) return;
 
         // Tokenize first: only register in vocab if the sequence is a valid MWE (>= 2 tokens).
@@ -199,6 +199,7 @@ public final class MweLexicon
      */
     public void freeze()
     {
+        if (idsBuf == null) return; // already frozen
         vocab.trimToSize();
         auto.freeze(false);
         idsBuf = null;
