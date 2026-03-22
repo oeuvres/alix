@@ -1,272 +1,173 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
+import java.io.IOException;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+
 import com.github.oeuvres.alix.util.CharsDic;
 import com.github.oeuvres.alix.util.IntAutomaton;
 
 /**
- * Immutable, compiled lexicon of contiguous Multi-Word Expressions (MWEs) for {@link MweFilter}.
+ * Incremental lexicon of multi-word expressions (MWEs), backed by a single
+ * {@link CharsDic} and an {@link IntAutomaton}.
  *
- * <h2>Concept</h2>
- * <ul>
- *   <li>Matching is performed over integer token identifiers (typically lemma ids) using an {@link IntAutomaton}.</li>
- *   <li>Accepting automaton states yield an {@code entryId} (0-based), which indexes per-entry metadata:
- *     output form (chars), POS tag id, optional lemma id.</li>
- *   <li>Output strings are stored in a {@link CharsDic} and copied into a caller-provided scratch buffer
- *     to keep runtime allocation-free.</li>
- * </ul>
+ * <p>The {@link CharsDic} holds both component tokens (automaton arc labels, by ordinal)
+ * and canonical MWE forms (automaton accept values, also ordinals). A caller that receives
+ * an accept ordinal can retrieve the canonical char data from {@link #vocab()} without
+ * allocation.</p>
  *
- * <h2>Thread-safety</h2>
- * <p>This object is immutable and safe to share across analyzers/threads once constructed.</p>
+ * <p>Lifecycle:</p>
+ * <ol>
+ *   <li>Construct with the {@link Analyzer} that matches the index-time pipeline.</li>
+ *   <li>Call {@link #addExpression(CharSequence)} for each canonical MWE string.</li>
+ *   <li>Call {@link #freeze()} once; further {@link #addExpression} calls throw.</li>
+ *   <li>Use {@link #step(int, char[], int)} and {@link #accept(int)} in the token filter.</li>
+ * </ol>
  *
- * <h2>Contract used by {@link MweFilter}</h2>
- * <ul>
- *   <li>{@link #root()}, {@link #step(int, int)}, {@link #acceptEntry(int)} for traversal</li>
- *   <li>{@link #maxPatternTokens()} for bounded lookahead</li>
- *   <li>{@link #copyOutput(int, char[])} and {@link #maxOutputLen()} for term emission</li>
- *   <li>{@link #pos(int)} and {@link #lemmaId(int)} for compound token attributes</li>
- * </ul>
+ * <p>Thread-safety: not thread-safe during building; immutable and safe for concurrent
+ * read after {@link #freeze()}.</p>
  */
 public final class MweLexicon
 {
-    private final IntAutomaton automaton;
+    /** Shared vocabulary: component tokens and canonical forms, identified by ordinal. */
+    private final CharsDic vocab;
 
-    /** Pool of output terms (canonical surface or canonical lemma form, depending on loader policy). */
-    private final CharsDic outputDic;
+    /** Automaton over component-token ordinal sequences; accept value = canonical form ordinal. */
+    private final IntAutomaton auto;
 
-    /** entryId -> output ordinal in {@link #outputDic}. */
-    private final int[] outputOrd;
+    /** Analyzer used to split canonical forms into component tokens. */
+    private final Analyzer analyzer;
 
-    /** entryId -> POS tag id (tagset is caller-defined). */
-    private final short[] pos;
+    /** Field name passed to the analyzer (may be a dummy value). */
+    private final String fieldName;
 
-    /** entryId -> lemma id for the compound token, or -1 if not defined. */
-    private final int[] lemmaId;
-
-    /** Max number of tokens in any pattern (lookahead bound). */
-    private final int maxPatternTokens;
-
-    /** Max output length in UTF-16 code units among all entries (for scratch sizing). */
-    private final int maxOutputLen;
+    /** Reusable buffer for token-id sequences during addExpression. */
+    private int[] idsBuf;
 
     /**
-     * Build a lexicon from already-compiled components.
+     * Constructs an empty, mutable lexicon.
      *
-     * <p>All arrays are defensively checked for length consistency; they are not copied.
-     * Treat passed arrays as frozen after construction.</p>
-     *
-     * @param automaton packed automaton; its accept ids must be entryIds in [0..entryCount) or -1
-     * @param outputDic output term pool
-     * @param outputOrd entryId -> output ordinal
-     * @param pos entryId -> POS tag id
-     * @param lemmaId entryId -> lemma id or -1
-     * @throws NullPointerException if any argument is null
-     * @throws IllegalArgumentException if array lengths disagree
+     * @param analyzer     analyzer whose tokenization matches the index-time pipeline
+     * @param fieldName    field name passed to the analyzer
+     * @param expectedSize estimate of the number of MWEs; used only for initial sizing
      */
-    public MweLexicon(
-            final IntAutomaton automaton,
-            final CharsDic outputDic,
-            final int[] outputOrd,
-            final short[] pos,
-            final int[] lemmaId
-    ) {
-        if (automaton == null) throw new NullPointerException("automaton");
-        if (outputDic == null) throw new NullPointerException("outputDic");
-        if (outputOrd == null) throw new NullPointerException("outputOrd");
-        if (pos == null) throw new NullPointerException("pos");
-        if (lemmaId == null) throw new NullPointerException("lemmaId");
+    public MweLexicon(final Analyzer analyzer, final String fieldName, final int expectedSize)
+    {
+        if (analyzer == null)  throw new IllegalArgumentException("analyzer");
+        if (fieldName == null) throw new IllegalArgumentException("fieldName");
+        this.analyzer   = analyzer;
+        this.fieldName  = fieldName;
+        this.vocab      = new CharsDic(Math.max(8, expectedSize * 3));
+        this.auto       = new IntAutomaton();
+        this.idsBuf     = new int[8];
+    }
 
-        final int n = outputOrd.length;
-        if (pos.length != n) throw new IllegalArgumentException("pos.length != outputOrd.length");
-        if (lemmaId.length != n) throw new IllegalArgumentException("lemmaId.length != outputOrd.length");
+    /**
+     * Returns the {@link CharsDic} ordinal of the canonical form if {@code state} is
+     * accepting, or -1 if non-accepting.
+     * Pass the result to {@link #vocab()} to retrieve char data without allocation.
+     */
+    public int accept(final int state)
+    {
+        return auto.accept(state);
+    }
 
-        this.automaton = automaton;
-        this.outputDic = outputDic;
-        this.outputOrd = outputOrd;
-        this.pos = pos;
-        this.lemmaId = lemmaId;
+    /**
+     * Tokenizes {@code expression} with the analyzer, registers each component token
+     * in the vocabulary, and adds the token-id sequence to the automaton with the
+     * canonical form ordinal as accept value.
+     *
+     * <p>Expressions that yield fewer than two tokens are silently skipped.
+     * If the same token sequence is added more than once, the last canonical form wins.</p>
+     *
+     * @param expression canonical MWE string (e.g. {@code "machine learning"})
+     * @throws IOException           if the analyzer throws during tokenization
+     * @throws IllegalStateException if {@link #freeze()} has already been called
+     */
+    public void addExpression(final CharSequence expression) throws IOException
+    {
+        if (idsBuf == null) throw new IllegalStateException("frozen");
+        if (expression == null || expression.length() == 0) return;
 
-        this.maxPatternTokens = Math.max(1, automaton.maxLen());
-
-        // Prefer O(1) if you implement it in CharsDic; otherwise compute once here.
-        int mol = 0;
-        // If your CharsDic exposes maxTermLength(), use it:
-        // mol = outputDic.maxTermLength();
-        // Otherwise, compute from entry ords:
-        for (int i = 0; i < n; i++) {
-            final int ord = outputOrd[i];
-            final int len = outputDic.termLength(ord);
-            if (len > mol) mol = len;
+        // Tokenize first: only register in vocab if the sequence is a valid MWE (>= 2 tokens).
+        int len = 0;
+        try (TokenStream ts = analyzer.tokenStream(fieldName, expression.toString())) {
+            final CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+            ts.reset();
+            while (ts.incrementToken()) {
+                // CharTermAttribute implements CharSequence: no toString() copy needed.
+                final int tokOrd = ord(vocab.add(termAtt));
+                if (len == idsBuf.length) idsBuf = java.util.Arrays.copyOf(idsBuf, len * 2);
+                idsBuf[len++] = tokOrd;
+            }
+            ts.end();
         }
-        this.maxOutputLen = mol;
 
-        // Optional: validate accept ids are within bounds (cheap enough for debug builds).
-        // validateAcceptIds(n);
+        if (len < 2) return;
+
+        // Register canonical form only after confirming the expression is valid.
+        final int formOrd = ord(vocab.add(expression));
+        auto.add(idsBuf, len, formOrd);
     }
 
     /**
-     * Root automaton state (always 0).
+     * Freezes the vocabulary and packs the automaton into primitive arrays.
+     * Must be called before any runtime method. Idempotent.
      */
-    public int root()
+    public void freeze()
     {
-        return automaton.root();
+        vocab.trimToSize();
+        auto.freeze(false);
+        idsBuf = null;
     }
 
     /**
-     * Transition function: follow an arc labeled {@code tokenId} from {@code state}.
-     *
-     * @return next state id, or -1 if no transition exists
-     */
-    public int step(final int state, final int tokenId)
-    {
-        return automaton.step(state, tokenId);
-    }
-
-    /**
-     * Returns an {@code entryId} if {@code state} is accepting, or -1 otherwise.
-     *
-     * <p>The returned value indexes {@link #pos(int)}, {@link #lemmaId(int)}, and {@link #copyOutput(int, char[])}.</p>
-     */
-    public int acceptEntry(final int state)
-    {
-        return automaton.accept(state);
-    }
-
-    /**
-     * Maximum number of tokens in any MWE pattern.
-     *
-     * <p>This is the correct lookahead bound for longest-match algorithms in a linear TokenStream.</p>
-     */
-    public int maxPatternTokens()
-    {
-        return maxPatternTokens;
-    }
-
-    /**
-     * Backward-compatible alias for {@link #maxPatternTokens()}.
-     *
-     * <p>Avoid exposing "len" without unit; prefer {@link #maxPatternTokens()} in new code.</p>
+     * Upper bound on MWE length in tokens.
+     * Use to size the token filter's lookahead buffer ({@code maxLen() + 1}).
      */
     public int maxLen()
     {
-        return maxPatternTokens;
+        return auto.maxLen();
     }
 
-    /**
-     * Number of MWE entries in this lexicon.
-     */
-    public int size()
+    /** Root state; pass as the initial state to the first {@link #step} call per position. */
+    public int root()
     {
-        return outputOrd.length;
+        return auto.root();
     }
 
     /**
-     * POS tag id for the compound token produced by this entry.
+     * Advances the automaton by one token.
      *
-     * @param entryId entry id returned by {@link #acceptEntry(int)}
+     * <p>Tokens absent from the vocabulary return -1 immediately without touching
+     * the automaton — fast-fail for the common case.</p>
+     *
+     * @param state current automaton state
+     * @param buf   token character buffer (e.g. {@link CharTermAttribute#buffer()})
+     * @param len   number of valid chars in {@code buf}
+     * @return next state, or -1 if no transition exists
      */
-    public short pos(final int entryId)
+    public int step(final int state, final char[] buf, final int len)
     {
-        checkEntry(entryId);
-        return pos[entryId];
+        if (idsBuf != null) throw new IllegalStateException("not frozen");
+        final int tokOrd = vocab.find(buf, 0, len);
+        if (tokOrd < 0) return -1;
+        return auto.step(state, tokOrd);
     }
 
     /**
-     * Optional lemma id for the compound token produced by this entry.
-     *
-     * @param entryId entry id returned by {@link #acceptEntry(int)}
-     * @return lemma id, or -1 if none is defined
+     * Shared vocabulary; use ordinals from {@link #accept(int)} to retrieve canonical forms.
      */
-    public int lemmaId(final int entryId)
+    public CharsDic vocab()
     {
-        checkEntry(entryId);
-        return lemmaId[entryId];
+        return vocab;
     }
 
-    /**
-     * Copies the output term for {@code entryId} into {@code dst[0..len)} and returns {@code len}.
-     *
-     * <p>This is the hot-path method used by {@link MweFilter} to emit the canonical MWE term text
-     * without allocating.</p>
-     *
-     * <p>Caller responsibility: ensure {@code dst.length >= maxOutputLen()}.</p>
-     *
-     * @param entryId entry id returned by {@link #acceptEntry(int)}
-     * @param dst destination buffer (start at index 0)
-     * @return length in UTF-16 code units
-     * @throws IllegalArgumentException if {@code entryId} is invalid or {@code dst} too small
-     * @throws NullPointerException if {@code dst} is null
-     */
-    public int copyOutput(final int entryId, final char[] dst)
+    /** Recovers a {@link CharsDic} ordinal from the raw return value of {@code add()}. */
+    private static int ord(final int raw)
     {
-        checkEntry(entryId);
-        if (dst == null) throw new NullPointerException("dst");
-
-        final int ord = outputOrd[entryId];
-
-        // Preferred if you add the safe copy-out API to CharsDic:
-        // return outputDic.get(ord, dst);
-
-        // Fallback using current CharsDic API (slab + offsets) while keeping it encapsulated here:
-        final int len = outputDic.termLength(ord);
-        if (dst.length < len) {
-            throw new IllegalArgumentException("dst too small: dst.length=" + dst.length + " need=" + len);
-        }
-        final int off = outputDic.termOffset(ord);
-        System.arraycopy(outputDic.slab(), off, dst, 0, len);
-        return len;
-    }
-
-    /**
-     * Maximum output term length among all entries, in UTF-16 code units.
-     *
-     * <p>Use this value to allocate a reusable scratch buffer for {@link #copyOutput(int, char[])}.</p>
-     */
-    public int maxOutputLen()
-    {
-        return maxOutputLen;
-    }
-
-    /**
-     * Debug helper: returns the output term as a String (allocates).
-     *
-     * @param entryId entry id returned by {@link #acceptEntry(int)}
-     */
-    public String outputAsString(final int entryId)
-    {
-        checkEntry(entryId);
-        final int ord = outputOrd[entryId];
-        final int off = outputDic.termOffset(ord);
-        final int len = outputDic.termLength(ord);
-        return new String(outputDic.slab(), off, len);
-    }
-
-    /**
-     * Exposes the internal automaton (advanced use).
-     */
-    public IntAutomaton automaton()
-    {
-        return automaton;
-    }
-
-    /**
-     * Exposes the output dictionary (advanced use; immutable by convention).
-     */
-    public CharsDic outputDic()
-    {
-        return outputDic;
-    }
-
-    private void checkEntry(final int entryId)
-    {
-        if (entryId < 0 || entryId >= outputOrd.length) {
-            throw new IllegalArgumentException("bad entryId " + entryId);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private void validateAcceptIds(final int entryCount)
-    {
-        // IntAutomaton stores accept per state; we can only validate by scanning all states if you expose state count.
-        // If you later add IntAutomaton.stateCount(), validate accept ids here.
+        return raw >= 0 ? raw : -raw - 1;
     }
 }

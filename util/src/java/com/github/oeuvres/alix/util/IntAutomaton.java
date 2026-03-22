@@ -55,20 +55,21 @@ public final class IntAutomaton
      * Adds a pattern (token-id sequence) with its accept/output id.
      * If the same sequence is added more than once, the last {@code outputId} wins.
      *
-     * @param tokenIds token-id sequence; must not be null or empty
+     * @param tokenIds token-id sequence buffer
+     * @param len      number of valid entries in {@code tokenIds}
      * @param outputId value returned by {@link #accept} when this pattern is matched
      * @throws IllegalStateException if {@link #freeze} has already been called
      */
-    public void add(final int[] tokenIds, final int outputId)
+    public void add(final int[] tokenIds, final int len, final int outputId)
     {
         if (trieRoot == null) throw new IllegalStateException("frozen");
-        if (tokenIds == null || tokenIds.length == 0) return;
+        if (tokenIds == null || len < 1) return;
 
         Node n = trieRoot;
-        for (final int id : tokenIds) n = n.getOrAdd(id);
+        for (int i = 0; i < len; i++) n = n.getOrAdd(tokenIds[i]);
         n.acceptId = outputId;
 
-        if (tokenIds.length > buildMaxLen) buildMaxLen = tokenIds.length;
+        if (len > buildMaxLen) buildMaxLen = len;
     }
 
     /**
