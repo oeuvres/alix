@@ -40,196 +40,160 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
-
+// import com.github.oeuvres.alix.util.CharsDic;
 
 /**
- * Replaces contiguous multi-word expressions (MWEs) by a single token using a compiled {@code MweLexicon}.
+ * A {@link TokenFilter} that merges multi-word expressions (MWEs) into single tokens,
+ * using a {@link MweLexicon} for detection.
  *
- * <p>Replace-mode: constituents are not emitted.</p>
+ * <p>Matching strategy: maximal munch (longest match). When "New York" and "New York City"
+ * are both registered, "New York City" wins if all three tokens are present.</p>
  *
- * <p>Assumptions:</p>
- * <ul>
- *   <li>Upstream pipeline has already produced a stable int token id per token (typically lemma id).</li>
- *   <li>MWEs are contiguous only (no gaps).</li>
- *   <li>Input token stream is linear (no token graphs: {@code posInc==0}).</li>
- * </ul>
+ * <p>Output semantics: replace-only. The N component tokens are replaced by one merged
+ * token carrying the canonical form. {@link PositionIncrementAttribute} is taken from the
+ * first component; {@link OffsetAttribute} spans from first to last component;
+ * {@link TypeAttribute} is set to {@link #TYPE_MWE}. Unigram positions for component
+ * words are not preserved (no graph output).</p>
  *
- * <p>Implementation note:</p>
- * <ul>
- *   <li>Uses {@link TokenStateQueue} to buffer lookahead tokens allocation-free (no {@code State} objects).</li>
- *   <li>Computes the longest match starting at the current head token on every call.</li>
- * </ul>
+ * <p>The {@link MweLexicon} must be frozen before being passed to this filter.
+ * The analyzer used to build the lexicon must match the filters upstream of this one
+ * in the analysis chain — normalization (lowercasing, folding) must already have been
+ * applied to tokens before they reach this filter.</p>
+ *
+ * <p>Chain position: after normalization (lowercase, diacritics), before stop-word
+ * removal and stemming. MWEs frequently contain stop words ("state of the art",
+ * "fin de siècle"); removing stops first destroys the pattern.</p>
  */
-public final class MweFilter extends TokenFilter {
+public final class MweFilter extends TokenFilter
+{
+    public static final String TYPE_MWE = "MWE";
 
-    private TokenStateQueue queue;
-  private final MweLexicon lex;
-  private final int maxTokens;
+    private final MweLexicon lexicon;
 
-  // Standard Lucene attrs
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  private final OffsetAttribute offAtt = addAttribute(OffsetAttribute.class);
-  private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-  private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
+    /** Ring-buffer of captured token states; capacity = lexicon.maxLen() + 1. */
+    private final TokenStateQueue queue;
 
-  // Your attrs (examples; use your actual ones)
-  private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-  // private final LemmaIdAttribute lemmaIdAtt = addAttribute(LemmaIdAttribute.class);
-  // private final PosIdAttribute posIdAtt = addAttribute(PosIdAttribute.class);
+    /**
+     * Automaton state recorded after consuming each buffered slot.
+     * Parallel to the queue's logical indices; sized to queue capacity.
+     */
+    private final int[] autoState;
 
-  // Carry position increments from skipped tokens inside a matched MWE to the next emitted token.
-  private int carryPosInc = 0;
+    private final CharTermAttribute          termAtt     = addAttribute(CharTermAttribute.class);
+    private final OffsetAttribute            offsetAtt   = addAttribute(OffsetAttribute.class);
+    private final PositionIncrementAttribute posIncrAtt  = addAttribute(PositionIncrementAttribute.class);
+    private final TypeAttribute              typeAtt     = addAttribute(TypeAttribute.class);
 
-  // Scratch for emitting the canonical output term (sized once).
-  private final char[] outScratch;
+    private boolean inputExhausted = false;
 
-  public MweFilter(TokenStream input, MweLexicon lex) {
-    super(input);
-    this.lex = lex;
-    this.maxTokens = Math.max(1, lex.maxLen()); // consider renaming to lex.maxPatternTokens()
-    this.outScratch = new char[Math.max(16, lex.maxOutputLen())];
-  }
-
-  @Override
-  public void reset() throws IOException {
-    super.reset();
-    carryPosInc = 0;
-
-    // Instantiate here so the attribute set is complete (safer than constructor-time for some chains).
-    if (queue == null || queue.capacity() != maxTokens) {
-      queue = new TokenStateQueue(maxTokens, maxTokens, TokenStateQueue.OverflowPolicy.THROW, this);
-    } else {
-      queue.clear();
-    }
-  }
-
-  @Override
-  public boolean incrementToken() throws IOException {
-
-    // 1) Ensure at least one token is buffered.
-    if (queue.isEmpty()) {
-      if (!readAndEnqueueOne()) return false;
+    /**
+     * @param input   upstream token stream; normalization must already be applied
+     * @param lexicon frozen MWE lexicon matching the upstream normalization
+     */
+    public MweFilter(final TokenStream input, final MweLexicon lexicon)
+    {
+        super(input);
+        this.lexicon   = lexicon;
+        final int cap  = lexicon.maxLen() + 1;
+        this.queue     = new TokenStateQueue(cap, this);
+        this.autoState = new int[cap];
     }
 
-    // 2) Fill lookahead up to maxTokens (bounded).
-    while (queue.size() < maxTokens) {
-      if (!readAndEnqueueOne()) break;
+    @Override
+    public boolean incrementToken() throws IOException
+    {
+        // Re-walk any tokens left in the queue from the previous cycle, then
+        // continue reading from input. This unified loop handles both the tail
+        // of a previous match and fresh input without a separate drain phase,
+        // and allows a new MWE to start on buffered tail tokens.
+
+        int state    = lexicon.root();
+        int matchPos = -1;
+        int matchOrd = -1;
+
+        // Phase 1: re-walk tokens already buffered (tail from previous cycle).
+        for (int i = 0; i < queue.size(); i++) {
+            final AttributeSource slot     = queue.get(i);
+            final CharTermAttribute slotTerm = slot.getAttribute(CharTermAttribute.class);
+            state = lexicon.step(state, slotTerm.buffer(), slotTerm.length());
+            autoState[i] = state;
+            if (state < 0) {
+                // Automaton dead inside buffered tail: emit head as-is, leave rest
+                // for the next call's re-walk.
+                queue.removeFirst(this);
+                return true;
+            }
+            final int acc = lexicon.accept(state);
+            if (acc >= 0) { matchPos = i; matchOrd = acc; }
+        }
+
+        // Phase 2: read new tokens from input.
+        while (!inputExhausted) {
+            if (!input.incrementToken()) {
+                inputExhausted = true;
+                break;
+            }
+            queue.addLast(this);
+            final int slot = queue.size() - 1;
+            state = lexicon.step(state, termAtt.buffer(), termAtt.length());
+            autoState[slot] = state;
+            if (state < 0) break;   // automaton dead; record what we have
+            final int acc = lexicon.accept(state);
+            if (acc >= 0) { matchPos = slot; matchOrd = acc; }
+        }
+
+        if (queue.isEmpty()) return false;  // input exhausted and nothing buffered
+
+        if (matchPos >= 0) {
+            emitMerged(matchPos, matchOrd);
+            return true;
+        }
+
+        // No match: emit head as-is; tail stays for the next call.
+        queue.removeFirst(this);
+        return true;
     }
 
-    // 3) Longest match from the head of the queue.
-    int bestEntry = -1;
-    int bestLen = 0;
-
-    int st = lex.root();
-    final int limit = Math.min(queue.size(), maxTokens);
-
-    for (int i = 0; i < limit; i++) {
-      final AttributeSource s = queue.get(i);
-      // final int tokId = s.getAttribute(LemmaIdAttribute.class).getLemmaId();
-
-      // st = lex.step(st, tokId);
-      if (st < 0) break;
-
-      final int entryId = lex.acceptEntry(st);
-      if (entryId >= 0) {
-        bestEntry = entryId;
-        bestLen = i + 1;
-      }
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
+        queue.clear();
+        inputExhausted = false;
     }
 
-    // 4) Emit compound if multi-token match, otherwise emit head token as-is.
-    if (bestLen >= 2) {
-      emitCompound(bestEntry, bestLen);
-      return true;
-    } else {
-      emitSingle();
-      return true;
+    // ---- Private -------------------------------------------------------------
+
+    /**
+     * Emits the merged token for the match spanning queue slots {@code [0..matchPos]}.
+     * Restores all attributes from slot 0 (preserving posIncr, startOffset, etc.),
+     * then overrides term with the canonical form and endOffset with that of slot matchPos.
+     */
+    private void emitMerged(final int matchPos, final int matchOrd)
+    {
+        // Capture endOffset before restoreTo overwrites all attributes.
+        final int endOffset = queue.get(matchPos)
+                                   .getAttribute(OffsetAttribute.class)
+                                   .endOffset();
+
+        // Restore all attributes from first component (posIncr, startOffset, flags, ...).
+        queue.restoreTo(this, 0);
+
+        // Override term with canonical form — direct char copy, no String allocation.
+        final CharsDic vocab  = lexicon.vocab();
+        final int      cLen   = vocab.termLength(matchOrd);
+        final char[]   cBuf   = termAtt.resizeBuffer(cLen);
+        vocab.get(matchOrd, cBuf, 0);
+        termAtt.setLength(cLen);
+
+        // Fix endOffset and type.
+        offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
+        typeAtt.setType(TYPE_MWE);
+
+        // Discard matched slots; tail (if any) stays in queue for next call.
+        for (int i = 0; i <= matchPos; i++) queue.removeFirst();
     }
-  }
-
-  /**
-   * Reads one token from input and appends its snapshot to the queue.
-   * Returns false at end-of-stream.
-   *
-   * <p>Rejects token graphs (posInc==0) as per filter assumptions.</p>
-   */
-  private boolean readAndEnqueueOne() throws IOException {
-    if (!input.incrementToken()) return false;
-
-    if (posIncAtt.getPositionIncrement() == 0) {
-      throw new IllegalArgumentException("MweFilter cannot consume token graphs (posInc==0).");
-    }
-
-    // Capture current token into the queue (queue was built from this filter as template).
-    queue.addLast();
-    return true;
-  }
-
-  /**
-   * Emits the head token unchanged and removes it from the queue.
-   * Applies any pending carry position increment once.
-   */
-  private void emitSingle() {
-    // restore + pop
-    queue.removeFirst(this);
-
-    if (carryPosInc != 0) {
-      posIncAtt.setPositionIncrement(posIncAtt.getPositionIncrement() + carryPosInc);
-      carryPosInc = 0;
-    }
-  }
-
-  /**
-   * Emits a compound token for the match at the head and removes the matched tokens from the queue.
-   * Applies carryPosInc to the compound token and accumulates skipped posIncs for the next emission.
-   */
-  private void emitCompound(final int entryId, final int lenTokens) {
-
-    // Compute match span and skipped position increments BEFORE mutating the queue.
-    final int endOffset = queue.get(lenTokens - 1).getAttribute(OffsetAttribute.class).endOffset();
-
-    int skippedPosInc = 0;
-    for (int i = 1; i < lenTokens; i++) {
-      skippedPosInc += queue.get(i)
-          .getAttribute(PositionIncrementAttribute.class)
-          .getPositionIncrement();
-    }
-
-    // Restore+pop the first token: base attributes for the compound token.
-    queue.removeFirst(this);
-
-    // Apply pending carry to the compound token (from previous match).
-    if (carryPosInc != 0) {
-      posIncAtt.setPositionIncrement(posIncAtt.getPositionIncrement() + carryPosInc);
-      carryPosInc = 0;
-    }
-
-    // Remove the remaining constituents (they will not be emitted).
-    for (int i = 1; i < lenTokens; i++) {
-      queue.removeFirst();
-    }
-
-    // Carry the skipped increments to the next emitted token.
-    carryPosInc += skippedPosInc;
-
-    // Replace term text with canonical output form from lexicon.
-    final int outLen = lex.copyOutput(entryId, outScratch);
-    termAtt.copyBuffer(outScratch, 0, outLen);
-
-    // Span offsets across the whole MWE.
-    offAtt.setOffset(offAtt.startOffset(), endOffset);
-
-    // Token spans lenTokens positions.
-    posLenAtt.setPositionLength(lenTokens);
-
-    // Assign POS + optional lemma id for the MWE token.
-    // posIdAtt.setPosId(lex.pos(entryId));
-    final int mweLemma = lex.lemmaId(entryId);
-    // if (mweLemma >= 0) lemmaIdAtt.setLemmaId(mweLemma);
-  }
 }
-
