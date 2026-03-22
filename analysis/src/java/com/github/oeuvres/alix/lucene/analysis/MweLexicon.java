@@ -1,3 +1,36 @@
+/*
+ * Alix, A Lucene Indexer for XML documents.
+ * 
+ * Copyright 2026 Frédéric Glorieux <frederic.glorieux@fictif.org> & Unige
+ * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
+ *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ *
+ * Alix is a java library to index and search XML text documents
+ * with Lucene https://lucene.apache.org/core/
+ * including linguistic expertness for French,
+ * available under Apache license.
+ * 
+ * Alix has been started in 2009 under the javacrim project
+ * https://sf.net/projects/javacrim/
+ * for a java course at Inalco  http://www.er-tim.fr/
+ * Alix continues the concepts of SDX under another licence
+ * «Système de Documentation XML»
+ * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * http://savannah.nongnu.org/projects/sdx/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
@@ -15,13 +48,14 @@ import com.github.oeuvres.alix.util.IntAutomaton;
  *
  * <p>The {@link CharsDic} holds both component tokens (automaton arc labels, by ordinal)
  * and canonical MWE forms (automaton accept values, also ordinals). A caller that receives
- * an accept ordinal can retrieve the canonical char data from {@link #vocab()} without
- * allocation.</p>
+ * an accept ordinal from {@link #accept(int)} can copy the canonical form into a
+ * {@link CharTermAttribute} via {@link #fillTerm(int, CharTermAttribute)} without allocation.</p>
  *
  * <p>Lifecycle:</p>
  * <ol>
- *   <li>Construct with the {@link Analyzer} that matches the index-time pipeline.</li>
- *   <li>Call {@link #addExpression(CharSequence)} for each canonical MWE string.</li>
+ *   <li>Construct with the {@link Analyzer} matching the index-time pipeline.</li>
+ *   <li>Call {@link #addExpression(CharSequence)} for each canonical MWE string,
+ *       or use {@link #fromPath(Path, Analyzer, String)} to load from a file.</li>
  *   <li>Call {@link #freeze()} once; further {@link #addExpression} calls throw.</li>
  *   <li>Use {@link #step(int, char[], int)} and {@link #accept(int)} in the token filter.</li>
  * </ol>
@@ -43,7 +77,10 @@ public final class MweLexicon
     /** Field name passed to the analyzer (may be a dummy value). */
     private final String fieldName;
 
-    /** Reusable buffer for token-id sequences during addExpression. */
+    /**
+     * Reusable buffer accumulating token ids during {@link #addExpression}.
+     * Nulled at {@link #freeze()} as the frozen-state sentinel.
+     */
     private int[] idsBuf;
 
     /**
@@ -57,22 +94,14 @@ public final class MweLexicon
     {
         if (analyzer == null)  throw new IllegalArgumentException("analyzer");
         if (fieldName == null) throw new IllegalArgumentException("fieldName");
-        this.analyzer   = analyzer;
-        this.fieldName  = fieldName;
-        this.vocab      = new CharsDic(Math.max(8, expectedSize * 3));
-        this.auto       = new IntAutomaton();
-        this.idsBuf     = new int[8];
+        this.analyzer  = analyzer;
+        this.fieldName = fieldName;
+        this.vocab     = new CharsDic(Math.max(8, expectedSize * 3));
+        this.auto      = new IntAutomaton();
+        this.idsBuf    = new int[8];
     }
 
-    /**
-     * Returns the {@link CharsDic} ordinal of the canonical form if {@code state} is
-     * accepting, or -1 if non-accepting.
-     * Pass the result to {@link #vocab()} to retrieve char data without allocation.
-     */
-    public int accept(final int state)
-    {
-        return auto.accept(state);
-    }
+    // ---- Build API -----------------------------------------------------------
 
     /**
      * Tokenizes {@code expression} with the analyzer, registers each component token
@@ -123,18 +152,16 @@ public final class MweLexicon
         idsBuf = null;
     }
 
-    /**
-     * Upper bound on MWE length in tokens.
-     * Use to size the token filter's lookahead buffer ({@code maxLen() + 1}).
-     */
-    public int maxLen()
-    {
-        return auto.maxLen();
-    }
+    // ---- Runtime API ---------------------------------------------------------
 
-    /** Root state; pass as the initial state to the first {@link #step} call per position. */
+    /**
+     * Root state; pass as the initial state to the first {@link #step} call per position.
+     *
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
     public int root()
     {
+        if (idsBuf != null) throw new IllegalStateException("not frozen");
         return auto.root();
     }
 
@@ -148,6 +175,7 @@ public final class MweLexicon
      * @param buf   token character buffer (e.g. {@link CharTermAttribute#buffer()})
      * @param len   number of valid chars in {@code buf}
      * @return next state, or -1 if no transition exists
+     * @throws IllegalStateException if {@link #freeze()} has not been called
      */
     public int step(final int state, final char[] buf, final int len)
     {
@@ -158,15 +186,51 @@ public final class MweLexicon
     }
 
     /**
-     * Shared vocabulary; use ordinals from {@link #accept(int)} to retrieve canonical forms.
+     * Returns the {@link CharsDic} ordinal of the canonical form if {@code state} is
+     * accepting, or -1 if non-accepting.
+     * Pass the result to {@link #fillTerm(int, CharTermAttribute)} to write the form into a term attribute.
+     *
+     * @throws IllegalStateException if {@link #freeze()} has not been called
      */
-    public CharsDic vocab()
+    public int accept(final int state)
     {
-        return vocab;
+        if (idsBuf != null) throw new IllegalStateException("not frozen");
+        return auto.accept(state);
     }
 
+    /**
+     * Upper bound on MWE length in tokens.
+     * Use to size the token filter's lookahead buffer ({@code maxLen() + 1}).
+     *
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
+    public int maxLen()
+    {
+        if (idsBuf != null) throw new IllegalStateException("not frozen");
+        return auto.maxLen();
+    }
+
+    /**
+     * Copies the canonical form identified by {@code acceptOrd} into {@code termAtt},
+     * resizing its buffer as needed. No allocation beyond the buffer resize when needed.
+     *
+     * @param acceptOrd ordinal returned by {@link #accept(int)}
+     * @param termAtt   term attribute to fill
+     * @throws IllegalStateException if {@link #freeze()} has not been called
+     */
+    public void fillTerm(final int acceptOrd, final CharTermAttribute termAtt)
+    {
+        if (idsBuf != null) throw new IllegalStateException("not frozen");
+        final int    len = vocab.termLength(acceptOrd);
+        final char[] buf = termAtt.resizeBuffer(len);
+        vocab.get(acceptOrd, buf, 0);
+        termAtt.setLength(len);
+    }
+
+    // ---- Internal ------------------------------------------------------------
+
     /** Recovers a {@link CharsDic} ordinal from the raw return value of {@code add()}. */
-    private static int ord(final int raw)
+    static int ord(final int raw)
     {
         return raw >= 0 ? raw : -raw - 1;
     }

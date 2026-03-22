@@ -43,7 +43,6 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 
-// import com.github.oeuvres.alix.util.CharsDic;
 
 /**
  * A {@link TokenFilter} that merges multi-word expressions (MWEs) into single tokens,
@@ -183,11 +182,7 @@ public final class MweFilter extends TokenFilter
         queue.restoreTo(this, 0);
 
         // Override term with canonical form — direct char copy, no String allocation.
-        final CharsDic vocab  = lexicon.vocab();
-        final int      cLen   = vocab.termLength(matchOrd);
-        final char[]   cBuf   = termAtt.resizeBuffer(cLen);
-        vocab.get(matchOrd, cBuf, 0);
-        termAtt.setLength(cLen);
+        lexicon.fillTerm(matchOrd, termAtt);
 
         // Fix endOffset and type.
         offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
