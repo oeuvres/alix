@@ -12,6 +12,7 @@ import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TermRow;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
+import com.github.oeuvres.alix.web.util.HttpPars;
 
 /**
  * {@code /{index}/terms} — ranked term lists.

@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.web;
+package com.github.oeuvres.alix.web.util;
 
 /**
  * Error messages for Alix.
