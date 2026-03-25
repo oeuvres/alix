@@ -1,10 +1,10 @@
 package com.github.oeuvres.alix.ingest;
 
+import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.XsltJarResolver;
 
 import net.sf.saxon.TransformerFactoryImpl;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.FSDirectory;
@@ -26,8 +26,10 @@ import javax.xml.transform.stream.StreamSource;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 
 import static org.apache.lucene.index.IndexWriterConfig.OpenMode.CREATE;
@@ -89,7 +91,7 @@ public final class TeiIngester
         Files.createDirectories(cfg.indexroot);
         
         // Prepare tmp directory
-        deleteTreeIfExists(tmp);
+        Dir.rm(tmp);
         Files.createDirectories(tmp);
         
         // Optional preprocess templates (per config)
@@ -106,7 +108,14 @@ public final class TeiIngester
             AlixLuceneConsumer indexer = new AlixLuceneConsumer(writer, rep);
             
             for (Path tei : cfg.teiFiles) {
-                ingestOneFile(tei, preTpl, indexer);
+                try {
+                    ingestOneFile(tei, preTpl, indexer);
+                }
+                catch(Exception e) {
+                    // any error in a file should not break indexation
+                    // use Report should be better
+                    e.printStackTrace(System.err);
+                }
             }
             
             writer.commit();
@@ -114,7 +123,7 @@ public final class TeiIngester
         }
         
         swapIndexDirs(current, tmp, old);
-        rep.info("OK: " + cfg.name + " -> " + current);
+        rep.info("Indexed and merged: " + cfg.name + " -> " + current);
     }
     
     private Templates compilePre(Path prexslt) throws TransformerConfigurationException
@@ -215,7 +224,7 @@ public final class TeiIngester
     private void swapIndexDirs(Path current, Path tmp, Path old) throws IOException
     {
         // Remove old backup
-        deleteTreeIfExists(old);
+        Dir.rm(old);
         
         // current -> old (if present)
         if (Files.exists(current)) {
@@ -243,26 +252,4 @@ public final class TeiIngester
         }
     }
     
-    private static void deleteTreeIfExists(Path root) throws IOException 
-    {
-        if (root == null || !Files.exists(root))
-            return;
-        
-        Files.walkFileTree(root, new SimpleFileVisitor<>()
-        {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws java.io.IOException
-            {
-                Files.deleteIfExists(file);
-                return FileVisitResult.CONTINUE;
-            }
-            
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, java.io.IOException exc) throws java.io.IOException
-            {
-                Files.deleteIfExists(dir);
-                return FileVisitResult.CONTINUE;
-            }
-        });
-    }
 }

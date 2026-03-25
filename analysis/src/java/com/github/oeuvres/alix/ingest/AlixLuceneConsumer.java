@@ -1,12 +1,10 @@
 package com.github.oeuvres.alix.ingest;
 
-import java.io.IOException;
 import java.util.Objects;
 
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 import org.xml.sax.SAXException;
 
@@ -94,6 +92,10 @@ public final class AlixLuceneConsumer implements AlixDocumentConsumer
         final String docId = alixDoc.docId();
         if (docId != null && !docId.isBlank()) {
             luceneDoc.add(new StringField(ALIX_ID, docId, Field.Store.YES));
+            luceneDoc.add(new SortedDocValuesField(ALIX_ID, new BytesRef(docId.toString())));
+        }
+        else {
+            //? no id?
         }
         
         // CATEGORY uniqueness tracking (keep first per CATEGORY field name)
@@ -115,9 +117,10 @@ public final class AlixLuceneConsumer implements AlixDocumentConsumer
                     
                     case INT -> {
                         try {
-                            final int v = Integer.parseInt(value, 0, value.length(), 10);
-                            luceneDoc.add(new IntPoint(name, v));
-                            luceneDoc.add(new StoredField(name, v));
+                            final int vint = Integer.parseInt(value, 0, value.length(), 10);
+                            luceneDoc.add(new IntPoint(name, vint));
+                            luceneDoc.add(new StoredField(name, vint));
+                            luceneDoc.add(new NumericDocValuesField(name, vint));
                         } catch (NumberFormatException e) {
                             report.warn(value + ": int parse error (docId=" + alixDoc.docId() + ")");
                         }
@@ -136,7 +139,7 @@ public final class AlixLuceneConsumer implements AlixDocumentConsumer
                             }
                         }
                         if (dup) {
-                            report.warn("docId=" + docId + " duplicate CATEGORY '" + alixField.name + "' (keeping first)");
+                            report.warn("docId=" + docId + " duplicate CATEGORY '" + name + "' (keeping first)");
                             continue;
                         }
                         if (seenCatNames == null)
@@ -146,22 +149,22 @@ public final class AlixLuceneConsumer implements AlixDocumentConsumer
                             System.arraycopy(seenCatNames, 0, n, 0, seenCatCount);
                             seenCatNames = n;
                         }
-                        seenCatNames[seenCatCount++] = alixField.name;
+                        seenCatNames[seenCatCount++] = name;
                         
                         // postings keyword for fast filtering
-                        luceneDoc.add(new Field(alixField.name, value, KEYWORD_POSTINGS));
+                        luceneDoc.add(new Field(name, value, KEYWORD_POSTINGS));
                         
                         // docvalues for sorting/faceting on category (single-valued)
                         // Requires BytesRef => inevitable UTF-8 conversion; value is small.
-                        luceneDoc.add(new SortedDocValuesField(alixField.name, new BytesRef(value.toString())));
+                        luceneDoc.add(new SortedDocValuesField(name, new BytesRef(value.toString())));
                     }
                     
                     case FACET -> {
                         // postings keyword for fast filtering
-                        luceneDoc.add(new Field(alixField.name, value, KEYWORD_POSTINGS));
+                        luceneDoc.add(new Field(name, value, KEYWORD_POSTINGS));
                         
                         // docvalues set for faceting/grouping
-                        luceneDoc.add(new SortedSetDocValuesField(alixField.name, new BytesRef(value.toString())));
+                        luceneDoc.add(new SortedSetDocValuesField(name, new BytesRef(value.toString())));
                     }
                     
                     
@@ -207,9 +210,14 @@ public final class AlixLuceneConsumer implements AlixDocumentConsumer
         }
         
         try {
-            writer.updateDocument(new Term(ALIX_ID, docId), luceneDoc);
-        } catch (IOException e) {
-            System.err.println(luceneDoc);
+            // updateDocument is expensive
+            if (!writer.isOpen()) {
+                System.err.println("Who has closed the Writer?");
+                System.exit(9);
+            }
+            writer.addDocument(luceneDoc);
+        } catch (Exception e) {
+            System.err.println("id=" + luceneDoc.get(ALIX_ID) + " year=" + luceneDoc.get("year"));
             throw new SAXException("IndexWriter failure", e);
         }
     }
