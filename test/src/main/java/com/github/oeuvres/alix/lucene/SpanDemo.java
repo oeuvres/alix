@@ -57,7 +57,7 @@ public class SpanDemo {
     private static final String DEFAULT_STORED_FIELD  = "content";
     private static final int    DEFAULT_SLOP           = 19;
     private static final int    DEFAULT_CTX            = 10;
-    private static final int    DEFAULT_MAX            = 20;
+    private static final int    DEFAULT_MAX            = 500;
 
     public static void main(final String[] args) throws IOException {
 
@@ -152,7 +152,7 @@ public class SpanDemo {
                         shown++;
                         final int docId = sd.docId();
                         Document doc = storedFields.document(docId, fieldSet);
-                        System.out.println(doc.get("docline").trim());
+                        System.out.println(doc.get("docline"));
                         System.out.println("    spans=" + sd.spanCount());
 
                         /*
@@ -162,7 +162,6 @@ public class SpanDemo {
                             out.println("  " + stripHtml(excerpt));
                         }
                         */
-                        out.println();
                     }
                     if (sd.size() > max) {
                         out.printf("  … %d more hits not shown (use :max N to see more)%n", sd.size() - max);

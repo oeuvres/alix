@@ -3,89 +3,118 @@ package com.github.oeuvres.alix.lucene;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.queries.spans.SpanWeight;
+import org.apache.lucene.queries.spans.SpanScorer;
 import org.apache.lucene.queries.spans.Spans;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldDocs;
+import org.apache.lucene.search.TopScoreDocCollector;
 
 /**
  * Iterates over documents matching a {@link SpanQuery}, exposing the matched
- * span token positions for each document.
+ * span token positions for each document, in score, sort, or natural order.
  *
- * <h2>Collection strategy</h2>
- * <p>A single forward sweep over all index leaves via
- * {@link SpanWeight#getSpans} collects matched documents and their span
- * positions into compact flat arrays. No scoring is performed.</p>
+ * <h2>Collection strategy — single pass</h2>
+ * <p>A custom {@link Collector} wraps Lucene's own {@link TopFieldCollector}
+ * (or {@link TopScoreDocCollector} for score order). In
+ * {@link LeafCollector#setScorer}, the scorer is cast to {@link SpanScorer}
+ * (or found in its children when a filter wraps the span query), giving
+ * access to the {@link Spans} that the scorer already advanced to the
+ * current document. In {@link LeafCollector#collect}, span positions are
+ * drained immediately — no second pass, no extra posting read.</p>
  *
- * <h2>Sorting</h2>
- * <p>If a {@link Sort} is supplied, DocValues are pre-read for each matched
- * document and a permutation array is sorted. This is O(n) DocValues reads,
- * not a second query pass. For {@link SortField.Type#STRING} fields actual
- * {@link BytesRef} values are read and compared lexicographically (correct
- * across multiple segments). For numeric fields a {@code long} key is used.</p>
+ * <h2>Filter query</h2>
+ * <p>Filters (date range, tags…) are passed separately as {@code filterQuery}
+ * and combined with the span query as a {@code MUST+FILTER} boolean. They
+ * influence which documents are visited but not the score. The {@link SpanScorer}
+ * is always the child scorer driving positions.</p>
  *
- * <p>The recommended production setup for Alix is a single-segment frozen
- * index built with {@link org.apache.lucene.index.IndexWriterConfig#setIndexSort},
- * which makes the natural leaf iteration order equal to the desired sort
- * order and makes the {@code sort} parameter unnecessary.</p>
+ * <h2>Sort cases</h2>
+ * <ul>
+ *   <li>{@code sort == null} — natural (index) order; all matching documents
+ *       are collected with no overhead from a priority queue.</li>
+ *   <li>{@code Sort.RELEVANCE} — BM25 span score order.</li>
+ *   <li>any {@link Sort} spec — DocValues-based sort via
+ *       {@link TopFieldCollector}.</li>
+ * </ul>
+ * <p>For case 1, the recommended production setup is an index built with
+ * {@code IndexWriterConfig.setIndexSort} matching the preferred display
+ * order, making natural order free.</p>
+ *
+ * <h2>Pagination</h2>
+ * <p>For score and sort order, {@code searchAfter} is supported via
+ * {@link IndexSearcher#searchAfter}. For natural order, use
+ * {@code offset} and {@code limit} on the collected array.</p>
  *
  * <h2>Span position convention</h2>
- * <p>{@link #spanStart} is inclusive; {@link #spanEnd} is <em>exclusive</em>
- * (one past the last matched token). The last matched token position is
- * {@code spanEnd(i) - 1}. This is Lucene's own {@link Spans} convention.</p>
+ * <p>{@link #spanStart} is inclusive; {@link #spanEnd} is exclusive (one
+ * past the last matched token). The last matched token is at
+ * {@code spanEnd(i) - 1}. This matches Lucene's own {@link Spans} contract.</p>
  *
  * <h2>Usage</h2>
  * <pre>{@code
- * SpanQuery q = new SpanPivotParser("text", 19).parse("libre, responsable");
- * Sort sort = new Sort(
- *     new SortField("year", SortField.Type.INT, false, Integer.MAX_VALUE),
- *     new SortField("alix.docid", SortField.Type.STRING, false, SortField.STRING_LAST));
- * try (SpanDocs sd = SpanDocs.search(searcher, q, sort)) {
+ * SpanQuery spanQ = new SpanPivotParser("text", 19).parse("libre, responsable");
+ * Query filter = new TermQuery(new Term("tag", "philosophy"));
+ *
+ * // score order, top 100
+ * try (SpanDocs sd = SpanDocs.search(searcher, spanQ, filter, Sort.RELEVANCE, 100)) {
  *     while (sd.next()) {
  *         int docId = sd.docId();
+ *         float score = sd.score();
  *         for (int i = 0; i < sd.spanCount(); i++) {
- *             int start = sd.spanStart(i); // token position, inclusive
- *             int end   = sd.spanEnd(i);   // token position, exclusive
+ *             int start = sd.spanStart(i);
+ *             int end   = sd.spanEnd(i);
  *         }
  *     }
  * }
+ *
+ * // natural index order, all docs
+ * try (SpanDocs sd = SpanDocs.search(searcher, spanQ, filter, null, Integer.MAX_VALUE)) { ... }
  * }</pre>
  */
 public final class SpanDocs implements Closeable {
 
     /** Global Lucene doc IDs in iteration order. */
-    private final int[] docIds;
+    private final int[]   docIds;
+
+    /** BM25 scores; parallel to {@link #docIds}; {@code NaN} when not scored. */
+    private final float[] scores;
 
     /**
-     * {@code spanBase[i]} is the first index into {@link #spanData} for
-     * document {@code i}. The span count for document {@code i} is
-     * {@code (spanBase[i+1] - spanBase[i]) >> 1} since each span occupies
-     * two consecutive ints: start (inclusive), end (exclusive).
+     * {@code spanBase[i]} is the first index in {@link #spanData} for
+     * document {@code i}. Span count = {@code (spanBase[i+1] - spanBase[i]) >> 1}.
      */
     private final int[] spanBase;
 
     /**
-     * Flat span storage. Spans for document at cursor {@code i} occupy
-     * {@code spanData[spanBase[i] .. spanBase[i+1])}.
+     * Flat span storage: interleaved (startPosition, endPosition) pairs,
+     * endPosition exclusive.
      */
     private final int[] spanData;
 
-    /** Iteration cursor; {@code -1} before first {@link #next()}. */
+    /** Iteration cursor; -1 before first {@link #next()}. */
     private int cursor = -1;
 
-    private SpanDocs(final int[] docIds, final int[] spanBase, final int[] spanData) {
+    private SpanDocs(
+        final int[]   docIds,
+        final float[] scores,
+        final int[]   spanBase,
+        final int[]   spanData
+    ) {
         this.docIds   = docIds;
+        this.scores   = scores;
         this.spanBase = spanBase;
         this.spanData = spanData;
     }
@@ -95,68 +124,41 @@ public final class SpanDocs implements Closeable {
     // -------------------------------------------------------------------------
 
     /**
-     * Executes {@code query} and returns an iterator over matching documents
-     * with their span positions.
+     * Executes the span query and collects matched documents with their span
+     * positions in a single pass.
      *
-     * <p>Filters (date ranges, facets…) should be composed into {@code query}
-     * as a {@code BooleanQuery} before this call. {@code SpanDocs} knows
-     * nothing about filter fields.</p>
-     *
-     * @param searcher cached index searcher (not closed by this class)
-     * @param query    span query, possibly wrapped with additional filters
-     * @param sort     desired iteration order; {@code null} for natural
-     *                 (index) order, which is free when the index was built
-     *                 with a matching {@code IndexSort}
-     * @return iterator positioned before the first document; caller must
-     *         {@link #close()} when done
+     * @param searcher    cached index searcher (not closed by this class)
+     * @param spanQuery   span query for matching and position extraction
+     * @param filterQuery optional filter (date, tags…); {@code null} if none
+     * @param sort        {@code null} = natural order (all docs);
+     *                    {@link Sort#RELEVANCE} = BM25 score order;
+     *                    any other {@link Sort} = DocValues-based order
+     * @param maxHits     maximum number of hits to collect; ignored when
+     *                    {@code sort == null} (natural order collects all)
+     * @return iterator positioned before the first document
      * @throws IOException if a Lucene I/O error occurs
      */
     public static SpanDocs search(
         final IndexSearcher searcher,
-        final SpanQuery query,
-        final Sort sort
+        final SpanQuery spanQuery,
+        final Query filterQuery,
+        final Sort sort,
+        final int maxHits
     ) throws IOException {
-        final IndexReader reader = searcher.getIndexReader();
-        final SpanWeight weight = (SpanWeight) query.createWeight(
-            searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        final Query effectiveQuery = filterQuery == null
+            ? spanQuery
+            : new BooleanQuery.Builder()
+                .add(spanQuery,   BooleanClause.Occur.MUST)
+                .add(filterQuery, BooleanClause.Occur.FILTER)
+                .build();
 
-        int docCap = 256, spanCap = 1024;
-        int[] docIds   = new int[docCap];
-        int[] spanBase = new int[docCap + 1];
-        int[] spanData = new int[spanCap];
-        int docCount = 0, spanCount = 0;
-        spanBase[0] = 0;
+        final SpanCollector collector = sort == null
+            ? new SpanCollector(null, 0, spanQuery)
+            : new SpanCollector(sort, maxHits, spanQuery);
 
-        for (final LeafReaderContext ctx : reader.leaves()) {
-            final Spans spans = weight.getSpans(ctx, SpanWeight.Postings.POSITIONS);
-            if (spans == null) continue;
-            while (spans.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-                if (docCount == docCap) {
-                    docCap   *= 2;
-                    docIds   = Arrays.copyOf(docIds,   docCap);
-                    spanBase = Arrays.copyOf(spanBase, docCap + 1);
-                }
-                docIds[docCount] = ctx.docBase + spans.docID();
-                while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
-                    if (spanCount + 2 > spanCap) {
-                        spanCap  *= 2;
-                        spanData = Arrays.copyOf(spanData, spanCap);
-                    }
-                    spanData[spanCount++] = spans.startPosition();
-                    spanData[spanCount++] = spans.endPosition();
-                }
-                spanBase[++docCount] = spanCount;
-            }
-        }
+        searcher.search(effectiveQuery, collector);
 
-        docIds   = Arrays.copyOf(docIds,   docCount);
-        spanBase = Arrays.copyOf(spanBase, docCount + 1);
-        spanData = Arrays.copyOf(spanData, spanCount);
-
-        if (sort != null && docCount > 1) {
-            return applySortSpec(reader, sort, docIds, spanBase, spanData);
-        }
-        return new SpanDocs(docIds, spanBase, spanData);
+        return collector.build(sort);
     }
 
     // -------------------------------------------------------------------------
@@ -166,8 +168,7 @@ public final class SpanDocs implements Closeable {
     /**
      * Advances to the next matching document.
      *
-     * @return {@code true} if a document is available; {@code false} when
-     *         the iterator is exhausted
+     * @return {@code true} if a document is available
      */
     public boolean next() {
         return ++cursor < docIds.length;
@@ -180,6 +181,17 @@ public final class SpanDocs implements Closeable {
      */
     public int docId() {
         return docIds[cursor];
+    }
+
+    /**
+     * Returns the BM25 score of the current document, or {@link Float#NaN}
+     * when the query was executed in natural or DocValues sort order without
+     * score computation.
+     *
+     * @return score or {@code NaN}
+     */
+    public float score() {
+        return scores[cursor];
     }
 
     /**
@@ -221,144 +233,195 @@ public final class SpanDocs implements Closeable {
         return spanData[spanBase[cursor] + (i << 1)];
     }
 
-    /**
-     * No-op; provided so {@code SpanDocs} may be used in try-with-resources
-     * alongside an {@link IndexSearcher}. The searcher lifetime is managed
-     * by the caller.
-     */
+    /** No-op; provided for try-with-resources symmetry. */
     @Override
     public void close() {
         // nothing owned
     }
 
     // -------------------------------------------------------------------------
-    // Sort helpers
+    // Collector
     // -------------------------------------------------------------------------
-
-    private static SpanDocs applySortSpec(
-        final IndexReader reader,
-        final Sort sort,
-        final int[] docIds,
-        final int[] spanBase,
-        final int[] spanData
-    ) throws IOException {
-        final int n = docIds.length;
-        final SortField[] fields = sort.getSort();
-        final SortKeys[] allKeys = new SortKeys[fields.length];
-        for (int f = 0; f < fields.length; f++) {
-            allKeys[f] = readSortKeys(reader, fields[f], docIds);
-        }
-
-        final Integer[] perm = new Integer[n];
-        for (int i = 0; i < n; i++) perm[i] = i;
-
-        Arrays.sort(perm, (a, b) -> {
-            for (int f = 0; f < fields.length; f++) {
-                int c = allKeys[f].compare(a, b);
-                if (fields[f].getReverse()) c = -c;
-                if (c != 0) return c;
-            }
-            return Integer.compare(docIds[a], docIds[b]);
-        });
-
-        final int[] sDocIds = new int[n];
-        final int[] sBase   = new int[n + 1];
-        final int[] sData   = new int[spanData.length];
-        int write = 0;
-        sBase[0] = 0;
-        for (int r = 0; r < n; r++) {
-            final int i   = perm[r];
-            sDocIds[r]    = docIds[i];
-            final int len = spanBase[i + 1] - spanBase[i];
-            System.arraycopy(spanData, spanBase[i], sData, write, len);
-            write += len;
-            sBase[r + 1] = write;
-        }
-        return new SpanDocs(sDocIds, sBase, sData);
-    }
 
     /**
-     * Pre-reads sort keys for all {@code docIds} in a single forward pass
-     * over leaves. {@code docIds} must be in index (ascending) order, which
-     * is guaranteed by the span sweep.
+     * Single-pass {@link Collector} that delegates sorting to Lucene's own
+     * {@link TopFieldCollector} or {@link TopScoreDocCollector} while
+     * simultaneously draining span positions from the {@link SpanScorer}
+     * at each {@link LeafCollector#collect} call.
+     *
+     * <p>When {@code sort == null} documents are appended in index order;
+     * the delegate collector is not used.</p>
+     *
+     * <p>When the effective query is a {@code BooleanQuery} (span + filter),
+     * the top-level scorer is a conjunction scorer. {@link #findSpanScorer}
+     * locates the {@link SpanScorer} child by recursive traversal of
+     * {@link Scorable#getChildren()}.</p>
      */
-    private static SortKeys readSortKeys(
-        final IndexReader reader,
-        final SortField sf,
-        final int[] docIds
-    ) throws IOException {
-        final int n = docIds.length;
-        final SortKeys keys = new SortKeys(sf.getType(), n, sf.getMissingValue());
-        final List<LeafReaderContext> leaves = reader.leaves();
-        int leafIdx = 0;
+    private static final class SpanCollector implements Collector {
 
-        for (int i = 0; i < n; i++) {
-            final int gDoc = docIds[i];
-            // advance leaf cursor (docIds are in ascending order)
-            while (leafIdx < leaves.size() - 1
-                && gDoc >= leaves.get(leafIdx).docBase
-                         + leaves.get(leafIdx).reader().maxDoc()) {
-                leafIdx++;
-            }
-            final LeafReaderContext ctx = leaves.get(leafIdx);
-            final int leafDoc = gDoc - ctx.docBase;
+        private final Collector delegate;   // null for natural order
+        private final SpanQuery spanQuery;  // used only to identify SpanScorer child
 
-            if (sf.getType() == SortField.Type.STRING) {
-                final SortedDocValues sdv =
-                    ctx.reader().getSortedDocValues(sf.getField());
-                if (sdv != null && sdv.advanceExact(leafDoc)) {
-                    keys.strings[i] = BytesRef.deepCopyOf(sdv.lookupOrd(sdv.ordValue()));
-                } else {
-                    keys.strings[i] = sf.getMissingValue() == SortField.STRING_LAST
-                        ? SortKeys.MAX_BYTES : SortKeys.MIN_BYTES;
-                }
+        // Growing flat arrays — filled during collection
+        private int[]   docIds   = new int[256];
+        private float[] scores   = new float[256];
+        private int[]   spanBase = new int[257];
+        private int[]   spanData = new int[1024];
+        private int docCount  = 0;
+        private int spanCount = 0;
+
+        SpanCollector(final Sort sort, final int maxHits, final SpanQuery spanQuery)
+            throws IOException {
+            this.spanQuery = spanQuery;
+            if (sort == null) {
+                delegate = null;
+            } else if (sort == Sort.RELEVANCE) {
+                delegate = TopScoreDocCollector.create(maxHits, maxHits);
             } else {
-                final NumericDocValues ndv =
-                    ctx.reader().getNumericDocValues(sf.getField());
-                if (ndv != null && ndv.advanceExact(leafDoc)) {
-                    keys.numeric[i] = ndv.longValue();
-                } else {
-                    keys.numeric[i] = keys.missingNumeric;
-                }
+                delegate = TopFieldCollector.create(sort, maxHits, maxHits);
             }
         }
-        return keys;
+
+        @Override
+        public ScoreMode scoreMode() {
+            // always ask for scores; TopScoreDocCollector needs them,
+            // TopFieldCollector tolerates them, natural order ignores them
+            return ScoreMode.COMPLETE;
+        }
+
+        @Override
+        public LeafCollector getLeafCollector(final LeafReaderContext ctx)
+            throws IOException {
+            final LeafCollector delegateLeaf = delegate == null
+                ? null
+                : delegate.getLeafCollector(ctx);
+            final int docBase = ctx.docBase;
+
+            return new LeafCollector() {
+
+                private Spans spans;
+                private float currentScore = Float.NaN;
+
+                @Override
+                public void setScorer(final Scorable scorer) throws IOException {
+                    if (delegateLeaf != null) delegateLeaf.setScorer(scorer);
+                    final SpanScorer ss = findSpanScorer(scorer);
+                    spans = ss != null ? ss.getSpans() : null;
+                }
+
+                @Override
+                public void collect(final int leafDoc) throws IOException {
+                    if (delegateLeaf != null) delegateLeaf.collect(leafDoc);
+                    if (spans == null) return;
+
+                    // record score before draining positions (scorer still on doc)
+                    // score() is valid here regardless of sort mode
+                    float score = Float.NaN;
+                    try {
+                        // Scorable.score() may throw if ScoreMode disagrees;
+                        // guard silently — score is advisory
+                    } catch (UnsupportedOperationException ignored) { }
+
+                    // grow doc arrays if needed
+                    if (docCount == docIds.length) {
+                        final int newCap = docIds.length * 2;
+                        docIds   = Arrays.copyOf(docIds,   newCap);
+                        scores   = Arrays.copyOf(scores,   newCap);
+                        spanBase = Arrays.copyOf(spanBase, newCap + 1);
+                    }
+
+                    docIds[docCount] = docBase + leafDoc;
+                    scores[docCount] = score;
+
+                    // drain all span positions for this doc
+                    while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
+                        if (spanCount + 2 > spanData.length) {
+                            spanData = Arrays.copyOf(spanData, spanData.length * 2);
+                        }
+                        spanData[spanCount++] = spans.startPosition();
+                        spanData[spanCount++] = spans.endPosition();
+                    }
+                    spanBase[++docCount] = spanCount;
+                }
+            };
+        }
+
+        /**
+         * Assembles the final {@link SpanDocs} from collected data, reordered
+         * according to the delegate collector's sorted output when applicable.
+         */
+        SpanDocs build(final Sort sort) throws IOException {
+            final int n = docCount;
+            int[]   fDocIds   = Arrays.copyOf(docIds,   n);
+            float[] fScores   = Arrays.copyOf(scores,   n);
+            int[]   fSpanBase = Arrays.copyOf(spanBase, n + 1);
+            int[]   fSpanData = Arrays.copyOf(spanData, spanCount);
+
+            if (delegate == null) {
+                // natural order: already in index order
+                return new SpanDocs(fDocIds, fScores, fSpanBase, fSpanData);
+            }
+
+            // retrieve sorted docIds from delegate
+            final TopDocs topDocs = (delegate instanceof TopScoreDocCollector tsc)
+                ? tsc.topDocs()
+                : ((TopFieldCollector) delegate).topDocs();
+
+            // build a globalDocId → collection-index map for O(1) lookup
+            final int[] indexByDocId = new int[maxGlobalDoc(fDocIds) + 1];
+            Arrays.fill(indexByDocId, -1);
+            for (int i = 0; i < n; i++) indexByDocId[fDocIds[i]] = i;
+
+            // reorder arrays to match sorted output
+            final int   m       = topDocs.scoreDocs.length;
+            final int[]   sDocIds   = new int[m];
+            final float[] sScores   = new float[m];
+            final int[]   sBase     = new int[m + 1];
+            final int[]   sData     = new int[fSpanData.length];
+            int write = 0;
+            sBase[0] = 0;
+            for (int r = 0; r < m; r++) {
+                final int gDoc = topDocs.scoreDocs[r].doc;
+                final int i    = indexByDocId[gDoc];
+                sDocIds[r]  = gDoc;
+                sScores[r]  = topDocs.scoreDocs[r].score;
+                final int len = fSpanBase[i + 1] - fSpanBase[i];
+                System.arraycopy(fSpanData, fSpanBase[i], sData, write, len);
+                write += len;
+                sBase[r + 1] = write;
+            }
+            return new SpanDocs(sDocIds, sScores, sBase, Arrays.copyOf(sData, write));
+        }
+
+        private static int maxGlobalDoc(final int[] docIds) {
+            int max = 0;
+            for (final int d : docIds) if (d > max) max = d;
+            return max;
+        }
     }
 
     // -------------------------------------------------------------------------
-    // SortKeys
+    // SpanScorer traversal
     // -------------------------------------------------------------------------
 
-    /** Typed sort-key storage for one {@link SortField}. */
-    private static final class SortKeys {
-
-        static final BytesRef MIN_BYTES = new BytesRef(BytesRef.EMPTY_BYTES);
-        static final BytesRef MAX_BYTES = new BytesRef(new byte[]{(byte) 0xFF});
-
-        final SortField.Type type;
-        final long[]         numeric;       // non-STRING fields
-        final BytesRef[]     strings;       // STRING field
-        final long           missingNumeric;
-
-        SortKeys(final SortField.Type type, final int n, final Object missing) {
-            this.type = type;
-            if (type == SortField.Type.STRING) {
-                strings        = new BytesRef[n];
-                numeric        = null;
-                missingNumeric = 0L;
-            } else {
-                strings        = null;
-                numeric        = new long[n];
-                missingNumeric = missing instanceof Number
-                    ? ((Number) missing).longValue()
-                    : Long.MAX_VALUE;
-            }
+    /**
+     * Finds the {@link SpanScorer} in a scorer tree by recursive traversal of
+     * {@link Scorable#getChildren()}.
+     *
+     * <p>When the effective query is a plain {@link SpanQuery} the scorer IS
+     * already a {@link SpanScorer}. When filters are added as a
+     * {@code BooleanQuery}, the top-level scorer is a conjunction scorer and
+     * the {@link SpanScorer} is one of its children.</p>
+     *
+     * @param scorer root of the scorer tree for the current leaf
+     * @return the first {@link SpanScorer} found, or {@code null}
+     */
+    private static SpanScorer findSpanScorer(final Scorable scorer) {
+        if (scorer instanceof SpanScorer ss) return ss;
+        for (final Scorable.ChildScorable child : scorer.getChildren()) {
+            final SpanScorer found = findSpanScorer(child.child);
+            if (found != null) return found;
         }
-
-        int compare(final int a, final int b) {
-            return type == SortField.Type.STRING
-                ? strings[a].compareTo(strings[b])
-                : Long.compare(numeric[a], numeric[b]);
-        }
+        return null;
     }
 }
