@@ -4,7 +4,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.queries.spans.SpanTermQuery;
+import org.apache.lucene.queries.spans .SpanTermQuery;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +100,7 @@ public class SpanQueryParser {
             throw new IllegalArgumentException("spec must not be blank");
 
         final List<SpanQuery> groups = new ArrayList<>();
-        for (final String groupStr : spec.split("[,\\R]+")) {
+        for (final String groupStr : spec.split("[,\\n\\r]+")) {
             final String trimmed = groupStr.strip();
             if (trimmed.isEmpty()) continue;
             final SpanQuery group = buildGroup(trimmed);

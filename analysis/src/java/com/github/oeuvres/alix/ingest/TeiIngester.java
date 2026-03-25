@@ -77,7 +77,7 @@ public final class TeiIngester
      * @throws SAXException 
      * @throws TransformerConfigurationException 
      */
-    public void ingest(IngestConfig cfg, Analyzer analyzer) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException 
+    public void ingest(IngestConfig cfg, IndexWriterConfig iwc) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException 
     {
         if (cfg == null)
             throw new IllegalArgumentException("cfg == null");
@@ -96,8 +96,7 @@ public final class TeiIngester
         Templates preTpl = compilePre(cfg.prexslt);
         
         // Analyzer choice: keep consistent with your demo; change here if needed.
-        Objects.requireNonNull(analyzer, "analyzer");
-        IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+        Objects.requireNonNull(iwc, "IndexWriterConfig");
         iwc.setOpenMode(CREATE);
         
         try (FSDirectory dir = FSDirectory.open(tmp);
