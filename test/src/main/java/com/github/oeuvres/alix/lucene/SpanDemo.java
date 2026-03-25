@@ -143,7 +143,7 @@ public class SpanDemo {
                 }
 
                 final long t0 = System.currentTimeMillis();
-                try (SpanDocs sd = SpanDocs.search(searcher, query, null)) {
+                try (SpanDocs sd = SpanDocs.search(searcher, query, null, 1000)) {
                     final long ms = System.currentTimeMillis() - t0;
                     out.printf("%d hit(s) in %d ms%n%n", sd.size(), ms);
 
