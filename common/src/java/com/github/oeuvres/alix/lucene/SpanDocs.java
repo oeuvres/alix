@@ -10,6 +10,7 @@ import java.util.Map;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.spans.RecordingSpans;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanScorer;
 import org.apache.lucene.queries.spans.SpanWeight;
@@ -31,8 +32,6 @@ import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
-import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.index.TermStates;
 
 /**
@@ -206,84 +205,6 @@ public final class SpanDocs implements Closeable {
     /** No-op; provided for try-with-resources symmetry. */
     @Override
     public void close() {
-    }
-
-    /**
-     * Intercepts every {@link #nextStartPosition()} call to record span
-     * positions as {@link SpanScorer} traverses them during BM25 frequency
-     * computation. Positions are accumulated per document; {@link #nextDoc}
-     * and {@link #advance} reset the counter.
-     *
-     * <p>After the scorer has called {@link SpanScorer#score()}, the recorded
-     * positions are available in {@link #starts} and {@link #ends} up to
-     * index {@link #count - 1}.</p>
-     */
-    static final class RecordingSpans extends Spans {
-
-        private final Spans in;
-        int[]  starts = new int[16];
-        int[]  ends   = new int[16];
-        int    count  = 0;
-
-        RecordingSpans(final Spans in) {
-            this.in = in;
-        }
-
-        @Override
-        public int nextStartPosition() throws IOException {
-            final int start = in.nextStartPosition();
-            if (start != NO_MORE_POSITIONS) {
-                if (count == starts.length) {
-                    starts = Arrays.copyOf(starts, count * 2);
-                    ends   = Arrays.copyOf(ends,   count * 2);
-                }
-                starts[count] = start;
-                ends[count]   = in.endPosition();
-                count++;
-            }
-            return start;
-        }
-
-        @Override public int startPosition()   { return in.startPosition(); }
-        @Override public int endPosition()     { return in.endPosition(); }
-        @Override public int width()           { return in.width(); }
-
-        @Override
-        public int nextDoc() throws IOException {
-            count = 0;
-            return in.nextDoc();
-        }
-
-        @Override
-        public int advance(final int target) throws IOException {
-            count = 0;
-            return in.advance(target);
-        }
-
-        @Override public int  docID()  { return in.docID(); }
-        @Override public long cost()   { return in.cost(); }
-
-        @Override
-        public void doStartCurrentDoc() throws IOException {
-            in.doStartCurrentDoc();
-        }
-
-        @Override
-        public void doCurrentSpans() throws IOException {
-            in.doCurrentSpans();
-        }
-
-        @Override
-        public void collect(final SpanCollector collector) throws IOException {
-            in.collect(collector);
-        }
-
-        @Override public float positionsCost() { return in.positionsCost(); }
-
-        @Override
-        public TwoPhaseIterator asTwoPhaseIterator() {
-            return in.asTwoPhaseIterator();
-        }
     }
 
     /**
