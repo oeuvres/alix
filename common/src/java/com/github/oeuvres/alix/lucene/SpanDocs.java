@@ -7,9 +7,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermStates;
 import org.apache.lucene.queries.spans.RecordingSpans;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanScorer;
@@ -29,92 +29,98 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopFieldCollectorManager;
-import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
-import org.apache.lucene.index.TermStates;
 
 /**
  * Iterates over documents matching a {@link SpanQuery}, exposing matched span
- * token positions for each document, in score, sort, or natural order.
+ * token positions and character offsets for each document, in score, sort, or
+ * natural order.
  *
  * <h2>Collection strategy — single pass</h2>
  * <p>The span query is wrapped in a {@link RecordingSpanQuery} that injects a
- * {@link RecordingSpans} into the scorer. {@link RecordingSpans} intercepts
- * every {@link Spans#nextStartPosition()} call and records the (start, end)
- * pair. This means positions are captured at exactly the moment
- * {@link SpanScorer} traverses them for BM25 frequency computation, with no
- * additional iteration cost. All three sort modes use the same single pass.</p>
+ * {@link RecordingSpans} into the scorer. {@link RecordingSpans} intercepts every
+ * {@link Spans#nextStartPosition()} call, recording token positions and immediately
+ * collecting character offsets from the leaf postings via
+ * {@link Spans#collect(org.apache.lucene.queries.spans.SpanCollector)}. Postings
+ * are requested at {@link SpanWeight.Postings#OFFSETS} level. All three sort modes
+ * use the same single pass with no extra I/O.</p>
  *
  * <h2>Sort cases</h2>
  * <ul>
- *   <li>{@code sort == null} — natural (index) order; all docs collected;
- *       positions drained manually since no scorer triggers traversal.
- *       Recommended when the index was built with a matching
- *       {@code IndexWriterConfig.setIndexSort}.</li>
- *   <li>{@link Sort#RELEVANCE} — BM25 score descending, top {@code maxHits};
- *       the delegate {@link TopScoreDocCollector} triggers {@code score()} which
- *       traverses spans via {@link RecordingSpans}.</li>
- *   <li>any other {@link Sort} — DocValues sort; delegate
- *       {@link TopFieldCollector} also triggers {@code score()} via
- *       {@link ScoreMode#COMPLETE}.</li>
+ *   <li>{@code sort == null} — natural index order, all docs collected.</li>
+ *   <li>{@link Sort#RELEVANCE} — BM25 score descending, top {@code maxHits}.</li>
+ *   <li>any other {@link Sort} — DocValues sort, top {@code maxHits}.</li>
  * </ul>
  *
- * <h2>API</h2>
+ * <h2>Span position and offset convention</h2>
+ * <ul>
+ *   <li>{@link #spanStart} — token position, inclusive.</li>
+ *   <li>{@link #spanEnd} — token position, exclusive (Lucene {@link Spans} contract).</li>
+ *   <li>{@link #spanCharStart} — character offset of the first pivot token's start.</li>
+ *   <li>{@link #spanCharEnd} — character offset of the last pivot token's end (exclusive).</li>
+ * </ul>
+ *
+ * <h2>Usage</h2>
  * <pre>{@code
  * SpanQuery spanQ = new SpanPivotParser("text", 19).parse("libre, responsable");
- * Query filter = new TermQuery(new Term("tag", "philosophy"));
  *
- * // score order — validate the query
- * try (SpanDocs sd = SpanDocs.search(searcher, spanQ, filter, Sort.RELEVANCE, 500)) {
+ * try (SpanDocs sd = SpanDocs.search(searcher, spanQ, null, Sort.RELEVANCE, 500)) {
  *     while (sd.next()) {
  *         int   docId = sd.docId();
  *         float score = sd.score();
  *         for (int i = 0; i < sd.spanCount(); i++) {
- *             int start = sd.spanStart(i); // inclusive
- *             int end   = sd.spanEnd(i);   // exclusive
+ *             int start     = sd.spanStart(i);     // token, inclusive
+ *             int end       = sd.spanEnd(i);       // token, exclusive
+ *             int charStart = sd.spanCharStart(i); // char, inclusive
+ *             int charEnd   = sd.spanCharEnd(i);   // char, exclusive
  *         }
  *     }
  * }
- *
- * // natural order — full corpus scan
- * try (SpanDocs sd = SpanDocs.search(searcher, spanQ, null, null, 0)) { ... }
  * }</pre>
- *
- * <h2>Span position convention</h2>
- * <p>{@link #spanStart} inclusive, {@link #spanEnd} exclusive (Lucene's own
- * {@link Spans} contract).</p>
  */
 public final class SpanDocs implements Closeable {
 
     private final int[]   docIds;
     private final float[] scores;
-    private final int[]   spanBase;
-    private final int[]   spanData;
+
+    /**
+     * {@code spanBase[i]} is the first index in {@link #spanData} and
+     * {@link #charData} for document {@code i}.
+     * Span count = {@code (spanBase[i+1] - spanBase[i]) >> 1}.
+     */
+    private final int[] spanBase;
+
+    /** Token positions: interleaved (startPos, endPos) pairs, endPos exclusive. */
+    private final int[] spanData;
+
+    /** Character offsets: interleaved (charStart, charEnd) pairs, indexed like {@link #spanData}. */
+    private final int[] charData;
+
     private int cursor = -1;
 
     private SpanDocs(
         final int[]   docIds,
         final float[] scores,
         final int[]   spanBase,
-        final int[]   spanData
+        final int[]   spanData,
+        final int[]   charData
     ) {
         this.docIds   = docIds;
         this.scores   = scores;
         this.spanBase = spanBase;
         this.spanData = spanData;
+        this.charData = charData;
     }
 
     /**
-     * Executes the span query and returns an iterator over matching documents
-     * with their span positions.
+     * Executes the span query and returns an iterator over matching documents.
      *
      * @param searcher    cached index searcher (not closed by this class)
      * @param spanQuery   span query; wrapped internally in a recording proxy
-     * @param filterQuery optional filter (date range, tags…); {@code null} if none
-     * @param sort        {@code null} = natural index order;
-     *                    {@link Sort#RELEVANCE} = BM25 score descending;
-     *                    any other {@link Sort} = DocValues sort
+     * @param filterQuery optional filter; {@code null} if none
+     * @param sort        {@code null} = natural order; {@link Sort#RELEVANCE} = score;
+     *                    other = DocValues sort
      * @param maxHits     maximum hits for score/sort modes; ignored when
      *                    {@code sort == null}
      * @return iterator positioned before the first document
@@ -131,8 +137,8 @@ public final class SpanDocs implements Closeable {
         final Query effectiveQuery = filterQuery == null
             ? recording
             : new BooleanQuery.Builder()
-                .add(recording,     BooleanClause.Occur.MUST)
-                .add(filterQuery,   BooleanClause.Occur.FILTER)
+                .add(recording,   BooleanClause.Occur.MUST)
+                .add(filterQuery, BooleanClause.Occur.FILTER)
                 .build();
         return searcher.search(effectiveQuery, new SpanCollectorManager(sort, maxHits));
     }
@@ -183,6 +189,26 @@ public final class SpanDocs implements Closeable {
     }
 
     /**
+     * Returns the character start offset of the first pivot token in span {@code i}.
+     *
+     * @param i span index in {@code [0, spanCount())}
+     * @return character start offset (inclusive)
+     */
+    public int spanCharStart(final int i) {
+        return charData[spanBase[cursor] + (i << 1)];
+    }
+
+    /**
+     * Returns the character end offset of the last pivot token in span {@code i}.
+     *
+     * @param i span index in {@code [0, spanCount())}
+     * @return character end offset (exclusive)
+     */
+    public int spanCharEnd(final int i) {
+        return charData[spanBase[cursor] + (i << 1) + 1];
+    }
+
+    /**
      * Returns the end token position (exclusive) of span {@code i}.
      *
      * @param i span index in {@code [0, spanCount())}
@@ -209,8 +235,9 @@ public final class SpanDocs implements Closeable {
 
     /**
      * Wraps an inner {@link SpanWeight}, overriding {@link #getSpans} to return
-     * {@link RecordingSpans}. Uses {@link SpanQuery#getTermStates} on the inner
-     * weight to correctly initialize BM25 scoring in the parent constructor.
+     * {@link RecordingSpans} and upgrading the postings request to
+     * {@link SpanWeight.Postings#OFFSETS} so character offsets are available in
+     * the leaf postings.
      */
     private static final class RecordingSpanWeight extends SpanWeight {
 
@@ -228,8 +255,13 @@ public final class SpanDocs implements Closeable {
 
         @Override
         public Spans getSpans(final LeafReaderContext ctx, final Postings p) throws IOException {
-            final Spans raw = inner.getSpans(ctx, p);
-            return raw == null ? null : new RecordingSpans(raw);
+            final org.apache.lucene.index.FieldInfo fi =
+                ctx.reader().getFieldInfos().fieldInfo(field);
+            final boolean hasOffsets = fi != null && fi.getIndexOptions().compareTo(
+                org.apache.lucene.index.IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+            final Postings required = hasOffsets ? p.atLeast(Postings.OFFSETS) : p;
+            final Spans raw = inner.getSpans(ctx, required);
+            return raw == null ? null : new RecordingSpans(raw, hasOffsets);
         }
 
         @Override
@@ -250,7 +282,6 @@ public final class SpanDocs implements Closeable {
 
     /**
      * Wraps a {@link SpanQuery} so that its weight injects {@link RecordingSpans}.
-     * Delegates all query methods to the wrapped query.
      */
     private static final class RecordingSpanQuery extends SpanQuery {
 
@@ -307,9 +338,7 @@ public final class SpanDocs implements Closeable {
     }
 
     /**
-     * {@link CollectorManager} that creates and reduces {@link SpanCollector}
-     * instances. For single-threaded {@link IndexSearcher} exactly one collector
-     * is created and returned from {@link #reduce} directly.
+     * {@link CollectorManager} producing and reducing {@link SpanCollector} instances.
      */
     private static final class SpanCollectorManager
         implements CollectorManager<SpanCollectorManager.SpanCollector, SpanDocs> {
@@ -341,26 +370,22 @@ public final class SpanDocs implements Closeable {
             final float[] mScores   = new float[totalDocs];
             final int[]   mSpanBase = new int[totalDocs + 1];
             final int[]   mSpanData = new int[totalSpans];
+            final int[]   mCharData = new int[totalSpans];
             int di = 0, si = 0;
             for (final SpanCollector c : collectors) {
                 System.arraycopy(c.docIds,   0, mDocIds,   di, c.docCount);
                 System.arraycopy(c.scores,   0, mScores,   di, c.docCount);
                 System.arraycopy(c.spanData, 0, mSpanData, si, c.spanCount);
+                System.arraycopy(c.charData, 0, mCharData, si, c.spanCount);
                 for (int i = 0; i < c.docCount; i++) {
                     mSpanBase[di + i + 1] = si + c.spanBase[i + 1];
                 }
                 di += c.docCount;
                 si += c.spanCount;
             }
-            return new SpanDocs(mDocIds, mScores, mSpanBase, mSpanData);
+            return new SpanDocs(mDocIds, mScores, mSpanBase, mSpanData, mCharData);
         }
 
-        /**
-         * Collects (docId, score, spans) in a single pass. The delegate
-         * {@link TopScoreDocCollector} or {@link TopFieldCollector} triggers
-         * {@code score()} which drives {@link RecordingSpans} to record positions.
-         * For natural order (no delegate), spans are drained manually.
-         */
         final class SpanCollector implements Collector {
 
             private final TopScoreDocCollector scoreCollector;
@@ -370,6 +395,7 @@ public final class SpanDocs implements Closeable {
             float[] scores   = new float[256];
             int[]   spanBase = new int[257];
             int[]   spanData = new int[1024];
+            int[]   charData = new int[1024];
             int docCount  = 0;
             int spanCount = 0;
 
@@ -425,14 +451,9 @@ public final class SpanDocs implements Closeable {
                         docIds[docCount] = docBase + leafDoc;
 
                         if (delegateLeaf != null) {
-                            // delegate.collect() triggers score() → setFreqCurrentDoc()
-                            // → RecordingSpans.nextStartPosition() records all positions
                             delegateLeaf.collect(leafDoc);
                             scores[docCount] = currentScorer.score();
                         } else {
-                            // natural order: no score() call, drain manually.
-                            // Reset count first — TwoPhaseIterator.matches() may have
-                            // already called nextStartPosition() on this doc.
                             scores[docCount] = Float.NaN;
                             if (recording != null) {
                                 recording.count = 0;
@@ -444,12 +465,16 @@ public final class SpanDocs implements Closeable {
                         if (recording != null) {
                             final int n = recording.count;
                             if (spanCount + n * 2 > spanData.length) {
-                                spanData = Arrays.copyOf(spanData,
-                                    Math.max(spanData.length * 2, spanCount + n * 2));
+                                final int newCap = Math.max(spanData.length * 2, spanCount + n * 2);
+                                spanData = Arrays.copyOf(spanData, newCap);
+                                charData = Arrays.copyOf(charData, newCap);
                             }
                             for (int i = 0; i < n; i++) {
-                                spanData[spanCount++] = recording.starts[i];
-                                spanData[spanCount++] = recording.ends[i];
+                                spanData[spanCount]     = recording.starts[i];
+                                spanData[spanCount + 1] = recording.ends[i];
+                                charData[spanCount]     = recording.charStarts[i];
+                                charData[spanCount + 1] = recording.charEnds[i];
+                                spanCount += 2;
                             }
                         }
                         spanBase[++docCount] = spanCount;
@@ -463,9 +488,10 @@ public final class SpanDocs implements Closeable {
                 final float[] fScores   = Arrays.copyOf(scores,   n);
                 final int[]   fSpanBase = Arrays.copyOf(spanBase, n + 1);
                 final int[]   fSpanData = Arrays.copyOf(spanData, spanCount);
+                final int[]   fCharData = Arrays.copyOf(charData, spanCount);
 
                 if (scoreCollector == null && fieldCollector == null) {
-                    return new SpanDocs(fDocIds, fScores, fSpanBase, fSpanData);
+                    return new SpanDocs(fDocIds, fScores, fSpanBase, fSpanData, fCharData);
                 }
 
                 final org.apache.lucene.search.TopDocs topDocs = scoreCollector != null
@@ -481,6 +507,7 @@ public final class SpanDocs implements Closeable {
                 final float[] sScores = new float[m];
                 final int[]   sBase   = new int[m + 1];
                 final int[]   sData   = new int[fSpanData.length];
+                final int[]   sCData  = new int[fCharData.length];
                 int write = 0;
                 sBase[0] = 0;
                 for (int r = 0; r < m; r++) {
@@ -489,11 +516,16 @@ public final class SpanDocs implements Closeable {
                     sDocIds[r]     = gDoc;
                     sScores[r]     = fScores[i];
                     final int len  = fSpanBase[i + 1] - fSpanBase[i];
-                    System.arraycopy(fSpanData, fSpanBase[i], sData, write, len);
+                    System.arraycopy(fSpanData, fSpanBase[i], sData,  write, len);
+                    System.arraycopy(fCharData, fSpanBase[i], sCData, write, len);
                     write += len;
                     sBase[r + 1] = write;
                 }
-                return new SpanDocs(sDocIds, sScores, sBase, Arrays.copyOf(sData, write));
+                return new SpanDocs(
+                    sDocIds, sScores, sBase,
+                    Arrays.copyOf(sData,  write),
+                    Arrays.copyOf(sCData, write)
+                );
             }
 
             private static int maxGlobalDoc(final int[] ids) {
@@ -505,13 +537,7 @@ public final class SpanDocs implements Closeable {
     }
 
     /**
-     * Locates the {@link SpanScorer} in a scorer tree by recursive traversal
-     * of {@link Scorable#getChildren()}.
-     *
-     * <p>When the effective query is a plain {@link SpanQuery} (no filter) the
-     * scorer is already a {@link SpanScorer}. When a filter wraps it in a
-     * {@link BooleanQuery}, the top-level scorer is a conjunction and the
-     * {@link SpanScorer} is one of its children.</p>
+     * Locates the {@link SpanScorer} in a scorer tree by recursive traversal.
      *
      * @param scorer root scorer for the current leaf
      * @return the first {@link SpanScorer} found, or {@code null}

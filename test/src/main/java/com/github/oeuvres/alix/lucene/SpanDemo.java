@@ -6,12 +6,9 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
 import java.util.Set;
 
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFields;
@@ -58,7 +55,7 @@ public class SpanDemo {
     private static final String DEFAULT_STORED_FIELD  = "content";
     private static final int    DEFAULT_SLOP           = 19;
     private static final int    DEFAULT_CTX            = 10;
-    private static final int    DEFAULT_MAX            = 500;
+    private static final int    DEFAULT_MAX            = 10;
 
     public static void main(final String[] args) throws IOException {
 

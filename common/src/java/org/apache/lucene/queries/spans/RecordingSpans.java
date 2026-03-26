@@ -3,33 +3,90 @@ package org.apache.lucene.queries.spans;
 import java.io.IOException;
 import java.util.Arrays;
 
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TwoPhaseIterator;
 
 /**
- * A {@link Spans} wrapper that records every {@code (startPosition, endPosition)} pair visited
- * during {@link SpanScorer#setFreqCurrentDoc()}.
+ * A {@link Spans} wrapper that records every {@code (startPosition, endPosition,
+ * charStart, charEnd)} tuple visited during {@link SpanScorer#setFreqCurrentDoc()}.
+ *
+ * <p>Character offsets are collected from the leaf postings via
+ * {@link Spans#collect(SpanCollector)} immediately after each
+ * {@link #nextStartPosition()} call, while the inner spans are still positioned
+ * on that span. This requires the postings to have been opened with at least
+ * {@link SpanWeight.Postings#OFFSETS}, which
+ * {@link com.github.oeuvres.alix.lucene.SpanDocs} enforces via
+ * {@link SpanWeight.Postings#atLeast} in its weight wrapper.</p>
  *
  * <p>This class lives in {@code org.apache.lucene.queries.spans} to access the
- * package-protected {@link Spans#doStartCurrentDoc()} and {@link Spans#doCurrentSpans()}
- * methods, which are called by {@link SpanScorer#setFreqCurrentDoc()} and must be
- * forwarded to the inner {@link Spans} delegate.</p>
+ * package-protected {@link Spans#doStartCurrentDoc()} and
+ * {@link Spans#doCurrentSpans()} methods.</p>
  *
- * <p>Usage: wrap the inner {@link Spans} returned by {@link SpanWeight#getSpans}; after
- * {@link SpanScorer#score()} returns, the recorded positions are in {@link #starts} and
- * {@link #ends} up to index {@link #count}{@code  - 1}. The arrays are reset on each
- * {@link #nextDoc()} or {@link #advance(int)} call.</p>
+ * <h2>Reset contract</h2>
+ * <ul>
+ *   <li>{@link #nextDoc()} and {@link #advance} reset {@link #count}.</li>
+ *   <li>{@link #doStartCurrentDoc()} resets {@link #count} at the start of
+ *       {@link SpanScorer#setFreqCurrentDoc()}, discarding positions accumulated
+ *       during {@link TwoPhaseIterator#matches()}.</li>
+ *   <li>For natural-order scans (no scorer call), the caller resets
+ *       {@code count = 0} before draining positions manually.</li>
+ * </ul>
  *
  * @see com.github.oeuvres.alix.lucene.SpanDocs
  */
 public final class RecordingSpans extends Spans {
 
-    private final Spans in;
+    /** Accumulates min/max character offsets across leaf terms of one span. */
+    private static final class CharOffsetCollector implements SpanCollector {
 
-    /** Recorded start positions (inclusive) for the current document. */
-    public int[] starts = new int[16];
+        int minStart;
+        int maxEnd;
 
-    /** Recorded end positions (exclusive) for the current document. */
-    public int[] ends   = new int[16];
+        void clear() {
+            minStart = Integer.MAX_VALUE;
+            maxEnd   = -1;
+        }
+
+        @Override
+        public void collectLeaf(
+            final PostingsEnum postings,
+            final int position,
+            final Term term
+        ) throws IOException {
+            final int s = postings.startOffset();
+            final int e = postings.endOffset();
+            if (s < minStart) minStart = s;
+            if (e > maxEnd)   maxEnd   = e;
+        }
+
+        @Override
+        public void reset() {
+            clear();
+        }
+    }
+
+    private final Spans               in;
+    private final boolean             hasOffsets;
+    private final CharOffsetCollector offsetCollector = new CharOffsetCollector();
+
+    /** Token start positions (inclusive) for the current document. */
+    public int[] starts     = new int[16];
+
+    /** Token end positions (exclusive) for the current document. */
+    public int[] ends       = new int[16];
+
+    /**
+     * Character start offsets of the first pivot token in each span, or
+     * {@code -1} when the field was not indexed with offsets.
+     */
+    public int[] charStarts = new int[16];
+
+    /**
+     * Character end offsets of the last pivot token in each span, or
+     * {@code -1} when the field was not indexed with offsets.
+     */
+    public int[] charEnds   = new int[16];
 
     /** Number of spans recorded for the current document. */
     public int count = 0;
@@ -37,46 +94,59 @@ public final class RecordingSpans extends Spans {
     /**
      * Wraps the given {@link Spans}.
      *
-     * @param in inner spans to wrap; must not be {@code null}
+     * @param in         inner spans; must not be {@code null}
+     * @param hasOffsets {@code true} when the field is indexed with
+     *                   {@code IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS};
+     *                   when {@code false}, character offset collection is skipped
+     *                   and {@link #charStarts}/{@link #charEnds} are filled with
+     *                   {@code -1}
      */
-    public RecordingSpans(final Spans in) {
-        this.in = in;
+    public RecordingSpans(final Spans in, final boolean hasOffsets) {
+        this.in         = in;
+        this.hasOffsets = hasOffsets;
     }
 
     /**
-     * Intercepts each position advance to record {@code (start, end)}, then
-     * delegates to the inner spans. Called by
-     * {@link SpanScorer#setFreqCurrentDoc()} in a loop.
+     * Intercepts each position advance to record token positions and character
+     * offsets, then delegates to the inner spans.
+     *
+     * <p>Called by {@link SpanScorer#setFreqCurrentDoc()} in a loop and also
+     * by the natural-order drain in
+     * {@link com.github.oeuvres.alix.lucene.SpanDocs}.</p>
      */
     @Override
     public int nextStartPosition() throws IOException {
         final int start = in.nextStartPosition();
         if (start != NO_MORE_POSITIONS) {
             if (count == starts.length) {
-                starts = Arrays.copyOf(starts, count * 2);
-                ends   = Arrays.copyOf(ends,   count * 2);
+                final int newCap = count * 2;
+                starts     = Arrays.copyOf(starts,     newCap);
+                ends       = Arrays.copyOf(ends,       newCap);
+                charStarts = Arrays.copyOf(charStarts, newCap);
+                charEnds   = Arrays.copyOf(charEnds,   newCap);
             }
             starts[count] = start;
             ends[count]   = in.endPosition();
+            if (hasOffsets) {
+                offsetCollector.clear();
+                in.collect(offsetCollector);
+                charStarts[count] = offsetCollector.minStart;
+                charEnds[count]   = offsetCollector.maxEnd;
+            } else {
+                charStarts[count] = -1;
+                charEnds[count]   = -1;
+            }
             count++;
         }
         return start;
     }
 
-    @Override
-    public int startPosition() {
-        return in.startPosition();
-    }
-
-    @Override
-    public int endPosition() {
-        return in.endPosition();
-    }
-
-    @Override
-    public int width() {
-        return in.width();
-    }
+    @Override public int   startPosition()  { return in.startPosition(); }
+    @Override public int   endPosition()    { return in.endPosition(); }
+    @Override public int   width()          { return in.width(); }
+    @Override public float positionsCost()  { return in.positionsCost(); }
+    @Override public int   docID()          { return in.docID(); }
+    @Override public long  cost()           { return in.cost(); }
 
     @Override
     public void collect(final SpanCollector collector) throws IOException {
@@ -84,45 +154,28 @@ public final class RecordingSpans extends Spans {
     }
 
     @Override
-    public float positionsCost() {
-        return in.positionsCost();
-    }
-
-    @Override
     public TwoPhaseIterator asTwoPhaseIterator() {
         return in.asTwoPhaseIterator();
     }
 
-    /** Resets span recording and delegates to the inner {@link Spans}. */
+    /** Resets span recording and delegates. */
     @Override
     public int nextDoc() throws IOException {
         count = 0;
         return in.nextDoc();
     }
 
-    /** Resets span recording and delegates to the inner {@link Spans}. */
+    /** Resets span recording and delegates. */
     @Override
     public int advance(final int target) throws IOException {
         count = 0;
         return in.advance(target);
     }
 
-    @Override
-    public int docID() {
-        return in.docID();
-    }
-
-    @Override
-    public long cost() {
-        return in.cost();
-    }
-
     /**
-     * Resets the recorded span count and delegates to the inner spans.
-     * Called by {@link SpanScorer#setFreqCurrentDoc()} before its position
-     * loop starts. This discards any positions accumulated during
-     * {@link org.apache.lucene.search.TwoPhaseIterator#matches()}, which
-     * also calls {@link #nextStartPosition()} but must not be counted.
+     * Resets {@link #count} and delegates. Called by
+     * {@link SpanScorer#setFreqCurrentDoc()} before its position loop,
+     * discarding positions from {@link TwoPhaseIterator#matches()}.
      */
     @Override
     protected void doStartCurrentDoc() throws IOException {
@@ -130,10 +183,6 @@ public final class RecordingSpans extends Spans {
         in.doStartCurrentDoc();
     }
 
-    /**
-     * Forwarded to inner spans. Called by {@link SpanScorer#setFreqCurrentDoc()}
-     * after each span position during frequency computation.
-     */
     @Override
     protected void doCurrentSpans() throws IOException {
         in.doCurrentSpans();
