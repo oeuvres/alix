@@ -144,7 +144,9 @@ public class SpanDemo {
                 }
 
                 final long t0 = System.currentTimeMillis();
-                try (SpanDocs sd = SpanDocs.search(searcher, query, null, Sort.RELEVANCE, 1000)) {
+                Sort sort =  Sort.RELEVANCE;
+                // Sort sort = Sort.INDEXORDER;
+                try (SpanDocs sd = SpanDocs.search(searcher, query, null, sort, 1000)) {
                     final long ms = System.currentTimeMillis() - t0;
                     out.printf("%d hit(s) in %d ms%n%n", sd.size(), ms);
 
@@ -155,14 +157,6 @@ public class SpanDemo {
                         Document doc = storedFields.document(docId, fieldSet);
                         System.out.println(doc.get("docline"));
                         System.out.println("    spans=" + sd.spanCount());
-
-                        /*
-                        printSpans(out, hit.spans());
-                        final String excerpt = sd.excerpt(textField, storedField, ctx);
-                        if (!excerpt.isBlank()) {
-                            out.println("  " + stripHtml(excerpt));
-                        }
-                        */
                     }
                     if (sd.size() > max) {
                         out.printf("  … %d more hits not shown (use :max N to see more)%n", sd.size() - max);

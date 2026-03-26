@@ -93,15 +93,17 @@ public final class RecordingSpans extends Spans {
         return in.asTwoPhaseIterator();
     }
 
-    /** Delegates to the inner {@link Spans}. */
+    /** Resets span recording and delegates to the inner {@link Spans}. */
     @Override
     public int nextDoc() throws IOException {
+        count = 0;
         return in.nextDoc();
     }
 
-    /** Delegates to the inner {@link Spans}. */
+    /** Resets span recording and delegates to the inner {@link Spans}. */
     @Override
     public int advance(final int target) throws IOException {
+        count = 0;
         return in.advance(target);
     }
 

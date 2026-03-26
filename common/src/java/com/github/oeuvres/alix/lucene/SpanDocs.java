@@ -430,9 +430,12 @@ public final class SpanDocs implements Closeable {
                             delegateLeaf.collect(leafDoc);
                             scores[docCount] = currentScorer.score();
                         } else {
-                            // natural order: no score() call, drain manually
+                            // natural order: no score() call, drain manually.
+                            // Reset count first — TwoPhaseIterator.matches() may have
+                            // already called nextStartPosition() on this doc.
                             scores[docCount] = Float.NaN;
                             if (recording != null) {
+                                recording.count = 0;
                                 while (recording.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
                                 }
                             }
