@@ -86,7 +86,7 @@ public final class SpanDocs implements Closeable {
 
     /**
      * {@code spanBase[i]} is the first index in {@link #spanData} and
-     * {@link #charData} for document {@code i}.
+     * {@link #offsets} for document {@code i}.
      * Span count = {@code (spanBase[i+1] - spanBase[i]) >> 1}.
      */
     private final int[] spanBase;
@@ -95,7 +95,7 @@ public final class SpanDocs implements Closeable {
     private final int[] spanData;
 
     /** Character offsets: interleaved (charStart, charEnd) pairs, indexed like {@link #spanData}. */
-    private final int[] charData;
+    private final int[] offsets;
 
     private int cursor = -1;
 
@@ -110,7 +110,7 @@ public final class SpanDocs implements Closeable {
         this.scores   = scores;
         this.spanBase = spanBase;
         this.spanData = spanData;
-        this.charData = charData;
+        this.offsets = charData;
     }
 
     /**
@@ -194,8 +194,8 @@ public final class SpanDocs implements Closeable {
      * @param i span index in {@code [0, spanCount())}
      * @return character start offset (inclusive)
      */
-    public int spanCharStart(final int i) {
-        return charData[spanBase[cursor] + (i << 1)];
+    public int spanStartOffset(final int i) {
+        return offsets[spanBase[cursor] + (i << 1)];
     }
 
     /**
@@ -204,8 +204,8 @@ public final class SpanDocs implements Closeable {
      * @param i span index in {@code [0, spanCount())}
      * @return character end offset (exclusive)
      */
-    public int spanCharEnd(final int i) {
-        return charData[spanBase[cursor] + (i << 1) + 1];
+    public int spanEndOffset(final int i) {
+        return offsets[spanBase[cursor] + (i << 1) + 1];
     }
 
     /**
@@ -214,7 +214,7 @@ public final class SpanDocs implements Closeable {
      * @param i span index in {@code [0, spanCount())}
      * @return end position (exclusive)
      */
-    public int spanEnd(final int i) {
+    public int spanEndPosition(final int i) {
         return spanData[spanBase[cursor] + (i << 1) + 1];
     }
 
@@ -224,7 +224,7 @@ public final class SpanDocs implements Closeable {
      * @param i span index in {@code [0, spanCount())}
      * @return start position (inclusive)
      */
-    public int spanStart(final int i) {
+    public int spanStartPosition(final int i) {
         return spanData[spanBase[cursor] + (i << 1)];
     }
 

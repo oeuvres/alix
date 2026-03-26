@@ -76,7 +76,7 @@ public class SpanDemo {
         ) {
             IndexSearcher  searcher = new IndexSearcher(reader);
             StoredFields storedFields = searcher.storedFields();
-            final Set<String> fieldSet = Set.of("docline");
+            final Set<String> fieldSet = Set.of("docline", "content");
             
             
             out.printf("Index opened — %d docs (%d leaves)%n",
@@ -154,6 +154,14 @@ public class SpanDemo {
                         Document doc = storedFields.document(docId, fieldSet);
                         System.out.println(doc.get("docline"));
                         System.out.println("    spans=" + sd.spanCount());
+                        String content = doc.get("content");
+                        for (int spanOrd = 0, lim = Math.min(sd.spanCount(), 10); spanOrd < lim; spanOrd++) {
+                            int spanStart = sd.spanStartOffset(spanOrd);
+                            int spanEnd = sd.spanEndOffset(spanOrd);
+                            System.out.print("  – " + spanOrd + ". ");
+                            System.out.println(content.substring(spanStart, spanEnd));
+                        }
+                        
                     }
                     if (sd.size() > max) {
                         out.printf("  … %d more hits not shown (use :max N to see more)%n", sd.size() - max);
