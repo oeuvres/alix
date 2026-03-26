@@ -18,6 +18,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.store.FSDirectory;
 
 /**
@@ -143,7 +144,7 @@ public class SpanDemo {
                 }
 
                 final long t0 = System.currentTimeMillis();
-                try (SpanDocs sd = SpanDocs.search(searcher, query, null, 1000)) {
+                try (SpanDocs sd = SpanDocs.search(searcher, query, query, Sort.RELEVANCE, 1000)) {
                     final long ms = System.currentTimeMillis() - t0;
                     out.printf("%d hit(s) in %d ms%n%n", sd.size(), ms);
 
