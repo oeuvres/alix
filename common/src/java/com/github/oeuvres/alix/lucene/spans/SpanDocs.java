@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.Closeable;
 import java.io.IOException;

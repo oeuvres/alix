@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.spans;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;

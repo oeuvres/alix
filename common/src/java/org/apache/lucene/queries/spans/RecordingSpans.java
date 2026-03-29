@@ -16,7 +16,7 @@ import org.apache.lucene.search.TwoPhaseIterator;
  * {@link #nextStartPosition()} call, while the inner spans are still positioned
  * on that span. This requires the postings to have been opened with at least
  * {@link SpanWeight.Postings#OFFSETS}, which
- * {@link com.github.oeuvres.alix.lucene.SpanDocs} enforces via
+ * {@link com.github.oeuvres.alix.lucene.spans.SpanDocs} enforces via
  * {@link SpanWeight.Postings#atLeast} in its weight wrapper.</p>
  *
  * <p>This class lives in {@code org.apache.lucene.queries.spans} to access the
@@ -33,7 +33,7 @@ import org.apache.lucene.search.TwoPhaseIterator;
  *       {@code count = 0} before draining positions manually.</li>
  * </ul>
  *
- * @see com.github.oeuvres.alix.lucene.SpanDocs
+ * @see com.github.oeuvres.alix.lucene.spans.SpanDocs
  */
 public final class RecordingSpans extends Spans {
 
@@ -112,7 +112,7 @@ public final class RecordingSpans extends Spans {
      *
      * <p>Called by {@link SpanScorer#setFreqCurrentDoc()} in a loop and also
      * by the natural-order drain in
-     * {@link com.github.oeuvres.alix.lucene.SpanDocs}.</p>
+     * {@link com.github.oeuvres.alix.lucene.spans.SpanDocs}.</p>
      */
     @Override
     public int nextStartPosition() throws IOException {

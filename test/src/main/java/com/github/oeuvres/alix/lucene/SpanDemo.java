@@ -18,6 +18,9 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.store.FSDirectory;
 
+import com.github.oeuvres.alix.lucene.spans.SpanDocs;
+import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
+
 /**
  * Interactive command-line demo for {@link SpanDocs}.
  *

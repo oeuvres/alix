@@ -139,10 +139,6 @@ public abstract class Fluc implements Closeable
         // no-op by default
     }
 
-    // ================================================================
-    // Accessors (alphabetical)
-    // ================================================================
-
     /**
      * Number of documents with at least one value in this field.
      * Zero for stored-only or doc-values-only fields without
