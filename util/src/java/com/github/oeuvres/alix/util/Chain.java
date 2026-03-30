@@ -176,28 +176,9 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
 
     // ----------------------- CharSequence -----------------------
 
-    /**
-     * @return logical length of this sequence
-     */
-    @Override
-    public int length()
-    {
-        return this.length;
-    }
+    
 
-    /**
-     * Get character at the given logical index.
-     *
-     * @param index 0-based logical index
-     * @return character at {@code index}
-     * @throws StringIndexOutOfBoundsException if {@code index} is out of range
-     */
-    @Override
-    public char charAt(final int index)
-    {
-        if (index < 0 || index >= this.length) throw new StringIndexOutOfBoundsException(index);
-        return this.chars[zero + index];
-    }
+    
 
     // ----------------------- Appendable -------------------------
 
@@ -392,6 +373,20 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
         }
         hash = 0;
         return this;
+    }
+
+    /**
+     * Get character at the given logical index.
+     *
+     * @param index 0-based logical index
+     * @return character at {@code index}
+     * @throws StringIndexOutOfBoundsException if {@code index} is out of range
+     */
+    @Override
+    public char charAt(final int index)
+    {
+        if (index < 0 || index >= this.length) throw new StringIndexOutOfBoundsException(index);
+        return this.chars[zero + index];
     }
 
     /**
@@ -1039,6 +1034,17 @@ public class Chain implements Appendable, CharSequence, Cloneable, Comparable<Ch
     public boolean lastIs(final char c)
     {
         return this.length > 0 && chars[zero + this.length - 1] == c;
+    }
+
+    // ----------------------- CharSequence -----------------------
+    
+    /**
+     * @return logical length of this sequence
+     */
+    @Override
+    public int length()
+    {
+        return this.length;
     }
 
     /**
