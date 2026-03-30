@@ -1,13 +1,9 @@
 package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Objects;
 
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.queries.spans.SpanCollector;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanWeight;
 import org.apache.lucene.queries.spans.Spans;
@@ -20,89 +16,114 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 
-import com.github.oeuvres.alix.lucene.ResultsWriter;
+import com.github.oeuvres.alix.lucene.ResultsListener;
 
 /**
  * Walks a {@link SpanQuery} in natural/index order, optionally intersected with a
- * non-scoring filter query, and streams results to a {@link ResultsWriter}.
+ * non-scoring filter query (dates, tags…), and streams results to a {@link ResultsListener}.
  *
- * <p>Traversal order is the natural order of Lucene leaves and doc IDs. If the
- * index was built with an index sort, this effectively becomes the index-sort order.</p>
+ * <p>Traversal is streaming: no results are retained in memory. If the index was built
+ * with an index sort, natural order is that sort order.</p>
  *
- * <p>This class is intentionally streaming:</p>
- * <ul>
- *   <li>it does not retain all hits in memory,</li>
- *   <li>it enumerates matching documents in forward order,</li>
- *   <li>and for each matching document it enumerates matching spans in forward order.</li>
- * </ul>
+ * <h2>Pagination</h2>
  *
- * <p>The writer may stop traversal early by returning {@code false} from
- * {@link ResultsWriter#startDoc(int)} or {@link ResultsWriter#span(SpanWalker.SpanMatch)}.</p>
+ * <p>{@link #walk(int, boolean)} accepts a global docId cursor (inclusive) and returns the
+ * first unprocessed docId, or {@code -1} when the index is exhausted. The listener tracks
+ * the last docId it wrote; the next page passes {@code lastDocId + 1} as {@code docStart}.</p>
  *
- * <p>Dates/tags or other structured constraints should be provided as {@code filterQuery}.
- * They are combined as a Boolean {@code FILTER} clause and therefore do not affect scoring.
- * Since this walker is for natural-order streaming, no scores are computed.</p>
+ * <p>Whether a page ended by natural exhaustion or by the listener is reported via
+ * {@link ResultsListener#end(boolean)}: {@code true} means the index is fully exhausted and
+ * no further pages exist; {@code false} means more results are available.</p>
+ *
+ * <h2>Exact document count</h2>
+ *
+ * <p>Pass {@code countDocs = true} only on the first page; it triggers an extra full scan via
+ * {@link IndexSearcher#count}. On subsequent pages pass {@code false}.</p>
+ *
+ * <h2>Filter query</h2>
+ *
+ * <p>Date/tag constraints belong in {@code filterQuery}. They are applied per-leaf via
+ * {@link Scorer#advance}, which exploits Lucene skip-list structures (O(log N) per step).
+ * If the {@link IndexSearcher} is backed by an {@code LRUQueryCache}, filter segment
+ * results are cached across requests automatically.</p>
  */
-public final class SpanWalker
-{
-
+public final class SpanWalker {
 
     private final IndexSearcher searcher;
     private final SpanQuery spanQuery;
     private final Query filterQuery; // nullable
-    private final ResultsWriter results;
+    private final ResultsListener listener;
 
     /**
-     * Create a natural-order span walker.
+     * Creates a natural-order span walker.
      *
-     * @param searcher searcher used both for query execution and for leaf access
-     * @param spanQuery span query to enumerate
-     * @param filterQuery optional non-scoring filter query, may be {@code null}
-     * @param results consumer of streamed results
-     * @param countMode controls whether exact document count is computed upfront
+     * @param searcher    used for query planning and leaf access
+     * @param spanQuery   span query to enumerate
+     * @param filterQuery optional non-scoring filter, or {@code null}
+     * @param listener    consumer of streamed results
      */
     public SpanWalker(
-        final IndexSearcher searcher,
-        final SpanQuery spanQuery,
-        final Query filterQuery,
-        final ResultsWriter results
-    ) {
-        this.searcher = Objects.requireNonNull(searcher, "searcher");
-        this.spanQuery = Objects.requireNonNull(spanQuery, "spanQuery");
+            final IndexSearcher searcher,
+            final SpanQuery spanQuery,
+            final Query filterQuery,
+            final ResultsListener listener) {
+        this.searcher    = Objects.requireNonNull(searcher,  "searcher");
+        this.spanQuery   = Objects.requireNonNull(spanQuery, "spanQuery");
         this.filterQuery = filterQuery;
-        this.results = Objects.requireNonNull(results, "results");
+        this.listener    = Objects.requireNonNull(listener,  "listener");
     }
 
     /**
-     * Execute a walk through the spans.
+     * Executes a streaming walk from a cursor position.
+     *
+     * <p>{@code docStart} is the first global docId to visit, inclusive. Pass {@code 0}
+     * on the first call. The listener tracks the last docId it wrote; subsequent calls
+     * pass {@code lastDocId + 1}.</p>
+     *
+     * @param docStart  first global docId to visit, inclusive
+     * @param countDocs if {@code true}, compute the exact matching-document count before streaming;
+     *                  only useful on the first page
+     * @return first unprocessed global docId (to pass as {@code docStart} on the next call),
+     *         or {@code -1} if the index is exhausted
      */
-    public void walk(final int docStart) throws IOException {
-        // TODO, implement advance to the docStart (for pagination of results)
-        
-        final SpanQuery rewrittenSpan = (SpanQuery) searcher.rewrite(spanQuery);
-        final Query rewrittenFilter = (filterQuery == null) ? null : searcher.rewrite(filterQuery);
-        final Query effectiveQuery = effectiveQuery(rewrittenSpan, rewrittenFilter);
-        
-        results.reset();
-        
+    public int walk(final int docStart, final boolean countDocs) throws IOException {
+
+        final SpanQuery rewrittenSpan =
+                (SpanQuery) searcher.rewrite(spanQuery);
+        final Query rewrittenFilter =
+                (filterQuery == null) ? null : searcher.rewrite(filterQuery);
+
+        listener.reset();
+
+        if (countDocs) {
+            final Query countQuery = (rewrittenFilter == null)
+                    ? rewrittenSpan
+                    : new BooleanQuery.Builder()
+                            .add(rewrittenSpan,   BooleanClause.Occur.MUST)
+                            .add(rewrittenFilter, BooleanClause.Occur.FILTER)
+                            .build();
+            listener.hits(searcher.count(countQuery));
+        }
+
+        listener.start(spanQuery, filterQuery, listener.hits());
 
         final SpanWeight spanWeight =
-            (SpanWeight) searcher.createWeight(rewrittenSpan, ScoreMode.COMPLETE_NO_SCORES, 1f);
-        
-
+                (SpanWeight) searcher.createWeight(rewrittenSpan, ScoreMode.COMPLETE_NO_SCORES, 1f);
         final Weight filterWeight =
-            (rewrittenFilter == null)
-                ? null
-                : searcher.createWeight(rewrittenFilter, ScoreMode.COMPLETE_NO_SCORES, 1f);
+                (rewrittenFilter == null)
+                        ? null
+                        : searcher.createWeight(rewrittenFilter, ScoreMode.COMPLETE_NO_SCORES, 1f);
 
-        final OffsetsCollector collector = new OffsetsCollector(4);
-
-        boolean completed = true;
-        final int hits = searcher.count(effectiveQuery);
-        results.start(rewrittenSpan, rewrittenFilter, hits);
+        final OffsetsCollector collector = new OffsetsCollector(8);
+        int nextCursor = -1;
 
         outer:
-        for (LeafReaderContext ctx : searcher.getLeafContexts()) {
+        for (final LeafReaderContext ctx : searcher.getLeafContexts()) {
+
+            if (ctx.docBase + ctx.reader().maxDoc() <= docStart) {
+                continue;
+            }
+
             final Spans spans = spanWeight.getSpans(ctx, SpanWeight.Postings.OFFSETS);
             if (spans == null) {
                 continue;
@@ -116,12 +137,23 @@ public final class SpanWalker
                     continue;
                 }
                 filterIt = filterScorer.iterator();
-                filterDoc = filterIt.nextDoc();
             }
 
-            for (int localDocId = spans.nextDoc();
-                    localDocId != DocIdSetIterator.NO_MORE_DOCS;
-                    localDocId = spans.nextDoc()) {
+            final int localStart = Math.max(0, docStart - ctx.docBase);
+            int localDocId;
+            if (localStart > 0) {
+                localDocId = spans.advance(localStart);
+                if (filterIt != null && localDocId != DocIdSetIterator.NO_MORE_DOCS) {
+                    filterDoc = filterIt.advance(localDocId);
+                }
+            } else {
+                localDocId = spans.nextDoc();
+                if (filterIt != null && localDocId != DocIdSetIterator.NO_MORE_DOCS) {
+                    filterDoc = filterIt.nextDoc();
+                }
+            }
+
+            for (; localDocId != DocIdSetIterator.NO_MORE_DOCS; localDocId = spans.nextDoc()) {
 
                 if (filterIt != null) {
                     if (filterDoc < localDocId) {
@@ -131,50 +163,31 @@ public final class SpanWalker
                         continue;
                     }
                 }
-                // if user has enough 
-                if (!results.wantsMoreDocs()) {
-                    completed = false;
-                    break;
+
+                if (!listener.wantsMoreDocs()) {
+                    nextCursor = ctx.docBase + localDocId;
+                    break outer;
                 }
 
                 final int docId = ctx.docBase + localDocId;
-                results.visitedDocsAdd(1);
-                results.startDoc(docId);
+                listener.visitedDocsAdd(1);
+                listener.startDoc(docId);
+
                 while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
-                    results.visitedDocsAdd(1);
                     collector.reset();
                     spans.collect(collector);
                     collector.sort();
-
-                    if (!results.span(collector)) {
+                    listener.visitedSpansAdd(1);
+                    if (!listener.span(collector)) {
                         break;
                     }
-
                 }
 
-                results.endDoc(docId);
+                listener.endDoc();
             }
         }
 
-        results.end(completed);
+        listener.end(nextCursor);
+        return nextCursor;
     }
-
-    /**
-     * Build the effective matching query used for optional exact document counting.
-     *
-     * <p>The span query is always required. The filter query, when present, is added
-     * as a Boolean {@code FILTER} clause so that it restricts matching documents
-     * without affecting scores.</p>
-     */
-    private static Query effectiveQuery(final SpanQuery spanQuery, final Query filterQuery) {
-        if (filterQuery == null) {
-            return spanQuery;
-        }
-        return new BooleanQuery.Builder()
-            .add(spanQuery, BooleanClause.Occur.MUST)
-            .add(filterQuery, BooleanClause.Occur.FILTER)
-            .build();
-    }
-
- 
 }
