@@ -15,20 +15,6 @@ import java.util.Set;
  */
 public class Markup
 {
-    /** limit kwic width */
-    private static int KWIC_MAXCHARS = 500;
-    /** HTML entities */
-    public static final HashMap<String, Character> HTMLENT = new HashMap<>();
-    /*
-     * // shall we load entities ? static { BufferedReader buf = new BufferedReader(
-     * new InputStreamReader(Char.class.getResourceAsStream("htmlent.csv"),
-     * StandardCharsets.UTF_8)); String l; String ent; Character c; int pos; try {
-     * buf.readLine(); // first line is labels while ((l = buf.readLine()) != null)
-     * { l = l.trim(); if (l.charAt(0) == '#') continue; pos = l.indexOf(' '); if
-     * (pos < 3) continue; if (pos + 1 >= l.length()) continue; ent = l.substring(0,
-     * pos); c = l.charAt(pos + 1); HTMLENT.put(ent, c); } } catch (IOException e) {
-     * e.printStackTrace(); } }
-     */
 
     /**
      * Avoid instantiation, use static methods instead.
@@ -37,123 +23,157 @@ public class Markup
     {
 
     }
-
+    
+    
     /**
-     * Used to build a concordance. From a random point in an xml file, append text
-     * to a mutable destination charSequence, limit to an amount of chars.
+     * Locates the start index of a left context window for a concordance line.
      *
-     * @param xml    source markup text.
-     * @param offset position in xml from which append words or chars.
-     * @param chain  destination chain.
-     * @param chars  amount of chars to append.
-     */
-    public static void appendChars(final String xml, int offset, final Chain chain, final int chars)
-    {
-        append(xml, offset, chain, chars, -1);
-    }
-
-    /**
-     * Used to build a concordance. From a random point in an xml file, append text
-     * to a mutable destination charSequence, limit to an amount of chars, or words.
+     * <p>Walks backward from {@code offset} through {@code xml}, skipping tag markup,
+     * and stops once either {@code words} text words or {@code chars} text characters
+     * have been crossed — whichever limit is reached first. Set either limit to
+     * {@code -1} to disable it; at least one must be positive.</p>
      *
-     * @param xml    source markup text.
-     * @param offset position in xml from which append words or chars.
-     * @param chain  destination chain.
-     * @param chars  amount of chars append.
-     * @param words  amount of words to append.
+     * <p>The word limit never breaks inside a word: when it triggers, the scan
+     * continues until the current word is fully crossed. The char limit is a hard
+     * display boundary and may cut a word short — appropriate for a fixed-width KWIC
+     * column.</p>
+     *
+     * <p>Use the returned index as the {@code begin} argument of
+     * {@link #detag(String, int, int, Chain, Set)} to append the context forward into
+     * a buffer without any intermediate allocation or per-character prepend.</p>
+     *
+     * @param xml    source markup text
+     * @param offset scan start (exclusive: the character at this index is not part of
+     *               the context, so pass {@code spanStart - 1})
+     * @param words  maximum number of text words to include, or {@code -1} for no word limit
+     * @param chars  maximum number of text characters to include, or {@code -1} for no char limit
+     * @return inclusive start index of the context window; {@code 0} if the scan reaches
+     *         the beginning of the string
      */
-    private static void append(final String xml, int offset, final Chain chain, int chars, int words)
+    public static int leftBoundary(final String xml, int offset, final int words, final int chars)
     {
-        // silently limit parameters
-        if (words <= 0 && chars <= 0) {
-            chars = 50;
-        } else if (chars > KWIC_MAXCHARS) {
-            chars = KWIC_MAXCHARS;
-        }
-        int cc = 0; // char count
-        int wc = 0; // word count
+        if (offset < 0) return 0;
+        int wc = 0;
+        int cc = 0;
+        boolean inTag = false; // scanning backward: '>' opens a tag, '<' closes it
+        boolean inWord = false;
+        int boundary = offset + 1; // inclusive start; updated each time we accept a text char
 
-        int length = xml.length();
-        boolean lt = false, first = true, space = false, token = false;
-        // word count and spacing will bug for non indented tags like
-        // <p>word</p><p>word</p>
-        while (offset < length) {
-            char c = xml.charAt(offset);
+        while (offset >= 0) {
+            final char c = xml.charAt(offset);
             switch (c) {
-                case '<':
-                    space = false; // renew space flag
-                    first = false; // no broken tag at start
-                    lt = true;
-                    break;
                 case '>':
-                    lt = false;
-                    // a broken tag at start, erase what was appended
-                    if (first) {
-                        chain.lastDel(cc);
-                        cc = 0;
-                        wc = 0;
-                        first = false;
-                        break;
-                    }
+                    inTag = true;
+                    break;
+                case '<':
+                    inTag = false;
                     break;
                 case ' ':
                 case '\n':
                 case '\r':
                 case '\t':
-                    if (lt || space) {
-                        break; // second or more space, skip
-                    }
-                    space = true; // stop record space after this one
-                    chain.append(' ');
-                    cc++;
-                    if (token) { // a token was started, stop it and count it
-                        token = false;
-                        wc++;
+                    if (!inTag) {
+                        if (inWord) {
+                            inWord = false;
+                            wc++;
+                            if (words > 0 && wc >= words) {
+                                // stop after the whitespace, not inside the word just crossed
+                                return boundary;
+                            }
+                        }
                     }
                     break;
                 default:
-                    if (lt) {
-                        break; // char in tag, skip
-                    }
-                    space = false; // renew space flag
-                    chain.append(c);
-                    cc++;
-                    // word boundary?
-                    final boolean charIsTok = Char.isToken(c);
-                    if (!token && charIsTok) { // open a word
-                        token = true;
-                    } else if (token && !charIsTok) { // close a word
-                        token = false;
-                        wc++;
+                    if (!inTag) {
+                        cc++;
+                        boundary = offset;
+                        if (!inWord) {
+                            inWord = true;
+                        }
+                        if (chars > 0 && cc >= chars) {
+                            return boundary;
+                        }
                     }
             }
-            offset++;
-            if (words <= 0) {
-                ; // no matter about words;
-            } else if (token) {
-                continue; // do not break inside a word
-            } else if (wc >= words) {
-                break; // we got enough words
-            }
-            if (chars > 0 && cc >= chars) {
-                break; // chars limit reached
-            }
+            offset--;
         }
-        // ? delete last char for words ?
+        // count a word that reaches the beginning of the string without trailing whitespace
+        if (inWord) wc++;
+        return boundary;
     }
 
     /**
-     * Used to build a concordance. From a random point in an xml file, append text
-     * to a mutable destination charSequence, limit to an amount of words.
+     * Locates the end index of a right context window for a concordance line.
      *
-     * @param xml    source markup text.
-     * @param offset position in xml from which append words or chars.
-     * @param chain  destination chain.
-     * @param words  amount of words to append.
+     * <p>Walks forward from {@code offset} through {@code xml}, skipping tag markup,
+     * and stops once either {@code words} text words or {@code chars} text characters
+     * have been crossed — whichever limit is reached first. Set either limit to
+     * {@code -1} to disable it; at least one must be positive.</p>
+     *
+     * <p>The word limit never breaks inside a word: when it triggers, the scan
+     * continues until the current word is fully crossed. The char limit is a hard
+     * display boundary and may cut a word short.</p>
+     *
+     * <p>Use the returned index as the {@code end} argument of
+     * {@link #detag(String, int, int, Chain, Set)} to append the context into a
+     * buffer without intermediate allocation.</p>
+     *
+     * @param xml    source markup text
+     * @param offset scan start (inclusive: the character at this index is the first
+     *               candidate of the context, so pass {@code spanEnd})
+     * @param words  maximum number of text words to include, or {@code -1} for no word limit
+     * @param chars  maximum number of text characters to include, or {@code -1} for no char limit
+     * @return exclusive end index of the context window; {@code xml.length()} if the scan
+     *         reaches the end of the string
      */
-    public static void appendWords(final String xml, int offset, final Chain chain, final int words)
+    public static int rightBoundary(final String xml, int offset, final int words, final int chars)
     {
-        append(xml, offset, chain, -1, words);
+        final int length = xml.length();
+        int wc = 0;
+        int cc = 0;
+        boolean inTag = false;
+        boolean inWord = false;
+        int boundary = offset; // exclusive end; updated each time we accept a text char
+
+        while (offset < length) {
+            final char c = xml.charAt(offset);
+            switch (c) {
+                case '<':
+                    inTag = true;
+                    break;
+                case '>':
+                    inTag = false;
+                    break;
+                case ' ':
+                case '\n':
+                case '\r':
+                case '\t':
+                    if (!inTag) {
+                        if (inWord) {
+                            inWord = false;
+                            wc++;
+                            if (words > 0 && wc >= words) {
+                                // stop after the whitespace, not inside the word just crossed
+                                return boundary;
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    if (!inTag) {
+                        cc++;
+                        boundary = offset + 1;
+                        if (!inWord) {
+                            inWord = true;
+                        }
+                        if (chars > 0 && cc >= chars) {
+                            return boundary;
+                        }
+                    }
+            }
+            offset++;
+        }
+        return boundary;
     }
 
     /**
@@ -228,7 +248,7 @@ public class Markup
      * @param include set of tag names to preserve (case-sensitive, local-name
      *                match). If {@code null} or empty, all tags are stripped.
      */
-    public static void detag(final String xml, int begin, int end, final Chain dest, final Set<String> include)
+    public static void detag(final String xml, int begin, int end, final Appendable dest, final Set<String> include)
     {
         if (xml == null || dest == null) {
             return;
@@ -367,192 +387,5 @@ public class Markup
         return out.toString();
     }
 
-    /**
-     * Get the char from an HTML entity like &amp;gt; or &amp;#128;. Will not work
-     * on supplementary char like &amp;Afr; 𝔄 &amp;x1d504; (3 bytes).
-     *
-     * @param ent html entity.
-     * @return unicode char.
-     */
-    public static char forChar(final String ent)
-    {
-        Character c = HTMLENT.get(ent);
-        if (c == null) {
-            return 0;
-        }
-        return c;
-    }
-
-    /**
-     * See {@link #forChar(String)}, with a custom mutable String.
-     *
-     * @param ent html entity.
-     * @return unicode char.
-     */
-    public static char forChar(final Chain ent)
-    {
-        @SuppressWarnings("unlikely-arg-type")
-        Character c = HTMLENT.get(ent);
-        if (c == null) {
-            return 0;
-        }
-        return c;
-    }
-
-    /**
-     * Is it a char allowed in an entity code ?
-     *
-     * @param c char to test.
-     * @return true if ASCII and letter or digit, false otherwise.
-     */
-    public static boolean isInEnt(char c)
-    {
-        if (c > 128) {
-            return false;
-        }
-        return Char.isLetterOrDigit(c);
-    }
-
-    /**
-     * Tool to load entities from a json file.
-     *
-     * @param path file path.
-     * @throws UnsupportedEncodingException not an UTF-8 file.
-     * @throws IOException                  file error.
-     */
-    static void load(final String path) throws UnsupportedEncodingException, IOException
-    {
-        String cont = new String(Files.readAllBytes(Paths.get(path)), "UTF-8");
-        Reader reader = new StringReader(cont);
-        CSVReader csv = new CSVReader(reader, '\t', 2);
-        csv.readRow(); // skip first line
-        while (csv.readRow()) {
-            String key = csv.getCellAsString(0);
-            if ((key.length() == 0) || (key.charAt(0) == '#')) {
-                continue; // comment
-            }
-            StringBuilder value = csv.getCell(1);
-            // Bad line, not a char, we should log here, but… where?
-            if (value.length() != 1) {
-                continue;
-            }
-            HTMLENT.put(key, value.charAt(0));
-        }
-    }
-
-    /**
-     * Used to build a concordance. From a random point in an xml file, prepend text
-     * to a mutable destination charSequence, limit to an amount of words.
-     *
-     * @param xml    source markup text.
-     * @param offset position in xml from which prepend words or chars.
-     * @param chain  destination chain.
-     * @param words  amount of words to prepend.
-     */
-    public static void prependWords(final String xml, int offset, final Chain chain, final int words)
-    {
-        prepend(xml, offset, chain, -1, words);
-    }
-
-    /**
-     * Used to build a concordance. From a random point in an xml file, prepend text
-     * to a mutable destination charSequence, limit to an amount of chars.
-     *
-     * @param xml    source markup text.
-     * @param offset position in xml from which prepend words or chars.
-     * @param chain  destination chain.
-     * @param chars  amount of chars prepend.
-     */
-    public static void prependChars(final String xml, int offset, final Chain chain, final int chars)
-    {
-        prepend(xml, offset, chain, chars, -1);
-    }
-
-    /**
-     * Used to build a concordance. From a random point in an xml file, prepend text
-     * to a mutable destination charSequence, limit to an amount of chars, or words.
-     *
-     * @param xml    source markup text.
-     * @param offset position in xml from which prepend words or chars.
-     * @param chain  destination chain.
-     * @param chars  amount of chars prepend.
-     * @param words  amount of words to prepend.
-     */
-    private static void prepend(final String xml, int offset, final Chain chain, int chars, int words)
-    {
-        // silently limit parameters
-        if (words <= 0 && chars <= 0) {
-            chars = 50;
-        } else if (chars > KWIC_MAXCHARS) {
-            chars = KWIC_MAXCHARS;
-        }
-        int cc = 0; // char count
-        int wc = 0; // word count
-
-        boolean gt = false, first = true, space = false, token = false;
-        while (offset >= 0) {
-            char c = xml.charAt(offset);
-            switch (c) {
-                case '>':
-                    space = false; // renew space flag
-                    first = false; // no broken tag at start
-                    gt = true;
-                    break;
-                case '<':
-                    gt = false;
-                    // a broken tag, erase what was appended
-                    if (first) {
-                        chain.firstDel(cc);
-                        cc = 0;
-                        wc = 0;
-                        first = false;
-                        break;
-                    }
-                    break;
-                case ' ':
-                case '\n':
-                case '\r':
-                case '\t':
-                    if (gt || space) {
-                        break; // second or more space, skip
-                    }
-                    chain.prepend(' ');
-                    space = true; // stop record space
-                    cc++;
-                    if (token) { // a token was started, stop it and count it
-                        token = false;
-                        wc++;
-                    }
-                    break;
-                default:
-                    if (gt) {
-                        break; // char in tag, skip
-                    }
-                    space = false; // renew space flag
-                    chain.prepend(c);
-                    cc++;
-                    // word boundary?
-                    final boolean charIsTok = Char.isToken(c);
-                    if (!token && charIsTok) { // open a word
-                        token = true;
-                    } else if (token && !charIsTok) { // close a word
-                        token = false;
-                        wc++;
-                    }
-            }
-            offset--;
-            if (words <= 0) {
-                ; // no matter about words;
-            } else if (token) {
-                continue; // do not break inside a word
-            } else if (wc >= words) {
-                break; // we got enough words
-            }
-            if (chars > 0 && cc >= chars) {
-                break; // chars limit reached
-            }
-        }
-        // if word, delete last car prepend?
-    }
 
 }

@@ -10,6 +10,7 @@ import org.apache.lucene.search.Query;
 
 import com.github.oeuvres.alix.lucene.spans.OffsetsCollector;
 import com.github.oeuvres.alix.util.Chain;
+import com.github.oeuvres.alix.util.Detagger;
 import com.github.oeuvres.alix.util.Markup;
 
 import static com.github.oeuvres.alix.common.Names.*;
@@ -57,7 +58,8 @@ public class HtmlResults extends ResultsListener
     /** Last global docId seen; used to build the next-page cursor in {@link #end}. */
     private int lastDocId = -1;
     /** Reusable buffer for assembling each concordance line. */
-    private final Chain snippet = new Chain();
+    private final Detagger detagger = new Detagger(Set.of("i", "em"));
+    
 
     /**
      * @param field         field over which results are produced
@@ -76,7 +78,7 @@ public class HtmlResults extends ResultsListener
         super(field, docs);
         this.writer = writer;
         this.storedFields = storedFields;
-        this.contentFieldName = contentField; // was silently dropped before
+        this.contentFieldName = contentField; 
     }
 
     /** Sets the name of the stored field holding the document HTML content. */
@@ -166,49 +168,42 @@ public class HtmlResults extends ResultsListener
     @Override
     public boolean span(OffsetsCollector collector) throws IOException
     {
-        // spanLimit = 0: caller explicitly requested no spans
         if (spanLimit == 0) return false;
-
         if (spanCount == 0) writer.append("<ol class=\"hit spans\">\n");
         spanCount++;
-
+ 
         final int termCount = collector.size();
         if (termCount < 1) return true;
-
-        snippet.setLength(0);
-
-        // Left context: walk backward from just before the first pivot term.
-        // Pass startOffset - 1 so the pivot's own first character is not included.
-        Markup.prependWords(content, collector.startOffset(0) - 1, snippet, wordsAround);
-
-        // Opening tag prepended on top of the left context already in the buffer.
-        snippet.prepend("<li class=\"hit span\"><a href=\"" + id + "#span" + spanCount + "\">");
-
-        // First pivot term.
-        snippet.append("<mark class=\"hit pivot\">");
-        snippet.append(content, collector.startOffset(0), collector.endOffset(0));
-        snippet.append("</mark>");
-
-        // Remaining pivot terms with inter-term text between them.
+ 
+        // Opening tag written first: no buffer needed, no prepend.
+        writer.append("<li class=\"hit span\"><a href=\"")
+              .append(id).append("#span").append(String.valueOf(spanCount)).append("\">");
+ 
+        // Left context: locate boundary, then detag forward directly into writer.
+        final int left = Markup.leftBoundary(content, collector.startOffset(0) - 1, wordsAround, -1);
+        detagger.detag(content, left, collector.startOffset(0), writer);
+ 
+        // Pivot terms with inter-term text between them.
+        writer.append("<mark class=\"hit pivot\">");
+        writer.append(content, collector.startOffset(0), collector.endOffset(0));
+        writer.append("</mark>");
         for (int t = 1; t < termCount; t++) {
-            // Inter-term text from raw HTML content: strip tags, write into snippet directly.
-            Markup.detag(content, collector.endOffset(t - 1), collector.startOffset(t), snippet, null);
-            snippet.append("<mark class=\"hit pivot\">");
-            snippet.append(content, collector.startOffset(t), collector.endOffset(t));
-            snippet.append("</mark>");
+            detagger.detag(content, collector.endOffset(t - 1), collector.startOffset(t), writer);
+            writer.append("<mark class=\"hit pivot\">");
+            writer.append(content, collector.startOffset(t), collector.endOffset(t));
+            writer.append("</mark>");
         }
-
-        // Right context: walk forward from just past the last pivot term.
-        Markup.appendWords(content, collector.endOffset(termCount - 1), snippet, wordsAround);
-        snippet.append("</a></li>\n");
-
-        writer.append(snippet);
-
+ 
+        // Right context.
+        final int right = Markup.rightBoundary(content, collector.endOffset(termCount - 1), wordsAround, -1);
+        detagger.detag(content, collector.endOffset(termCount - 1), right, writer);
+ 
+        writer.append("</a></li>\n");
         return spanLimit < 0 || spanCount < spanLimit;
     }
 
     @Override
-    public void endDoc(int docId) throws IOException
+    public void endDoc() throws IOException
     {
         if (spanCount > 0) writer.append("</ol>\n");
         writer.append("</article>\n");
