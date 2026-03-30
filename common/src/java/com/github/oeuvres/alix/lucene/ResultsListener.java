@@ -140,7 +140,7 @@ public abstract class ResultsListener
      *
      * @param nextDocid 
      */
-    abstract public void end(int nextDocid) throws IOException;
+    abstract public void end(boolean completed) throws IOException;
 
     /** Returns the number of matching documents visited during traversal. */
     public int visitedDocs() {

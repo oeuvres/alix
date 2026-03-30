@@ -84,7 +84,11 @@ public class Detagger {
      * Appends a normalized text view of {@code xml[begin, end)} to {@code dest}.
      *
      * <p>Nothing is cleared in {@code dest} before writing; content is appended.
-     * The method is not thread-safe: a single {@code Detagger} instance must not
+     * If the slice begins inside a tag (a {@code >} is encountered before any {@code <}),
+     * the broken leading fragment is silently discarded and the text that follows is kept.
+     * If the slice ends inside an unclosed tag, that tag is silently discarded.</p>
+     *
+     * <p>The method is not thread-safe: a single {@code Detagger} instance must not
      * be shared across threads without external synchronization.</p>
      *
      * @param xml   source text (may contain tag markup)
@@ -99,6 +103,16 @@ public class Detagger {
         if (xml == null || dest == null) return;
         if (begin < 0) begin = 0;
         if (end > xml.length()) end = xml.length();
+        if (begin >= end) return;
+
+        // Pre-scan: if the slice starts inside a tag (e.g. " attr>"), advance begin
+        // past the closing '>' so the main loop never sees a stray '>' outside a tag.
+        // Stop as soon as '<' is found (normal tag boundary, no broken fragment).
+        for (int i = begin; i < end; i++) {
+            final char c = xml.charAt(i);
+            if (c == '<') break;
+            if (c == '>') { begin = i + 1; break; }
+        }
         if (begin >= end) return;
 
         boolean inTag = false;
@@ -130,13 +144,6 @@ public class Detagger {
                         tagBuf.setLength(0);
                         nameBuf.setLength(0);
                         tagBuf.append(c);
-                        break;
-                    case '>':
-                        // '>' before any '<': the slice started inside a tag; discard
-                        // everything written so far from this call.
-                        // We cannot truncate a generic Appendable; callers that need
-                        // this guarantee should use a Chain or StringBuilder and reset
-                        // manually. Here we simply skip the character.
                         break;
                     default:
                         dest.append(c);

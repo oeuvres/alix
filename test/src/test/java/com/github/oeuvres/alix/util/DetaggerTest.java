@@ -201,7 +201,6 @@ class DetaggerTest {
         // offsets 3..13 = "<p>def</p>g"
         final StringBuilder sb = new StringBuilder();
         new Detagger().detag(xml, 3, 15, sb);
-        System.out.println(sb);
         assertEquals("def g", sb.toString());
     }
 

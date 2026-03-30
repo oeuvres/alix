@@ -116,6 +116,7 @@ public final class SpanWalker {
 
         final OffsetsCollector collector = new OffsetsCollector(8);
         int nextCursor = -1;
+        boolean completed = true;
 
         outer:
         for (final LeafReaderContext ctx : searcher.getLeafContexts()) {
@@ -166,6 +167,7 @@ public final class SpanWalker {
 
                 if (!listener.wantsMoreDocs()) {
                     nextCursor = ctx.docBase + localDocId;
+                    completed = false;
                     break outer;
                 }
 
@@ -187,7 +189,7 @@ public final class SpanWalker {
             }
         }
 
-        listener.end(nextCursor);
+        listener.end(completed);
         return nextCursor;
     }
 }
