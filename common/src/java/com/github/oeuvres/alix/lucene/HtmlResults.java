@@ -14,32 +14,58 @@ import com.github.oeuvres.alix.util.Markup;
 
 import static com.github.oeuvres.alix.common.Names.*;
 
+/**
+ * A {@link ResultsListener} that writes span search results as an HTML fragment.
+ *
+ * <p>Each matching document becomes an {@code <article>} element containing an
+ * ordered list of span concordance lines. Each line shows a left context, one or
+ * more {@code <mark>} elements (the pivot terms), the inter-term text, and a right
+ * context. Contexts are stripped of markup by {@link Markup}.</p>
+ *
+ * <p>The fragment starts with {@code <section class="results">} and ends with
+ * {@code </section>}. When traversal is stopped early by {@link #wantsMoreDocs()},
+ * an anchor {@code <a class="next-page" data-docid="N"/>} is appended after the
+ * closing section tag, where {@code N} is the first docId of the next page
+ * ({@link #lastDocId} + 1). The caller is responsible for turning that into a
+ * full URL.</p>
+ */
 public class HtmlResults extends ResultsListener
 {
-    Writer writer;
-    StoredFields storedFields;
-    Document doc;
-    /** Stored field from which get the text content of the document */
+    private final Writer writer;
+    private final StoredFields storedFields;
+    /** Stored field providing the text content from which snippets are extracted. */
     private String contentFieldName = "content";
-    /** The content from which extract snippets */
-    private String content;
-    /** Stored field from which get a title line for a document */
+    /** Stored field providing the one-line title rendered as a document heading. */
     private String doclineFieldName = "docline";
-    /** A mutable char array with prepend to write spans */
-    private Chain snippet = new Chain();
-    /** Count of spans outputed */
-    private int spanCount;
-    /** Limit of spans to output by docs */
-    private int spanLimit = -1;
-    /** Limit of docs to output */
-    private int docLimit = -1;
-    /** Current doc count */
-    private int docCount = 0;
-    /** Count of words to take around a span */
+    /** Number of words of context to show on each side of a span match. */
     private int wordsAround = 10;
-    /** Current document id */
-    private String id;
+    /** Maximum number of spans to emit per document; {@code -1} = unlimited. */
+    private int spanLimit = -1;
+    /** Maximum number of documents to emit; {@code -1} = unlimited. */
+    private int docLimit = -1;
 
+    /** Current Lucene document, refreshed at each {@link #startDoc}. */
+    private Document doc;
+    /** HTML content of the current document, source for snippet extraction. */
+    private String content;
+    /** ALIX document id string of the current document, used in links. */
+    private String id;
+    /** Number of documents emitted so far. */
+    private int docCount = 0;
+    /** Number of spans emitted for the current document. */
+    private int spanCount;
+    /** Last global docId seen; used to build the next-page cursor in {@link #end}. */
+    private int lastDocId = -1;
+    /** Reusable buffer for assembling each concordance line. */
+    private final Chain snippet = new Chain();
+
+    /**
+     * @param field         field over which results are produced
+     * @param docs          total docs having a value for this field
+     * @param writer        output destination
+     * @param storedFields  access to stored document fields
+     * @param contentField  name of the stored field holding the document HTML content
+     */
     HtmlResults(
         final String field,
         final int docs,
@@ -50,28 +76,38 @@ public class HtmlResults extends ResultsListener
         super(field, docs);
         this.writer = writer;
         this.storedFields = storedFields;
+        this.contentFieldName = contentField; // was silently dropped before
     }
-    
+
+    /** Sets the name of the stored field holding the document HTML content. */
     public HtmlResults contentFieldName(final String contentFieldName)
     {
         this.contentFieldName = contentFieldName;
         return this;
     }
-    
+
     public String contentFieldName()
     {
         return this.contentFieldName;
     }
 
+    /** Sets the name of the stored field used as document heading. */
     public HtmlResults doclineFieldName(final String doclineFieldName)
     {
         this.doclineFieldName = doclineFieldName;
         return this;
     }
-    
+
     public String doclineFieldName()
     {
         return this.doclineFieldName;
+    }
+
+    /** Sets the maximum number of spans emitted per document; {@code -1} = unlimited. */
+    public HtmlResults spanLimit(final int spanLimit)
+    {
+        this.spanLimit = spanLimit;
+        return this;
     }
 
     public int spanLimit()
@@ -79,25 +115,29 @@ public class HtmlResults extends ResultsListener
         return this.spanLimit;
     }
 
-    public HtmlResults spanLimit(final int spanLimit)
+    /** Sets the maximum number of documents to emit; {@code -1} = unlimited. */
+    public HtmlResults docLimit(final int docLimit)
     {
-        this.spanLimit = spanLimit;
+        this.docLimit = docLimit;
         return this;
+    }
+
+    public int docLimit()
+    {
+        return this.docLimit;
     }
 
     @Override
     public void start(SpanQuery spanQuery, Query filterQuery, int hits) throws IOException
     {
         writer.append("<section class=\"results\">\n");
-        // no need to write the queries here for the user, will be shown by the UI
-        // show the results stats here is nice, but there is a problem in localization
     }
 
     @Override
     public boolean wantsMoreDocs()
     {
-        if (docCount >= docLimit) return false;
-        return true;
+        // docLimit < 0 means unlimited; otherwise stop once the limit is reached
+        return docLimit < 0 || docCount < docLimit;
     }
 
     @Override
@@ -105,69 +145,85 @@ public class HtmlResults extends ResultsListener
     {
         spanCount = 0;
         docCount++;
-        doc = storedFields.document(docId); // take all fields, content will be the bigger
+        lastDocId = docId;
+        doc = storedFields.document(docId);
         content = doc.get(contentFieldName);
         id = doc.get(ALIX_ID);
-        
-        writer.append("<article id=\"" + doc.get(ALIX_ID) + "\" data-docid=\"" + docId + "\" class=\"hit\">\n");
+
+        writer.append("<article id=\"").append(id)
+              .append("\" data-docid=\"").append(String.valueOf(docId))
+              .append("\" class=\"hit\">\n");
+
         if (doclineFieldName != null) {
-            writer.append("<h2><a href=\""+ id + "\">" + doc.get(doclineFieldName) + "</a></h2>");
+            final String docline = doc.get(doclineFieldName);
+            if (docline != null) {
+                writer.append("<h2><a href=\"").append(id).append("\">")
+                      .append(docline).append("</a></h2>\n");
+            }
         }
-        
     }
 
     @Override
     public boolean span(OffsetsCollector collector) throws IOException
     {
+        // spanLimit = 0: caller explicitly requested no spans
         if (spanLimit == 0) return false;
-        
-        // first span, open list
-        if (spanCount == 0) writer.append("<ul class=\"hit spans\">\n");
+
+        if (spanCount == 0) writer.append("<ol class=\"hit spans\">\n");
         spanCount++;
-        // spanId, should be unique by doc, allow a link to original doc
-        String spanId = "span" + spanCount;
-        
+
         final int termCount = collector.size();
-        if (termCount < 1) return true; // bug?
-        // clear the mutable char array, but keep left and right capacity
+        if (termCount < 1) return true;
+
         snippet.setLength(0);
-        // works but may be confusing, ask Claude if he has equally efficient but more obvious
-        Markup.prependWords(content, collector.startOffset(0), snippet, wordsAround);
-        snippet.prepend("<li class=\"hit span\"><a href=\"" + id + "#" + spanId + "\">");
-        // append always first term
-        snippet.append("<mark class=\"hit pivot\">"
-            + content.substring(collector.startOffset(0), collector.endOffset(0))
-            + "</mark>");
-        for (int termOrd = 1; termOrd < termCount; termOrd++) {
-            snippet.append(Markup.detag(content.substring(collector.endOffset(termOrd - 1), collector.startOffset(termOrd))));
-            snippet.append("<mark class=\"hit pivot\">"
-            + content.substring(collector.startOffset(termOrd), collector.endOffset(termOrd))
-            + "</mark>");
+
+        // Left context: walk backward from just before the first pivot term.
+        // Pass startOffset - 1 so the pivot's own first character is not included.
+        Markup.prependWords(content, collector.startOffset(0) - 1, snippet, wordsAround);
+
+        // Opening tag prepended on top of the left context already in the buffer.
+        snippet.prepend("<li class=\"hit span\"><a href=\"" + id + "#span" + spanCount + "\">");
+
+        // First pivot term.
+        snippet.append("<mark class=\"hit pivot\">");
+        snippet.append(content, collector.startOffset(0), collector.endOffset(0));
+        snippet.append("</mark>");
+
+        // Remaining pivot terms with inter-term text between them.
+        for (int t = 1; t < termCount; t++) {
+            // Inter-term text from raw HTML content: strip tags, write into snippet directly.
+            Markup.detag(content, collector.endOffset(t - 1), collector.startOffset(t), snippet, null);
+            snippet.append("<mark class=\"hit pivot\">");
+            snippet.append(content, collector.startOffset(t), collector.endOffset(t));
+            snippet.append("</mark>");
         }
-        Markup.appendWords(content, collector.endOffset(termCount -1), snippet, wordsAround);
+
+        // Right context: walk forward from just past the last pivot term.
+        Markup.appendWords(content, collector.endOffset(termCount - 1), snippet, wordsAround);
         snippet.append("</a></li>\n");
+
         writer.append(snippet);
-        if (spanLimit > 0 && spanCount >= spanLimit) return false;
-        return true;
+
+        return spanLimit < 0 || spanCount < spanLimit;
     }
 
     @Override
-    public void endDoc() throws IOException
+    public void endDoc(int docId) throws IOException
     {
-        if (spanCount > 0) writer.append("</ul>\n");
+        if (spanCount > 0) writer.append("</ol>\n");
         writer.append("</article>\n");
     }
 
     @Override
-    public void end(int nextDocId) throws IOException
+    public void end(boolean completed) throws IOException
     {
-        
         writer.append("</section>\n");
-        // it is not the job of this results writer to write the link for more results, it is app dependant
-        // should be given by a getter
-        if (nextDocId > 0) {
-            writer.append("<a class=\"next-docid\" data-docid=\"" + nextDocId +"\"/>");
+        // Emit a cursor anchor for the caller to build the next-page URL.
+        // The listener owns the cursor: it is lastDocId + 1 (the first unvisited doc).
+        if (!completed) {
+            writer.append("<a class=\"next-page\" data-docid=\"")
+                  .append(String.valueOf(lastDocId + 1))
+                  .append("\"/>\n");
         }
     }
-
 }
