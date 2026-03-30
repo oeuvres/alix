@@ -61,16 +61,34 @@ public final class SpanWalker {
      * @param spanQuery   span query to enumerate
      * @param filterQuery optional non-scoring filter, or {@code null}
      * @param listener    consumer of streamed results
+     * @throws IOException 
      */
     public SpanWalker(
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
             final Query filterQuery,
-            final ResultsListener listener) {
+            final ResultsListener listener) throws IOException {
         this.searcher    = Objects.requireNonNull(searcher,  "searcher");
-        this.spanQuery   = Objects.requireNonNull(spanQuery, "spanQuery");
-        this.filterQuery = filterQuery;
+        Objects.requireNonNull(spanQuery, "spanQuery");
+        this.spanQuery = (SpanQuery) searcher.rewrite(spanQuery);
+        this.filterQuery = (filterQuery == null) ? null : searcher.rewrite(filterQuery);
         this.listener    = Objects.requireNonNull(listener,  "listener");
+    }
+    
+    /**
+     * On demand, calculate and returns the count of document matched by the query
+     * @return
+     * @throws IOException 
+     */
+    public int hits() throws IOException
+    {
+        final Query countQuery = (filterQuery == null)
+            ? spanQuery
+            : new BooleanQuery.Builder()
+                    .add(spanQuery,   BooleanClause.Occur.MUST)
+                    .add(filterQuery, BooleanClause.Occur.FILTER)
+                    .build();
+        return searcher.count(countQuery);
     }
 
     /**
@@ -86,37 +104,18 @@ public final class SpanWalker {
      * @return first unprocessed global docId (to pass as {@code docStart} on the next call),
      *         or {@code -1} if the index is exhausted
      */
-    public int walk(final int docStart, final boolean countDocs) throws IOException {
-
-        final SpanQuery rewrittenSpan =
-                (SpanQuery) searcher.rewrite(spanQuery);
-        final Query rewrittenFilter =
-                (filterQuery == null) ? null : searcher.rewrite(filterQuery);
-
+    public int walk(final int docStart) throws IOException {
         listener.reset();
 
-        if (countDocs) {
-            final Query countQuery = (rewrittenFilter == null)
-                    ? rewrittenSpan
-                    : new BooleanQuery.Builder()
-                            .add(rewrittenSpan,   BooleanClause.Occur.MUST)
-                            .add(rewrittenFilter, BooleanClause.Occur.FILTER)
-                            .build();
-            listener.hits(searcher.count(countQuery));
-        }
-
-        listener.start(spanQuery, filterQuery, listener.hits());
-
         final SpanWeight spanWeight =
-                (SpanWeight) searcher.createWeight(rewrittenSpan, ScoreMode.COMPLETE_NO_SCORES, 1f);
+                (SpanWeight) spanQuery.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
         final Weight filterWeight =
-                (rewrittenFilter == null)
-                        ? null
-                        : searcher.createWeight(rewrittenFilter, ScoreMode.COMPLETE_NO_SCORES, 1f);
+            (filterQuery == null)
+                ? null
+                : searcher.createWeight(filterQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
 
         final OffsetsCollector collector = new OffsetsCollector(8);
         int nextCursor = -1;
-        boolean completed = true;
 
         outer:
         for (final LeafReaderContext ctx : searcher.getLeafContexts()) {
@@ -167,7 +166,6 @@ public final class SpanWalker {
 
                 if (!listener.wantsMoreDocs()) {
                     nextCursor = ctx.docBase + localDocId;
-                    completed = false;
                     break outer;
                 }
 
@@ -188,8 +186,6 @@ public final class SpanWalker {
                 listener.endDoc();
             }
         }
-
-        listener.end(completed);
         return nextCursor;
     }
 }

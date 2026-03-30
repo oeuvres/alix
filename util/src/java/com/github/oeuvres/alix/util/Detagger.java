@@ -122,7 +122,7 @@ public class Detagger {
 
         // Track the last character written to dest for whitespace collapsing.
         // We cannot read back from a generic Appendable, so we maintain it ourselves.
-        char lastWritten = 0;
+        char lastWritten = 'x';
 
         for (int i = begin; i < end; i++) {
             final char c = xml.charAt(i);
@@ -133,7 +133,7 @@ public class Detagger {
                     case '\t':
                     case '\r':
                     case '\n':
-                        if (lastWritten != ' ' && lastWritten != 0) {
+                        if (lastWritten != ' ') {
                             dest.append(' ');
                             lastWritten = ' ';
                         }

@@ -6,11 +6,8 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.search.Query;
 
 import com.github.oeuvres.alix.lucene.spans.OffsetsCollector;
-import com.github.oeuvres.alix.util.Chain;
 import com.github.oeuvres.alix.util.Detagger;
 import com.github.oeuvres.alix.util.Markup;
 
@@ -70,28 +67,14 @@ public class HtmlResults extends ResultsListener
      * @param contentField  name of the stored field holding the document HTML content
      */
     HtmlResults(
-        final String field,
-        final int docs,
         final Writer writer,
         final StoredFields storedFields,
         final String contentField
     ) {
-        super(field, docs);
+        super();
         this.writer = writer;
         this.storedFields = storedFields;
         this.contentFieldName = contentField; 
-    }
-
-    /** Sets the name of the stored field holding the document HTML content. */
-    public HtmlResults contentFieldName(final String contentFieldName)
-    {
-        this.contentFieldName = contentFieldName;
-        return this;
-    }
-
-    public String contentFieldName()
-    {
-        return this.contentFieldName;
     }
 
     /** Sets the name of the stored field used as document heading. */
@@ -128,12 +111,6 @@ public class HtmlResults extends ResultsListener
     public int docLimit()
     {
         return this.docLimit;
-    }
-
-    @Override
-    public void start(SpanQuery spanQuery, Query filterQuery, int hits) throws IOException
-    {
-        writer.append("<section class=\"results\">\n");
     }
 
     @Override
@@ -188,17 +165,16 @@ public class HtmlResults extends ResultsListener
         writer.append("<mark class=\"hit pivot\">");
         writer.append(content, collector.startOffset(0), collector.endOffset(0));
         writer.append("</mark>");
-        for (int t = 1; t < termCount; t++) {
-            detagger.detag(content, collector.endOffset(t - 1), collector.startOffset(t), writer);
+        for (int termOrd = 1; termOrd < termCount; termOrd++) {
+            detagger.detag(content, collector.endOffset(termOrd - 1), collector.startOffset(termOrd), writer);
             writer.append("<mark class=\"hit pivot\">");
-            writer.append(content, collector.startOffset(t), collector.endOffset(t));
+            writer.append(content, collector.startOffset(termOrd), collector.endOffset(termOrd));
             writer.append("</mark>");
         }
  
         // Right context.
         final int right = Markup.rightBoundary(content, collector.endOffset(termCount - 1), wordsAround, -1);
-        detagger.detag(content, collector.endOffset(termCount - 1), right, writer);
- 
+        detagger.detag(content, collector.endOffset(termCount - 1), right, writer); 
         writer.append("</a></li>\n");
         return spanLimit < 0 || spanCount < spanLimit;
     }
@@ -207,19 +183,8 @@ public class HtmlResults extends ResultsListener
     public void endDoc() throws IOException
     {
         if (spanCount > 0) writer.append("</ol>\n");
-        writer.append("</article>\n");
+        writer.append("</article>\n\n");
     }
 
-    @Override
-    public void end(boolean completed) throws IOException
-    {
-        writer.append("</section>\n");
-        // Emit a cursor anchor for the caller to build the next-page URL.
-        // The listener owns the cursor: it is lastDocId + 1 (the first unvisited doc).
-        if (!completed) {
-            writer.append("<a class=\"next-page\" data-docid=\"")
-                  .append(String.valueOf(lastDocId + 1))
-                  .append("\"/>\n");
-        }
-    }
+
 }

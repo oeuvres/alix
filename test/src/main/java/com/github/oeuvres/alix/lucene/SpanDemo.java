@@ -3,53 +3,23 @@ package com.github.oeuvres.alix.lucene;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.Set;
 
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Sort;
 import org.apache.lucene.store.FSDirectory;
 
-import com.github.oeuvres.alix.lucene.spans.SpanDocs;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 
-/**
- * Interactive command-line demo for {@link SpanDocs}.
- *
- * <h2>Usage</h2>
- * <pre>
- * SpanCoocDemo &lt;indexDir&gt; [textField] [yearField] [alixDocIdField] [storedField] [slop]
- * </pre>
- *
- * <p>All parameters after {@code indexDir} are optional and fall back to
- * the defaults shown below.</p>
- *
- * <h2>Query syntax</h2>
- * <p>Groups are separated by {@code ,} or newline.
- * Terms within a group are whitespace-separated and combined with OR.
- * Groups are combined with AND (proximity).</p>
- * <pre>
- * > libre liberté, responsable
- * > libre, responsable responsabilité
- * </pre>
- *
- * <h2>Special commands</h2>
- * <pre>
- * :slop N     change the span slop (default 19)
- * :ctx  N     change the excerpt context window in tokens (default 10)
- * :max  N     change the maximum number of hits to display (default 20)
- * :help       show this help
- * :quit       exit
- * </pre>
- */
+
 public class SpanDemo {
 
     private static final String DEFAULT_TEXT_FIELD    = "content";
@@ -69,9 +39,9 @@ public class SpanDemo {
         final String    alixIdField   = args.length > 3 ? args[3] : DEFAULT_ALIX_ID_FIELD;
         final String    storedField   = args.length > 4 ? args[4] : DEFAULT_STORED_FIELD;
 
-        final PrintStream out = new PrintStream(System.out, true, StandardCharsets.UTF_8);
-
-        out.println("Opening index: " + indexDir);
+        Writer writer = new OutputStreamWriter(System.out, StandardCharsets.UTF_8);
+        
+        writer.append("Opening index: " + indexDir + "\n");
         try (
             FSDirectory    dir    = FSDirectory.open(indexDir);
             IndexReader    reader = DirectoryReader.open(dir);
@@ -79,23 +49,27 @@ public class SpanDemo {
         ) {
             IndexSearcher  searcher = new IndexSearcher(reader);
             StoredFields storedFields = searcher.storedFields();
-            final Set<String> fieldSet = Set.of("docline", "content");
             
-            
-            out.printf("Index opened — %d docs (%d leaves)%n",
-                reader.numDocs(), reader.leaves().size());
-            out.printf("Fields: text=%s  year=%s  alixId=%s  stored=%s%n",
-                textField, yearField, alixIdField, storedField);
+                        
+            writer.append("Index opened — ")
+                .append(""+reader.numDocs()).append(" docs")
+                .append("("+reader.leaves().size()).append(" leaves)")
+                .append("\n");
 
             int slop = args.length > 5 ? parseInt(args[5], DEFAULT_SLOP) : DEFAULT_SLOP;
             int ctx  = DEFAULT_CTX;
             int max  = DEFAULT_MAX;
 
-            out.printf("slop=%d  ctx=%d  max=%d%n%n", slop, ctx, max);
+            writer.append("slop=").append(String.valueOf(slop))
+                .append(" ctx=").append(String.valueOf(ctx))
+                .append(" max=").append(String.valueOf(max))
+                .append("\n\n");
+            
+            
 
             while (true) {
-                out.print("> ");
-                out.flush();
+                writer.append("> ");
+                writer.flush();
 
                 final String line = stdin.readLine();
                 if (line == null) break;           // EOF
@@ -106,24 +80,24 @@ public class SpanDemo {
                 if (trimmed.startsWith(":")) {
                     final String[] parts = trimmed.substring(1).split("\\s+", 2);
                     switch (parts[0]) {
-                        case "quit", "q", "exit" -> { out.println("Bye."); return; }
+                        case "quit", "q", "exit" -> { writer.append("Bye.\n"); return; }
                         case "slop" -> {
                             slop = parseInt(parts.length > 1 ? parts[1] : "", slop);
-                            out.println("slop=" + slop);
+                            writer.append("slop=" + slop + "\n");
                             continue;
                         }
                         case "ctx" -> {
                             ctx = parseInt(parts.length > 1 ? parts[1] : "", ctx);
-                            out.println("ctx=" + ctx);
+                            writer.append("ctx=" + ctx + "\n");
                             continue;
                         }
                         case "max" -> {
                             max = parseInt(parts.length > 1 ? parts[1] : "", max);
-                            out.println("max=" + max);
+                            writer.append("max=" + max + "\n");
                             continue;
                         }
                         default -> {
-                            out.println("Unknown command. Type :help.");
+                            writer.append("Unknown command. Type :help." + "\n");
                             continue;
                         }
                     }
@@ -134,44 +108,30 @@ public class SpanDemo {
                 try {
                     query = new SpanQueryParser(textField, slop).parse(trimmed);
                 } catch (IllegalArgumentException e) {
-                    out.println("Parse error: " + e.getMessage());
+                    writer.append("Parse error: " + e.getMessage() + "\n");
                     continue;
                 }
 
-                out.println("Query: " + query);
+                writer.append("Query: " + query + "\n");
                 if (!(query instanceof SpanNearQuery)) {
-                    out.println("(single group — no proximity constraint; showing matching docs only)");
+                    writer.append("(single group — no proximity constraint; showing matching docs only)\n");
                 }
 
                 final long t0 = System.currentTimeMillis();
-                Sort sort =  Sort.RELEVANCE;
-                // Sort sort = Sort.INDEXORDER;
-                try (SpanDocs sd = SpanDocs.search(searcher, query, null, sort, 1000)) {
-                    final long ms = System.currentTimeMillis() - t0;
-                    out.printf("%d hit(s) in %d ms%n%n", sd.size(), ms);
-
-                    int shown = 0;
-                    while (sd.next() && shown < max) {
-                        shown++;
-                        final int docId = sd.docId();
-                        Document doc = storedFields.document(docId, fieldSet);
-                        System.out.println(doc.get("docline"));
-                        System.out.println("    spans=" + sd.spanCount());
-                        String content = doc.get("content");
-                        for (int spanOrd = 0, lim = Math.min(sd.spanCount(), 10); spanOrd < lim; spanOrd++) {
-                            int spanStart = sd.spanStartOffset(spanOrd);
-                            int spanEnd = sd.spanEndOffset(spanOrd);
-                            System.out.print("  – " + spanOrd + ". ");
-                            System.out.println(content.substring(spanStart, spanEnd));
-                        }
-                        
-                    }
-                    if (sd.size() > max) {
-                        out.printf("  … %d more hits not shown (use :max N to see more)%n", sd.size() - max);
-                    }
+                
+                
+                
+                try {
+                    HtmlResults results = new HtmlResults(writer, storedFields, storedField)
+                        .doclineFieldName("docline")
+                        .spanLimit(5)
+                        .docLimit(20);
+                    SpanWalker walker = new SpanWalker(searcher, query, null, results);
+                    writer.append(String.valueOf(walker.hits())).append(" hits\n");
+                    int nextDoc = walker.walk(0);
 
                 } catch (Exception e) {
-                    out.println("Error during search: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
         }
