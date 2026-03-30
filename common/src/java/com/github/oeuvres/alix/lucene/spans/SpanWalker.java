@@ -105,7 +105,6 @@ public final class SpanWalker {
      *         or {@code -1} if the index is exhausted
      */
     public int walk(final int docStart) throws IOException {
-        listener.reset();
 
         final SpanWeight spanWeight =
                 (SpanWeight) spanQuery.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
@@ -170,20 +169,19 @@ public final class SpanWalker {
                 }
 
                 final int docId = ctx.docBase + localDocId;
-                listener.visitedDocsAdd(1);
                 listener.startDoc(docId);
-
+                int spanTotal = 0;
                 while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
                     collector.reset();
                     spans.collect(collector);
                     collector.sort();
-                    listener.visitedSpansAdd(1);
+                    spanTotal++;
                     if (!listener.span(collector)) {
+                        while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) spanTotal++;
                         break;
                     }
                 }
-
-                listener.endDoc();
+                listener.endDoc(spanTotal);
             }
         }
         return nextCursor;

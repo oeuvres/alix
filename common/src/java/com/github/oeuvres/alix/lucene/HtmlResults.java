@@ -112,6 +112,12 @@ public class HtmlResults extends ResultsListener
     {
         return this.docLimit;
     }
+    
+    public HtmlResults wordsAround(final int wordsAround)
+    {
+        this.wordsAround = wordsAround;
+        return this;
+    }
 
     @Override
     public boolean wantsMoreDocs()
@@ -180,10 +186,22 @@ public class HtmlResults extends ResultsListener
     }
 
     @Override
-    public void endDoc() throws IOException
+    public void endDoc(final int spanTotal) throws IOException
     {
-        if (spanCount > 0) writer.append("</ol>\n");
+        if (spanCount > 0) {
+            writer.append("</ol>\n");
+        }
+        if (spanTotal == 0); //?
+        else if (spanTotal == spanCount);
+        else {
+            writer.append("<div class=\"span-count\">")
+                .append(String.valueOf(spanCount))
+                .append(" / ")
+                .append(String.valueOf(spanTotal))
+                .append("</div>");
+        }
         writer.append("</article>\n\n");
+        writer.flush();
     }
 
 

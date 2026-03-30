@@ -32,24 +32,7 @@ import com.github.oeuvres.alix.lucene.spans.OffsetsCollector;
  */
 public abstract class ResultsListener
 {
-    /** Number of matching documents visited during traversal. */
-    private int visitedDocs = 0;
-    /** Number of span matches emitted during traversal. */
-    public long visitedSpans = 0L;
-    /**
-     * Exact total number of span matches in the full result set, or {@code -1} if unknown.
-     * No walker precomputes this value.
-     */
-    public long totalSpansExact = -1L;
 
-    /**
-     * Resets traversal counters. Called by the walker at the start of a new walk.
-     * Subclasses that override this method must call {@code super.reset()}.
-     */
-    public void reset() {
-        visitedDocs = 0;
-        visitedSpans = 0;
-    }
 
     /**
      * Polled before the walker enters each matching document.
@@ -81,33 +64,6 @@ public abstract class ResultsListener
      * Called after all spans of a document have been emitted (or span enumeration was
      * stopped early by {@link #span} returning {@code false}).
      */
-    abstract public void endDoc() throws IOException;
+    abstract public void endDoc(final int spanCount) throws IOException;
 
-    /** Returns the number of matching documents visited during traversal. */
-    public int visitedDocs() {
-        return visitedDocs;
-    }
-
-    /**
-     * Increments the visited-document counter. Called by the walker once per visited document.
-     *
-     * @param delta increment, normally {@code 1}
-     */
-    public void visitedDocsAdd(final int delta) {
-        visitedDocs += delta;
-    }
-
-    /** Returns the number of span matches emitted during traversal. */
-    public long visitedSpans() {
-        return visitedSpans;
-    }
-
-    /**
-     * Increments the visited-span counter. Called by the walker once per emitted span.
-     *
-     * @param delta increment, normally {@code 1}
-     */
-    public void visitedSpansAdd(final long delta) {
-        visitedSpans += delta;
-    }
 }

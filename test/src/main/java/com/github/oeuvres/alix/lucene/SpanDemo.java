@@ -104,6 +104,7 @@ public class SpanDemo {
                 }
 
                 // --- parse and run ---
+                final long t0 = System.currentTimeMillis();
                 final SpanQuery query;
                 try {
                     query = new SpanQueryParser(textField, slop).parse(trimmed);
@@ -117,17 +118,17 @@ public class SpanDemo {
                     writer.append("(single group — no proximity constraint; showing matching docs only)\n");
                 }
 
-                final long t0 = System.currentTimeMillis();
                 
                 
                 
                 try {
                     HtmlResults results = new HtmlResults(writer, storedFields, storedField)
                         .doclineFieldName("docline")
+                        .docLimit(20)
                         .spanLimit(5)
-                        .docLimit(20);
+                        .wordsAround(20);
                     SpanWalker walker = new SpanWalker(searcher, query, null, results);
-                    writer.append(String.valueOf(walker.hits())).append(" hits\n");
+                    writer.append(String.valueOf(walker.hits())).append(" hits " + (System.currentTimeMillis() - t0) + "ms \n");
                     int nextDoc = walker.walk(0);
 
                 } catch (Exception e) {
