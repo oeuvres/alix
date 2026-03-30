@@ -21,23 +21,25 @@ import java.util.Objects;
 /**
  * Corpus-level keyword scorer for one indexed field.
  *
- * <p>Computes one dense score per {@code termId} and writes it into
- * {@link TermStats#scores()}.</p>
+ * <p>Assigns one score per vocabulary term by iterating all postings of the field
+ * and accumulating a local per-document score (typically BM25) into a single
+ * corpus-level weight. The result is a dense {@code double[]} indexed by
+ * {@link TermLexicon} term id, written into a caller-supplied {@link TermStats}.</p>
  *
- * <h3>Simple mode (per Lucene document)</h3>
- * <p>{@link #score(TermStats, TermScorer, Aggregation)} treats each Lucene document
- * as a scoring unit. For each term, the scorer is called once per document that
- * contains the term, and local scores are aggregated (typically summed) into a
- * single corpus-level score. This is the recommended mode for BM25-based keyword
- * extraction.</p>
+ * <p>The resulting score vector has two uses:</p>
+ * <ul>
+ *   <li><strong>Keyword extraction</strong> — the top-ranked terms describe the
+ *       thematic vocabulary of the corpus as a whole ({@link #topTerms}).</li>
+ *   <li><strong>Passage scoring</strong> — summing {@code scores[termId]} for all
+ *       terms in a candidate text window gives a measure of how topically dense
+ *       that window is, independently of query term repetition. This is useful for
+ *       selecting the most informative passage per document in a relevance-ranked
+ *       search.</li>
+ * </ul>
  *
- * <h3>Partitioned mode</h3>
- * <p>{@link #score(TermStats, TermScorer, Aggregation, int[], long[])} allows
- * an arbitrary grouping of documents into parts. This is useful for scorers like
- * G-test where comparing a part against its corpus complement is meaningful.
- * <strong>Not recommended for BM25</strong>: merging documents into parts collapses
- * IDF (all terms appear in all parts) and neutralizes length normalization
- * (equal-sized parts).</p>
+ * <p>Instances are bound to a frozen {@link IndexReader} snapshot. The same instance
+ * can be reused across multiple {@link #score} calls with different scorers or
+ * destination {@link TermStats} objects.</p>
  */
 public final class ThemeTerms {
 
@@ -50,8 +52,8 @@ public final class ThemeTerms {
     /**
      * Binds the scorer to one frozen field snapshot.
      *
-     * @param reader frozen Lucene reader
-     * @param lexicon dense lexicon for the same field and snapshot
+     * @param reader     frozen Lucene reader
+     * @param lexicon    dense lexicon for the same field and snapshot
      * @param fieldStats immutable field statistics for the same field and snapshot
      */
     public ThemeTerms(
@@ -84,10 +86,6 @@ public final class ThemeTerms {
         }
     }
 
-    // =========================================================================
-    // Validation shared by both scoring paths
-    // =========================================================================
-
     private void validateStats(final TermStats stats) {
         if (!field.equals(stats.field())) {
             throw new IllegalArgumentException(
@@ -102,18 +100,14 @@ public final class ThemeTerms {
         }
     }
 
-    // =========================================================================
-    // Leaf / liveDocs infrastructure
-    // =========================================================================
-
     /**
      * Pre-computed leaf structure for efficient liveDocs checks during
      * merged postings iteration.
      */
     private static final class LeafLayout {
         final int leafCount;
-        final int[] docBases;      // length = leafCount + 1, sentinel at end
-        final Bits[] liveDocs;     // per-leaf, null means all live
+        final int[] docBases;
+        final Bits[] liveDocs;
 
         LeafLayout(final List<LeafReaderContext> leaves, final int maxDoc) {
             this.leafCount = leaves.size();
@@ -124,10 +118,9 @@ public final class ThemeTerms {
                 docBases[i] = ctx.docBase;
                 liveDocs[i] = ctx.reader().getLiveDocs();
             }
-            docBases[leafCount] = maxDoc; // sentinel
+            docBases[leafCount] = maxDoc;
         }
 
-        /** Check if a global docId is live. Caller must advance leafOrd correctly. */
         boolean isLive(final int globalDocId, final int leafOrd) {
             final Bits bits = liveDocs[leafOrd];
             if (bits == null) return true;
@@ -135,23 +128,23 @@ public final class ThemeTerms {
         }
     }
 
-
-    // =========================================================================
-    // Simple mode: one Lucene document = one scoring unit
-    // =========================================================================
-
     /**
-     * Score all terms treating each Lucene document as an independent scoring unit.
+     * Scores all terms treating each Lucene document as an independent scoring unit,
+     * and writes one score per term into {@link TermStats#scores()}.
      *
-     * <p>For BM25, this is the natural mode: IDF is computed from true document
-     * frequency, and length normalization uses individual document lengths against
-     * the corpus average. The recommended aggregation is {@link Aggregation#SUM},
-     * which produces the "summed BM25" keyword score:
-     * {@code IDF(t) × Σ_d saturated_normalized_tf(t, d)}.</p>
+     * <p>For BM25 this is the natural mode: IDF is computed from true document
+     * frequency, and length normalisation uses individual document lengths against
+     * the corpus average. The recommended aggregation is summation across documents,
+     * producing {@code IDF(t) × Σ_d saturated_normalised_tf(t,d)} — a single number
+     * that reflects both how distinctive a term is and how consistently it appears
+     * across documents.</p>
      *
-     * @param stats destination statistics object; scores are written here
+     * <p>The resulting {@code scores[]} array can also be used as a term weight
+     * vector for passage scoring: see the class-level documentation.</p>
+     *
+     * @param stats  destination statistics object; {@link TermStats#scores()} is
+     *               filled and any previous content is overwritten
      * @param scorer local scorer (e.g. {@link TermScorer.BM25})
-     * @param aggregation reduction rule for local per-document scores
      * @throws IOException if Lucene term or postings iteration fails
      */
     public void score(
@@ -165,8 +158,6 @@ public final class ThemeTerms {
         final int maxDoc = fieldStats.maxDoc();
         final int corpusDocs = fieldStats.fieldDocs();
         final long corpusTokens = fieldStats.fieldWidth();
-        // System.out.println("fieldTokens=" + corpusTokens);
-        // System.out.println("fieldWidth=" + fieldStats.fieldWidth());
 
         final double[] scores = stats.scores();
         Arrays.fill(scores, 0d);
@@ -185,17 +176,14 @@ public final class ThemeTerms {
             );
         }
 
-        // For BM25: N = number of documents, avgdl = average document length
         scorer.corpus(corpusTokens, corpusDocs);
 
         final LeafLayout layout = new LeafLayout(leaves, maxDoc);
 
-        // Sparse buffer to collect postings before scoring.
-        // Two-pass per term is required: we need corpusTermDocs (= hitCount)
-        // before calling scorer.term(), but hitCount is only known after
-        // iterating all postings.
+        // Two-pass per term: corpusTermDocs (hitCount) is needed before scorer.term(),
+        // but is only known after iterating all postings.
         final int[] bufDocIds = new int[corpusDocs];
-        final int[] bufFreqs = new int[corpusDocs];
+        final int[] bufFreqs  = new int[corpusDocs];
 
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
@@ -207,7 +195,6 @@ public final class ThemeTerms {
                 continue;
             }
 
-            // --- pass 1: collect postings into sparse buffer ---
             int hitCount = 0;
             long corpusTermFreq = 0L;
 
@@ -220,7 +207,6 @@ public final class ThemeTerms {
                  docId != DocIdSetIterator.NO_MORE_DOCS;
                  docId = postings.nextDoc()) {
 
-                // advance leaf ordinal
                 while (docId >= nextLeafBase) {
                     leafOrd++;
                     nextLeafBase = layout.docBases[leafOrd + 1];
@@ -235,7 +221,7 @@ public final class ThemeTerms {
                 }
 
                 bufDocIds[hitCount] = docId;
-                bufFreqs[hitCount] = freq;
+                bufFreqs[hitCount]  = freq;
                 hitCount++;
                 corpusTermFreq += freq;
             }
@@ -245,7 +231,6 @@ public final class ThemeTerms {
                 continue;
             }
 
-            // --- prepare term-level statistics (IDF for BM25) ---
             scorer.term(corpusTermFreq, hitCount);
             for (int i = 0; i < hitCount; i++) {
                 final long docTokens = fieldStats.docWidth(bufDocIds[i]);
@@ -255,26 +240,18 @@ public final class ThemeTerms {
         }
     }
 
-    // =========================================================================
-    // Top-terms convenience
-    // =========================================================================
-
     /**
-     * Score all terms and return the top-ranked results as an immutable list.
+     * Scores all terms and returns the top-ranked results as an immutable list,
+     * ordered by descending score.
      *
-     * <p>This is a convenience method that allocates a temporary {@link TermStats},
-     * runs the full postings scan via {@link #score(TermStats, TermScorer)},
-     * extracts the top-K positive scores, and resolves term strings from
-     * the bound lexicon. The returned list is ordered by descending score.</p>
-     *
-     * <p>Thread-safe: each call allocates its own {@code TermStats} and
-     * uses the caller-supplied {@code TermScorer}, so concurrent calls
-     * with independent scorers are safe.</p>
+     * <p>Convenience wrapper around {@link #score(TermStats, TermScorer)} that
+     * allocates a temporary {@link TermStats}, runs the full postings scan, and
+     * resolves term strings from the bound lexicon.</p>
      *
      * @param scorer local scorer (e.g. {@code new TermScorer.BM25(1.3)})
      * @param topK   maximum number of results to return
      * @return immutable list of top-ranked terms, ordered by descending score
-     * @throws IOException if Lucene term or postings iteration fails
+     * @throws IOException              if Lucene term or postings iteration fails
      * @throws IllegalArgumentException if {@code topK < 1}
      */
     public List<TermRow> topTerms(final TermScorer scorer, final int topK) throws IOException {
@@ -306,212 +283,5 @@ public final class ThemeTerms {
             ));
         }
         return List.copyOf(rows);
-    }
-
-    // =========================================================================
-    // Partitioned mode: arbitrary grouping of documents into parts
-    // =========================================================================
-
-
-    /**
-     * Score all terms against an arbitrary partition of the corpus.
-     *
-     * <p><strong>Warning:</strong> BM25 performs poorly with partitioned scoring.
-     * When documents are merged into a small number of parts, IDF collapses
-     * (most terms appear in every part) and length normalization is neutralized
-     * (equal-sized parts). Use the simple per-document
-     * {@link #score(TermStats, TermScorer, Aggregation)} for BM25.</p>
-     *
-     * <p>This mode is appropriate for scorers like {@link TermScorer.G} where
-     * comparing a part against its corpus complement is meaningful.</p>
-     *
-     * @param stats destination statistics object; scores are written here
-     * @param scorer local scorer
-     * @param aggregation reduction rule
-     * @param partByDocId part identifier by global Lucene doc id
-     * @param partTokenCounts token count by part
-     * @throws IOException if Lucene term or postings iteration fails
-     */
-    public void score(
-        final TermStats stats,
-        final TermScorer scorer,
-        final int[] partByDocId,
-        final long[] partTokenCounts
-    ) throws IOException {
-        Objects.requireNonNull(stats, "stats");
-        Objects.requireNonNull(scorer, "scorer");
-        Objects.requireNonNull(partByDocId, "partByDocId");
-        Objects.requireNonNull(partTokenCounts, "partTokenCounts");
-        validateStats(stats);
-
-        if (partByDocId.length != fieldStats.maxDoc()) {
-            throw new IllegalArgumentException(
-                "partByDocId.length=" + partByDocId.length
-                + ", expected " + fieldStats.maxDoc()
-            );
-        }
-        final int partCount = partTokenCounts.length;
-        if (partCount < 1) {
-            throw new IllegalArgumentException("partTokenCounts must have at least 1 element");
-        }
-
-        // Validate partition mapping
-        for (int docId = 0; docId < partByDocId.length; docId++) {
-            final int partId = partByDocId[docId];
-            if (partId < 0 || partId >= partCount) {
-                throw new IllegalArgumentException(
-                    "Invalid partId " + partId + " at docId " + docId
-                );
-            }
-        }
-
-        final double[] scores = stats.scores();
-        Arrays.fill(scores, 0d);
-
-        final Terms terms = MultiTerms.getTerms(reader, field);
-        if (terms == null) {
-            return;
-        }
-        if (!terms.hasFreqs()) {
-            throw new IllegalStateException(
-                "Field '" + field + "' was not indexed with term frequencies"
-            );
-        }
-
-        final long corpusTokens = fieldStats.fieldTokens();
-        scorer.corpus(corpusTokens, partCount);
-
-        final LeafLayout layout = new LeafLayout(leaves, fieldStats.maxDoc());
-        final long[] partTermFreq = new long[partCount];
-
-        final TermsEnum tenum = terms.iterator();
-        PostingsEnum postings = null;
-        BytesRef term;
-
-        while ((term = tenum.next()) != null) {
-            final int termId = lexicon.id(term);
-            if (termId < 0) {
-                continue;
-            }
-
-            Arrays.fill(partTermFreq, 0L);
-            long corpusTermFreq = 0L;
-            int partTermDocs = 0;
-
-            postings = tenum.postings(postings, PostingsEnum.FREQS);
-
-            int leafOrd = 0;
-            int nextLeafBase = layout.docBases[1];
-
-            for (int docId = postings.nextDoc();
-                 docId != DocIdSetIterator.NO_MORE_DOCS;
-                 docId = postings.nextDoc()) {
-
-                while (docId >= nextLeafBase) {
-                    leafOrd++;
-                    nextLeafBase = layout.docBases[leafOrd + 1];
-                }
-                if (!layout.isLive(docId, leafOrd)) {
-                    continue;
-                }
-
-                final int freq = postings.freq();
-                if (freq <= 0) {
-                    continue;
-                }
-
-                final int partId = partByDocId[docId];
-                if (partTermFreq[partId] == 0L) {
-                    partTermDocs++;
-                }
-                partTermFreq[partId] += freq;
-                corpusTermFreq += freq;
-            }
-
-            if (corpusTermFreq == 0L) {
-                scores[termId] = 0d;
-                continue;
-            }
-
-            scorer.term(corpusTermFreq, partTermDocs);
-            for (int partId = 0; partId < partCount; partId++) {
-                final long partTokens = partTokenCounts[partId];
-                if (partTokens <= 0L) {
-                    continue;
-                }
-                scorer.score(partTermFreq[partId], partTokens);
-            }
-            scores[termId] = scorer.result();
-        }
-    }
-
-    // =========================================================================
-    // Partition builder
-    // =========================================================================
-
-    /**
-     * Builds a token-balanced partition in the order provided by {@code docIdsInOrder}.
-     *
-     * @param fieldStats field statistics providing {@code docLen(docId)}
-     * @param docIdsInOrder global Lucene doc ids in the desired order
-     * @param partTokenCounts output token counts by part (length = desired number of parts)
-     * @return mapping docId → partId
-     */
-    public static int[] quantiles(
-        final FieldStats fieldStats,
-        final int[] docIdsInOrder,
-        final long[] partTokenCounts
-    ) {
-        Objects.requireNonNull(fieldStats, "fieldStats");
-        Objects.requireNonNull(docIdsInOrder, "docIdsInOrder");
-        Objects.requireNonNull(partTokenCounts, "partTokenCounts");
-
-        final int partCount = partTokenCounts.length;
-        if (partCount < 1) {
-            throw new IllegalArgumentException("partTokenCounts must have at least 1 element");
-        }
-        if (docIdsInOrder.length != fieldStats.maxDoc()) {
-            throw new IllegalArgumentException(
-                "docIdsInOrder.length=" + docIdsInOrder.length
-                + ", expected " + fieldStats.maxDoc()
-            );
-        }
-
-        Arrays.fill(partTokenCounts, 0L);
-
-        final int maxDoc = fieldStats.maxDoc();
-        final int[] partByDocId = new int[maxDoc];
-        Arrays.fill(partByDocId, -1);
-
-        final long totalTokens = fieldStats.fieldTokens();
-        int currentPart = 0;
-        long nextThreshold = (partCount == 1) ? Long.MAX_VALUE : totalTokens / partCount;
-        long seenTokens = 0L;
-
-        for (int i = 0; i < docIdsInOrder.length; i++) {
-            final int docId = docIdsInOrder[i];
-            if (docId < 0 || docId >= maxDoc) {
-                throw new IllegalArgumentException(
-                    "Invalid docId at order index " + i + ": " + docId
-                );
-            }
-            if (partByDocId[docId] != -1) {
-                throw new IllegalArgumentException(
-                    "Duplicate docId at order index " + i + ": " + docId
-                );
-            }
-
-            while (currentPart < partCount - 1 && seenTokens >= nextThreshold) {
-                currentPart++;
-                nextThreshold = ((long) currentPart + 1L) * totalTokens / partCount;
-            }
-
-            partByDocId[docId] = currentPart;
-            final int docLen = fieldStats.docWidth(docId);
-            partTokenCounts[currentPart] += docLen;
-            seenTokens += docLen;
-        }
-
-        return partByDocId;
     }
 }
