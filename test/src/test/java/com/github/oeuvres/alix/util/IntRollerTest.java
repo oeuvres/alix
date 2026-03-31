@@ -1,10 +1,9 @@
 package com.github.oeuvres.alix.util;
 
-import static org.junit.Assert.*;
-
 import java.util.Random;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class IntRollerTest {
 

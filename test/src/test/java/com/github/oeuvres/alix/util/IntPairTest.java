@@ -1,10 +1,10 @@
 package com.github.oeuvres.alix.util;
 
-import static org.junit.Assert.*;
 
 import java.util.HashSet;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class IntPairTest {
 
@@ -22,13 +22,13 @@ public class IntPairTest {
             for (int y = 0; y < 2; y++) {
                 key.set(x, y);
                 final boolean condition = pairs.contains(key);
-                assertTrue(key + ":" + condition, condition);
+                assertTrue(condition, key + ":" + condition);
                 System.out.println(key + ":" + condition);
             }
         }
         key.set(-1, 5);
         final boolean condition = pairs.contains(key);
-        assertFalse(key + ":" + condition, condition);
+        assertFalse(condition, key + ":" + condition);
     }
 
 }

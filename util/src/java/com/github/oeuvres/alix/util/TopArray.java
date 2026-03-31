@@ -1,145 +1,88 @@
 package com.github.oeuvres.alix.util;
 
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
  * Fixed-capacity top-k selector over pairs {@code (id, score)}.
- * <p>
- * The class keeps at most {@code capacity} pairs and rejects candidates that cannot improve
- * the current top. It is designed for repeated use on primitive score vectors where:
- * </p>
- * <ul>
- *   <li>{@code id} is typically an array index or dense identifier,</li>
- *   <li>{@code score} is a numeric rank criterion.</li>
- * </ul>
+ *
+ * <p>Keeps at most {@code capacity} pairs and rejects candidates that cannot
+ * improve the current top. Designed for repeated scanning of dense primitive
+ * arrays where {@code id} is a dense identifier (e.g. a termId) and
+ * {@code score} is a {@code double} rank criterion.</p>
  *
  * <h2>Ranking order</h2>
- * <p>
- * Two ranking modes are supported:
- * </p>
  * <ul>
- *   <li><b>default order</b>: higher score first, then lower {@code id} first,</li>
- *   <li><b>reverse order</b>: lower score first, then lower {@code id} first.</li>
+ *   <li><b>default</b>: higher score first, then lower id first.</li>
+ *   <li><b>reverse</b> ({@link #REVERSE}): lower score first, then lower id first.</li>
  * </ul>
- * <p>
- * The tie-break on {@code id} is deterministic in both modes.
- * </p>
- *
- * <h2>Insertion policy</h2>
- * <p>
- * Before the top is full, every acceptable pair is inserted.
- * Once the top is full, a candidate is inserted only if it is better than the current
- * worst kept pair according to the selected ranking order.
- * </p>
  *
  * <h2>Filtering</h2>
  * <ul>
  *   <li>{@code NaN} scores are always ignored.</li>
- *   <li>If {@link #NO_ZERO} is enabled, zero scores are ignored.</li>
+ *   <li>If {@link #NO_ZERO} is set, zero scores are also ignored.</li>
  * </ul>
  *
- * <h2>Performance model</h2>
- * <p>
- * The class is optimized for small to medium {@code capacity} values and for repeated scanning
- * of dense primitive arrays. It avoids allocation during insertion by preallocating its internal
- * cells once in the constructor.
- * </p>
+ * <h2>Internal structure</h2>
  *
- * <p>
- * This class is mutable and not thread-safe.
- * </p>
+ * <p>Data is stored in parallel primitive arrays {@code int[] ids} and
+ * {@code double[] scores}, maintaining a min-heap (default) or max-heap
+ * (reverse) invariant. The heap root is always the current worst kept pair.
+ * Insertion and eviction are both O(log k).</p>
+ *
+ * <p>This class is mutable and not thread-safe.</p>
  */
 public final class TopArray implements Iterable<TopArray.IdScore> {
-    /**
-     * Flag: reverse the ranking order.
-     * <p>
-     * Default order keeps the highest scores.
-     * Reverse order keeps the lowest scores.
-     * </p>
-     */
+
+    /** Flag: keep the lowest scores instead of the highest. */
     public static final int REVERSE = 0x01;
 
-    /**
-     * Flag: ignore zero scores.
-     */
+    /** Flag: ignore zero scores. */
     public static final int NO_ZERO = 0x02;
 
-    /**
-     * Ranking comparator for the default order:
-     * higher score first, then lower id first.
-     */
-    private static final Comparator<IdScore> NATURAL_ORDER = (a, b) -> {
-        final int cmp = Double.compare(b.score, a.score);
-        if (cmp != 0) return cmp;
-        return Integer.compare(a.id, b.id);
-    };
-
-    /**
-     * Ranking comparator for reverse order:
-     * lower score first, then lower id first.
-     */
-    private static final Comparator<IdScore> REVERSE_ORDER = (a, b) -> {
-        final int cmp = Double.compare(a.score, b.score);
-        if (cmp != 0) return cmp;
-        return Integer.compare(a.id, b.id);
-    };
-
-    /** Keep lowest scores instead of highest scores. */
     private final boolean reverse;
-
-    /** Ignore zero scores. */
     private final boolean noZero;
-
-    /** Maximum number of kept pairs. */
     private final int capacity;
 
-    /** Reusable cells. Only the prefix {@code [0, size)} is meaningful. */
-    private final IdScore[] data;
+    /** Dense identifiers, heap-ordered in {@code [0, size)}. */
+    private final int[] ids;
 
-    /** Number of currently kept pairs. */
+    /** Scores parallel to {@link #ids}, same heap order. */
+    private final double[] scores;
+
     private int size;
 
-    /** Index of the current worst kept pair in {@link #data}. */
-    private int worstIndex;
+    /**
+     * The non-root extreme of the kept set: maximum score for default order,
+     * minimum for reverse. Updated incrementally; rescanned linearly only when
+     * the evicted root equalled it.
+     */
+    private double best;
 
-    /** Minimum score among currently kept pairs. */
-    private double min;
-
-    /** Maximum score among currently kept pairs. */
-    private double max;
-
-    /** Whether the kept prefix is currently sorted in public ranking order. */
+    /** Whether the kept prefix is in public ranking order. */
     private boolean sorted;
 
     /**
      * Creates a top-k selector.
      *
      * @param capacity maximum number of kept pairs
-     * @param flags bitmask built from {@link #REVERSE} and {@link #NO_ZERO}
+     * @param flags    bitmask of {@link #REVERSE} and/or {@link #NO_ZERO}
      * @throws IllegalArgumentException if {@code capacity < 0}
      */
     public TopArray(final int capacity, final int flags) {
         if (capacity < 0) {
             throw new IllegalArgumentException("capacity=" + capacity + ", expected >= 0");
         }
-        this.reverse = (flags & REVERSE) != 0;
-        this.noZero = (flags & NO_ZERO) != 0;
+        this.reverse  = (flags & REVERSE) != 0;
+        this.noZero   = (flags & NO_ZERO) != 0;
         this.capacity = capacity;
-        this.data = new IdScore[capacity];
-        for (int i = 0; i < capacity; i++) {
-            data[i] = new IdScore();
-        }
-        clear();
+        this.ids      = new int[capacity];
+        this.scores   = new double[capacity];
+        resetStats();
     }
 
     /**
-     * Creates a top-k selector in default order.
-     * <p>
-     * Default order keeps the highest scores.
-     * </p>
+     * Creates a top-k selector in default order (highest scores kept).
      *
      * @param capacity maximum number of kept pairs
      * @throws IllegalArgumentException if {@code capacity < 0}
@@ -148,273 +91,166 @@ public final class TopArray implements Iterable<TopArray.IdScore> {
         this(capacity, 0);
     }
 
-    /**
-     * Returns the maximum number of kept pairs.
-     *
-     * @return capacity
-     */
-    public int capacity() {
-        return capacity;
-    }
+    /** Returns the maximum number of kept pairs. */
+    public int capacity() { return capacity; }
 
-    /**
-     * Returns the current number of kept pairs.
-     *
-     * @return number of kept pairs
-     */
-    public int size() {
-        return size;
-    }
+    /** Returns the current number of kept pairs. */
+    public int size() { return size; }
 
-    /**
-     * Returns the current number of kept pairs.
-     * <p>
-     * This method is kept for continuity with the older API.
-     * </p>
-     *
-     * @return number of kept pairs
-     */
-    public int length() {
-        return size;
-    }
+    /** Alias for {@link #size()} kept for API continuity. */
+    public int length() { return size; }
 
-    /**
-     * Returns whether no pair is currently kept.
-     *
-     * @return {@code true} if empty
-     */
-    public boolean isEmpty() {
-        return size == 0;
-    }
+    /** Returns {@code true} if no pair is currently kept. */
+    public boolean isEmpty() { return size == 0; }
 
-    /**
-     * Returns whether the selector is currently full.
-     *
-     * @return {@code true} if {@code size() == capacity()}
-     */
-    public boolean isFull() {
-        return size == capacity;
-    }
+    /** Returns {@code true} if {@code size() == capacity()}. */
+    public boolean isFull() { return size == capacity; }
 
-    /**
-     * Returns whether reverse order is enabled.
-     *
-     * @return {@code true} if lower scores rank first
-     */
-    public boolean isReverse() {
-        return reverse;
-    }
+    /** Returns {@code true} if lower scores rank first. */
+    public boolean isReverse() { return reverse; }
 
-    /**
-     * Returns whether zero scores are ignored.
-     *
-     * @return {@code true} if zero scores are ignored
-     */
-    public boolean isNoZero() {
-        return noZero;
-    }
+    /** Returns {@code true} if zero scores are ignored. */
+    public boolean isNoZero() { return noZero; }
 
     /**
      * Removes all kept pairs and resets internal state.
-     * <p>
      * Backing arrays are retained for reuse.
-     * </p>
      *
      * @return this instance
      */
     public TopArray clear() {
         size = 0;
-        worstIndex = -1;
-        min = Double.POSITIVE_INFINITY;
-        max = Double.NEGATIVE_INFINITY;
         sorted = true;
+        resetStats();
         return this;
     }
 
     /**
-     * Returns the minimum score among kept pairs.
-     *
-     * @return minimum score, or {@link Double#NaN} if empty
+     * Returns the minimum score among kept pairs, or {@link Double#NaN} if empty.
      */
     public double min() {
-        return (size == 0) ? Double.NaN : min;
+        if (size == 0) return Double.NaN;
+        return reverse ? best : scores[0];
     }
 
     /**
-     * Returns the maximum score among kept pairs.
-     *
-     * @return maximum score, or {@link Double#NaN} if empty
+     * Returns the maximum score among kept pairs, or {@link Double#NaN} if empty.
      */
     public double max() {
-        return (size == 0) ? Double.NaN : max;
+        if (size == 0) return Double.NaN;
+        return reverse ? scores[0] : best;
     }
 
     /**
-     * Returns whether a candidate pair is acceptable and can improve the current top.
-     * <p>
-     * This method applies the same acceptance logic as {@link #push(int, double)},
-     * but does not modify the object.
-     * </p>
-     *
-     * @param id candidate identifier
-     * @param score candidate score
-     * @return {@code true} if the candidate would be kept
+     * Returns whether a candidate would be accepted by {@link #push(int, double)}
+     * without modifying the object.
      */
     public boolean isInsertable(final int id, final double score) {
-        if (!acceptScore(score)) {
-            return false;
-        }
-        if (capacity == 0) {
-            return false;
-        }
-        if (size < capacity) {
-            return true;
-        }
-        return betterThanWorst(id, score);
+        if (!acceptScore(score) || capacity == 0) return false;
+        if (size < capacity) return true;
+        return betterThanRoot(id, score);
     }
 
     /**
      * Pushes one {@code (id, score)} pair.
-     * <p>
-     * The pair is ignored if:
-     * </p>
-     * <ul>
-     *   <li>{@code score} is {@code NaN},</li>
-     *   <li>{@link #NO_ZERO} is enabled and {@code score == 0},</li>
-     *   <li>the selector is full and the pair cannot improve the current top.</li>
-     * </ul>
      *
-     * @param id identifier
-     * @param score score
+     * <p>The pair is ignored if the score is {@code NaN}, if {@link #NO_ZERO} is
+     * set and the score is zero, or if the selector is full and the pair cannot
+     * improve the current top.</p>
+     *
      * @return this instance
      */
     public TopArray push(final int id, final double score) {
-        if (!acceptScore(score) || capacity == 0) {
-            return this;
-        }
-
+        if (!acceptScore(score) || capacity == 0) return this;
         sorted = false;
 
         if (size < capacity) {
-            data[size].set(id, score);
+            ids[size]    = id;
+            scores[size] = score;
+            updateBest(score);
+            siftUp(size);
             size++;
-            recomputeStats();
             return this;
         }
 
-        if (!betterThanWorst(id, score)) {
-            return this;
-        }
+        if (!betterThanRoot(id, score)) return this;
 
-        data[worstIndex].set(id, score);
-        recomputeStats();
+        final double evicted = scores[0];
+        ids[0]    = id;
+        scores[0] = score;
+        updateBest(score);
+        if (evicted == best) rescanBest();
+        siftDown(0);
         return this;
     }
 
     /**
-     * Pushes all scores from an {@code int[]} vector.
-     * <p>
-     * The array index is used as {@code id}.
-     * </p>
+     * Pushes all entries of a {@code double[]} vector; the array index is used as id.
      *
-     * @param scores score vector
      * @return this instance
-     * @throws NullPointerException if {@code scores} is {@code null}
      */
-    public TopArray push(final int[] scores) {
-        for (int id = 0; id < scores.length; id++) {
-            push(id, scores[id]);
-        }
+    public TopArray push(final double[] vector) {
+        for (int id = 0; id < vector.length; id++) push(id, vector[id]);
         return this;
     }
 
     /**
-     * Pushes all scores from a {@code long[]} vector.
-     * <p>
-     * The array index is used as {@code id}.
-     * </p>
+     * Pushes all entries of an {@code int[]} vector; the array index is used as id.
      *
-     * @param scores score vector
      * @return this instance
-     * @throws NullPointerException if {@code scores} is {@code null}
      */
-    public TopArray push(final long[] scores) {
-        for (int id = 0; id < scores.length; id++) {
-            push(id, scores[id]);
-        }
+    public TopArray push(final int[] vector) {
+        for (int id = 0; id < vector.length; id++) push(id, vector[id]);
         return this;
     }
 
     /**
-     * Pushes all scores from a {@code double[]} vector.
-     * <p>
-     * The array index is used as {@code id}.
-     * </p>
+     * Pushes all entries of a {@code long[]} vector; the array index is used as id.
      *
-     * @param scores score vector
      * @return this instance
-     * @throws NullPointerException if {@code scores} is {@code null}
      */
-    public TopArray push(final double[] scores) {
-        for (int id = 0; id < scores.length; id++) {
-            push(id, scores[id]);
-        }
+    public TopArray push(final long[] vector) {
+        for (int id = 0; id < vector.length; id++) push(id, vector[id]);
         return this;
     }
 
     /**
-     * Returns the identifier at one rank.
-     * <p>
-     * Rank {@code 0} is the best kept pair according to the selected order.
-     * </p>
+     * Returns the id at a given rank.
+     * Rank 0 is the best kept pair.
      *
-     * @param rank rank in {@code [0, size())}
-     * @return identifier at that rank
-     * @throws IndexOutOfBoundsException if {@code rank} is invalid
+     * @throws IndexOutOfBoundsException if rank is out of range
      */
     public int id(final int rank) {
         ensureSorted();
         checkRank(rank);
-        return data[rank].id;
+        return ids[rank];
     }
 
     /**
-     * Returns the score at one rank.
-     * <p>
-     * Rank {@code 0} is the best kept pair according to the selected order.
-     * </p>
+     * Returns the score at a given rank.
+     * Rank 0 is the best kept pair.
      *
-     * @param rank rank in {@code [0, size())}
-     * @return score at that rank
-     * @throws IndexOutOfBoundsException if {@code rank} is invalid
+     * @throws IndexOutOfBoundsException if rank is out of range
      */
     public double score(final int rank) {
         ensureSorted();
         checkRank(rank);
-        return data[rank].score;
+        return scores[rank];
     }
 
     /**
-     * Returns the kept identifiers in ranking order.
-     *
-     * @return copied identifier array of length {@link #size()}
+     * Returns a copy of kept ids in ranking order.
      */
     public int[] toArray() {
         ensureSorted();
-        final int[] ids = new int[size];
-        for (int i = 0; i < size; i++) {
-            ids[i] = data[i].id;
-        }
-        return ids;
+        final int[] out = new int[size];
+        System.arraycopy(ids, 0, out, 0, size);
+        return out;
     }
 
     /**
-     * Returns an iterator over the kept pairs in ranking order.
-     * <p>
-     * The iterator traverses the current kept prefix only.
-     * </p>
-     *
-     * @return iterator over kept pairs
+     * Returns an iterator over kept pairs in ranking order.
+     * Each call to {@link Iterator#next()} allocates one {@link IdScore} record.
      */
     @Override
     public Iterator<IdScore> iterator() {
@@ -422,227 +258,191 @@ public final class TopArray implements Iterable<TopArray.IdScore> {
         return new TopIterator();
     }
 
-    /**
-     * Returns a textual dump of the kept pairs in ranking order.
-     *
-     * @return textual representation
-     */
     @Override
     public String toString() {
         ensureSorted();
         final StringBuilder sb = new StringBuilder();
         for (int i = 0; i < size; i++) {
             if (i > 0) sb.append('\n');
-            sb.append(data[i]);
+            sb.append(scores[i]).append('[').append(ids[i]).append(']');
         }
         return sb.toString();
     }
 
+    // -------------------------------------------------------------------------
+    // Heap maintenance
+    // -------------------------------------------------------------------------
+
     /**
-     * Returns whether the score passes the basic score-level filters.
-     *
-     * @param score candidate score
-     * @return {@code true} if the score may be considered
+     * Restores heap order upward from position {@code i} after insertion.
+     * The heap root is always the worst kept pair.
      */
-    private boolean acceptScore(final double score) {
-        if (Double.isNaN(score)) {
-            return false;
+    private void siftUp(int i) {
+        final int    id = ids[i];
+        final double sc = scores[i];
+        while (i > 0) {
+            final int parent = (i - 1) >>> 1;
+            if (!worseInHeap(sc, id, scores[parent], ids[parent])) break;
+            ids[i]    = ids[parent];
+            scores[i] = scores[parent];
+            i = parent;
         }
-        return !(noZero && score == 0d);
+        ids[i]    = id;
+        scores[i] = sc;
     }
 
     /**
-     * Returns whether a candidate pair is better than the current worst kept pair.
+     * Restores heap order downward from position {@code i} after root replacement.
      *
-     * @param id candidate identifier
-     * @param score candidate score
-     * @return {@code true} if the candidate should replace the current worst pair
+     * <p>At each step, the WORSE child (the one that belongs closer to the root)
+     * is selected. If that child is worse than the element being sifted, the child
+     * moves up and sifting continues.</p>
      */
-    private boolean betterThanWorst(final int id, final double score) {
-        final IdScore worst = data[worstIndex];
-        final int cmpScore = Double.compare(score, worst.score);
-
-        if (reverse) {
-            if (cmpScore < 0) return true;
-            if (cmpScore > 0) return false;
-        } else {
-            if (cmpScore > 0) return true;
-            if (cmpScore < 0) return false;
-        }
-
-        /*
-         * Same score: lower id ranks first, so a lower id is better
-         * and a higher id is worse.
-         */
-        return id < worst.id;
-    }
-
-    /**
-     * Recomputes:
-     * </p>
-     * <ul>
-     *   <li>minimum score,</li>
-     *   <li>maximum score,</li>
-     *   <li>index of the current worst kept pair.</li>
-     * </ul>
-     */
-    private void recomputeStats() {
-        if (size == 0) {
-            worstIndex = -1;
-            min = Double.POSITIVE_INFINITY;
-            max = Double.NEGATIVE_INFINITY;
-            return;
-        }
-
-        min = data[0].score;
-        max = data[0].score;
-        worstIndex = 0;
-
-        for (int i = 1; i < size; i++) {
-            final double score = data[i].score;
-            if (score < min) min = score;
-            if (score > max) max = score;
-
-            if (worse(data[i], data[worstIndex])) {
-                worstIndex = i;
+    private void siftDown(int i) {
+        final int    id   = ids[i];
+        final double sc   = scores[i];
+        final int    half = size >>> 1;
+        while (i < half) {
+            int child = (i << 1) + 1; // left child
+            final int right = child + 1;
+            // Pick the WORSE child — the one that should be closer to the root.
+            if (right < size && worseInHeap(scores[right], ids[right], scores[child], ids[child])) {
+                child = right;
             }
+            // If the worse child is not worse than the element being sifted, stop.
+            if (!worseInHeap(scores[child], ids[child], sc, id)) break;
+            ids[i]    = ids[child];
+            scores[i] = scores[child];
+            i = child;
         }
+        ids[i]    = id;
+        scores[i] = sc;
     }
 
     /**
-     * Returns whether {@code a} is worse than {@code b} according to the selected order.
+     * Returns whether {@code (aScore, aId)} is worse than {@code (bScore, bId)}
+     * in heap order, i.e. whether it should be closer to the root.
      *
-     * @param a first pair
-     * @param b second pair
-     * @return {@code true} if {@code a} is worse than {@code b}
+     * <p>Default (min-heap, keep highest): lower score is worse; tie → higher id is worse.<br>
+     * Reverse (max-heap, keep lowest): higher score is worse; tie → higher id is worse.</p>
      */
-    private boolean worse(final IdScore a, final IdScore b) {
-        final int cmpScore = Double.compare(a.score, b.score);
-
+    private boolean worseInHeap(final double aScore, final int aId,
+                                 final double bScore, final int bId) {
+        final int cmp = Double.compare(aScore, bScore);
         if (reverse) {
-            if (cmpScore > 0) return true;
-            if (cmpScore < 0) return false;
+            if (cmp > 0) return true;
+            if (cmp < 0) return false;
         } else {
-            if (cmpScore < 0) return true;
-            if (cmpScore > 0) return false;
+            if (cmp < 0) return true;
+            if (cmp > 0) return false;
         }
-
-        return a.id > b.id;
+        return aId > bId;
     }
 
     /**
-     * Sorts the kept prefix in public ranking order if needed.
+     * Returns whether the candidate is strictly better than the heap root.
      */
+    private boolean betterThanRoot(final int id, final double score) {
+        return !worseInHeap(score, id, scores[0], ids[0])
+                && !(score == scores[0] && id == ids[0]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Best tracking
+    // -------------------------------------------------------------------------
+
+    private void resetStats() {
+        best = reverse ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY;
+    }
+
+    private void updateBest(final double score) {
+        if (reverse) { if (score < best) best = score; }
+        else         { if (score > best) best = score; }
+    }
+
+    private void rescanBest() {
+        resetStats();
+        for (int i = 0; i < size; i++) updateBest(scores[i]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Sort
+    // -------------------------------------------------------------------------
+
     private void ensureSorted() {
-        if (sorted || size < 2) {
-            sorted = true;
-            return;
-        }
-        Arrays.sort(data, 0, size, reverse ? REVERSE_ORDER : NATURAL_ORDER);
+        if (sorted || size < 2) { sorted = true; return; }
+        quickSort(0, size - 1);
         sorted = true;
     }
 
-    /**
-     * Validates one public rank.
-     *
-     * @param rank rank to validate
-     * @throws IndexOutOfBoundsException if invalid
-     */
+    private void quickSort(int lo, int hi) {
+        while (lo < hi) {
+            int i = lo, j = hi;
+            final int    pivotId    = ids[(lo + hi) >>> 1];
+            final double pivotScore = scores[(lo + hi) >>> 1];
+            while (i <= j) {
+                while (ranksBeforePivot(i, pivotScore, pivotId)) i++;
+                while (ranksAfterPivot(j, pivotScore, pivotId))  j--;
+                if (i <= j) { swap(i++, j--); }
+            }
+            if (j - lo < hi - i) { if (lo < j) quickSort(lo, j); lo = i; }
+            else                  { if (i < hi) quickSort(i, hi); hi = j; }
+        }
+    }
+
+    private boolean ranksBeforePivot(final int i, final double ps, final int pi) {
+        final int cmp = Double.compare(scores[i], ps);
+        if (reverse) { if (cmp < 0) return true; if (cmp > 0) return false; }
+        else         { if (cmp > 0) return true; if (cmp < 0) return false; }
+        return ids[i] < pi;
+    }
+
+    private boolean ranksAfterPivot(final int j, final double ps, final int pi) {
+        final int cmp = Double.compare(scores[j], ps);
+        if (reverse) { if (cmp > 0) return true; if (cmp < 0) return false; }
+        else         { if (cmp < 0) return true; if (cmp > 0) return false; }
+        return ids[j] > pi;
+    }
+
+    private void swap(final int a, final int b) {
+        final int    ti = ids[a];    ids[a]    = ids[b];    ids[b]    = ti;
+        final double ts = scores[a]; scores[a] = scores[b]; scores[b] = ts;
+    }
+
+    // -------------------------------------------------------------------------
+    // Score filter
+    // -------------------------------------------------------------------------
+
+    private boolean acceptScore(final double score) {
+        if (Double.isNaN(score)) return false;
+        return !(noZero && score == 0d);
+    }
+
     private void checkRank(final int rank) {
         if (rank < 0 || rank >= size) {
             throw new IndexOutOfBoundsException("rank=" + rank + ", size=" + size);
         }
     }
 
-    /**
-     * Mutable reusable pair {@code (id, score)}.
-     * <p>
-     * Instances are owned by the enclosing {@link TopArray} and reused internally.
-     * They must be treated as read-only by callers.
-     * </p>
-     */
-    public static final class IdScore {
-        /** Identifier. */
-        private int id;
-
-        /** Associated score. */
-        private double score;
-
-        /**
-         * Creates an empty reusable cell.
-         */
-        private IdScore() {
-        }
-
-        /**
-         * Returns the identifier.
-         *
-         * @return identifier
-         */
-        public int id() {
-            return id;
-        }
-
-        /**
-         * Returns the score.
-         *
-         * @return score
-         */
-        public double score() {
-            return score;
-        }
-
-        /**
-         * Replaces the current pair.
-         *
-         * @param id identifier
-         * @param score score
-         */
-        private void set(final int id, final double score) {
-            this.id = id;
-            this.score = score;
-        }
-
-        /**
-         * Returns a debug representation.
-         *
-         * @return textual form {@code score[id]}
-         */
-        @Override
-        public String toString() {
-            return score + "[" + id + "]";
-        }
-    }
+    // -------------------------------------------------------------------------
+    // Public view
+    // -------------------------------------------------------------------------
 
     /**
-     * Iterator over the kept prefix in ranking order.
+     * An immutable pair {@code (id, score)} returned by the iterator.
      */
+    public record IdScore(int id, double score) {}
+
     private final class TopIterator implements Iterator<IdScore> {
-        /** Current cursor in the kept prefix. */
-        private int cursor;
+        private int cursor = 0;
 
-        /**
-         * Returns whether one more kept pair is available.
-         *
-         * @return {@code true} if another pair is available
-         */
         @Override
-        public boolean hasNext() {
-            return cursor < size;
-        }
+        public boolean hasNext() { return cursor < size; }
 
-        /**
-         * Returns the next kept pair.
-         *
-         * @return next kept pair
-         * @throws NoSuchElementException if exhausted
-         */
         @Override
         public IdScore next() {
-            if (!hasNext()) {
-                throw new NoSuchElementException();
-            }
-            return data[cursor++];
+            if (!hasNext()) throw new NoSuchElementException();
+            return new IdScore(ids[cursor], scores[cursor++]);
         }
     }
 }

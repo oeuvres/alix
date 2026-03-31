@@ -9,7 +9,6 @@ import org.apache.lucene.index.IndexReader;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
-import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
 import com.github.oeuvres.alix.util.Report;
 
 /**
@@ -56,7 +55,6 @@ public final class FlucText extends Fluc
     private final LazyResource<FieldStats> fieldStatsHolder = new LazyResource<>();
     private final LazyResource<TermLexicon> lexiconHolder = new LazyResource<>();
     private final LazyResource<TermRail> railHolder = new LazyResource<>();
-    private final LazyResource<ThemeTerms> themeTermsHolder = new LazyResource<>();
 
     // ================================================================
     // Constructor
@@ -142,22 +140,7 @@ public final class FlucText extends Fluc
         );
     }
 
-    /**
-     * Corpus-level keyword scorer.
-     * Ensures both {@link #fieldStats()} and {@link #termLexicon()}
-     * are available first.
-     *
-     * @return theme terms scorer, never {@code null}
-     * @throws java.io.UncheckedIOException if underlying resources cannot be loaded
-     */
-    public synchronized ThemeTerms themeTerms()
-    {
-        return themeTermsHolder.get(
-            () -> true,  // no sidecar — always "exists"
-            () -> {},    // no build step
-            () -> new ThemeTerms(reader, termLexicon(), fieldStats())
-        );
-    }
+
 
     // ================================================================
     // Closeable
@@ -177,7 +160,6 @@ public final class FlucText extends Fluc
     {
         railHolder.close();
         lexiconHolder.close();
-        themeTermsHolder.close();
         fieldStatsHolder.close();
     }
 }

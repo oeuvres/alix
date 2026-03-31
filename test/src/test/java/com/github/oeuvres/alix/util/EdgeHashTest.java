@@ -1,9 +1,8 @@
 package com.github.oeuvres.alix.util;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
-
-import org.junit.Test;
 
 public class EdgeHashTest {
 
