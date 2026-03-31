@@ -9,20 +9,21 @@ import com.github.oeuvres.alix.util.TopArray;
 /**
  * A ranked, iterable view over a slice of vocabulary terms.
  *
- * <p>Instances hold a pre-ranked index ({@code rank → termId}) and references to the
- * arrays that back {@link #term()}, {@link #count()} and {@link #score()}. No data is
- * copied beyond the rank index; the source arrays ({@code counts}, {@code scores}) are
- * read directly by the iterator.</p>
+ * <p>Holds a pre-ranked index ({@code rank → termId}) and references to the
+ * arrays backing {@link TermEntry#term()}, {@link TermEntry#count()} and
+ * {@link TermEntry#score()}. No data is copied beyond the rank index itself.</p>
  *
- * <p>Instances are built by static factory methods, each wiring the right arrays for
- * a particular use case:</p>
+ * <p>The optional {@link TermEntry#hilite()} field is populated only by
+ * factories that compute per-term markup, such as {@link TermSuggest}.
+ * It is {@code null} for all other factories.</p>
+ *
+ * <p>Instances are built by static factory methods:</p>
  * <ul>
- *   <li>{@link #theme} — top terms by corpus-level BM25 weight, useful for thematic
- *       keyword display and as a reference weight vector for passage scoring.</li>
+ *   <li>{@link #theme} — top terms by corpus-level BM25 weight, for thematic
+ *       keyword display and as a weight vector for passage scoring.</li>
+ *   <li>{@link TermSuggest#suggest} — top terms matching a user query prefix or
+ *       infix, with matched spans wrapped in configurable markup.</li>
  * </ul>
- *
- * <p>Additional factories (keyness, cooccurrence…) follow the same pattern and share
- * the same iterator contract, so callers are independent of the scoring strategy.</p>
  *
  * <h2>Typical usage</h2>
  * <pre>{@code
@@ -35,23 +36,39 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
     /** Ranked term ids: {@code rank2termId[rank]} gives the termId at that rank. */
     private final int[] rank2termId;
-    /** Resolves a termId to its string form. */
+    /** Resolves termId → string. */
     private final TermLexicon lexicon;
-    /** Count vector indexed by termId (e.g. total term frequency). */
+    /** Count vector indexed by termId (total term frequency). */
     private final long[] counts;
     /** Score vector indexed by termId (e.g. BM25 weight). */
     private final double[] scores;
+    /**
+     * Optional per-rank highlight strings. {@code null} when not applicable.
+     * When non-null, length equals {@link #rank2termId}.
+     */
+    private final String[] hilites;
 
-    private TopTerms(
-        final int[] rank2termId,
+    /**
+     * Package-private constructor used by factories.
+     *
+     * @param rank2termId ranked term ids
+     * @param lexicon     term lexicon
+     * @param counts      count vector indexed by termId
+     * @param scores      score vector indexed by termId
+     * @param hilites     optional per-rank highlight strings, or {@code null}
+     */
+    TopTerms(
+        final int[]      rank2termId,
         final TermLexicon lexicon,
-        final long[] counts,
-        final double[] scores
+        final long[]      counts,
+        final double[]    scores,
+        final String[]    hilites
     ) {
         this.rank2termId = rank2termId;
         this.lexicon     = lexicon;
         this.counts      = counts;
         this.scores      = scores;
+        this.hilites     = hilites;
     }
 
     /** Number of terms in this ranked list. */
@@ -68,95 +85,98 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * @param fieldStats corpus statistics carrying the pre-built weight vector
      * @param lexicon    lexicon for the same field and snapshot
      * @param topK       maximum number of terms to return
-     * @return ranked top-terms view, ordered by descending weight
+     * @return ranked view ordered by descending weight, no hilites
      * @throws IllegalStateException    if {@code fieldStats.buildWeights} has not been called
      * @throws IllegalArgumentException if {@code topK < 1}
      */
     public static TopTerms theme(
-        final FieldStats fieldStats,
+        final FieldStats  fieldStats,
         final TermLexicon lexicon,
-        final int topK
+        final int         topK
     ) {
         Objects.requireNonNull(fieldStats, "fieldStats");
         Objects.requireNonNull(lexicon,    "lexicon");
         if (topK < 1) throw new IllegalArgumentException("topK must be >= 1");
 
-        final double[] scores = fieldStats.termWeightsRef();
-        final long[]   counts = fieldStats.termFreqsRef();
-        final int vocabSize   = fieldStats.vocabSize();
+        final double[] weights  = fieldStats.termWeightsRef();
+        final long[]   counts   = fieldStats.termFreqsRef();
+        final int      vocabSize = fieldStats.vocabSize();
 
         final TopArray top = new TopArray(topK);
         for (int termId = 1; termId < vocabSize; termId++) {
-            final double s = scores[termId];
-            if (!Double.isNaN(s) && s > 0d) {
-                top.push(termId, s);
-            }
+            final double s = weights[termId];
+            if (!Double.isNaN(s) && s > 0d) top.push(termId, s);
         }
 
-        final int n = top.length();
+        final int   n           = top.size();
         final int[] rank2termId = new int[n];
         int rank = 0;
-        for (TopArray.IdScore entry : top) {
-            rank2termId[rank++] = entry.id();
-        }
+        for (TopArray.IdScore entry : top) rank2termId[rank++] = entry.id();
 
-        return new TopTerms(rank2termId, lexicon, counts, scores);
+        return new TopTerms(rank2termId, lexicon, counts, weights, null);
     }
 
     @Override
     public Iterator<TermEntry> iterator() {
-        return new Iter();
+        return new TermIter();
     }
 
+    // -------------------------------------------------------------------------
+    // TermEntry
+    // -------------------------------------------------------------------------
+
     /**
-     * Read-only view of one term entry at the current iterator position.
-     * The same instance is reused across iterations; do not retain it.
+     * Read-only view of one term in the ranked list.
+     *
+     * <p>One instance is allocated per {@link Iterator#next()} call.</p>
      */
     public final class TermEntry {
 
-        private int termId;
+        private final int termId;
+        private final int rank;
 
-        private TermEntry() {}
-
-        /** The term string at the current rank. */
-        public String term() {
-            return lexicon.term(termId);
+        TermEntry(final int rank, final int termId) {
+            this.rank   = rank;
+            this.termId = termId;
         }
 
         /**
-         * The term id at the current rank, usable as a direct index into
-         * any array aligned with the same {@link TermLexicon}.
+         * The dense term id, usable as a direct index into any array
+         * aligned with the same {@link TermLexicon}.
          */
-        public int termId() {
-            return termId;
-        }
+        public int termId() { return termId; }
 
-        /** Corpus occurrence count of this term (total term frequency). */
-        public long count() {
-            return counts[termId];
-        }
+        /** The term string. */
+        public String term() { return lexicon.term(termId); }
 
-        /** Score used for ranking this term (e.g. BM25 weight). */
-        public double score() {
-            return scores[termId];
-        }
+        /** Corpus occurrence count (total term frequency). */
+        public long count() { return counts[termId]; }
+
+        /** Score used for ranking (e.g. BM25 weight, or frequency for suggest). */
+        public double score() { return scores[termId]; }
+
+        /**
+         * HTML markup of the matched span within the term string, or {@code null}
+         * if this view was not produced by a suggest factory.
+         */
+        public String hilite() { return hilites == null ? null : hilites[rank]; }
     }
 
-    private final class Iter implements Iterator<TermEntry> {
+    // -------------------------------------------------------------------------
+    // Iterator
+    // -------------------------------------------------------------------------
 
-        private final TermEntry entry = new TermEntry();
-        private int rank = 0;
+    private final class TermIter implements Iterator<TermEntry> {
+        private int cursor = 0;
 
         @Override
-        public boolean hasNext() {
-            return rank < rank2termId.length;
-        }
+        public boolean hasNext() { return cursor < rank2termId.length; }
 
         @Override
         public TermEntry next() {
             if (!hasNext()) throw new NoSuchElementException();
-            entry.termId = rank2termId[rank++];
-            return entry;
+            final int rank   = cursor++;
+            return new TermEntry(rank, rank2termId[rank]);
         }
     }
 }

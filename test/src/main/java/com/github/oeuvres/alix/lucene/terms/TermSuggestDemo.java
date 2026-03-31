@@ -10,6 +10,7 @@ import java.util.List;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
 
+import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
@@ -83,7 +84,7 @@ public final class TermSuggestDemo
                 final String query = line.strip();
 
                 final long qt0 = System.nanoTime();
-                final List<TermRow> results = suggest.suggest(query, limit);
+                final TopTerms results = suggest.suggest(query, limit);
                 final long elapsedUs = (System.nanoTime() - qt0) / 1_000;
 
                 final String mode = Char.toAscii(query).length() < TermSuggest.INFIX_THRESHOLD
@@ -95,8 +96,8 @@ public final class TermSuggestDemo
                     elapsedUs,
                     mode);
 
-                for (final TermRow row : results) {
-                    System.out.printf("  %,12d  %s%n", row.count(), row.hilite());
+                for (final TermEntry entry : results) {
+                    System.out.printf("  %,12d  %s%n", entry.count(), entry.hilite());
                 }
                 System.out.println();
             }

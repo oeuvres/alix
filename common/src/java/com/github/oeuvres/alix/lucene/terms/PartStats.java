@@ -61,7 +61,7 @@ import java.util.Objects;
  * One instance must not be written concurrently by multiple threads.
  * </p>
  */
-public final class TermStats {
+public final class PartStats {
     /** Indexed field name. */
     private final String field;
 
@@ -91,7 +91,7 @@ public final class TermStats {
      * @throws NullPointerException if {@code field} is {@code null}
      * @throws IllegalArgumentException if {@code vocabSize < 0}
      */
-    public TermStats(final String field, final int vocabSize) {
+    public PartStats(final String field, final int vocabSize) {
         this.field = Objects.requireNonNull(field, "field");
         if (vocabSize < 0) {
             throw new IllegalArgumentException("vocabSize=" + vocabSize + ", expected >= 0");
