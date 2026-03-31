@@ -152,8 +152,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         /** Corpus occurrence count (total term frequency). */
         public long count() { return counts[termId]; }
 
-        /** Score used for ranking (e.g. BM25 weight, or frequency for suggest). */
-        public double score() { return scores[termId]; }
+        /** Score used for ranking (e.g. BM25 weight), or corpus frequency when no score vector is available. */
+        public double score() { return scores != null ? scores[termId] : (double) counts[termId]; }
 
         /**
          * HTML markup of the matched span within the term string, or {@code null}
