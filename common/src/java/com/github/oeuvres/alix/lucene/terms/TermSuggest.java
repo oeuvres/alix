@@ -54,7 +54,7 @@ import com.github.oeuvres.alix.util.Char;
  *
  * @see TermLexicon
  * @see FieldStats
- * @see TopTerms
+ * @see TermList
  * @see TermRow
  */
 public final class TermSuggest
@@ -182,7 +182,7 @@ public final class TermSuggest
         final String needle = prefixOnly ? (SEP + foldedQuery) : foldedQuery;
 
         // Phase 1: indexOf scan, collect into bounded min-heap
-        final TopTerms top = new TopTerms(limit);
+        final TermList termList = new TermList(limit);
         int fromIndex = 0;
         while (fromIndex < ascii.length()) {
             final int index = ascii.indexOf(needle, fromIndex);
@@ -196,18 +196,18 @@ public final class TermSuggest
                 fromIndex = index + 1;
                 continue;
             }
-            top.offer(termId, (int) Math.min(stats.termFreq(termId), Integer.MAX_VALUE));
+            termList.offer(termId, (int) Math.min(stats.termFreq(termId), Integer.MAX_VALUE));
             fromIndex = offsets[termId + 1] - 1;
         }
 
-        if (top.isEmpty()) return List.of();
-        top.sort();
+        if (termList.isEmpty()) return List.of();
+        termList.sort();
 
         // Phase 2: resolve strings and highlights for ranked results only
-        final int n = top.size();
+        final int n = termList.size();
         final List<TermRow> results = new ArrayList<>(n);
         for (int rank = 0; rank < n; rank++) {
-            final int termId = top.termId(rank);
+            final int termId = termList.termId(rank);
             final String term = lexicon.term(termId);
             final long count = stats.termFreq(termId);
             final String termFolded = ascii.substring(offsets[termId], offsets[termId + 1] - 1);
@@ -276,5 +276,20 @@ public final class TermSuggest
             return sb.toString().replace(SEP_STRING, "");
         }
         return sb.toString();
+    }
+    
+    public record TermRow(int termId, String term, long count, double score, String hilite) {
+
+        /**
+         * Creates a row without highlighting.
+         *
+         * @param termId dense term identifier
+         * @param term   resolved term string
+         * @param count  context-dependent frequency
+         * @param score  computed score
+         */
+        public TermRow(int termId, String term, long count, double score) {
+            this(termId, term, count, score, null);
+        }
     }
 }

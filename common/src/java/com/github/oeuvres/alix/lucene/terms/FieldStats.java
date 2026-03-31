@@ -7,6 +7,7 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
@@ -154,6 +155,13 @@ public final class FieldStats implements ReferenceStats
 
     /** Per-term total occurrences in the field, indexed by dense term id. */
     private final long[] termFreqs;
+    
+    /**
+     * Corpus-level term weight vector, indexed by dense term id.
+     * {@code null} until {@link #buildWeights} has been called.
+     * Written once and then read-only; declared volatile for safe publication.
+     */
+    private volatile double[] termWeights;
 
     /** Number of distinct terms in the field. */
     private final int vocabSize;
@@ -194,6 +202,105 @@ public final class FieldStats implements ReferenceStats
         this.fieldTokens = fieldTokens;
         this.termDocs = termDocs;
         this.termFreqs = termFreqs;
+    }
+    
+    /**
+     * Returns the corpus-level weight of one term.
+     *
+     * <p>The weight is computed by {@link #buildWeights} and reflects how
+     * thematically significant the term is in the corpus. It is suitable as
+     * a building block for passage scoring: summing weights of terms in a
+     * candidate window selects the window with the densest informative vocabulary.</p>
+     *
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @return corpus-level weight, or {@code 0.0} for the absent-term sentinel (id 0)
+     * @throws IllegalStateException    if {@link #buildWeights} has not been called yet
+     * @throws IllegalArgumentException if {@code termId} is out of range
+     */
+    public double termWeight(final int termId) {
+        final double[] w = termWeights;
+        if (w == null) {
+            throw new IllegalStateException(
+                "termWeights not built for field '" + field
+                + "'; call buildWeights(reader, scorer) at startup");
+        }
+        checkTermId(termId);
+        return w[termId];
+    }
+    
+    /**
+     * Computes and caches a corpus-level weight for every vocabulary term.
+     *
+     * <p>The weight is the BM25 summed score of the term across all documents:
+     * {@code IDF(t) × Σ_d saturated_normalised_tf(t, d)}.
+     * It reflects both how distinctive a term is (rare globally) and how
+     * consistently it appears across documents. Common words score near zero;
+     * thematically significant rare words score high.</p>
+     *
+     * <p>The result is stored in {@link #termWeights} and accessible via
+     * {@link #termWeight(int)}. Calling this method again with a different scorer
+     * replaces the previous weights. Call once at startup after
+     * {@link #openOrBuild}; the computation cost is one postings scan (O(totalPostings),
+     * significantly cheaper than building {@code docWidths}).</p>
+     *
+     * <p>The implicit term-id assignment follows the same {@link MultiTerms} lexicographic
+     * order used by {@link TermLexicon}: id 0 is reserved as the absent-term sentinel,
+     * real terms start at 1. No {@link TermLexicon} lookup is performed per term.</p>
+     *
+     * @param reader snapshot reader; must match the snapshot from which this object was built
+     * @param scorer local scorer (e.g. {@code new TermScorer.BM25(1.3)})
+     * @throws IOException              if Lucene term or postings iteration fails
+     * @throws IllegalStateException    if called before weights are needed (remind the caller
+     *                                  to call this method at startup)
+     */
+    public void buildWeights(final IndexReader reader, final TermScorer scorer) throws IOException {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(scorer, "scorer");
+ 
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalStateException(
+                "Field '" + field + "' has no terms; cannot build term weights");
+        }
+        if (!terms.hasFreqs()) {
+            throw new IllegalStateException(
+                "Field '" + field + "' was not indexed with term frequencies");
+        }
+ 
+        scorer.corpus(fieldTokens, fieldDocs);
+ 
+        final double[] weights = new double[vocabSize];
+        final TermsEnum tenum = terms.iterator();
+        PostingsEnum postings = null;
+ 
+        // Implicit termId: same MultiTerms lexicographic order as TermLexicon,
+        // id 0 reserved as absent-term sentinel, real terms start at 1.
+        int termId = 1;
+ 
+        while (tenum.next() != null) {
+            if (termId >= vocabSize) {
+                throw new IOException(
+                    "Vocabulary size changed during buildWeights for field '" + field
+                    + "': seen more than " + vocabSize + " terms");
+            }
+ 
+            // termDocs and termFreqs are already available — no second pass needed.
+            scorer.term(termFreqs[termId], termDocs[termId]);
+ 
+            postings = tenum.postings(postings, PostingsEnum.FREQS);
+            for (int docId = postings.nextDoc();
+                 docId != DocIdSetIterator.NO_MORE_DOCS;
+                 docId = postings.nextDoc()) {
+                final int freq = postings.freq();
+                if (freq <= 0) continue;
+                scorer.score(freq, docWidths[docId]);
+            }
+ 
+            weights[termId] = scorer.result();
+            termId++;
+        }
+ 
+        this.termWeights = weights;
     }
     
     /**
@@ -524,6 +631,8 @@ public final class FieldStats implements ReferenceStats
         return termFreqs[termId];
     }
     
+    
+    
     /**
      * Returns a defensive copy of the total-term-frequency vector.
      *
@@ -532,6 +641,16 @@ public final class FieldStats implements ReferenceStats
     public long[] termFreqsCopy()
     {
         return Arrays.copyOf(termFreqs, termFreqs.length);
+    }
+    
+    public long[] termFreqsRef()
+    {
+        return termFreqs;
+    }
+    
+    public double[] termWeightsRef()
+    {
+        return termWeights;
     }
     
     /**

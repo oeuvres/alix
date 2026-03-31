@@ -144,10 +144,11 @@ public abstract class TermScorer {
      */
     public abstract double score(final long partTermFreq, final long partTokens);
 
-    // =========================================================================
-    // Concrete scorers
-    // =========================================================================
-
+    @Override
+    public String toString()
+    {
+        return this.getClass().getSimpleName();
+    }
     /**
      * Signed G-test contribution against the corpus expectation.
      *
@@ -262,6 +263,12 @@ public abstract class TermScorer {
             acc += local;
             collectCount++;
             return local;
+        }
+        
+        @Override
+        public String toString()
+        {
+            return "BM25 " + idfExp;
         }
     }
 }

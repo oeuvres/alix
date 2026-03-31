@@ -1,432 +1,162 @@
 package com.github.oeuvres.alix.lucene.terms;
 
-import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+
+import com.github.oeuvres.alix.util.TopArray;
 
 /**
- * Fixed-capacity top-k container for dense term-count vectors.
- * <p>
- * Entries are identified by dense {@code termId}. The container keeps at most
- * {@code k} pairs {@code (termId, count)}.
- * </p>
- * <p>
- * Ranking order:
- * </p>
+ * A ranked, iterable view over a slice of vocabulary terms.
+ *
+ * <p>Instances hold a pre-ranked index ({@code rank → termId}) and references to the
+ * arrays that back {@link #term()}, {@link #count()} and {@link #score()}. No data is
+ * copied beyond the rank index; the source arrays ({@code counts}, {@code scores}) are
+ * read directly by the iterator.</p>
+ *
+ * <p>Instances are built by static factory methods, each wiring the right arrays for
+ * a particular use case:</p>
  * <ul>
- *   <li>higher count first,</li>
- *   <li>for equal counts, lower {@code termId} first.</li>
+ *   <li>{@link #theme} — top terms by corpus-level BM25 weight, useful for thematic
+ *       keyword display and as a reference weight vector for passage scoring.</li>
  * </ul>
- * <p>
- * The internal structure is a min-heap over the current kept entries, where the root
- * is the current worst kept entry:
- * </p>
- * <ul>
- *   <li>lower count is worse,</li>
- *   <li>for equal counts, higher {@code termId} is worse.</li>
- * </ul>
- * <p>
- * This class is mutable and not thread-safe.
- * </p>
+ *
+ * <p>Additional factories (keyness, cooccurrence…) follow the same pattern and share
+ * the same iterator contract, so callers are independent of the scoring strategy.</p>
+ *
+ * <h2>Typical usage</h2>
+ * <pre>{@code
+ * for (TopTerms.TermEntry e : TopTerms.theme(fieldStats, lexicon, 50)) {
+ *     out.println(e.term() + "\t" + e.count() + "\t" + e.score());
+ * }
+ * }</pre>
  */
-public final class TopTerms {
-    /** Maximum number of kept entries. */
-    private final int capacity;
+public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
-    /** Kept term ids. */
-    private final int[] termIds;
+    /** Ranked term ids: {@code rank2termId[rank]} gives the termId at that rank. */
+    private final int[] rank2termId;
+    /** Resolves a termId to its string form. */
+    private final TermLexicon lexicon;
+    /** Count vector indexed by termId (e.g. total term frequency). */
+    private final long[] counts;
+    /** Score vector indexed by termId (e.g. BM25 weight). */
+    private final double[] scores;
 
-    /** Kept counts. */
-    private final int[] counts;
-
-    /** Number of occupied slots. */
-    private int size;
-
-    /**
-     * Whether the kept prefix is currently sorted in public ranking order.
-     * <p>
-     * While collecting, the kept prefix is a heap. Public read access by rank requires
-     * ranking order.
-     * </p>
-     */
-    private boolean sorted;
-
-    /**
-     * Creates a top-k container.
-     *
-     * @param capacity maximum number of entries to keep
-     * @throws IllegalArgumentException if {@code capacity < 1}
-     */
-    public TopTerms(final int capacity) {
-        if (capacity < 1) {
-            throw new IllegalArgumentException("capacity=" + capacity + ", expected >= 1");
-        }
-        this.capacity = capacity;
-        this.termIds = new int[capacity];
-        this.counts = new int[capacity];
-        this.size = 0;
-        this.sorted = true;
+    private TopTerms(
+        final int[] rank2termId,
+        final TermLexicon lexicon,
+        final long[] counts,
+        final double[] scores
+    ) {
+        this.rank2termId = rank2termId;
+        this.lexicon     = lexicon;
+        this.counts      = counts;
+        this.scores      = scores;
     }
 
-    /**
-     * Returns the maximum number of kept entries.
-     *
-     * @return top-k capacity
-     */
-    public int capacity() {
-        return capacity;
-    }
-
-    /**
-     * Returns the current number of kept entries.
-     *
-     * @return current size
-     */
+    /** Number of terms in this ranked list. */
     public int size() {
-        return size;
+        return rank2termId.length;
     }
 
     /**
-     * Returns whether no entry is currently kept.
+     * Builds a {@code TopTerms} view of the highest-weighted terms in the corpus,
+     * ranked by the BM25 weights computed by {@link FieldStats#buildWeights}.
      *
-     * @return {@code true} if empty
-     */
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
-    /**
-     * Removes all kept entries and retains backing arrays for reuse.
-     */
-    public void clear() {
-        size = 0;
-        sorted = true;
-    }
-
-    /**
-     * Collects the best entries from a dense count vector.
-     * <p>
-     * Only strictly positive counts are considered.
-     * Previous content is discarded.
-     * </p>
+     * <p>{@link FieldStats#buildWeights} must have been called before this method.</p>
      *
-     * @param vector dense count vector indexed by {@code termId}
-     * @throws NullPointerException if {@code vector} is {@code null}
+     * @param fieldStats corpus statistics carrying the pre-built weight vector
+     * @param lexicon    lexicon for the same field and snapshot
+     * @param topK       maximum number of terms to return
+     * @return ranked top-terms view, ordered by descending weight
+     * @throws IllegalStateException    if {@code fieldStats.buildWeights} has not been called
+     * @throws IllegalArgumentException if {@code topK < 1}
      */
-    public void collect(final int[] vector) {
-        if (vector == null) {
-            throw new NullPointerException("vector");
-        }
-        clear();
-        for (int termId = 0; termId < vector.length; termId++) {
-            final int count = vector[termId];
-            if (count > 0) {
-                offer(termId, count);
+    public static TopTerms theme(
+        final FieldStats fieldStats,
+        final TermLexicon lexicon,
+        final int topK
+    ) {
+        Objects.requireNonNull(fieldStats, "fieldStats");
+        Objects.requireNonNull(lexicon,    "lexicon");
+        if (topK < 1) throw new IllegalArgumentException("topK must be >= 1");
+
+        final double[] scores = fieldStats.termWeightsRef();
+        final long[]   counts = fieldStats.termFreqsRef();
+        final int vocabSize   = fieldStats.vocabSize();
+
+        final TopArray top = new TopArray(topK);
+        for (int termId = 1; termId < vocabSize; termId++) {
+            final double s = scores[termId];
+            if (!Double.isNaN(s) && s > 0d) {
+                top.push(termId, s);
             }
         }
-    }
 
-    /**
-     * Offers one candidate pair to the top-k structure.
-     * <p>
-     * Non-positive counts are ignored.
-     * </p>
-     *
-     * @param termId dense term identifier
-     * @param count associated count
-     */
-    public void offer(final int termId, final int count) {
-        if (count <= 0) {
-            return;
+        final int n = top.length();
+        final int[] rank2termId = new int[n];
+        int rank = 0;
+        for (TopArray.IdScore entry : top) {
+            rank2termId[rank++] = entry.id();
         }
 
-        sorted = false;
-
-        if (size < capacity) {
-            termIds[size] = termId;
-            counts[size] = count;
-            siftUp(size);
-            size++;
-            return;
-        }
-
-        if (!betterThanRoot(termId, count)) {
-            return;
-        }
-
-        termIds[0] = termId;
-        counts[0] = count;
-        siftDown(0);
-    }
-
-    /**
-     * Sorts the kept entries in public ranking order.
-     * <p>
-     * Public ranking order is:
-     * </p>
-     * <ul>
-     *   <li>higher count first,</li>
-     *   <li>for equal counts, lower {@code termId} first.</li>
-     * </ul>
-     */
-    public void sort() {
-        ensureSorted();
-    }
-
-    /**
-     * Returns the kept {@code termId} at a given rank.
-     * <p>
-     * Rank {@code 0} is the best entry.
-     * </p>
-     *
-     * @param rank rank in {@code [0, size())}
-     * @return dense term identifier
-     * @throws IndexOutOfBoundsException if {@code rank} is invalid
-     */
-    public int termId(final int rank) {
-        ensureSorted();
-        checkRank(rank);
-        return termIds[rank];
-    }
-
-    /**
-     * Returns the kept count at a given rank.
-     * <p>
-     * Rank {@code 0} is the best entry.
-     * </p>
-     *
-     * @param rank rank in {@code [0, size())}
-     * @return associated count
-     * @throws IndexOutOfBoundsException if {@code rank} is invalid
-     */
-    public int count(final int rank) {
-        ensureSorted();
-        checkRank(rank);
-        return counts[rank];
-    }
-
-    /**
-     * Resolves the kept term text at a given rank.
-     *
-     * @param rank rank in {@code [0, size())}
-     * @param lexicon term lexicon
-     * @return term text
-     * @throws IndexOutOfBoundsException if {@code rank} is invalid
-     * @throws NullPointerException if {@code lexicon} is {@code null}
-     */
-    public String term(final int rank, final TermLexicon lexicon) {
-        if (lexicon == null) {
-            throw new NullPointerException("lexicon");
-        }
-        return lexicon.term(termId(rank));
-    }
-
-    /**
-     * Returns a copy of kept term ids in ranking order.
-     *
-     * @return copied term ids
-     */
-    public int[] termIds() {
-        ensureSorted();
-        return Arrays.copyOf(termIds, size);
-    }
-
-    /**
-     * Returns a copy of kept counts in ranking order.
-     *
-     * @return copied counts
-     */
-    public int[] counts() {
-        ensureSorted();
-        return Arrays.copyOf(counts, size);
+        return new TopTerms(rank2termId, lexicon, counts, scores);
     }
 
     @Override
-    public String toString() {
-        ensureSorted();
-        final StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (int i = 0; i < size; i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(termIds[i]).append(':').append(counts[i]);
-        }
-        sb.append(']');
-        return sb.toString();
+    public Iterator<TermEntry> iterator() {
+        return new Iter();
     }
 
     /**
-     * Returns whether a candidate should replace the current heap root.
-     *
-     * @param termId candidate term id
-     * @param count candidate count
-     * @return {@code true} if the candidate is better than the current worst kept entry
+     * Read-only view of one term entry at the current iterator position.
+     * The same instance is reused across iterations; do not retain it.
      */
-    private boolean betterThanRoot(final int termId, final int count) {
-        final int rootCount = counts[0];
-        if (count > rootCount) {
-            return true;
-        }
-        if (count < rootCount) {
-            return false;
-        }
-        return termId < termIds[0];
-    }
+    public final class TermEntry {
 
-    /**
-     * Restores heap order upward from a newly inserted slot.
-     *
-     * @param i inserted index
-     */
-    private void siftUp(int i) {
-        while (i > 0) {
-            final int parent = (i - 1) >>> 1;
-            if (!worse(i, parent)) {
-                break;
-            }
-            swap(i, parent);
-            i = parent;
+        private int termId;
+
+        private TermEntry() {}
+
+        /** The term string at the current rank. */
+        public String term() {
+            return lexicon.term(termId);
         }
-    }
 
-    /**
-     * Restores heap order downward from the root after replacement.
-     *
-     * @param i replaced index
-     */
-    private void siftDown(int i) {
-        final int half = size >>> 1;
-        while (i < half) {
-            int child = (i << 1) + 1;
-            final int right = child + 1;
+        /**
+         * The term id at the current rank, usable as a direct index into
+         * any array aligned with the same {@link TermLexicon}.
+         */
+        public int termId() {
+            return termId;
+        }
 
-            if (right < size && worse(right, child)) {
-                child = right;
-            }
-            if (!worse(child, i)) {
-                break;
-            }
-            swap(i, child);
-            i = child;
+        /** Corpus occurrence count of this term (total term frequency). */
+        public long count() {
+            return counts[termId];
+        }
+
+        /** Score used for ranking this term (e.g. BM25 weight). */
+        public double score() {
+            return scores[termId];
         }
     }
 
-    /**
-     * Returns whether entry {@code a} is worse than entry {@code b} in heap order.
-     *
-     * @param a first index
-     * @param b second index
-     * @return {@code true} if entry {@code a} is worse than entry {@code b}
-     */
-    private boolean worse(final int a, final int b) {
-        final int ca = counts[a];
-        final int cb = counts[b];
-        if (ca != cb) {
-            return ca < cb;
+    private final class Iter implements Iterator<TermEntry> {
+
+        private final TermEntry entry = new TermEntry();
+        private int rank = 0;
+
+        @Override
+        public boolean hasNext() {
+            return rank < rank2termId.length;
         }
-        return termIds[a] > termIds[b];
-    }
 
-    /**
-     * Swaps two entries.
-     *
-     * @param a first index
-     * @param b second index
-     */
-    private void swap(final int a, final int b) {
-        final int termId = termIds[a];
-        termIds[a] = termIds[b];
-        termIds[b] = termId;
-
-        final int count = counts[a];
-        counts[a] = counts[b];
-        counts[b] = count;
-    }
-
-    /**
-     * Ensures that kept entries are sorted in public ranking order.
-     */
-    private void ensureSorted() {
-        if (sorted || size < 2) {
-            sorted = true;
-            return;
-        }
-        quickSort(0, size - 1);
-        sorted = true;
-    }
-
-    /**
-     * In-place quicksort of the kept prefix in public ranking order.
-     *
-     * @param left inclusive left bound
-     * @param right inclusive right bound
-     */
-    private void quickSort(int left, int right) {
-        while (left < right) {
-            int i = left;
-            int j = right;
-            final int pivot = (left + right) >>> 1;
-            final int pivotCount = counts[pivot];
-            final int pivotTermId = termIds[pivot];
-
-            while (i <= j) {
-                while (ranksBefore(i, pivotCount, pivotTermId)) i++;
-                while (ranksAfter(j, pivotCount, pivotTermId)) j--;
-                if (i <= j) {
-                    swap(i, j);
-                    i++;
-                    j--;
-                }
-            }
-
-            if (j - left < right - i) {
-                if (left < j) quickSort(left, j);
-                left = i;
-            } else {
-                if (i < right) quickSort(i, right);
-                right = j;
-            }
-        }
-    }
-
-    /**
-     * Returns whether the entry at index {@code i} ranks before the pivot pair.
-     *
-     * @param i entry index
-     * @param pivotCount pivot count
-     * @param pivotTermId pivot term id
-     * @return {@code true} if entry {@code i} should come before the pivot
-     */
-    private boolean ranksBefore(final int i, final int pivotCount, final int pivotTermId) {
-        final int c = counts[i];
-        if (c != pivotCount) {
-            return c > pivotCount;
-        }
-        return termIds[i] < pivotTermId;
-    }
-
-    /**
-     * Returns whether the entry at index {@code j} ranks after the pivot pair.
-     *
-     * @param j entry index
-     * @param pivotCount pivot count
-     * @param pivotTermId pivot term id
-     * @return {@code true} if entry {@code j} should come after the pivot
-     */
-    private boolean ranksAfter(final int j, final int pivotCount, final int pivotTermId) {
-        final int c = counts[j];
-        if (c != pivotCount) {
-            return c < pivotCount;
-        }
-        return termIds[j] > pivotTermId;
-    }
-
-    /**
-     * Validates a public rank.
-     *
-     * @param rank rank to validate
-     * @throws IndexOutOfBoundsException if invalid
-     */
-    private void checkRank(final int rank) {
-        if (rank < 0 || rank >= size) {
-            throw new IndexOutOfBoundsException("rank=" + rank + ", size=" + size);
+        @Override
+        public TermEntry next() {
+            if (!hasNext()) throw new NoSuchElementException();
+            entry.termId = rank2termId[rank++];
+            return entry;
         }
     }
 }
