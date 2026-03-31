@@ -57,7 +57,7 @@ import static com.github.oeuvres.alix.common.Upos.*;
 import static com.github.oeuvres.alix.common.Names.*;
 import com.github.oeuvres.alix.common.TagFilter;
 import com.github.oeuvres.alix.lucene.terms.BytesDic;
-import com.github.oeuvres.alix.util.Top;
+import com.github.oeuvres.alix.util.TopSlot;
 
 /**
  * Tools to display a document
@@ -503,12 +503,12 @@ public class Doc
      * @throws IllegalAccessException 
      * @throws InstantiationException 
      */
-    public Top<String> intersect(final String field, final int docId2, final BytesRefHash stopwords) 
+    public TopSlot<String> intersect(final String field, final int docId2, final BytesRefHash stopwords) 
         throws IOException, NoSuchFieldException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException
     {
         // new lucene API, not tested
         Terms vek2 = alix.reader().termVectors().get(docId2, field);
-        Top<String> top = new Top<String>(String.class, 100);
+        TopSlot<String> top = new TopSlot<String>(String.class, 100);
         FieldText ftext = alix.fieldText(field);
         int len1 = ftext.occsByDoc(docId);
         int len2 = ftext.occsByDoc(docId2);

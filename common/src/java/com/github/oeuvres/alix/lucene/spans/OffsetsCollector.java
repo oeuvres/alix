@@ -68,6 +68,14 @@ public final class OffsetsCollector implements SpanCollector {
 
     /** Number of leaves collected in the current span. */
     private int size;
+    
+    /**
+     * Constructs a collector with a default initial capacity of 4 leaf terms.
+     * Suitable for use as a pre-allocated slot in {@link com.github.oeuvres.alix.util.TopSlot}.
+     */
+    public OffsetsCollector() {
+        data = new int[4 * STRIDE];
+    }
 
     /**
      * Constructs a collector with a given initial capacity.
@@ -101,6 +109,45 @@ public final class OffsetsCollector implements SpanCollector {
     }
 
     /**
+     * Copies all collected leaves from this collector into {@code dest},
+     * replacing any previous content in {@code dest}.
+     *
+     * <p>Used to populate a pre-allocated slot returned by
+     * {@link com.github.oeuvres.alix.util.TopSlot#insert(double)} without object creation.</p>
+     *
+     * @param dest destination collector; must not be {@code null}
+     */
+    public void copyTo(final OffsetsCollector dest) {
+        final int needed = size * STRIDE;
+        if (dest.data.length < needed) {
+            dest.data = Arrays.copyOf(data, needed);
+        } else {
+            System.arraycopy(data, 0, dest.data, 0, needed);
+        }
+        dest.size = size;
+    }
+    
+    /**
+     * Returns the character end offset of the {@code i}-th collected leaf.
+     *
+     * @param i zero-based leaf index; must be in {@code [0, size())}
+     * @return character end offset, or {@code -1} if offsets were not requested
+     */
+    public int endOffset(final int i) {
+        return data[i * STRIDE + 2];
+    }
+
+    /**
+     * Returns the token position of the {@code i}-th collected leaf.
+     *
+     * @param i zero-based leaf index; must be in {@code [0, size())}
+     * @return token position
+     */
+    public int position(final int i) {
+        return data[i * STRIDE];
+    }
+
+    /**
      * {@inheritDoc}
      *
      * <p>Resets the leaf count to zero. The backing array is retained for reuse.
@@ -118,36 +165,6 @@ public final class OffsetsCollector implements SpanCollector {
      */
     public int size() {
         return size;
-    }
-
-    /**
-     * Returns the token position of the {@code i}-th collected leaf.
-     *
-     * @param i zero-based leaf index; must be in {@code [0, size())}
-     * @return token position
-     */
-    public int position(final int i) {
-        return data[i * STRIDE];
-    }
-
-    /**
-     * Returns the character start offset of the {@code i}-th collected leaf.
-     *
-     * @param i zero-based leaf index; must be in {@code [0, size())}
-     * @return character start offset, or {@code -1} if offsets were not requested
-     */
-    public int startOffset(final int i) {
-        return data[i * STRIDE + 1];
-    }
-
-    /**
-     * Returns the character end offset of the {@code i}-th collected leaf.
-     *
-     * @param i zero-based leaf index; must be in {@code [0, size())}
-     * @return character end offset, or {@code -1} if offsets were not requested
-     */
-    public int endOffset(final int i) {
-        return data[i * STRIDE + 2];
     }
 
     /**
@@ -197,6 +214,16 @@ public final class OffsetsCollector implements SpanCollector {
             data[(j + 1) * STRIDE + 1] = kStart;
             data[(j + 1) * STRIDE + 2] = kEnd;
         }
+    }
+
+    /**
+     * Returns the character start offset of the {@code i}-th collected leaf.
+     *
+     * @param i zero-based leaf index; must be in {@code [0, size())}
+     * @return character start offset, or {@code -1} if offsets were not requested
+     */
+    public int startOffset(final int i) {
+        return data[i * STRIDE + 1];
     }
 
     /**
