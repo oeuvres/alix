@@ -1,5 +1,6 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.util.TopArray;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
@@ -57,12 +58,18 @@ public final class ThemeTermsDemo {
             final TermLexicon lexicon = TermLexicon.openOrBuild(luceneReader, indexPath, field);
         ) {
             final FieldStats fieldStats = FieldStats.openOrBuild(luceneReader, indexPath, field);
-            final ThemeTerms themeTerms = new ThemeTerms(luceneReader, lexicon, fieldStats);
-            final TermStats stats = new TermStats(field, lexicon.vocabSize());
-            final int maxDoc = fieldStats.maxDoc();
+            // final TermStats stats = new TermStats(field, lexicon.vocabSize());
+            // final int maxDoc = fieldStats.maxDoc();
 
             List<TermScorer> scorers = List.of(
                 new TermScorer.BM25(0.9),
+                new TermScorer.BM25(1.0),
+                new TermScorer.BM25(1.1),
+                new TermScorer.BM25(1.2),
+                new TermScorer.BM25(1.3),
+                new TermScorer.BM25(1.4),
+                new TermScorer.BM25(1.5),
+                new TermScorer.BM25(1.6),
                 new TermScorer.G(),
                 new TermScorer.Jaccard()
             );
@@ -70,82 +77,17 @@ public final class ThemeTermsDemo {
             // scorers[2] = new TermScorer.Jaccard();
             
             for (TermScorer scorer: scorers) {
-                System.out.println("\n\n" + scorer.getClass().getSimpleName()+ "\n");
-                themeTerms.score(stats, scorer);
-                printTopScores(lexicon, stats.scores(), topK);
+                System.out.println("\n\n" + scorer + "\n");
+                fieldStats.buildWeights(luceneReader, scorer);
+                TopTerms top = TopTerms.theme(fieldStats, lexicon, topK);
+                for(TermEntry term: top) {
+                    System.out.print(term.term() + ", ");
+                }
             }
 
         }
     }
 
-    /**
-     * Returns the natural global doc-id order {@code 0..maxDoc-1}.
-     *
-     * @param maxDoc reader maxDoc
-     * @return global doc ids in natural order
-     */
-    private static int[] naturalOrder(final int maxDoc) {
-        final int[] docIds = new int[maxDoc];
-        for (int docId = 0; docId < maxDoc; docId++) {
-            docIds[docId] = docId;
-        }
-        return docIds;
-    }
-
-    /**
-     * Prints the context of one run.
-     *
-     * @param indexPath Lucene index directory
-     * @param fieldStats field statistics
-     * @param partCount number of parts
-     * @param aggregation aggregation rule
-     * @param scorer local scorer
-     */
-    private static void printContext(
-        final Path indexPath,
-        final FieldStats fieldStats,
-        final int partCount,
-        final TermScorer scorer
-    ) {
-        System.out.println("Index         : " + indexPath);
-        System.out.println("Field         : " + fieldStats.field());
-        System.out.println("maxDoc        : " + fieldStats.maxDoc());
-        System.out.println("docCount      : " + fieldStats.fieldDocs());
-        System.out.println("vocabSize     : " + fieldStats.vocabSize());
-        System.out.println("totalTermFreq : " + fieldStats.fieldTokens());
-        System.out.println("parts         : " + partCount);
-        System.out.println("scorer  : " + scorer.getClass().getName());
-        System.out.println();
-    }
-
-    /**
-     * Prints the top positive scores.
-     *
-     * @param lexicon dense field lexicon
-     * @param scores dense score vector indexed by term id
-     * @param topK maximum number of rows to print
-     */
-    private static void printTopScores(
-        final TermLexicon lexicon,
-        final double[] scores,
-        final int topK
-    ) {
-        final TopArray top = new TopArray(topK);
-
-        for (int termId = 0; termId < scores.length; termId++) {
-            final double score = scores[termId];
-            if (Double.isNaN(score) || score <= 0d) {
-                continue;
-            }
-            top.push(termId, score);
-        }
-
-        // System.out.println("Top " + top.length() + " theme terms");
-        // System.out.println("------------------------------");
-        for (TopArray.IdScore row : top) {
-            System.out.print(lexicon.term(row.id() ) + ", ");
-        }
-    }
 
 
 }
