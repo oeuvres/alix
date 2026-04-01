@@ -73,7 +73,7 @@ public abstract class Op
     protected void page(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.sendError(resp, 406, name() + ": page not implemented");
+        AlixServlet.sendError(resp, 406, name() + ": default html not implemented");
     }
 
     /** Structured JSON. */
@@ -87,7 +87,7 @@ public abstract class Op
     protected void html(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.sendError(resp, 406, name() + ": html not implemented");
+        AlixServlet.sendError(resp, 406, name() + ": html fragment not implemented");
     }
 
     /** JSON Lines — one object per line. */

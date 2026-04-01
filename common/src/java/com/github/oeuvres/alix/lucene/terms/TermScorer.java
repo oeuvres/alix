@@ -149,6 +149,17 @@ public abstract class TermScorer {
     {
         return this.getClass().getSimpleName();
     }
+    
+    @Override
+    public boolean equals(final Object o) {
+        return o != null && o.getClass() == this.getClass();
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+    
     /**
      * Signed G-test contribution against the corpus expectation.
      *
@@ -269,6 +280,18 @@ public abstract class TermScorer {
         public String toString()
         {
             return "BM25 " + idfExp;
+        }
+        
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (!(o instanceof BM25 other)) return false;
+            return Double.compare(this.idfExp, other.idfExp) == 0;
+        }
+
+        @Override
+        public int hashCode() {
+            return Double.hashCode(idfExp);
         }
     }
 }

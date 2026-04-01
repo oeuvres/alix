@@ -56,6 +56,7 @@ public final class OpTerms extends Op
 
     /** Default BM25 IDF exponent. */
     private static final double DEFAULT_IDF_EXP = 1d;
+    
 
     @Override
     public String name() { return "terms"; }
@@ -73,8 +74,8 @@ public final class OpTerms extends Op
         TopTerms topTerms;
         final int topK = pars.getInt("top", TOP_RANGE, DEFAULT_TOP);
         final String q = pars.getString("q", null);
+        final double idfExp = pars.getDouble("idfexp", DEFAULT_IDF_EXP);
 
-        final double idfExp;
         final long t0 = System.nanoTime();
 
         if (q != null) {
@@ -91,7 +92,6 @@ public final class OpTerms extends Op
                     "terms: field '" + field + "' not found or not a text field");
                 return;
             }
-            idfExp = pars.getDouble("idfExp", DEFAULT_IDF_EXP);
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             FieldStats fieldStats = fluc.fieldStats();
             fieldStats.buildWeights(lucene.reader(), scorer);
@@ -108,15 +108,15 @@ public final class OpTerms extends Op
             jw.name("meta");
             jw.beginObject();
             jw.name("time").value(qTime);
-            jw.name("params");
+            jw.name("params"); // start params
             jw.beginObject();
             jw.name("field").value(field);
             jw.name("top").value(topK);
+            jw.name("idfexp").value(idfExp);
             if (q != null) {
                 jw.name("q").value(q);
             }
             else {
-                jw.name("idfExp").value(idfExp);
             }
             jw.endObject(); // params
             jw.endObject(); // meta

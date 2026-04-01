@@ -162,7 +162,8 @@ public final class FieldStats implements ReferenceStats
      * Written once and then read-only; declared volatile for safe publication.
      */
     private volatile double[] termWeights;
-
+    /** The scorer used to calculate termeights */
+    private volatile TermScorer termWeightsScorer;
     /** Number of distinct terms in the field. */
     private final int vocabSize;
     
@@ -266,7 +267,9 @@ public final class FieldStats implements ReferenceStats
             throw new IllegalStateException(
                 "Field '" + field + "' was not indexed with term frequencies");
         }
- 
+        // weights already calculated with same scorer
+        if (scorer.equals(termWeightsScorer)) return;
+        
         scorer.corpus(fieldTokens, fieldDocs);
  
         final double[] weights = new double[vocabSize];
