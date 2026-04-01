@@ -1,7 +1,6 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
-import java.util.List;
 
 import com.google.gson.stream.JsonWriter;
 
@@ -10,8 +9,10 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.terms.TermRow;
+import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
+import com.github.oeuvres.alix.lucene.terms.TopTerms;
+import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 /**
@@ -54,26 +55,25 @@ public final class OpTerms extends Op
     private static final int DEFAULT_TOP = 50;
 
     /** Default BM25 IDF exponent. */
-    private static final double DEFAULT_IDF_EXP = 1.3d;
+    private static final double DEFAULT_IDF_EXP = 1d;
 
     @Override
     public String name() { return "terms"; }
 
     @Override
     protected void json(
-        final LuceneIndex index,
+        final LuceneIndex lucene,
         final HttpServletRequest req,
         final HttpServletResponse resp
     ) throws IOException
     {
         final HttpPars pars = new HttpPars(req);
 
-        final String field = pars.getString("field", index.content());
+        final String field = pars.getString("field", lucene.content());
+        TopTerms topTerms;
         final int topK = pars.getInt("top", TOP_RANGE, DEFAULT_TOP);
         final String q = pars.getString("q", null);
 
-        // ---- dispatch to producer ----
-        final List<TermRow> rows;
         final double idfExp;
         final long t0 = System.nanoTime();
 
@@ -85,7 +85,7 @@ public final class OpTerms extends Op
         }
         else {
             // Theme terms mode
-            final FlucText fluc = index.fieldText(field);
+            final FlucText fluc = lucene.fieldText(field);
             if (fluc == null) {
                 AlixServlet.sendError(resp, 404,
                     "terms: field '" + field + "' not found or not a text field");
@@ -93,7 +93,9 @@ public final class OpTerms extends Op
             }
             idfExp = pars.getDouble("idfExp", DEFAULT_IDF_EXP);
             final TermScorer scorer = new TermScorer.BM25(idfExp);
-            rows = fluc.themeTerms().topTerms(scorer, topK);
+            FieldStats fieldStats = fluc.fieldStats();
+            fieldStats.buildWeights(lucene.reader(), scorer);
+            topTerms = TopTerms.theme(fieldStats, fluc.termLexicon(), topK);
         }
 
         final long qTime = (System.nanoTime() - t0) / 1_000_000;
@@ -122,11 +124,11 @@ public final class OpTerms extends Op
             // data
             jw.name("data");
             jw.beginArray();
-            for (TermRow row : rows) {
+            for (TermEntry term : topTerms) {
                 jw.beginObject();
-                jw.name("term").value(row.term());
-                jw.name("count").value(row.count());
-                jw.name("score").value(row.score());
+                jw.name("term").value(term.term());
+                jw.name("count").value(term.count());
+                jw.name("score").value(term.score());
                 jw.endObject();
             }
             jw.endArray();
