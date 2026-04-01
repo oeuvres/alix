@@ -69,6 +69,9 @@ public final class OffsetsCollector implements SpanCollector {
     /** Number of leaves collected in the current span. */
     private int size;
     
+    /** Ordinal of this span within its document (0-based), set by the walker or visitor. */
+    private int ord;
+    
     /**
      * Constructs a collector with a default initial capacity of 4 leaf terms.
      * Suitable for use as a pre-allocated slot in {@link com.github.oeuvres.alix.util.TopSlot}.
@@ -125,6 +128,7 @@ public final class OffsetsCollector implements SpanCollector {
             System.arraycopy(data, 0, dest.data, 0, needed);
         }
         dest.size = size;
+        dest.ord = ord;
     }
     
     /**
@@ -135,6 +139,26 @@ public final class OffsetsCollector implements SpanCollector {
      */
     public int endOffset(final int i) {
         return data[i * STRIDE + 2];
+    }
+    
+    /**
+     * Returns the ordinal of this span within its document (0-based).
+     * Set externally by the walker or visitor during span enumeration;
+     * {@code -1} if not set.
+     */
+    public int ord() {
+        return ord;
+    }
+    
+    /**
+     * Sets the span ordinal. Called by the walker or visitor during the
+     * {@code nextStartPosition()} loop so that the ordinal is available to
+     * the listener via {@link #ord()}.
+     *
+     * @param ord 0-based ordinal of this span in the document
+     */
+    public void ord(final int ord) {
+        this.ord = ord;
     }
 
     /**
@@ -156,6 +180,7 @@ public final class OffsetsCollector implements SpanCollector {
     @Override
     public void reset() {
         size = 0;
+        ord = -1;
     }
 
     /**
