@@ -62,7 +62,7 @@ public abstract class Op
             case "html"  -> html(index, req, resp);
             case "jsonl" -> jsonl(index, req, resp);
             case "csv"   -> csv(index, req, resp);
-            default      -> AlixServlet.sendError(resp, 406,
+            default      -> AlixServlet.jsonError(resp, 406,
                 name() + ": unsupported format: " + format);
         }
     }
@@ -73,35 +73,35 @@ public abstract class Op
     protected void page(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.sendError(resp, 406, name() + ": default html not implemented");
+        AlixServlet.jsonError(resp, 406, name() + ": default html not implemented");
     }
 
     /** Structured JSON. */
     protected void json(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.sendError(resp, 406, name() + ": json not implemented");
+        AlixServlet.jsonError(resp, 406, name() + ": json not implemented");
     }
 
     /** HTML fragment for streaming insertion. */
     protected void html(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.sendError(resp, 406, name() + ": html fragment not implemented");
+        AlixServlet.jsonError(resp, 406, name() + ": html fragment not implemented");
     }
 
     /** JSON Lines — one object per line. */
     protected void jsonl(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.sendError(resp, 406, name() + ": jsonl not implemented");
+        AlixServlet.jsonError(resp, 406, name() + ": jsonl not implemented");
     }
 
     /** CSV tabular export. */
     protected void csv(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.sendError(resp, 406, name() + ": csv not implemented");
+        AlixServlet.jsonError(resp, 406, name() + ": csv not implemented");
     }
 
     // ---- response utilities ----

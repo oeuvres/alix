@@ -722,30 +722,30 @@ public class HttpPars
      * double-quoted HTML {@code href} attribute, since {@code &amp;} is used
      * as separator and values are HTML-safe after encoding.
      * For contexts that need a raw {@code &amp;} separator (redirects,
-     * JavaScript), use {@link #toQueryStringRaw(String...)} instead.</p>
+     * JavaScript), use {@link #queryStringRaw(String...)} instead.</p>
      * 
      * @param names parameter names to include (absent parameters are skipped).
      * @return the query string fragment, or empty string if no parameters have values.
-     * @see #toQueryStringRaw(String...)
+     * @see #queryStringRaw(String...)
      */
-    public String toQueryString(final String... names)
+    public String queryString(final String... names)
     {
-        return toQueryString(true, names);
+        return queryString(true, names);
     }
 
     /**
      * Build a query string with raw {@code &} separators, suitable for
      * programmatic URI construction (redirects, {@code Location} headers,
-     * JavaScript). Same encoding rules as {@link #toQueryString(String...)},
+     * JavaScript). Same encoding rules as {@link #queryString(String...)},
      * but without HTML entity escaping of the separator.
      * 
      * @param names parameter names to include (absent parameters are skipped).
      * @return the query string fragment, or empty string if no parameters have values.
-     * @see #toQueryString(String...)
+     * @see #queryString(String...)
      */
-    public String toQueryStringRaw(final String... names)
+    public String queryStringRaw(final String... names)
     {
-        return toQueryString(false, names);
+        return queryString(false, names);
     }
 
     /**
@@ -755,7 +755,7 @@ public class HttpPars
      * @param names   parameter names.
      * @return the query string fragment.
      */
-    private String toQueryString(final boolean htmlSep, final String... names)
+    private String queryString(final boolean htmlSep, final String... names)
     {
         final String sep = htmlSep ? "&amp;" : "&";
         StringBuilder sb = new StringBuilder();
@@ -778,7 +778,7 @@ public class HttpPars
 
     /**
      * Encode a single {@code name=value} query-string pair, using the same
-     * minimal percent-encoding as {@link #toQueryString(String...)}.
+     * minimal percent-encoding as {@link #queryString(String...)}.
      * Useful for building a per-row varying part outside of the request context,
      * e.g. in a KWIC loop:
      * <pre>{@code
@@ -855,6 +855,12 @@ public class HttpPars
                 break;
             case '>':
                 esc = "%3E";
+                break;
+            case '\n':
+                esc= "%0A";
+                break;
+            case '\r':
+                esc= "%0D";
                 break;
             default:
                 if (sb != null) sb.append(c);

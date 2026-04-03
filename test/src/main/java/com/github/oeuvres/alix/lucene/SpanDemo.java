@@ -126,7 +126,7 @@ public class SpanDemo {
                         .doclineFieldName("docline")
                         .docLimit(20)
                         .spanLimit(5)
-                        .wordsAround(20);
+                        .ctx(20);
                     SpanWalker walker = new SpanWalker(searcher, query, null, results);
                     writer.append(String.valueOf(walker.hits())).append(" hits " + (System.currentTimeMillis() - t0) + "ms \n");
                     int nextDoc = walker.walk(0);

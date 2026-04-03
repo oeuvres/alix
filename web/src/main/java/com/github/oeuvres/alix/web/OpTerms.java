@@ -80,7 +80,7 @@ public final class OpTerms extends Op
 
         if (q != null) {
             // Co-occurrence mode — placeholder
-            AlixServlet.sendError(resp, 501,
+            AlixServlet.jsonError(resp, 501,
                 "terms: co-occurrence mode not yet implemented");
             return;
         }
@@ -88,7 +88,7 @@ public final class OpTerms extends Op
             // Theme terms mode
             final FlucText fluc = lucene.fieldText(field);
             if (fluc == null) {
-                AlixServlet.sendError(resp, 404,
+                AlixServlet.jsonError(resp, 404,
                     "terms: field '" + field + "' not found or not a text field");
                 return;
             }

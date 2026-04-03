@@ -97,7 +97,7 @@ public class AlixServlet extends HttpServlet
     private void registerOps()
     {
         // register(new OpSearch());
-        // register(new OpKwic());
+        register(new OpConc());
         // register(new OpCooc());
         // register(new OpFreqs());
         register(new OpTerms());
@@ -128,7 +128,7 @@ public class AlixServlet extends HttpServlet
         final String indexName = segments[1];
         final LuceneIndex index = indices.get(indexName);
         if (index == null) {
-            sendError(resp, 404, "Unknown index: " + indexName);
+            jsonError(resp, 404, "Unknown index: " + indexName);
             return;
         }
 
@@ -144,7 +144,7 @@ public class AlixServlet extends HttpServlet
 
         final Op op = ops.get(opName);
         if (op == null) {
-            sendError(resp, 404, "Unknown operation: " + opName);
+            jsonError(resp, 404, "Unknown operation: " + opName);
             return;
         }
 
@@ -385,7 +385,7 @@ public class AlixServlet extends HttpServlet
      * each carrying {@code status} and {@code message}.
      * </p>
      */
-    static void sendError(
+    static void jsonError(
         final HttpServletResponse resp,
         final int status,
         final String message

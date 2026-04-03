@@ -37,7 +37,7 @@ public class HtmlResults extends ResultsListener
     /** Stored field providing the one-line title rendered as a document heading. */
     private String doclineFieldName = "docline";
     /** Number of words of context to show on each side of a span match. */
-    private int wordsAround = 10;
+    private int ctx = 10;
     /** Maximum number of spans to emit per document; {@code -1} = unlimited. */
     private int spanLimit = -1;
     /** Maximum number of documents to emit; {@code -1} = unlimited. */
@@ -57,6 +57,9 @@ public class HtmlResults extends ResultsListener
     private int lastDocId = -1;
     /** Reusable buffer for assembling each concordance line. */
     private final Detagger detagger = new Detagger(Set.of("i", "em"));
+    private String hrefBase = "";
+    private String hrefExt = "";
+    private String hrefSearch = "";
     
 
     /**
@@ -66,7 +69,7 @@ public class HtmlResults extends ResultsListener
      * @param storedFields  access to stored document fields
      * @param contentField  name of the stored field holding the document HTML content
      */
-    HtmlResults(
+    public HtmlResults(
         final Writer writer,
         final StoredFields storedFields,
         final String contentField
@@ -75,6 +78,29 @@ public class HtmlResults extends ResultsListener
         this.writer = writer;
         this.storedFields = storedFields;
         this.contentFieldName = contentField; 
+    }
+
+    public int ctx()
+    {
+        return ctx;
+    }
+
+    public HtmlResults ctx(final int ctx)
+    {
+        this.ctx = ctx;
+        return this;
+    }
+
+    public int docLimit()
+    {
+        return this.docLimit;
+    }
+
+    /** Sets the maximum number of documents to emit; {@code -1} = unlimited. */
+    public HtmlResults docLimit(final int docLimit)
+    {
+        this.docLimit = docLimit;
+        return this;
     }
 
     /** Sets the name of the stored field used as document heading. */
@@ -88,6 +114,39 @@ public class HtmlResults extends ResultsListener
     {
         return this.doclineFieldName;
     }
+    
+    public String hrefBase()
+    {
+        return this.hrefBase;
+    }
+
+    public HtmlResults hrefBase(final String hrefBase)
+    {
+        this.hrefBase = hrefBase;
+        return this;
+    }
+    
+    public String hrefExt()
+    {
+        return this.hrefExt;
+    }
+
+    public HtmlResults hrefExt(final String hrefExt)
+    {
+        this.hrefExt = hrefExt;
+        return this;
+    }
+
+    public String hrefSearch()
+    {
+        return this.hrefSearch;
+    }
+
+    public HtmlResults hrefSearch(final String hrefSearch)
+    {
+        this.hrefSearch = hrefSearch;
+        return this;
+    }
 
     /** Sets the maximum number of spans emitted per document; {@code -1} = unlimited. */
     public HtmlResults spanLimit(final int spanLimit)
@@ -99,24 +158,6 @@ public class HtmlResults extends ResultsListener
     public int spanLimit()
     {
         return this.spanLimit;
-    }
-
-    /** Sets the maximum number of documents to emit; {@code -1} = unlimited. */
-    public HtmlResults docLimit(final int docLimit)
-    {
-        this.docLimit = docLimit;
-        return this;
-    }
-
-    public int docLimit()
-    {
-        return this.docLimit;
-    }
-    
-    public HtmlResults wordsAround(final int wordsAround)
-    {
-        this.wordsAround = wordsAround;
-        return this;
     }
 
     @Override
@@ -143,8 +184,15 @@ public class HtmlResults extends ResultsListener
         if (doclineFieldName != null) {
             final String docline = doc.get(doclineFieldName);
             if (docline != null) {
-                writer.append("<h2><a href=\"").append(id).append("\">")
-                      .append(docline).append("</a></h2>\n");
+                writer
+                    .append("<h2><a href=\"")
+                    .append(hrefBase)
+                    .append(id)
+                    .append(hrefExt)
+                    .append(hrefSearch)
+                    .append("\">")
+                    .append(docline)
+                    .append("</a></h2>\n");
             }
         }
     }
@@ -161,10 +209,16 @@ public class HtmlResults extends ResultsListener
  
         // Opening tag written first: no buffer needed, no prepend.
         writer.append("<li class=\"hit span\"><a href=\"")
-              .append(id).append("#span").append(String.valueOf(spanCount)).append("\">");
+            .append(hrefBase)
+            .append(id)
+            .append(hrefExt)
+            .append(hrefSearch)
+            .append("#span")
+            .append(String.valueOf(spanCount))
+            .append("\">");
  
         // Left context: locate boundary, then detag forward directly into writer.
-        final int left = Markup.leftBoundary(content, collector.startOffset(0) - 1, wordsAround, -1);
+        final int left = Markup.leftBoundary(content, collector.startOffset(0) - 1, ctx, -1);
         detagger.detag(content, left, collector.startOffset(0), writer);
  
         // Pivot terms with inter-term text between them.
@@ -179,7 +233,7 @@ public class HtmlResults extends ResultsListener
         }
  
         // Right context.
-        final int right = Markup.rightBoundary(content, collector.endOffset(termCount - 1), wordsAround, -1);
+        final int right = Markup.rightBoundary(content, collector.endOffset(termCount - 1), ctx, -1);
         detagger.detag(content, collector.endOffset(termCount - 1), right, writer); 
         writer.append("</a></li>\n");
         return spanLimit < 0 || spanCount < spanLimit;
