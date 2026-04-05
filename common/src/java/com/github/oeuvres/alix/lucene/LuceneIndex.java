@@ -202,6 +202,19 @@ public final class LuceneIndex implements Closeable
         return flucs;
     }
     
+    public synchronized FlucYear flucYear(final String fieldName) throws IOException
+    {
+        final Fluc f = flucs.get(fieldName);
+        if (f instanceof FlucYear flucYear) return flucYear;
+        if (!(f instanceof FlucNum flucNum)) {
+            throw new IllegalArgumentException(
+                "Field \"" + fieldName + "\" is not a numeric field.");
+        }
+        final FlucYear flucYear = new FlucYear(flucNum.info, reader);
+        flucs.put(fieldName, flucYear);
+        return flucYear;
+    }
+    
     /**
      * Returns the {@link FlucText} for a named field, or {@code null}
      * if the field does not exist or is not a tokenized text field.
@@ -212,7 +225,7 @@ public final class LuceneIndex implements Closeable
     public FlucText flucText(final String fieldName)
     {
         final Fluc f = flucs.get(fieldName);
-        return (f instanceof FlucText t) ? t : null;
+        return (f instanceof FlucText flucText) ? flucText : null;
     }
     
     /** Absolute path to the Lucene index directory. */

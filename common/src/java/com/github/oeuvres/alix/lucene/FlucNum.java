@@ -61,32 +61,32 @@ public class FlucNum extends Fluc
      * the BKD root of each segment leaf.
      *
      * @param reader frozen index reader
-     * @param fi     field metadata
+     * @param info     field metadata
      * @throws IOException              on Lucene I/O errors
      * @throws IllegalArgumentException if the field is not a single-dimension
      *                                  numeric point field with numeric doc values
      */
     public FlucNum(
-        final FieldInfo fi,
+        final FieldInfo info,
         final IndexReader reader
     ) throws IOException
     {
-        super(fi, probeStored(reader, fi.name), countDocs(reader, fi.name));
-        if (fi.getPointDimensionCount() != 1) {
+        super(info, probeStored(reader, info.name), countDocs(reader, info.name));
+        if (info.getPointDimensionCount() != 1) {
             throw new IllegalArgumentException(
-                    "Field \"" + fi.name + "\" must be a single-dimension point field.");
+                    "Field \"" + info.name + "\" must be a single-dimension point field.");
         }
-        if (fi.getDocValuesType() != DocValuesType.NUMERIC) {
+        if (info.getDocValuesType() != DocValuesType.NUMERIC) {
             throw new IllegalArgumentException(
-                    "Field \"" + fi.name + "\" has no NumericDocValues.");
+                    "Field \"" + info.name + "\" has no NumericDocValues.");
         }
         this.reader = reader;
-        this.numBytes = fi.getPointNumBytes();
+        this.numBytes = info.getPointNumBytes();
         description.put("pointNumBytes", numBytes);
         double globalMin = Double.MAX_VALUE;
         double globalMax = -Double.MAX_VALUE;
         for (LeafReaderContext ctx : reader.leaves()) {
-            final PointValues pv = ctx.reader().getPointValues(fi.name);
+            final PointValues pv = ctx.reader().getPointValues(info.name);
             if (pv == null)
                 continue;
             final double lo = decode(pv.getMinPackedValue());
@@ -97,7 +97,9 @@ public class FlucNum extends Fluc
                 globalMax = hi;
         }
         this.min = globalMin;
+        description.put("min", min);
         this.max = globalMax;
+        description.put("max", max);
     }
     
     /** Minimum indexed value. */

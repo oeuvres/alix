@@ -66,18 +66,18 @@ public final class FlucYear extends FlucNum
      * materializes the document vector and corpus curve in one O(docs) pass.
      *
      * @param reader frozen index reader
-     * @param fi     field metadata
+     * @param info     field metadata
      * @throws IOException              on Lucene I/O errors
      * @throws IllegalArgumentException if the field is not a 4-byte (int) point field
      */
     public FlucYear(
-        final IndexReader reader,
-        final FieldInfo fi
+        final FieldInfo info,
+        final IndexReader reader
     ) throws IOException {
-        super(fi, reader);
+        super(info, reader);
         if (numBytes() != 4) {
             throw new IllegalArgumentException(
-                "Field \"" + fi.name + "\" is not a 4-byte (int) point field.");
+                "Field \"" + info.name + "\" is not a 4-byte (int) point field.");
         }
         final int min   = (int) min();
         final int range = (int) (max() - min()) + 1;
@@ -85,7 +85,7 @@ public final class FlucYear extends FlucNum
         Arrays.fill(offset, -1);
         final int[] curve = new int[range];
         for (LeafReaderContext ctx : reader.leaves()) {
-            final NumericDocValues ndv = ctx.reader().getNumericDocValues(fi.name);
+            final NumericDocValues ndv = ctx.reader().getNumericDocValues(info.name);
             if (ndv == null) continue;
             final Bits liveDocs = ctx.reader().getLiveDocs();
             final int docBase   = ctx.docBase;
