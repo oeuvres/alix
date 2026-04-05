@@ -86,7 +86,7 @@ public final class OpTerms extends Op
         }
         else {
             // Theme terms mode
-            final FlucText fluc = lucene.fieldText(field);
+            final FlucText fluc = lucene.flucText(field);
             if (fluc == null) {
                 AlixServlet.jsonError(resp, 404,
                     "terms: field '" + field + "' not found or not a text field");

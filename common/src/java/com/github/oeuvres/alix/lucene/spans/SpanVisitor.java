@@ -39,7 +39,7 @@ import com.github.oeuvres.alix.util.TopSlot;
  *
  * <p>All spans in the document are enumerated. Each span is scored by summing the
  * corpus-level {@link FieldStats#termWeight} of distinct terms in a window of
- * {@link #windowRadius} token positions around the span. Term deduplication within
+ * {@link #ctx} token positions around the span. Term deduplication within
  * each window is done in O(1) per term using a stamp array — no per-span reset
  * is needed. The top {@code topSpans} spans by this score are emitted to the
  * listener in descending passage score order (most informative first).</p>
@@ -60,7 +60,7 @@ public final class SpanVisitor {
     private final TermRail termRail;
 
     /** Token radius around the span used for passage scoring. */
-    public final int windowRadius;
+    public final int ctx;
 
     /**
      * Cached per-leaf {@link Spans} instances, indexed by leaf ordinal.
@@ -110,7 +110,7 @@ public final class SpanVisitor {
      *                     {@link FieldStats#buildWeights} already called
      * @param termRail     position index for the same field and snapshot
      * @param topSpans     maximum number of spans to emit per document
-     * @param windowRadius token radius around each span for passage scoring
+     * @param ctx token radius around each span for passage scoring
      * @throws IOException if query rewriting fails
      */
     public SpanVisitor(
@@ -120,14 +120,14 @@ public final class SpanVisitor {
             final FieldStats fieldStats,
             final TermRail termRail,
             final int topSpans,
-            final int windowRadius) throws IOException {
+            final int ctx) throws IOException {
         this.searcher     = Objects.requireNonNull(searcher,   "searcher");
         this.spanQuery    = (SpanQuery) searcher.rewrite(
                 Objects.requireNonNull(spanQuery, "spanQuery"));
         this.listener     = Objects.requireNonNull(listener,   "listener");
         this.fieldStats   = Objects.requireNonNull(fieldStats, "fieldStats");
         this.termRail     = Objects.requireNonNull(termRail,   "termRail");
-        this.windowRadius = Math.max(0, windowRadius);
+        this.ctx = Math.max(0, ctx);
 
         this.spanWeight   = (SpanWeight) this.spanQuery.createWeight(
                 searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
@@ -214,7 +214,7 @@ public final class SpanVisitor {
 
     /**
      * Scores one span by summing the corpus-level term weights of distinct terms
-     * in a window of {@link #windowRadius} positions around the span.
+     * in a window of {@link #ctx} positions around the span.
      *
      * <p>Deduplication uses {@link #termStamp}: a term whose stamp equals the
      * current {@code spanOrd} has already been counted for this span's window.
@@ -227,8 +227,8 @@ public final class SpanVisitor {
             final int spanOrd,
             final OffsetsCollector col,
             final double[] weights) throws IOException {
-        final int posLo = Math.max(0, col.position(0) - windowRadius);
-        final int posHi = col.position(col.size() - 1) + windowRadius;
+        final int posLo = Math.max(0, col.position(0) - ctx);
+        final int posHi = col.position(col.size() - 1) + ctx;
         final double[] acc = {0d};
 
         termRail.scanWindow(docId, posLo, posHi, termId -> {

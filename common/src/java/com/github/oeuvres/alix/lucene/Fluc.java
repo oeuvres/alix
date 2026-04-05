@@ -179,7 +179,7 @@ public abstract class Fluc implements Closeable
     public boolean hasTermVectors() { return hasTermVectors; }
 
     /** True if the field is indexed (inverted). */
-    public boolean indexed() { return indexOptions != IndexOptions.NONE; }
+    public boolean isIndexed() { return indexOptions != IndexOptions.NONE; }
 
     /** Lucene index options ({@code NONE}, {@code DOCS}, {@code DOCS_AND_FREQS}, …). */
     public IndexOptions indexOptions() { return indexOptions; }

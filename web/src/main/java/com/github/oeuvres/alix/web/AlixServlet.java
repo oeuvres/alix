@@ -96,13 +96,11 @@ public class AlixServlet extends HttpServlet
      */
     private void registerOps()
     {
-        // register(new OpSearch());
-        register(new OpConc());
+        register(new OpResults());
         // register(new OpCooc());
         // register(new OpFreqs());
         register(new OpTerms());
         // register(new OpDoc());
-        // register(new OpSnippet());
     }
 
     private void register(final Op op) { ops.put(op.name(), op); }
@@ -210,7 +208,7 @@ public class AlixServlet extends HttpServlet
 
             jw.name("fields");
             jw.beginObject();
-            for (Fluc f : index.fields().values()) {
+            for (Fluc f : index.flucs().values()) {
                 jw.name(f.name());
                 writeField(jw, f);
             }
@@ -245,7 +243,7 @@ public class AlixServlet extends HttpServlet
             jw.name("docs").value(f.docs());
         }
 
-        if (f.indexed()) {
+        if (f.isIndexed()) {
             jw.name("indexOptions").value(indexOptionsLabel(f.indexOptions()));
         }
 
@@ -265,7 +263,7 @@ public class AlixServlet extends HttpServlet
             jw.name("termVectors").value(true);
         }
 
-        if (f.indexed() && !f.hasNorms()) {
+        if (f.isIndexed() && !f.hasNorms()) {
             jw.name("norms").value(false);
         }
 

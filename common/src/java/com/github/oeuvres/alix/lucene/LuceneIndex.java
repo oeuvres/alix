@@ -62,12 +62,12 @@ public final class LuceneIndex implements Closeable
     private final Path indexDir;
     private final DirectoryReader reader;
     private final IndexSearcher searcher;
-    private final Map<String, Fluc> fields;
+    private final Map<String, Fluc> flucs;
 
     private LuceneIndex(
         String name, String label, String content, String docline,
         Path indexDir, DirectoryReader reader, IndexSearcher searcher,
-        Map<String, Fluc> fields)
+        Map<String, Fluc> flucs)
     {
         this.name = name;
         this.label = label;
@@ -76,7 +76,7 @@ public final class LuceneIndex implements Closeable
         this.indexDir = indexDir;
         this.reader = reader;
         this.searcher = searcher;
-        this.fields = fields;
+        this.flucs = flucs;
     }
 
     // ================================================================
@@ -154,7 +154,7 @@ public final class LuceneIndex implements Closeable
     @Override
     public void close() throws IOException
     {
-        for (Map.Entry<String, Fluc> e : fields.entrySet()) {
+        for (Map.Entry<String, Fluc> e : flucs.entrySet()) {
             try {
                 e.getValue().close();
             }
@@ -178,9 +178,9 @@ public final class LuceneIndex implements Closeable
      * @param fieldName field name
      * @return field handle, or {@code null}
      */
-    public Fluc field(final String fieldName)
+    public Fluc fluc(final String fieldName)
     {
-        return fields.get(fieldName);
+        return flucs.get(fieldName);
     }
 
     /**
@@ -189,7 +189,7 @@ public final class LuceneIndex implements Closeable
      *
      * @return field name → {@link Fluc}
      */
-    public Map<String, Fluc> fields() { return fields; }
+    public Map<String, Fluc> flucs() { return flucs; }
 
     /**
      * Returns the {@link FlucText} for a named field, or {@code null}
@@ -198,9 +198,9 @@ public final class LuceneIndex implements Closeable
      * @param fieldName field name
      * @return text field handle, or {@code null}
      */
-    public FlucText fieldText(final String fieldName)
+    public FlucText flucText(final String fieldName)
     {
-        final Fluc f = fields.get(fieldName);
+        final Fluc f = flucs.get(fieldName);
         return (f instanceof FlucText t) ? t : null;
     }
 

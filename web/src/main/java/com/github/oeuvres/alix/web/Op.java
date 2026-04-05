@@ -1,6 +1,9 @@
 package com.github.oeuvres.alix.web;
 
+import static com.github.oeuvres.alix.web.Pars.Q;
+
 import java.io.IOException;
+import java.io.Writer;
 
 import com.google.gson.stream.JsonWriter;
 
@@ -66,7 +69,7 @@ public abstract class Op
                 name() + ": unsupported format: " + format);
         }
     }
-
+    
     // ---- format methods ----
 
     /** Full HTML page with form and embedded results. */
