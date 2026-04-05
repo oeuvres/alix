@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,6 +10,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.ServletConfig;
@@ -19,9 +22,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.Fluc;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexOptions;
 
 /**
  * Frontal servlet for the Alix search API.
@@ -50,6 +50,9 @@ public class AlixServlet extends HttpServlet
 {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = Logger.getLogger(AlixServlet.class.getName());
+    private static final Gson GSON = new Gson();
+    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>(){}.getType();
+
 
     /** Loaded indices, swapped atomically on reload. */
     private volatile Map<String, LuceneIndex> indices = Map.of();
@@ -210,7 +213,7 @@ public class AlixServlet extends HttpServlet
             jw.beginObject();
             for (Fluc f : index.flucs().values()) {
                 jw.name(f.name());
-                writeField(jw, f);
+                GSON.toJson(f.description, MAP_TYPE, jw);
             }
             jw.endObject();
 
@@ -218,84 +221,6 @@ public class AlixServlet extends HttpServlet
         }
     }
 
-    /**
-     * Write a single field descriptor, reporting only meaningful properties.
-     *
-     * <p>Rules:</p>
-     * <ul>
-     *   <li>Indexed: show {@code indexOptions} (readable label) and {@code docs}.</li>
-     *   <li>Stored: show only when {@code true}.</li>
-     *   <li>DocValues: show with type label, only when present.</li>
-     *   <li>Points: show type label ({@code "int"}, {@code "long"}, etc.).</li>
-     *   <li>TermVectors: show only when {@code true}.</li>
-     *   <li>Norms: show {@code false} only on indexed fields (absent norms
-     *       on an indexed field is the noteworthy case; present is default).</li>
-     *   <li>A field with no indexOptions, no docValues, no points
-     *       is stored-only: shows just {@code {"stored": true}}.</li>
-     * </ul>
-     */
-    private static void writeField(final JsonWriter jw, final Fluc f)
-        throws IOException
-    {
-        jw.beginObject();
-
-        if (f.docs() > 0) {
-            jw.name("docs").value(f.docs());
-        }
-
-        if (f.isIndexed()) {
-            jw.name("indexOptions").value(indexOptionsLabel(f.indexOptions()));
-        }
-
-        if (f.stored()) {
-            jw.name("stored").value(true);
-        }
-
-        if (f.hasDocValues()) {
-            jw.name("docValues").value(docValuesLabel(f.docValuesType()));
-        }
-
-        if (f.hasPoints()) {
-            jw.name("point").value(f.pointLabel());
-        }
-
-        if (f.hasTermVectors()) {
-            jw.name("termVectors").value(true);
-        }
-
-        if (f.isIndexed() && !f.hasNorms()) {
-            jw.name("norms").value(false);
-        }
-
-        jw.endObject();
-    }
-
-    private static String indexOptionsLabel(final IndexOptions opt)
-    {
-        return switch (opt) {
-            case DOCS                                     -> "docs";
-            case DOCS_AND_FREQS                           -> "docs+freqs";
-            case DOCS_AND_FREQS_AND_POSITIONS             -> "docs+freqs+positions";
-            case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS -> "docs+freqs+positions+offsets";
-            default                                       -> "none";
-        };
-    }
-
-    private static String docValuesLabel(final DocValuesType dvt)
-    {
-        return switch (dvt) {
-            case NUMERIC        -> "numeric";
-            case BINARY         -> "binary";
-            case SORTED         -> "sorted";
-            case SORTED_NUMERIC -> "sorted_numeric";
-            case SORTED_SET     -> "sorted_set";
-            default             -> "none";
-        };
-    }
-
-    // ================================================================
-    // URL parsing
-    // ================================================================
 
     /**
      * Split {@code "kwic.json"} into {@code {"kwic", "json"}}.

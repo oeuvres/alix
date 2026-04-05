@@ -3,7 +3,9 @@ package com.github.oeuvres.alix.lucene;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -56,14 +58,17 @@ public final class FlucText extends Fluc
     private final IndexReader reader;
     /** Directory for sidecar file access in subclasses. */
     protected final Path sideDir;
+    /** Lucene index options for this field. */
+    private final IndexOptions indexOptions;
+    /** Whether term vectors are stored. */
+    private final boolean hasTermVectors;
+    /** Whether norms are present. */
+    private final boolean hasNorms;
 
     private final LazyResource<FieldStats> fieldStatsHolder = new LazyResource<>();
     private final LazyResource<TermLexicon> lexiconHolder = new LazyResource<>();
     private final LazyResource<TermRail> railHolder = new LazyResource<>();
 
-    // ================================================================
-    // Constructor
-    // ================================================================
 
     /**
      * Creates a text-field handle.
@@ -85,12 +90,38 @@ public final class FlucText extends Fluc
         final Path sideDir
     ) throws IOException {
         super(fi, probeStored(reader, fi.name), reader.getDocCount(fi.name));
+        this.indexOptions = fi.getIndexOptions();
+        description.put("indexOptions", this.indexOptions.toString().replace("_AND_", " ").toLowerCase().replace('_', ' '));
+        this.hasTermVectors = fi.hasTermVectors();
+        description.put("termVectors", this.hasTermVectors);
+        this.hasNorms = fi.hasNorms();
+        description.put("norms", this.hasNorms);
         this.reader = reader;
         this.sideDir = sideDir;
     }
 
     /** Lucene index directory. */
     public Path sideDir() { return sideDir; }
+
+    /** True if norms are present (scoring). */
+    public boolean hasNorms() { return hasNorms; }
+
+    /** True if character offsets are indexed. */
+    public boolean hasOffsets()
+    {
+        return indexOptions.compareTo(
+            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+    }
+    
+    /** True if positions are indexed (phrases, KWIC, cooc). */
+    public boolean hasPositions()
+    {
+        return indexOptions.compareTo(
+            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    }
+    
+    /** True if term vectors are stored. */
+    public boolean hasTermVectors() { return hasTermVectors; }
 
     /**
      * Immutable reference statistics for this field.
@@ -158,6 +189,7 @@ public final class FlucText extends Fluc
         lexiconHolder.close();
         fieldStatsHolder.close();
     }
+
     
     /**
      * Find the first document with a posting for this field,

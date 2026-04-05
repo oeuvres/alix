@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Writer;
 
 import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.search.ScoreDoc;
 
 import com.github.oeuvres.alix.lucene.Fluc;
 import com.github.oeuvres.alix.lucene.FlucText;
@@ -86,17 +87,13 @@ public class OpResults extends Op
         // field not found
         if (fluc == null) {
             resp.setStatus(404);
-            writer
-                .append("<p class=\"error\">Field ")
-                .append(content);
+            writer.append("<p class=\"error\">Field ");
             Fluc ofluc = index.fluc(content);
-            if (ofluc == null) writer.append(" doesn’t exist.");
-            else if (ofluc.hasPoints()) writer.append(" is for numbers.");
-            else if (ofluc.hasDocValues()) writer.append(" is for tags.");
-            else if (ofluc.stored()) writer.append(" is stored only.");
-            writer.append("\n<br>Available field for text search:\n");
+            if (ofluc == null) writer.append(content + " doesn’t exist.");
+            else writer.append(ofluc.toString());
+            writer.append("/n<br>Choose among:");
             for (Fluc f : index.flucs().values()) {
-                if (!f.isIndexed()) continue;
+                if (!(f instanceof FlucText)) continue;
                 writer
                     .append("<br/><a href=\"?")
                     .append(pars.queryString(CTX, DOCLINE, DOCS, END, Q, SLOP, START))
@@ -160,11 +157,19 @@ public class OpResults extends Op
             }
             return;
         }
-        // sorted?
-        final boolean sorted = pars.getBoolean(SORTED, false, SORTED);
-        
+
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         SpanQuery query = new SpanQueryParser(content, slop).parse(q);
+
+        
+        // sorted?
+        final boolean sorted = pars.getBoolean(SORTED, false, SORTED);
+        // relevance
+        if (!sorted) {
+            ScoreDoc[] hits = index.searcher().search(query, 10).scoreDocs;
+            
+        }
+        
         
         SpanWalker walker = new SpanWalker(index.searcher(), query, null, results);
         writer

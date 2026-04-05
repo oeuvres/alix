@@ -74,7 +74,7 @@ public final class FlucYear extends FlucNum
         final IndexReader reader,
         final FieldInfo fi
     ) throws IOException {
-        super(reader, fi);
+        super(fi, reader);
         if (numBytes() != 4) {
             throw new IllegalArgumentException(
                 "Field \"" + fi.name + "\" is not a 4-byte (int) point field.");

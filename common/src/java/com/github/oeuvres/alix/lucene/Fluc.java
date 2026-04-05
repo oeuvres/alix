@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -48,7 +49,7 @@ import org.apache.lucene.index.LeafReaderContext;
  * Subclasses that cache resources must ensure thread-safe
  * lazy initialization.</p>
  */
-public abstract class Fluc implements Closeable
+public class Fluc implements Closeable
 {
     // ================================================================
     // Fields (all from former FieldProfile)
@@ -56,38 +57,12 @@ public abstract class Fluc implements Closeable
 
     /** Field name as declared in the index. */
     private final String name;
-
-    /** Lucene index options for this field. */
-    private final IndexOptions indexOptions;
-
-    /** Doc values type. */
-    private final DocValuesType docValuesType;
-
-    /** Number of point dimensions, 0 if none. */
-    private final int pointDimensionCount;
-
-    /** Bytes per point dimension, 0 if none. */
-    private final int pointNumBytes;
-
-    /** Whether term vectors are stored. */
-    private final boolean hasTermVectors;
-
-    /** Whether norms are present. */
-    private final boolean hasNorms;
-
     /** Whether the field has stored values. */
     private final boolean stored;
-
-    /**
-     * Number of documents with at least one value in this field.
-     * Semantics depend on field type: indexed term count for text,
-     * point-values count for points, 0 for stored-only.
-     */
+    /** Number of documents with at least one value in this field. */
     private final int docs;
-
-    // ================================================================
-    // Constructor
-    // ================================================================
+    /** Private final  */
+    public final Map<String, Object> description = new LinkedHashMap<>(10);
 
     /**
      * Creates a fully resolved field descriptor.
@@ -102,27 +77,23 @@ public abstract class Fluc implements Closeable
      * @param fi      segment-level field metadata
      * @param stored  whether the field has stored values
      * @param docs    number of documents with at least one value
-     * @param sideDir Lucene index directory
      */
-    protected Fluc(
+    public Fluc(
         final FieldInfo fi,
         final boolean stored,
         final int docs
     ) {
         this.name = fi.name;
-        this.indexOptions = fi.getIndexOptions();
-        this.docValuesType = fi.getDocValuesType();
-        this.pointDimensionCount = fi.getPointDimensionCount();
-        this.pointNumBytes = fi.getPointNumBytes();
-        this.hasTermVectors = fi.hasTermVectors();
-        this.hasNorms = fi.hasNorms();
+        final String className = getClass().getSimpleName(); // e.g. "FlucText"
+        final String type = className.startsWith("Fluc")
+            ? className.substring(4).toLowerCase()
+            : className.toLowerCase();
+        description.put("type", type);
         this.stored = stored;
+        description.put("stored", stored);
         this.docs = docs;
+        description.put("docs", docs);
     }
-
-    // ================================================================
-    // Closeable
-    // ================================================================
 
     /**
      * Release resources held by this field.
@@ -141,52 +112,9 @@ public abstract class Fluc implements Closeable
      */
     public int docs() { return docs; }
 
-    /** Doc values type ({@code NONE}, {@code NUMERIC}, {@code SORTED}, …). */
-    public DocValuesType docValuesType() { return docValuesType; }
-
-    /** True if the field has any doc values. */
-    public boolean hasDocValues() { return docValuesType != DocValuesType.NONE; }
-
-    /** True if norms are present (scoring). */
-    public boolean hasNorms() { return hasNorms; }
-
-    /** True if character offsets are indexed. */
-    public boolean hasOffsets()
-    {
-        return indexOptions.compareTo(
-            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
-    }
-
-    /**
-     * True if the field has point data ({@code IntPoint},
-     * {@code LongPoint}, {@code FloatPoint}, {@code DoublePoint}).
-     */
-    public boolean hasPoints() { return pointDimensionCount > 0; }
-
-    /** True if positions are indexed (phrases, KWIC, cooc). */
-    public boolean hasPositions()
-    {
-        return indexOptions.compareTo(
-            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-    }
-
-    /** True if term vectors are stored. */
-    public boolean hasTermVectors() { return hasTermVectors; }
-
-    /** True if the field is indexed (inverted). */
-    public boolean isIndexed() { return indexOptions != IndexOptions.NONE; }
-
-    /** Lucene index options ({@code NONE}, {@code DOCS}, {@code DOCS_AND_FREQS}, …). */
-    public IndexOptions indexOptions() { return indexOptions; }
-
     /** Field name as declared in the index. */
     public String name() { return name; }
 
-    /** Number of point dimensions, or 0 if no point data. */
-    public int pointDimensionCount() { return pointDimensionCount; }
-
-    /** Bytes per point dimension, or 0 if no point data. */
-    public int pointNumBytes() { return pointNumBytes; }
 
 
     /**
@@ -241,25 +169,61 @@ public abstract class Fluc implements Closeable
         // --- pass 2: probe stored, count docs, select subclass ---
         final Map<String, Fluc> map = new TreeMap<>();
         for (FieldInfo fi : infoMap.values()) {
-            final boolean isIndexed = fi.getIndexOptions() != IndexOptions.NONE;
-            final boolean hasPoints = fi.getPointDimensionCount() > 0;
+            final boolean isIndexed   = fi.getIndexOptions() != IndexOptions.NONE;
             final boolean hasPositions = fi.getIndexOptions().compareTo(
                 IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-
+            final int pointDims       = fi.getPointDimensionCount();
+            final DocValuesType dvType = fi.getDocValuesType();
+            final boolean hasDocValues = dvType != DocValuesType.NONE;
+            final boolean hasVectors   = fi.getVectorDimension() > 0;
 
             final Fluc fluc;
+            // Alix primary text field: tokenized, with positions
             if (hasPositions) {
                 fluc = new FlucText(fi, reader, sideDir);
             }
-            else if (hasPoints) {
+            // Alix numeric field: single-dimension point + numeric doc values
+            else if (pointDims == 1 && dvType == DocValuesType.NUMERIC) {
                 fluc = new FlucNum(fi, reader);
             }
-            else if (fi.getDocValuesType() == DocValuesType.SORTED) {
+            // Alix category field: single string value per doc, requires inverted index for dictionary
+            else if (isIndexed && dvType == DocValuesType.SORTED) {
                 fluc = new FlucCategory(fi, reader);
             }
-            else if (fi.getDocValuesType() == DocValuesType.SORTED_SET) {
+            // Alix facet field: multiple string values per doc, requires inverted index for dictionary
+            else if (isIndexed && dvType == DocValuesType.SORTED_SET) {
                 fluc = new FlucFacet(fi, reader);
             }
+            // KNN dense vector field (Lucene 9+): no Alix helper yet
+            else if (hasVectors) {
+                fluc = new Fluc(fi, false, -1);
+                fluc.description.put("VectorDimension", fi.getVectorDimension());
+            }
+            // Multi-dimensional point: geo/spatial, no Alix helper
+            else if (pointDims > 1) {
+                fluc = new Fluc(fi, false, -1);
+                fluc.description.put("dimensions", pointDims);
+            }
+            // Single-dimension point without numeric doc values: exotic, no Alix helper
+            else if (pointDims == 1) {
+                fluc = new Fluc(fi, false, -1);
+                fluc.description.put("dimensions", pointDims);
+            }
+            // SORTED/SORTED_SET doc values without inverted index: no dictionary buildable
+            // BINARY doc values: opaque byte payload, no Alix helper
+            // SORTED_NUMERIC doc values: multi-valued numeric, no Alix helper
+            // NUMERIC doc values without points: legacy or external indexer
+            else if (hasDocValues) {
+                fluc = new Fluc(fi, false, -1);
+                fluc.description.put("docValueType", dvType.toString().toLowerCase().replace('_', '+'));
+            }
+            // Inverted index without positions and without recognised doc values:
+            // StringField-style keyword field from an external indexer
+            else if (isIndexed) {
+                fluc = new Fluc(fi, false, reader.getDocCount(fi.name));
+                fluc.description.put("indexed", true);
+            }
+            // Stored only
             else {
                 fluc = new FlucStored(fi);
             }
@@ -267,7 +231,7 @@ public abstract class Fluc implements Closeable
             map.put(fi.name, fluc);
         }
 
-        return Collections.unmodifiableMap(map);
+        return map;
     }
 
 
@@ -299,4 +263,11 @@ public abstract class Fluc implements Closeable
         return doc.getField(fieldName) != null;
     }
 
+    @Override
+    public String toString()
+    {
+        return name() + " " + description.entrySet().stream()
+            .map(e -> e.getKey() + "=" + e.getValue())
+            .collect(java.util.stream.Collectors.joining(", ", "{", "}"));
+    }
 }

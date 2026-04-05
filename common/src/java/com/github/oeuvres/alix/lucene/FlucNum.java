@@ -82,6 +82,7 @@ public class FlucNum extends Fluc
         }
         this.reader = reader;
         this.numBytes = fi.getPointNumBytes();
+        description.put("pointNumBytes", numBytes);
         double globalMin = Double.MAX_VALUE;
         double globalMax = -Double.MAX_VALUE;
         for (LeafReaderContext ctx : reader.leaves()) {

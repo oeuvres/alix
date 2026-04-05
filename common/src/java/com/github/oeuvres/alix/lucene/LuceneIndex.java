@@ -28,13 +28,13 @@ import org.apache.lucene.store.FSDirectory;
  *
  * <h2>Configuration keys</h2>
  * <ul>
- *   <li><b>{@code name}</b> — corpus identifier. Defaults to config filename stem.</li>
- *   <li><b>{@code label}</b> — display label. Defaults to {@code name}.</li>
- *   <li><b>{@code indexroot}</b> (required) — parent directory; index opened
- *       at {@code indexroot/name/}.</li>
- *   <li><b>{@code content}</b> — default tokenized field. If absent, first
- *       positional field is elected.</li>
- *   <li><b>{@code docline}</b> — stored field for compact bibliographic line.</li>
+ * <li><b>{@code name}</b> — corpus identifier. Defaults to config filename stem.</li>
+ * <li><b>{@code label}</b> — display label. Defaults to {@code name}.</li>
+ * <li><b>{@code indexroot}</b> (required) — parent directory; index opened
+ * at {@code indexroot/name/}.</li>
+ * <li><b>{@code content}</b> — default tokenized field. If absent, first
+ * positional field is elected.</li>
+ * <li><b>{@code docline}</b> — stored field for compact bibliographic line.</li>
  * </ul>
  *
  * <h2>Field inventory</h2>
@@ -45,16 +45,18 @@ import org.apache.lucene.store.FSDirectory;
  * alphabetically by name.
  * </p>
  *
- * <p>Thread safety: {@link IndexSearcher} and field accessors
- * are safe for concurrent use.</p>
+ * <p>
+ * Thread safety: {@link IndexSearcher} and field accessors
+ * are safe for concurrent use.
+ * </p>
  */
 public final class LuceneIndex implements Closeable
 {
     private static final Logger LOG = Logger.getLogger(LuceneIndex.class.getName());
-
+    
     /** Hard-coded document identifier field name, written by the ingest side. */
     public static final String FIELD_ID = "id";
-
+    
     private final String name;
     private final String label;
     private final String content;
@@ -63,11 +65,11 @@ public final class LuceneIndex implements Closeable
     private final DirectoryReader reader;
     private final IndexSearcher searcher;
     private final Map<String, Fluc> flucs;
-
+    
     private LuceneIndex(
-        String name, String label, String content, String docline,
-        Path indexDir, DirectoryReader reader, IndexSearcher searcher,
-        Map<String, Fluc> flucs)
+            String name, String label, String content, String docline,
+            Path indexDir, DirectoryReader reader, IndexSearcher searcher,
+            Map<String, Fluc> flucs)
     {
         this.name = name;
         this.label = label;
@@ -78,11 +80,11 @@ public final class LuceneIndex implements Closeable
         this.searcher = searcher;
         this.flucs = flucs;
     }
-
+    
     // ================================================================
     // Factory
     // ================================================================
-
+    
     /**
      * Open a frozen index from an XML properties configuration file.
      *
@@ -105,18 +107,20 @@ public final class LuceneIndex implements Closeable
             throw new IllegalArgumentException("Config file not found: " + cfg);
         }
         final Path baseDir = cfg.getParent();
-
+        
         final Properties props = new Properties();
         try (InputStream in = Files.newInputStream(cfg)) {
             props.loadFromXML(in);
         }
-
+        
         String name = trimOrNull(props.getProperty("name"));
-        if (name == null) name = Dir.stem(cfg);
-
+        if (name == null)
+            name = Dir.stem(cfg);
+        
         String label = trimOrNull(props.getProperty("label"));
-        if (label == null) label = name;
-
+        if (label == null)
+            label = name;
+        
         final String rootStr = trimOrNull(props.getProperty("indexroot"));
         if (rootStr == null) {
             throw new IllegalArgumentException("Missing required key: indexroot — " + cfg);
@@ -125,52 +129,56 @@ public final class LuceneIndex implements Closeable
         if (!Files.isDirectory(indexDir)) {
             throw new IllegalArgumentException("Index directory not found: " + indexDir);
         }
-
+        
         final DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir));
         final IndexSearcher searcher = new IndexSearcher(reader);
         final Map<String, Fluc> fields = Fluc.inferFields(reader, indexDir);
-
+        
         String content = trimOrNull(props.getProperty("content"));
         if (content == null) {
             content = electContentField(fields);
-        }
-        else if (!fields.containsKey(content)) {
+        } else if (!fields.containsKey(content)) {
             reader.close();
             throw new IllegalArgumentException(
-                "Declared content field \"" + content
-                + "\" not found in index — " + indexDir);
+                    "Declared content field \"" + content
+                            + "\" not found in index — " + indexDir);
         }
-
+        
         final String docline = trimOrNull(props.getProperty("docline"));
-
+        
         return new LuceneIndex(name, label, content, docline,
-            indexDir, reader, searcher, fields);
+                indexDir, reader, searcher, fields);
     }
-
+    
     // ================================================================
     // Accessors (alphabetical)
     // ================================================================
-
+    
     @Override
     public void close() throws IOException
     {
         for (Map.Entry<String, Fluc> e : flucs.entrySet()) {
             try {
                 e.getValue().close();
-            }
-            catch (IOException ex) {
+            } catch (IOException ex) {
                 LOG.log(Level.WARNING, "Error closing field resources: " + e.getKey(), ex);
             }
         }
         reader.close();
     }
-
+    
     /** Default search field name, or {@code null}. */
-    public String content() { return content; }
-
+    public String content()
+    {
+        return content;
+    }
+    
     /** Stored field for compact bibliographic line, or {@code null}. */
-    public String docline() { return docline; }
-
+    public String docline()
+    {
+        return docline;
+    }
+    
     /**
      * Returns the {@link Fluc} for a named field, or {@code null}
      * if the field does not exist in this index.
@@ -182,15 +190,18 @@ public final class LuceneIndex implements Closeable
     {
         return flucs.get(fieldName);
     }
-
+    
     /**
      * Field inventory inferred from the index.
      * Unmodifiable, sorted alphabetically by field name.
      *
      * @return field name → {@link Fluc}
      */
-    public Map<String, Fluc> flucs() { return flucs; }
-
+    public Map<String, Fluc> flucs()
+    {
+        return flucs;
+    }
+    
     /**
      * Returns the {@link FlucText} for a named field, or {@code null}
      * if the field does not exist or is not a tokenized text field.
@@ -203,36 +214,50 @@ public final class LuceneIndex implements Closeable
         final Fluc f = flucs.get(fieldName);
         return (f instanceof FlucText t) ? t : null;
     }
-
+    
     /** Absolute path to the Lucene index directory. */
-    public Path indexDir() { return indexDir; }
-
+    public Path indexDir()
+    {
+        return indexDir;
+    }
+    
     /** Display label; never null. */
-    public String label() { return label; }
-
+    public String label()
+    {
+        return label;
+    }
+    
     /** Corpus identifier. */
-    public String name() { return name; }
-
+    public String name()
+    {
+        return name;
+    }
+    
     /** Total number of live documents. */
-    public int numDocs() { return reader.numDocs(); }
-
+    public int numDocs()
+    {
+        return reader.numDocs();
+    }
+    
     /** The underlying {@link DirectoryReader}. */
-    public DirectoryReader reader() { return reader; }
-
+    public DirectoryReader reader()
+    {
+        return reader;
+    }
+    
     /** {@link IndexSearcher}, thread-safe. */
-    public IndexSearcher searcher() { return searcher; }
-
+    public IndexSearcher searcher()
+    {
+        return searcher;
+    }
+    
     @Override
     public String toString()
     {
         return "LuceneIndex{" + name + ", docs=" + numDocs()
-            + ", content=" + content + "}";
+                + ", content=" + content + "}";
     }
-
-    // ================================================================
-    // Internal helpers
-    // ================================================================
-
+    
     /**
      * Elect the default content field: first alphabetical field with
      * positional indexing.
@@ -240,14 +265,16 @@ public final class LuceneIndex implements Closeable
     private static String electContentField(final Map<String, Fluc> fields)
     {
         for (Fluc f : fields.values()) {
-            if (f.hasPositions()) return f.name();
+            if (f instanceof FlucText)
+                return f.name();
         }
         return null;
     }
-
+    
     private static String trimOrNull(final String s)
     {
-        if (s == null) return null;
+        if (s == null)
+            return null;
         final String t = s.trim();
         return t.isEmpty() ? null : t;
     }
