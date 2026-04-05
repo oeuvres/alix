@@ -75,15 +75,13 @@ public final class FlucText extends Fluc
      * </p>
      *
      * @param fi       segment-level field metadata
-     * @param stored   whether the field has stored values
-     * @param docs     number of documents with at least one indexed term
-     * @param sideDir Lucene index directory
      * @param reader   frozen index reader
+     * @param sideDir Lucene index directory
      * @throws IOException 
      */
     public FlucText(
-        final IndexReader reader,
         final FieldInfo fi,
+        final IndexReader reader,
         final Path sideDir
     ) throws IOException {
         super(fi, probeStored(reader, fi.name), reader.getDocCount(fi.name));

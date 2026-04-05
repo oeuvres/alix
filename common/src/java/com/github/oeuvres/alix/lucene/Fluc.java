@@ -14,12 +14,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.DocIdSetIterator;
 
 /**
  * Field of a Lucene index, with type-specific cached resources.
@@ -247,7 +242,6 @@ public abstract class Fluc implements Closeable
         final Map<String, Fluc> map = new TreeMap<>();
         for (FieldInfo fi : infoMap.values()) {
             final boolean isIndexed = fi.getIndexOptions() != IndexOptions.NONE;
-            final boolean hasDocValues = fi.getDocValuesType() != DocValuesType.NONE;
             final boolean hasPoints = fi.getPointDimensionCount() > 0;
             final boolean hasPositions = fi.getIndexOptions().compareTo(
                 IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -255,10 +249,10 @@ public abstract class Fluc implements Closeable
 
             final Fluc fluc;
             if (hasPositions) {
-                fluc = new FlucText(reader, fi, sideDir);
+                fluc = new FlucText(fi, reader, sideDir);
             }
             else if (hasPoints) {
-                fluc = new FlucNum(reader, fi);
+                fluc = new FlucNum(fi, reader);
             }
             else if (fi.getDocValuesType() == DocValuesType.SORTED) {
                 fluc = new FlucCategory(fi, reader);

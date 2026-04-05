@@ -67,8 +67,9 @@ public class FlucNum extends Fluc
      *                                  numeric point field with numeric doc values
      */
     public FlucNum(
-            final IndexReader reader,
-            final FieldInfo fi) throws IOException
+        final FieldInfo fi,
+        final IndexReader reader
+    ) throws IOException
     {
         super(fi, probeStored(reader, fi.name), countDocs(reader, fi.name));
         if (fi.getPointDimensionCount() != 1) {
