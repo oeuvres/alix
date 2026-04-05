@@ -1,9 +1,12 @@
 package com.github.oeuvres.alix.util;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 /**
@@ -13,9 +16,9 @@ import java.util.Set;
  *
  * <p>A single {@code Detagger} instance is configured once — with the set of tag
  * names to preserve — and then reused across many calls. Internal scratch buffers
- * ({@code tagBuf}, {@code nameBuf}) are allocated at construction and reused, so
- * no per-call heap allocation occurs beyond what the {@link Appendable} itself may
- * perform.</p>
+ * ({@code tagBuf}, {@code nameBuf}, {@code openTags}) are allocated at construction
+ * and reused, so no per-call heap allocation occurs beyond what the
+ * {@link Appendable} itself may perform.</p>
  *
  * <h2>Text normalization</h2>
  * <ul>
@@ -25,14 +28,16 @@ import java.util.Set;
  *   <li>Broken excerpts are tolerated: if the slice begins inside a tag, the initial
  *       broken markup is discarded; if it ends inside a tag, the unterminated markup
  *       is discarded.</li>
+ *   <li>Preserved tags left open at the end of a truncated snippet are automatically
+ *       closed in reverse order, preventing markup leakage into surrounding HTML.</li>
  *   <li>Entities are not decoded; comments and processing instructions are treated as
  *       ordinary tags and stripped unless explicitly included by name.</li>
  * </ul>
  *
  * <h2>Typical usage</h2>
  * <pre>{@code
- * // configured once, e.g. to preserve italics and line breaks
- * private final Detagger detagger = new Detagger("i", "em", "lb");
+ * // configured once, e.g. to preserve italics
+ * private final Detagger detagger = new Detagger("i", "em");
  *
  * // called many times in a hot loop, writes directly to the response writer
  * detagger.detag(content, leftBoundary, spanStart, writer);
@@ -50,6 +55,12 @@ public class Detagger {
     private final StringBuilder tagBuf = new StringBuilder(64);
     /** Scratch buffer for the element local name being scanned. */
     private final StringBuilder nameBuf = new StringBuilder(32);
+    /**
+     * Stack of preserved tag names opened but not yet closed in the current
+     * {@link #detag} call. Drained after the main loop to emit auto-close tags.
+     * Cleared at the start of every call; never shared across threads.
+     */
+    private final Deque<String> openTags = new ArrayDeque<>();
 
     /**
      * Creates a detagger that strips all element markup.
@@ -88,6 +99,11 @@ public class Detagger {
      * the broken leading fragment is silently discarded and the text that follows is kept.
      * If the slice ends inside an unclosed tag, that tag is silently discarded.</p>
      *
+     * <p>Any preserved element tags that were opened within the slice but were not
+     * closed before {@code end} are automatically closed in reverse order. This
+     * prevents inline markup (e.g. {@code <i>}) from leaking out of the snippet
+     * and corrupting the surrounding page.</p>
+     *
      * <p>The method is not thread-safe: a single {@code Detagger} instance must not
      * be shared across threads without external synchronization.</p>
      *
@@ -119,6 +135,7 @@ public class Detagger {
         boolean recordName = false;
         tagBuf.setLength(0);
         nameBuf.setLength(0);
+        openTags.clear();
 
         // Track the last character written to dest for whitespace collapsing.
         // We cannot read back from a generic Appendable, so we maintain it ourselves.
@@ -184,6 +201,7 @@ public class Detagger {
                                 : nameBuf.toString();
                         if (include.contains(local)) {
                             dest.append(tagBuf);
+                            trackOpenClose(local);
                         }
                     }
 
@@ -191,6 +209,43 @@ public class Detagger {
                     nameBuf.setLength(0);
                 }
             }
+        }
+
+        // Auto-close any preserved tags left open by a truncated snippet.
+        // Iterate the stack top-to-bottom (LIFO) to emit well-nested closers.
+        while (!openTags.isEmpty()) {
+            dest.append("</").append(openTags.pop()).append('>');
+        }
+    }
+
+    /**
+     * Updates the {@link #openTags} stack when a preserved tag is emitted.
+     *
+     * <ul>
+     *   <li>Self-closing ({@code />}) — no stack change.</li>
+     *   <li>Closing ({@code tagBuf} second char is {@code /}) — removes the most
+     *       recently opened matching entry from the stack.</li>
+     *   <li>Opening — pushes the local name onto the stack.</li>
+     * </ul>
+     *
+     * @param local the local name that was just emitted
+     */
+    private void trackOpenClose(final String local)
+    {
+        final int len = tagBuf.length();
+        // Self-closing: ends with "/>"
+        if (len >= 2 && tagBuf.charAt(len - 2) == '/') return;
+
+        // Closing tag: second character is '/'  →  </name>
+        if (len >= 2 && tagBuf.charAt(1) == '/') {
+            // Remove the topmost matching open entry (handles mismatched nesting gracefully)
+            final Iterator<String> it = openTags.iterator();
+            while (it.hasNext()) {
+                if (it.next().equals(local)) { it.remove(); break; }
+            }
+        } else {
+            // Opening tag
+            openTags.push(local);
         }
     }
 }
