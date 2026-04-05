@@ -3,7 +3,6 @@ package com.github.oeuvres.alix.lucene;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -61,6 +60,8 @@ public class Fluc implements Closeable
     private final boolean stored;
     /** Number of documents with at least one value in this field. */
     private final int docs;
+    /** Keep fieldInfo */
+    protected final FieldInfo info;
     /** Private final  */
     public final Map<String, Object> description = new LinkedHashMap<>(10);
 
@@ -74,16 +75,17 @@ public class Fluc implements Closeable
      * construction path.
      * </p>
      *
-     * @param fi      segment-level field metadata
+     * @param info      segment-level field metadata
      * @param stored  whether the field has stored values
      * @param docs    number of documents with at least one value
      */
     public Fluc(
-        final FieldInfo fi,
+        final FieldInfo info,
         final boolean stored,
         final int docs
     ) {
-        this.name = fi.name;
+        this.info = info;
+        this.name = info.name;
         final String className = getClass().getSimpleName(); // e.g. "FlucText"
         final String type = className.startsWith("Fluc")
             ? className.substring(4).toLowerCase()
@@ -156,57 +158,59 @@ public class Fluc implements Closeable
         final Path sideDir
     ) throws IOException
     {
-        // --- pass 1: collect FieldInfo across all segments ---
         // We need raw FieldInfo per field for the constructor.
         // Use first-seen FieldInfo per name (consistent with original code).
+        
+        // do not use getMergedFieldInfos
+        // codec attributes (FieldInfo.getAttribute) are unavailable
         final Map<String, FieldInfo> infoMap = new TreeMap<>();
         for (LeafReaderContext leaf : reader.leaves()) {
-            for (FieldInfo fieldIndo : leaf.reader().getFieldInfos()) {
-                infoMap.putIfAbsent(fieldIndo.name, fieldIndo);
+            for (FieldInfo fieldInfo : leaf.reader().getFieldInfos()) {
+                infoMap.putIfAbsent(fieldInfo.name, fieldInfo);
             }
         }
 
         // --- pass 2: probe stored, count docs, select subclass ---
         final Map<String, Fluc> map = new TreeMap<>();
-        for (FieldInfo fi : infoMap.values()) {
-            final boolean isIndexed   = fi.getIndexOptions() != IndexOptions.NONE;
-            final boolean hasPositions = fi.getIndexOptions().compareTo(
+        for (FieldInfo info : infoMap.values()) {
+            final boolean isIndexed   = info.getIndexOptions() != IndexOptions.NONE;
+            final boolean hasPositions = info.getIndexOptions().compareTo(
                 IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-            final int pointDims       = fi.getPointDimensionCount();
-            final DocValuesType dvType = fi.getDocValuesType();
+            final int pointDims       = info.getPointDimensionCount();
+            final DocValuesType dvType = info.getDocValuesType();
             final boolean hasDocValues = dvType != DocValuesType.NONE;
-            final boolean hasVectors   = fi.getVectorDimension() > 0;
+            final boolean hasVectors   = info.getVectorDimension() > 0;
 
             final Fluc fluc;
             // Alix primary text field: tokenized, with positions
             if (hasPositions) {
-                fluc = new FlucText(fi, reader, sideDir);
+                fluc = new FlucText(info, reader, sideDir);
             }
             // Alix numeric field: single-dimension point + numeric doc values
             else if (pointDims == 1 && dvType == DocValuesType.NUMERIC) {
-                fluc = new FlucNum(fi, reader);
+                fluc = new FlucNum(info, reader);
             }
             // Alix category field: single string value per doc, requires inverted index for dictionary
             else if (isIndexed && dvType == DocValuesType.SORTED) {
-                fluc = new FlucCategory(fi, reader);
+                fluc = new FlucCategory(info, reader);
             }
             // Alix facet field: multiple string values per doc, requires inverted index for dictionary
             else if (isIndexed && dvType == DocValuesType.SORTED_SET) {
-                fluc = new FlucFacet(fi, reader);
+                fluc = new FlucFacet(info, reader);
             }
             // KNN dense vector field (Lucene 9+): no Alix helper yet
             else if (hasVectors) {
-                fluc = new Fluc(fi, false, -1);
-                fluc.description.put("VectorDimension", fi.getVectorDimension());
+                fluc = new Fluc(info, false, -1);
+                fluc.description.put("VectorDimension", info.getVectorDimension());
             }
             // Multi-dimensional point: geo/spatial, no Alix helper
             else if (pointDims > 1) {
-                fluc = new Fluc(fi, false, -1);
+                fluc = new Fluc(info, false, -1);
                 fluc.description.put("dimensions", pointDims);
             }
             // Single-dimension point without numeric doc values: exotic, no Alix helper
             else if (pointDims == 1) {
-                fluc = new Fluc(fi, false, -1);
+                fluc = new Fluc(info, false, -1);
                 fluc.description.put("dimensions", pointDims);
             }
             // SORTED/SORTED_SET doc values without inverted index: no dictionary buildable
@@ -214,21 +218,21 @@ public class Fluc implements Closeable
             // SORTED_NUMERIC doc values: multi-valued numeric, no Alix helper
             // NUMERIC doc values without points: legacy or external indexer
             else if (hasDocValues) {
-                fluc = new Fluc(fi, false, -1);
+                fluc = new Fluc(info, false, -1);
                 fluc.description.put("docValueType", dvType.toString().toLowerCase().replace('_', '+'));
             }
             // Inverted index without positions and without recognised doc values:
             // StringField-style keyword field from an external indexer
             else if (isIndexed) {
-                fluc = new Fluc(fi, false, reader.getDocCount(fi.name));
+                fluc = new Fluc(info, false, reader.getDocCount(info.name));
                 fluc.description.put("indexed", true);
             }
             // Stored only
             else {
-                fluc = new FlucStored(fi);
+                fluc = new FlucStored(info);
             }
 
-            map.put(fi.name, fluc);
+            map.put(info.name, fluc);
         }
 
         return map;
