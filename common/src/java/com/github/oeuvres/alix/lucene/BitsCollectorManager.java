@@ -5,7 +5,6 @@ import java.util.Collection;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
@@ -13,108 +12,107 @@ import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Not yet tested
+ * Collects matching document ids into a single {@link FixedBitSet} across all
+ * segments, suitable for filtering a subsequent docId loop over the whole index.
+ *
+ * <p>
+ * Implements {@link CollectorManager} for compatibility with Lucene 10's
+ * parallel search API. Each segment gets its own {@link BitsCollector}
+ * (thread-safe isolation); {@link #reduce} OR-merges all per-segment bitsets
+ * into one global result.
+ * </p>
+ *
+ * <h2>Typical usage</h2>
+ * <pre>
+ * FixedBitSet bits = searcher.search(query, new BitsCollectorManager(searcher));
+ * for (int docId = bits.nextSetBit(0);
+ *      docId != DocIdSetIterator.NO_MORE_DOCS;
+ *      docId = bits.nextSetBit(docId + 1)) {
+ *     // process docId
+ * }
+ * </pre>
+ *
+ * <h2>When to use vs {@link BitsFromQuery}</h2>
+ * <ul>
+ *   <li>Use {@code BitsCollectorManager} when you need a <b>global</b> bitset
+ *       over the whole index — e.g. to filter a docId loop or pass to
+ *       {@link FlucYear#countByValue(org.apache.lucene.util.BitSet)}.</li>
+ *   <li>Use {@link BitsFromQuery} when you process the index
+ *       <b>per-segment</b> — e.g. inside a custom {@link org.apache.lucene.search.Weight}
+ *       or a span walker that already iterates leaf contexts.</li>
+ * </ul>
  */
-public class BitsCollectorManager implements CollectorManager<BitsCollector, FixedBitSet>
+public class BitsCollectorManager implements CollectorManager<BitsCollectorManager.BitsCollector, FixedBitSet>
 {
-    final int maxDoc;
+    /** One greater than the largest possible document id in this index. */
+    private final int maxDoc;
 
     /**
-     * Build a manager from a lucene searcher to get maximum docId with {@link IndexReader#maxDoc()}.
-     * 
-     * @param searcher Lucene searcher to get results from.
+     * Derives {@code maxDoc} from the searcher's reader.
+     *
+     * @param searcher active index searcher
      */
-    public BitsCollectorManager(final IndexSearcher searcher) {
-        maxDoc = searcher.getIndexReader().maxDoc();
+    public BitsCollectorManager(final IndexSearcher searcher)
+    {
+        this.maxDoc = searcher.getIndexReader().maxDoc();
     }
 
     /**
-     * Build a manager from the maximum docId of the lucene reader {@link IndexReader#maxDoc()}.
-     * If maxDoc is too small for the index, errors may be thrown if docId &gt; maxDoc are found.
-     * 
-     * @param maxDoc Biggest docId + 1 for this lucene index.
+     * Explicit {@code maxDoc} constructor, useful when the searcher is not
+     * available at construction time.
+     *
+     * @param maxDoc {@link IndexReader#maxDoc()} of the target index
      */
-    public BitsCollectorManager(final int maxDoc) {
+    public BitsCollectorManager(final int maxDoc)
+    {
         this.maxDoc = maxDoc;
     }
 
     @Override
-    public BitsCollector newCollector() throws IOException
+    public BitsCollector newCollector()
     {
         return new BitsCollector(maxDoc);
     }
 
-    @Override
-    public FixedBitSet reduce(Collection<BitsCollector> collectors) throws IOException
-    {
-        FixedBitSet bits = null;
-        for (BitsCollector c : collectors) {
-            if (bits == null) {
-                bits = c.bits();
-                continue;
-            }
-            bits.or(c.bits());
-        }
-        return bits;
-    }
-    
     /**
-     * Collect found documents as a set of docids in a bitSet. Caching should be
-     * ensure by user.
-     * 
-     * <pre>
-     * CollectorBits colBits = new CollectorBits(searcher);
-     * searcher.search(myQuery, colBits);
-     * final BitSet bits = colBits.bits();
-     * for (int docId = bits.nextSetBit(0), max = bits.length(); docId &lt; max; docId = bits.nextSetBit(docId + 1)) {
-     *     out.print(", " + docId);
-     * }
-     * </pre>
+     * OR-merges all per-segment bitsets into one global result.
+     * Returns an empty (all-zeros) bitset if no documents matched.
      */
-    static public class BitsCollector extends SimpleCollector implements Collector
+    @Override
+    public FixedBitSet reduce(final Collection<BitsCollector> collectors) throws IOException
     {
-        /** The bitset (optimized for sparse or all bits) */
-        private FixedBitSet bits;
-        /** Number of hits */
+        final FixedBitSet result = new FixedBitSet(maxDoc);
+        for (BitsCollector c : collectors) {
+            result.or(c.bits);
+        }
+        return result;
+    }
+
+    /**
+     * Per-segment collector that records matching document ids into a
+     * {@link FixedBitSet}. One instance is created per segment by
+     * {@link BitsCollectorManager#newCollector()}; instances are never shared
+     * across threads.
+     */
+    public static class BitsCollector extends SimpleCollector
+    {
+        /** Bit-per-docId map for the whole index (not just this segment). */
+        private final FixedBitSet bits;
+        /** Running count of documents collected by this instance. */
         private int hits = 0;
-        /** Current context reader */
-        LeafReaderContext context;
-        /** Current docBase for the context */
-        int docBase;
+        /** Global docId base for the current leaf segment. */
+        private int docBase;
 
-        /**
-         * Build Collector with the destination searcher to have maximum docId {@link IndexReader#maxDoc()}.
-         * 
-         * @param searcher A lucene searcher.
-         */
-        public BitsCollector(IndexSearcher searcher) {
-            bits = new FixedBitSet(searcher.getIndexReader().maxDoc());
-        }
-
-        /**
-         * Build collector from the maximum docId of the lucene reader {@link IndexReader#maxDoc()}.
-         * If maxDoc is too small for the index, errors may be thrown if docId &gt; maxDoc are found.
-         * 
-         * @param maxDoc Biggest docId + 1 for this lucene index.
-         */
-        public BitsCollector(int maxDoc) {
-            bits = new FixedBitSet(maxDoc);
-        }
-
-        /**
-         * Get the document filter.
-         * 
-         * @return A bitSet of docId.
-         */
-        public FixedBitSet bits()
+        private BitsCollector(final int maxDoc)
         {
-            return bits;
+            this.bits = new FixedBitSet(maxDoc);
         }
 
         /**
-         * Get current number of hits (doc found).
-         * 
-         * @return Count of documents found.
+         * Total documents collected by this segment collector.
+         * For the total across all segments, sum after {@link BitsCollectorManager#reduce}.
+         *
+         * @return hit count for this segment
          */
         public int hits()
         {
@@ -122,14 +120,13 @@ public class BitsCollectorManager implements CollectorManager<BitsCollector, Fix
         }
 
         @Override
-        protected void doSetNextReader(LeafReaderContext context) throws IOException
+        protected void doSetNextReader(final LeafReaderContext context) throws IOException
         {
-            this.context = context;
             this.docBase = context.docBase;
         }
 
         @Override
-        public void collect(int docLeaf) throws IOException
+        public void collect(final int docLeaf)
         {
             bits.set(docBase + docLeaf);
             hits++;
@@ -140,6 +137,5 @@ public class BitsCollectorManager implements CollectorManager<BitsCollector, Fix
         {
             return ScoreMode.COMPLETE_NO_SCORES;
         }
-
     }
 }

@@ -3,7 +3,6 @@ package com.github.oeuvres.alix.web;
 import java.io.IOException;
 import java.io.Writer;
 
-import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -11,14 +10,17 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.lucene.BitsCollectorManager;
 import com.github.oeuvres.alix.lucene.Fluc;
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.FlucYear;
 import com.github.oeuvres.alix.lucene.HtmlResults;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
+import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,8 +54,35 @@ public class OpResults extends Op
             <link rel="stylesheet"
                 href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.css">
             <style>
-                #slider-year { margin: 1.5em 0.5em; }
-                #slider-labels { display: flex; justify-content: space-between; font-size: 0.9em; }
+              body {
+                font-family: sans-serif;
+              }
+              a {
+                 text-decoration none;
+                 color:inherit;
+              }
+              #slider {
+                display:flex;
+                justify-content: space-between;
+              }
+              #slider input {
+                width: 6ex;
+                text-align: center;
+              }
+              #slider-cell {
+                width: 100%;
+                padding-bottom: 1em;
+              }
+              .noUi-pips-horizontal {
+                height: auto;
+                padding-top: 0;
+              }
+              .noUi-value-sub {
+                color: #000;
+              }
+              #slider-year {
+                margin: 0 0.5em;
+              }
             </style>
           </head>
           <body>
@@ -62,11 +91,17 @@ public class OpResults extends Op
         FlucYear years = index.flucYear(YEAR);
         if (years != null) {
             writer.write("""
-            <div id="slider-year"></div>
-              <div id="slider-labels">
-                <span id="label-start"></span>
-                <span id="label-end"></span>
+            <div id="slider">
+              <div>
+                <input name="start" id="label-start" autocomplete="hidden" for="search-form"/>
               </div>
+              <div id="slider-cell">
+                <div id="slider-year"></div>
+              </div>
+              <div>
+                <input name="end" id="label-end" autocomplete="hidden" for="search-form"/>
+              </div>
+            </div>
                 
               <script
                 src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js">
@@ -92,15 +127,26 @@ public class OpResults extends Op
                   format: {
                     to:   v => Math.round(v),
                     from: v => parseInt(v)
-                  }
+                  },
+                  // Scale / pips
+                  pips: {
+                    mode: "steps",
+                    density: 3,
+                    filter: (value, type) => {
+                      // Keep only decade ticks (small) and labels on decades.
+                      if (value %% 10 === 0) return 2;
+                      if (value %% 5 === 0) return 0;
+                      return -1;
+                    },
+                  },
                 });
                 
                 const labelStart = document.getElementById('label-start');
                 const labelEnd   = document.getElementById('label-end');
                 
                 slider.noUiSlider.on('update', function (values) {
-                  labelStart.textContent = values[0];
-                  labelEnd.textContent   = values[1];
+                  labelStart.value = values[0];
+                  labelEnd.value   = values[1];
                 });
                 
                 // Submit on release — fires the search
@@ -112,17 +158,14 @@ public class OpResults extends Op
                 });
               }());
               </script>
-        """.formatted(years.min(), years.max()));
+        """.formatted((int)years.min(), (int)years.max()));
         }
         
         writer.write("""
-            <form>
+            <form id="search-form">
               <textarea name="%s">%s</textarea>
-              <label>
-                 <input type="checkbox" name="%s" value="%s"/>
-                 Sort by date
-              </label>
-              <input type="submit" />
+              <input type="submit" name="sorted" value="Sort by date"/>
+              <input type="submit" value="Relevant"/>
             </form>
             <section class="hits">
         """.formatted(
@@ -200,20 +243,7 @@ public class OpResults extends Op
         
         FixedBitSet bits = null;
         if (filterQuery != null) {
-            bits = new FixedBitSet(index.reader().maxDoc());
-            index.searcher().search(filterQuery, new SimpleCollector() {
-                private int docBase;
-                @Override
-                public void collect(int docLeaf) {
-                    bits.set(docBase + docLeaf);
-                }
-                @Override
-                protected void doSetNextReader(LeafReaderContext ctx) {
-                    this.docBase = ctx.docBase;
-                }
-                @Override
-                public ScoreMode scoreMode() { return ScoreMode.COMPLETE_NO_SCORES; }
-            });
+            bits = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
         }
         // no query, list docs
         if (q == null) {
@@ -224,6 +254,7 @@ public class OpResults extends Op
             int docId = from;
             for (; docId < fieldStats.maxDoc(); docId++) {
                 if (fieldStats.docWidth(docId) == 0) continue;
+                if (bits != null && !bits.get(docId)) continue;
                 if (docCount >= rows) {
                     more = true;
                     break;
@@ -250,7 +281,7 @@ public class OpResults extends Op
         SpanQuery spanQuery = new SpanQueryParser(content, slop).parse(q);
         
 
-        
+        int nextDoc = 0;
         // sorted?
         final boolean sorted = pars.getBoolean(SORTED, false, SORTED);
         // relevance
@@ -266,21 +297,50 @@ public class OpResults extends Op
                 query = spanQuery;
             }
             ScoreDoc[] hits = index.searcher().search(query, 10).scoreDocs;
-            // TODO loop and use the spanVisitor to test the best spans
+            
+            final FieldStats fieldStats = fluc.fieldStats();
+            final double idfExp = pars.getDouble(IDF_EXP, IDF_EXP_DEFAULT);
+            fieldStats.buildWeights(index.reader(), new TermScorer.BM25(idfExp));
+
+            final SpanVisitor visitor = new SpanVisitor(
+                index.searcher(),
+                spanQuery, 
+                results,
+                fieldStats, 
+                fluc.termRail(), 
+                spans,
+                ctx
+            );
+
+            writer
+                .append("<p class=\"statshits\">")
+                .append(String.valueOf(hits.length))
+                .append(" documents ")
+                .append(String.valueOf(System.currentTimeMillis() - t0))
+                .append("ms</p>\n");
+            writer.flush();
+
+            for (ScoreDoc sd : hits) {
+                results.startDoc(sd.doc);
+                visitor.visit(sd.doc);
+                results.endDoc(visitor.spanTotal());
+            }
+        }
+        else {
+            SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, filterQuery, results);
+            writer
+                .append("<p class=\"statshits\">")
+                .append(String.valueOf(walker.hits()))
+                .append(" documents ")
+                .append(String.valueOf(System.currentTimeMillis() - t0))
+                .append("ms")
+                .append("</p>\n")
+            ;
+            writer.flush();
+            nextDoc = walker.walk(from);
         }
         
         
-        SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, filterQuery, results);
-        writer
-            .append("<p class=\"statshits\">")
-            .append(String.valueOf(walker.hits()))
-            .append(" documents ")
-            .append(String.valueOf(System.currentTimeMillis() - t0))
-            .append("ms")
-            .append("</p>\n")
-        ;
-        writer.flush();
-        int nextDoc = walker.walk(from);
         if (nextDoc > 0 ) {
             writer
                 .append("<p class=\"next-results\"><a data-from=\"")

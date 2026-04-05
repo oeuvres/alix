@@ -161,11 +161,9 @@ public final class SpanVisitor {
      * before this method, and must call {@link ResultsListener#endDoc} after.</p>
      *
      * @param docId global Lucene doc id
-     * @param score BM25 score assigned by the search phase, passed through for
-     *              any listener use (e.g. relevance display)
      * @throws IOException if index access or listener output fails
      */
-    public void visit(final int docId, final float score) throws IOException {
+    public void visit(final int docId) throws IOException {
         spanTotal = 0;
         top.clear();
 
