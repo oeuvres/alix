@@ -26,4 +26,5 @@ public class Pars
     public static final int    SPANS_DEFAULT = 10;
     public static final int[]  SPANS_RANGE   = {-1, 100};
     public static final String START         = "start";
+    public static final String YEAR          = "year";
 }

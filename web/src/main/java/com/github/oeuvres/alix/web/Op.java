@@ -1,15 +1,20 @@
 package com.github.oeuvres.alix.web;
 
-import static com.github.oeuvres.alix.web.Pars.Q;
+import static com.github.oeuvres.alix.web.Pars.END;
+import static com.github.oeuvres.alix.web.Pars.START;
+import static com.github.oeuvres.alix.web.Pars.YEAR;
 
 import java.io.IOException;
-import java.io.Writer;
+
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.search.Query;
 
 import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.github.oeuvres.alix.lucene.FlucYear;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
@@ -124,5 +129,39 @@ public abstract class Op
         resp.setContentType("text/html; charset=UTF-8");
         resp.setHeader("Content-Encoding", "identity");
         resp.setHeader("X-Content-Type-Options", "nosniff");
+    }
+    
+    /**
+     * Build a year query for all ops from normalized params across app
+     * @return
+     * @throws IOException 
+     */
+    Query yearQuery(LuceneIndex index,  HttpPars pars) throws IOException {
+        int start = pars.getInt(START, Integer.MIN_VALUE);
+        int end = pars.getInt(END, Integer.MAX_VALUE);
+        if (start == Integer.MIN_VALUE && end == Integer.MAX_VALUE) return null;
+        // swap if inverted — be lenient with the UI
+        if (start != Integer.MIN_VALUE && end != Integer.MAX_VALUE && start > end) {
+            final int tmp = end; end = start; start = tmp;
+        }
+        // a bit hard coded name for now
+        FlucYear years = index.flucYear(YEAR);
+        if (years == null) {
+            // no need to inform html consumer
+            // problem may come from a generic interface
+            return null;
+        }
+        final int min = (int) years.min();
+        final int max = (int) years.max();
+        // resolve open bounds to corpus bounds
+        if (start == Integer.MIN_VALUE) start = min;
+        if (end   == Integer.MAX_VALUE) end   = max;
+        // clamp to corpus bounds
+        start = Math.max(start, min);
+        end   = Math.min(end,   max);
+        // after clamping, range may have collapsed out of corpus
+        if (start > end) return null;
+        if (start == end) return IntPoint.newExactQuery(YEAR, start);
+        return IntPoint.newRangeQuery(YEAR, start, end);
     }
 }
