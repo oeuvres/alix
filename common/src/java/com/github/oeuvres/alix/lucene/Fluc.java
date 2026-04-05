@@ -193,30 +193,6 @@ public abstract class Fluc implements Closeable
     /** Bytes per point dimension, or 0 if no point data. */
     public int pointNumBytes() { return pointNumBytes; }
 
-    /**
-     * Human-readable point type label.
-     *
-     * <p>
-     * {@code "int"} for 4 bytes/dim (IntPoint or FloatPoint),
-     * {@code "long"} for 8 bytes/dim (LongPoint or DoublePoint),
-     * {@code "point"} otherwise. Multi-dimensional points append
-     * the count: {@code "int2"}, {@code "long3"}.
-     * Returns {@code null} if the field has no points.
-     * </p>
-     *
-     * @return label, or {@code null}
-     */
-    public String pointLabel()
-    {
-        if (pointDimensionCount <= 0) return null;
-        final String base = switch (pointNumBytes) {
-            case 4  -> "int";
-            case 8  -> "long";
-            default -> "point";
-        };
-        if (pointDimensionCount == 1) return base;
-        return base + pointDimensionCount;
-    }
 
     /**
      * True if the field has stored values.
@@ -269,140 +245,38 @@ public abstract class Fluc implements Closeable
 
         // --- pass 2: probe stored, count docs, select subclass ---
         final Map<String, Fluc> map = new TreeMap<>();
-        for (FieldInfo fieldIndo : infoMap.values()) {
-            final boolean isIndexed = fieldIndo.getIndexOptions() != IndexOptions.NONE;
-            final boolean hasDocValues = fieldIndo.getDocValuesType() != DocValuesType.NONE;
-            final boolean hasPoints = fieldIndo.getPointDimensionCount() > 0;
-            final boolean hasPositions = fieldIndo.getIndexOptions().compareTo(
+        for (FieldInfo fi : infoMap.values()) {
+            final boolean isIndexed = fi.getIndexOptions() != IndexOptions.NONE;
+            final boolean hasDocValues = fi.getDocValuesType() != DocValuesType.NONE;
+            final boolean hasPoints = fi.getPointDimensionCount() > 0;
+            final boolean hasPositions = fi.getIndexOptions().compareTo(
                 IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
 
-            boolean stored;
-            int docs;
-
-            if (isIndexed) {
-                docs = reader.getDocCount(fieldIndo.name);
-                stored = probeStoredViaPostings(reader, fieldIndo.name);
-            }
-            else if (hasDocValues) {
-                docs = 0;
-                stored = probeStoredViaDocValues(reader, fieldIndo.name, fieldIndo.getDocValuesType());
-            }
-            else if (hasPoints) {
-                docs = pointDocs(reader, fieldIndo.name);
-                stored = probeStoredViaPoints(reader, fieldIndo.name);
-            }
-            else {
-                docs = 0;
-                stored = true;
-            }
 
             final Fluc fluc;
             if (hasPositions) {
-                fluc = new FlucText(
-                    reader,
-                    fieldIndo, 
-                    stored, 
-                    docs, 
-                    sideDir
-                );
+                fluc = new FlucText(reader, fi, sideDir);
             }
-            // future: else if (hasPoints) fluc = new FlucPoint(fi, stored, docs, indexDir);
-            // future: else if (hasDocValues) fluc = new FlucFacet(fi, stored, docs, indexDir, reader);
+            else if (hasPoints) {
+                fluc = new FlucNum(reader, fi);
+            }
+            else if (fi.getDocValuesType() == DocValuesType.SORTED) {
+                fluc = new FlucCategory(fi, reader);
+            }
+            else if (fi.getDocValuesType() == DocValuesType.SORTED_SET) {
+                fluc = new FlucFacet(fi, reader);
+            }
             else {
-                fluc = new FlucStored(fieldIndo, stored, docs);
+                fluc = new FlucStored(fi);
             }
 
-            map.put(fieldIndo.name, fluc);
+            map.put(fi.name, fluc);
         }
 
         return Collections.unmodifiableMap(map);
     }
 
-    // ================================================================
-    // Stored-field probing (package-private, used by inferFields)
-    // ================================================================
 
-    /**
-     * Find the first document with a posting for this field,
-     * then check if it also has a stored value.
-     */
-    static boolean probeStoredViaPostings(
-        final IndexReader reader, final String fieldName
-    ) throws IOException
-    {
-        for (LeafReaderContext ctx : reader.leaves()) {
-            final LeafReader leaf = ctx.reader();
-            final Terms terms = leaf.terms(fieldName);
-            if (terms == null) continue;
-            final TermsEnum te = terms.iterator();
-            if (te.next() == null) continue;
-            final PostingsEnum pe = te.postings(null, PostingsEnum.NONE);
-            final int localDoc = pe.nextDoc();
-            if (localDoc == PostingsEnum.NO_MORE_DOCS) continue;
-            return isFieldStored(reader, ctx.docBase + localDoc, fieldName);
-        }
-        return false;
-    }
-
-    /**
-     * Find the first document with a doc-values entry for this field,
-     * then check if it also has a stored value.
-     */
-    static boolean probeStoredViaDocValues(
-        final IndexReader reader, final String fieldName, final DocValuesType dvType
-    ) throws IOException
-    {
-        for (LeafReaderContext ctx : reader.leaves()) {
-            final LeafReader leaf = ctx.reader();
-            final int localDoc = firstDocWithDocValues(leaf, fieldName, dvType);
-            if (localDoc < 0) continue;
-            return isFieldStored(reader, ctx.docBase + localDoc, fieldName);
-        }
-        return false;
-    }
-
-    /**
-     * Return the first docId that has a doc-values entry in this leaf,
-     * or -1 if none.
-     */
-    static int firstDocWithDocValues(
-        final LeafReader leaf, final String field, final DocValuesType dvType
-    ) throws IOException
-    {
-        DocIdSetIterator iter = switch (dvType) {
-            case NUMERIC        -> leaf.getNumericDocValues(field);
-            case SORTED         -> leaf.getSortedDocValues(field);
-            case SORTED_NUMERIC -> leaf.getSortedNumericDocValues(field);
-            case SORTED_SET     -> leaf.getSortedSetDocValues(field);
-            case BINARY         -> leaf.getBinaryDocValues(field);
-            default             -> null;
-        };
-        if (iter == null) return -1;
-        final int doc = iter.nextDoc();
-        return (doc == DocIdSetIterator.NO_MORE_DOCS) ? -1 : doc;
-    }
-
-    /**
-     * Find the first document with point values for this field,
-     * then check if it also has a stored value.
-     */
-    static boolean probeStoredViaPoints(
-        final IndexReader reader, final String fieldName
-    ) throws IOException
-    {
-        for (LeafReaderContext ctx : reader.leaves()) {
-            final LeafReader leaf = ctx.reader();
-            if (leaf.getPointValues(fieldName) == null) continue;
-            final int maxDoc = leaf.maxDoc();
-            final int probeLimit = Math.min(maxDoc, 256);
-            for (int i = 0; i < probeLimit; i++) {
-                if (isFieldStored(reader, ctx.docBase + i, fieldName)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
     /**
      * Sum point-values doc counts across all leaves.

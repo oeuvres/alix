@@ -9,10 +9,8 @@ import org.apache.lucene.index.FieldInfo;
 final class FlucStored extends Fluc
 {
     FlucStored(
-        final FieldInfo fi,
-        final boolean stored,
-        final int docs
+        final FieldInfo fi
     ) {
-        super(fi, stored, docs);
+        super(fi, true, -1);
     }
 }

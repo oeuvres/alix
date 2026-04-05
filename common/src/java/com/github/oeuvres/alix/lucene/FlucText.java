@@ -5,6 +5,11 @@ import java.nio.file.Path;
 
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
@@ -74,15 +79,14 @@ public final class FlucText extends Fluc
      * @param docs     number of documents with at least one indexed term
      * @param sideDir Lucene index directory
      * @param reader   frozen index reader
+     * @throws IOException 
      */
     public FlucText(
         final IndexReader reader,
         final FieldInfo fi,
-        final boolean stored,
-        final int docs,
         final Path sideDir
-    ) {
-        super(fi, stored, docs);
+    ) throws IOException {
+        super(fi, probeStored(reader, fi.name), reader.getDocCount(fi.name));
         this.reader = reader;
         this.sideDir = sideDir;
     }
@@ -140,12 +144,6 @@ public final class FlucText extends Fluc
         );
     }
 
-
-
-    // ================================================================
-    // Closeable
-    // ================================================================
-
     /**
      * Releases memory-mapped resources (lexicon and rail).
      *
@@ -161,5 +159,27 @@ public final class FlucText extends Fluc
         railHolder.close();
         lexiconHolder.close();
         fieldStatsHolder.close();
+    }
+    
+    /**
+     * Find the first document with a posting for this field,
+     * then check if it also has a stored value.
+     */
+    static boolean probeStored(
+        final IndexReader reader, final String fieldName
+    ) throws IOException
+    {
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final LeafReader leaf = ctx.reader();
+            final Terms terms = leaf.terms(fieldName);
+            if (terms == null) continue;
+            final TermsEnum te = terms.iterator();
+            if (te.next() == null) continue;
+            final PostingsEnum pe = te.postings(null, PostingsEnum.NONE);
+            final int localDoc = pe.nextDoc();
+            if (localDoc == PostingsEnum.NO_MORE_DOCS) continue;
+            return isFieldStored(reader, ctx.docBase + localDoc, fieldName);
+        }
+        return false;
     }
 }
