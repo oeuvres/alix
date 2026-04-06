@@ -83,18 +83,6 @@ public class HttpPars
     }
 
     /**
-     * Construct a read-only parameter helper (no cookie persistence).
-     * Cookie-writing calls become silent no-ops. Suitable for JSON endpoints
-     * where server-side cookie management is unwanted.
-     * 
-     * @param request the current HTTP request.
-     */
-    public HttpPars(final HttpServletRequest request)
-    {
-        this(request, null);
-    }
-
-    /**
      * Get a cookie value by name. Lazily caches all request cookies
      * on first call.
      * 
@@ -373,51 +361,64 @@ public class HttpPars
      * with optional cookie persistence.
      * Priority: request parameter → request attribute → cookie → fallback.
      * The resolved value is clamped to [{@code range[0]}, {@code range[1]}].
-     * An empty (non-null) parameter resets the cookie.
-     * 
+     * An empty (non-null) parameter resets the cookie and returns the fallback.
+     * An out-of-range parameter is clamped; the cookie is not updated.
+     *
      * @param name     parameter name.
      * @param range    {@code [min, max]} bounds (inclusive), or null for unclamped.
-     * @param fallback default value.
-     * @param cookie   cookie name for persistence, or null.
+     * @param fallback default value when no source yields a result.
+     * @param cookie   cookie name for persistence, or null to disable.
      * @return resolved int, clamped to range.
      */
     public int getInt(final String name, final int[] range, final int fallback, final String cookie)
     {
-        int min = Integer.MIN_VALUE;
-        int max = Integer.MAX_VALUE;
+        final int min, max;
         if (range != null && range.length >= 2) {
             min = Math.min(range[0], range[1]);
             max = Math.max(range[0], range[1]);
+        } else {
+            min = Integer.MIN_VALUE;
+            max = Integer.MAX_VALUE;
         }
-        final String parString = request.getParameter(name);
-        Integer value = parseInt(parString);
 
-        if (hasValue(cookie)) {
-            if (parString != null && !hasValue(parString)) {
-                cookie(cookie, null);
-            } else if (value != null && value >= min && value <= max) {
-                cookie(cookie, "" + value);
-            } else if (value == null) {
-                value = parseInt(cookie(cookie));
-                if (value != null && (value < min || value > max)) {
-                    value = null;
-                    cookie(cookie, null);
-                }
+        final String parString = request.getParameter(name);
+
+        // Explicit reset: empty (non-null) parameter clears the cookie.
+        if (parString != null && !hasValue(parString)) {
+            cookie(cookie, null);
+            return fallback;
+        }
+
+        // Parseable parameter: in-range → persist; out-of-range → clamp silently.
+        final Integer fromPar = parseInt(parString);
+        if (fromPar != null) {
+            if (fromPar >= min && fromPar <= max && cookie != null) {
+                cookie(cookie, String.valueOf(fromPar));
+            }
+            return fromPar < min ? min : fromPar > max ? max : fromPar;
+        }
+
+        // No parameter (parString null): try request attribute before cookie.
+        if (parString == null) {
+            final Object att = request.getAttribute(name);
+            if (att instanceof Integer) {
+                final int fromAtt = (Integer) att;
+                return fromAtt < min ? min : fromAtt > max ? max : fromAtt;
             }
         }
-        if (value == null) {
-            Object att = request.getAttribute(name);
-            if (att instanceof Integer) value = (Integer) att;
+        // Unparseable parameter (parString non-null but parseInt failed): skip to cookie.
+
+        // Cookie fallback.
+        final Integer fromCookie = parseInt(cookie(cookie));
+        if (fromCookie != null) {
+            if (fromCookie < min || fromCookie > max) {
+                cookie(cookie, null);          // stale cookie out of range, evict it
+                return fallback;
+            }
+            return fromCookie;
         }
-        if (value == null) {
-            return fallback;
-        } else if (value < min) {
-            return min;
-        } else if (value > max) {
-            return max;
-        } else {
-            return value;
-        }
+
+        return fallback;
     }
 
     /**

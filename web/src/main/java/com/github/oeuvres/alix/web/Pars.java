@@ -22,7 +22,7 @@ public class Pars
     public static final String Q               = "q";
     public static final String SLOP            = "slop";
     public static final int    SLOP_DEFAULT    = 20;
-    public static final int[]  SLOP_RANGE      = {0, 100};
+    public static final int[]  SLOP_RANGE      = {0, 200};
     public static final String SORTED          = "sorted";
     public static final String SPANS           = "spans";
     public static final int    SPANS_DEFAULT   = 10;

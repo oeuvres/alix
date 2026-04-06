@@ -34,12 +34,12 @@ public class OpResults extends Op
 {
     
     @Override
-    protected void page(LuceneIndex index, HttpServletRequest req, HttpServletResponse resp)
+    protected void page(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
         throws IOException
     {
-        final HttpPars pars = new HttpPars(req);
-        resp.setContentType("text/html; charset=UTF-8");
-        Writer writer = resp.getWriter();
+        final HttpPars pars = new HttpPars(request, response);
+        response.setContentType("text/html; charset=UTF-8");
+        Writer writer = response.getWriter();
         writer.write("""
         <!DOCTYPE html>
         <html>
@@ -168,7 +168,7 @@ public class OpResults extends Op
                 SORTED,
                 pars.getBoolean(SORTED, false, SORTED)));
         
-        html(index, req, resp); // writes the fragment directly into the same response
+        html(index, request, response); // writes the fragment directly into the same response
         writer.write("""
             </section>
           </body>
@@ -178,23 +178,23 @@ public class OpResults extends Op
     }
     
     @Override
-    protected void html(LuceneIndex index, HttpServletRequest req, HttpServletResponse resp)
+    protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
         throws IOException
     {
         final long t0 = System.currentTimeMillis();
         
-        final HttpPars pars = new HttpPars(req);
+        final HttpPars pars = new HttpPars(request, response);
         // Build a filter query from years and tags
         Query yearQuery = yearQuery(index, pars);
         Query filterQuery = yearQuery;
         
-        Writer writer = resp.getWriter();
+        Writer writer = response.getWriter();
         final String content = pars.getString(F, index.content());
         final FlucText fluc = index.flucText(content);
         
         // field not found
         if (fluc == null) {
-            resp.setStatus(404);
+            response.setStatus(404);
             writer.append("<p class=\"error\">Field ");
             Fluc ofluc = index.fluc(content);
             if (ofluc == null)
@@ -275,7 +275,6 @@ public class OpResults extends Op
             }
             return;
         }
-        
         
         int nextDoc = 0;
         // sorted?

@@ -78,7 +78,7 @@ public class OpDoc extends Op
         throws IOException
     {
         Writer writer = response.getWriter();
-        final HttpPars pars = new HttpPars(request);
+        final HttpPars pars = new HttpPars(request, response);
         final int docId = pars.getInt(DOCID, -1);
         if (docId == -1) {
             response.setStatus(404);

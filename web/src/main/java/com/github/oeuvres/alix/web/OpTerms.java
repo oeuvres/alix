@@ -61,11 +61,11 @@ public final class OpTerms extends Op
     @Override
     protected void json(
         final LuceneIndex lucene,
-        final HttpServletRequest req,
-        final HttpServletResponse resp
+        final HttpServletRequest request,
+        final HttpServletResponse response
     ) throws IOException
     {
-        final HttpPars pars = new HttpPars(req);
+        final HttpPars pars = new HttpPars(request, response);
 
         final String field = pars.getString("field", lucene.content());
         TopTerms topTerms;
@@ -77,7 +77,7 @@ public final class OpTerms extends Op
 
         if (q != null) {
             // Co-occurrence mode — placeholder
-            AlixServlet.jsonError(resp, 501,
+            AlixServlet.jsonError(response, 501,
                 "terms: co-occurrence mode not yet implemented");
             return;
         }
@@ -85,7 +85,7 @@ public final class OpTerms extends Op
             // Theme terms mode
             final FlucText fluc = lucene.flucText(field);
             if (fluc == null) {
-                AlixServlet.jsonError(resp, 404,
+                AlixServlet.jsonError(response, 404,
                     "terms: field '" + field + "' not found or not a text field");
                 return;
             }
@@ -98,7 +98,7 @@ public final class OpTerms extends Op
         final long qTime = (System.nanoTime() - t0) / 1_000_000;
 
         // ---- serialize ----
-        try (JsonWriter jw = jsonWriter(resp)) {
+        try (JsonWriter jw = jsonWriter(response)) {
             jw.beginObject();
 
             // meta
