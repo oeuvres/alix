@@ -53,7 +53,6 @@ public class AlixServlet extends HttpServlet
     private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>(){}.getType();
 
-
     /** Loaded indices, swapped atomically on reload. */
     private volatile Map<String, LuceneIndex> indices = Map.of();
 
@@ -62,10 +61,6 @@ public class AlixServlet extends HttpServlet
 
     /** Resolved config directory path. */
     private Path configDir;
-
-    // ================================================================
-    // Lifecycle
-    // ================================================================
 
     @Override
     public void init(final ServletConfig config) throws ServletException
@@ -99,18 +94,10 @@ public class AlixServlet extends HttpServlet
      */
     private void registerOps()
     {
-        register(new OpResults());
-        // register(new OpCooc());
-        // register(new OpFreqs());
-        register(new OpTerms());
-        // register(new OpDoc());
+        ops.put("results", new OpResults());
+        ops.put("terms", new OpTerms());
+        ops.put("doc", new OpDoc());
     }
-
-    private void register(final Op op) { ops.put(op.name(), op); }
-
-    // ================================================================
-    // Request handling
-    // ================================================================
 
     @Override
     protected void doGet(
@@ -143,18 +130,21 @@ public class AlixServlet extends HttpServlet
         final String opName = opFormat[0];
         final String format = opFormat[1];
 
-        final Op op = ops.get(opName);
-        if (op == null) {
-            jsonError(resp, 404, "Unknown operation: " + opName);
+        // known operation
+        Op op = ops.get(opName);
+        if (op != null) {
+            op.dispatch(index, format, req, resp);
             return;
         }
+        // fallback to doc content
+        op = ops.get("doc");
+        if (op != null && op.offer(index, opName, format, req, resp)) {
+            return;
+        }
+        
 
-        op.dispatch(index, format, req, resp);
+        jsonError(resp, 404, "Unknown operation: " + opName);
     }
-
-    // ================================================================
-    // Built-in endpoints
-    // ================================================================
 
     /**
      * {@code GET /} — list available indices.
@@ -240,10 +230,6 @@ public class AlixServlet extends HttpServlet
         return new String[] { segment, null };
     }
 
-    // ================================================================
-    // Index loading
-    // ================================================================
-
     private static Map<String, LuceneIndex> loadIndices(final Path configDir)
     {
         final Map<String, LuceneIndex> map = new LinkedHashMap<>();
@@ -294,10 +280,6 @@ public class AlixServlet extends HttpServlet
         }
         return Path.of(webInf);
     }
-
-    // ================================================================
-    // Error handling
-    // ================================================================
 
     /**
      * Send an error response as JSON.

@@ -59,9 +59,6 @@ public final class OpTerms extends Op
     
 
     @Override
-    public String name() { return "terms"; }
-
-    @Override
     protected void json(
         final LuceneIndex lucene,
         final HttpServletRequest req,

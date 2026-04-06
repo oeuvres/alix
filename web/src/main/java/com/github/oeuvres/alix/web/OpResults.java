@@ -16,7 +16,6 @@ import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.FlucYear;
 import com.github.oeuvres.alix.lucene.HtmlResults;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
@@ -33,16 +32,11 @@ import static com.github.oeuvres.alix.web.Pars.*;
  */
 public class OpResults extends Op
 {
-
-    @Override
-    public String name()
-    {
-        return "results";
-    }
     
     @Override
     protected void page(LuceneIndex index, HttpServletRequest req, HttpServletResponse resp)
-            throws IOException {
+        throws IOException
+    {
         final HttpPars pars = new HttpPars(req);
         resp.setContentType("text/html; charset=UTF-8");
         Writer writer = resp.getWriter();
@@ -57,8 +51,8 @@ public class OpResults extends Op
               body {
                 font-family: sans-serif;
               }
-              a {
-                 text-decoration none;
+              .hit a {
+                 text-decoration: none;
                  color:inherit;
               }
               #slider {
@@ -158,7 +152,7 @@ public class OpResults extends Op
                 });
               }());
               </script>
-        """.formatted((int)years.min(), (int)years.max()));
+        """.formatted((int) years.min(), (int) years.max()));
         }
         
         writer.write("""
@@ -169,11 +163,10 @@ public class OpResults extends Op
             </form>
             <section class="hits">
         """.formatted(
-            Q,
-            pars.getString(Q, ""),
-            SORTED,
-            pars.getBoolean(SORTED, false, SORTED)
-        ));
+                Q,
+                pars.getString(Q, ""),
+                SORTED,
+                pars.getBoolean(SORTED, false, SORTED)));
         
         html(index, req, resp); // writes the fragment directly into the same response
         writer.write("""
@@ -186,7 +179,8 @@ public class OpResults extends Op
     
     @Override
     protected void html(LuceneIndex index, HttpServletRequest req, HttpServletResponse resp)
-            throws IOException {
+        throws IOException
+    {
         final long t0 = System.currentTimeMillis();
         
         final HttpPars pars = new HttpPars(req);
@@ -203,19 +197,22 @@ public class OpResults extends Op
             resp.setStatus(404);
             writer.append("<p class=\"error\">Field ");
             Fluc ofluc = index.fluc(content);
-            if (ofluc == null) writer.append(content + " doesn’t exist.");
-            else writer.append(ofluc.toString());
+            if (ofluc == null)
+                writer.append(content + " doesn’t exist.");
+            else
+                writer.append(ofluc.toString());
             writer.append("/n<br>Choose among:");
             for (Fluc f : index.flucs().values()) {
-                if (!(f instanceof FlucText)) continue;
+                if (!(f instanceof FlucText))
+                    continue;
                 writer
-                    .append("<br/><a href=\"?")
-                    .append(pars.queryString(CTX, DOCLINE, DOCS, END, Q, SLOP, START))
-                    .append("&amp;f=")
-                    .append(f.name())
-                    .append("\">")
-                    .append(f.name())
-                    .append("</a>\n");
+                        .append("<br/><a href=\"?")
+                        .append(pars.queryString(CTX, DOCLINE, DOCS, END, Q, SLOP, START))
+                        .append("&amp;f=")
+                        .append(f.name())
+                        .append("\">")
+                        .append(f.name())
+                        .append("</a>\n");
             }
             writer.append("</p>");
             return;
@@ -228,33 +225,35 @@ public class OpResults extends Op
         final int spans = pars.getInt(SPANS, SPANS_RANGE, SPANS_DEFAULT, SPANS);
         
         HtmlResults results = new HtmlResults(
-            writer, 
-            index.reader().storedFields(),
-            content)
-            .doclineFieldName(docline)
-            .docLimit(docs)
-            .spanLimit(spans)
-            .ctx(ctx)
-            .hrefSearch("?" + pars.queryString(CTX, F, Q, SLOP))
-        ;
+                writer,
+                index.reader().storedFields(),
+                content)
+                .doclineFieldName(docline)
+                .docLimit(docs)
+                .spanLimit(spans)
+                .ctx(ctx)
+                .hrefSearch("?" + pars.queryString(CTX, F, Q, SLOP));
         final int from = pars.getInt(FROM, 0);
-
-        final String q = pars.getString(Q, null);
+        
+        // final String q = pars.getString(Q, null);
         
         FixedBitSet bits = null;
         if (filterQuery != null) {
             bits = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
         }
+        final SpanQuery spanQuery = spanQuery(index, pars);
         // no query, list docs
-        if (q == null) {
+        if (spanQuery == null) {
             final int rows = pars.getInt(ROWS, ROWS_RANGE, ROWS_DEFAULT, ROWS);
             FieldStats fieldStats = fluc.fieldStats();
             int docCount = 0;
             boolean more = false;
             int docId = from;
             for (; docId < fieldStats.maxDoc(); docId++) {
-                if (fieldStats.docWidth(docId) == 0) continue;
-                if (bits != null && !bits.get(docId)) continue;
+                if (fieldStats.docWidth(docId) == 0)
+                    continue;
+                if (bits != null && !bits.get(docId))
+                    continue;
                 if (docCount >= rows) {
                     more = true;
                     break;
@@ -265,22 +264,19 @@ public class OpResults extends Op
             }
             if (more) {
                 writer
-                    .append("<p class=\"next-results\"><a data-from=\"")
-                    .append(String.valueOf(docId))
-                    .append("\" name=\"next-results\" href=\"")
-                    .append("?")
-                    .append(pars.queryString(DOCLINE, END, F, ROWS, START))
-                    .append("&amp;from=" + docId)
-                    .append("\">…</a></p>");
+                        .append("<p class=\"next-results\"><a data-from=\"")
+                        .append(String.valueOf(docId))
+                        .append("\" name=\"next-results\" href=\"")
+                        .append("?")
+                        .append(pars.queryString(DOCLINE, END, F, ROWS, START))
+                        .append("&amp;from=" + docId)
+                        .append("\">…</a></p>\n");
                 ;
             }
             return;
         }
-
-        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
-        SpanQuery spanQuery = new SpanQueryParser(content, slop).parse(q);
         
-
+        
         int nextDoc = 0;
         // sorted?
         final boolean sorted = pars.getBoolean(SORTED, false, SORTED);
@@ -289,11 +285,10 @@ public class OpResults extends Op
             Query query;
             if (filterQuery != null) {
                 query = new BooleanQuery.Builder()
-                    .add(filterQuery, BooleanClause.Occur.FILTER)
-                    .add(spanQuery, BooleanClause.Occur.MUST)
-                    .build();
-            }
-            else {
+                        .add(filterQuery, BooleanClause.Occur.FILTER)
+                        .add(spanQuery, BooleanClause.Occur.MUST)
+                        .build();
+            } else {
                 query = spanQuery;
             }
             ScoreDoc[] hits = index.searcher().search(query, 10).scoreDocs;
@@ -301,62 +296,57 @@ public class OpResults extends Op
             final FieldStats fieldStats = fluc.fieldStats();
             final double idfExp = pars.getDouble(IDF_EXP, IDF_EXP_DEFAULT);
             fieldStats.buildWeights(index.reader(), new TermScorer.BM25(idfExp));
-
+            
             final SpanVisitor visitor = new SpanVisitor(
-                index.searcher(),
-                spanQuery, 
-                results,
-                fieldStats, 
-                fluc.termRail(), 
-                spans,
-                ctx
-            );
-
+                    index.searcher(),
+                    spanQuery,
+                    results,
+                    fieldStats,
+                    fluc.termRail(),
+                    spans,
+                    ctx);
+            
             writer
-                .append("<p class=\"statshits\">")
-                .append(String.valueOf(hits.length))
-                .append(" documents ")
-                .append(String.valueOf(System.currentTimeMillis() - t0))
-                .append("ms</p>\n");
+                    .append("<p class=\"statshits\">")
+                    .append(String.valueOf(hits.length))
+                    .append(" documents ")
+                    .append(String.valueOf(System.currentTimeMillis() - t0))
+                    .append("ms</p>\n");
             writer.flush();
-
+            
             for (ScoreDoc sd : hits) {
                 results.startDoc(sd.doc);
                 visitor.visit(sd.doc);
                 results.endDoc(visitor.spanTotal());
             }
-        }
-        else {
+        } else {
             SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, filterQuery, results);
             writer
-                .append("<p class=\"statshits\">")
-                .append(String.valueOf(walker.hits()))
-                .append(" documents ")
-                .append(String.valueOf(System.currentTimeMillis() - t0))
-                .append("ms")
-                .append("</p>\n")
-            ;
+                    .append("<p class=\"statshits\">")
+                    .append(String.valueOf(walker.hits()))
+                    .append(" documents ")
+                    .append(String.valueOf(System.currentTimeMillis() - t0))
+                    .append("ms")
+                    .append("</p>\n");
             writer.flush();
             nextDoc = walker.walk(from);
         }
         
-        
-        if (nextDoc > 0 ) {
+        if (nextDoc > 0) {
             writer
-                .append("<p class=\"next-results\"><a data-from=\"")
-                .append(String.valueOf(nextDoc))
-                .append("\" name=\"next-results\" href=\"")
-                .append("?")
-                .append(pars.queryString(CTX, DOCLINE, DOCS, END, F, Q, SLOP, START))
-                .append("&amp;from=" + nextDoc)
-                .append("\">…</a></p>");
+                    .append("<p class=\"next-results\"><a data-from=\"")
+                    .append(String.valueOf(nextDoc))
+                    .append("\" name=\"next-results\" href=\"")
+                    .append("?")
+                    .append(pars.queryString(Q, SLOP, END, START, CTX, DOCS, F, DOCLINE))
+                    .append("&amp;from=" + nextDoc)
+                    .append("\">…</a></p>");
             ;
         }
         writer
-            .append("<p class=\"statshits\">")
-            .append(String.valueOf(System.currentTimeMillis() - t0))
-            .append("ms")
-            .append("</p>\n")
-        ;
+                .append("<p class=\"statshits\">")
+                .append(String.valueOf(System.currentTimeMillis() - t0))
+                .append("ms")
+                .append("</p>\n");
     }
 }

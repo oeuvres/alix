@@ -1,12 +1,19 @@
 package com.github.oeuvres.alix.web;
 
 import static com.github.oeuvres.alix.web.Pars.END;
+import static com.github.oeuvres.alix.web.Pars.F;
+import static com.github.oeuvres.alix.web.Pars.Q;
+import static com.github.oeuvres.alix.web.Pars.SLOP;
+import static com.github.oeuvres.alix.web.Pars.SLOP_DEFAULT;
+import static com.github.oeuvres.alix.web.Pars.SLOP_RANGE;
 import static com.github.oeuvres.alix.web.Pars.START;
 import static com.github.oeuvres.alix.web.Pars.YEAR;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
 
 import com.google.gson.stream.JsonWriter;
@@ -16,6 +23,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.FlucYear;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 /**
@@ -43,8 +51,18 @@ import com.github.oeuvres.alix.web.util.HttpPars;
  */
 public abstract class Op
 {
-    /** Operation name, used for URL routing (e.g. "kwic", "cooc"). */
-    public abstract String name();
+    protected static final Logger LOG = Logger.getLogger(Op.class.getName());
+
+    
+    /**
+     * Try to claim an unmatched path segment as a resource.
+     * Returns {@code false} if this op cannot handle the segment;
+     * the router retains 404 responsibility.
+     */
+    public boolean offer(LuceneIndex index, String segment, String format,
+        HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        return true;
+    }
 
     /**
      * Dispatch to the appropriate format method.
@@ -71,7 +89,7 @@ public abstract class Op
             case "jsonl" -> jsonl(index, req, resp);
             case "csv"   -> csv(index, req, resp);
             default      -> AlixServlet.jsonError(resp, 406,
-                name() + ": unsupported format: " + format);
+                getClass().getSimpleName() + ": unsupported format: " + format);
         }
     }
     
@@ -81,35 +99,35 @@ public abstract class Op
     protected void page(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, name() + ": default html not implemented");
+        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": default html not implemented");
     }
 
     /** Structured JSON. */
     protected void json(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, name() + ": json not implemented");
+        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": json not implemented");
     }
 
     /** HTML fragment for streaming insertion. */
     protected void html(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, name() + ": html fragment not implemented");
+        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": html fragment not implemented");
     }
 
     /** JSON Lines — one object per line. */
     protected void jsonl(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, name() + ": jsonl not implemented");
+        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": jsonl not implemented");
     }
 
     /** CSV tabular export. */
     protected void csv(LuceneIndex index,
         HttpServletRequest req, HttpServletResponse resp) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, name() + ": csv not implemented");
+        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": csv not implemented");
     }
 
     // ---- response utilities ----
@@ -164,4 +182,21 @@ public abstract class Op
         if (start == end) return IntPoint.newExactQuery(YEAR, start);
         return IntPoint.newRangeQuery(YEAR, start, end);
     }
+    
+    /**
+     * Build a SpanQuery from parameters
+     * @param index
+     * @param pars
+     * @return
+     * @throws IOException
+     */
+    SpanQuery spanQuery(LuceneIndex index,  HttpPars pars) throws IOException {
+        final String q = pars.getString(Q, null);
+        if (q == null) return null;
+        final String content = pars.getString(F, index.content());
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+        SpanQuery spanQuery = new SpanQueryParser(content, slop).parse(q);
+        return spanQuery;
+    }
+
 }

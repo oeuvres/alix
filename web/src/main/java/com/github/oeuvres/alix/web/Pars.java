@@ -12,6 +12,7 @@ public class Pars
     public static final String DOCS            = "docs";
     public static final int    DOCS_DEFAULT    = 100;
     public static final int[]  DOCS_RANGE      = {1, 500};
+    public static final String DOCID           = "docid";
     public static final String DOCLINE         = "docline";
     public static final String END             = "end";
     public static final String F               = "f";

@@ -406,7 +406,8 @@ public class HttpPars
             }
         }
         if (value == null) {
-            value = getIntegerAtt(name);
+            Object att = request.getAttribute(name);
+            if (att instanceof Integer) value = (Integer) att;
         }
         if (value == null) {
             return fallback;
@@ -417,19 +418,6 @@ public class HttpPars
         } else {
             return value;
         }
-    }
-
-    /**
-     * Look up a request attribute as an Integer fallback.
-     * 
-     * @param name attribute name.
-     * @return the attribute value as Integer, or null if absent or wrong type.
-     */
-    private Integer getIntegerAtt(final String name)
-    {
-        Object att = request.getAttribute(name);
-        if (att instanceof Integer) return (Integer) att;
-        return null;
     }
 
     /**
