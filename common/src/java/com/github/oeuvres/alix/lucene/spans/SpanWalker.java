@@ -170,18 +170,19 @@ public final class SpanWalker {
 
                 final int docId = ctx.docBase + localDocId;
                 listener.startDoc(docId);
-                int spanTotal = 0;
+                int spanCount = 0;
                 while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
                     collector.reset();
                     spans.collect(collector);
                     collector.sort();
-                    spanTotal++;
+                    collector.ord(spanCount);
+                    spanCount++;
                     if (!listener.span(collector)) {
-                        while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) spanTotal++;
+                        while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) spanCount++;
                         break;
                     }
                 }
-                listener.endDoc(spanTotal);
+                listener.endDoc(spanCount);
             }
         }
         return nextCursor;

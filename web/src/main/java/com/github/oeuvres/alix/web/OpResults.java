@@ -2,6 +2,7 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.BooleanClause;
@@ -158,15 +159,18 @@ public class OpResults extends Op
         writer.write("""
             <form id="search-form">
               <textarea name="%s">%s</textarea>
-              <input type="submit" name="sorted" value="Sort by date"/>
-              <input type="submit" value="Relevant"/>
+              <button type="submit" name="%s" value="%s">by date</button>
+              <button type="submit" name="%s" value="%s">by score</button>
             </form>
             <section class="hits">
         """.formatted(
                 Q,
                 pars.getString(Q, ""),
-                SORTED,
-                pars.getBoolean(SORTED, false, SORTED)));
+                SORT,
+                DATE,
+                SORT,
+                SCORE
+        ));
         
         html(index, request, response); // writes the fragment directly into the same response
         writer.write("""
@@ -278,9 +282,20 @@ public class OpResults extends Op
         
         int nextDoc = 0;
         // sorted?
-        final boolean sorted = pars.getBoolean(SORTED, false, SORTED);
+        String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
         // relevance
-        if (!sorted) {
+        if (DATE.equals(sort)) {
+            SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, filterQuery, results);
+            writer
+                    .append("<p class=\"statshits\">")
+                    .append(String.valueOf(walker.hits()))
+                    .append(" documents ")
+                    .append(String.valueOf(System.currentTimeMillis() - t0))
+                    .append("ms")
+                    .append("</p>\n");
+            writer.flush();
+            nextDoc = walker.walk(from);
+        } else {
             Query query;
             if (filterQuery != null) {
                 query = new BooleanQuery.Builder()
@@ -318,17 +333,6 @@ public class OpResults extends Op
                 visitor.visit(sd.doc);
                 results.endDoc(visitor.spanTotal());
             }
-        } else {
-            SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, filterQuery, results);
-            writer
-                    .append("<p class=\"statshits\">")
-                    .append(String.valueOf(walker.hits()))
-                    .append(" documents ")
-                    .append(String.valueOf(System.currentTimeMillis() - t0))
-                    .append("ms")
-                    .append("</p>\n");
-            writer.flush();
-            nextDoc = walker.walk(from);
         }
         
         if (nextDoc > 0) {

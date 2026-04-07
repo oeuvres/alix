@@ -13,6 +13,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.spans.DocSpanHighlighter;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,10 +64,27 @@ public class OpDoc extends Op
           <head>
             <title>Alix, document</title>
           </head>
+          <style>
+            ::highlight(span-hl) { background-color: #ffe08280; }
+            mark.hit.pivot { font-weight: bold; }
+            mark.hit.term  { background: #c8e6c9; }
+          </style>
           <body>
         """);
         html(index, req, resp);
         writer.write("""
+          <script>
+            const spanHl = new Highlight();
+            document.querySelectorAll('wbr.hl-start').forEach(start => {
+                const end = document.querySelector(`wbr.hl-end[data-hl="${start.dataset.hl}"]`);
+                if (!end) return;
+                const range = new Range();
+                range.setStartAfter(start);
+                range.setEndBefore(end);
+                spanHl.add(range);
+            });
+            CSS.highlights.set('span-hl', spanHl);
+          </script>
           </body>
         </html>
         """);
@@ -89,12 +107,27 @@ public class OpDoc extends Op
                 .append(String.valueOf(docId))
                 .append(" not found</p>")
             ;
-
+            return;
         }
         final StoredFields storedFields = index.reader().storedFields();
         Document doc = storedFields.document(docId);
         String content = doc.get(index.content());
+        if (content == null || content.isBlank()) {
+            response.setStatus(404);
+            writer
+                .append("<p class=\"error\">")
+                .append(DOCID)
+                .append("=")
+                .append(String.valueOf(docId))
+                .append(" empty</p>")
+            ;
+            return;
+        }
         SpanQuery spanQuery = spanQuery(index, pars);
+        // highlight
+        if (spanQuery != null) {
+            content = new DocSpanHighlighter(index.searcher(), spanQuery).highlight(docId, content);
+        }
         writer.write(content);
     }
 }

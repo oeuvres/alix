@@ -214,7 +214,7 @@ public class HtmlResults extends ResultsListener
             .append(hrefExt)
             .append(hrefSearch)
             .append("#span")
-            .append(String.valueOf(spanCount))
+            .append(String.valueOf(collector.ord() + 1))
             .append("\">");
  
         // Left context: locate boundary, then detag forward directly into writer.
