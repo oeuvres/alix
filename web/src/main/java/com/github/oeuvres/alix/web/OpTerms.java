@@ -2,6 +2,8 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 
+import org.apache.lucene.queries.spans.SpanQuery;
+
 import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +16,9 @@ import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.web.util.HttpPars;
+
+import static com.github.oeuvres.alix.web.Pars.*;
+
 
 /**
  * {@code /{index}/terms} — ranked term lists.
@@ -48,34 +53,35 @@ import com.github.oeuvres.alix.web.util.HttpPars;
  */
 public final class OpTerms extends Op
 {
-    /** Clamping range for the {@code top} parameter. */
-    private static final int[] TOP_RANGE = { 1, 500 };
 
-    /** Default number of returned terms. */
-    private static final int DEFAULT_TOP = 50;
-
-    /** Default BM25 IDF exponent. */
-    private static final double DEFAULT_IDF_EXP = 1d;
     
 
     @Override
     protected void json(
-        final LuceneIndex lucene,
+        final LuceneIndex index,
         final HttpServletRequest request,
         final HttpServletResponse response
     ) throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
 
-        final String field = pars.getString("field", lucene.content());
         TopTerms topTerms;
-        final int topK = pars.getInt("top", TOP_RANGE, DEFAULT_TOP);
-        final String q = pars.getString("q", null);
-        final double idfExp = pars.getDouble("idfexp", DEFAULT_IDF_EXP);
+        final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
+        final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
 
         final long t0 = System.nanoTime();
-
+        
+        
+        String fieldName = pars.getString(F, index.content());
+        final FlucText fluc = index.flucText(fieldName);
+        if (fluc == null) {
+            AlixServlet.jsonError(response, 404,
+                "terms: field '" + fieldName + "' not found or not a text field");
+            return;
+        }
+        String q = pars.getString(Q, null);
         if (q != null) {
+            SpanQuery spanQuery = spanQuery(index, pars);
             // Co-occurrence mode — placeholder
             AlixServlet.jsonError(response, 501,
                 "terms: co-occurrence mode not yet implemented");
@@ -83,15 +89,9 @@ public final class OpTerms extends Op
         }
         else {
             // Theme terms mode
-            final FlucText fluc = lucene.flucText(field);
-            if (fluc == null) {
-                AlixServlet.jsonError(response, 404,
-                    "terms: field '" + field + "' not found or not a text field");
-                return;
-            }
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             FieldStats fieldStats = fluc.fieldStats();
-            fieldStats.buildWeights(lucene.reader(), scorer);
+            fieldStats.buildWeights(index.reader(), scorer);
             topTerms = TopTerms.theme(fieldStats, fluc.termLexicon(), topK);
         }
 
@@ -107,7 +107,7 @@ public final class OpTerms extends Op
             jw.name("time").value(qTime);
             jw.name("params"); // start params
             jw.beginObject();
-            jw.name("field").value(field);
+            jw.name("field").value(fieldName);
             jw.name("top").value(topK);
             jw.name("idfexp").value(idfExp);
             if (q != null) {

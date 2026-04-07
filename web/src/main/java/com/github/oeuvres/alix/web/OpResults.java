@@ -308,7 +308,7 @@ public class OpResults extends Op
             ScoreDoc[] hits = index.searcher().search(query, 10).scoreDocs;
             
             final FieldStats fieldStats = fluc.fieldStats();
-            final double idfExp = pars.getDouble(IDF_EXP, IDF_EXP_DEFAULT);
+            final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             fieldStats.buildWeights(index.reader(), new TermScorer.BM25(idfExp));
             
             final SpanVisitor visitor = new SpanVisitor(

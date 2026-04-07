@@ -4,17 +4,10 @@
   © 2019 Frederic.Glorieux@fictif.org & Opteos
 -->
 <xsl:transform version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-  xmlns="http://www.w3.org/1999/xhtml" 
-  xmlns:alix="https://github.com/oeuvres/alix/ns" 
-  xmlns:epub="http://www.idpf.org/2007/ops"
-  xmlns:tei="http://www.tei-c.org/ns/1.0"
-  exclude-result-prefixes="tei"
-  
-  xmlns:exslt="http://exslt.org/common"
-  xmlns:saxon="http://saxon.sf.net/"
-  extension-element-prefixes="exslt saxon"
-  
-  >
+  xmlns="http://www.w3.org/1999/xhtml" xmlns:alix="https://github.com/oeuvres/alix/ns"
+  xmlns:epub="http://www.idpf.org/2007/ops" xmlns:tei="http://www.tei-c.org/ns/1.0"
+  exclude-result-prefixes="tei" xmlns:exslt="http://exslt.org/common"
+  xmlns:saxon="http://saxon.sf.net/" extension-element-prefixes="exslt saxon">
   <xsl:import href="tei_html/tei_flow_html.xsl"/>
   <xsl:import href="tei_html/tei_notes_html.xsl"/>
   <xsl:import href="tei_html/tei_toc_html.xsl"/>
@@ -40,7 +33,7 @@
   <xsl:variable name="split" select=".//tei:div[key('split', generate-id())]"/>
   <!--  clean url -->
   <xsl:variable name="_ext"/>
-  
+
   <!-- Root authors, maybe replicated at chapter level -->
   <xsl:variable name="author-fields">
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt">
@@ -54,26 +47,31 @@
         <alix:field name="author" type="facet" value="{normalize-space($value)}"/>
       </xsl:for-each>
     </xsl:for-each>
-  </xsl:variable> 
-  
+  </xsl:variable>
+
   <!-- Get metas as a global var to insert fields in all chapters -->
   <xsl:variable name="info">
     <!-- rights, send only if it seems that there are restriction for publication -->
     <xsl:choose>
-      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt[not(tei:availability)]"/>
-      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability[not(@status)]"/>
-      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability[@status='free']"/>
-      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:licence[contains(@target, 'creativecommons.org')]"/>
+      <xsl:when
+        test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt[not(tei:availability)]"/>
+      <xsl:when
+        test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability[not(@status)]"/>
+      <xsl:when
+        test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability[@status='free']"/>
+      <xsl:when
+        test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:licence[contains(@target, 'creativecommons.org')]"/>
       <xsl:otherwise>
         <alix:field name="rights" type="store">
-          <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/*">
+          <xsl:for-each
+            select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/*">
             <xsl:apply-templates select="."/>
           </xsl:for-each>
         </alix:field>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:variable>
-  
+
   <!-- tags to add at text level (not the book cover) for better stats -->
   <xsl:variable name="tags">
     <xsl:for-each select="/*/tei:teiHeader/tei:profileDesc/tei:textClass/tei:keywords//tei:term">
@@ -91,15 +89,18 @@
       </xsl:choose>
     </xsl:for-each>
   </xsl:variable>
-  
+
   <!-- an html bibliographic line -->
   <xsl:variable name="bibl-book">
     <xsl:choose>
       <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'html:title']">
-        <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'html:title']/node()"/>
+        <xsl:apply-templates
+          select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'html:title']/node()"
+        />
       </xsl:when>
       <xsl:when test="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'zotero']">
-        <xsl:apply-templates select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'zotero']/node()"/>
+        <xsl:apply-templates
+          select="/*/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[@type = 'zotero']/node()"/>
       </xsl:when>
       <xsl:otherwise>
         <xsl:if test="$byline != ''">
@@ -130,7 +131,8 @@
   <xsl:template match="/*">
     <xsl:choose>
       <xsl:when test="@type='article'">
-        <alix:document xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml">
+        <alix:document xmlns:epub="http://www.idpf.org/2007/ops"
+          xmlns="http://www.w3.org/1999/xhtml">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">article</xsl:with-param>
           </xsl:call-template>
@@ -144,7 +146,8 @@
         </alix:book>
       </xsl:when>
       <xsl:when test="@type='document'">
-        <alix:document xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+        <alix:document xmlns="http://www.w3.org/1999/xhtml"
+          xmlns:epub="http://www.idpf.org/2007/ops">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">document</xsl:with-param>
           </xsl:call-template>
@@ -167,7 +170,8 @@
         </alix:book>
       </xsl:when>
       <xsl:otherwise>
-        <alix:document xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+        <alix:document xmlns="http://www.w3.org/1999/xhtml"
+          xmlns:epub="http://www.idpf.org/2007/ops">
           <xsl:call-template name="alix:root">
             <xsl:with-param name="doctype">document</xsl:with-param>
           </xsl:call-template>
@@ -187,7 +191,8 @@
           <xsl:value-of select="$filename"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:message terminate="no">NO id for this document, will be hard to retrieve. Set xsl:param $filename on call, or set /tei:TEI/@xml:id in your sourcefile</xsl:message>
+          <xsl:message terminate="no">NO id for this document, will be hard to retrieve. Set
+            xsl:param $filename on call, or set /tei:TEI/@xml:id in your sourcefile</xsl:message>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:attribute>
@@ -195,7 +200,7 @@
       <alix:field name="cert" type="category" value="{normalize-space(/*/@cert)}"/>
     </xsl:if>
     <alix:field name="title" type="category" value="{normalize-space($doctitle)}"/>
-    
+
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:notesStmt">
       <xsl:call-template name="note-bibl"/>
     </xsl:for-each>
@@ -232,7 +237,8 @@
           <article>
             <xsl:choose>
               <xsl:when test="/*/tei:text/tei:front | /*/tei:text/tei:back">
-                <xsl:apply-templates select="/*/tei:text/tei:front | /*/tei:text/tei:body | /*/tei:text/tei:back"/>
+                <xsl:apply-templates
+                  select="/*/tei:text/tei:front | /*/tei:text/tei:body | /*/tei:text/tei:back"/>
               </xsl:when>
               <xsl:otherwise>
                 <xsl:apply-templates select="/*/tei:text/tei:body/node()"/>
@@ -390,7 +396,7 @@
           <alix:field name="type" type="category" value="{normalize-space(/*/@type)}"/>
         </xsl:when>
       </xsl:choose>
-            <!-- local date or replicate book date ? -->
+      <!-- local date or replicate book date ? -->
       <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
       <xsl:variable name="bookyear" select="substring($docdate, 1, 4)"/>
       <xsl:choose>
@@ -408,21 +414,44 @@
       <xsl:copy-of select="$tags"/>
       <xsl:copy-of select="$info"/>
       <!-- by chapter metadata -->
-      
+
       <alix:field name="toc" type="store">
         <xsl:call-template name="toclocal"/>
       </alix:field>
       <alix:field name="content" type="text">
         <article>
-          <xsl:apply-templates>
-            <xsl:with-param name="level" select="1"/>
-          </xsl:apply-templates>
-          <xsl:variable name="notes">
-            <xsl:call-template name="footnotes"/>
-          </xsl:variable>
-          <xsl:if test="$notes != ''">
-            <xsl:copy-of select="$notes"/>
-          </xsl:if>
+          <xsl:choose>
+            <xsl:when test="descendant::*[key('split', generate-id())]">
+              <!-- take content before sections -->
+              <xsl:variable name="first" select="(
+                    tei:back
+                  | tei:body
+                  | tei:front
+                  | tei:group
+                  | tei:div
+                  | tei:div0
+                  | tei:div1
+                  | tei:div2
+                  | tei:div3
+                  | tei:div4
+                  | tei:div5
+                  | tei:div6
+                  )[1]"/>
+              <xsl:call-template name="div-header">
+                <xsl:with-param name="tei" select="$first/preceding-sibling::node()"/>
+                <xsl:with-param name="level" select="1"/>
+              </xsl:call-template>
+              <xsl:call-template name="footnotes">
+                <xsl:with-param name="tei" select="$first/preceding-sibling::node()"/>
+              </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="div-header">
+                <xsl:with-param name="level" select="1"/>
+              </xsl:call-template>
+              <xsl:call-template name="footnotes"/>
+            </xsl:otherwise>
+          </xsl:choose>
         </article>
       </alix:field>
       <xsl:if test=".//*[@type = 'observation']">

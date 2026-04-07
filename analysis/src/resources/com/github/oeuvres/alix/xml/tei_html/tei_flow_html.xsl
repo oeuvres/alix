@@ -155,24 +155,25 @@ Sections
         <!-- hard page break ? -->
         <xsl:otherwise/>
       </xsl:choose>
-      <xsl:call-template name="div-header">
+      <xsl:apply-templates select="*">
         <xsl:with-param name="level" select="$level + 1"/>
         <xsl:with-param name="from" select="$from"/>
-      </xsl:call-template>
+      </xsl:apply-templates>
     </section>
   </xsl:template>
   <!-- 
   Sections, group opening infos in a <header> element
   -->
   <xsl:template name="div-header">
-    <!--  -->
     <xsl:param name="level"/>
     <xsl:param name="from"/>
+    <xsl:param name="tei" select="node()"/>
     <xsl:variable name="first" select="
-      (*[not(self::tei:argument)]
+      ($tei[not(self::tei:argument)]
       [not(self::tei:byline)]
       [not(self::tei:cb)]
       [not(self::tei:dateline)]
+      [not(self::tei:div)]
       [not(self::tei:docAuthor)]
       [not(self::tei:docDate)]
       [not(self::tei:epigraph)]
@@ -184,6 +185,13 @@ Sections
       [not(self::tei:signed)])[1]
       "/>
     <xsl:choose>
+      <!-- opener play the role of header -->
+      <xsl:when test="$tei[self::tei:opener]">
+        <xsl:apply-templates select="$tei">
+          <xsl:with-param name="level" select="$level"/>
+          <xsl:with-param name="from" select="$from"/>
+        </xsl:apply-templates>
+      </xsl:when>
       <!-- Candidates for section title -->
       <xsl:when test="$first and 
         $first/preceding-sibling::*[
@@ -194,7 +202,6 @@ Sections
         or self::tei:docDate
         or self::tei:epigraph
         or self::tei:head
-        or self::tei:opener
         or self::tei:salute
         or self::tei:signed
         ]">
@@ -204,14 +211,15 @@ Sections
             <xsl:with-param name="from" select="$from"/>
           </xsl:apply-templates>
         </header>
-        <!-- Do no insert spacing here, this will break auto indent -->
-        <xsl:apply-templates select="$first | $first/following-sibling::node()">
-          <xsl:with-param name="level" select="$level"/>
-          <xsl:with-param name="from" select="$from"/>
-        </xsl:apply-templates>
+        <div class="body">
+          <xsl:apply-templates select="$first | $first/following-sibling::node()[count(. | $tei) = count($tei)]">
+            <xsl:with-param name="level" select="$level"/>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </div>
       </xsl:when>
       <xsl:otherwise>
-        <xsl:apply-templates>
+        <xsl:apply-templates select="$tei">
           <xsl:with-param name="level" select="$level"/>
           <xsl:with-param name="from" select="$from"/>
         </xsl:apply-templates>
@@ -357,13 +365,20 @@ Sections
   <!-- Contains blocks, but are not sections -->
   <xsl:template match="tei:argument | tei:closer | tei:def | tei:docTitle | tei:entry | tei:form | tei:postscript  | tei:entry/tei:xr | tei:opener">
     <xsl:param name="from"/>
+    <xsl:variable name="element">
+      <xsl:choose>
+        <xsl:when test="self::tei:opener">header</xsl:when>
+        <xsl:when test="self::tei:closer">footer</xsl:when>
+        <xsl:otherwise>div</xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
     <xsl:if test=". != ''">
-      <div>
+      <xsl:element name="{$element}">
         <xsl:call-template name="atts"/>
         <xsl:apply-templates>
           <xsl:with-param name="from" select="$from"/>
         </xsl:apply-templates>
-      </div>
+      </xsl:element>
     </xsl:if>
   </xsl:template>
   <!-- To think, rendering ? -->
