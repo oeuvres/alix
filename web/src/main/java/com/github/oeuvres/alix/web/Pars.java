@@ -33,5 +33,6 @@ public class Pars
     public static final int    TERMS_DEFAULT   = 50;
     public static final int[]  TERMS_RANGE     = {1, 200};
     public static final String START           = "start";
+    public static final String TYPE            = "type";
     public static final String YEAR            = "year";
 }

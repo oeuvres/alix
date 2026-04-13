@@ -200,7 +200,7 @@ public final class AlixSaxHandler extends DefaultHandler2
             switch (localName) {
                 case "set" -> startSet();
                 case "book" -> startBook(atts);
-                case "document", "article" -> startAtomicDocument(atts, localName);
+                case "document", "article" -> startArticle(atts, localName);
                 case "chapter" -> startChapter(atts);
                 case "field" -> startField(atts);
                 default -> throw new SAXException("Unsupported alix element: " + nameForTag(qName, localName));
@@ -243,7 +243,7 @@ public final class AlixSaxHandler extends DefaultHandler2
         switch (localName) {
             case "field" -> endField();
             case "chapter" -> endChapter();
-            case "document", "article" -> endAtomicDocument(localName);
+            case "document", "article" -> endArticle(localName);
             case "book" -> endBook();
             case "set" -> endSet();
             default -> {
@@ -451,7 +451,8 @@ public final class AlixSaxHandler extends DefaultHandler2
         openDoc = OpenDoc.BOOK;
         scopes.push(Scope.BOOK);
         
-        addSyntheticField(ALIX_FILESTEM, AlixDocument.FieldType.CATEGORY, fileStem);
+        addMetaField(ALIX_FILESTEM, AlixDocument.FieldType.CATEGORY, fileStem);
+        addMetaField(ALIX_TYPE, AlixDocument.FieldType.CATEGORY, BOOK);
     }
     
     /**
@@ -483,7 +484,7 @@ public final class AlixSaxHandler extends DefaultHandler2
      * @param atts    SAX attributes (must contain {@code xml:id})
      * @param eltName {@code "document"} or {@code "article"} (for error messages)
      */
-    private void startAtomicDocument(Attributes atts, String eltName) throws SAXException
+    private void startArticle(Attributes atts, String eltName) throws SAXException
     {
         ensureNoField("alix:" + eltName);
         Scope parent = currentScope();
@@ -496,10 +497,11 @@ public final class AlixSaxHandler extends DefaultHandler2
         openDoc = OpenDoc.DOCUMENT;
         scopes.push(Scope.DOCUMENT);
         
-        addSyntheticField(ALIX_FILESTEM, AlixDocument.FieldType.CATEGORY, fileStem);
+        addMetaField(ALIX_FILESTEM, AlixDocument.FieldType.CATEGORY, fileStem);
+        addMetaField(ALIX_TYPE, AlixDocument.FieldType.CATEGORY, ARTICLE);
     }
     
-    private void endAtomicDocument(String eltName) throws SAXException
+    private void endArticle(String eltName) throws SAXException
     {
         ensureNoField("</alix:" + eltName + ">");
         ensureScope(Scope.DOCUMENT, "</alix:" + eltName + ">");
@@ -555,9 +557,10 @@ public final class AlixSaxHandler extends DefaultHandler2
         openDoc = OpenDoc.CHAPTER;
         scopes.push(Scope.CHAPTER);
         
-        addSyntheticField(ALIX_FILESTEM, AlixDocument.FieldType.CATEGORY, fileStem);
-        addSyntheticField(ALIX_BOOKID, AlixDocument.FieldType.CATEGORY, currentBookId);
-        addSyntheticField(ALIX_ORD, AlixDocument.FieldType.INT, Integer.toString(chapterOrd));
+        addMetaField(ALIX_FILESTEM, AlixDocument.FieldType.CATEGORY, fileStem);
+        addMetaField(ALIX_TYPE, AlixDocument.FieldType.CATEGORY, CHAPTER);
+        addMetaField(ALIX_BOOKID, AlixDocument.FieldType.CATEGORY, currentBookId);
+        addMetaField(ALIX_ORD, AlixDocument.FieldType.INT, Integer.toString(chapterOrd));
     }
     
     private void endChapter() throws SAXException
@@ -660,7 +663,7 @@ public final class AlixSaxHandler extends DefaultHandler2
      * @param type  field type
      * @param value field value (as text)
      */
-    private void addSyntheticField(String name, AlixDocument.FieldType type, String value)
+    private void addMetaField(String name, AlixDocument.FieldType type, String value)
     {
         doc.openField(name, type, null);
         doc.fieldText(value);

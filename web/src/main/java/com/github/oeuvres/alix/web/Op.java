@@ -1,20 +1,17 @@
 package com.github.oeuvres.alix.web;
 
-import static com.github.oeuvres.alix.web.Pars.END;
-import static com.github.oeuvres.alix.web.Pars.F;
-import static com.github.oeuvres.alix.web.Pars.Q;
-import static com.github.oeuvres.alix.web.Pars.SLOP;
-import static com.github.oeuvres.alix.web.Pars.SLOP_DEFAULT;
-import static com.github.oeuvres.alix.web.Pars.SLOP_RANGE;
-import static com.github.oeuvres.alix.web.Pars.START;
-import static com.github.oeuvres.alix.web.Pars.YEAR;
-
 import java.io.IOException;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 
 import com.google.gson.stream.JsonWriter;
 
@@ -25,6 +22,10 @@ import com.github.oeuvres.alix.lucene.FlucYear;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
 import com.github.oeuvres.alix.web.util.HttpPars;
+
+import static com.github.oeuvres.alix.web.Pars.*;
+import static com.github.oeuvres.alix.common.Names.*;
+
 
 /**
  * Base class for all search operations.
@@ -37,9 +38,9 @@ import com.github.oeuvres.alix.web.util.HttpPars;
  *
  * <h2>Adding a new operation</h2>
  * <ol>
- *   <li>Create a subclass, override {@link #name()} and the
- *       format methods you need.</li>
- *   <li>Register it in {@code AlixServlet.registerOps()}.</li>
+ * <li>Create a subclass, override {@link #name()} and the
+ * format methods you need.</li>
+ * <li>Register it in {@code AlixServlet.registerOps()}.</li>
  * </ol>
  *
  * <h2>Parameter resolution</h2>
@@ -52,18 +53,22 @@ import com.github.oeuvres.alix.web.util.HttpPars;
 public abstract class Op
 {
     protected static final Logger LOG = Logger.getLogger(Op.class.getName());
-
     
     /**
      * Try to claim an unmatched path segment as a resource.
      * Returns {@code false} if this op cannot handle the segment;
      * the router retains 404 responsibility.
      */
-    public boolean offer(LuceneIndex index, String segment, String format,
-        HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    public boolean offer(
+        LuceneIndex index,
+        String segment,
+        String format,
+        HttpServletRequest req,
+        HttpServletResponse resp) throws IOException
+    {
         return true;
     }
-
+    
     /**
      * Dispatch to the appropriate format method.
      *
@@ -77,61 +82,70 @@ public abstract class Op
         final LuceneIndex index,
         final String format,
         final HttpServletRequest req,
-        final HttpServletResponse resp
-    ) throws IOException
+        final HttpServletResponse resp) throws IOException
     {
         if (format == null) {
             page(index, req, resp);
-        }
-        else switch (format) {
-            case "json"  -> json(index, req, resp);
-            case "html"  -> html(index, req, resp);
-            case "jsonl" -> jsonl(index, req, resp);
-            case "csv"   -> csv(index, req, resp);
-            default      -> AlixServlet.jsonError(resp, 406,
-                getClass().getSimpleName() + ": unsupported format: " + format);
-        }
+        } else
+            switch (format) {
+                case "json" -> json(index, req, resp);
+                case "html" -> html(index, req, resp);
+                case "jsonl" -> jsonl(index, req, resp);
+                case "csv" -> csv(index, req, resp);
+                default -> AlixServlet.jsonError(resp, 406,
+                        getClass().getSimpleName() + ": unsupported format: " + format);
+            }
     }
     
     // ---- format methods ----
-
+    
     /** Full HTML page with form and embedded results. */
-    protected void page(LuceneIndex index,
-        HttpServletRequest req, HttpServletResponse resp) throws IOException
+    protected void page(
+        LuceneIndex index,
+        HttpServletRequest req,
+        HttpServletResponse resp) throws IOException
     {
         AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": default html not implemented");
     }
-
+    
     /** Structured JSON. */
-    protected void json(LuceneIndex index,
-        HttpServletRequest req, HttpServletResponse resp) throws IOException
+    protected void json(
+        LuceneIndex index,
+        HttpServletRequest req,
+        HttpServletResponse resp) throws IOException
     {
         AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": json not implemented");
     }
-
+    
     /** HTML fragment for streaming insertion. */
-    protected void html(LuceneIndex index,
-        HttpServletRequest req, HttpServletResponse resp) throws IOException
+    protected void html(
+        LuceneIndex index,
+        HttpServletRequest req,
+        HttpServletResponse resp) throws IOException
     {
         AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": html fragment not implemented");
     }
-
+    
     /** JSON Lines — one object per line. */
-    protected void jsonl(LuceneIndex index,
-        HttpServletRequest req, HttpServletResponse resp) throws IOException
+    protected void jsonl(
+        LuceneIndex index,
+        HttpServletRequest req,
+        HttpServletResponse resp) throws IOException
     {
         AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": jsonl not implemented");
     }
-
+    
     /** CSV tabular export. */
-    protected void csv(LuceneIndex index,
-        HttpServletRequest req, HttpServletResponse resp) throws IOException
+    protected void csv(
+        LuceneIndex index,
+        HttpServletRequest req,
+        HttpServletResponse resp) throws IOException
     {
         AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": csv not implemented");
     }
-
+    
     // ---- response utilities ----
-
+    
     /** Open a Gson {@link JsonWriter} on the response. */
     protected static JsonWriter jsonWriter(final HttpServletResponse resp)
         throws IOException
@@ -140,7 +154,7 @@ public abstract class Op
         resp.setCharacterEncoding("UTF-8");
         return new JsonWriter(resp.getWriter());
     }
-
+    
     /** Set headers for HTML streaming: no gzip, chunked, UTF-8. */
     protected static void prepareHtmlStream(final HttpServletResponse resp)
     {
@@ -151,16 +165,21 @@ public abstract class Op
     
     /**
      * Build a year query for all ops from normalized params across app
+     * 
      * @return
-     * @throws IOException 
+     * @throws IOException
      */
-    Query yearQuery(LuceneIndex index,  HttpPars pars) throws IOException {
+    Query yearQuery(LuceneIndex index, HttpPars pars) throws IOException
+    {
         int start = pars.getInt(START, Integer.MIN_VALUE);
         int end = pars.getInt(END, Integer.MAX_VALUE);
-        if (start == Integer.MIN_VALUE && end == Integer.MAX_VALUE) return null;
+        if (start == Integer.MIN_VALUE && end == Integer.MAX_VALUE)
+            return null;
         // swap if inverted — be lenient with the UI
         if (start != Integer.MIN_VALUE && end != Integer.MAX_VALUE && start > end) {
-            final int tmp = end; end = start; start = tmp;
+            final int tmp = end;
+            end = start;
+            start = tmp;
         }
         // a bit hard coded name for now
         FlucYear years = index.flucYear(YEAR);
@@ -172,31 +191,57 @@ public abstract class Op
         final int min = (int) years.min();
         final int max = (int) years.max();
         // resolve open bounds to corpus bounds
-        if (start == Integer.MIN_VALUE) start = min;
-        if (end   == Integer.MAX_VALUE) end   = max;
+        if (start == Integer.MIN_VALUE)
+            start = min;
+        if (end == Integer.MAX_VALUE)
+            end = max;
         // clamp to corpus bounds
         start = Math.max(start, min);
-        end   = Math.min(end,   max);
+        end = Math.min(end, max);
         // after clamping, range may have collapsed out of corpus
-        if (start > end) return null;
-        if (start == end) return IntPoint.newExactQuery(YEAR, start);
+        if (start > end)
+            return null;
+        if (start == end)
+            return IntPoint.newExactQuery(YEAR, start);
         return IntPoint.newRangeQuery(YEAR, start, end);
     }
     
+    Query typeQuery(LuceneIndex index, HttpPars pars) throws IOException
+    {
+        final String type = pars.getString(TYPE, null, Set.of(ARTICLE, CHAPTER));
+        if (type == null) return null;
+        return new TermQuery(new Term(ALIX_TYPE, type));
+    }
+    
+    Query filterQuery(LuceneIndex index,  HttpPars pars) throws IOException {
+        Builder builder = new BooleanQuery.Builder();
+        Query q = yearQuery(index, pars);
+        if (q != null) builder.add(q, BooleanClause.Occur.MUST);
+        q = typeQuery(index, pars);
+        if (q != null) builder.add(q, BooleanClause.Occur.MUST);
+        BooleanQuery filterQuery = builder.build();
+        if (filterQuery.clauses().size() == 0) return null;
+        else if (filterQuery.clauses().size() == 1) return filterQuery.clauses().get(0).query();
+        else return filterQuery;
+     }
+    
     /**
      * Build a SpanQuery from parameters
+     * 
      * @param index
      * @param pars
      * @return
      * @throws IOException
      */
-    SpanQuery spanQuery(LuceneIndex index,  HttpPars pars) throws IOException {
+    SpanQuery spanQuery(LuceneIndex index, HttpPars pars) throws IOException
+    {
         final String q = pars.getString(Q, null);
-        if (q == null) return null;
+        if (q == null)
+            return null;
         final String content = pars.getString(F, index.content());
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         SpanQuery spanQuery = new SpanQueryParser(content, slop).parse(q);
         return spanQuery;
     }
-
+    
 }

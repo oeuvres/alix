@@ -1792,4 +1792,68 @@ dégrossi le travail, mais du reste à faire  -->
     </xsl:if>
   </xsl:template>
   
+  
+    <xsl:template name="truncate">
+    <xsl:param name="string"/>
+    <xsl:param name="len" select="150"/>
+    <xsl:param name="ellipsis">…</xsl:param>
+    <xsl:choose>
+      <xsl:when test="string-length($string) &lt;= $len">
+        <xsl:value-of select="$string"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:variable name="substring" select="substring($string, 1, $len)"/>
+        <xsl:variable name="before-last-space">
+          <xsl:variable name="after-last-space">
+            <xsl:call-template name="last-token">
+              <xsl:with-param name="string" select="$substring"/>
+              <xsl:with-param name="sep"    select="' '"/>
+            </xsl:call-template>
+          </xsl:variable>
+          <xsl:value-of select="substring($substring, 1,
+    string-length($substring) - string-length($after-last-space) - 1)"/>
+        </xsl:variable>
+        <xsl:call-template name="rtrim-nonletter">
+          <xsl:with-param name="string" select="$before-last-space"/>
+        </xsl:call-template>
+        <xsl:value-of select="$ellipsis"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
+
+  <xsl:template name="last-token">
+    <xsl:param name="string"/>
+    <xsl:param name="sep"/>
+    <xsl:choose>
+      <xsl:when test="contains($string, $sep)">
+        <xsl:call-template name="last-token">
+          <xsl:with-param name="string" select="substring-after($string, $sep)"/>
+          <xsl:with-param name="sep"    select="$sep"/>
+        </xsl:call-template>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$string"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
+
+  <xsl:template name="rtrim-nonletter">
+    <xsl:param name="string"/>
+    <xsl:variable name="last" select="substring($string, string-length($string), 1)"/>
+    <xsl:choose>
+      <xsl:when test="string-length($string) = 0">
+      </xsl:when>
+      <xsl:when test="contains('  ,.;:!?—–«»&quot;-', $last)">
+        <xsl:call-template name="rtrim-nonletter">
+          <xsl:with-param name="string" select="substring($string, 1, string-length($string) - 1)"/>
+        </xsl:call-template>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$string"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
 </xsl:transform>

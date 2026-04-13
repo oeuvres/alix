@@ -189,8 +189,7 @@ public class OpResults extends Op
         
         final HttpPars pars = new HttpPars(request, response);
         // Build a filter query from years and tags
-        Query yearQuery = yearQuery(index, pars);
-        Query filterQuery = yearQuery;
+        Query filterQuery = filterQuery(index, pars);
         
         Writer writer = response.getWriter();
         final String content = pars.getString(F, index.content());
@@ -305,7 +304,7 @@ public class OpResults extends Op
             } else {
                 query = spanQuery;
             }
-            ScoreDoc[] hits = index.searcher().search(query, 10).scoreDocs;
+            ScoreDoc[] hits = index.searcher().search(query, docs).scoreDocs;
             
             final FieldStats fieldStats = fluc.fieldStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);

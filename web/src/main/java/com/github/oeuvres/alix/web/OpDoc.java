@@ -63,6 +63,7 @@ public class OpDoc extends Op
         <html>
           <head>
             <title>Alix, document</title>
+            <link rel="stylesheet" type="text/css" href="https://oeuvres.github.io/teinte_theme/teinte.css"/>
           </head>
           <style>
             ::highlight(span-hl) { background-color: #ffe08280; }

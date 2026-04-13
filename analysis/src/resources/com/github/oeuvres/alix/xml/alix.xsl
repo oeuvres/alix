@@ -234,24 +234,22 @@
         <!-- Do not copy tags for book field cover -->
         <xsl:copy-of select="$tags"/>
         <alix:field name="content" type="text">
-          <article>
+          <article class="{$doctype}">
             <xsl:choose>
               <xsl:when test="/*/tei:text/tei:front | /*/tei:text/tei:back">
-                <xsl:apply-templates
-                  select="/*/tei:text/tei:front | /*/tei:text/tei:body | /*/tei:text/tei:back"/>
+                <xsl:call-template name="div-header">
+                  <xsl:with-param name="tei" select="/*/tei:text/tei:front | /*/tei:text/tei:body | /*/tei:text/tei:back"/>
+                </xsl:call-template>
               </xsl:when>
               <xsl:otherwise>
-                <xsl:apply-templates select="/*/tei:text/tei:body/node()"/>
+                <xsl:call-template name="div-header">
+                  <xsl:with-param name="tei" select="/*/tei:text/tei:body/node()"/>
+                </xsl:call-template>
               </xsl:otherwise>
             </xsl:choose>
-            <xsl:variable name="notes">
-              <xsl:for-each select="/*/tei:text">
-                <xsl:call-template name="footnotes"/>
-              </xsl:for-each>
-            </xsl:variable>
-            <xsl:if test="$notes != ''">
-              <xsl:copy-of select="$notes"/>
-            </xsl:if>
+            <xsl:for-each select="/*/tei:text">
+              <xsl:call-template name="footnotes"/>
+            </xsl:for-each>
           </article>
         </alix:field>
       </xsl:otherwise>
@@ -419,7 +417,7 @@
         <xsl:call-template name="toclocal"/>
       </alix:field>
       <alix:field name="content" type="text">
-        <article>
+        <article class="chapter">
           <xsl:choose>
             <xsl:when test="descendant::*[key('split', generate-id())]">
               <!-- take content before sections -->
@@ -439,16 +437,13 @@
                   )[1]"/>
               <xsl:call-template name="div-header">
                 <xsl:with-param name="tei" select="$first/preceding-sibling::node()"/>
-                <xsl:with-param name="level" select="1"/>
               </xsl:call-template>
               <xsl:call-template name="footnotes">
                 <xsl:with-param name="tei" select="$first/preceding-sibling::node()"/>
               </xsl:call-template>
             </xsl:when>
             <xsl:otherwise>
-              <xsl:call-template name="div-header">
-                <xsl:with-param name="level" select="1"/>
-              </xsl:call-template>
+              <xsl:call-template name="div-header"/>
               <xsl:call-template name="footnotes"/>
             </xsl:otherwise>
           </xsl:choose>
