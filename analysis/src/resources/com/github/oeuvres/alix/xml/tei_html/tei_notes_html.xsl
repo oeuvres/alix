@@ -306,9 +306,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
         </xsl:variable>
         <xsl:if test="translate($lastchar, '  &#9;&#10;&#13;', '') != ''"> </xsl:if>
         <a class="{$class}" role="doc-noteref" href="{$target}" id="{$id}">
-          <sup>
-            <xsl:value-of select="$n"/>
-          </sup>
+          <xsl:value-of select="$n"/>
         </a>
       </xsl:otherwise>
     </xsl:choose>
@@ -445,10 +443,8 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
         </xsl:choose>
       </xsl:attribute>
       <xsl:value-of select="$n"/>
-      <xsl:if test="$class = 'noteback'">
-        <xsl:text>. </xsl:text>
-      </xsl:if>
     </a>
+    <xsl:text> </xsl:text>
   </xsl:template>
   <!--Default behavior for note-->
   <xsl:template match="tei:note | tei:*[@rend='note']">
@@ -631,15 +627,9 @@ and doc-endnotes are doc-biblioentry and doc-endnote.
       <xsl:variable name="id">
         <xsl:call-template name="id"/>
       </xsl:variable>
-      <!-- FBRreader -->
-      <sup>
-        <a class="noteref" href="#{$id}" name="_{$id}" role="doc-noteref">
-          <!-- xsl:attribute name="onclick">if(this.cloc) {this.parentNode.className='cit_n'; this.cloc=null; } else { this.cloc=true;  this.parentNode.className='cit_n_bibl'}; return true;</xsl:attribute -->
-          <xsl:attribute name="onmouseover">this.parentNode.className='cit_n_bibl'</xsl:attribute>
-          <xsl:attribute name="onmouseout">this.parentNode.className='cit_n'</xsl:attribute>
-          <xsl:value-of select="@n"/>
-        </a>
-      </sup>
+      <a class="noteref" href="#{$id}" name="_{$id}" role="doc-noteref">
+        <xsl:value-of select="@n"/>
+      </a>
       <span class="listBibl">
         <xsl:apply-templates select="tei:bibl"/>
       </span>
