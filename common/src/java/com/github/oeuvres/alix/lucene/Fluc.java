@@ -20,64 +20,71 @@ import org.apache.lucene.index.LeafReaderContext;
  * Field of a Lucene index, with type-specific cached resources.
  *
  * <p>
- * Each {@code Fluc} represents one named field as seen by Alix:
- * Lucene-level metadata (index options, doc values, points, norms,
- * stored flag) plus lazily loaded analysis resources specific to
- * the field type.
+ * Each {@code Fluc} represents one named field as seen by Alix: a
+ * {@link FieldInfo} from the index plus lazily loaded analysis
+ * resources specific to the field type. The base class wraps any
+ * field for which Alix has no specialized helper (KNN vectors,
+ * multi-dimensional points, opaque doc values, keyword fields…),
+ * carrying just enough metadata for introspection.
  * </p>
  *
  * <h2>Subclasses</h2>
  * <ul>
- *   <li>{@code FlucText} — tokenized fields: lexicon, rail,
- *       field statistics, theme terms, co-occurrence.</li>
- *   <li>{@code FlucFacet} — doc-values facet fields (future).</li>
- *   <li>{@code FlucPoint} — numeric point fields (future).</li>
- *   <li>{@code FlucStored} — stored-only fields, no resources.</li>
+ *   <li>{@link FlucText} — tokenized fields with positions: lexicon,
+ *       rail, field statistics, theme terms, co-occurrence.</li>
+ *   <li>{@link FlucNum} — single-dimension numeric points with
+ *       numeric doc values.</li>
+ *   <li>{@link FlucCategory} — single sorted doc-value per document,
+ *       with inverted index used as the dictionary.</li>
+ *   <li>{@link FlucFacet} — multi-valued sorted-set doc values,
+ *       with inverted index used as the dictionary.</li>
+ *   <li>{@link FlucStored} — stored-only fields, no resources.</li>
  * </ul>
  *
  * <h2>Construction</h2>
  * <p>
- * Instances are created by {@link #inferFields(DirectoryReader, Path)},
+ * Instances are built by {@link #inferFields(DirectoryReader, Path)},
  * which probes each field across all segments to determine its
- * capabilities and stored status, then selects the appropriate
- * subclass. The result is an unmodifiable map suitable for caching
- * on {@link LuceneIndex}.
+ * capabilities and then selects the appropriate subclass. The result
+ * is sorted alphabetically by field name and suitable for caching on
+ * {@link LuceneIndex}.
  * </p>
  *
  * <p>Thread safety: instances are safe for concurrent reads.
- * Subclasses that cache resources must ensure thread-safe
- * lazy initialization.</p>
+ * Subclasses that cache resources must ensure thread-safe lazy
+ * initialization.</p>
  */
 public class Fluc implements Closeable
 {
-    // ================================================================
-    // Fields (all from former FieldProfile)
-    // ================================================================
 
     /** Field name as declared in the index. */
     private final String name;
     /** Whether the field has stored values. */
     private final boolean stored;
-    /** Number of documents with at least one value in this field. */
+    /** Number of documents with at least one value in this field, or {@code -1} when unknown. */
     private final int docs;
-    /** Keep fieldInfo */
+    /** Underlying Lucene field info. */
     protected final FieldInfo info;
-    /** Private final  */
+    /**
+     * Free-form key-value description, populated by the constructor and by
+     * subclasses or {@link #inferFields(DirectoryReader, Path)} for diagnostics
+     * and JSON serialization. Insertion order is preserved.
+     */
     public final Map<String, Object> description = new LinkedHashMap<>(10);
 
     /**
-     * Creates a fully resolved field descriptor.
+     * Build a field descriptor from a probed {@link FieldInfo}.
      *
      * <p>
-     * Callers must supply the probed {@code stored} and {@code docs}
-     * values, which cannot be derived from {@link FieldInfo} alone.
-     * Use {@link #inferFields(DirectoryReader, Path)} for the standard
-     * construction path.
+     * The {@code stored} flag and {@code docs} count cannot be derived
+     * from {@link FieldInfo} alone — they are probed by
+     * {@link #inferFields(DirectoryReader, Path)}, which is the standard
+     * construction path. Direct callers must supply already-probed values.
      * </p>
      *
-     * @param info      segment-level field metadata
+     * @param info    segment-level field metadata
      * @param stored  whether the field has stored values
-     * @param docs    number of documents with at least one value
+     * @param docs    number of documents with at least one value, or {@code -1} when unknown
      */
     public Fluc(
         final FieldInfo info,
@@ -86,7 +93,9 @@ public class Fluc implements Closeable
     ) {
         this.info = info;
         this.name = info.name;
-        final String className = getClass().getSimpleName(); // e.g. "FlucText"
+        // Subclass name → short type label, e.g. "FlucText" → "text".
+        // FlucStored declared as "stored" by FlucStored constructor.
+        final String className = getClass().getSimpleName();
         final String type = className.startsWith("Fluc")
             ? className.substring(4).toLowerCase()
             : className.toLowerCase();
@@ -98,45 +107,51 @@ public class Fluc implements Closeable
     }
 
     /**
-     * Release resources held by this field.
-     * Default is a no-op; subclasses with mapped buffers override.
+     * Convenience factory for fields Alix has no specialized helper for.
+     * Sets {@code stored=false} and {@code docs=-1} (unknown), and lets
+     * the caller add subclass-specific keys to {@link #description}.
+     *
+     * @param info segment-level field metadata
+     * @return a base {@code Fluc} with no resources
+     */
+    static Fluc unknown(final FieldInfo info)
+    {
+        return new Fluc(info, false, -1);
+    }
+
+    /**
+     * Release resources held by this field. Default is a no-op;
+     * subclasses with mapped buffers or open files must override.
      */
     @Override
     public void close() throws IOException
     {
-        // no-op by default
     }
 
     /**
-     * Number of documents with at least one value in this field.
-     * Zero for stored-only or doc-values-only fields without
-     * explicit counting.
+     * Number of documents with at least one value in this field,
+     * or {@code -1} when the count was not probed (e.g. stored-only
+     * fields, where counting requires a full scan).
      */
     public int docs() { return docs; }
 
     /** Field name as declared in the index. */
     public String name() { return name; }
 
-
-
     /**
-     * True if the field has stored values.
+     * Whether the field has stored values.
      *
-     * <p>Detection strategy:</p>
+     * <p>Detection strategy used by {@link #inferFields(DirectoryReader, Path)}:</p>
      * <ul>
-     *   <li>Indexed: probed via first document from postings.</li>
-     *   <li>Doc-values-only: probed via first document from
+     *   <li>Indexed: probed via the first document from postings.</li>
+     *   <li>Doc-values-only: probed via the first document from the
      *       doc-values iterator.</li>
-     *   <li>Point-only: probed via first document from
+     *   <li>Point-only: probed via the first document from a
      *       point-values scan.</li>
      *   <li>No index, no doc-values, no points: inferred as stored.</li>
      * </ul>
      */
     public boolean stored() { return stored; }
-
-    // ================================================================
-    // Field inference (static factory)
-    // ================================================================
 
     /**
      * Build the field inventory for a frozen index.
@@ -148,9 +163,23 @@ public class Fluc implements Closeable
      * alphabetically by field name.
      * </p>
      *
-     * @param reader   frozen directory reader
-     * @param sideDir directory for sidecar file access
-     * @return unmodifiable field name → {@code Fluc} map
+     * <p>Field classification rules, in order of precedence:</p>
+     * <ol>
+     *   <li>Positions in postings → {@link FlucText}</li>
+     *   <li>1-D point + numeric doc values → {@link FlucNum}</li>
+     *   <li>Indexed + sorted doc values → {@link FlucCategory}</li>
+     *   <li>Indexed + sorted-set doc values → {@link FlucFacet}</li>
+     *   <li>KNN vectors → base {@code Fluc} with vector dimension</li>
+     *   <li>Multi-dimensional points → base {@code Fluc} with dimension count</li>
+     *   <li>1-D point without numeric doc values → base {@code Fluc}</li>
+     *   <li>Other doc values (binary, sorted-numeric, etc.) → base {@code Fluc}</li>
+     *   <li>Indexed only (keyword field from external indexer) → base {@code Fluc}</li>
+     *   <li>None of the above → {@link FlucStored}</li>
+     * </ol>
+     *
+     * @param reader  frozen directory reader
+     * @param sideDir directory for sidecar file access (used by {@link FlucText})
+     * @return unmodifiable field name → {@code Fluc} map, sorted alphabetically
      * @throws IOException if segment metadata or stored-field probing fails
      */
     public static Map<String, Fluc> inferFields(
@@ -158,11 +187,9 @@ public class Fluc implements Closeable
         final Path sideDir
     ) throws IOException
     {
-        // We need raw FieldInfo per field for the constructor.
-        // Use first-seen FieldInfo per name (consistent with original code).
-        
-        // do not use getMergedFieldInfos
-        // codec attributes (FieldInfo.getAttribute) are unavailable
+        // Use first-seen FieldInfo per name. We do not call
+        // getMergedFieldInfos() because codec attributes (FieldInfo.getAttribute)
+        // are unavailable on the merged result.
         final Map<String, FieldInfo> infoMap = new TreeMap<>();
         for (LeafReaderContext leaf : reader.leaves()) {
             for (FieldInfo fieldInfo : leaf.reader().getFieldInfos()) {
@@ -170,7 +197,6 @@ public class Fluc implements Closeable
             }
         }
 
-        // --- pass 2: probe stored, count docs, select subclass ---
         final Map<String, Fluc> map = new TreeMap<>();
         for (FieldInfo info : infoMap.values()) {
             final boolean isIndexed   = info.getIndexOptions() != IndexOptions.NONE;
@@ -200,17 +226,17 @@ public class Fluc implements Closeable
             }
             // KNN dense vector field (Lucene 9+): no Alix helper yet
             else if (hasVectors) {
-                fluc = new Fluc(info, false, -1);
-                fluc.description.put("VectorDimension", info.getVectorDimension());
+                fluc = unknown(info);
+                fluc.description.put("vectorDimension", info.getVectorDimension());
             }
             // Multi-dimensional point: geo/spatial, no Alix helper
             else if (pointDims > 1) {
-                fluc = new Fluc(info, false, -1);
+                fluc = unknown(info);
                 fluc.description.put("dimensions", pointDims);
             }
             // Single-dimension point without numeric doc values: exotic, no Alix helper
             else if (pointDims == 1) {
-                fluc = new Fluc(info, false, -1);
+                fluc = unknown(info);
                 fluc.description.put("dimensions", pointDims);
             }
             // SORTED/SORTED_SET doc values without inverted index: no dictionary buildable
@@ -218,7 +244,7 @@ public class Fluc implements Closeable
             // SORTED_NUMERIC doc values: multi-valued numeric, no Alix helper
             // NUMERIC doc values without points: legacy or external indexer
             else if (hasDocValues) {
-                fluc = new Fluc(info, false, -1);
+                fluc = unknown(info);
                 fluc.description.put("docValueType", dvType.toString().toLowerCase().replace('_', '+'));
             }
             // Inverted index without positions and without recognised doc values:
@@ -238,10 +264,13 @@ public class Fluc implements Closeable
         return map;
     }
 
-
-
     /**
-     * Sum point-values doc counts across all leaves.
+     * Sum point-values doc counts across all leaves of a reader.
+     *
+     * @param reader    index reader
+     * @param fieldName field to count
+     * @return total documents with at least one point value
+     * @throws IOException on segment access failure
      */
     static int pointDocs(final IndexReader reader, final String fieldName)
         throws IOException
@@ -257,9 +286,16 @@ public class Fluc implements Closeable
     }
 
     /**
-     * Check if a specific document has a stored value for a field name.
+     * Whether a specific document has a stored value for a field.
+     * O(1) per call but requires loading the stored fields of one document.
+     *
+     * @param reader    index reader
+     * @param docId     document id
+     * @param fieldName field to probe
+     * @return {@code true} if the document has the field stored
+     * @throws IOException on stored-field access failure
      */
-    static boolean isFieldStored(
+    static boolean hasStoredValue(
         final IndexReader reader, final int docId, final String fieldName
     ) throws IOException
     {
