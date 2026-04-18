@@ -32,15 +32,6 @@ import org.apache.lucene.util.FixedBitSet;
  * }
  * </pre>
  *
- * <h2>When to use vs {@link BitsFromQuery}</h2>
- * <ul>
- *   <li>Use {@code BitsCollectorManager} when you need a <b>global</b> bitset
- *       over the whole index — e.g. to filter a docId loop or pass to
- *       {@link FlucYear#countByValue(org.apache.lucene.util.BitSet)}.</li>
- *   <li>Use {@link BitsFromQuery} when you process the index
- *       <b>per-segment</b> — e.g. inside a custom {@link org.apache.lucene.search.Weight}
- *       or a span walker that already iterates leaf contexts.</li>
- * </ul>
  */
 public class BitsCollectorManager implements CollectorManager<BitsCollectorManager.BitsCollector, FixedBitSet>
 {
