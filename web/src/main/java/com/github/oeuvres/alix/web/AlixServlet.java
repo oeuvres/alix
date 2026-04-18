@@ -101,27 +101,29 @@ public class AlixServlet extends HttpServlet
 
     @Override
     protected void doGet(
-        final HttpServletRequest req,
-        final HttpServletResponse resp
+        final HttpServletRequest request,
+        final HttpServletResponse response
     ) throws IOException
     {
-        final String pathInfo = (req.getPathInfo() != null) ? req.getPathInfo() : "/";
+        final String pathInfo = (request.getPathInfo() != null) ? request.getPathInfo() : "/";
         final String[] segments = pathInfo.split("/");
 
         if (segments.length <= 1 || segments[1].isEmpty()) {
-            listIndices(req, resp);
+            listIndices(request, response);
             return;
         }
 
         final String indexName = segments[1];
         final LuceneIndex index = indices.get(indexName);
         if (index == null) {
-            jsonError(resp, 404, "Unknown index: " + indexName);
+            jsonError(response, 404, "Unknown index: " + indexName);
             return;
         }
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        if (AlixServlet.notModified(request, response, index.lastModified())) return;
 
         if (segments.length <= 2 || segments[2].isEmpty()) {
-            describeIndex(index, req, resp);
+            describeIndex(index, request, response);
             return;
         }
 
@@ -130,20 +132,36 @@ public class AlixServlet extends HttpServlet
         final String opName = opFormat[0];
         final String format = opFormat[1];
 
-        // known operation
+        
         Op op = ops.get(opName);
+        // known operation
         if (op != null) {
-            op.dispatch(index, format, req, resp);
+            op.dispatch(index, format, request, response);
             return;
         }
         // fallback to doc content
         op = ops.get("doc");
-        if (op != null && op.offer(index, opName, format, req, resp)) {
+        if (op != null && op.offer(index, opName, format, request, response)) {
             return;
         }
         
 
-        jsonError(resp, 404, "Unknown operation: " + opName);
+        jsonError(response, 404, "Unknown operation: " + opName);
+    }
+    
+    public static boolean notModified(
+        HttpServletRequest request, HttpServletResponse response, long lastModifiedMillis
+    ) throws IOException {
+        // Round down to seconds — HTTP dates have no sub-second precision
+        long lastMod = (lastModifiedMillis / 1000L) * 1000L;
+
+        long ifMod = request.getDateHeader("If-Modified-Since");
+        if (ifMod != -1 && lastMod <= ifMod) {
+            response.setStatus(304);
+            return true;
+        }
+        response.setDateHeader("Last-Modified", lastMod);
+        return false;
     }
 
     /**

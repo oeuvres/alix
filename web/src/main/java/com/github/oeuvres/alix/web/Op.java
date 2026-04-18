@@ -18,7 +18,7 @@ import com.google.gson.stream.JsonWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.github.oeuvres.alix.lucene.FlucYear;
+import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -182,7 +182,7 @@ public abstract class Op
             start = tmp;
         }
         // a bit hard coded name for now
-        FlucYear years = index.flucYear(YEAR);
+        FlucNum years = index.flucNum(YEAR);
         if (years == null) {
             // no need to inform html consumer
             // problem may come from a generic interface

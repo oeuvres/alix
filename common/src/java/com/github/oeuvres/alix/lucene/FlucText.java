@@ -208,7 +208,7 @@ public final class FlucText extends Fluc
             final PostingsEnum pe = te.postings(null, PostingsEnum.NONE);
             final int localDoc = pe.nextDoc();
             if (localDoc == PostingsEnum.NO_MORE_DOCS) continue;
-            return isFieldStored(reader, ctx.docBase + localDoc, fieldName);
+            return hasStoredValue(reader, ctx.docBase + localDoc, fieldName);
         }
         return false;
     }

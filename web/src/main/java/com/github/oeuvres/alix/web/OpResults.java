@@ -13,8 +13,8 @@ import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.BitsCollectorManager;
 import com.github.oeuvres.alix.lucene.Fluc;
+import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.FlucText;
-import com.github.oeuvres.alix.lucene.FlucYear;
 import com.github.oeuvres.alix.lucene.HtmlResults;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
@@ -83,7 +83,7 @@ public class OpResults extends Op
           <body>
         """);
         // NoUiSlider
-        FlucYear years = index.flucYear(YEAR);
+        FlucNum years = index.flucNum(YEAR);
         if (years != null) {
             writer.write("""
             <div id="slider">
