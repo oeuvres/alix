@@ -22,48 +22,32 @@ package com.github.oeuvres.alix.lucene.terms;
  */
 public abstract class TermScorer {
 
-    // =========================================================================
-    // Corpus-level state (set once)
-    // =========================================================================
-
-    /** Total token count of the full corpus/field. */
+    /** Corpus-level state, total token count of the full corpus/field. */
     protected long corpusTokens;
 
-    /** Number of scoring units (documents or parts). */
+    /** Corpus-level state, number of scoring units (documents or parts). */
     protected int corpusPartCount;
 
-    /** Average token count per scoring unit. */
+    /** Corpus-level state, average token count per scoring unit. */
     protected double partTokensAvg;
 
-    // =========================================================================
-    // Term-level state (reset per term)
-    // =========================================================================
-
-    /** Total occurrences of the current term in the corpus. */
+    /** Term-level state, total occurrences of the current term in the corpus. */
     protected long corpusTermFreq;
 
-    /** Number of scoring units containing the current term. */
+    /** Term-level state, number of scoring units containing the current term. */
     protected int corpusTermDocs;
 
-    /** Relative frequency of the current term: corpusTermFreq / corpusTokens. */
+    /** Term-level state, relative frequency of the current term: corpusTermFreq / corpusTokens. */
     protected double corpusTermRate;
 
-    /** Cached IDF-like factor, computed per term by subclasses that need it. */
+    /** Term-level state, cached IDF-like factor, computed per term by subclasses that need it. */
     protected double corpusIdf;
 
-    // =========================================================================
-    // Accumulator state (reset per term, updated per collect)
-    // =========================================================================
-
-    /** Running accumulator. Semantics depend on the subclass. */
+    /** Accumulator state, running accumulator. Semantics depend on the subclass {@link #collect}. */
     protected double acc;
 
-    /** Number of scoring units observed via {@link #collect}. */
+    /** Accumulator state, number of scoring units observed via {@link #collect}. */
     protected int collectCount;
-
-    // =========================================================================
-    // Corpus-level setup
-    // =========================================================================
 
     /**
      * Set corpus-level statistics. Must be called once before any
@@ -105,10 +89,6 @@ public abstract class TermScorer {
         this.collectCount = 0;
     }
 
-    // =========================================================================
-    // Accumulation protocol: accInit / collect / result
-    // =========================================================================
-
     /**
      * Initial accumulator value before any observation.
      * Default is {@code 0.0} (suitable for sum-based aggregation).
@@ -130,10 +110,6 @@ public abstract class TermScorer {
     public double result() {
         return acc;
     }
-
-    // =========================================================================
-    // Pure local score (no side effect on accumulator)
-    // =========================================================================
 
     /**
      * Compute the local score for one document/part and fold it into the

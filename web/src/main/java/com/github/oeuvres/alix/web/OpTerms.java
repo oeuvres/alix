@@ -3,6 +3,7 @@ package com.github.oeuvres.alix.web;
 import java.io.IOException;
 
 import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.search.Query;
 
 import com.google.gson.stream.JsonWriter;
 
@@ -68,6 +69,7 @@ public final class OpTerms extends Op
         TopTerms topTerms;
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
+        final String q = pars.getString(Q, null);
 
         final long t0 = System.nanoTime();
         
@@ -79,20 +81,29 @@ public final class OpTerms extends Op
                 "terms: field '" + fieldName + "' not found or not a text field");
             return;
         }
-        String q = pars.getString(Q, null);
-        if (q != null) {
-            SpanQuery spanQuery = spanQuery(index, pars);
-            // Co-occurrence mode — placeholder
-            AlixServlet.jsonError(response, 501,
-                "terms: co-occurrence mode not yet implemented");
-            return;
-        }
-        else {
+        
+        // Build a filter query from years and tags
+        final Query filterQuery = filterQuery(index, pars);
+        final SpanQuery spanQuery = spanQuery(index, pars);
+        
+        if (filterQuery == null && spanQuery == null) {
             // Theme terms mode
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             FieldStats fieldStats = fluc.fieldStats();
             fieldStats.buildWeights(index.reader(), scorer);
             topTerms = TopTerms.theme(fieldStats, fluc.termLexicon(), topK);
+        }
+        else if (spanQuery == null) {
+            // Constrastive terms
+            AlixServlet.jsonError(response, 501,
+                "terms: filter mode not yet implemented");
+            return;
+        }
+        else {
+            // Co-occurrence mode — placeholder
+            AlixServlet.jsonError(response, 501,
+                "terms: co-occurrence mode not yet implemented");
+            return;
         }
 
         final long qTime = (System.nanoTime() - t0) / 1_000_000;
@@ -111,7 +122,7 @@ public final class OpTerms extends Op
             jw.name("top").value(topK);
             jw.name("idfexp").value(idfExp);
             if (q != null) {
-                jw.name("q").value(q);
+                jw.name("q").value(q.trim().replaceAll("\s*\n\s*", ", "));
             }
             else {
             }
