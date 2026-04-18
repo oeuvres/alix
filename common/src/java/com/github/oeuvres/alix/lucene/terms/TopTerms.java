@@ -186,7 +186,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
             final double s = weights[termId];
             if (!Double.isNaN(s) && s > 0d) top.push(termId, s);
         }
-        buildRank(top, weights, fieldCounts);
+        this.activeCounts = fieldStats.termCounts;
+        buildRank(top, weights);
     }
 
     /**
@@ -253,7 +254,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
                 top.push(termId, s);
             }
         }
-        buildRank(top, scoreVec, focusCounts);
+        this.activeCounts = focusCounts;
+        buildRank(top, scoreVec);
     }
 
     /**
@@ -265,15 +267,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      */
     private void buildRank(
         final TopArray top,
-        final double[] scoreVec,
-        final long[]   counts
+        final double[] scoreVec
     ) {
         final int n = top.size();
         rank2termId  = new int[n];
         int rank = 0;
         for (TopArray.IdScore e : top) rank2termId[rank++] = e.id();
         this.scores       = scoreVec;
-        this.activeCounts = counts;
     }
 
     // -------------------------------------------------------------------------
