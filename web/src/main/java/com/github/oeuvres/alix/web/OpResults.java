@@ -308,7 +308,7 @@ public class OpResults extends Op
             
             final FieldStats fieldStats = fluc.fieldStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-            fieldStats.buildWeights(index.reader(), new TermScorer.BM25(idfExp));
+            fieldStats.termWeights(index.reader(), new TermScorer.BM25(idfExp));
             
             final SpanVisitor visitor = new SpanVisitor(
                     index.searcher(),

@@ -90,7 +90,7 @@ public final class OpTerms extends Op
             // Theme terms mode
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             FieldStats fieldStats = fluc.fieldStats();
-            fieldStats.buildWeights(index.reader(), scorer);
+            fieldStats.termWeights(index.reader(), scorer);
             topTerms = TopTerms.theme(fieldStats, fluc.termLexicon(), topK);
         }
         else if (spanQuery == null) {

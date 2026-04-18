@@ -78,7 +78,7 @@ public final class ThemeTermsDemo {
             
             for (TermScorer scorer: scorers) {
                 System.out.println("\n\n" + scorer + "\n");
-                fieldStats.buildWeights(luceneReader, scorer);
+                fieldStats.termWeights(luceneReader, scorer);
                 TopTerms top = TopTerms.theme(fieldStats, lexicon, topK);
                 for(TermEntry term: top) {
                     System.out.print(term.term() + ", ");

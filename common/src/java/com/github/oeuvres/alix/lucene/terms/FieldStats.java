@@ -121,7 +121,7 @@ import java.util.Objects;
  * total term frequencies are unavailable and this class cannot be built.</li>
  * </ul>
  */
-public final class FieldStats implements ReferenceStats
+public final class FieldStats
 {
     /** File magic: ASCII "FSTS". */
     private static final int MAGIC = 0x46535453;
@@ -139,13 +139,13 @@ public final class FieldStats implements ReferenceStats
     private final String field;
     
     /** Number of documents that contain at least one term in the field. */
-    private final int fieldDocs;
+    private final int docs;
 
     /** Sum of all {@code docWidths}: total position count across the field. */
-    private final long fieldWidth;
+    private final long width;
 
     /** Total number of tokens in the field. */
-    private final long fieldTokens;
+    private final long tokens;
 
     /** Lucene document-address space size for this frozen reader snapshot. */
     private final int maxDoc;
@@ -154,7 +154,7 @@ public final class FieldStats implements ReferenceStats
     private final int[] termDocs;
 
     /** Per-term total occurrences in the field, indexed by dense term id. */
-    private final long[] termFreqs;
+    private final long[] termCounts;
     
     /**
      * Corpus-level term weight vector, indexed by dense term id.
@@ -165,7 +165,7 @@ public final class FieldStats implements ReferenceStats
     /** The scorer used to calculate termeights */
     private volatile TermScorer termWeightsScorer;
     /** Number of distinct terms in the field. */
-    private final int vocabSize;
+    final int vocabSize;
     
     /**
      * Creates an immutable statistics object from already-loaded arrays.
@@ -174,10 +174,10 @@ public final class FieldStats implements ReferenceStats
      * @param field        indexed field
      * @param maxDoc       Lucene document-address space size
      * @param docWidths    exact field token counts by global doc id
-     * @param fieldWidth   sum of all docWidths
+     * @param width   sum of all docWidths
      * @param vocabSize    number of distinct terms
-     * @param fieldDocs    number of documents that contain the field
-     * @param fieldTokens  total number of tokens in the field
+     * @param docs    number of documents that contain the field
+     * @param tokens  total number of tokens in the field
      * @param termDocs     per-term document frequencies
      * @param termFreqs    per-term total term frequencies
      */
@@ -186,10 +186,10 @@ public final class FieldStats implements ReferenceStats
             final String field,
             final int maxDoc,
             final int[] docWidths,
-            final long fieldWidth,
+            final long width,
             final int vocabSize,
-            final int fieldDocs,
-            final long fieldTokens,
+            final int docs,
+            final long tokens,
             final int[] termDocs,
             final long[] termFreqs
     ) {
@@ -197,12 +197,12 @@ public final class FieldStats implements ReferenceStats
         this.field = field;
         this.maxDoc = maxDoc;
         this.docWidths = docWidths;
-        this.fieldWidth = fieldWidth;
+        this.width = width;
         this.vocabSize = vocabSize;
-        this.fieldDocs = fieldDocs;
-        this.fieldTokens = fieldTokens;
+        this.docs = docs;
+        this.tokens = tokens;
         this.termDocs = termDocs;
-        this.termFreqs = termFreqs;
+        this.termCounts = termFreqs;
     }
     
     /**
@@ -254,7 +254,7 @@ public final class FieldStats implements ReferenceStats
      * @throws IllegalStateException    if called before weights are needed (remind the caller
      *                                  to call this method at startup)
      */
-    public void buildWeights(final IndexReader reader, final TermScorer scorer) throws IOException {
+    public double[] termWeights(final IndexReader reader, final TermScorer scorer) throws IOException {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(scorer, "scorer");
  
@@ -268,9 +268,9 @@ public final class FieldStats implements ReferenceStats
                 "Field '" + field + "' was not indexed with term frequencies");
         }
         // weights already calculated with same scorer
-        if (scorer.equals(termWeightsScorer)) return;
+        if (scorer.equals(termWeightsScorer)) return termWeights;
         
-        scorer.corpus(fieldTokens, fieldDocs);
+        scorer.corpus(tokens, docs);
  
         final double[] weights = new double[vocabSize];
         final TermsEnum tenum = terms.iterator();
@@ -288,7 +288,7 @@ public final class FieldStats implements ReferenceStats
             }
  
             // termDocs and termFreqs are already available — no second pass needed.
-            scorer.term(termFreqs[termId], termDocs[termId]);
+            scorer.term(termCounts[termId], termDocs[termId]);
  
             postings = tenum.postings(postings, PostingsEnum.FREQS);
             for (int docId = postings.nextDoc();
@@ -304,6 +304,7 @@ public final class FieldStats implements ReferenceStats
         }
  
         this.termWeights = weights;
+        return weights;
     }
     
     /**
@@ -318,7 +319,7 @@ public final class FieldStats implements ReferenceStats
     {
         return (long) docWidths.length * Integer.BYTES
                 + (long) termDocs.length * Integer.BYTES
-                + (long) termFreqs.length * Long.BYTES
+                + (long) termCounts.length * Long.BYTES
                 ;
     }
     
@@ -394,7 +395,6 @@ public final class FieldStats implements ReferenceStats
      * @return number of documents that contain the term
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
-    @Override
     public int docFreq(final int termId)
     {
         checkTermId(termId);
@@ -444,29 +444,49 @@ public final class FieldStats implements ReferenceStats
         return Files.isRegularFile(statsPath(indexDir, field));
     }
     
-    @Override
+    /**
+     * Returns the indexed field covered by this reference population.
+     *
+     * @return field name
+     */
     public String field()
     {
         return field;
     }
     
 
-    @Override
-    public int fieldDocs()
+    /**
+     * Returns the number of documents in the reference population.
+     * <p>
+     * This value is typically used for document-frequency-based scoring,
+     * such as tf-idf-like measures.
+     * </p>
+     *
+     * @return reference document count
+     */
+    public int docs()
     {
-        return fieldDocs;
+        return docs;
     }
     
-    @Override
-    public long fieldTokens()
+    /**
+     * Returns the total token count in the reference population.
+     *
+     * @return total token count in the reference population
+     */
+    public long tokens()
     {
-        return fieldTokens;
+        return tokens;
     }
 
-    @Override
-    public long fieldWidth()
+    /**
+     * Returns the total positions count, including tokens and possible non indexed stopwords.
+     *
+     * @return total token count in the reference population
+     */
+    public long width()
     {
-        return fieldWidth;
+        return width;
     }
 
     /**
@@ -533,14 +553,14 @@ public final class FieldStats implements ReferenceStats
                 throw new IOException("Read maxDoc=" + maxDoc + " inconsistent with Lucene IndexReader.maxDoc()=" + reader.maxDoc());
             }
             final int[] docWidths = new int[maxDoc];
-            long fieldWidth = 0L;
+            long width = 0L;
             for (int docId = 0; docId < maxDoc; docId++) {
                 final int value = in.readInt();
                 if (value < 0) {
                     throw new IOException("Invalid width=" + value + " for docId=" + docId);
                 }
                 docWidths[docId] = value;
-                fieldWidth += value;
+                width += value;
             }
             // by-term stats
             final int vocabSize = in.readInt();
@@ -548,8 +568,8 @@ public final class FieldStats implements ReferenceStats
                 throw new IOException("Invalid vocabSize in stats file: " + vocabSize);
             }
             
-            final int fieldDocs = in.readInt();
-            final long fieldTokens = in.readLong();
+            final int docs = in.readInt();
+            final long tokens = in.readLong();
             final int[] termDocs = new int[vocabSize];
             for (int termId = 0; termId < vocabSize; termId++) {
                 termDocs[termId] = in.readInt();
@@ -568,10 +588,10 @@ public final class FieldStats implements ReferenceStats
                 field,
                 maxDoc, 
                 docWidths,
-                fieldWidth,
+                width,
                 vocabSize,
-                fieldDocs,
-                fieldTokens,
+                docs,
+                tokens,
                 termDocs,
                 termFreqs
             );
@@ -627,28 +647,10 @@ public final class FieldStats implements ReferenceStats
      * @return total term frequency in the field
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
-    @Override
-    public long termFreq(final int termId)
+    public long termCount(final int termId)
     {
         checkTermId(termId);
-        return termFreqs[termId];
-    }
-    
-    
-    
-    /**
-     * Returns a defensive copy of the total-term-frequency vector.
-     *
-     * @return copied {@code termFreqs} array, indexed by dense term id
-     */
-    public long[] termFreqsCopy()
-    {
-        return Arrays.copyOf(termFreqs, termFreqs.length);
-    }
-    
-    public long[] termFreqsRef()
-    {
-        return termFreqs;
+        return termCounts[termId];
     }
     
     public double[] termWeightsRef()
@@ -661,7 +663,6 @@ public final class FieldStats implements ReferenceStats
      *
      * @return number of distinct terms in the field
      */
-    @Override
     public int vocabSize()
     {
         return vocabSize;

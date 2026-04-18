@@ -166,7 +166,7 @@ public final class TermSuggest {
                 continue;
             }
 
-            final long freq = stats.termFreq(termId);
+            final long freq = stats.termCount(termId);
             top.push(termId, (double) freq);
             fromIndex = offsets[termId + 1] - 1;
         }

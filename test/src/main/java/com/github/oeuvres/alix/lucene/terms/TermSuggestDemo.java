@@ -55,7 +55,7 @@ public final class TermSuggestDemo
             System.err.printf("Lexicon: %,d terms, FST heap %,d bytes%n",
                 lexicon.vocabSize(), lexicon.fstRamBytesUsed());
             System.err.printf("Stats:   %,d terms, %,d docs, %,d tokens%n",
-                stats.vocabSize(), stats.fieldDocs(), stats.fieldTokens());
+                stats.vocabSize(), stats.docs(), stats.tokens());
 
             final long t0 = System.nanoTime();
             final TermSuggest suggest = new TermSuggest(
