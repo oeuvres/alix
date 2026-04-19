@@ -22,10 +22,12 @@ public interface KeynessScorer {
     class LogRatio implements KeynessScorer {
         @Override
         public double score(long focusCount, long focusTotal, long refCount, long refTotal) {
-            // +1 Laplace smoothing to avoid log(0)
-            double relFocus = (focusCount + 1.0) / focusTotal;
-            double relRef   = (refCount   + 1.0) / refTotal;
-            return Math.log(relFocus / relRef) / Math.log(2);
+            // avoid log(0) and /0
+            if (focusCount == 0 || refCount == 0 || focusTotal == 0 || refTotal == 0) return 0;
+            // low-pass filter not needed with Math.log(focusCount)
+            double relFocus = (double) (focusCount) / focusTotal;
+            double relRef   = (double) (refCount) / refTotal;
+            return Math.log(relFocus / relRef) / Math.log(2) * Math.log(focusCount);
         }
     }
 

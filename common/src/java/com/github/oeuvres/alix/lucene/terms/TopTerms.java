@@ -196,10 +196,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
                 fc, focusTotal,
                 fieldStats.termCount(termId), fieldTotal
             );
-            if (s > 0d) {
-                scoreVec[termId] = s;
-                top.push(termId, s);
-            }
+            if (Double.isNaN(s)) continue;
+            scoreVec[termId] = s;
+            top.push(termId, s);
         }
         this.activeCounts = focusCounts;
         buildRank(top, scoreVec);
