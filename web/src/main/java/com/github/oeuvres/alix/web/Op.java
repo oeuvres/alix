@@ -244,4 +244,32 @@ public abstract class Op
         return spanQuery;
     }
     
+    /**
+     * Writes a Java value as the appropriate JSON token. Supports the types
+     * returned by {@link HttpPars.Resolved#value()}: Integer, Long, Double,
+     * Boolean, String, Enum, int[], String[]. Null is written as JSON null.
+     * Any other type is written as its toString.
+     */
+    protected static void jsonObject(JsonWriter jw, Object v) throws IOException {
+        if (v == null)                  { jw.nullValue(); return; }
+        if (v instanceof Integer i)     { jw.value(i); return; }
+        if (v instanceof Long l)        { jw.value(l); return; }
+        if (v instanceof Double d)      { jw.value(d); return; }
+        if (v instanceof Boolean b)     { jw.value(b); return; }
+        if (v instanceof String s)      { jw.value(s); return; }
+        if (v instanceof Enum<?> e)     { jw.value(e.name()); return; }
+        if (v instanceof int[] arr) {
+            jw.beginArray();
+            for (int x : arr) jw.value(x);
+            jw.endArray();
+            return;
+        }
+        if (v instanceof String[] arr) {
+            jw.beginArray();
+            for (String s : arr) jw.value(s);
+            jw.endArray();
+            return;
+        }
+        jw.value(v.toString());
+    }
 }

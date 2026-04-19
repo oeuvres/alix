@@ -1,17 +1,22 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.FixedBitSet;
 
 import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.github.oeuvres.alix.lucene.BitsCollectorManager;
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
+import com.github.oeuvres.alix.lucene.terms.TermCollector;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -85,17 +90,24 @@ public final class OpTerms extends Op
         final SpanQuery spanQuery = spanQuery(index, pars);
         
         TopTerms topTerms = fluc.topTerms();
+        // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
-            // Theme terms mode
+            // an http param may change idfExp
             final TermScorer scorer = new TermScorer.BM25(idfExp);
+            // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
             topTerms.themeScore(scorer, index.reader(), topK);
         }
+        // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
-            // Constrastive terms
-            AlixServlet.jsonError(response, 501,
-                "terms: filter mode not yet implemented");
-            return;
+            final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
+
+            final TermCollector collector = new TermCollector(index.searcher(), fluc.termLexicon());
+            collector.collect(focusDocs, topTerms);
+
+            final KeynessScorer scorer = new KeynessScorer.LogRatio();
+            topTerms.focusScore(scorer, topK);
         }
+        // coocs, with or without doc filter TODO
         else {
             // Co-occurrence mode — placeholder
             AlixServlet.jsonError(response, 501,
@@ -113,17 +125,22 @@ public final class OpTerms extends Op
             jw.name("meta");
             jw.beginObject();
             jw.name("time").value(qTime);
-            jw.name("params"); // start params
+            
+            jw.name("params");
             jw.beginObject();
-            jw.name("field").value(fieldName);
-            jw.name("top").value(topK);
-            jw.name("idfexp").value(idfExp);
-            if (q != null) {
-                jw.name("q").value(q.trim().replaceAll("\s*\n\s*", ", "));
+            for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
+                jw.name(e.getKey());
+                jsonObject(jw, e.getValue().value());
             }
-            else {
+            jw.endObject();
+
+            jw.name("paramsSource");
+            jw.beginObject();
+            for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
+                jw.name(e.getKey()).value(e.getValue().source().name());
             }
-            jw.endObject(); // params
+            jw.endObject();
+            
             jw.endObject(); // meta
 
             // data

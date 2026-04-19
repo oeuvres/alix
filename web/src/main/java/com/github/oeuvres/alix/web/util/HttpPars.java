@@ -1,7 +1,7 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
- * 
- * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
+ *
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org>
  *                Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
@@ -9,7 +9,7 @@
  * with Lucene https://lucene.apache.org/core/
  * including linguistic expertness for French,
  * available under Apache license.
- * 
+ *
  * Alix has been started in 2009 under the javacrim project
  * https://sf.net/projects/javacrim/
  * for a java course at Inalco  http://www.er-tim.fr/
@@ -34,9 +34,12 @@ package com.github.oeuvres.alix.web.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import jakarta.servlet.http.Cookie;
@@ -46,7 +49,7 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Stateful helper for HTTP request parameter resolution, wrapping an
  * {@link HttpServletRequest} and an optional {@link HttpServletResponse}.
- * 
+ *
  * <p>Each typed getter resolves a parameter value through a priority chain:
  * <b>request parameter → request attribute → cookie → fallback</b>.
  * When a cookie name is supplied, the resolved value is persisted as a cookie;
@@ -54,12 +57,52 @@ import jakarta.servlet.http.HttpServletResponse;
  * Cookie persistence requires a non-null response; instances constructed
  * with {@link #HttpPars(HttpServletRequest)} silently skip all cookie writes.
  * </p>
- * 
- * <p>Also provides static utilities for query-string building
- * and parameter value testing.</p>
+ *
+ * <h2>Source tracking</h2>
+ * <p>Every typed getter records the name, the effective value it returned,
+ * and the {@link Source} it came from. The servlet can then emit a
+ * diagnostics block in its response showing what was asked, what was used,
+ * and why:</p>
+ * <pre>{@code
+ * {
+ *   "meta": {
+ *     "params":       { "field": "text", "top": 50, "idfexp": 1.3 },
+ *     "paramsSource": { "field": "DEFAULT", "top": "HTTP", "idfexp": "COOKIE" }
+ *   }
+ * }
+ * }</pre>
+ * <p>Entries are recorded in the order getters are called, so the output
+ * reflects the code path of the servlet. Values retain their JVM type
+ * (Integer, Double, Boolean, String, Enum, int[]) so JSON emitters can
+ * preserve type fidelity.</p>
+ *
+ * <p>Also provides static utilities for query-string building and
+ * parameter value testing.</p>
  */
 public class HttpPars
 {
+    /**
+     * Where an effective parameter value came from, in priority order.
+     */
+    public enum Source {
+        /** Value came from {@link HttpServletRequest#getParameter}. */
+        HTTP,
+        /** Value came from {@link HttpServletRequest#getAttribute} (e.g. forward dispatch). */
+        ATTRIBUTE,
+        /** Value came from a persisted cookie. */
+        COOKIE,
+        /** No source yielded a valid value; the fallback was used. */
+        FALLBACK
+    }
+
+    /**
+     * Immutable record of one resolved parameter: the effective value
+     * returned by a typed getter, and the {@link Source} that supplied it.
+     *
+     * @param value  effective value (typed, may be {@code null} only for fallback)
+     * @param source where the value came from
+     */
+    public record Resolved(Object value, Source source) {}
 
     /** Wrapped request, source of parameters and attributes. */
     public final HttpServletRequest request;
@@ -67,12 +110,14 @@ public class HttpPars
     public final HttpServletResponse response;
     /** Lazily populated cookie cache, keyed by cookie name. */
     private HashMap<String, String> cookies;
+    /** Insertion-ordered log of resolved parameters, populated by every typed getter. */
+    private final LinkedHashMap<String, Resolved> resolvedParams = new LinkedHashMap<>();
     /** Default cookie max-age: 30 days, in seconds. */
     private static final int COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
     /**
      * Construct a parameter helper with cookie persistence.
-     * 
+     *
      * @param request  the current HTTP request.
      * @param response the current HTTP response (receives Set-Cookie headers).
      */
@@ -83,9 +128,82 @@ public class HttpPars
     }
 
     /**
+     * Records a resolution and returns the value unchanged. Every typed
+     * getter funnels its return points through this method so the
+     * {@link #resolvedParams()} log stays in sync with what callers saw.
+     *
+     * @param <T>    value type
+     * @param name   parameter name
+     * @param value  effective value
+     * @param source where the value came from
+     * @return {@code value}
+     */
+    private <T> T record(final String name, final T value, final Source source)
+    {
+        resolvedParams.put(name, new Resolved(value, source));
+        return value;
+    }
+
+    /**
+     * Return the recorded resolution for one parameter, or {@code null}
+     * if no getter has been called for that name yet.
+     *
+     * @param name parameter name.
+     * @return the recorded {@link Resolved}, or null.
+     */
+    public Resolved resolved(final String name)
+    {
+        return resolvedParams.get(name);
+    }
+
+    /**
+     * Return an unmodifiable, insertion-ordered view of every parameter
+     * that a typed getter has resolved so far. Keys appear in the order
+     * the getters were called.
+     *
+     * @return ordered map of {@code name → Resolved}.
+     */
+    public Map<String, Resolved> resolvedParams()
+    {
+        return Collections.unmodifiableMap(resolvedParams);
+    }
+
+    /**
+     * Convenience view: ordered map of {@code name → value} across all
+     * resolved parameters. Suitable for direct JSON emission as the
+     * {@code meta.params} block.
+     *
+     * @return ordered map of effective values.
+     */
+    public Map<String, Object> params()
+    {
+        final LinkedHashMap<String, Object> out = new LinkedHashMap<>(resolvedParams.size());
+        for (Map.Entry<String, Resolved> e : resolvedParams.entrySet()) {
+            out.put(e.getKey(), e.getValue().value());
+        }
+        return Collections.unmodifiableMap(out);
+    }
+
+    /**
+     * Convenience view: ordered map of {@code name → Source} across all
+     * resolved parameters. Suitable for direct JSON emission as the
+     * {@code meta.paramsSource} block.
+     *
+     * @return ordered map of sources.
+     */
+    public Map<String, Source> paramsSource()
+    {
+        final LinkedHashMap<String, Source> out = new LinkedHashMap<>(resolvedParams.size());
+        for (Map.Entry<String, Resolved> e : resolvedParams.entrySet()) {
+            out.put(e.getKey(), e.getValue().source());
+        }
+        return Collections.unmodifiableMap(out);
+    }
+
+    /**
      * Get a cookie value by name. Lazily caches all request cookies
      * on first call.
-     * 
+     *
      * @param name cookie name.
      * @return the cookie value, or null if absent or name is blank.
      */
@@ -109,10 +227,10 @@ public class HttpPars
      * Set or delete a cookie on the response using the Jakarta {@link Cookie} API.
      * A null value deletes the cookie (max-age=0). Non-null values are persisted
      * for {@value #COOKIE_MAX_AGE_SECONDS} seconds with HttpOnly and SameSite=Strict.
-     * 
+     *
      * <p>No-op if this instance was constructed without a response
      * (see {@link #HttpPars(HttpServletRequest)}).</p>
-     * 
+     *
      * @param name  cookie name.
      * @param value cookie value, or null to delete.
      */
@@ -143,7 +261,7 @@ public class HttpPars
      * Resolve a request parameter as a boolean.
      * Values {@code "false"}, {@code "0"}, {@code "null"} are interpreted as false;
      * any other non-blank value as true.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when the parameter is absent or blank.
      * @return resolved boolean.
@@ -152,17 +270,17 @@ public class HttpPars
     {
         String value = request.getParameter(name);
         if ("false".equals(value) || "0".equals(value) || "null".equals(value))
-            return false;
+            return record(name, false, Source.HTTP);
         if (hasValue(value))
-            return true;
-        return fallback;
+            return record(name, true, Source.HTTP);
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
      * Resolve a request parameter as a boolean with cookie persistence.
      * Priority: request parameter → cookie → fallback.
      * An empty (non-null) parameter resets the cookie.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when neither parameter nor cookie yield a result.
      * @param cookie   cookie name for persistence.
@@ -173,32 +291,30 @@ public class HttpPars
         String value = request.getParameter(name);
         if ("false".equals(value) || "0".equals(value) || "null".equals(value)) {
             cookie(cookie, "0");
-            return false;
+            return record(name, false, Source.HTTP);
         }
         if (hasValue(value)) {
             cookie(cookie, "1");
-            return true;
+            return record(name, true, Source.HTTP);
         }
-        // param is empty but not null, reset cookie
         if (value != null) {
             cookie(cookie, null);
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
-        // try cookie
         value = cookie(cookie);
         if ("0".equals(value))
-            return false;
+            return record(name, false, Source.COOKIE);
         if (hasValue(value))
-            return true;
+            return record(name, true, Source.COOKIE);
         cookie(cookie, null);
-        return fallback;
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
      * Resolve a request parameter as an {@link Enum} constant.
      * Uses {@link Enum#valueOf(Class, String)} to match; returns
      * the fallback on mismatch or absence.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback default value (must not be null — its declaring class is used for lookup).
      * @return the matched enum constant, or fallback.
@@ -212,12 +328,12 @@ public class HttpPars
         }
         String value = request.getParameter(name);
         if (!hasValue(value)) {
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
         try {
-            return Enum.valueOf(fallback.getDeclaringClass(), value);
+            return record(name, Enum.valueOf(fallback.getDeclaringClass(), value), Source.HTTP);
         } catch (IllegalArgumentException e) {
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
     }
 
@@ -225,7 +341,7 @@ public class HttpPars
      * Resolve a request parameter as an {@link Enum} constant with cookie persistence.
      * Priority: request parameter → cookie → fallback.
      * An empty (non-null) parameter resets the cookie.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback default value (must not be null).
      * @param cookie   cookie name for persistence.
@@ -243,27 +359,27 @@ public class HttpPars
             try {
                 Enum<?> ret = Enum.valueOf(fallback.getDeclaringClass(), value);
                 cookie(cookie, ret.name());
-                return ret;
+                return record(name, ret, Source.HTTP);
             } catch (IllegalArgumentException e) {
                 // bad param, fall through
             }
         }
         if (value != null) {
             cookie(cookie, null);
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
         value = cookie(cookie);
         try {
-            return Enum.valueOf(fallback.getDeclaringClass(), value);
+            return record(name, Enum.valueOf(fallback.getDeclaringClass(), value), Source.COOKIE);
         } catch (Exception e) {
             cookie(cookie, null);
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
     }
 
     /**
      * Resolve a request parameter as a double.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when absent or unparseable.
      * @return resolved double.
@@ -273,19 +389,19 @@ public class HttpPars
         String value = request.getParameter(name);
         if (hasValue(value)) {
             try {
-                return Double.parseDouble(value);
+                return record(name, Double.parseDouble(value), Source.HTTP);
             } catch (NumberFormatException e) {
                 // fall through
             }
         }
-        return fallback;
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
      * Resolve a request parameter as a double with cookie persistence.
      * Priority: request parameter → cookie → fallback.
      * An empty (non-null) parameter resets the cookie.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when neither parameter nor cookie yield a valid double.
      * @param cookie   cookie name for persistence.
@@ -298,29 +414,29 @@ public class HttpPars
             try {
                 double ret = Double.parseDouble(value);
                 cookie(cookie, "" + ret);
-                return ret;
+                return record(name, ret, Source.HTTP);
             } catch (NumberFormatException e) {
                 // fall through
             }
         }
         if (value != null && !hasValue(value)) {
             cookie(cookie, null);
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
         value = cookie(cookie);
         if (value == null)
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         try {
-            return Double.parseDouble(value);
+            return record(name, Double.parseDouble(value), Source.COOKIE);
         } catch (NumberFormatException e) {
             cookie(cookie, null);
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
     }
 
     /**
      * Resolve a request parameter as an int.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when absent or unparseable.
      * @return resolved int.
@@ -332,7 +448,7 @@ public class HttpPars
 
     /**
      * Resolve a request parameter as an int with cookie persistence.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback default value.
      * @param cookie   cookie name for persistence.
@@ -345,7 +461,7 @@ public class HttpPars
 
     /**
      * Resolve a request parameter as an int, clamped to a range.
-     * 
+     *
      * @param name     parameter name.
      * @param range    {@code [min, max]} bounds (inclusive), or null for unclamped.
      * @param fallback default value.
@@ -383,42 +499,39 @@ public class HttpPars
 
         final String parString = request.getParameter(name);
 
-        // Explicit reset: empty (non-null) parameter clears the cookie.
         if (parString != null && !hasValue(parString)) {
             cookie(cookie, null);
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
 
-        // Parseable parameter: in-range → persist; out-of-range → clamp silently.
         final Integer fromPar = parseInt(parString);
         if (fromPar != null) {
             if (fromPar >= min && fromPar <= max && cookie != null) {
                 cookie(cookie, String.valueOf(fromPar));
             }
-            return fromPar < min ? min : fromPar > max ? max : fromPar;
+            final int clamped = fromPar < min ? min : fromPar > max ? max : fromPar;
+            return record(name, clamped, Source.HTTP);
         }
 
-        // No parameter (parString null): try request attribute before cookie.
         if (parString == null) {
             final Object att = request.getAttribute(name);
             if (att instanceof Integer) {
                 final int fromAtt = (Integer) att;
-                return fromAtt < min ? min : fromAtt > max ? max : fromAtt;
+                final int clamped = fromAtt < min ? min : fromAtt > max ? max : fromAtt;
+                return record(name, clamped, Source.ATTRIBUTE);
             }
         }
-        // Unparseable parameter (parString non-null but parseInt failed): skip to cookie.
 
-        // Cookie fallback.
         final Integer fromCookie = parseInt(cookie(cookie));
         if (fromCookie != null) {
             if (fromCookie < min || fromCookie > max) {
-                cookie(cookie, null);          // stale cookie out of range, evict it
-                return fallback;
+                cookie(cookie, null);
+                return record(name, fallback, Source.FALLBACK);
             }
-            return fromCookie;
+            return record(name, (int) fromCookie, Source.COOKIE);
         }
 
-        return fallback;
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
@@ -427,7 +540,7 @@ public class HttpPars
      * or 2 ({@code [lower, upper]}, guaranteed lower ≤ upper).
      * Open-ended ranges are supported: a missing lower defaults to min,
      * a missing upper defaults to max.
-     * 
+     *
      * @param name  parameter name.
      * @param range {@code [min, max]} bounds (inclusive), or null for unclamped.
      * @return int array of length 0, 1, or 2.
@@ -442,7 +555,7 @@ public class HttpPars
         }
         String[] values = request.getParameterValues(name);
         if (values == null || values.length == 0) {
-            return new int[0];
+            return record(name, new int[0], Source.FALLBACK);
         }
         Integer value0 = null;
         try {
@@ -452,11 +565,11 @@ public class HttpPars
         }
         if (values.length == 1) {
             if (value0 == null) {
-                return new int[0];
+                return record(name, new int[0], Source.FALLBACK);
             } else if (value0 >= min && value0 <= max) {
-                return new int[] { value0 };
+                return record(name, new int[] { value0 }, Source.HTTP);
             } else {
-                return new int[0];
+                return record(name, new int[0], Source.FALLBACK);
             }
         }
         Integer value1 = null;
@@ -466,28 +579,28 @@ public class HttpPars
             // leave null
         }
         if (value0 == null && value1 == null) {
-            return new int[0];
+            return record(name, new int[0], Source.FALLBACK);
         }
         final int[] data = new int[2];
         if (value0 == null) {
-            if (value1 < min) return new int[0];
+            if (value1 < min) return record(name, new int[0], Source.FALLBACK);
             data[0] = min;
             data[1] = Integer.min(value1, max);
         } else if (value1 == null) {
-            if (value0 > max) return new int[0];
+            if (value0 > max) return record(name, new int[0], Source.FALLBACK);
             data[0] = Integer.max(value0, min);
             data[1] = max;
         } else {
             data[0] = Integer.max(Integer.min(value0, value1), min);
             data[1] = Integer.min(Integer.max(value0, value1), max);
         }
-        return data;
+        return record(name, data, Source.HTTP);
     }
 
     /**
      * Collect a multi-valued int parameter as a deduplicated array,
      * preserving request order.
-     * 
+     *
      * @param name parameter name.
      * @return array of unique int values (empty if none valid).
      */
@@ -495,7 +608,7 @@ public class HttpPars
     {
         String[] vals = request.getParameterValues(name);
         if (vals == null || vals.length < 1) {
-            return new int[0];
+            return record(name, new int[0], Source.FALLBACK);
         }
         int dstPos = 0;
         final int[] dst = new int[vals.length];
@@ -511,12 +624,13 @@ public class HttpPars
             set.add(value);
             dst[dstPos++] = value;
         }
-        return Arrays.copyOf(dst, dstPos);
+        final int[] out = Arrays.copyOf(dst, dstPos);
+        return record(name, out, out.length == 0 ? Source.FALLBACK : Source.HTTP);
     }
 
     /**
      * Resolve a request parameter as a String.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when absent or blank.
      * @return resolved string. Priority: request parameter → request attribute → fallback.
@@ -528,7 +642,7 @@ public class HttpPars
 
     /**
      * Resolve a request parameter as a String, restricted to an allowed set.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when absent, blank, or not in set.
      * @param set      allowed values, or null for unrestricted.
@@ -544,7 +658,7 @@ public class HttpPars
      * restriction and cookie persistence.
      * Priority: request parameter → request attribute → cookie → fallback.
      * An empty (non-null) parameter resets the cookie.
-     * 
+     *
      * @param name     parameter name.
      * @param fallback value returned when no source yields a valid result.
      * @param set      allowed values, or null for unrestricted.
@@ -554,17 +668,15 @@ public class HttpPars
     public String getString(final String name, final String fallback, final Set<String> set, final String cookie)
     {
         String par = request.getParameter(name);
-        // no cookie, answer fast
         if (!hasValue(cookie) && hasValue(par)) {
             if (set == null) {
-                return par;
+                return record(name, par, Source.HTTP);
             } else if (set.contains(par)) {
-                return par;
+                return record(name, par, Source.HTTP);
             } else {
                 par = null;
             }
         }
-        // try request attribute
         Object o = request.getAttribute(name);
         String att = null;
         if (o instanceof String) {
@@ -572,34 +684,33 @@ public class HttpPars
         }
         if (!hasValue(cookie) && hasValue(att)) {
             if (set == null) {
-                return att;
+                return record(name, att, Source.ATTRIBUTE);
             } else if (set.contains(att)) {
-                return att;
+                return record(name, att, Source.ATTRIBUTE);
             } else {
                 att = null;
             }
         }
         if (!hasValue(cookie)) {
-            return fallback;
+            return record(name, fallback, Source.FALLBACK);
         }
 
-        // cookie path
         final String cookieValue = cookie(cookie);
         if (hasValue(par)) {
             cookie(cookie, par);
-            return par;
+            return record(name, par, Source.HTTP);
         }
         if (par != null) {
             cookie(cookie, null);
         }
-        if (hasValue(cookieValue)) return cookieValue;
-        return fallback;
+        if (hasValue(cookieValue)) return record(name, cookieValue, Source.COOKIE);
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
      * Collect a multi-valued String parameter as a deduplicated array,
      * preserving request order. Blank values are skipped.
-     * 
+     *
      * @param name parameter name.
      * @return array of unique non-blank values (empty array if none).
      */
@@ -612,7 +723,7 @@ public class HttpPars
      * Collect a multi-valued String parameter as a deduplicated array,
      * preserving request order. Blank values and values not in the allowed
      * set are skipped.
-     * 
+     *
      * @param name parameter name.
      * @param set  optional set of allowed values, or null for unrestricted.
      * @return array of unique accepted values (empty array if none).
@@ -622,7 +733,7 @@ public class HttpPars
         final String[] empty = new String[0];
         String[] values = request.getParameterValues(name);
         if (values == null)
-            return empty;
+            return record(name, empty, Source.FALLBACK);
         List<String> list = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (String v : values) {
@@ -637,14 +748,15 @@ public class HttpPars
             list.add(v);
         }
         if (list.isEmpty())
-            return empty;
-        return list.toArray(empty);
+            return record(name, empty, Source.FALLBACK);
+        final String[] out = list.toArray(empty);
+        return record(name, out, Source.HTTP);
     }
 
     /**
      * Test whether a string carries a usable parameter value.
      * Returns {@code false} for null, blank, or the literal {@code "null"}.
-     * 
+     *
      * @param s string to test.
      * @return true if the string is non-null, non-blank, and not {@code "null"}.
      */
@@ -662,7 +774,7 @@ public class HttpPars
 
     /**
      * Parse a string as an Integer, returning null on failure.
-     * 
+     *
      * @param value string to parse.
      * @return parsed Integer, or null if blank, null, or not a valid integer.
      */
@@ -678,7 +790,7 @@ public class HttpPars
 
     /**
      * Return the wrapped request.
-     * 
+     *
      * @return the HTTP request.
      */
     public HttpServletRequest request()
@@ -688,7 +800,7 @@ public class HttpPars
 
     /**
      * Return the wrapped response.
-     * 
+     *
      * @return the HTTP response, or null if constructed read-only.
      */
     public HttpServletResponse response()
@@ -700,19 +812,19 @@ public class HttpPars
      * Build a query string from the given parameter names, reading values
      * from the current request. Pairs are joined with {@code &amp;}.
      * Does not include a leading {@code ?}.
-     * 
+     *
      * <p>Values are minimally encoded: only the characters that are structural
      * in a query string ({@code &amp; = + #} and space) are percent-encoded.
      * Unicode characters (accented letters, CJK, etc.) are preserved as
      * UTF-8, keeping URLs readable — e.g. {@code q=État&sort=date}
      * rather than {@code q=%C3%89tat&sort=date}.</p>
-     * 
+     *
      * <p>The returned string is suitable for direct inclusion in a
      * double-quoted HTML {@code href} attribute, since {@code &amp;} is used
      * as separator and values are HTML-safe after encoding.
      * For contexts that need a raw {@code &amp;} separator (redirects,
      * JavaScript), use {@link #queryStringRaw(String...)} instead.</p>
-     * 
+     *
      * @param names parameter names to include (absent parameters are skipped).
      * @return the query string fragment, or empty string if no parameters have values.
      * @see #queryStringRaw(String...)
@@ -727,7 +839,7 @@ public class HttpPars
      * programmatic URI construction (redirects, {@code Location} headers,
      * JavaScript). Same encoding rules as {@link #queryString(String...)},
      * but without HTML entity escaping of the separator.
-     * 
+     *
      * @param names parameter names to include (absent parameters are skipped).
      * @return the query string fragment, or empty string if no parameters have values.
      * @see #queryString(String...)
@@ -739,7 +851,7 @@ public class HttpPars
 
     /**
      * Internal query-string builder.
-     * 
+     *
      * @param htmlSep if true, join pairs with {@code &amp;}; otherwise {@code &}.
      * @param names   parameter names.
      * @return the query string fragment.
@@ -776,7 +888,7 @@ public class HttpPars
      *       String href = base + "&amp;" + HttpPars.encodeParam("doc", hit.docId);
      *   }
      * }</pre>
-     * 
+     *
      * @param name  parameter name.
      * @param value parameter value.
      * @return the encoded pair, e.g. {@code "doc=1234"} or {@code "q=État"}.
@@ -788,7 +900,7 @@ public class HttpPars
 
     /**
      * Convenience overload of {@link #encodeParam(String, String)} for int values.
-     * 
+     *
      * @param name  parameter name.
      * @param value parameter value.
      * @return the encoded pair, e.g. {@code "doc=1234"}.
@@ -805,7 +917,7 @@ public class HttpPars
      * per RFC 3986 §2.2 ({@code " < >}).
      * All other characters, including non-ASCII Unicode, pass through
      * unchanged as UTF-8, keeping URLs human-readable.
-     * 
+     *
      * @param s the raw component string.
      * @return the encoded string.
      */
@@ -814,12 +926,11 @@ public class HttpPars
         if (s == null)
             return "";
         final int len = s.length();
-        StringBuilder sb = null; // lazy — most values need no encoding
+        StringBuilder sb = null;
         for (int i = 0; i < len; i++) {
             char c = s.charAt(i);
             String esc;
             switch (c) {
-            // query-string structural
             case '&':
                 esc = "%26";
                 break;
@@ -835,7 +946,6 @@ public class HttpPars
             case ' ':
                 esc = "%20";
                 break;
-            // RFC 3986 §2.2 delimiters, unsafe in HTML attributes
             case '"':
                 esc = "%22";
                 break;
@@ -863,5 +973,4 @@ public class HttpPars
         }
         return (sb != null) ? sb.toString() : s;
     }
-
 }
