@@ -127,24 +127,30 @@ public final class TermSuggest {
      * (substring) matching is used.</p>
      *
      * <p>{@link TopTerms.TermEntry#hilite()} contains the original term string
-     * with the matched span wrapped in the configured markup.</p>
+     * with the matched span wrapped in the configured markup.
+     * {@link TopTerms.TermEntry#score()} equals {@link TopTerms.TermEntry#count()}
+     * (full-field frequency) since ranking is by frequency alone.</p>
      *
      * @param query user input (folded internally)
      * @param limit maximum number of results
      * @return matching terms sorted by descending frequency;
-     *         empty {@link TopTerms} if query folds to empty or limit &le; 0
+     *         empty iterable if query folds to empty or limit &le; 0
      */
     public TopTerms suggest(final String query, final int limit) {
         Objects.requireNonNull(query, "query");
 
-        final int[] emptyRank = new int[0];
+        final TopTerms result = new TopTerms(stats, lexicon);
+        final long[]   counts = stats.termCountsRef();
+
         if (limit <= 0) {
-            return new TopTerms(emptyRank, lexicon, stats.termFreqsRef(), null, null);
+            result.setRanking(new int[0], counts, null, null);
+            return result;
         }
 
         final String foldedQuery = Char.toAscii(query);
         if (foldedQuery.isEmpty()) {
-            return new TopTerms(emptyRank, lexicon, stats.termFreqsRef(), null, null);
+            result.setRanking(new int[0], counts, null, null);
+            return result;
         }
 
         final boolean prefixOnly = foldedQuery.length() < INFIX_THRESHOLD;
@@ -173,7 +179,8 @@ public final class TermSuggest {
 
         final int n = top.size();
         if (n == 0) {
-            return new TopTerms(emptyRank, lexicon, stats.termFreqsRef(), null, null);
+            result.setRanking(new int[0], counts, null, null);
+            return result;
         }
 
         // Phase 2: resolve highlights for ranked results only.
@@ -189,7 +196,8 @@ public final class TermSuggest {
             rank++;
         }
 
-        return new TopTerms(rank2termId, lexicon, stats.termFreqsRef(), null, hilites);
+        result.setRanking(rank2termId, counts, null, hilites);
+        return result;
     }
 
     /**

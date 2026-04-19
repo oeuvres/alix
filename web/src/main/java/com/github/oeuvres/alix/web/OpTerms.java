@@ -12,7 +12,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -66,7 +65,6 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = new HttpPars(request, response);
 
-        TopTerms topTerms;
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
         final String q = pars.getString(Q, null);
@@ -86,12 +84,11 @@ public final class OpTerms extends Op
         final Query filterQuery = filterQuery(index, pars);
         final SpanQuery spanQuery = spanQuery(index, pars);
         
+        TopTerms topTerms = fluc.topTerms();
         if (filterQuery == null && spanQuery == null) {
             // Theme terms mode
             final TermScorer scorer = new TermScorer.BM25(idfExp);
-            FieldStats fieldStats = fluc.fieldStats();
-            fieldStats.termWeights(index.reader(), scorer);
-            topTerms = TopTerms.theme(fieldStats, fluc.termLexicon(), topK);
+            topTerms.themeScore(scorer, index.reader(), topK);
         }
         else if (spanQuery == null) {
             // Constrastive terms

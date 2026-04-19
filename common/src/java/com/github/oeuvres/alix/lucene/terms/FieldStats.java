@@ -24,7 +24,6 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
 
@@ -154,7 +153,7 @@ public final class FieldStats
     private final int[] termDocs;
 
     /** Per-term total occurrences in the field, indexed by dense term id. */
-    private final long[] termCounts;
+    protected final long[] termCounts;
     
     /**
      * Corpus-level term weight vector, indexed by dense term id.
@@ -206,108 +205,6 @@ public final class FieldStats
     }
     
     /**
-     * Returns the corpus-level weight of one term.
-     *
-     * <p>The weight is computed by {@link #buildWeights} and reflects how
-     * thematically significant the term is in the corpus. It is suitable as
-     * a building block for passage scoring: summing weights of terms in a
-     * candidate window selects the window with the densest informative vocabulary.</p>
-     *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @return corpus-level weight, or {@code 0.0} for the absent-term sentinel (id 0)
-     * @throws IllegalStateException    if {@link #buildWeights} has not been called yet
-     * @throws IllegalArgumentException if {@code termId} is out of range
-     */
-    public double termWeight(final int termId) {
-        final double[] w = termWeights;
-        if (w == null) {
-            throw new IllegalStateException(
-                "termWeights not built for field '" + field
-                + "'; call buildWeights(reader, scorer) at startup");
-        }
-        checkTermId(termId);
-        return w[termId];
-    }
-    
-    /**
-     * Computes and caches a corpus-level weight for every vocabulary term.
-     *
-     * <p>The weight is the BM25 summed score of the term across all documents:
-     * {@code IDF(t) × Σ_d saturated_normalised_tf(t, d)}.
-     * It reflects both how distinctive a term is (rare globally) and how
-     * consistently it appears across documents. Common words score near zero;
-     * thematically significant rare words score high.</p>
-     *
-     * <p>The result is stored in {@link #termWeights} and accessible via
-     * {@link #termWeight(int)}. Calling this method again with a different scorer
-     * replaces the previous weights. Call once at startup after
-     * {@link #openOrBuild}; the computation cost is one postings scan (O(totalPostings),
-     * significantly cheaper than building {@code docWidths}).</p>
-     *
-     * <p>The implicit term-id assignment follows the same {@link MultiTerms} lexicographic
-     * order used by {@link TermLexicon}: id 0 is reserved as the absent-term sentinel,
-     * real terms start at 1. No {@link TermLexicon} lookup is performed per term.</p>
-     *
-     * @param reader snapshot reader; must match the snapshot from which this object was built
-     * @param scorer local scorer (e.g. {@code new TermScorer.BM25(1.3)})
-     * @throws IOException              if Lucene term or postings iteration fails
-     * @throws IllegalStateException    if called before weights are needed (remind the caller
-     *                                  to call this method at startup)
-     */
-    public double[] termWeights(final IndexReader reader, final TermScorer scorer) throws IOException {
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(scorer, "scorer");
- 
-        final Terms terms = MultiTerms.getTerms(reader, field);
-        if (terms == null) {
-            throw new IllegalStateException(
-                "Field '" + field + "' has no terms; cannot build term weights");
-        }
-        if (!terms.hasFreqs()) {
-            throw new IllegalStateException(
-                "Field '" + field + "' was not indexed with term frequencies");
-        }
-        // weights already calculated with same scorer
-        if (scorer.equals(termWeightsScorer)) return termWeights;
-        
-        scorer.corpus(tokens, docs);
- 
-        final double[] weights = new double[vocabSize];
-        final TermsEnum tenum = terms.iterator();
-        PostingsEnum postings = null;
- 
-        // Implicit termId: same MultiTerms lexicographic order as TermLexicon,
-        // id 0 reserved as absent-term sentinel, real terms start at 1.
-        int termId = 1;
- 
-        while (tenum.next() != null) {
-            if (termId >= vocabSize) {
-                throw new IOException(
-                    "Vocabulary size changed during buildWeights for field '" + field
-                    + "': seen more than " + vocabSize + " terms");
-            }
- 
-            // termDocs and termFreqs are already available — no second pass needed.
-            scorer.term(termCounts[termId], termDocs[termId]);
- 
-            postings = tenum.postings(postings, PostingsEnum.FREQS);
-            for (int docId = postings.nextDoc();
-                 docId != DocIdSetIterator.NO_MORE_DOCS;
-                 docId = postings.nextDoc()) {
-                final int freq = postings.freq();
-                if (freq <= 0) continue;
-                scorer.score(freq, docWidths[docId]);
-            }
- 
-            weights[termId] = scorer.result();
-            termId++;
-        }
- 
-        this.termWeights = weights;
-        return weights;
-    }
-    
-    /**
      * Returns an approximate heap footprint of the numeric arrays only.
      * <p>
      * This excludes object headers, references, the field string and JVM-specific overheads.
@@ -347,7 +244,7 @@ public final class FieldStats
         // gather data
         final int maxDoc = reader.maxDoc();
         final int[] docWidths = docWidths(reader, field, report);
-        final ByTermStats byTerm = byTermStats(reader, field, report);
+        final ByTermStats byTerm = termStats(reader, field, report);
         // write to tmp, close stream fully, then rename atomically
         final Path statsPath = statsPath(sideDir, field);
         IOUtil.ensureAbsent(statsPath);
@@ -389,28 +286,141 @@ public final class FieldStats
     }
     
     /**
-     * Returns the document frequency of one term.
+     * Builds the per-document width array for one field from a snapshot reader.
+     * <p>
+     * For each live document, the width is defined as the highest position index seen across
+     * all terms of the field, plus one. Documents without the field retain their default value
+     * of {@code 0}.
+     * </p>
      *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @return number of documents that contain the term
-     * @throws IllegalArgumentException if {@code termId} is out of range
+     * @param reader  snapshot reader
+     * @param field   indexed field name
+     * @param report  progress reporter; may be {@code null}
+     * @return array of length {@code reader.maxDoc()}, indexed by global doc id
+     * @throws IOException              if term or position iteration fails
+     * @throws IllegalArgumentException if the field exists but has no positions
      */
-    public int docFreq(final int termId)
+    public static int[] docWidths(final IndexReader reader, final String field, Report report)
+        throws IOException
     {
-        checkTermId(termId);
-        return termDocs[termId];
+        if (reader == null) {
+            throw new NullPointerException("reader is null");
+        }
+        if (field == null || field.isEmpty()) {
+            throw new IllegalArgumentException("field is null or empty");
+        }
+        if (report == null) {
+            report = Report.ReportNull.INSTANCE;
+        }
+        
+        final int[] posLen = new int[reader.maxDoc()];
+        // default 0 is exactly the desired convention
+        
+        int leafCount = 0;
+        int leafWithFieldCount = 0;
+        int docsWithPosLen = 0;
+        int deletedPostingsSkipped = 0;
+        int weirdPositionCount = 0;
+        int maxPosLen = 0;
+        
+        for (LeafReaderContext ctx : reader.leaves()) {
+            leafCount++;
+            final LeafReader leaf = ctx.reader();
+            final Terms terms = Terms.getTerms(leaf, field); // EMPTY if absent
+            
+            if (terms == null) {
+                report.debug("field \"" + field + "\" absent in leaf at docBase=" + ctx.docBase);
+                continue;
+            }
+            leafWithFieldCount++;
+            
+            if (!terms.hasPositions()) {
+                final String msg = "field \"" + field + "\" has no positions in leaf at docBase=" + ctx.docBase;
+                report.error(msg);
+                throw new IllegalArgumentException(msg);
+            }
+            
+            final Bits liveDocs = leaf.getLiveDocs();
+            final TermsEnum te = terms.iterator();
+            PostingsEnum pe = null;
+            
+            for (BytesRef term = te.next(); term != null; term = te.next()) {
+                pe = te.postings(pe, PostingsEnum.POSITIONS);
+                
+                for (int localDocId = pe.nextDoc(); localDocId != PostingsEnum.NO_MORE_DOCS; localDocId = pe
+                        .nextDoc())
+                {
+                    if (liveDocs != null && !liveDocs.get(localDocId)) {
+                        deletedPostingsSkipped++;
+                        continue;
+                    }
+                    
+                    final int freq = pe.freq();
+                    int docMaxPosForThisTerm = -1;
+                    int prevPos = -1;
+                    
+                    for (int i = 0; i < freq; i++) {
+                        final int pos = pe.nextPosition();
+                        
+                        if (pos < 0) {
+                            weirdPositionCount++;
+                            report.warn(
+                                    "negative position on field \"" + field
+                                            + "\", docId=" + (ctx.docBase + localDocId)
+                                            + ", term=" + term.utf8ToString()
+                                            + ", pos=" + pos);
+                            continue;
+                        }
+                        
+                        if (prevPos > pos) {
+                            weirdPositionCount++;
+                            report.warn(
+                                    "non-monotone positions on field \"" + field
+                                            + "\", docId=" + (ctx.docBase + localDocId)
+                                            + ", term=" + term.utf8ToString()
+                                            + ", prevPos=" + prevPos
+                                            + ", pos=" + pos);
+                        }
+                        prevPos = pos;
+                        
+                        if (pos > docMaxPosForThisTerm) {
+                            docMaxPosForThisTerm = pos;
+                        }
+                    }
+                    
+                    if (docMaxPosForThisTerm < 0) {
+                        continue;
+                    }
+                    
+                    final int globalDocId = ctx.docBase + localDocId;
+                    final int newPosLen = docMaxPosForThisTerm + 1;
+                    
+                    if (newPosLen > posLen[globalDocId]) {
+                        if (posLen[globalDocId] == 0) {
+                            docsWithPosLen++;
+                        }
+                        posLen[globalDocId] = newPosLen;
+                        
+                        if (newPosLen > maxPosLen) {
+                            maxPosLen = newPosLen;
+                        }
+                    }
+                }
+            }
+        }
+        
+        report.info(
+                "field=\"" + field + "\""
+                        + ", leaves=" + leafCount
+                        + ", leavesWithField=" + leafWithFieldCount
+                        + ", docsWithPosLen=" + docsWithPosLen
+                        + ", maxPosLen=" + maxPosLen
+                        + ", deletedPostingsSkipped=" + deletedPostingsSkipped
+                        + ", weirdPositions=" + weirdPositionCount);
+        
+        return posLen;
     }
-    
-    /**
-     * Returns a defensive copy of the document-frequency vector.
-     *
-     * @return copied {@code termDocs} array, indexed by dense term id
-     */
-    public int[] docFreqsCopy()
-    {
-        return Arrays.copyOf(termDocs, termDocs.length);
-    }
-    
+
     /**
      * Returns the field width (max position + 1) for one global Lucene document id.
      * <p>
@@ -464,17 +474,17 @@ public final class FieldStats
      *
      * @return reference document count
      */
-    public int docs()
+    public int fieldDocs()
     {
         return docs;
     }
-    
+
     /**
      * Returns the total token count in the reference population.
      *
      * @return total token count in the reference population
      */
-    public long tokens()
+    public long fieldTokens()
     {
         return tokens;
     }
@@ -484,21 +494,37 @@ public final class FieldStats
      *
      * @return total token count in the reference population
      */
-    public long width()
+    public long fieldWidth()
     {
         return width;
     }
 
-    /**
-     * Returns the directory from which these statistics were opened.
-     *
-     * @return Lucene directory path
-     */
-    public Path sideDir()
+    /** Build a global live-doc bitset aligned on top-level docIds. */
+    public static BitSet liveDocs(final IndexReader reader) throws IOException
     {
-        return sideDir;
-    }
+        final int maxDoc = reader.maxDoc();
+        final BitSet live = new BitSet(maxDoc);
     
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final LeafReader leaf = ctx.reader();
+            final Bits bits = leaf.getLiveDocs();
+            final int leafMax = leaf.maxDoc();
+            final int base = ctx.docBase;
+    
+            if (bits == null) {
+                live.set(base, base + leafMax);
+            }
+            else {
+                for (int segDoc = 0; segDoc < leafMax; segDoc++) {
+                    if (bits.get(segDoc)) {
+                        live.set(base + segDoc);
+                    }
+                }
+            }
+        }
+        return live;
+    }
+
     /**
      * Returns the Lucene document-address space size for this frozen reader snapshot.
      * <p>
@@ -641,6 +667,16 @@ public final class FieldStats
     }
     
     /**
+     * Returns the directory from which these statistics were opened.
+     *
+     * @return Lucene directory path
+     */
+    public Path sideDir()
+    {
+        return sideDir;
+    }
+
+    /**
      * Returns the total number of occurrences of one term in the field.
      *
      * @param termId dense term id in {@code [0, vocabSize)}
@@ -653,160 +689,28 @@ public final class FieldStats
         return termCounts[termId];
     }
     
-    public double[] termWeightsRef()
-    {
-        return termWeights;
-    }
-    
     /**
-     * Returns the vocabulary size.
-     *
-     * @return number of distinct terms in the field
+     * Get ref to global field term counts
+     * @return 
      */
-    public int vocabSize()
+    public long[] termCountsRef()
     {
-        return vocabSize;
+        return termCounts;
     }
 
     /**
-     * Builds the per-document width array for one field from a snapshot reader.
-     * <p>
-     * For each live document, the width is defined as the highest position index seen across
-     * all terms of the field, plus one. Documents without the field retain their default value
-     * of {@code 0}.
-     * </p>
+     * Returns the document frequency of one term.
      *
-     * @param reader  snapshot reader
-     * @param field   indexed field name
-     * @param report  progress reporter; may be {@code null}
-     * @return array of length {@code reader.maxDoc()}, indexed by global doc id
-     * @throws IOException              if term or position iteration fails
-     * @throws IllegalArgumentException if the field exists but has no positions
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @return number of documents that contain the term
+     * @throws IllegalArgumentException if {@code termId} is out of range
      */
-    public static int[] docWidths(final IndexReader reader, final String field, Report report)
-        throws IOException
+    public int termDocs(final int termId)
     {
-        if (reader == null) {
-            throw new NullPointerException("reader is null");
-        }
-        if (field == null || field.isEmpty()) {
-            throw new IllegalArgumentException("field is null or empty");
-        }
-        if (report == null) {
-            report = Report.ReportNull.INSTANCE;
-        }
-        
-        final int[] posLen = new int[reader.maxDoc()];
-        // default 0 is exactly the desired convention
-        
-        int leafCount = 0;
-        int leafWithFieldCount = 0;
-        int docsWithPosLen = 0;
-        int deletedPostingsSkipped = 0;
-        int weirdPositionCount = 0;
-        int maxPosLen = 0;
-        
-        for (LeafReaderContext ctx : reader.leaves()) {
-            leafCount++;
-            final LeafReader leaf = ctx.reader();
-            final Terms terms = Terms.getTerms(leaf, field); // EMPTY if absent
-            
-            if (terms == null) {
-                report.debug("field \"" + field + "\" absent in leaf at docBase=" + ctx.docBase);
-                continue;
-            }
-            leafWithFieldCount++;
-            
-            if (!terms.hasPositions()) {
-                final String msg = "field \"" + field + "\" has no positions in leaf at docBase=" + ctx.docBase;
-                report.error(msg);
-                throw new IllegalArgumentException(msg);
-            }
-            
-            final Bits liveDocs = leaf.getLiveDocs();
-            final TermsEnum te = terms.iterator();
-            PostingsEnum pe = null;
-            
-            for (BytesRef term = te.next(); term != null; term = te.next()) {
-                pe = te.postings(pe, PostingsEnum.POSITIONS);
-                
-                for (int localDocId = pe.nextDoc(); localDocId != PostingsEnum.NO_MORE_DOCS; localDocId = pe
-                        .nextDoc())
-                {
-                    if (liveDocs != null && !liveDocs.get(localDocId)) {
-                        deletedPostingsSkipped++;
-                        continue;
-                    }
-                    
-                    final int freq = pe.freq();
-                    int docMaxPosForThisTerm = -1;
-                    int prevPos = -1;
-                    
-                    for (int i = 0; i < freq; i++) {
-                        final int pos = pe.nextPosition();
-                        
-                        if (pos < 0) {
-                            weirdPositionCount++;
-                            report.warn(
-                                    "negative position on field \"" + field
-                                            + "\", docId=" + (ctx.docBase + localDocId)
-                                            + ", term=" + term.utf8ToString()
-                                            + ", pos=" + pos);
-                            continue;
-                        }
-                        
-                        if (prevPos > pos) {
-                            weirdPositionCount++;
-                            report.warn(
-                                    "non-monotone positions on field \"" + field
-                                            + "\", docId=" + (ctx.docBase + localDocId)
-                                            + ", term=" + term.utf8ToString()
-                                            + ", prevPos=" + prevPos
-                                            + ", pos=" + pos);
-                        }
-                        prevPos = pos;
-                        
-                        if (pos > docMaxPosForThisTerm) {
-                            docMaxPosForThisTerm = pos;
-                        }
-                    }
-                    
-                    if (docMaxPosForThisTerm < 0) {
-                        continue;
-                    }
-                    
-                    final int globalDocId = ctx.docBase + localDocId;
-                    final int newPosLen = docMaxPosForThisTerm + 1;
-                    
-                    if (newPosLen > posLen[globalDocId]) {
-                        if (posLen[globalDocId] == 0) {
-                            docsWithPosLen++;
-                        }
-                        posLen[globalDocId] = newPosLen;
-                        
-                        if (newPosLen > maxPosLen) {
-                            maxPosLen = newPosLen;
-                        }
-                    }
-                }
-            }
-        }
-        
-        report.info(
-                "field=\"" + field + "\""
-                        + ", leaves=" + leafCount
-                        + ", leavesWithField=" + leafWithFieldCount
-                        + ", docsWithPosLen=" + docsWithPosLen
-                        + ", maxPosLen=" + maxPosLen
-                        + ", deletedPostingsSkipped=" + deletedPostingsSkipped
-                        + ", weirdPositions=" + weirdPositionCount);
-        
-        return posLen;
+        checkTermId(termId);
+        return termDocs[termId];
     }
-    
-    /** Aggregate term-level statistics returned by {@link #byTermStats}. */
-    public record ByTermStats(int vocabSize, int fieldDocs, long fieldTokens, int[] termDocs, long[] termFreqs){}
-    
+
     /**
      * Collects per-term document frequencies and total term frequencies for one field.
      * <p>
@@ -822,7 +726,7 @@ public final class FieldStats
      * @throws IOException              if term iteration fails or term frequencies are unavailable
      * @throws IllegalArgumentException if the field does not exist or has no terms
      */
-    public static ByTermStats byTermStats(
+    public static ByTermStats termStats(
         final IndexReader reader, 
         final String field,
         Report report
@@ -872,7 +776,130 @@ public final class FieldStats
         }
         return new ByTermStats(vocabSize, (int)fieldDocs, terms.getSumTotalTermFreq(), termDocs, termFreqs);
     }
+
+    /**
+     * Returns the corpus-level weight of one term.
+     *
+     * <p>The weight is computed by {@link #buildWeights} and reflects how
+     * thematically significant the term is in the corpus. It is suitable as
+     * a building block for passage scoring: summing weights of terms in a
+     * candidate window selects the window with the densest informative vocabulary.</p>
+     *
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @return corpus-level weight, or {@code 0.0} for the absent-term sentinel (id 0)
+     * @throws IllegalStateException    if {@link #buildWeights} has not been called yet
+     * @throws IllegalArgumentException if {@code termId} is out of range
+     */
+    public double termWeight(final int termId) {
+        final double[] w = termWeights;
+        if (w == null) {
+            throw new IllegalStateException(
+                "termWeights not built for field '" + field
+                + "'; call buildWeights(reader, scorer) at startup");
+        }
+        checkTermId(termId);
+        return w[termId];
+    }
+
+    /**
+     * Computes and caches a corpus-level weight for every vocabulary term.
+     *
+     * <p>The weight is the BM25 summed score of the term across all documents:
+     * {@code IDF(t) × Σ_d saturated_normalised_tf(t, d)}.
+     * It reflects both how distinctive a term is (rare globally) and how
+     * consistently it appears across documents. Common words score near zero;
+     * thematically significant rare words score high.</p>
+     *
+     * <p>The result is stored in {@link #termWeights} and accessible via
+     * {@link #termWeight(int)}. Calling this method again with a different scorer
+     * replaces the previous weights. Call once at startup after
+     * {@link #openOrBuild}; the computation cost is one postings scan (O(totalPostings),
+     * significantly cheaper than building {@code docWidths}).</p>
+     *
+     * <p>The implicit term-id assignment follows the same {@link MultiTerms} lexicographic
+     * order used by {@link TermLexicon}: id 0 is reserved as the absent-term sentinel,
+     * real terms start at 1. No {@link TermLexicon} lookup is performed per term.</p>
+     *
+     * @param reader snapshot reader; must match the snapshot from which this object was built
+     * @param scorer local scorer (e.g. {@code new TermScorer.BM25(1.3)})
+     * @throws IOException              if Lucene term or postings iteration fails
+     * @throws IllegalStateException    if called before weights are needed (remind the caller
+     *                                  to call this method at startup)
+     */
+    public double[] termWeights(final IndexReader reader, final TermScorer scorer) throws IOException {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(scorer, "scorer");
     
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalStateException(
+                "Field '" + field + "' has no terms; cannot build term weights");
+        }
+        if (!terms.hasFreqs()) {
+            throw new IllegalStateException(
+                "Field '" + field + "' was not indexed with term frequencies");
+        }
+        // weights already calculated with same scorer
+        if (scorer.equals(termWeightsScorer)) return termWeights;
+        
+        scorer.corpus(tokens, docs);
+    
+        final double[] weights = new double[vocabSize];
+        final TermsEnum tenum = terms.iterator();
+        PostingsEnum postings = null;
+    
+        // Implicit termId: same MultiTerms lexicographic order as TermLexicon,
+        // id 0 reserved as absent-term sentinel, real terms start at 1.
+        int termId = 1;
+    
+        while (tenum.next() != null) {
+            if (termId >= vocabSize) {
+                throw new IOException(
+                    "Vocabulary size changed during buildWeights for field '" + field
+                    + "': seen more than " + vocabSize + " terms");
+            }
+    
+            // termDocs and termFreqs are already available — no second pass needed.
+            scorer.term(termCounts[termId], termDocs[termId]);
+    
+            postings = tenum.postings(postings, PostingsEnum.FREQS);
+            for (int docId = postings.nextDoc();
+                 docId != DocIdSetIterator.NO_MORE_DOCS;
+                 docId = postings.nextDoc()) {
+                final int freq = postings.freq();
+                if (freq <= 0) continue;
+                scorer.score(freq, docWidths[docId]);
+            }
+    
+            weights[termId] = scorer.result();
+            termId++;
+        }
+    
+        this.termWeights = weights;
+        return weights;
+    }
+
+    /**
+     * Return a reference to the last {@link #termWeights} build with
+     *{@link #termWeights(IndexReader, TermScorer)}.
+     *
+     * @return {@link #termWeights}
+     */
+    public double[] termWeightsRef()
+    {
+        return termWeights;
+    }
+    
+    /**
+     * Returns the vocabulary size.
+     *
+     * @return number of distinct terms in the field
+     */
+    public int vocabSize()
+    {
+        return vocabSize;
+    }
+
     /**
      * Resolves the vocabulary size of a field.
      * <p>
@@ -900,6 +927,49 @@ public final class FieldStats
         return vocabSize(terms, report);
     }
 
+    /** Aggregate term-level statistics returned by {@link #byTermStats}. */
+    public record ByTermStats(int vocabSize, int fieldDocs, long fieldTokens, int[] termDocs, long[] termFreqs){}
+    
+    /**
+     * Checks that a document id is inside the valid range.
+     *
+     * @param docId global Lucene document id to validate
+     * @throws IllegalArgumentException if the id is negative or outside {@code maxDoc}
+     */
+    private void checkDocId(final int docId)
+    {
+        if (docId < 0 || docId >= maxDoc) {
+            throw new IllegalArgumentException(
+                    "docId out of range: " + docId + " (maxDoc=" + maxDoc + ')');
+        }
+    }
+
+    /**
+     * Checks that a term id is inside the valid range.
+     *
+     * @param termId dense term id to validate
+     * @throws IllegalArgumentException if the id is negative or outside the vocabulary size
+     */
+    private void checkTermId(final int termId)
+    {
+        if (termId < 0 || termId >= vocabSize) {
+            throw new IllegalArgumentException(
+                    "termId out of range: " + termId + " (vocabSize=" + vocabSize + ')');
+        }
+    }
+
+    /**
+     * Returns the path of the persisted statistics file for one field.
+     *
+     * @param indexDir Lucene directory
+     * @param field    indexed field name
+     * @return {@code <field>.stats}
+     */
+    private static Path statsPath(final Path indexDir, final String field)
+    {
+        return indexDir.resolve(field + ".stats");
+    }
+
     private static int vocabSize(final Terms terms, final Report report) throws IOException
     {
         Objects.requireNonNull(terms, "terms");
@@ -924,71 +994,5 @@ public final class FieldStats
             report.warn("No terms field=" + report.getAttribute("field", "?"));
         }
         return (int)size;
-    }
-
-    /** Build a global live-doc bitset aligned on top-level docIds. */
-    public static BitSet liveDocs(final IndexReader reader) throws IOException
-    {
-        final int maxDoc = reader.maxDoc();
-        final BitSet live = new BitSet(maxDoc);
-
-        for (LeafReaderContext ctx : reader.leaves()) {
-            final LeafReader leaf = ctx.reader();
-            final Bits bits = leaf.getLiveDocs();
-            final int leafMax = leaf.maxDoc();
-            final int base = ctx.docBase;
-
-            if (bits == null) {
-                live.set(base, base + leafMax);
-            }
-            else {
-                for (int segDoc = 0; segDoc < leafMax; segDoc++) {
-                    if (bits.get(segDoc)) {
-                        live.set(base + segDoc);
-                    }
-                }
-            }
-        }
-        return live;
-    }
-    
-    /**
-     * Checks that a document id is inside the valid range.
-     *
-     * @param docId global Lucene document id to validate
-     * @throws IllegalArgumentException if the id is negative or outside {@code maxDoc}
-     */
-    private void checkDocId(final int docId)
-    {
-        if (docId < 0 || docId >= maxDoc) {
-            throw new IllegalArgumentException(
-                    "docId out of range: " + docId + " (maxDoc=" + maxDoc + ')');
-        }
-    }
-    
-    /**
-     * Checks that a term id is inside the valid range.
-     *
-     * @param termId dense term id to validate
-     * @throws IllegalArgumentException if the id is negative or outside the vocabulary size
-     */
-    private void checkTermId(final int termId)
-    {
-        if (termId < 0 || termId >= vocabSize) {
-            throw new IllegalArgumentException(
-                    "termId out of range: " + termId + " (vocabSize=" + vocabSize + ')');
-        }
-    }
-    
-    /**
-     * Returns the path of the persisted statistics file for one field.
-     *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code <field>.stats}
-     */
-    private static Path statsPath(final Path indexDir, final String field)
-    {
-        return indexDir.resolve(field + ".stats");
     }
 }
