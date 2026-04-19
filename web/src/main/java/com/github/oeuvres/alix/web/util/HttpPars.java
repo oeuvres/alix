@@ -145,62 +145,6 @@ public class HttpPars
     }
 
     /**
-     * Return the recorded resolution for one parameter, or {@code null}
-     * if no getter has been called for that name yet.
-     *
-     * @param name parameter name.
-     * @return the recorded {@link Resolved}, or null.
-     */
-    public Resolved resolved(final String name)
-    {
-        return resolvedParams.get(name);
-    }
-
-    /**
-     * Return an unmodifiable, insertion-ordered view of every parameter
-     * that a typed getter has resolved so far. Keys appear in the order
-     * the getters were called.
-     *
-     * @return ordered map of {@code name → Resolved}.
-     */
-    public Map<String, Resolved> resolvedParams()
-    {
-        return Collections.unmodifiableMap(resolvedParams);
-    }
-
-    /**
-     * Convenience view: ordered map of {@code name → value} across all
-     * resolved parameters. Suitable for direct JSON emission as the
-     * {@code meta.params} block.
-     *
-     * @return ordered map of effective values.
-     */
-    public Map<String, Object> params()
-    {
-        final LinkedHashMap<String, Object> out = new LinkedHashMap<>(resolvedParams.size());
-        for (Map.Entry<String, Resolved> e : resolvedParams.entrySet()) {
-            out.put(e.getKey(), e.getValue().value());
-        }
-        return Collections.unmodifiableMap(out);
-    }
-
-    /**
-     * Convenience view: ordered map of {@code name → Source} across all
-     * resolved parameters. Suitable for direct JSON emission as the
-     * {@code meta.paramsSource} block.
-     *
-     * @return ordered map of sources.
-     */
-    public Map<String, Source> paramsSource()
-    {
-        final LinkedHashMap<String, Source> out = new LinkedHashMap<>(resolvedParams.size());
-        for (Map.Entry<String, Resolved> e : resolvedParams.entrySet()) {
-            out.put(e.getKey(), e.getValue().source());
-        }
-        return Collections.unmodifiableMap(out);
-    }
-
-    /**
      * Get a cookie value by name. Lazily caches all request cookies
      * on first call.
      *
@@ -257,6 +201,104 @@ public class HttpPars
         }
     }
 
+    /**
+     * Encode a single {@code name=value} query-string pair, using the same
+     * minimal percent-encoding as {@link #queryString(String...)}.
+     * Useful for building a per-row varying part outside of the request context,
+     * e.g. in a KWIC loop:
+     * <pre>{@code
+     *   String base = pars.toQueryString("q", "cat", "sort");
+     *   for (Hit hit : hits) {
+     *       String href = base + "&amp;" + HttpPars.encodeParam("doc", hit.docId);
+     *   }
+     * }</pre>
+     *
+     * @param name  parameter name.
+     * @param value parameter value.
+     * @return the encoded pair, e.g. {@code "doc=1234"} or {@code "q=État"}.
+     */
+    public static String encodeParam(final String name, final String value)
+    {
+        return encodeQueryComponent(name) + '=' + encodeQueryComponent(value);
+    }
+
+    /**
+     * Convenience overload of {@link #encodeParam(String, String)} for int values.
+     *
+     * @param name  parameter name.
+     * @param value parameter value.
+     * @return the encoded pair, e.g. {@code "doc=1234"}.
+     */
+    public static String encodeParam(final String name, final int value)
+    {
+        return encodeQueryComponent(name) + '=' + value;
+    }
+    
+
+    /**
+     * Minimally percent-encode a query-string component (name or value).
+     * Encodes characters that are structural in a query string
+     * ({@code &amp; = + #}, space) and characters that are URI delimiters
+     * per RFC 3986 §2.2 ({@code " < >}).
+     * All other characters, including non-ASCII Unicode, pass through
+     * unchanged as UTF-8, keeping URLs human-readable.
+     *
+     * @param s the raw component string.
+     * @return the encoded string.
+     */
+    static public String encodeQueryComponent(final String s)
+    {
+        if (s == null)
+            return "";
+        final int len = s.length();
+        StringBuilder sb = null;
+        for (int i = 0; i < len; i++) {
+            char c = s.charAt(i);
+            String esc;
+            switch (c) {
+            case '&':
+                esc = "%26";
+                break;
+            case '=':
+                esc = "%3D";
+                break;
+            case '+':
+                esc = "%2B";
+                break;
+            case '#':
+                esc = "%23";
+                break;
+            case ' ':
+                esc = "%20";
+                break;
+            case '"':
+                esc = "%22";
+                break;
+            case '<':
+                esc = "%3C";
+                break;
+            case '>':
+                esc = "%3E";
+                break;
+            case '\n':
+                esc= "%0A";
+                break;
+            case '\r':
+                esc= "%0D";
+                break;
+            default:
+                if (sb != null) sb.append(c);
+                continue;
+            }
+            if (sb == null) {
+                sb = new StringBuilder(len + 8);
+                sb.append(s, 0, i);
+            }
+            sb.append(esc);
+        }
+        return (sb != null) ? sb.toString() : s;
+    }
+    
     /**
      * Resolve a request parameter as a boolean.
      * Values {@code "false"}, {@code "0"}, {@code "null"} are interpreted as false;
@@ -773,39 +815,35 @@ public class HttpPars
     }
 
     /**
-     * Parse a string as an Integer, returning null on failure.
+     * Convenience view: ordered map of {@code name → value} across all
+     * resolved parameters. Suitable for direct JSON emission as the
+     * {@code meta.params} block.
      *
-     * @param value string to parse.
-     * @return parsed Integer, or null if blank, null, or not a valid integer.
+     * @return ordered map of effective values.
      */
-    private Integer parseInt(final String value)
+    public Map<String, Object> params()
     {
-        if (!hasValue(value)) return null;
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            return null;
+        final LinkedHashMap<String, Object> out = new LinkedHashMap<>(resolvedParams.size());
+        for (Map.Entry<String, Resolved> e : resolvedParams.entrySet()) {
+            out.put(e.getKey(), e.getValue().value());
         }
+        return Collections.unmodifiableMap(out);
     }
 
     /**
-     * Return the wrapped request.
+     * Convenience view: ordered map of {@code name → Source} across all
+     * resolved parameters. Suitable for direct JSON emission as the
+     * {@code meta.paramsSource} block.
      *
-     * @return the HTTP request.
+     * @return ordered map of sources.
      */
-    public HttpServletRequest request()
+    public Map<String, Source> paramsSource()
     {
-        return request;
-    }
-
-    /**
-     * Return the wrapped response.
-     *
-     * @return the HTTP response, or null if constructed read-only.
-     */
-    public HttpServletResponse response()
-    {
-        return response;
+        final LinkedHashMap<String, Source> out = new LinkedHashMap<>(resolvedParams.size());
+        for (Map.Entry<String, Resolved> e : resolvedParams.entrySet()) {
+            out.put(e.getKey(), e.getValue().source());
+        }
+        return Collections.unmodifiableMap(out);
     }
 
     /**
@@ -850,6 +888,66 @@ public class HttpPars
     }
 
     /**
+     * Return the wrapped request.
+     *
+     * @return the HTTP request.
+     */
+    public HttpServletRequest request()
+    {
+        return request;
+    }
+
+    /**
+     * Return the recorded resolution for one parameter, or {@code null}
+     * if no getter has been called for that name yet.
+     *
+     * @param name parameter name.
+     * @return the recorded {@link Resolved}, or null.
+     */
+    public Resolved resolved(final String name)
+    {
+        return resolvedParams.get(name);
+    }
+
+    /**
+     * Return an unmodifiable, insertion-ordered view of every parameter
+     * that a typed getter has resolved so far. Keys appear in the order
+     * the getters were called.
+     *
+     * @return ordered map of {@code name → Resolved}.
+     */
+    public Map<String, Resolved> resolvedParams()
+    {
+        return Collections.unmodifiableMap(resolvedParams);
+    }
+
+    /**
+     * Return the wrapped response.
+     *
+     * @return the HTTP response, or null if constructed read-only.
+     */
+    public HttpServletResponse response()
+    {
+        return response;
+    }
+
+    /**
+     * Parse a string as an Integer, returning null on failure.
+     *
+     * @param value string to parse.
+     * @return parsed Integer, or null if blank, null, or not a valid integer.
+     */
+    private Integer parseInt(final String value)
+    {
+        if (!hasValue(value)) return null;
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
      * Internal query-string builder.
      *
      * @param htmlSep if true, join pairs with {@code &amp;}; otherwise {@code &}.
@@ -875,102 +973,5 @@ public class HttpPars
             sb.append(encodeQueryComponent(value));
         }
         return sb.toString();
-    }
-
-    /**
-     * Encode a single {@code name=value} query-string pair, using the same
-     * minimal percent-encoding as {@link #queryString(String...)}.
-     * Useful for building a per-row varying part outside of the request context,
-     * e.g. in a KWIC loop:
-     * <pre>{@code
-     *   String base = pars.toQueryString("q", "cat", "sort");
-     *   for (Hit hit : hits) {
-     *       String href = base + "&amp;" + HttpPars.encodeParam("doc", hit.docId);
-     *   }
-     * }</pre>
-     *
-     * @param name  parameter name.
-     * @param value parameter value.
-     * @return the encoded pair, e.g. {@code "doc=1234"} or {@code "q=État"}.
-     */
-    public static String encodeParam(final String name, final String value)
-    {
-        return encodeQueryComponent(name) + '=' + encodeQueryComponent(value);
-    }
-
-    /**
-     * Convenience overload of {@link #encodeParam(String, String)} for int values.
-     *
-     * @param name  parameter name.
-     * @param value parameter value.
-     * @return the encoded pair, e.g. {@code "doc=1234"}.
-     */
-    public static String encodeParam(final String name, final int value)
-    {
-        return encodeQueryComponent(name) + '=' + value;
-    }
-
-    /**
-     * Minimally percent-encode a query-string component (name or value).
-     * Encodes characters that are structural in a query string
-     * ({@code &amp; = + #}, space) and characters that are URI delimiters
-     * per RFC 3986 §2.2 ({@code " < >}).
-     * All other characters, including non-ASCII Unicode, pass through
-     * unchanged as UTF-8, keeping URLs human-readable.
-     *
-     * @param s the raw component string.
-     * @return the encoded string.
-     */
-    static public String encodeQueryComponent(final String s)
-    {
-        if (s == null)
-            return "";
-        final int len = s.length();
-        StringBuilder sb = null;
-        for (int i = 0; i < len; i++) {
-            char c = s.charAt(i);
-            String esc;
-            switch (c) {
-            case '&':
-                esc = "%26";
-                break;
-            case '=':
-                esc = "%3D";
-                break;
-            case '+':
-                esc = "%2B";
-                break;
-            case '#':
-                esc = "%23";
-                break;
-            case ' ':
-                esc = "%20";
-                break;
-            case '"':
-                esc = "%22";
-                break;
-            case '<':
-                esc = "%3C";
-                break;
-            case '>':
-                esc = "%3E";
-                break;
-            case '\n':
-                esc= "%0A";
-                break;
-            case '\r':
-                esc= "%0D";
-                break;
-            default:
-                if (sb != null) sb.append(c);
-                continue;
-            }
-            if (sb == null) {
-                sb = new StringBuilder(len + 8);
-                sb.append(s, 0, i);
-            }
-            sb.append(esc);
-        }
-        return (sb != null) ? sb.toString() : s;
     }
 }

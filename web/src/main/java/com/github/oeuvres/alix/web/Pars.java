@@ -17,11 +17,15 @@ public class Pars
     public static final String FROM            = "from";
     public static final String IDFEXP          = "idfexp";
     public static final Double IDFEXP_DEFAULT  = 1.0;
+    public static final String LOGLIKELIHOOD   = "LogLikelihood";
+    public static final String LOGRATIO        = "LogRatio";
     public static final String Q               = "q";
     public static final String ROWS            = "rows";
     public static final int    ROWS_DEFAULT    = 2000;
     public static final int[]  ROWS_RANGE      = {1, 2000};
     public static final String SCORE           = "score";
+    public static final String SCORER          = "scorer";
+    public static final String SIMPLEMATHS     = "SimpleMaths";
     public static final String SLOP            = "slop";
     public static final int    SLOP_DEFAULT    = 20;
     public static final int[]  SLOP_RANGE      = {0, 200};

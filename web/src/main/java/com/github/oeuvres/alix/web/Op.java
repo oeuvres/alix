@@ -1,6 +1,8 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -271,5 +273,41 @@ public abstract class Op
             return;
         }
         jw.value(v.toString());
+    }
+    
+    public class OpMeta {
+        private final Map<String, String> entries = new LinkedHashMap<>();
+        long t0 = System.nanoTime();
+
+        public void put(String key, String value) { entries.put(key, value); }
+
+        public void toJson(JsonWriter jw, HttpPars pars) throws IOException {
+            jw.name("status").value(pars.response().getStatus());
+            jw.name("params").beginObject();
+            for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
+                jw.name(e.getKey());
+                jsonObject(jw, e.getValue().value());
+            }
+            jw.endObject();
+            jw.name("paramsSource").beginObject();
+            for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
+                jw.name(e.getKey()).value(e.getValue().source().name());
+            }
+            jw.endObject();
+            for (Map.Entry<String, String> e : entries.entrySet()) {
+                jw.name(e.getKey()).value(e.getValue());
+            }
+            jw.name("time").value((System.nanoTime() - t0) / 1_000_000);
+        }
+        
+        @Override
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, String> e : entries.entrySet()) {
+                sb.append("<li>" + e.getKey() + ": '" + e.getValue() + "'</li>\n");
+            }
+            return sb.toString();
+        }
     }
 }

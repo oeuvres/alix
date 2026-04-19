@@ -1,7 +1,10 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.io.Writer;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -13,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.BitsCollectorManager;
+import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
@@ -60,29 +64,17 @@ public final class OpTerms extends Op
 {
 
     
-
-    @Override
-    protected void json(
-        final LuceneIndex index,
-        final HttpServletRequest request,
-        final HttpServletResponse response
-    ) throws IOException
+    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final OpMeta meta) throws IOException
     {
-        final HttpPars pars = new HttpPars(request, response);
-
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-        final String q = pars.getString(Q, null);
-
-        final long t0 = System.nanoTime();
-        
         
         String fieldName = pars.getString(F, index.content());
         final FlucText fluc = index.flucText(fieldName);
         if (fluc == null) {
-            AlixServlet.jsonError(response, 404,
-                "terms: field '" + fieldName + "' not found or not a text field");
-            return;
+            pars.response().setStatus(404);
+            meta.put("error", "field '" + fieldName + "' not found or not a text field");
+            return null;
         }
         
         // Build a filter query from years and tags
@@ -95,7 +87,7 @@ public final class OpTerms extends Op
             // an http param may change idfExp
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
-            topTerms.themeScore(scorer, index.reader(), topK);
+            return topTerms.themeScore(scorer, index.reader(), topK);
         }
         // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
@@ -103,19 +95,119 @@ public final class OpTerms extends Op
 
             final TermCollector collector = new TermCollector(index.searcher(), fluc.termLexicon());
             collector.collect(focusDocs, topTerms);
+            final String scorerName = pars.getString(SCORER, SIMPLEMATHS, Set.of(LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
 
-            final KeynessScorer scorer = new KeynessScorer.LogRatio();
-            topTerms.focusScore(scorer, topK);
+            final KeynessScorer scorer;
+            if (LOGLIKELIHOOD.equals(scorerName)) {
+                scorer = new KeynessScorer.LogLikelihood();
+            }
+            else if (LOGRATIO.equals(scorerName)) {
+                scorer = new KeynessScorer.LogRatio();
+            }
+            else {
+                scorer = new KeynessScorer.SimpleMaths(1);
+            }
+            return topTerms.focusScore(scorer, topK);
         }
         // coocs, with or without doc filter TODO
         else {
-            // Co-occurrence mode — placeholder
-            AlixServlet.jsonError(response, 501,
-                "terms: co-occurrence mode not yet implemented");
-            return;
+            pars.response().setStatus(501);
+            meta.put("error", "Co-occurrence mode not yet implemented");
+            return null;
+        }
+    }
+    
+    @Override
+    protected void page(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
+            throws IOException
+    {
+        final HttpPars pars = new HttpPars(request, response);
+        FlucNum years = index.flucNum(YEAR);
+        int[] period = new int[]{(int) years.min(), (int) years.max()};
+        final int start = pars.getInt(START, period, (int)years.min());
+        final int end = pars.getInt(END, period, (int)years.max());
+        Writer writer = response.getWriter();
+        writer.write("""
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Alix, termes</title>
+            <style>
+              body {
+                font-family: system-ui, sans-serif;
+                font-weight: 100;
+              }
+            </style>
+          </head>
+          <body>
+            <form>
+                <input name="start" type="number" value="%d" id="label-start" min="%d" max="%d"/>
+                <input name="end" type="number" value="%d" id="label-start" min="%d" max="%d"/>
+                <button type="submit">Voir</button>
+            </form>
+            <table>
+              <tr>
+                <th>%s</th>
+                <th>%s</th>
+                <th>%s</th>
+              </tr>
+              <tr>
+        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(), LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
+        writer.append("      <td>\n");
+        request.setAttribute(SCORER, LOGLIKELIHOOD);
+        html(index, request, response);
+        writer.append("      </td>\n");
+        writer.append("      <td>\n");
+        request.setAttribute(SCORER, LOGRATIO);
+        html(index, request, response);
+        writer.append("      </td>\n");
+        writer.append("      <td>\n");
+        request.setAttribute(SCORER, SIMPLEMATHS);
+        html(index, request, response);
+        writer.append("      </td>\n");
+        writer.append("""
+              </tr>
+            </table>
+          </body>
+        </html>
+        """);
+    }
+    
+    @Override
+    protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
+            throws IOException
+    {
+        final HttpPars pars = new HttpPars(request, response);
+        final OpMeta meta = new OpMeta();
+        TopTerms topTerms = topTerms(index, pars, meta);
+        Writer writer = response.getWriter();
+        if (topTerms != null) {
+            writer.append("<table class=\"terms\">\n");
+            for (TermEntry term : topTerms) {
+                writer.append("  <tr>\n")
+                  .append("    <td class=\"term\">%s</td>\n".formatted(term.term()))
+                  .append("    <td class=\"count\" align=\"right\">%d</td>\n".formatted(term.count()))
+                  .append("    <td class=\"score\" align=\"right\">%f</td>\n".formatted(term.score()))
+                  .append("  </tr>\n");
+            }
+            writer.append("</table>\n");
+        }
+        else {
+            writer.append(meta.toString());
         }
 
-        final long qTime = (System.nanoTime() - t0) / 1_000_000;
+    }
+
+    @Override
+    protected void json(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException
+    {
+        final HttpPars pars = new HttpPars(request, response);
+        final OpMeta meta = new OpMeta();
+        TopTerms topTerms = topTerms(index, pars, meta);
 
         // ---- serialize ----
         try (JsonWriter jw = jsonWriter(response)) {
@@ -124,36 +216,22 @@ public final class OpTerms extends Op
             // meta
             jw.name("meta");
             jw.beginObject();
-            jw.name("time").value(qTime);
-            
-            jw.name("params");
-            jw.beginObject();
-            for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
-                jw.name(e.getKey());
-                jsonObject(jw, e.getValue().value());
-            }
-            jw.endObject();
-
-            jw.name("paramsSource");
-            jw.beginObject();
-            for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
-                jw.name(e.getKey()).value(e.getValue().source().name());
-            }
-            jw.endObject();
-            
+            meta.toJson(jw, pars);
             jw.endObject(); // meta
 
             // data
-            jw.name("data");
-            jw.beginArray();
-            for (TermEntry term : topTerms) {
-                jw.beginObject();
-                jw.name("term").value(term.term());
-                jw.name("count").value(term.count());
-                jw.name("score").value(term.score());
-                jw.endObject();
+            if (topTerms != null) {
+                jw.name("data");
+                jw.beginArray();
+                for (TermEntry term : topTerms) {
+                    jw.beginObject();
+                    jw.name("term").value(term.term());
+                    jw.name("count").value(term.count());
+                    jw.name("score").value(term.score());
+                    jw.endObject();
+                }
+                jw.endArray();
             }
-            jw.endArray();
 
             jw.endObject();
         }

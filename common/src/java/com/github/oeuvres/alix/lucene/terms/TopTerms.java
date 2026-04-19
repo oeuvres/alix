@@ -173,7 +173,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * @throws IllegalStateException    if focus counts have not been collected yet
      * @throws IllegalArgumentException if {@code topK < 1}
      */
-    public void focusScore(
+    public TopTerms focusScore(
         final KeynessScorer scorer,
         final int           topK
     ) {
@@ -202,6 +202,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         }
         this.activeCounts = focusCounts;
         buildRank(top, scoreVec);
+        return this;
     }
     
     /**
@@ -247,7 +248,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * @throws IOException if weight computation requires index access
      * @throws IllegalArgumentException if {@code topK < 1}
      */
-    public void themeScore(
+    public TopTerms themeScore(
         final TermScorer  scorer,
         final IndexReader reader,
         final int         topK
@@ -264,6 +265,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         }
         this.activeCounts = fieldStats.termCountsRef();
         buildRank(top, weights);
+        return this;
     }
 
     /**
