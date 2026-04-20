@@ -1,93 +1,90 @@
 package com.github.oeuvres.alix.lucene.terms;
 
 /**
- * Local scorer for one term across documents (or parts), optionally
- * contrastive between a focus subset and the rest of the corpus.
+ * Local scorer for one term across documents, optionally contrastive
+ * between a focus subset and the rest of the corpus.
  *
- * <p>Intended lifecycle:</p>
+ * <p>Lifecycle:</p>
  * <ol>
- *   <li>call {@link #corpus(long, int)} once with corpus-level statistics,</li>
- *   <li>for contrastive scoring, call {@link #focus(long, int)} once with
- *       focus-level statistics,</li>
+ *   <li>{@link #corpus(long, int)} — once, corpus-level statistics,</li>
+ *   <li>{@link #focus(long, int)} — once, focus-level statistics
+ *       (optional, only for contrastive scoring),</li>
  *   <li>for each term:
  *     <ol>
- *       <li>call {@link #term(long, int)} — resets the accumulator,</li>
- *       <li>call {@link #score(long, long, boolean)} for each document/part,
- *           passing {@code inFocus} to indicate which side it belongs to,</li>
- *       <li>call {@link #result()} to obtain the aggregated score.</li>
+ *       <li>{@link #termStart(long, int)} — resets accumulators,</li>
+ *       <li>{@link #termDocAdd(long, long, boolean)} — once per document,</li>
+ *       <li>{@link #termScore()} — finalized score.</li>
  *     </ol>
  *   </li>
  * </ol>
  *
- * <p>When the caller does not invoke {@link #focus(long, int)} and passes
- * {@code inFocus=true} for every call, the scorer degenerates to a
- * non-contrastive corpus-wide score.</p>
+ * <p>Non-contrastive callers pass {@code inFocus=true} for every document.
+ * {@link #restAcc} stays zero and {@link #termScore()} returns the plain
+ * focus-side score.</p>
  *
- * <p>This class is stateful. One instance must not be reused concurrently.</p>
+ * <p>Stateful. One instance must not be reused concurrently.</p>
  */
 public abstract class TermScorer {
 
     /** Total token count of the full corpus/field. */
     protected long corpusTokens;
-    /** Number of scoring units (documents or parts). */
-    protected int corpusPartCount;
-    /** Average token count per scoring unit. */
-    protected double partTokensAvg;
+    /** Number of documents in the corpus. */
+    protected int corpusDocs;
+    /** Average token count per document. */
+    protected double docTokensAvg;
     /** Total token count of the focus subset. Zero if unused. */
     protected long focusTokens;
-    /** Number of parts in the focus subset. Zero if unused. */
-    protected int focusPartCount;
+    /** Number of documents in the focus subset. Zero if unused. */
+    protected int focusDocs;
     /** Total occurrences of the current term in the corpus. */
     protected long corpusTermFreq;
-    /** Number of scoring units containing the current term. */
+    /** Number of documents containing the current term. */
     protected int corpusTermDocs;
-    /** Relative frequency of the current term. */
+    /** Relative frequency of the current term: {@code corpusTermFreq / corpusTokens}. */
     protected double corpusTermRate;
     /** Cached IDF-like factor, computed per term by subclasses. */
     protected double corpusIdf;
-    /** Focus-side running accumulator. */
+    /** Focus-side accumulator. */
     protected double acc;
-    /** Rest-side running accumulator. Stays zero for non-contrastive use. */
+    /** Rest-side accumulator. Stays zero for non-contrastive use. */
     protected double restAcc;
-    /** Number of scoring units observed on either side. */
+    /** Number of documents observed on either side. */
     protected int collectCount;
 
     /**
-     * Set corpus-level statistics. Must be called once before any
-     * {@link #term(long, int)} call.
+     * Set corpus-level statistics. Called once before any {@link #term}.
      *
-     * @param corpusTokens    total token count in the corpus
-     * @param corpusPartCount number of scoring units (documents or parts)
+     * @param corpusTokens total token count in the corpus
+     * @param corpusDocs   number of documents in the corpus
      */
-    public final void corpus(final long corpusTokens, final int corpusPartCount) {
+    public final void corpus(final long corpusTokens, final int corpusDocs) {
         this.corpusTokens = corpusTokens;
-        this.corpusPartCount = corpusPartCount;
-        this.partTokensAvg = (corpusPartCount > 0)
-            ? (double) corpusTokens / (double) corpusPartCount
+        this.corpusDocs = corpusDocs;
+        this.docTokensAvg = (corpusDocs > 0)
+            ? (double) corpusTokens / (double) corpusDocs
             : 0d;
     }
 
     /**
      * Set focus-level statistics for contrastive scoring. Optional; called
-     * once between {@link #corpus(long, int)} and the first
-     * {@link #term(long, int)}.
+     * once between {@link #corpus} and the first {@link #term}.
      *
-     * @param focusTokens    total token count of the focus subset
-     * @param focusPartCount number of parts in the focus subset
+     * @param focusTokens total token count of the focus subset
+     * @param focusDocs   number of documents in the focus subset
      */
-    public void focus(final long focusTokens, final int focusPartCount) {
+    public void focus(final long focusTokens, final int focusDocs) {
         this.focusTokens = focusTokens;
-        this.focusPartCount = focusPartCount;
+        this.focusDocs = focusDocs;
     }
 
     /**
-     * Prepare for a new term. Resets both accumulators. Subclasses should
-     * call {@code super.term()} first.
+     * Prepare for a new term. Resets both accumulators.
+     * Subclasses should call {@code super.term()} first.
      *
      * @param corpusTermFreq total occurrences of the term in the corpus
-     * @param corpusTermDocs number of scoring units containing the term
+     * @param corpusTermDocs number of documents containing the term
      */
-    public void term(final long corpusTermFreq, final int corpusTermDocs) {
+    public void termStart(final long corpusTermFreq, final int corpusTermDocs) {
         this.corpusTermFreq = corpusTermFreq;
         this.corpusTermDocs = corpusTermDocs;
         this.corpusTermRate = (corpusTokens > 0L)
@@ -100,15 +97,15 @@ public abstract class TermScorer {
     }
 
     /**
-     * Compute the local score for one document/part and fold it into
+     * Compute the local score for one document and fold it into
      * {@link #acc} (focus) or {@link #restAcc} (rest).
      *
-     * @param partTermFreq occurrences of the term in the document/part
-     * @param partTokens   total token count of the document/part
-     * @param inFocus      {@code true} if the document belongs to the focus subset
+     * @param docTermFreq occurrences of the term in the document
+     * @param docTokens   total token count of the document
+     * @param inFocus     {@code true} if the document belongs to the focus subset
      * @return local per-document score
      */
-    public abstract double score(final long partTermFreq, final long partTokens, final boolean inFocus);
+    public abstract double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus);
 
     /**
      * Returns the aggregated score for the current term.
@@ -116,7 +113,7 @@ public abstract class TermScorer {
      *
      * @return aggregated score
      */
-    public double result() {
+    public double termScore() {
         return acc - restAcc;
     }
 
@@ -133,16 +130,16 @@ public abstract class TermScorer {
 
     /**
      * Signed G-test contribution against the corpus expectation.
-     * {@code 2 × partTermFreq × ln(partTermFreq / expected)}.
+     * {@code 2 × docTermFreq × ln(docTermFreq / expected)}.
      * Positive when over-represented, negative when under-represented.
      */
     public static class G extends TermScorer {
         @Override
-        public double score(final long partTermFreq, final long partTokens, final boolean inFocus) {
-            if (partTokens <= 0L || corpusTermRate <= 0d || partTermFreq <= 0L) return 0d;
-            final double expected = corpusTermRate * (double) partTokens;
+        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus) {
+            if (docTokens <= 0L || corpusTermRate <= 0d || docTermFreq <= 0L) return 0d;
+            final double expected = corpusTermRate * (double) docTokens;
             if (expected <= 0d) return 0d;
-            final double local = 2d * (double) partTermFreq * Math.log((double) partTermFreq / expected);
+            final double local = 2d * (double) docTermFreq * Math.log((double) docTermFreq / expected);
             if (inFocus) acc += local; else restAcc += local;
             collectCount++;
             return local;
@@ -150,15 +147,15 @@ public abstract class TermScorer {
     }
 
     /**
-     * Count-form Jaccard: {@code partTermFreq / (partTokens + corpusTermFreq - partTermFreq)}.
+     * Count-form Jaccard: {@code docTermFreq / (docTokens + corpusTermFreq - docTermFreq)}.
      */
     public static class Jaccard extends TermScorer {
         @Override
-        public double score(final long partTermFreq, final long partTokens, final boolean inFocus) {
-            if (partTermFreq <= 0L || partTokens <= 0L || corpusTermFreq <= 0L) return 0d;
-            final long union = partTokens + corpusTermFreq - partTermFreq;
+        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus) {
+            if (docTermFreq <= 0L || docTokens <= 0L || corpusTermFreq <= 0L) return 0d;
+            final long union = docTokens + corpusTermFreq - docTermFreq;
             if (union <= 0L) return 0d;
-            final double local = partTermFreq / (double) union;
+            final double local = docTermFreq / (double) union;
             if (inFocus) acc += local; else restAcc += local;
             collectCount++;
             return local;
@@ -166,34 +163,18 @@ public abstract class TermScorer {
     }
 
     /**
-     * BM25-style scorer with optional contrastive support.
+     * BM25-style scorer with contrastive support.
      *
      * <p>{@link #score} accumulates the tf-saturation component
-     * <em>without</em> IDF into {@link #acc} or {@link #restAcc}.
-     * IDF is factored out because it is constant per term, so
-     * {@code IDF × Σ(tf_norm) = Σ(IDF × tf_norm)}. This allows
-     * {@link #result()} to apply IDF or alternative rarity measures
-     * as a final step.</p>
+     * <em>without</em> IDF into {@link #acc} (focus) or {@link #restAcc}
+     * (rest). IDF is factored out and applied once in {@link #termScore()}.
+     * Focus-side term frequency and document count are also tracked
+     * for IDF alternatives.</p>
      *
-     * <p>{@link #result()} provides four commentable combination
-     * strategies for experimentation:</p>
-     * <ol>
-     *   <li><b>Weighted (BM25F-style)</b>:
-     *       {@code IDF × (wFocus × acc + wRest × restAcc)}.
-     *       With default weights (1, 0) this is plain BM25.
-     *       With (1, −1) this is focus-minus-rest.</li>
-     *   <li><b>Over-representation</b>:
-     *       {@code IDF × acc × log(relFocus / relCorpus) × log(focusFreq)}.
-     *       Boosts terms whose focus rate exceeds their corpus rate.
-     *       Hapax-resistant via the {@code log(focusFreq)} dampening.</li>
-     *   <li><b>Inverse Rest Document Frequency (IRDF)</b>:
-     *       replaces corpus IDF with rest-side rarity:
-     *       {@code IRDF × acc}. Terms common outside focus score low;
-     *       terms absent from the rest score highest.</li>
-     *   <li><b>Focus minus rest</b>:
-     *       {@code IDF × (acc − restAcc)}. Same as option 1 with
-     *       weights (1, −1), provided as a readable alternative.</li>
-     * </ol>
+     * <p>{@link #termScore()} is the experimentation point. It currently
+     * implements focus-minus-rest. Three other strategies are documented
+     * and the required bookkeeping is always collected, so switching is
+     * a matter of editing {@code result()} to the alternative formula.</p>
      */
     public static class BM25 extends TermScorer {
         /** Term frequency saturation. */
@@ -202,56 +183,35 @@ public abstract class TermScorer {
         protected double b = 0.75d;
         /** Exponent applied to raw IDF. */
         protected final double idfExp;
-        /** Weight on the focus accumulator for BM25F-style combination. */
-        protected final double wFocus;
-        /** Weight on the rest accumulator for BM25F-style combination. */
-        protected final double wRest;
-        /** Focus-side term frequency sum for the current term. */
+        /** Sum of focus-side term frequencies for the current term. */
         protected long focusTermFreqAcc;
-        /** Focus-side document count for the current term. */
+        /** Number of focus documents containing the current term. */
         protected int focusTermDocsCount;
 
         public BM25() { this(0.9); }
 
-        /** @param idfExp IDF exponent; default weights (1, 0) = non-contrastive. */
-        public BM25(final double idfExp) { this(idfExp, 1.0, 0.0); }
-
-        /**
-         * @param idfExp IDF exponent
-         * @param wFocus weight on focus accumulator
-         * @param wRest  weight on rest accumulator (negative to penalise)
-         */
-        public BM25(final double idfExp, final double wFocus, final double wRest) {
-            this.idfExp = idfExp;
-            this.wFocus = wFocus;
-            this.wRest  = wRest;
-        }
+        public BM25(final double idfExp) { this.idfExp = idfExp; }
 
         @Override
-        public void term(final long corpusTermFreq, final int corpusTermDocs) {
-            super.term(corpusTermFreq, corpusTermDocs);
+        public void termStart(final long corpusTermFreq, final int corpusTermDocs) {
+            super.termStart(corpusTermFreq, corpusTermDocs);
             this.focusTermFreqAcc   = 0L;
             this.focusTermDocsCount = 0;
-            if (corpusPartCount <= 0) { this.corpusIdf = 0d; return; }
-            final double n  = corpusPartCount;
+            if (corpusDocs <= 0) { this.corpusIdf = 0d; return; }
+            final double n  = corpusDocs;
             final double df = corpusTermDocs;
             this.corpusIdf = Math.pow(Math.log(1.0d + (n - df + 0.5d) / (df + 0.5d)), idfExp);
         }
 
-        /**
-         * Accumulates the BM25 tf-saturation component (without IDF).
-         * Also tracks focus-side frequency and document count for
-         * contrastive result strategies.
-         */
         @Override
-        public double score(final long partTermFreq, final long partTokens, final boolean inFocus) {
-            if (partTermFreq <= 0L || partTokens <= 0L || partTokensAvg <= 0d) return 0d;
-            final double tf   = (double) partTermFreq;
-            final double norm = k1 * (1d - b + b * ((double) partTokens / partTokensAvg));
+        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus) {
+            if (docTermFreq <= 0L || docTokens <= 0L || docTokensAvg <= 0d) return 0d;
+            final double tf   = (double) docTermFreq;
+            final double norm = k1 * (1d - b + b * ((double) docTokens / docTokensAvg));
             final double local = (tf * (k1 + 1d)) / (tf + norm);
             if (inFocus) {
                 acc += local;
-                focusTermFreqAcc += partTermFreq;
+                focusTermFreqAcc += docTermFreq;
                 focusTermDocsCount++;
             } else {
                 restAcc += local;
@@ -261,14 +221,58 @@ public abstract class TermScorer {
         }
 
         /**
-         * Combines focus/rest accumulators with the chosen rarity measure.
-         * Uncomment exactly one option to experiment.
+         * Focus minus rest.
+         * {@code IDF × (acc − restAcc)}.
          *
-         * @see BM25 class javadoc for the four strategies
+         * <p>Alternative strategies to try here:</p>
+         *
+         * <p><b>BM25 × over-representation factor.</b>
+         * {@code IDF × acc × log(relFocus / relCorpus) × log(focusTermFreqAcc)}.
+         * Needs {@code focusTokens > 0}. Boosts terms whose focus rate
+         * exceeds their corpus rate; log-dampened to resist hapax noise.</p>
+         *
+         * <p><b>Inverse Rest Document Frequency (IRDF).</b>
+         * Replaces corpus IDF with rarity measured outside focus:
+         * {@code IRDF × acc} where
+         * {@code IRDF = log(1 + (restDocs − restTermDf + 0.5) / (restTermDf + 0.5))^idfExp},
+         * {@code restDocs = corpusDocs − focusDocs}, and
+         * {@code restTermDf = corpusTermDocs − focusTermDocsCount}.
+         * Terms common outside focus score low; terms absent from the
+         * rest score highest.</p>
+         *
+         * <p><b>BM25F-style weighted.</b>
+         * {@code IDF × (wFocus × acc + wRest × restAcc)} with tunable
+         * weights. Generalises focus-minus-rest; set {@code wFocus=1,
+         * wRest=−2} for stronger penalty on ubiquitous terms, or
+         * {@code wFocus=2, wRest=−1} for softer penalty.</p>
          */
         @Override
-        public double result() {
+        public double termScore() {
+            return corpusIdf * (acc - restAcc);
+            /*
+            // BM25 × over-representation
+            if (focusTermFreqAcc == 0 || focusTokens <= 0) return 0d;
+            double relFocus  = (double) focusTermFreqAcc / focusTokens;
+            double relCorpus = (double) corpusTermFreq   / corpusTokens;
+            if (relCorpus <= 0d) return 0d;
+            return corpusIdf * acc * Math.log(relFocus / relCorpus) * Math.log(focusTermFreqAcc);
+             */
+            /*
+            // IRDF
+            int restDocs    = corpusDocs     - focusDocs;
+            int restTermDf  = corpusTermDocs - focusTermDocsCount;
+            if (restDocs <= 0) return corpusIdf * acc;
+            double irdf = Math.pow(
+                Math.log(1.0d + (restDocs - restTermDf + 0.5d) / (restTermDf + 0.5d)),
+                idfExp);
+            return irdf * acc;
+             */
+            /*
+            // BM25F-style weighted
+            final double wFocus = 1.0;
+            final double wRest  = -2.0;  // or whatever you want to try
             return corpusIdf * (wFocus * acc + wRest * restAcc);
+             */
         }
 
         @Override
@@ -278,14 +282,12 @@ public abstract class TermScorer {
         public boolean equals(final Object o) {
             if (this == o) return true;
             if (!(o instanceof BM25 other)) return false;
-            return Double.compare(this.idfExp, other.idfExp) == 0
-                && Double.compare(this.wFocus, other.wFocus) == 0
-                && Double.compare(this.wRest,  other.wRest)  == 0;
+            return Double.compare(this.idfExp, other.idfExp) == 0;
         }
 
         @Override
         public int hashCode() {
-            return java.util.Objects.hash(idfExp, wFocus, wRest);
+            return Double.hashCode(idfExp);
         }
     }
 }
