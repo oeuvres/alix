@@ -10,6 +10,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.IOUtil;
@@ -801,20 +802,25 @@ public final class FieldStats
         return w[termId];
     }
 
+    public double[] termWeights(final IndexReader reader, final TermScorer scorer) throws IOException
+    {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(scorer, "scorer");
+        // weights already calculated with same scorer
+        if (termWeights != null && scorer.equals(termWeightsScorer)) return termWeights;
+        termWeightsScorer = scorer;
+        termWeights = buildTermWeights(reader, scorer, null);
+        return termWeights;
+    }
+    
     /**
-     * Computes and caches a corpus-level weight for every vocabulary term.
+     * Computes a corpus-level weight for every vocabulary term.
      *
      * <p>The weight is the BM25 summed score of the term across all documents:
      * {@code IDF(t) × Σ_d saturated_normalised_tf(t, d)}.
      * It reflects both how distinctive a term is (rare globally) and how
      * consistently it appears across documents. Common words score near zero;
      * thematically significant rare words score high.</p>
-     *
-     * <p>The result is stored in {@link #termWeights} and accessible via
-     * {@link #termWeight(int)}. Calling this method again with a different scorer
-     * replaces the previous weights. Call once at startup after
-     * {@link #openOrBuild}; the computation cost is one postings scan (O(totalPostings),
-     * significantly cheaper than building {@code docWidths}).</p>
      *
      * <p>The implicit term-id assignment follows the same {@link MultiTerms} lexicographic
      * order used by {@link TermLexicon}: id 0 is reserved as the absent-term sentinel,
@@ -826,7 +832,7 @@ public final class FieldStats
      * @throws IllegalStateException    if called before weights are needed (remind the caller
      *                                  to call this method at startup)
      */
-    public double[] termWeights(final IndexReader reader, final TermScorer scorer) throws IOException {
+    public double[] buildTermWeights(final IndexReader reader, final TermScorer scorer, FixedBitSet focusDocs) throws IOException {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(scorer, "scorer");
     
@@ -839,8 +845,6 @@ public final class FieldStats
             throw new IllegalStateException(
                 "Field '" + field + "' was not indexed with term frequencies");
         }
-        // weights already calculated with same scorer
-        if (scorer.equals(termWeightsScorer)) return termWeights;
         
         scorer.corpus(tokens, docs);
     
@@ -874,20 +878,7 @@ public final class FieldStats
             weights[termId] = scorer.result();
             termId++;
         }
-    
-        this.termWeights = weights;
         return weights;
-    }
-
-    /**
-     * Return a reference to the last {@link #termWeights} build with
-     *{@link #termWeights(IndexReader, TermScorer)}.
-     *
-     * @return {@link #termWeights}
-     */
-    public double[] termWeightsRef()
-    {
-        return termWeights;
     }
     
     /**
