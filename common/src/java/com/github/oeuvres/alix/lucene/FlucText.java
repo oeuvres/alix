@@ -146,7 +146,7 @@ public final class FlucText extends Fluc
         return fieldStatsHolder.get(
             () -> FieldStats.exists(sideDir, name()),
             () -> FieldStats.build(reader, sideDir, name(), Report.ReportNull.INSTANCE),
-            () -> FieldStats.open(reader, sideDir, name())
+            () -> FieldStats.open(reader, sideDir, name(), null)
         );
     }
 

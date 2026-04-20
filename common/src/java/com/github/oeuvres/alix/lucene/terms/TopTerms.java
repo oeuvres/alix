@@ -40,8 +40,8 @@ import com.github.oeuvres.alix.util.TopArray;
  *
  * <h2>Token denominator</h2>
  * <p>
- * Keyness scoring uses {@link FieldStats#tokens()} as the field-side
- * denominator, not {@link FieldStats#width()}. This is consistent with
+ * Keyness scoring uses {@link FieldStats#fieldTokens()} as the field-side
+ * denominator, not {@link FieldStats#fieldWidth()}. This is consistent with
  * {@link TermCollector}, which sums postings frequencies (token counts,
  * not positions) to produce {@link #focusTotal}. A position-based
  * denominator on one side and a token-based one on the other would make
@@ -152,7 +152,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
     /**
      * Ranks terms by their over-representation in the focus subset relative
-     * to the full field, using {@link FieldStats#tokens()} as the field-side
+     * to the full field, using {@link FieldStats#fieldTokens()} as the field-side
      * denominator.
      *
      * <p>
