@@ -2,8 +2,6 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -86,8 +84,10 @@ public final class OpTerms extends Op
         if (filterQuery == null && spanQuery == null) {
             // an http param may change idfExp
             final TermScorer scorer = new TermScorer.BM25(idfExp);
+            // The weights for full field are cached if same idfExp is requested
+            final double[] weights = fluc.fieldStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
-            return topTerms.themeScore(scorer, index.reader(), topK);
+            return topTerms.ranking(weights, topK);
         }
         // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
@@ -95,11 +95,20 @@ public final class OpTerms extends Op
 
             final TermCollector collector = new TermCollector(index.searcher(), fluc.termLexicon());
             collector.collect(focusDocs, topTerms);
-            final String scorerName = pars.getString(SCORER, SIMPLEMATHS, Set.of(LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
+            final String scorerName = pars.getString(SCORER, LOGLIKELIHOOD, Set.of(BM25, LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
+            
+            if (BM25.equals(scorerName)) {
+                final TermScorer scorer = new TermScorer.BM25(idfExp);
+                final double[] weights = fluc.fieldStats().buildTermWeights(index.reader(), scorer, focusDocs);
+                return topTerms.ranking(weights, topK);
+            }
 
             final KeynessScorer scorer;
             if (LOGLIKELIHOOD.equals(scorerName)) {
                 scorer = new KeynessScorer.LogLikelihood();
+            }
+            else if (SIMPLEMATHS.equals(scorerName)) {
+                scorer = new KeynessScorer.SimpleMaths(1);
             }
             else if (LOGRATIO.equals(scorerName)) {
                 scorer = new KeynessScorer.LogRatio();
@@ -150,9 +159,14 @@ public final class OpTerms extends Op
                 <th>%s</th>
                 <th>%s</th>
                 <th>%s</th>
+                <th>%s</th>
               </tr>
               <tr>
-        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(), LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
+        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(), BM25, LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
+        writer.append("      <td>\n");
+        request.setAttribute(SCORER, BM25);
+        html(index, request, response);
+        writer.append("      </td>\n");
         writer.append("      <td>\n");
         request.setAttribute(SCORER, LOGLIKELIHOOD);
         html(index, request, response);

@@ -1,11 +1,8 @@
 package com.github.oeuvres.alix.lucene.terms;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-
-import org.apache.lucene.index.IndexReader;
 
 import com.github.oeuvres.alix.util.TopArray;
 
@@ -20,11 +17,13 @@ import com.github.oeuvres.alix.util.TopArray;
  * through one of the modes below.
  * </p>
  *
- * <h2>Theme mode — full-corpus keyword ranking</h2>
+ * <h2>Field-scope ranking</h2>
  * <p>
- * {@link #themeScore(TermScorer, IndexReader, int)} ranks all terms by a
- * corpus-level weight (e.g. BM25) computed from {@link FieldStats}.
- * No focus subset is required.
+ * {@link #ranking(double[], int)} ranks terms by a caller-supplied weight
+ * vector aligned with the lexicon. Used for theme mode (BM25 weights from
+ * {@link FieldStats#termWeights}) and any future ranking that scores at
+ * field scope. {@link TermEntry#count()} returns the full-field occurrence
+ * count.
  * </p>
  *
  * <h2>Focus mode — keyness ranking against a document subset</h2>
@@ -49,17 +48,17 @@ import com.github.oeuvres.alix.util.TopArray;
  * indexing time.
  * </p>
  *
- * <h2>Typical usage — theme</h2>
+ * <h2>Typical usage — field-scope ranking (theme)</h2>
  * <pre>{@code
- * TopTerms tt = flucText.topTerms();
- * tt.themeScore(new TermScorer.BM25(1.3), reader, 50);
+ * double[] weights = fluc.fieldStats().termWeights(reader, new TermScorer.BM25(1.3));
+ * TopTerms tt = fluc.topTerms().ranking(weights, 50);
  * for (TopTerms.TermEntry e : tt) { ... }
  * }</pre>
  *
- * <h2>Typical usage — focus</h2>
+ * <h2>Typical usage — focus mode</h2>
  * <pre>{@code
- * TopTerms tt = flucText.topTerms();
- * new TermCollector(searcher).collect(focusDocs, tt);
+ * TopTerms tt = fluc.topTerms();
+ * new TermCollector(searcher, fluc.termLexicon()).collect(focusDocs, tt);
  * tt.focusScore(new KeynessScorer.LogRatio(), 50);
  * for (TopTerms.TermEntry e : tt) { ... }
  * }</pre>
@@ -67,7 +66,7 @@ import com.github.oeuvres.alix.util.TopArray;
 public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
     /** Source of field-level statistics. */
-    private final FieldStats  fieldStats;
+    private final FieldStats fieldStats;
 
     /** Maps termId → term string. */
     private final TermLexicon lexicon;
@@ -109,7 +108,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * Active count vector. Set by each scoring method to the population that
      * backed the ranking:
      * <ul>
-     *   <li>{@link #themeScore} → full-field counts from
+     *   <li>{@link #ranking} → full-field counts from
      *       {@link FieldStats#termCountsRef()}</li>
      *   <li>{@link #focusScore} → {@link #focusCounts}</li>
      *   <li>future co-occurrence scoring → its own per-pivot count vector</li>
@@ -125,10 +124,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      */
     private String[] hilites;
 
-    // -------------------------------------------------------------------------
-    // Constructor — called from FlucText.topTerms()
-    // -------------------------------------------------------------------------
-
     /**
      * Focus arrays are not allocated here; they are allocated lazily on first
      * {@code TermCollector.collect()} call.
@@ -141,13 +136,44 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         this.lexicon    = lexicon;
     }
 
-    @Override
-    public Iterator<TermEntry> iterator() {
-        if (rank2termId == null) {
-            throw new IllegalStateException(
-                "No ranking: call themeScore() or focusScore() first");
+    /**
+     * Ranks terms by a caller-supplied weight vector aligned with the lexicon.
+     *
+     * <p>
+     * Uses the full field as population: {@link TermEntry#count()} returns the
+     * full-field occurrence count from {@link FieldStats#termCountsRef()},
+     * {@link TermEntry#score()} returns the corresponding entry of {@code weights}.
+     * </p>
+     *
+     * <p>
+     * Only positive, non-NaN weights enter the ranking. Caller is free to fill
+     * {@code weights} with any scoring function — BM25 from {@link FieldStats},
+     * raw frequencies, or any other field-scope criterion.
+     * </p>
+     *
+     * @param weights score vector indexed by termId, length must equal
+     *                {@link FieldStats#vocabSize()}
+     * @param topK    maximum number of terms to return
+     * @return this instance, for chaining
+     * @throws IllegalArgumentException if {@code weights.length != vocabSize()}
+     *                                  or {@code topK < 1}
+     */
+    public TopTerms ranking(final double[] weights, final int topK) {
+        if (topK < 1) throw new IllegalArgumentException("topK must be >= 1");
+        final int vocabSize = fieldStats.vocabSize();
+        if (weights.length != vocabSize) {
+            throw new IllegalArgumentException(
+                "weights.length=" + weights.length + ", expected " + vocabSize);
         }
-        return new TermIter();
+
+        final TopArray top = new TopArray(topK);
+        for (int termId = 1; termId < vocabSize; termId++) {
+            final double s = weights[termId];
+            if (!Double.isNaN(s) && s > 0d) top.push(termId, s);
+        }
+        this.activeCounts = fieldStats.termCountsRef();
+        buildRank(top, weights);
+        return this;
     }
 
     /**
@@ -170,6 +196,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      *               (e.g. {@link KeynessScorer.LogRatio},
      *               {@link KeynessScorer.SimpleMaths})
      * @param topK   maximum number of terms to return
+     * @return this instance, for chaining
      * @throws IllegalStateException    if focus counts have not been collected yet
      * @throws IllegalArgumentException if {@code topK < 1}
      */
@@ -182,19 +209,19 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
                 "No focus data: call TermCollector.collect(focusDocs, this) first");
         }
         if (topK < 1) throw new IllegalArgumentException("topK must be >= 1");
-    
+
         final int      vocabSize  = fieldStats.vocabSize();
-        final long     fieldTotal = fieldStats.fieldTokens();
+        final long     fieldTokens = fieldStats.fieldTokens();
         final double[] scoreVec   = new double[vocabSize];
         final TopArray top        = new TopArray(topK);
-    
+
         for (int termId = 1; termId < vocabSize; termId++) {
             final long fc = focusCounts[termId];
             if (fc == 0L) continue;
-    
+
             final double s = scorer.score(
                 fc, focusTotal,
-                fieldStats.termCount(termId), fieldTotal
+                fieldStats.termCount(termId), fieldTokens
             );
             if (Double.isNaN(s)) continue;
             scoreVec[termId] = s;
@@ -204,10 +231,10 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         buildRank(top, scoreVec);
         return this;
     }
-    
+
     /**
      * Package-private setter used by specialized ranking producers such as
-     * {@link TermSuggest}, whose ranking logic doesn't fit {@link #themeScore}
+     * {@link TermSuggest}, whose ranking logic doesn't fit {@link #ranking}
      * or {@link #focusScore}.
      *
      * @param rank2termId  ranked term ids (caller-owned)
@@ -226,46 +253,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         this.activeCounts = activeCounts;
         this.scores       = scores;
         this.hilites      = hilites;
-    }
-
-    /** Number of ranked terms currently held. Zero until a score method has been called. */
-    public int size() {
-        return rank2termId == null ? 0 : rank2termId.length;
-    }
-
-    /**
-     * Ranks terms by corpus-level weight computed from {@link FieldStats}.
-     *
-     * <p>
-     * Uses the full field as population; no focus subset is required.
-     * {@link TermEntry#count()} will return the full-field occurrence count;
-     * {@link TermEntry#score()} will return the corpus-level weight.
-     * </p>
-     *
-     * @param scorer term weight policy (e.g. {@code TermScorer.BM25})
-     * @param reader index reader, passed to {@link FieldStats#buildWeights}
-     * @param topK   maximum number of terms to return
-     * @throws IOException if weight computation requires index access
-     * @throws IllegalArgumentException if {@code topK < 1}
-     */
-    public TopTerms themeScore(
-        final TermScorer  scorer,
-        final IndexReader reader,
-        final int         topK
-    ) throws IOException {
-        if (topK < 1) throw new IllegalArgumentException("topK must be >= 1");
-    
-        final double[] weights = fieldStats.termWeights(reader, scorer);
-    
-        final int      vocabSize = fieldStats.vocabSize();
-        final TopArray top       = new TopArray(topK);
-        for (int termId = 1; termId < vocabSize; termId++) {
-            final double s = weights[termId];
-            if (!Double.isNaN(s) && s > 0d) top.push(termId, s);
-        }
-        this.activeCounts = fieldStats.termCountsRef();
-        buildRank(top, weights);
-        return this;
     }
 
     /**
@@ -311,12 +298,26 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         this.scores = scoreVec;
     }
 
+    /** Number of ranked terms currently held. Zero until a score method has been called. */
+    public int size() {
+        return rank2termId == null ? 0 : rank2termId.length;
+    }
+
+    @Override
+    public Iterator<TermEntry> iterator() {
+        if (rank2termId == null) {
+            throw new IllegalStateException(
+                "No ranking: call ranking() or focusScore() first");
+        }
+        return new TermIter();
+    }
+
     /**
      * Read-only view of one ranked term.
      *
      * <p>
      * {@link #count()} reflects the population used for scoring:
-     * full-field occurrence count after {@link #themeScore}, focus occurrence
+     * full-field occurrence count after {@link #ranking}, focus occurrence
      * count after {@link #focusScore}.
      * {@link #score()} reflects the most recent scoring call.
      * </p>
@@ -346,8 +347,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
          */
         public long count() { return activeCounts[termId]; }
 
-        /** Score from the most recent scoring call. */
-        public double score() { return scores[termId]; }
+        /**
+         * Score from the most recent scoring call. Falls back to the count
+         * when no score vector was supplied (e.g. suggest mode).
+         */
+        public double score() {
+            return scores != null ? scores[termId] : (double) activeCounts[termId];
+        }
 
         /**
          * Full-field occurrence count, always available regardless of mode.
@@ -361,10 +367,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
          */
         public String hilite() { return hilites == null ? null : hilites[rank]; }
     }
-
-    // -------------------------------------------------------------------------
-    // Iterator
-    // -------------------------------------------------------------------------
 
     private final class TermIter implements Iterator<TermEntry> {
         private int cursor = 0;

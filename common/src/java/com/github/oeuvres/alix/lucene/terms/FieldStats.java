@@ -294,6 +294,13 @@ public final class FieldStats
      * by {@link TermLexicon}. Id 0 is reserved as the absent-term sentinel.
      * </p>
      *
+     * <p>
+     * When {@code focusDocs} is non-null, the focus subset's token total and document
+     * count are derived from the bitset and {@link #docTokens}, then passed to
+     * {@link TermScorer#focus}. Each posting visit then tells the scorer whether the
+     * document is in focus, and the scorer accumulates into focus or rest separately.
+     * </p>
+     *
      * @param reader    snapshot reader matching this FieldStats
      * @param scorer    scorer to weight terms
      * @param focusDocs optional focus bitset for contrastive scoring; {@code null} for non-contrastive
@@ -306,7 +313,7 @@ public final class FieldStats
     {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(scorer, "scorer");
-        
+
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
             throw new IllegalStateException(
@@ -316,14 +323,26 @@ public final class FieldStats
             throw new IllegalStateException(
                     "Field '" + field + "' was not indexed with term frequencies");
         }
-        
+
         scorer.corpus(fieldTokens, fieldDocs);
-        
+
+        if (focusDocs != null) {
+            long focusTokens = 0L;
+            int focusDocsCount = 0;
+            for (int docId = focusDocs.nextSetBit(0);
+                 docId != DocIdSetIterator.NO_MORE_DOCS;
+                 docId = focusDocs.nextSetBit(docId + 1)) {
+                focusTokens += docTokens[docId];
+                focusDocsCount++;
+            }
+            scorer.focus(focusTokens, focusDocsCount);
+        }
+
         final double[] weights = new double[vocabSize];
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
         int termId = 1;
-        
+
         while (tenum.next() != null) {
             if (termId >= vocabSize) {
                 throw new IOException(
@@ -331,16 +350,15 @@ public final class FieldStats
                                 + "': seen more than " + vocabSize + " terms");
             }
             scorer.termStart(termCounts[termId], termDocs[termId]);
-            
+
             postings = tenum.postings(postings, PostingsEnum.FREQS);
             for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
                 final int freq = postings.freq();
-                if (freq <= 0)
-                    continue;
+                if (freq <= 0) continue;
                 final boolean inFocus = (focusDocs == null) || focusDocs.get(docId);
                 scorer.termDocAdd(freq, docTokens[docId], inFocus);
             }
-            
+
             weights[termId] = scorer.termScore();
             termId++;
         }
