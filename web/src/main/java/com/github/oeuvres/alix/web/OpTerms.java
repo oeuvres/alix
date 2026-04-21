@@ -18,7 +18,6 @@ import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.terms.TermCollector;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -83,7 +82,7 @@ public final class OpTerms extends Op
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
             // an http param may change idfExp
-            final TermScorer scorer = new TermScorer.BM25(idfExp);
+            final TermScorer scorer = new TermScorer.BM25(idfExp, null);
             // The weights for full field are cached if same idfExp is requested
             final double[] weights = fluc.fieldStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
@@ -93,29 +92,8 @@ public final class OpTerms extends Op
         else if (spanQuery == null) {
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
 
-            final TermCollector collector = new TermCollector(index.searcher(), fluc.termLexicon());
-            collector.collect(focusDocs, topTerms);
-            final String scorerName = pars.getString(SCORER, LOGLIKELIHOOD, Set.of(BM25, LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
-            
-            if (BM25.equals(scorerName)) {
-                final TermScorer scorer = new TermScorer.BM25(idfExp);
-                final double[] weights = fluc.fieldStats().buildTermWeights(index.reader(), scorer, focusDocs);
-                return topTerms.ranking(weights, topK);
-            }
-
-            final KeynessScorer scorer;
-            if (LOGLIKELIHOOD.equals(scorerName)) {
-                scorer = new KeynessScorer.LogLikelihood();
-            }
-            else if (SIMPLEMATHS.equals(scorerName)) {
-                scorer = new KeynessScorer.SimpleMaths(1);
-            }
-            else if (LOGRATIO.equals(scorerName)) {
-                scorer = new KeynessScorer.LogRatio();
-            }
-            else {
-                scorer = new KeynessScorer.SimpleMaths(1);
-            }
+            topTerms.focus(focusDocs, index.reader());
+            final KeynessScorer scorer = new KeynessScorer.LogLikelihood();
             return topTerms.focusScore(scorer, topK);
         }
         // coocs, with or without doc filter TODO

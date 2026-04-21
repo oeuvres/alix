@@ -1,8 +1,17 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.util.TopArray;
 
@@ -28,24 +37,22 @@ import com.github.oeuvres.alix.util.TopArray;
  *
  * <h2>Focus mode — keyness ranking against a document subset</h2>
  * <p>
- * Focus counts must first be collected by
- * {@code TermCollector.collect(focusDocs, this)}, which writes into the
- * package-private focus arrays of this instance. Then
+ * {@link #focus(FixedBitSet, IndexReader)} populates per-term occurrence
+ * counts and document counts for the focus subset. Then
  * {@link #focusScore(KeynessScorer, int)} ranks terms by their
  * over-representation in the focus subset relative to the full field.
  * The instance can be re-scored with a different {@link KeynessScorer}
- * without re-running collection.
+ * without re-running the focus collection.
  * </p>
  *
  * <h2>Token denominator</h2>
  * <p>
  * Keyness scoring uses {@link FieldStats#fieldTokens()} as the field-side
  * denominator, not {@link FieldStats#fieldWidth()}. This is consistent with
- * {@link TermCollector}, which sums postings frequencies (token counts,
- * not positions) to produce {@link #focusTotal}. A position-based
- * denominator on one side and a token-based one on the other would make
- * the ratio meaningless in corpora where stop words are stripped at
- * indexing time.
+ * {@link #focus}, which sums postings frequencies (token counts, not
+ * positions) to produce {@link #focusTotal}. A position-based denominator on
+ * one side and a token-based one on the other would make the ratio
+ * meaningless in corpora where stop words are stripped at indexing time.
  * </p>
  *
  * <h2>Typical usage — field-scope ranking (theme)</h2>
@@ -57,9 +64,9 @@ import com.github.oeuvres.alix.util.TopArray;
  *
  * <h2>Typical usage — focus mode</h2>
  * <pre>{@code
- * TopTerms tt = fluc.topTerms();
- * new TermCollector(searcher, fluc.termLexicon()).collect(focusDocs, tt);
- * tt.focusScore(new KeynessScorer.LogRatio(), 50);
+ * TopTerms tt = fluc.topTerms()
+ *                   .focus(focusDocs, reader)
+ *                   .focusScore(new KeynessScorer.LogRatio(), 50);
  * for (TopTerms.TermEntry e : tt) { ... }
  * }</pre>
  */
@@ -73,24 +80,21 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
     /**
      * Occurrence counts per termId in the focus subset.
-     * {@code null} until {@code TermCollector.collect()} has run.
-     * Package-private so {@link TermCollector} can write directly.
+     * {@code null} until {@link #focus} has run.
      */
-    long[] focusCounts;
+    private long[] focusCounts;
 
     /**
      * Document occurrence counts per termId in the focus subset.
-     * {@code null} if not requested (see {@code TermCollector.collect}
-     * {@code withDocCounts}). Package-private so {@link TermCollector}
-     * can write directly.
+     * {@code null} until {@link #focus} has run.
      */
-    int[] focusDocCounts;
+    private int[] focusDocCounts;
 
-    /** Total token occurrences across all focus documents. Package-private. */
-    long focusTotal;
+    /** Total token occurrences across all focus documents. */
+    private long focusTotal;
 
-    /** Number of documents in the focus subset. Package-private. */
-    int focusDocCount;
+    /** Number of documents in the focus subset. */
+    private int focusDocCount;
 
     /**
      * Ranked term ids: {@code rank2termId[rank]} gives the termId at that rank.
@@ -126,7 +130,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
     /**
      * Focus arrays are not allocated here; they are allocated lazily on first
-     * {@code TermCollector.collect()} call.
+     * {@link #focus} call.
      *
      * @param fieldStats field-level statistics (immutable, shared)
      * @param lexicon    term lexicon for this field (immutable, shared)
@@ -134,6 +138,112 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
     public TopTerms(final FieldStats fieldStats, final TermLexicon lexicon) {
         this.fieldStats = fieldStats;
         this.lexicon    = lexicon;
+    }
+
+    /**
+     * Returns the focus subset's total occurrence count for one term.
+     * Returns 0 before {@link #focus} has been called.
+     *
+     * @param termId dense term id
+     * @return focus occurrence count
+     */
+    public long focusCount(final int termId) {
+        return focusCounts == null ? 0L : focusCounts[termId];
+    }
+
+    /**
+     * Returns the number of focus documents containing one term.
+     * Returns 0 before {@link #focus} has been called.
+     *
+     * @param termId dense term id
+     * @return focus document count
+     */
+    public int focusDocCount(final int termId) {
+        return focusDocCounts == null ? 0 : focusDocCounts[termId];
+    }
+
+    /**
+     * Returns the total token occurrences across all focus documents.
+     * Returns 0 before {@link #focus} has been called.
+     *
+     * @return focus token total
+     */
+    public long focusTotal() {
+        return focusTotal;
+    }
+
+    /**
+     * Returns the number of documents in the focus subset.
+     * Returns 0 before {@link #focus} has been called.
+     *
+     * @return focus document count
+     */
+    public int focusDocCount() {
+        return focusDocCount;
+    }
+
+    /**
+     * Populates per-term focus statistics from the documents marked in
+     * {@code focusDocs}. Walks the merged term dictionary of the field
+     * once, summing term frequencies and counting documents per term.
+     *
+     * <p>
+     * After this call: {@link #focusCount(int)},
+     * {@link #focusDocCount(int)}, {@link #focusTotal()} and
+     * {@link #focusDocCount()} are populated.
+     * </p>
+     *
+     * <p>
+     * Term ids follow the merged {@link MultiTerms} lexicographic order used
+     * by {@link TermLexicon} and {@link FieldStats} on the same snapshot.
+     * </p>
+     *
+     * @param focusDocs global bitset of focus document ids
+     * @param reader    snapshot reader matching this {@code TopTerms}
+     * @return this instance, for chaining
+     * @throws IllegalStateException if the field has no terms or no frequencies
+     * @throws IOException           if postings traversal fails
+     */
+    public TopTerms focus(final FixedBitSet focusDocs, final IndexReader reader) throws IOException {
+        final String field = fieldStats.field();
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalStateException(
+                "Field '" + field + "' has no terms; cannot collect focus");
+        }
+        if (!terms.hasFreqs()) {
+            throw new IllegalStateException(
+                "Field '" + field + "' was not indexed with term frequencies");
+        }
+
+        initFocus();
+
+        final long[] counts    = focusCounts;
+        final int[]  docCounts = focusDocCounts;
+        long totalTokens = 0L;
+
+        final TermsEnum tenum = terms.iterator();
+        PostingsEnum postings = null;
+        int termId = 1;
+
+        while (tenum.next() != null) {
+            postings = tenum.postings(postings, PostingsEnum.FREQS);
+            for (int docId = postings.nextDoc();
+                 docId != DocIdSetIterator.NO_MORE_DOCS;
+                 docId = postings.nextDoc())
+            {
+                if (!focusDocs.get(docId)) continue;
+                final int freq = postings.freq();
+                counts[termId]    += freq;
+                totalTokens       += freq;
+                docCounts[termId] += 1;
+            }
+            termId++;
+        }
+
+        this.focusTotal    = totalTokens;
+        this.focusDocCount = focusDocs.cardinality();
+        return this;
     }
 
     /**
@@ -182,9 +292,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * denominator.
      *
      * <p>
-     * {@code TermCollector.collect(focusDocs, this)} must have been called
-     * before this method. The method can be called multiple times with
-     * different scorers on the same collected data.
+     * {@link #focus} must have been called before this method. The method
+     * can be called multiple times with different scorers on the same
+     * collected data.
      * </p>
      *
      * <p>
@@ -197,7 +307,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      *               {@link KeynessScorer.SimpleMaths})
      * @param topK   maximum number of terms to return
      * @return this instance, for chaining
-     * @throws IllegalStateException    if focus counts have not been collected yet
+     * @throws IllegalStateException    if {@link #focus} has not been called yet
      * @throws IllegalArgumentException if {@code topK < 1}
      */
     public TopTerms focusScore(
@@ -206,7 +316,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
     ) {
         if (focusCounts == null) {
             throw new IllegalStateException(
-                "No focus data: call TermCollector.collect(focusDocs, this) first");
+                "No focus data: call focus(focusDocs, reader) first");
         }
         if (topK < 1) throw new IllegalArgumentException("topK must be >= 1");
 
@@ -257,25 +367,18 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
     /**
      * Allocates (or resets) focus arrays before collection.
-     * Called by {@link TermCollector} before writing focus data.
-     *
-     * @param withDocCounts {@code true} to allocate {@link #focusDocCounts}
-     *                      for future dispersion use
      */
-    void initFocus(final boolean withDocCounts) {
+    private void initFocus() {
+        final int vocabSize = fieldStats.vocabSize();
         if (focusCounts == null) {
-            focusCounts = new long[fieldStats.vocabSize()];
+            focusCounts = new long[vocabSize];
         } else {
             Arrays.fill(focusCounts, 0L);
         }
-        if (withDocCounts) {
-            if (focusDocCounts == null) {
-                focusDocCounts = new int[fieldStats.vocabSize()];
-            } else {
-                Arrays.fill(focusDocCounts, 0);
-            }
+        if (focusDocCounts == null) {
+            focusDocCounts = new int[vocabSize];
         } else {
-            focusDocCounts = null;
+            Arrays.fill(focusDocCounts, 0);
         }
         focusTotal    = 0L;
         focusDocCount = 0;

@@ -131,7 +131,8 @@ public class SpanQueryParser {
     private SpanQuery buildGroup(final String groupStr) {
         final String[] tokens = groupStr.split("\\s+");
         final List<SpanTermQuery> alternatives = new ArrayList<>(tokens.length);
-        for (final String token : tokens) {
+        for (String token : tokens) {
+            token = token.replace('_', ' ');
             if (!token.isEmpty()) {
                 alternatives.add(new SpanTermQuery(new Term(field, token)));
             }
