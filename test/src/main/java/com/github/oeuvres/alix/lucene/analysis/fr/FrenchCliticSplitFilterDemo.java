@@ -1,7 +1,10 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
+import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
+import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -48,7 +51,7 @@ public final class FrenchCliticSplitFilterDemo {
 
         new AnalysisDemoHelper.Case(
                 "Clitique",
-                "L’homme est l’Avenir de l’Apocalypse à l’abord du désastre.",
+                "Il s'agit d’y voir. L’homme est l’Avenir de l’Apocalypse à l’abord du désastre.",
                 null
             ),
 
@@ -143,9 +146,13 @@ public final class FrenchCliticSplitFilterDemo {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
+                LemmaLexicon lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
                 Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidots());
-                TokenStream stream = new FrenchCliticSplitFilter(tokenizer);
-                return new TokenStreamComponents(tokenizer, stream);
+                TokenStream ts = tokenizer;
+                ts = new SentenceStartLowerCaseFilter(ts, lemmaLexicon);
+                ts = new FrenchCliticSplitFilter(ts);
+                ts = new LemmaFilter(ts, lemmaLexicon);
+                return new TokenStreamComponents(tokenizer, ts);
             }
         };
     }

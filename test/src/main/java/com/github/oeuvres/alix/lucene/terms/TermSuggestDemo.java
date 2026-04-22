@@ -97,7 +97,7 @@ public final class TermSuggestDemo
                     mode);
 
                 for (final TermEntry entry : results) {
-                    System.out.printf("  %,12d  %s%n", entry.count(), entry.hilite());
+                    System.out.printf("  %,12d  %s%n", entry.freq(), entry.hilite());
                 }
                 System.out.println();
             }

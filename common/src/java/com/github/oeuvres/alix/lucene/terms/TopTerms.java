@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
@@ -31,7 +32,7 @@ import com.github.oeuvres.alix.util.TopArray;
  * {@link #ranking(double[], int)} ranks terms by a caller-supplied weight
  * vector aligned with the lexicon. Used for theme mode (BM25 weights from
  * {@link FieldStats#termWeights}) and any future ranking that scores at
- * field scope. {@link TermEntry#count()} returns the full-field occurrence
+ * field scope. {@link TermEntry#freq()} returns the full-field occurrence
  * count.
  * </p>
  *
@@ -50,7 +51,7 @@ import com.github.oeuvres.alix.util.TopArray;
  * Keyness scoring uses {@link FieldStats#fieldTokens()} as the field-side
  * denominator, not {@link FieldStats#fieldWidth()}. This is consistent with
  * {@link #focus}, which sums postings frequencies (token counts, not
- * positions) to produce {@link #focusTotal}. A position-based denominator on
+ * positions) to produce {@link #focusTokens}. A position-based denominator on
  * one side and a token-based one on the other would make the ratio
  * meaningless in corpora where stop words are stripped at indexing time.
  * </p>
@@ -82,19 +83,19 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * Occurrence counts per termId in the focus subset.
      * {@code null} until {@link #focus} has run.
      */
-    private long[] focusCounts;
+    private long[] focusTermFreq;
 
     /**
      * Document occurrence counts per termId in the focus subset.
      * {@code null} until {@link #focus} has run.
      */
-    private int[] focusDocCounts;
+    private int[] focusTermDocs;
 
     /** Total token occurrences across all focus documents. */
-    private long focusTotal;
+    private long focusTokens;
 
     /** Number of documents in the focus subset. */
-    private int focusDocCount;
+    private int focusDocs;
 
     /**
      * Ranked term ids: {@code rank2termId[rank]} gives the termId at that rank.
@@ -106,18 +107,18 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * Score vector indexed by termId. Set by the most recent score call.
      * {@code null} until a score method has been called.
      */
-    private double[] scores;
+    private double[] termScores;
 
     /**
      * Active count vector. Set by each scoring method to the population that
      * backed the ranking:
      * <ul>
      *   <li>{@link #ranking} → full-field counts from
-     *       {@link FieldStats#termCountsRef()}</li>
-     *   <li>{@link #focusScore} → {@link #focusCounts}</li>
+     *       {@link FieldStats#termFreqRef()}</li>
+     *   <li>{@link #focusScore} → {@link #focusTermFreq}</li>
      *   <li>future co-occurrence scoring → its own per-pivot count vector</li>
      * </ul>
-     * Drives {@link TermEntry#count()}.
+     * Drives {@link TermEntry#freq()}.
      * {@code null} until a score method has been called.
      */
     private long[] activeCounts;
@@ -141,14 +142,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
     }
 
     /**
-     * Returns the focus subset's total occurrence count for one term.
+     * Returns the number of documents in the focus subset.
      * Returns 0 before {@link #focus} has been called.
      *
-     * @param termId dense term id
-     * @return focus occurrence count
+     * @return focus document count
      */
-    public long focusCount(final int termId) {
-        return focusCounts == null ? 0L : focusCounts[termId];
+    public int focusDocs() {
+        return focusDocs;
     }
 
     /**
@@ -158,28 +158,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * @param termId dense term id
      * @return focus document count
      */
-    public int focusDocCount(final int termId) {
-        return focusDocCounts == null ? 0 : focusDocCounts[termId];
-    }
-
-    /**
-     * Returns the total token occurrences across all focus documents.
-     * Returns 0 before {@link #focus} has been called.
-     *
-     * @return focus token total
-     */
-    public long focusTotal() {
-        return focusTotal;
-    }
-
-    /**
-     * Returns the number of documents in the focus subset.
-     * Returns 0 before {@link #focus} has been called.
-     *
-     * @return focus document count
-     */
-    public int focusDocCount() {
-        return focusDocCount;
+    public int focusDocs(final int termId) {
+        return focusTermDocs == null ? 0 : focusTermDocs[termId];
     }
 
     /**
@@ -188,9 +168,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * once, summing term frequencies and counting documents per term.
      *
      * <p>
-     * After this call: {@link #focusCount(int)},
-     * {@link #focusDocCount(int)}, {@link #focusTotal()} and
-     * {@link #focusDocCount()} are populated.
+     * After this call: {@link #focusTermFreq(int)},
+     * {@link #focusDocs(int)}, {@link #focusTokens()} and
+     * {@link #focusDocs()} are populated.
      * </p>
      *
      * <p>
@@ -198,13 +178,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * by {@link TermLexicon} and {@link FieldStats} on the same snapshot.
      * </p>
      *
-     * @param focusDocs global bitset of focus document ids
+     * @param focusDocid global bitset of focus document ids
      * @param reader    snapshot reader matching this {@code TopTerms}
      * @return this instance, for chaining
      * @throws IllegalStateException if the field has no terms or no frequencies
      * @throws IOException           if postings traversal fails
      */
-    public TopTerms focus(final FixedBitSet focusDocs, final IndexReader reader) throws IOException {
+    public TopTerms focus(final IndexReader reader, final FixedBitSet focusDocid) throws IOException {
         final String field = fieldStats.field();
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
@@ -217,9 +197,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         }
 
         initFocus();
-
-        final long[] counts    = focusCounts;
-        final int[]  docCounts = focusDocCounts;
+        final long[] counts    = focusTermFreq;
+        final int[]  docCounts = focusTermDocs;
         long totalTokens = 0L;
 
         final TermsEnum tenum = terms.iterator();
@@ -232,7 +211,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
                  docId != DocIdSetIterator.NO_MORE_DOCS;
                  docId = postings.nextDoc())
             {
-                if (!focusDocs.get(docId)) continue;
+                if (!focusDocid.get(docId)) continue;
                 final int freq = postings.freq();
                 counts[termId]    += freq;
                 totalTokens       += freq;
@@ -241,17 +220,100 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
             termId++;
         }
 
-        this.focusTotal    = totalTokens;
-        this.focusDocCount = focusDocs.cardinality();
+        this.focusTokens    = totalTokens;
+        this.focusDocs = focusDocid.cardinality();
         return this;
     }
 
+    public TopTerms focus(
+        final IndexReader reader, 
+        final FixedBitSet focusDocid,
+        final TermScorer scorer,
+        final int topK)
+            throws IOException
+        {
+            Objects.requireNonNull(reader, "reader");
+            Objects.requireNonNull(focusDocid, "focusDocid");
+            Objects.requireNonNull(scorer, "scorer");
+            final String field = fieldStats.field();
+            
+            final Terms terms = MultiTerms.getTerms(reader, field);
+            if (terms == null) {
+                throw new IllegalStateException(
+                        "Field '" + field + "' has no terms; cannot build term weights");
+            }
+            if (!terms.hasFreqs()) {
+                throw new IllegalStateException(
+                        "Field '" + field + "' was not indexed with term frequencies");
+            }
+            
+
+            final int[]  docTokens  = fieldStats.docTokensRef();
+            final long[] termCounts = fieldStats.termFreqRef();
+            final int[] termDocs = fieldStats.termDocsRef();
+
+            scorer.corpus(fieldStats.fieldTokens(), fieldStats.fieldDocs());
+            
+            initFocus();
+            long focusTokenTotal = 0L;
+            int focusDocCount = 0;
+            for (int docId = focusDocid.nextSetBit(0);
+                docId != DocIdSetIterator.NO_MORE_DOCS;
+                docId = focusDocid.nextSetBit(docId + 1)) {
+                focusTokenTotal += docTokens[docId];
+                focusDocCount++;
+            }
+            this.focusTokens = focusTokenTotal;
+            this.focusDocs = focusDocCount;
+            scorer.focus(focusTokenTotal, focusDocCount);
+            
+            final TermsEnum tenum = terms.iterator();
+            PostingsEnum postings = null;
+            int termId = 1;
+
+            final double[] termScores = new double[fieldStats.vocabSize];
+            final TopArray top         = new TopArray(topK);
+            while (tenum.next() != null) {
+                scorer.termStart(termCounts[termId], termDocs[termId]);
+
+                postings = tenum.postings(postings, PostingsEnum.FREQS);
+                for (int docId = postings.nextDoc();
+                    docId != DocIdSetIterator.NO_MORE_DOCS;
+                    docId = postings.nextDoc()) {
+                    final int freq = postings.freq();
+                    if (freq <= 0) continue;
+
+                    final boolean inFocus = (focusDocid == null) || focusDocid.get(docId);
+
+                    if (inFocus) {
+                        focusTermDocs[termId] += 1;
+                        focusTermFreq[termId] += freq;
+                    }
+
+                    scorer.termDocAdd(freq, docTokens[docId], inFocus);
+                }
+
+                double score = scorer.termScore();
+                
+                if (!Double.isNaN(score)) {
+                    termScores[termId] = score;
+                    top.push(termId, score);
+                }
+                termId++;
+            }
+            this.activeCounts = focusTermFreq;
+            buildRank(top, termScores);
+            return this;
+        }
+
+    
+    
     /**
      * Ranks terms by a caller-supplied weight vector aligned with the lexicon.
      *
      * <p>
-     * Uses the full field as population: {@link TermEntry#count()} returns the
-     * full-field occurrence count from {@link FieldStats#termCountsRef()},
+     * Uses the full field as population: {@link TermEntry#freq()} returns the
+     * full-field occurrence count from {@link FieldStats#termFreqRef()},
      * {@link TermEntry#score()} returns the corresponding entry of {@code weights}.
      * </p>
      *
@@ -281,7 +343,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
             final double s = weights[termId];
             if (!Double.isNaN(s) && s > 0d) top.push(termId, s);
         }
-        this.activeCounts = fieldStats.termCountsRef();
+        this.activeCounts = fieldStats.termFreqRef();
         buildRank(top, weights);
         return this;
     }
@@ -298,7 +360,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * </p>
      *
      * <p>
-     * {@link TermEntry#count()} will return the focus occurrence count;
+     * {@link TermEntry#freq()} will return the focus occurrence count;
      * {@link TermEntry#score()} will return the keyness score.
      * </p>
      *
@@ -314,7 +376,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         final KeynessScorer scorer,
         final int           topK
     ) {
-        if (focusCounts == null) {
+        if (focusTermFreq == null) {
             throw new IllegalStateException(
                 "No focus data: call focus(focusDocs, reader) first");
         }
@@ -322,24 +384,50 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
         final int      vocabSize  = fieldStats.vocabSize();
         final long     fieldTokens = fieldStats.fieldTokens();
-        final double[] scoreVec   = new double[vocabSize];
-        final TopArray top        = new TopArray(topK);
+        final long     otherTokens = fieldTokens - focusTokens;
+        final double[] termScore   = new double[vocabSize];
+        final TopArray top         = new TopArray(topK);
 
         for (int termId = 1; termId < vocabSize; termId++) {
-            final long fc = focusCounts[termId];
-            if (fc == 0L) continue;
-
-            final double s = scorer.score(
-                fc, focusTotal,
-                fieldStats.termCount(termId), fieldTokens
+            final long focusTermCount = focusTermFreq[termId];
+            if (focusTermCount == 0L) continue;
+            
+            final long fieldTermCount = fieldStats.termFreq(termId);
+            final long otherTermCount = fieldTermCount - focusTermCount;
+            final double score = scorer.score(
+                focusTermCount,
+                focusTokens,
+                otherTermCount,
+                otherTokens
             );
-            if (Double.isNaN(s)) continue;
-            scoreVec[termId] = s;
-            top.push(termId, s);
+            if (Double.isNaN(score)) continue;
+            termScore[termId] = score;
+            top.push(termId, score);
         }
-        this.activeCounts = focusCounts;
-        buildRank(top, scoreVec);
+        this.activeCounts = focusTermFreq;
+        buildRank(top, termScore);
         return this;
+    }
+
+    /**
+     * Returns the focus subset's total occurrence count for one term.
+     * Returns 0 before {@link #focus} has been called.
+     *
+     * @param termId dense term id
+     * @return focus occurrence count
+     */
+    public long focusTermFreq(final int termId) {
+        return focusTermFreq == null ? 0L : focusTermFreq[termId];
+    }
+
+    /**
+     * Returns the total token occurrences across all focus documents.
+     * Returns 0 before {@link #focus} has been called.
+     *
+     * @return focus token total
+     */
+    public long focusTokens() {
+        return focusTokens;
     }
 
     /**
@@ -348,7 +436,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * or {@link #focusScore}.
      *
      * @param rank2termId  ranked term ids (caller-owned)
-     * @param activeCounts count vector to back {@link TermEntry#count()}
+     * @param activeCounts count vector to back {@link TermEntry#freq()}
      * @param scores       score vector indexed by termId, or {@code null} to
      *                     fall back to the count as score
      * @param hilites      optional per-rank highlight strings, or {@code null}
@@ -361,7 +449,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
     ) {
         this.rank2termId  = rank2termId;
         this.activeCounts = activeCounts;
-        this.scores       = scores;
+        this.termScores       = scores;
         this.hilites      = hilites;
     }
 
@@ -370,18 +458,18 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      */
     private void initFocus() {
         final int vocabSize = fieldStats.vocabSize();
-        if (focusCounts == null) {
-            focusCounts = new long[vocabSize];
+        if (focusTermFreq == null) {
+            focusTermFreq = new long[vocabSize];
         } else {
-            Arrays.fill(focusCounts, 0L);
+            Arrays.fill(focusTermFreq, 0L);
         }
-        if (focusDocCounts == null) {
-            focusDocCounts = new int[vocabSize];
+        if (focusTermDocs == null) {
+            focusTermDocs = new int[vocabSize];
         } else {
-            Arrays.fill(focusDocCounts, 0);
+            Arrays.fill(focusTermDocs, 0);
         }
-        focusTotal    = 0L;
-        focusDocCount = 0;
+        focusTokens    = 0L;
+        focusDocs = 0;
     }
 
     /**
@@ -398,7 +486,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
         rank2termId = new int[n];
         int rank = 0;
         for (TopArray.IdScore e : top) rank2termId[rank++] = e.id();
-        this.scores = scoreVec;
+        this.termScores = scoreVec;
     }
 
     /** Number of ranked terms currently held. Zero until a score method has been called. */
@@ -419,7 +507,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      * Read-only view of one ranked term.
      *
      * <p>
-     * {@link #count()} reflects the population used for scoring:
+     * {@link #freq()} reflects the population used for scoring:
      * full-field occurrence count after {@link #ranking}, focus occurrence
      * count after {@link #focusScore}.
      * {@link #score()} reflects the most recent scoring call.
@@ -448,21 +536,21 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
          * Occurrence count from the active population set by the most recent
          * scoring call.
          */
-        public long count() { return activeCounts[termId]; }
+        public long freq() { return activeCounts[termId]; }
 
         /**
          * Score from the most recent scoring call. Falls back to the count
          * when no score vector was supplied (e.g. suggest mode).
          */
         public double score() {
-            return scores != null ? scores[termId] : (double) activeCounts[termId];
+            return termScores != null ? termScores[termId] : (double) activeCounts[termId];
         }
 
         /**
          * Full-field occurrence count, always available regardless of mode.
          * Useful in focus mode to show total versus focus occurrences.
          */
-        public long fieldCount() { return fieldStats.termCount(termId); }
+        public long fieldFreq() { return fieldStats.termFreq(termId); }
 
         /**
          * HTML markup of the matched span, or {@code null} if this view

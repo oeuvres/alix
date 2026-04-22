@@ -224,12 +224,13 @@ public class FrenchCliticSplitFilter extends TokenFilter
                 // hyphen is first or last char, let it run
                 if (hyphLast == 0 || hyphLast == len - 1) return true;
 
-                // Prefix split on apostrophe (but NEVER before a capital letter: D'Alembert, L'Oréal, ...)
+                // Prefix split on apostrophe 
                 if (aposFirst > 0) {
                     final int prefixLen = aposFirst + 1;
                     if (prefixLen < len) {
                         final char next = buf[prefixLen];
-                        if (!isUpperOrTitle(next)) {
+                        // keep D'Alembert, L'Oréal
+                        if (!(isUpperOrTitle(next) && isUpperOrTitle(buf[0]))) {
                             final char[] value = PREFIX.get(buf, 0, prefixLen);
                             if (value != null) {
                                 if (++splits > MAX_SPLITS) {

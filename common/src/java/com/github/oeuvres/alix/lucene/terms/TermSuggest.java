@@ -128,7 +128,7 @@ public final class TermSuggest {
      *
      * <p>{@link TopTerms.TermEntry#hilite()} contains the original term string
      * with the matched span wrapped in the configured markup.
-     * {@link TopTerms.TermEntry#score()} equals {@link TopTerms.TermEntry#count()}
+     * {@link TopTerms.TermEntry#score()} equals {@link TopTerms.TermEntry#freq()}
      * (full-field frequency) since ranking is by frequency alone.</p>
      *
      * @param query user input (folded internally)
@@ -140,7 +140,7 @@ public final class TermSuggest {
         Objects.requireNonNull(query, "query");
 
         final TopTerms result = new TopTerms(stats, lexicon);
-        final long[]   counts = stats.termCountsRef();
+        final long[]   counts = stats.termFreqRef();
 
         if (limit <= 0) {
             result.setRanking(new int[0], counts, null, null);
@@ -172,7 +172,7 @@ public final class TermSuggest {
                 continue;
             }
 
-            final long freq = stats.termCount(termId);
+            final long freq = stats.termFreq(termId);
             top.push(termId, (double) freq);
             fromIndex = offsets[termId + 1] - 1;
         }

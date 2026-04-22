@@ -1,11 +1,32 @@
 package com.github.oeuvres.alix.lucene.terms;
 
 /**
- * Computes a keyness score for one term given its frequency
- * in a focus subset and in a reference corpus.
+ * Computes a keyness score for one term from two disjoint parts:
+ * a focus part and an other part.
  *
- * All counts are raw occurrences (token counts), not document frequencies.
- * Normalization to relative frequencies is the scorer's responsibility.
+ * <p>
+ * All counts are raw token occurrences, not document frequencies.
+ * </p>
+ *
+ * <p>
+ * Contract:
+ * </p>
+ * <ul>
+ *   <li>{@code focusTermCount}: occurrences of the term in the focus part</li>
+ *   <li>{@code focusTokens}: total indexed-token count in the focus part</li>
+ *   <li>{@code otherTermCount}: occurrences of the term in the other part</li>
+ *   <li>{@code otherTokens}: total indexed-token count in the other part</li>
+ * </ul>
+ *
+ * <p>
+ * The two parts must be disjoint. If focus is a subset of one field/corpus,
+ * then "other" is normally the rest of that field/corpus:
+ * </p>
+ *
+ * <pre>{@code
+ * otherTermCount = corpusTermCount - focusTermCount;
+ * otherTokens    = corpusTokens    - focusTokens;
+ * }</pre>
  */
 public interface KeynessScorer {
 
@@ -21,13 +42,19 @@ public interface KeynessScorer {
     /** Log Ratio (Hardie): log₂(relFocus / relRef), with Laplace smoothing. */
     class LogRatio implements KeynessScorer {
         @Override
-        public double score(long focusCount, long focusTotal, long refCount, long refTotal) {
-            // avoid log(0) and /0
-            if (focusCount == 0 || refCount == 0 || focusTotal == 0 || refTotal == 0) return 0;
-            // low-pass filter not needed with Math.log(focusCount)
-            double relFocus = (double) (focusCount) / focusTotal;
-            double relRef   = (double) (refCount) / refTotal;
-            return Math.log(relFocus / relRef) / Math.log(2) * Math.log(focusCount);
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            if (focusTermCount <= 0L || otherTermCount <= 0L) return 0d;
+            if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
+
+            final double relFocus = (double) focusTermCount / (double) focusTokens;
+            final double relOther = (double) otherTermCount / (double) otherTokens;
+
+            return Math.log(relFocus / relOther) / Math.log(2d) * Math.log(focusTermCount);
         }
     }
 
@@ -37,12 +64,25 @@ public interface KeynessScorer {
      */
     class SimpleMaths implements KeynessScorer {
         private final double k;
-        public SimpleMaths(double k) { this.k = k; }
+
+        public SimpleMaths(final double k)
+        {
+            this.k = k;
+        }
+
         @Override
-        public double score(long focusCount, long focusTotal, long refCount, long refTotal) {
-            double ppmFocus = (focusCount * 1_000_000.0 / focusTotal) + k;
-            double ppmRef   = (refCount   * 1_000_000.0 / refTotal  ) + k;
-            return ppmFocus / ppmRef;
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
+
+            final double ppmFocus = (focusTermCount * 1_000_000.0d / (double) focusTokens) + k;
+            final double ppmOther = (otherTermCount * 1_000_000.0d / (double) otherTokens) + k;
+
+            return ppmFocus / ppmOther;
         }
     }
 
@@ -52,17 +92,32 @@ public interface KeynessScorer {
      */
     class LogLikelihood implements KeynessScorer {
         @Override
-        public double score(long focusCount, long focusTotal, long refCount, long refTotal) {
-            // Expected counts under H0
-            long total = focusTotal + refTotal;
-            long termTotal = focusCount + refCount;
-            double e1 = (double) termTotal * focusTotal / total;
-            double e2 = (double) termTotal * refTotal   / total;
-            double g2 = 0;
-            if (focusCount > 0) g2 += 2 * focusCount * Math.log(focusCount / e1);
-            if (refCount   > 0) g2 += 2 * refCount   * Math.log(refCount   / e2);
-            // sign: positive = over-represented in focus
-            return focusCount * refTotal >= refCount * focusTotal ? g2 : -g2;
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
+
+            final long allTokens = focusTokens + otherTokens;
+            final long allTermCount = focusTermCount + otherTermCount;
+            if (allTokens <= 0L || allTermCount <= 0L) return 0d;
+
+            final double focusExpected = (double) allTermCount * focusTokens / allTokens;
+            final double otherExpected = (double) allTermCount * otherTokens / allTokens;
+
+            double g2 = 0d;
+            if (focusTermCount > 0L) {
+                g2 += 2d * (double) focusTermCount
+                    * Math.log((double) focusTermCount / focusExpected);
+            }
+            if (otherTermCount > 0L) {
+                g2 += 2d * (double) otherTermCount
+                    * Math.log((double) otherTermCount / otherExpected);
+            }
+
+            return ((double) focusTermCount / focusTokens >= (double) otherTermCount / otherTokens) ? g2 : -g2;
         }
     }
 }

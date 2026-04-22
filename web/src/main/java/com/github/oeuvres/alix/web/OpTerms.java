@@ -2,7 +2,7 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Set;
+import java.util.Locale;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -92,9 +92,17 @@ public final class OpTerms extends Op
         else if (spanQuery == null) {
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
 
-            topTerms.focus(focusDocs, index.reader());
-            final KeynessScorer scorer = new KeynessScorer.LogLikelihood();
-            return topTerms.focusScore(scorer, topK);
+            final String scorerName = pars.getString(SCORER, null);
+            if ("rsj".equals(scorerName)) {
+                return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.RSJ), topK);
+            }
+            else if (BM25.equals(scorerName)) {
+                return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.IRDF), topK);
+            }
+            else {
+                topTerms.focus(index.reader(), focusDocs);
+                return topTerms.focusScore(new KeynessScorer.LogLikelihood(), topK);
+            }
         }
         // coocs, with or without doc filter TODO
         else {
@@ -113,6 +121,7 @@ public final class OpTerms extends Op
         int[] period = new int[]{(int) years.min(), (int) years.max()};
         final int start = pars.getInt(START, period, (int)years.min());
         final int end = pars.getInt(END, period, (int)years.max());
+        String idfexp = String.format(Locale.US, "%.2f", pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP));
         Writer writer = response.getWriter();
         writer.write("""
         <!DOCTYPE html>
@@ -130,6 +139,7 @@ public final class OpTerms extends Op
             <form>
                 <input name="start" type="number" value="%d" id="label-start" min="%d" max="%d"/>
                 <input name="end" type="number" value="%d" id="label-start" min="%d" max="%d"/>
+                <input name="idfexp" size="4" value="%s"/>
                 <button type="submit">Voir</button>
             </form>
             <table>
@@ -140,7 +150,9 @@ public final class OpTerms extends Op
                 <th>%s</th>
               </tr>
               <tr>
-        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(), BM25, LOGLIKELIHOOD, LOGRATIO, SIMPLEMATHS));
+        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),
+                idfexp,
+                BM25, LOGLIKELIHOOD, "rsj", "default"));
         writer.append("      <td>\n");
         request.setAttribute(SCORER, BM25);
         html(index, request, response);
@@ -150,7 +162,7 @@ public final class OpTerms extends Op
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, LOGRATIO);
+        request.setAttribute(SCORER, "rsj");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
@@ -178,7 +190,7 @@ public final class OpTerms extends Op
             for (TermEntry term : topTerms) {
                 writer.append("  <tr>\n")
                   .append("    <td class=\"term\">%s</td>\n".formatted(term.term()))
-                  .append("    <td class=\"count\" align=\"right\">%d</td>\n".formatted(term.count()))
+                  .append("    <td class=\"count\" align=\"right\">%d</td>\n".formatted(term.freq()))
                   .append("    <td class=\"score\" align=\"right\">%f</td>\n".formatted(term.score()))
                   .append("  </tr>\n");
             }
@@ -218,7 +230,7 @@ public final class OpTerms extends Op
                 for (TermEntry term : topTerms) {
                     jw.beginObject();
                     jw.name("term").value(term.term());
-                    jw.name("count").value(term.count());
+                    jw.name("count").value(term.freq());
                     jw.name("score").value(term.score());
                     jw.endObject();
                 }

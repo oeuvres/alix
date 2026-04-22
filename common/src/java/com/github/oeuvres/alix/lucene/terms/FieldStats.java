@@ -141,7 +141,7 @@ public final class FieldStats
     private final int[] termDocs;
     
     /** Per-term total occurrences in the field, indexed by dense term id. */
-    protected final long[] termCounts;
+    protected final long[] termFreq;
     
     /** Number of documents that contain at least one indexed token of the field. Derived. */
     private final int fieldDocs;
@@ -197,7 +197,7 @@ public final class FieldStats
         this.docTokens = docTokens;
         this.vocabSize = vocabSize;
         this.termDocs = termDocs;
-        this.termCounts = termCounts;
+        this.termFreq = termCounts;
         this.fieldDocs = docs;
         this.fieldWidth = width;
         this.fieldTokens = tokens;
@@ -214,7 +214,7 @@ public final class FieldStats
         return (long) docWidths.length * Integer.BYTES
                 + (long) docTokens.length * Integer.BYTES
                 + (long) termDocs.length * Integer.BYTES
-                + (long) termCounts.length * Long.BYTES;
+                + (long) termFreq.length * Long.BYTES;
     }
     
     /**
@@ -349,7 +349,7 @@ public final class FieldStats
                         "Vocabulary size changed during buildTermWeights for field '" + field
                                 + "': seen more than " + vocabSize + " terms");
             }
-            scorer.termStart(termCounts[termId], termDocs[termId]);
+            scorer.termStart(termFreq[termId], termDocs[termId]);
 
             postings = tenum.postings(postings, PostingsEnum.FREQS);
             for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
@@ -820,16 +820,27 @@ public final class FieldStats
     }
     
     /**
+     * Returns a direct reference to the internal {@code  #termDocs} array.
+     * Callers must not modify the returned array.
+     *
+     * @return reference to {@link #termDocs}, indexed by dense term id
+     */
+    public int[] termDocsRef()
+    {
+        return termDocs;
+    }
+    
+    /**
      * Returns the total number of occurrences of one term in the field.
      *
      * @param termId dense term id in {@code [0, vocabSize)}
      * @return total occurrences in the field
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
-    public long termCount(final int termId)
+    public long termFreq(final int termId)
     {
         checkTermId(termId);
-        return termCounts[termId];
+        return termFreq[termId];
     }
     
     /**
@@ -838,9 +849,9 @@ public final class FieldStats
      *
      * @return reference to {@code termCounts}, indexed by dense term id
      */
-    public long[] termCountsRef()
+    public long[] termFreqRef()
     {
-        return termCounts;
+        return termFreq;
     }
     
     /**
