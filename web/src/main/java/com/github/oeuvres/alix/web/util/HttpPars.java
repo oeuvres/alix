@@ -709,44 +709,51 @@ public class HttpPars
      */
     public String getString(final String name, final String fallback, final Set<String> set, final String cookie)
     {
-        String par = request.getParameter(name);
-        if (!hasValue(cookie) && hasValue(par)) {
-            if (set == null) {
-                return record(name, par, Source.HTTP);
-            } else if (set.contains(par)) {
-                return record(name, par, Source.HTTP);
-            } else {
-                par = null;
+        final boolean useCookie = hasValue(cookie);
+        
+        // 1) Explicit request parameter always has precedence.
+        // If present but invalid/blank, it suppresses lower-priority sources.
+        final String valuePar = request.getParameter(name);
+        if (valuePar != null) {
+            final String value = acceptString(valuePar, set);
+            if (value != null) {
+                if (useCookie) cookie(cookie, value);
+                return record(name, value, Source.HTTP);
             }
-        }
-        Object o = request.getAttribute(name);
-        String att = null;
-        if (o instanceof String) {
-            att = (String) o;
-        }
-        if (!hasValue(cookie) && hasValue(att)) {
-            if (set == null) {
-                return record(name, att, Source.ATTRIBUTE);
-            } else if (set.contains(att)) {
-                return record(name, att, Source.ATTRIBUTE);
-            } else {
-                att = null;
-            }
-        }
-        if (!hasValue(cookie)) {
+            if (useCookie) cookie(cookie, null);
             return record(name, fallback, Source.FALLBACK);
         }
 
-        final String cookieValue = cookie(cookie);
-        if (hasValue(par)) {
-            cookie(cookie, par);
-            return record(name, par, Source.HTTP);
+        // 2) Request attribute
+        final Object valueAtt = request.getAttribute(name);
+        if (valueAtt instanceof String) {
+            final String att = acceptString((String) valueAtt, set);
+            if (att != null) {
+                return record(name, att, Source.ATTRIBUTE);
+            }
         }
-        if (par != null) {
-            cookie(cookie, null);
+        
+        // 3) Cookie
+        if (useCookie) {
+            final String cookieRaw = cookie(cookie);
+            final String cookieValue = acceptString(cookieRaw, set);
+            if (cookieValue != null) {
+                return record(name, cookieValue, Source.COOKIE);
+            }
+            if (cookieRaw != null) {
+                cookie(cookie, null); // clear stale/invalid cookie
+            }
         }
-        if (hasValue(cookieValue)) return record(name, cookieValue, Source.COOKIE);
+
+        // 4) Fallback
         return record(name, fallback, Source.FALLBACK);
+    }
+    
+    private String acceptString(final String value, final Set<String> set)
+    {
+        if (!hasValue(value)) return null;
+        if (set != null && !set.contains(value)) return null;
+        return value;
     }
 
     /**

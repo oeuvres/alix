@@ -82,7 +82,7 @@ public final class OpTerms extends Op
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
             // an http param may change idfExp
-            final TermScorer scorer = new TermScorer.BM25(idfExp, null);
+            final TermScorer scorer = new TermScorer.BM25(idfExp);
             // The weights for full field are cached if same idfExp is requested
             final double[] weights = fluc.fieldStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
@@ -96,7 +96,7 @@ public final class OpTerms extends Op
             if ("rsj".equals(scorerName)) {
                 return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.RSJ), topK);
             }
-            else if (BM25.equals(scorerName)) {
+            else if ("irdf".equals(scorerName)) {
                 return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.IRDF), topK);
             }
             else {
@@ -122,6 +122,10 @@ public final class OpTerms extends Op
         final int start = pars.getInt(START, period, (int)years.min());
         final int end = pars.getInt(END, period, (int)years.max());
         String idfexp = String.format(Locale.US, "%.2f", pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP));
+        
+        
+        
+        
         Writer writer = response.getWriter();
         writer.write("""
         <!DOCTYPE html>
@@ -139,7 +143,9 @@ public final class OpTerms extends Op
             <form>
                 <input name="start" type="number" value="%d" id="label-start" min="%d" max="%d"/>
                 <input name="end" type="number" value="%d" id="label-start" min="%d" max="%d"/>
+                <label>Idf exponent
                 <input name="idfexp" size="4" value="%s"/>
+                </label>
                 <button type="submit">Voir</button>
             </form>
             <table>
@@ -147,18 +153,13 @@ public final class OpTerms extends Op
                 <th>%s</th>
                 <th>%s</th>
                 <th>%s</th>
-                <th>%s</th>
               </tr>
               <tr>
         """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),
                 idfexp,
-                BM25, LOGLIKELIHOOD, "rsj", "default"));
+                "BM25.irdf", "BM25.rsj", LOGLIKELIHOOD));
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, BM25);
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td>\n");
-        request.setAttribute(SCORER, LOGLIKELIHOOD);
+        request.setAttribute(SCORER, "irdf");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
@@ -166,7 +167,7 @@ public final class OpTerms extends Op
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, SIMPLEMATHS);
+        request.setAttribute(SCORER, LOGLIKELIHOOD);
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("""

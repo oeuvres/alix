@@ -1,12 +1,6 @@
 package com.github.oeuvres.alix.util;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.io.UnsupportedEncodingException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashMap;
+
 import java.util.Set;
 
 /**
@@ -175,6 +169,16 @@ public class Markup
         }
         return boundary;
     }
+    
+    public static String escapeText(final CharSequence cs)
+    {
+        return escape(cs, false);
+    }
+
+    public static String escapeAttribute(final CharSequence cs)
+    {
+        return escape(cs, true);
+    }
 
     /**
      * Ensure that a String could be included as html text.
@@ -182,7 +186,7 @@ public class Markup
      * @param cs chars to escape.
      * @return String escaped for html.
      */
-    public static String escape(final CharSequence cs)
+    private static String escape(final CharSequence cs, boolean quotes)
     {
         if (cs == null) {
             return "";
@@ -196,6 +200,8 @@ public class Markup
                 out.append("&gt;");
             } else if (c == '&') {
                 out.append("&amp;");
+            } else if (c == '"' && quotes) {
+                out.append("&quot;");
             } else {
                 out.append(c);
             }

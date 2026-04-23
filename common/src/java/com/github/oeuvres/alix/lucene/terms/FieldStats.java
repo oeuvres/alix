@@ -10,7 +10,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.IOUtil;
@@ -308,7 +307,7 @@ public final class FieldStats
      * @throws IOException           if term or postings iteration fails
      * @throws IllegalStateException if the field has no terms or no frequencies
      */
-    public double[] buildTermWeights(final IndexReader reader, final TermScorer scorer, final FixedBitSet focusDocs)
+    public double[] buildTermWeights(final IndexReader reader, final TermScorer scorer)
         throws IOException
     {
         Objects.requireNonNull(reader, "reader");
@@ -325,19 +324,6 @@ public final class FieldStats
         }
 
         scorer.corpus(fieldTokens, fieldDocs);
-
-        if (focusDocs != null) {
-            long focusTokens = 0L;
-            int focusDocsCount = 0;
-            for (int docId = focusDocs.nextSetBit(0);
-                 docId != DocIdSetIterator.NO_MORE_DOCS;
-                 docId = focusDocs.nextSetBit(docId + 1)) {
-                focusTokens += docTokens[docId];
-                focusDocsCount++;
-            }
-            scorer.focus(focusTokens, focusDocsCount);
-        }
-
         final double[] weights = new double[vocabSize];
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
@@ -355,8 +341,7 @@ public final class FieldStats
             for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
                 final int freq = postings.freq();
                 if (freq <= 0) continue;
-                final boolean inFocus = (focusDocs == null) || focusDocs.get(docId);
-                scorer.termDocAdd(freq, docTokens[docId], inFocus);
+                scorer.termDocAdd(freq, docTokens[docId]);
             }
 
             weights[termId] = scorer.termScore();
@@ -953,7 +938,7 @@ public final class FieldStats
             return termWeights;
         }
         termWeightsScorer = scorer;
-        termWeights = buildTermWeights(reader, scorer, null);
+        termWeights = buildTermWeights(reader, scorer);
         return termWeights;
     }
     

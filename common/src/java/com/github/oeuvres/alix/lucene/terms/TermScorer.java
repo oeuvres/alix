@@ -53,10 +53,21 @@ public abstract class TermScorer
     protected double corpusIdf;
     /** Focus-side accumulator. */
     protected double acc;
+    /** Number of documents observed on either side for current term */
+    protected int termDocs;
+    
+    /** focus usage */
+    protected boolean hasFocus;
+    /** Sum of focus-side term frequencies for the current term. */
+    protected long focusTermFreq;
+    /** Number of focus documents containing the current term. */
+    protected int focusTermDocs;
+    /** Sum of other-side term frequencies for the current term. */
+    protected long otherTermFreq;
+    /** Number of focus documents containing the current term. */
+    protected int otherTermDocs;
     /** Rest-side accumulator. Stays zero for non-contrastive use. */
     protected double otherAcc;
-    /** Number of documents observed on either side. */
-    protected int collectCount;
     
     /**
      * Set corpus-level statistics. Called once before any {@link #term}.
@@ -66,6 +77,7 @@ public abstract class TermScorer
      */
     public final void corpus(final long corpusTokens, final int corpusDocs)
     {
+        this.hasFocus = false;
         this.corpusTokens = corpusTokens;
         this.corpusDocs = corpusDocs;
         this.docTokensAvg = (corpusDocs > 0)
@@ -82,6 +94,7 @@ public abstract class TermScorer
      */
     public void focus(final long focusTokens, final int focusDocs)
     {
+        this.hasFocus = true;
         this.focusTokens = focusTokens;
         this.focusDocs = focusDocs;
     }
@@ -97,14 +110,31 @@ public abstract class TermScorer
     {
         this.corpusTermFreq = corpusTermFreq;
         this.corpusTermDocs = corpusTermDocs;
+        this.focusTermFreq = 0L;
+        this.focusTermDocs = 0;
+        this.otherTermFreq = 0L;
+        this.otherTermDocs = 0;
         this.corpusTermRate = (corpusTokens > 0L)
                 ? (double) corpusTermFreq / (double) corpusTokens
                 : 0d;
         this.corpusIdf = 0d;
         this.acc = 0d;
         this.otherAcc = 0d;
-        this.collectCount = 0;
+        this.termDocs = 0;
     }
+    
+    /**
+     * Compute the local score for one document and fold it into
+     * {@link #acc}.
+     *
+     * @param docTermFreq occurrences of the term in the document
+     * @param docTokens   total token count of the document
+     * @return local per-document score
+     */
+    public double termDocAdd(final long docTermFreq, final long docTokens) {
+        return termDocAdd(docTermFreq, docTokens, true);
+    }
+
     
     /**
      * Compute the local score for one document and fold it into
@@ -115,7 +145,17 @@ public abstract class TermScorer
      * @param inFocus     {@code true} if the document belongs to the focus subset
      * @return local per-document score
      */
-    public abstract double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus);
+    public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus) {
+        termDocs++;
+        if (inFocus) {
+            focusTermFreq += docTermFreq;
+            focusTermDocs++;
+        } else {
+            otherTermFreq += docTermFreq;
+            otherTermDocs++;
+        }
+        return 0d;
+    }
     
     /**
      * Returns the aggregated score for the current term.
@@ -156,6 +196,7 @@ public abstract class TermScorer
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
         {
+            super.termDocAdd(docTermFreq, docTokens, inFocus);
             if (docTokens <= 0L || corpusTermRate <= 0d || docTermFreq <= 0L)
                 return 0d;
             final double expected = corpusTermRate * (double) docTokens;
@@ -166,7 +207,6 @@ public abstract class TermScorer
                 acc += local;
             else
                 otherAcc += local;
-            collectCount++;
             return local;
         }
     }
@@ -179,6 +219,7 @@ public abstract class TermScorer
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
         {
+            super.termDocAdd(docTermFreq, docTokens, inFocus);
             if (docTermFreq <= 0L || docTokens <= 0L || corpusTermFreq <= 0L)
                 return 0d;
             final long union = docTokens + corpusTermFreq - docTermFreq;
@@ -189,7 +230,6 @@ public abstract class TermScorer
                 acc += local;
             else
                 otherAcc += local;
-            collectCount++;
             return local;
         }
     }
@@ -220,10 +260,6 @@ public abstract class TermScorer
         protected double b = 0.75d;
         /** Exponent applied to raw IDF. */
         protected final double idfExp;
-        /** Sum of focus-side term frequencies for the current term. */
-        protected long focusTermFreqAcc;
-        /** Number of focus documents containing the current term. */
-        protected int focusTermDocs;
         
         /** Different score mode */
         public enum Mode
@@ -236,12 +272,12 @@ public abstract class TermScorer
         
         public BM25()
         {
-            this(0.9, Mode.MINUS);
+            this(0.9, Mode.IRDF);
         }
         
         public BM25(final double idfExp)
         {
-            this(idfExp, Mode.MINUS);
+            this(idfExp, Mode.IRDF);
         }
 
         
@@ -255,8 +291,6 @@ public abstract class TermScorer
         public void termStart(final long corpusTermFreq, final int corpusTermDocs)
         {
             super.termStart(corpusTermFreq, corpusTermDocs);
-            this.focusTermFreqAcc = 0L;
-            this.focusTermDocs = 0;
             if (corpusDocs <= 0) {
                 this.corpusIdf = 0d;
                 return;
@@ -271,17 +305,16 @@ public abstract class TermScorer
         {
             if (docTermFreq <= 0L || docTokens <= 0L || docTokensAvg <= 0d)
                 return 0d;
+
+            super.termDocAdd(docTermFreq, docTokens, inFocus);
+
             final double tf = (double) docTermFreq;
             final double norm = k1 * (1d - b + b * ((double) docTokens / docTokensAvg));
             final double local = (tf * (k1 + 1d)) / (tf + norm);
-            if (inFocus) {
-                acc += local;
-                focusTermFreqAcc += docTermFreq;
-                focusTermDocs++;
-            } else {
-                otherAcc += local;
-            }
-            collectCount++;
+
+            if (inFocus) acc += local;
+            else otherAcc += local;
+
             return local;
         }
         
@@ -322,25 +355,18 @@ public abstract class TermScorer
         @Override
         public double termScore()
         {
+            // no contrast, return classical BM25
+            if (!hasFocus) {
+                return corpusIdf * acc;
+            }
+            final int otherDocs = corpusDocs - focusDocs;      // N - R
+            final int otherTermDocs = corpusTermDocs - focusTermDocs;    // n - r
+            Mode mode = this.mode;
+            if (mode == null) mode = Mode.IRDF;
             switch (mode) {
-                case IRDF: {
-                    int otherDocs = corpusDocs - focusDocs;
-                    int otherTermDocs = corpusTermDocs - focusTermDocs;
-                    if (otherDocs <= 0)
-                        return corpusIdf * acc;
-                    double irdf = Math.pow(
-                            Math.log(1.0d + (otherDocs - otherTermDocs + 0.5d) / (otherTermDocs + 0.5d)),
-                            idfExp);
-                    return irdf * acc;
-                }
                 case RSJ: {
-                    final int otherDocs = corpusDocs - focusDocs;      // N - R
-                    final int otherTermDocs = corpusTermDocs - focusTermDocs;    // n - r
                     final int focusNonTermDocs = focusDocs - focusTermDocs;    // R - r
                     final int otherNonTermDocs = otherDocs - otherTermDocs; // (N - R) - (n - r)
-                    // no part
-                    if (otherDocs <= 0)
-                        return corpusIdf * acc;
                     if (otherDocs < 0 || otherTermDocs < 0 || focusNonTermDocs < 0 || otherNonTermDocs < 0) {
                         // should throw exception here, no?
                         return 0d;
@@ -353,14 +379,20 @@ public abstract class TermScorer
                     final double rsjWeighted = Math.copySign(Math.pow(Math.abs(rsj), idfExp), rsj);
                     return rsjWeighted * acc;
                 }
+                case IRDF: {
+                    double irdf = Math.pow(
+                            Math.log(1.0d + (otherDocs - otherTermDocs + 0.5d) / (otherTermDocs + 0.5d)),
+                            idfExp);
+                    return irdf * acc;
+                }
                 case FACTOR:
-                    if (focusTermFreqAcc == 0 || focusTokens <= 0)
+                    if (focusTermFreq == 0 || focusTokens <= 0)
                         return 0d;
-                    double relFocus = (double) focusTermFreqAcc / focusTokens;
+                    double relFocus = (double) focusTermFreq / focusTokens;
                     double relCorpus = (double) corpusTermFreq / corpusTokens;
                     if (relCorpus <= 0d)
                         return 0d;
-                    return corpusIdf * acc * Math.log(relFocus / relCorpus) * Math.log(focusTermFreqAcc);
+                    return corpusIdf * acc * Math.log(relFocus / relCorpus) * Math.log(focusTermFreq);
                 case WEIGHTED:
                     final double wFocus = 1.0;
                     final double wRest = -2.0; // or whatever you want to try
@@ -385,13 +417,15 @@ public abstract class TermScorer
                 return true;
             if (!(o instanceof BM25 other))
                 return false;
-            return Double.compare(this.idfExp, other.idfExp) == 0;
+            return Double.compare(this.idfExp, other.idfExp) == 0 && this.mode == other.mode;
         }
         
         @Override
         public int hashCode()
         {
-            return Double.hashCode(idfExp);
+            int h = Double.hashCode(idfExp);
+            h = 31 * h + mode.hashCode();
+            return h;
         }
     }
     
@@ -455,7 +489,7 @@ public abstract class TermScorer
                 restTermDocsCount++;
             }
 
-            collectCount++;
+            termDocs++;
             return local;
         }
 
