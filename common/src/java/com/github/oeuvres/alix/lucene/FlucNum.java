@@ -2,6 +2,7 @@ package com.github.oeuvres.alix.lucene;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.apache.lucene.document.Document;
@@ -14,93 +15,100 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
 
 /**
- * Numeric field: min/max from the BKD index, with optional on-demand
- * dense histogram cache for fast aggregation by value.
+ * Helper for one Lucene numeric field.
  *
  * <p>
- * Registered by {@link Fluc#inferFields} for every field that combines
- * a single-dimension point index ({@code IntPoint}, {@code LongPoint})
- * with {@code NumericDocValues}. Construction is cheap — one packed-value
- * read per leaf — with no per-document iteration.
+ * A {@code FlucNum} represents a numeric field backed by:
  * </p>
  *
- * <p>
- * Min and max are returned as {@code double}: all {@code int} and
- * {@code float} values are represented exactly; {@code long} and
- * {@code double} fields lose precision only beyond 2⁵³, irrelevant
- * for bibliographic metadata.
- * </p>
+ * <ul>
+ *   <li>a single-dimension point index, used for cheap field min/max;</li>
+ *   <li>{@link NumericDocValues}, used for per-document value access.</li>
+ * </ul>
  *
  * <p>
- * <b>Float/double limitation:</b> {@link FieldInfo} persists only the
- * byte width of the point encoding (4 or 8), not the Java numeric type.
- * {@code IntPoint} and {@code FloatPoint} are both 4 bytes;
- * {@code LongPoint} and {@code DoublePoint} are both 8 bytes.
- * Distinguishing them at read time requires a codec attribute written
- * by the indexer ({@code fi.putAttribute("numericType", "float")}).
- * Until Alix indexes float or double fields, decoding assumes integer
- * encoding, which is correct for {@code IntPoint} and {@code LongPoint}.
+ * Construction is cheap: it reads point min/max values leaf by leaf, but does
+ * not scan all documents. Per-document lookup is available only after calling
+ * {@link #cacheDense()}, which builds an in-memory dense integer cache.
  * </p>
  *
- * <h2>Dense histogram cache</h2>
- * <p>
- * Fields with a reasonably contiguous integer value range — publication
- * years, volume numbers, issue numbers, 1–10 ratings — can benefit from
- * a precomputed histogram: per-document value lookup in O(1), corpus-wide
- * counts in O(1), filtered counts in O(|filter|). The cache costs
- * O(maxDoc + range) memory and O(docs) build time.
- * </p>
+ * <h2>Dense integer cache</h2>
  *
  * <p>
- * The cache is built lazily on first call to {@link #countByValue(int)},
- * {@link #countByValue(int, BitSet)}, {@link #intValue(int, int)}, or
- * {@link #minmax(int, BitSet)}, and reused thereafter. Callers pass a
- * {@code maxRange} ceiling to protect against pathological fields: if
- * {@code (max - min + 1) > maxRange}, build is refused and
- * {@link IllegalStateException} is thrown. A sensible default for
- * year-like data is {@code 10_000}.
+ * The dense cache covers the full integer value range of the field:
+ * {@code [intMin(), intMax()]}. It stores:
+ * </p>
+ *
+ * <ul>
+ *   <li>{@code docId -> numeric value};</li>
+ *   <li>{@code value -> number of live documents with that value}.</li>
+ * </ul>
+ *
+ * <p>
+ * Internally, {@code valueDocs[value - min]} is used to address dense arrays.
+ * This offset is an implementation detail. Public methods expose real numeric
+ * values.
+ * </p>
+ *
+ * <h2>Numeric type limitation</h2>
+ *
+ * <p>
+ * Lucene point metadata exposes the point byte width, not the original Java
+ * numeric type. {@code IntPoint} and {@code FloatPoint} are both 4 bytes;
+ * {@code LongPoint} and {@code DoublePoint} are both 8 bytes. This class
+ * assumes integer encoding. Dense caching is therefore restricted to 4-byte
+ * integer point fields.
  * </p>
  *
  * <h2>Thread safety</h2>
+ *
  * <p>
- * Min/max and all structural state are immutable after construction.
- * The dense cache is built under a lock (double-checked) and published
- * via {@code volatile}, so concurrent callers see a fully initialized
- * cache or none at all.
+ * Field metadata is immutable after construction. The dense cache is built
+ * under synchronization and published through a {@code volatile} reference.
  * </p>
  */
 public class FlucNum extends Fluc
 {
-    /** Retained for lazy aggregation builds. */
+    /** Reader retained for lazy dense-cache construction. */
     protected final IndexReader reader;
+
     /** Byte width of the point encoding: 4 for int/float, 8 for long/double. */
     private final int numBytes;
-    /** Global minimum across all segments. */
-    private final double min;
-    /** Global maximum across all segments. */
+
+    /** Global maximum value decoded from point metadata. */
     private final double max;
-    /** Lazy dense histogram cache. Null until first aggregation call. */
-    private volatile DenseHistogram dense;
+
+    /** Global minimum value decoded from point metadata. */
+    private final double min;
+
+    /** Dense integer cache; {@code null} until {@link #cacheDense()} succeeds. */
+    private volatile DenseIntCache dense;
 
     /**
-     * Probes stored status and doc count, then reads min/max from
-     * the BKD root of each segment leaf.
+     * Creates a numeric-field helper.
+     *
+     * <p>
+     * The constructor validates that the field is a single-dimension numeric
+     * point field with numeric doc values. It reads global min/max from point
+     * metadata, but does not build the dense cache.
+     * </p>
      *
      * @param info   field metadata
      * @param reader frozen index reader
-     * @throws IOException              on Lucene I/O errors
+     * @throws IOException              if Lucene metadata access fails
      * @throws IllegalArgumentException if the field is not a single-dimension
-     *                                  numeric point field with numeric doc values
+     *                                  point field with numeric doc values
      */
     public FlucNum(
         final FieldInfo info,
         final IndexReader reader
-    ) throws IOException
-    {
+    ) throws IOException {
         super(info, probeStored(reader, info.name), countDocs(reader, info.name));
+
         if (info.getPointDimensionCount() != 1) {
             throw new IllegalArgumentException(
                 "Field \"" + info.name + "\" must be a single-dimension point field.");
@@ -109,45 +117,495 @@ public class FlucNum extends Fluc
             throw new IllegalArgumentException(
                 "Field \"" + info.name + "\" has no NumericDocValues.");
         }
-        this.reader   = reader;
+
+        this.reader = reader;
         this.numBytes = info.getPointNumBytes();
         description.put("pointNumBytes", numBytes);
 
-        double globalMin = Double.MAX_VALUE;
-        double globalMax = -Double.MAX_VALUE;
+        boolean seen = false;
+        double globalMin = Double.POSITIVE_INFINITY;
+        double globalMax = Double.NEGATIVE_INFINITY;
+
         for (LeafReaderContext ctx : reader.leaves()) {
             final PointValues pv = ctx.reader().getPointValues(info.name);
             if (pv == null) continue;
+
             final double lo = decode(pv.getMinPackedValue());
             final double hi = decode(pv.getMaxPackedValue());
+
             if (lo < globalMin) globalMin = lo;
             if (hi > globalMax) globalMax = hi;
+            seen = true;
         }
+
+        if (!seen) {
+            throw new IllegalArgumentException(
+                "Field \"" + info.name + "\" has no point values.");
+        }
+
         this.min = globalMin;
         this.max = globalMax;
+
         description.put("min", min);
         description.put("max", max);
     }
 
-    /** Minimum indexed value, across all segments. */
-    public double min() { return min; }
-
-    /** Maximum indexed value, across all segments. */
-    public double max() { return max; }
-
-    /** Byte width of point encoding: 4 for int/float, 8 for long/double. */
-    public int numBytes() { return numBytes; }
-
     /**
-     * Human-readable point type label.
+     * Builds the dense integer cache for the full field value range.
      *
      * <p>
-     * {@code "int"} for 4 bytes/dim ({@code IntPoint} or {@code FloatPoint}),
-     * {@code "long"} for 8 bytes/dim ({@code LongPoint} or {@code DoublePoint}),
-     * {@code "point"} otherwise.
+     * The dense range is {@code intMax - intMin + 1}. The method refuses
+     * non-4-byte point fields and non-exact integer min/max values.
      * </p>
      *
-     * @return label
+     * <p>
+     * Repeated calls are cheap. If the cache already exists, the method returns
+     * immediately.
+     * </p>
+     *
+     * @return this instance, for chaining
+     * @throws IOException           if Lucene doc-values access fails
+     * @throws IllegalStateException if the field cannot be represented as a
+     *                               dense 4-byte integer cache
+     */
+    public FlucNum cacheDense() throws IOException
+    {
+        DenseIntCache c = dense;
+        if (c != null) return this;
+
+        synchronized (this) {
+            c = dense;
+            if (c != null) return this;
+            if (numBytes != 4) {
+                throw new IllegalStateException(
+                    "Field \"" + name() + "\" is not a 4-byte integer point field.");
+            }
+            dense = new DenseIntCache();
+            return this;
+            
+        }
+    }
+
+    /**
+     * Closes this helper.
+     *
+     * <p>
+     * This class owns no closeable resource. The method exists to satisfy the
+     * {@link Fluc} contract.
+     * </p>
+     */
+    @Override
+    public void close()
+    {
+    }
+
+    /**
+     * Returns full-corpus document counts by numeric value.
+     *
+     * <p>
+     * This is an alias of {@link #valueDocs()}. The returned array is a
+     * defensive copy. Slot {@code value - intMin()} contains the number of
+     * live documents with that value.
+     * </p>
+     *
+     * @return document counts by dense numeric value
+     * @throws IllegalStateException if the dense cache has not been built
+     */
+    public int[] countByValue()
+    {
+        return valueDocs();
+    }
+
+    /**
+     * Returns filtered document counts by numeric value.
+     *
+     * <p>
+     * Slot {@code value - intMin()} contains the number of documents in
+     * {@code docFilter} whose numeric value is {@code value}.
+     * </p>
+     *
+     * @param docFilter set of global Lucene document ids to count
+     * @return filtered document counts by dense numeric value
+     * @throws NullPointerException  if {@code docFilter == null}
+     * @throws IllegalStateException if the dense cache has not been built
+     */
+    public int[] countByValue(final BitSet docFilter)
+    {
+        if (docFilter == null) {
+            throw new NullPointerException("docFilter");
+        }
+        return requireDense().countByValue(docFilter);
+    }
+
+    /**
+     * Reports whether the dense integer cache has been built.
+     *
+     * @return {@code true} if the dense cache exists
+     */
+    public boolean denseCached()
+    {
+        return dense != null;
+    }
+
+    /**
+     * Returns the number of live documents with one numeric value.
+     *
+     * @param value numeric field value
+     * @return number of live documents with {@code value}, or {@code 0} if the
+     *         value is outside the dense range
+     * @throws IllegalStateException if the dense cache has not been built
+     */
+    public int docs(final int value)
+    {
+        return requireDense().docs(value);
+    }
+
+    /**
+     * Returns the numeric value of one document.
+     *
+     * @param docId global Lucene document id
+     * @return numeric field value
+     * @throws IllegalArgumentException if {@code docId} is outside the reader
+     *                                  document-address space
+     * @throws IllegalStateException    if the dense cache has not been built
+     * @throws NoSuchElementException   if the document has no value for this field
+     */
+    public int docValue(final int docId)
+    {
+        checkDocId(docId);
+        return requireDense().docValue(docId);
+    }
+
+    /**
+     * Returns the numeric value of one document, or a fallback if the document
+     * has no value.
+     *
+     * <p>
+     * This overload is intended for hot loops where a missing value is expected
+     * and should not throw.
+     * </p>
+     *
+     * @param docId   global Lucene document id
+     * @param noValue fallback returned when the document has no value
+     * @return numeric field value, or {@code noValue}
+     * @throws IllegalArgumentException if {@code docId} is outside the reader
+     *                                  document-address space
+     * @throws IllegalStateException    if the dense cache has not been built
+     */
+    public int docValue(final int docId, final int noValue)
+    {
+        checkDocId(docId);
+        return requireDense().docValue(docId, noValue);
+    }
+
+    /**
+     * Reports whether one document has a numeric value for this field.
+     *
+     * @param docId global Lucene document id
+     * @return {@code true} if the document has a numeric value
+     * @throws IllegalArgumentException if {@code docId} is outside the reader
+     *                                  document-address space
+     * @throws IllegalStateException    if the dense cache has not been built
+     */
+    public boolean hasValue(final int docId)
+    {
+        checkDocId(docId);
+        return requireDense().hasValue(docId);
+    }
+
+    /**
+     * Returns the global maximum value decoded from point metadata.
+     *
+     * @return maximum numeric value
+     */
+    public double max()
+    {
+        return max;
+    }
+
+    /**
+     * Returns the global minimum value decoded from point metadata.
+     *
+     * @return minimum numeric value
+     */
+    public double min()
+    {
+        return min;
+    }
+
+    /**
+     * Returns min and max values within a filtered document set.
+     *
+     * @param docFilter set of global Lucene document ids to inspect
+     * @return {@code int[]{min, max}}, or {@code null} if no filtered document
+     *         has a value for this field
+     * @throws NullPointerException  if {@code docFilter == null}
+     * @throws IllegalStateException if the dense cache has not been built
+     */
+    public int[] minmax(final BitSet docFilter)
+    {
+        if (docFilter == null) {
+            throw new NullPointerException("docFilter");
+        }
+        return requireDense().minmax(docFilter);
+    }
+
+    /**
+     * Returns the point byte width.
+     *
+     * @return byte width of the point encoding
+     */
+    public int numBytes()
+    {
+        return numBytes;
+    }
+    
+    /**
+     * Builds a document partition from this numeric field.
+     *
+     * <p>
+     * The interval {@code [start, end]} defines the focus part and also defines
+     * the partition width:
+     * </p>
+     *
+     * <pre>{@code
+     * width = end - start + 1
+     * }</pre>
+     *
+     * <p>
+     * Parts are built by extending this fixed-width grid backward and forward
+     * across the full dense value range of the field. For chronology, this means
+     * that a focus range such as {@code [1933, 1939]} creates 7-year parts
+     * anchored on that exact interval:
+     * </p>
+     *
+     * <pre>
+     * ... [1919,1925] [1926,1932] [1933,1939] [1940,1946] ...
+     * </pre>
+     *
+     * <p>
+     * The returned {@link Partition} is query-specific. Documents are assigned
+     * only if all of the following are true:
+     * </p>
+     *
+     * <ul>
+     *   <li>the document has a value for this numeric field;</li>
+     *   <li>the document is present in {@code acceptedDocs}, unless
+     *       {@code acceptedDocs == null};</li>
+     *   <li>the document's value belongs to a retained part.</li>
+     * </ul>
+     *
+     * <p>
+     * Documents outside the partition are assigned {@link Partition#NO_PART}.
+     * Valid part ids are chronological/value order. The focus part is the part
+     * corresponding to {@code [start, end]} and is available through
+     * {@link Partition#focusPart()}.
+     * </p>
+     *
+     * <p>
+     * This method builds the dense integer cache on demand by calling
+     * {@link #cacheDense()}.
+     * </p>
+     *
+     * @param start        inclusive focus start value
+     * @param end          inclusive focus end value
+     * @param policy       policy for incomplete extremity parts
+     * @param acceptedDocs optional accepted-documents bitset; {@code null} means
+     *                     all documents with a value are accepted
+     * @return document partition aligned by global Lucene doc id
+     * @throws IOException              if dense-cache construction fails
+     * @throws NullPointerException     if {@code policy == null}
+     * @throws IllegalArgumentException if the focus interval is invalid, outside
+     *                                  the field value range, creates too many
+     *                                  parts for byte storage, or if
+     *                                  {@code acceptedDocs} is too short
+     * @throws IllegalStateException    if this field cannot be cached as dense int
+     */
+    public Partition partition(
+        final int start,
+        final int end,
+        final PartialExtremityPolicy policy,
+        final FixedBitSet acceptedDocs
+    ) throws IOException {
+        if (policy == null) {
+            throw new NullPointerException("policy");
+        }
+        if (start > end) {
+            throw new IllegalArgumentException(
+                "Invalid focus interval: [" + start + ',' + end + ']');
+        }
+
+        cacheDense();
+        final DenseIntCache densint = requireDense();
+
+        final int maxDoc = reader.maxDoc();
+        if (acceptedDocs != null && acceptedDocs.length() < maxDoc) {
+            throw new IllegalArgumentException(
+                "acceptedDocs.length()=" + acceptedDocs.length()
+                + " < reader.maxDoc()=" + maxDoc);
+        }
+
+        if (end < min || start > max) {
+            throw new IllegalArgumentException(
+                "Focus interval [" + start + ',' + end
+                + "] does not overlap field range ["
+                + min + ',' + max + ']');
+        }
+
+        final int width = end - start + 1;
+        if (width <= 0L) {
+            throw new IllegalArgumentException(
+                "Invalid focus width for interval [" + start + ',' + end + ']');
+        }
+
+        final long kMin = Math.floorDiv((long) min - (long) start, width);
+        final long kMax = Math.floorDiv((long) max - (long) start, width);
+
+        if (kMin > 0L || kMax < 0L) {
+            throw new IllegalArgumentException(
+                "Focus interval [" + start + ',' + end
+                + "] is not represented in field range ["
+                + min + ',' + max + ']');
+        }
+
+        final long rawCountLong = kMax - kMin + 1L;
+        if (rawCountLong < 1L || rawCountLong > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                "Invalid raw part count: " + rawCountLong);
+        }
+
+        final int rawCount = (int) rawCountLong;
+        final long[] groupStart = new long[rawCount];
+        final long[] groupEnd = new long[rawCount];
+
+        for (int i = 0; i < rawCount; i++) {
+            final long k = kMin + i;
+            groupStart[i] = k;
+            groupEnd[i] = k;
+        }
+
+        int first = 0;
+        int last = rawCount - 1;
+
+        final boolean leftPartial = rawPartStart(start, width, kMin) < min;
+        final boolean rightPartial = rawPartEnd(start, width, kMax) > max;
+
+        if (leftPartial && kMin < 0L) {
+            switch (policy) {
+                case KEEP:
+                    break;
+                case DROP:
+                    first++;
+                    break;
+                case ABSORB:
+                    if (kMin + 1L == 0L) {
+                        // Never absorb a partial extremity into the focus part.
+                        first++;
+                    } else {
+                        groupStart[1] = groupStart[0];
+                        first++;
+                    }
+                    break;
+                default:
+                    throw new IllegalStateException("Unhandled policy: " + policy);
+            }
+        }
+
+        if (rightPartial && kMax > 0L) {
+            switch (policy) {
+                case KEEP:
+                    break;
+                case DROP:
+                    last--;
+                    break;
+                case ABSORB:
+                    if (kMax - 1L == 0L) {
+                        // Never absorb a partial extremity into the focus part.
+                        last--;
+                    } else {
+                        groupEnd[last - 1] = groupEnd[last];
+                        last--;
+                    }
+                    break;
+                default:
+                    throw new IllegalStateException("Unhandled policy: " + policy);
+            }
+        }
+
+        final int partCount = last - first + 1;
+        if (partCount < 1) {
+            throw new IllegalArgumentException("No part left after applying " + policy);
+        }
+        if (partCount > 128) {
+            throw new IllegalArgumentException(
+                "Too many parts for byte partition: " + partCount);
+        }
+
+        int focusPart = Partition.NO_FOCUS;
+        final int[] rawToPart = new int[rawCount];
+        Arrays.fill(rawToPart, Partition.NO_PART);
+
+        for (int part = 0; part < partCount; part++) {
+            final int groupIndex = first + part;
+            final long from = groupStart[groupIndex];
+            final long to = groupEnd[groupIndex];
+
+            if (from <= 0L && 0L <= to) {
+                focusPart = part;
+            }
+
+            for (long k = from; k <= to; k++) {
+                rawToPart[(int) (k - kMin)] = part;
+            }
+        }
+
+        if (focusPart == Partition.NO_FOCUS) {
+            throw new IllegalStateException(
+                "Focus part disappeared while building partition.");
+        }
+
+        final Partition partition = new Partition(maxDoc, partCount, focusPart);
+
+        final FixedBitSet docsToScan =
+            acceptedDocs == null ? densint.docHasValue : acceptedDocs;
+
+        for (int docId = docsToScan.nextSetBit(0);
+             docId != DocIdSetIterator.NO_MORE_DOCS;
+             docId = docsToScan.nextSetBit(docId + 1)) {
+
+            if (!densint.docHasValue.get(docId)) {
+                continue;
+            }
+
+            final int value = densint.docValues[docId];
+            final long k = Math.floorDiv((long) value - (long) start, width);
+            final long rawIndexLong = k - kMin;
+
+            if (rawIndexLong < 0L || rawIndexLong >= rawCount) {
+                continue;
+            }
+
+            final int part = rawToPart[(int) rawIndexLong];
+            if (part == Partition.NO_PART) {
+                continue;
+            }
+
+            partition.set(docId, part);
+        }
+
+        return partition;
+    }
+
+    /**
+     * Returns a human-readable point type label.
+     *
+     * <p>
+     * This label is inferred only from byte width:
+     * {@code "int"} for 4 bytes, {@code "long"} for 8 bytes,
+     * and {@code "point"} otherwise.
+     * </p>
+     *
+     * @return point type label
      */
     public String pointLabel()
     {
@@ -159,128 +617,88 @@ public class FlucNum extends Fluc
     }
 
     /**
-     * Indexed value for one document, using the dense histogram cache.
-     * Builds the cache on first call; subsequent calls are O(1).
+     * Returns full-corpus document counts by numeric value.
      *
-     * @param docId    internal Lucene document id
-     * @param maxRange ceiling on {@code (max - min + 1)}; caller asserts
-     *                 the field's value range is dense enough to fit
-     * @return indexed int value, or {@link Integer#MIN_VALUE} if the
-     *         document carries no value for this field
-     * @throws IOException           on Lucene I/O errors during cache build
-     * @throws IllegalStateException if the value range exceeds {@code maxRange}
+     * <p>
+     * The returned array is a defensive copy. Slot {@code value - intMin()}
+     * contains the number of live documents with that value.
+     * </p>
+     *
+     * @return document counts by dense numeric value
+     * @throws IllegalStateException if the dense cache has not been built
      */
-    public int intValue(final int docId, final int maxRange) throws IOException
+    public int[] valueDocs()
     {
-        return denseCache(maxRange).docValue(docId);
+        return requireDense().valueDocs();
     }
 
     /**
-     * Full-corpus document count by value.
-     * Returns a defensive copy of the precomputed curve.
-     * Element {@code i} holds the document count for value {@code (intMin + i)},
-     * where {@code intMin = (int) min()}.
+     * Validates a global Lucene document id.
      *
-     * @param maxRange ceiling on {@code (max - min + 1)}
-     * @return counts array of length {@code (max - min + 1)}
-     * @throws IOException           on Lucene I/O errors during cache build
-     * @throws IllegalStateException if the value range exceeds {@code maxRange}
+     * @param docId global Lucene document id
+     * @throws IllegalArgumentException if {@code docId} is outside
+     *                                  {@code [0, reader.maxDoc())}
      */
-    public int[] countByValue(final int maxRange) throws IOException
+    private void checkDocId(final int docId)
     {
-        return denseCache(maxRange).corpusCurve.clone();
-    }
-
-    /**
-     * Filtered document count by value.
-     * Element {@code i} holds the count of documents in {@code docFilter}
-     * whose value equals {@code (intMin + i)}.
-     *
-     * @param maxRange  ceiling on {@code (max - min + 1)}
-     * @param docFilter set of Lucene internal document ids
-     * @return counts array of length {@code (max - min + 1)}
-     * @throws IOException           on Lucene I/O errors during cache build
-     * @throws IllegalStateException if the value range exceeds {@code maxRange}
-     */
-    public int[] countByValue(final int maxRange, final BitSet docFilter) throws IOException
-    {
-        return denseCache(maxRange).countFiltered(docFilter);
-    }
-
-    /**
-     * Min and max value within a filtered document set.
-     *
-     * @param maxRange  ceiling on {@code (max - min + 1)}
-     * @param docFilter set of Lucene internal document ids
-     * @return {@code int[]{min, max}}, or {@code null} if no document
-     *         in the filter carries a value for this field
-     * @throws IOException           on Lucene I/O errors during cache build
-     * @throws IllegalStateException if the value range exceeds {@code maxRange}
-     */
-    public int[] minmax(final int maxRange, final BitSet docFilter) throws IOException
-    {
-        return denseCache(maxRange).minmax(docFilter);
-    }
-
-    /**
-     * Build (once) and return the dense histogram cache.
-     * Double-checked locking: the volatile read on the fast path
-     * ensures safe publication of a fully initialized cache.
-     */
-    private DenseHistogram denseCache(final int maxRange) throws IOException
-    {
-        DenseHistogram c = dense;
-        if (c != null) return c;
-        synchronized (this) {
-            if (dense != null) return dense;
-            final int range = (int) (max - min) + 1;
-            if (range > maxRange) {
-                throw new IllegalStateException(
-                    "Field \"" + name() + "\" value range " + range
-                    + " exceeds maxRange " + maxRange
-                    + ". Field is too sparse for a dense histogram.");
-            }
-            if (numBytes != 4) {
-                throw new IllegalStateException(
-                    "Field \"" + name() + "\" is not a 4-byte (int) point field.");
-            }
-            dense = DenseHistogram.build(reader, info.name, (int) min, range);
-            return dense;
+        final int maxDoc = reader.maxDoc();
+        if (docId < 0 || docId >= maxDoc) {
+            throw new IllegalArgumentException(
+                "docId out of range: " + docId + " (maxDoc=" + maxDoc + ')');
         }
     }
 
+    /**
+     * Decodes a packed point value.
+     *
+     * <p>
+     * The decoding assumes integer point encodings:
+     * 4-byte values are decoded as {@code int}, 8-byte values as {@code long}.
+     * </p>
+     *
+     * @param packed packed point value
+     * @return decoded numeric value as double
+     * @throws IllegalStateException if the point byte width is unsupported
+     */
     private double decode(final byte[] packed)
     {
         return switch (numBytes) {
             case 4  -> NumericUtils.sortableBytesToInt(packed, 0);
             case 8  -> NumericUtils.sortableBytesToLong(packed, 0);
-            default -> throw new IllegalStateException("Unsupported point byte width: " + numBytes);
+            default -> throw new IllegalStateException(
+                "Unsupported point byte width: " + numBytes);
         };
     }
 
     /**
-     * Probe whether the field has stored values by sampling the first
-     * 256 documents of each segment. O(segments * 256) stored-field reads.
+     * Returns the dense cache or fails.
+     *
+     * @return dense integer cache
+     * @throws IllegalStateException if {@link #cacheDense()} has not been called
+     *                               successfully
      */
-    private static boolean probeStored(
-        final IndexReader reader, final String fieldName
-    ) throws IOException {
-        for (LeafReaderContext ctx : reader.leaves()) {
-            final PointValues pv = ctx.reader().getPointValues(fieldName);
-            if (pv == null) continue;
-            final int probe = Math.min(ctx.reader().maxDoc(), 256);
-            for (int i = 0; i < probe; i++) {
-                final Document doc = reader.storedFields().document(
-                    ctx.docBase + i, Set.of(fieldName));
-                if (doc.getField(fieldName) != null) return true;
-            }
+    private DenseIntCache requireDense()
+    {
+        final DenseIntCache c = dense;
+        if (c == null) {
+            throw new IllegalStateException(
+                "Dense cache not built for field \"" + name()
+                + "\"; call cacheDense() first.");
         }
-        return false;
+        return c;
     }
 
-    /** Sum point-values doc counts across all leaves. */
+    /**
+     * Counts documents carrying point values for a field.
+     *
+     * @param reader    index reader
+     * @param fieldName field name
+     * @return point-values document count summed across leaves
+     * @throws IOException if Lucene metadata access fails
+     */
     static int countDocs(
-        final IndexReader reader, final String fieldName
+        final IndexReader reader,
+        final String fieldName
     ) throws IOException {
         int count = 0;
         for (LeafReaderContext ctx : reader.leaves()) {
@@ -290,92 +708,357 @@ public class FlucNum extends Fluc
         return count;
     }
 
-    @Override
-    public void close()
-    {
+    /**
+     * Probes whether a field is stored.
+     *
+     * <p>
+     * This is a sample-based probe. It inspects at most 256 documents per leaf.
+     * It is intended for UI metadata, not for formal validation.
+     * </p>
+     *
+     * @param reader    index reader
+     * @param fieldName field name
+     * @return {@code true} if a sampled document stores the field
+     * @throws IOException if stored-field access fails
+     */
+    private static boolean probeStored(
+        final IndexReader reader,
+        final String fieldName
+    ) throws IOException {
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final PointValues pv = ctx.reader().getPointValues(fieldName);
+            if (pv == null) continue;
+
+            final int probe = Math.min(ctx.reader().maxDoc(), 256);
+            for (int i = 0; i < probe; i++) {
+                final Document doc = reader.storedFields().document(
+                    ctx.docBase + i,
+                    Set.of(fieldName)
+                );
+                if (doc.getField(fieldName) != null) return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Returns the inclusive end value of one raw anchored part.
+     *
+     * <p>
+     * Raw part {@code k == 0} is the focus interval
+     * {@code [start, start + width - 1]}. Negative parts precede it; positive
+     * parts follow it.
+     * </p>
+     *
+     * @param start focus start value
+     * @param width part width
+     * @param k     raw anchored part index
+     * @return inclusive raw part end
+     */
+    private static long rawPartEnd(
+        final int start,
+        final long width,
+        final long k
+    ) {
+        return (long) start + (k + 1L) * width - 1L;
     }
 
     /**
-     * Immutable dense integer histogram over a field with a contiguous
-     * value range.
+     * Returns the inclusive start value of one raw anchored part.
      *
      * <p>
-     * {@code docId4offset[docId] = value - min} per document, or {@code -1}
-     * if the document has no value. {@code corpusCurve[off]} holds the
-     * full-corpus document count for value {@code (min + off)}.
+     * Raw part {@code k == 0} is the focus interval
+     * {@code [start, start + width - 1]}. Negative parts precede it; positive
+     * parts follow it.
+     * </p>
+     *
+     * @param start focus start value
+     * @param width part width
+     * @param k     raw anchored part index
+     * @return inclusive raw part start
+     */
+    private static long rawPartStart(
+        final int start,
+        final long width,
+        final long k
+    ) {
+        return (long) start + k * width;
+    }
+    
+    /**
+     * Policy for incomplete extremity parts when a fixed-width value partition is
+     * anchored on a focus interval.
+     *
+     * <p>
+     * Example with focus {@code [1933, 1939]}, width {@code 7}, and corpus values
+     * starting at {@code 1907}:
+     * </p>
+     *
+     * <pre>
+     * raw grid:
+     * [1905,1911] [1912,1918] [1919,1925] [1926,1932] [1933,1939] ...
+     *
+     * intersected with corpus:
+     * [1907,1911] [1912,1918] [1919,1925] [1926,1932] [1933,1939] ...
+     * </pre>
+     *
+     * <p>
+     * The first part is partial because it is shorter than the focus width.
+     * This enum defines what to do with such partial parts at the beginning or
+     * end of the value range.
      * </p>
      */
-    private static final class DenseHistogram
+    public enum PartialExtremityPolicy
     {
-        final int   intMin;
-        final int[] docId4offset;
-        final int[] corpusCurve;
+        /**
+         * Absorb a partial extremity into the adjacent non-focus part.
+         *
+         * <p>
+         * This reduces instability caused by very small edge parts. The focus part
+         * is never enlarged by absorption: if the only adjacent part is the focus
+         * part, the partial extremity is dropped instead.
+         * </p>
+         */
+        ABSORB,
 
-        private DenseHistogram(final int intMin, final int[] docId4offset, final int[] corpusCurve)
+        /**
+         * Drop partial extremities.
+         *
+         * <p>
+         * Documents falling in incomplete start/end parts are rejected from the
+         * partition.
+         * </p>
+         */
+        DROP,
+
+        /**
+         * Keep partial extremities as independent parts.
+         *
+         * <p>
+         * This preserves the exact anchored calendar grid but may create small
+         * edge parts with unstable statistics.
+         * </p>
+         */
+        KEEP
+    }
+    
+    /**
+     * Private dense cache for this numeric field.
+     *
+     * <p>
+     * The cache stores only materialized lookup arrays. Field metadata such as
+     * min, max, and range stays owned by the enclosing {@link FlucNum}.
+     * </p>
+     *
+     * <p>
+     * Document values are stored directly:
+     * {@code docValues[docId] = value}. Missing values are represented by
+     * {@link #docHasValue}.
+     * </p>
+     *
+     * <p>
+     * Counts by value are stored densely:
+     * {@code valueDocs[value - (int) FlucNum.this.min]}.
+     * </p>
+     */
+    private final class DenseIntCache
+    {
+        /** Document values by global Lucene doc id. */
+        final int[] docValues;
+
+        /** Documents that have a value for this field. */
+        final FixedBitSet docHasValue;
+
+        /** Document counts by value: {@code valueDocs[value - intMin]}. */
+        final int[] valueDocs;
+
+        /**
+         * Builds the dense cache by scanning {@link NumericDocValues}.
+         *
+         * @throws IOException if doc-values iteration fails
+         * @throws IllegalStateException if the field is not a dense int-compatible field
+         */
+        private DenseIntCache() throws IOException
         {
-            this.intMin       = intMin;
-            this.docId4offset = docId4offset;
-            this.corpusCurve  = corpusCurve;
-        }
+            if (numBytes != 4) {
+                throw new IllegalStateException(
+                    "Field \"" + name() + "\" is not a 4-byte integer point field.");
+            }
 
-        /** One O(docs) pass over {@code NumericDocValues} across all segments. */
-        static DenseHistogram build(
-            final IndexReader reader, final String fieldName,
-            final int intMin, final int range
-        ) throws IOException {
-            final int[] offset = new int[reader.maxDoc()];
-            Arrays.fill(offset, -1);
-            final int[] curve  = new int[range];
+            final int intMin = (int) min;
+            final int intMax = (int) max;
+
+            if ((double) intMin != min || (double) intMax != max) {
+                throw new IllegalStateException(
+                    "Field \"" + name() + "\" min/max are not exact int values: "
+                    + "min=" + min + ", max=" + max);
+            }
+
+            final int range;
+            try {
+                range = Math.addExact(Math.subtractExact(intMax, intMin), 1);
+            } catch (ArithmeticException e) {
+                throw new IllegalStateException(
+                    "Field \"" + name() + "\" invalid dense int range: ["
+                    + intMin + ',' + intMax + ']', e);
+            }
+
+            this.docValues = new int[reader.maxDoc()];
+            this.docHasValue = new FixedBitSet(reader.maxDoc());
+            this.valueDocs = new int[range];
 
             for (LeafReaderContext ctx : reader.leaves()) {
-                final NumericDocValues ndv = ctx.reader().getNumericDocValues(fieldName);
+                final NumericDocValues ndv = ctx.reader().getNumericDocValues(name());
                 if (ndv == null) continue;
+
                 final Bits liveDocs = ctx.reader().getLiveDocs();
-                final int  docBase  = ctx.docBase;
-                int docLeaf;
-                while ((docLeaf = ndv.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                    if (liveDocs != null && !liveDocs.get(docLeaf)) continue;
-                    final int off = (int) ndv.longValue() - intMin;
-                    offset[docBase + docLeaf] = off;
-                    curve[off]++;
+                final int docBase = ctx.docBase;
+
+                for (int leafDocId = ndv.nextDoc();
+                     leafDocId != DocIdSetIterator.NO_MORE_DOCS;
+                     leafDocId = ndv.nextDoc()) {
+
+                    if (liveDocs != null && !liveDocs.get(leafDocId)) continue;
+
+                    final long longValue = ndv.longValue();
+                    if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
+                        throw new IllegalStateException(
+                            "Numeric value out of int range for field \"" + name()
+                            + "\": value=" + longValue);
+                    }
+
+                    final int value = (int) longValue;
+                    final int off = value - intMin;
+
+                    if (off < 0 || off >= valueDocs.length) {
+                        throw new IllegalStateException(
+                            "Numeric value out of dense range for field \"" + name()
+                            + "\": value=" + value
+                            + ", min=" + intMin
+                            + ", max=" + intMax
+                            + ", range=" + valueDocs.length);
+                    }
+
+                    final int docId = docBase + leafDocId;
+
+                    docValues[docId] = value;
+                    docHasValue.set(docId);
+                    valueDocs[off]++;
                 }
             }
-            return new DenseHistogram(intMin, offset, curve);
         }
 
-        int docValue(final int docId)
+        /**
+         * Counts filtered documents by numeric value.
+         *
+         * @param docFilter document ids to count
+         * @return document counts by dense value
+         */
+        int[] countByValue(final BitSet docFilter)
         {
-            final int off = docId4offset[docId];
-            return off < 0 ? Integer.MIN_VALUE : intMin + off;
-        }
+            final int[] counts = new int[valueDocs.length];
+            final int intMin = (int) min;
 
-        int[] countFiltered(final BitSet docFilter)
-        {
-            final int[] counts = new int[corpusCurve.length];
             for (int docId = docFilter.nextSetBit(0);
                  docId != DocIdSetIterator.NO_MORE_DOCS;
                  docId = docFilter.nextSetBit(docId + 1)) {
-                final int off = docId4offset[docId];
-                if (off < 0) continue;
-                counts[off]++;
+
+                if (!docHasValue.get(docId)) continue;
+
+                counts[docValues[docId] - intMin]++;
             }
+
             return counts;
         }
 
+        /**
+         * Returns the number of documents with one numeric value.
+         *
+         * @param value numeric value
+         * @return document count, or {@code 0} if the value is outside range
+         */
+        int docs(final int value)
+        {
+            final int intMin = (int) min;
+            final int off = value - intMin;
+
+            if (off < 0 || off >= valueDocs.length) return 0;
+            return valueDocs[off];
+        }
+
+        /**
+         * Returns the numeric value of one document.
+         *
+         * @param docId global Lucene document id
+         * @return numeric value
+         * @throws NoSuchElementException if the document has no value
+         */
+        int docValue(final int docId)
+        {
+            if (!docHasValue.get(docId)) {
+                throw new NoSuchElementException(
+                    "Document " + docId + " has no numeric value for field \"" + name() + "\".");
+            }
+            return docValues[docId];
+        }
+
+        /**
+         * Returns the numeric value of one document, or a fallback if absent.
+         *
+         * @param docId   global Lucene document id
+         * @param noValue fallback value
+         * @return numeric value, or {@code noValue}
+         */
+        int docValue(final int docId, final int noValue)
+        {
+            return docHasValue.get(docId) ? docValues[docId] : noValue;
+        }
+
+        /**
+         * Reports whether one document has a numeric value.
+         *
+         * @param docId global Lucene document id
+         * @return {@code true} if the document has a value
+         */
+        boolean hasValue(final int docId)
+        {
+            return docHasValue.get(docId);
+        }
+
+        /**
+         * Computes min and max values inside a document filter.
+         *
+         * @param docFilter document ids to inspect
+         * @return {@code int[]{min, max}}, or {@code null} if no filtered document has a value
+         */
         int[] minmax(final BitSet docFilter)
         {
             int lo = Integer.MAX_VALUE;
             int hi = Integer.MIN_VALUE;
+
             for (int docId = docFilter.nextSetBit(0);
                  docId != DocIdSetIterator.NO_MORE_DOCS;
                  docId = docFilter.nextSetBit(docId + 1)) {
-                final int off = docId4offset[docId];
-                if (off < 0) continue;
-                if (off < lo) lo = off;
-                if (off > hi) hi = off;
+
+                if (!docHasValue.get(docId)) continue;
+
+                final int value = docValues[docId];
+                if (value < lo) lo = value;
+                if (value > hi) hi = value;
             }
+
             if (lo == Integer.MAX_VALUE) return null;
-            return new int[] { intMin + lo, intMin + hi };
+            return new int[] { lo, hi };
+        }
+
+        /**
+         * Returns a defensive copy of document counts by value.
+         *
+         * @return document counts by dense numeric value
+         */
+        int[] valueDocs()
+        {
+            return valueDocs.clone();
         }
     }
 }

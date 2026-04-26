@@ -99,24 +99,39 @@ public interface KeynessScorer {
             final long otherTokens
         ) {
             if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
+            if (focusTermCount < 0L || otherTermCount < 0L) return Double.NaN;
+            if (focusTermCount > focusTokens || otherTermCount > otherTokens) return Double.NaN;
+            
+            final long focusNonTermCount = focusTokens - focusTermCount;
+            final long otherNonTermCount = otherTokens - otherTermCount;
 
             final long allTokens = focusTokens + otherTokens;
             final long allTermCount = focusTermCount + otherTermCount;
-            if (allTokens <= 0L || allTermCount <= 0L) return 0d;
+            final long allNonTermCount = focusNonTermCount + otherNonTermCount;
 
-            final double focusExpected = (double) allTermCount * focusTokens / allTokens;
-            final double otherExpected = (double) allTermCount * otherTokens / allTokens;
+
+            final double expectedFocusTerm = (double) focusTokens * allTermCount / allTokens;
+            final double expectedOtherTerm = (double) otherTokens * allTermCount / allTokens;
+            final double expectedFocusNonTerm = (double) focusTokens * allNonTermCount / allTokens;
+            final double expectedOtherNonTerm = (double) otherTokens * allNonTermCount / allTokens;
 
             double g2 = 0d;
             if (focusTermCount > 0L) {
                 g2 += 2d * (double) focusTermCount
-                    * Math.log((double) focusTermCount / focusExpected);
+                    * Math.log((double) focusTermCount / expectedFocusTerm);
             }
             if (otherTermCount > 0L) {
                 g2 += 2d * (double) otherTermCount
-                    * Math.log((double) otherTermCount / otherExpected);
+                    * Math.log((double) otherTermCount / expectedOtherTerm);
             }
-
+            if (focusNonTermCount > 0L) {
+                g2 += 2d * (double) focusNonTermCount
+                    * Math.log((double) focusNonTermCount / expectedFocusNonTerm);
+            }
+            if (otherNonTermCount > 0L) {
+                g2 += 2d * (double) otherNonTermCount
+                    * Math.log((double) otherNonTermCount / expectedOtherNonTerm);
+            }
             return ((double) focusTermCount / focusTokens >= (double) otherTermCount / otherTokens) ? g2 : -g2;
         }
     }

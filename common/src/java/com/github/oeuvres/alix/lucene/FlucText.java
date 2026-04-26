@@ -8,6 +8,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -96,6 +97,11 @@ public final class FlucText extends Fluc
         description.put("termVectors", this.hasTermVectors);
         this.hasNorms = fi.hasNorms();
         description.put("norms", this.hasNorms);
+        final Terms terms = MultiTerms.getTerms(reader, fi.name);
+        if (terms == null) {
+            throw new IllegalStateException("Field '" + fi.name + "' has no terms; cannot be used by Alix");
+        }
+        description.put("terms", terms.size());
         this.reader  = reader;
         this.sideDir = sideDir;
     }
