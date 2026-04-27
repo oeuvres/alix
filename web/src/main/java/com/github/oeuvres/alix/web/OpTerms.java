@@ -17,7 +17,9 @@ import com.github.oeuvres.alix.lucene.BitsCollectorManager;
 import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.Partition;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
+import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -90,14 +92,30 @@ public final class OpTerms extends Op
         }
         // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
+            final String scorerName = pars.getString(SCORER, "");
+            // partition query on dates
+            Query yearQuery = yearQuery(index, pars);
+            if (yearQuery != null && scorerName.startsWith("part")) {
+                FlucNum years = index.flucNum(YEAR);
+                final int start = pars.getInt(START, (int)years.min());
+                int end = pars.getInt(END, (int)years.min());
+                // TODO filter by tags
+                final Partition partition = years.partition(start, end, null, null);
+                return topTerms.partScore(index.reader(), partition, new PartScorer.LogLikelihood(), topK);
+            }
+            
+            // focus % all rest
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
 
-            final String scorerName = pars.getString(SCORER, null);
             if ("rsj".equals(scorerName)) {
                 return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.RSJ), topK);
             }
             else if ("irdf".equals(scorerName)) {
                 return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.IRDF), topK);
+            }
+            else if ("chi2".equals(scorerName)) {
+                topTerms.focus(index.reader(), focusDocs);
+                return topTerms.focusScore(new KeynessScorer.Chi2(), topK);
             }
             else {
                 topTerms.focus(index.reader(), focusDocs);
@@ -153,11 +171,17 @@ public final class OpTerms extends Op
                 <th>%s</th>
                 <th>%s</th>
                 <th>%s</th>
+                <th>%s</th>
+                <th>%s</th>
               </tr>
               <tr>
         """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),
                 idfexp,
-                "BM25.irdf", "BM25.rsj", LOGLIKELIHOOD));
+                "Parts, G2", "BM25.irdf", "BM25.rsj", LOGLIKELIHOOD, "Chi2"));
+        writer.append("      <td>\n");
+        request.setAttribute(SCORER, "part");
+        html(index, request, response);
+        writer.append("      </td>\n");
         writer.append("      <td>\n");
         request.setAttribute(SCORER, "irdf");
         html(index, request, response);
@@ -168,6 +192,10 @@ public final class OpTerms extends Op
         writer.append("      </td>\n");
         writer.append("      <td>\n");
         request.setAttribute(SCORER, LOGLIKELIHOOD);
+        html(index, request, response);
+        writer.append("      </td>\n");
+        writer.append("      <td>\n");
+        request.setAttribute(SCORER, "chi2");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("""

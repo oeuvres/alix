@@ -200,6 +200,8 @@ public abstract class Op
         // clamp to corpus bounds
         start = Math.max(start, min);
         end = Math.min(end, max);
+        // not a filter
+        if (start == min && end == max) return null;
         // after clamping, range may have collapsed out of corpus
         if (start > end)
             return null;

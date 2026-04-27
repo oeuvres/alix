@@ -384,21 +384,9 @@ public class FlucNum extends Fluc
      * </pre>
      *
      * <p>
-     * The returned {@link Partition} is query-specific. Documents are assigned
-     * only if all of the following are true:
-     * </p>
-     *
-     * <ul>
-     *   <li>the document has a value for this numeric field;</li>
-     *   <li>the document is present in {@code acceptedDocs}, unless
-     *       {@code acceptedDocs == null};</li>
-     *   <li>the document's value belongs to a retained part.</li>
-     * </ul>
-     *
-     * <p>
      * Documents outside the partition are assigned {@link Partition#NO_PART}.
-     * Valid part ids are chronological/value order. The focus part is the part
-     * corresponding to {@code [start, end]} and is available through
+     * Valid part ids are in chronological/value order. The focus part is the
+     * part corresponding to {@code [start, end]} and is available through
      * {@link Partition#focusPart()}.
      * </p>
      *
@@ -424,11 +412,11 @@ public class FlucNum extends Fluc
     public Partition partition(
         final int start,
         final int end,
-        final PartialExtremityPolicy policy,
+        PartialExtremityPolicy policy,
         final FixedBitSet acceptedDocs
     ) throws IOException {
         if (policy == null) {
-            throw new NullPointerException("policy");
+            policy = PartialExtremityPolicy.ABSORB;
         }
         if (start > end) {
             throw new IllegalArgumentException(
@@ -445,69 +433,72 @@ public class FlucNum extends Fluc
                 + " < reader.maxDoc()=" + maxDoc);
         }
 
-        if (end < min || start > max) {
+        // After cacheDense() we know min/max round-trip exactly through int.
+        final int intMin = (int) min;
+        final int intMax = (int) max;
+
+        if (end < intMin || start > intMax) {
             throw new IllegalArgumentException(
                 "Focus interval [" + start + ',' + end
                 + "] does not overlap field range ["
-                + min + ',' + max + ']');
+                + intMin + ',' + intMax + ']');
         }
 
-        final int width = end - start + 1;
-        if (width <= 0L) {
+        // Compute width in long to detect overflow when start/end span the int
+        // range. start <= end has already been validated, so widthLong >= 1.
+        final long widthLong = (long) end - (long) start + 1L;
+        if (widthLong > Integer.MAX_VALUE) {
             throw new IllegalArgumentException(
-                "Invalid focus width for interval [" + start + ',' + end + ']');
+                "Focus width too large: " + widthLong);
         }
+        final int width = (int) widthLong;
 
-        final long kMin = Math.floorDiv((long) min - (long) start, width);
-        final long kMax = Math.floorDiv((long) max - (long) start, width);
-
-        if (kMin > 0L || kMax < 0L) {
-            throw new IllegalArgumentException(
-                "Focus interval [" + start + ',' + end
-                + "] is not represented in field range ["
-                + min + ',' + max + ']');
-        }
+        // Anchored part index k: the focus is at k = 0, parts before are k < 0,
+        // parts after are k > 0. Each k stands for the inclusive value range
+        // [start + k*width, start + (k+1)*width - 1].
+        // The overlap test above guarantees kMin <= 0 <= kMax.
+        final long kMin = Math.floorDiv((long) intMin - (long) start, width);
+        final long kMax = Math.floorDiv((long) intMax - (long) start, width);
 
         final long rawCountLong = kMax - kMin + 1L;
-        if (rawCountLong < 1L || rawCountLong > Integer.MAX_VALUE) {
+        if (rawCountLong > Integer.MAX_VALUE) {
             throw new IllegalArgumentException(
-                "Invalid raw part count: " + rawCountLong);
+                "Too many raw parts: " + rawCountLong);
         }
-
         final int rawCount = (int) rawCountLong;
-        final long[] groupStart = new long[rawCount];
-        final long[] groupEnd = new long[rawCount];
 
-        for (int i = 0; i < rawCount; i++) {
-            final long k = kMin + i;
-            groupStart[i] = k;
-            groupEnd[i] = k;
-        }
+        // A leftmost / rightmost raw part is "partial" when the corpus does not
+        // cover its full anchored width.
+        final boolean leftPartial =
+            ((long) start + kMin * width) < intMin;
+        final boolean rightPartial =
+            ((long) start + (kMax + 1L) * width - 1L) > intMax;
 
-        int first = 0;
-        int last = rawCount - 1;
-
-        final boolean leftPartial = rawPartStart(start, width, kMin) < min;
-        final boolean rightPartial = rawPartEnd(start, width, kMax) > max;
+        // Active raw range. Indices are into [0, rawCount); raw index i
+        // corresponds to k = kMin + i. firstRaw/lastRaw narrow under DROP and
+        // ABSORB; the absorbed raw is then redirected back into its neighbour
+        // through mergeLeft/mergeRight.
+        int firstRaw = 0;
+        int lastRaw = rawCount - 1;
+        boolean mergeLeft = false;
+        boolean mergeRight = false;
 
         if (leftPartial && kMin < 0L) {
             switch (policy) {
                 case KEEP:
                     break;
                 case DROP:
-                    first++;
+                    firstRaw++;
                     break;
                 case ABSORB:
-                    if (kMin + 1L == 0L) {
-                        // Never absorb a partial extremity into the focus part.
-                        first++;
-                    } else {
-                        groupStart[1] = groupStart[0];
-                        first++;
+                    // Refuse to grow the focus part: when the only neighbour of
+                    // the partial extremity is the focus (kMin == -1), fall back
+                    // to DROP rather than absorb.
+                    firstRaw++;
+                    if (kMin != -1L) {
+                        mergeLeft = true;
                     }
                     break;
-                default:
-                    throw new IllegalStateException("Unhandled policy: " + policy);
             }
         }
 
@@ -516,23 +507,18 @@ public class FlucNum extends Fluc
                 case KEEP:
                     break;
                 case DROP:
-                    last--;
+                    lastRaw--;
                     break;
                 case ABSORB:
-                    if (kMax - 1L == 0L) {
-                        // Never absorb a partial extremity into the focus part.
-                        last--;
-                    } else {
-                        groupEnd[last - 1] = groupEnd[last];
-                        last--;
+                    lastRaw--;
+                    if (kMax != 1L) {
+                        mergeRight = true;
                     }
                     break;
-                default:
-                    throw new IllegalStateException("Unhandled policy: " + policy);
             }
         }
 
-        final int partCount = last - first + 1;
+        final int partCount = lastRaw - firstRaw + 1;
         if (partCount < 1) {
             throw new IllegalArgumentException("No part left after applying " + policy);
         }
@@ -541,36 +527,44 @@ public class FlucNum extends Fluc
                 "Too many parts for byte partition: " + partCount);
         }
 
-        int focusPart = Partition.NO_FOCUS;
+        // Map each raw index to its part id. Indices outside [firstRaw, lastRaw]
+        // are NO_PART unless absorbed into a neighbour. The focus part is the
+        // one that contains k = 0.
         final int[] rawToPart = new int[rawCount];
         Arrays.fill(rawToPart, Partition.NO_PART);
 
-        for (int part = 0; part < partCount; part++) {
-            final int groupIndex = first + part;
-            final long from = groupStart[groupIndex];
-            final long to = groupEnd[groupIndex];
-
-            if (from <= 0L && 0L <= to) {
+        int focusPart = Partition.NO_FOCUS;
+        for (int i = firstRaw; i <= lastRaw; i++) {
+            final int part = i - firstRaw;
+            rawToPart[i] = part;
+            if ((kMin + i) == 0L) {
                 focusPart = part;
             }
-
-            for (long k = from; k <= to; k++) {
-                rawToPart[(int) (k - kMin)] = part;
-            }
+        }
+        if (mergeLeft) {
+            rawToPart[firstRaw - 1] = 0;
+        }
+        if (mergeRight) {
+            rawToPart[lastRaw + 1] = partCount - 1;
         }
 
         if (focusPart == Partition.NO_FOCUS) {
+            // Unreachable: kMin <= 0 <= kMax and the focus part is never dropped
+            // or absorbed. Defensive only.
             throw new IllegalStateException(
-                "Focus part disappeared while building partition.");
+                "Focus part missing while building partition.");
         }
 
+        // Assign documents. When acceptedDocs is null we walk only docs that
+        // have a value; otherwise we walk the filter and skip docs without a
+        // value.
         final Partition partition = new Partition(maxDoc, partCount, focusPart);
-
         final FixedBitSet docsToScan =
             acceptedDocs == null ? densint.docHasValue : acceptedDocs;
+        final int scanLimit = Math.min(docsToScan.length(), maxDoc);
 
         for (int docId = docsToScan.nextSetBit(0);
-             docId != DocIdSetIterator.NO_MORE_DOCS;
+             docId != DocIdSetIterator.NO_MORE_DOCS && docId < scanLimit;
              docId = docsToScan.nextSetBit(docId + 1)) {
 
             if (!densint.docHasValue.get(docId)) {
@@ -578,9 +572,8 @@ public class FlucNum extends Fluc
             }
 
             final int value = densint.docValues[docId];
-            final long k = Math.floorDiv((long) value - (long) start, width);
-            final long rawIndexLong = k - kMin;
-
+            final long rawIndexLong =
+                Math.floorDiv((long) value - (long) start, (long) width) - kMin;
             if (rawIndexLong < 0L || rawIndexLong >= rawCount) {
                 continue;
             }
@@ -595,7 +588,7 @@ public class FlucNum extends Fluc
 
         return partition;
     }
-
+    
     /**
      * Returns a human-readable point type label.
      *
@@ -739,50 +732,6 @@ public class FlucNum extends Fluc
             }
         }
         return false;
-    }
-    
-    /**
-     * Returns the inclusive end value of one raw anchored part.
-     *
-     * <p>
-     * Raw part {@code k == 0} is the focus interval
-     * {@code [start, start + width - 1]}. Negative parts precede it; positive
-     * parts follow it.
-     * </p>
-     *
-     * @param start focus start value
-     * @param width part width
-     * @param k     raw anchored part index
-     * @return inclusive raw part end
-     */
-    private static long rawPartEnd(
-        final int start,
-        final long width,
-        final long k
-    ) {
-        return (long) start + (k + 1L) * width - 1L;
-    }
-
-    /**
-     * Returns the inclusive start value of one raw anchored part.
-     *
-     * <p>
-     * Raw part {@code k == 0} is the focus interval
-     * {@code [start, start + width - 1]}. Negative parts precede it; positive
-     * parts follow it.
-     * </p>
-     *
-     * @param start focus start value
-     * @param width part width
-     * @param k     raw anchored part index
-     * @return inclusive raw part start
-     */
-    private static long rawPartStart(
-        final int start,
-        final long width,
-        final long k
-    ) {
-        return (long) start + k * width;
     }
     
     /**

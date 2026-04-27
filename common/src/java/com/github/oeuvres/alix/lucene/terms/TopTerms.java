@@ -14,6 +14,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.lucene.Partition;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
@@ -428,6 +429,107 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
      */
     public long focusTokens() {
         return focusTokens;
+    }
+    
+    /**
+     * Ranks terms for the focus part of {@code partition}. Walks the field's
+     * postings once, scoring each term as its per-part counts are produced.
+     * No per-term state is retained.
+     *
+     * <p>
+     * After this call, {@link TermEntry#freq()} returns the term's occurrence
+     * count in the focus part, {@link TermEntry#score()} returns its
+     * {@link PartScorer} score.
+     * </p>
+     *
+     * @param reader    snapshot reader matching this TopTerms
+     * @param partition partition aligned with reader; must declare a focus part
+     * @param scorer    per-term partition scorer
+     * @param topK      maximum number of terms to keep
+     * @return this instance, for chaining
+     */
+    public TopTerms partScore(
+        final IndexReader reader,
+        final Partition partition,
+        final PartScorer scorer,
+        final int topK
+    ) throws IOException {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(partition, "partition");
+        Objects.requireNonNull(scorer, "scorer");
+        if (!partition.hasFocus()) {
+            throw new IllegalArgumentException("partition has no focus part");
+        }
+        if (topK < 1) throw new IllegalArgumentException("topK must be >= 1");
+
+        final String field = fieldStats.field();
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalStateException("Field '" + field + "' has no terms");
+        }
+        if (!terms.hasFreqs()) {
+            throw new IllegalStateException(
+                "Field '" + field + "' was not indexed with term frequencies");
+        }
+
+        final int partCount = partition.partCount();
+        final int focusPart = partition.focusPart();
+        final byte[] docPart = partition.docPartRef();
+        final int[] docTokens = fieldStats.docTokensRef();
+
+        final long[] partTokens = new long[partCount];
+        for (int docId = 0; docId < docPart.length; docId++) {
+            final byte p = docPart[docId];
+            if (p == Partition.NO_PART) continue;
+            partTokens[p] += docTokens[docId];
+        }
+
+        initFocus();
+        this.focusTokens = partTokens[focusPart];
+        this.focusDocs = partition.docs(focusPart);
+
+        final int vocabSize = fieldStats.vocabSize();
+        final double[] termScores = new double[vocabSize];
+        final TopArray top = new TopArray(topK);
+        final long[] partTermFreq = new long[partCount];
+
+        final TermsEnum tenum = terms.iterator();
+        PostingsEnum postings = null;
+        int termId = 1;
+        while (tenum.next() != null) {
+            Arrays.fill(partTermFreq, 0L);
+            int focusFreq = 0;
+            int focusDocsForTerm = 0;
+
+            postings = tenum.postings(postings, PostingsEnum.FREQS);
+            for (int docId = postings.nextDoc();
+                 docId != DocIdSetIterator.NO_MORE_DOCS;
+                 docId = postings.nextDoc()) {
+                final byte p = docPart[docId];
+                if (p == Partition.NO_PART) continue;
+                final int freq = postings.freq();
+                partTermFreq[p] += freq;
+                if (p == focusPart) {
+                    focusFreq += freq;
+                    focusDocsForTerm++;
+                }
+            }
+
+            if (focusFreq > 0) {
+                focusTermFreq[termId] = focusFreq;
+                focusTermDocs[termId] = focusDocsForTerm;
+                final double s = scorer.score(partTermFreq, partTokens, focusPart);
+                if (!Double.isNaN(s)) {
+                    termScores[termId] = s;
+                    top.push(termId, s);
+                }
+            }
+            termId++;
+        }
+
+        this.activeCounts = focusTermFreq;
+        buildRank(top, termScores);
+        return this;
     }
 
     /**
