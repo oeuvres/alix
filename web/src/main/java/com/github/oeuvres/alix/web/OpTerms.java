@@ -106,16 +106,13 @@ public final class OpTerms extends Op
                     partScorer = new PartScorer.LogLikelihood();
                 }
                 else if ("part2".equals(scorerName)) {
-                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MEDIAN, 0, false, 0d);
+                    partScorer = new PartScorer.Pearson();
                 }
                 else if ("part3".equals(scorerName)) {
-                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MIN, 0, true, 0d);
+                    partScorer = new PartScorer.Specificity();
                 }
                 else if ("part4".equals(scorerName)) {
-                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MIN, 0, true, 0.5);
-                }
-                else if ("part5".equals(scorerName)) {
-                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MEDIAN, 0, true, 0.5);
+                    partScorer = new PartScorer.RateRatio();
                 }
                 else {
                     partScorer = new PartScorer.LogLikelihood();
@@ -187,34 +184,22 @@ public final class OpTerms extends Op
             </form>
             <table>
               <tr>
-                <th>%s</th>
-                <th>%s</th>
-                <th>%s</th>
-                <th>%s</th>
-                <th>%s</th>
-              </tr>
-              <tr>
-        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),
-                idfexp,
-                "Baseline", "Robust dominance", "Doc-weighted", "Doc-weighted + dispersion", "Combined"));
-        writer.append("      <td>\n");
+        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),idfexp)
+        );
+        writer.append("      <td><b>LogLikelihood</b><br/>\n");
         request.setAttribute(SCORER, "part1");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td>\n");
+        writer.append("      <td><b>Pearson</b><br/>\n");
         request.setAttribute(SCORER, "part2");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td>\n");
+        writer.append("      <td><b>Specificity</b><br/>\n");
         request.setAttribute(SCORER, "part3");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td>\n");
+        writer.append("      <td><b>RateRatio</b><br/>\n");
         request.setAttribute(SCORER, "part4");
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td>\n");
-        request.setAttribute(SCORER, "part5");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("""
