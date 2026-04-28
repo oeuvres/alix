@@ -69,8 +69,8 @@ public final class OpTerms extends Op
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
         
         String fieldName = pars.getString(F, index.content());
-        final FlucText fluc = index.flucText(fieldName);
-        if (fluc == null) {
+        final FlucText ftext = index.flucText(fieldName);
+        if (ftext == null) {
             pars.response().setStatus(404);
             meta.put("error", "field '" + fieldName + "' not found or not a text field");
             return null;
@@ -80,13 +80,13 @@ public final class OpTerms extends Op
         final Query filterQuery = filterQuery(index, pars);
         final SpanQuery spanQuery = spanQuery(index, pars);
         
-        TopTerms topTerms = fluc.topTerms();
+        TopTerms topTerms = ftext.topTerms();
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
             // an http param may change idfExp
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             // The weights for full field are cached if same idfExp is requested
-            final double[] weights = fluc.fieldStats().termWeights(index.reader(), scorer);
+            final double[] weights = ftext.fieldStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
             return topTerms.ranking(weights, topK);
         }
@@ -95,14 +95,22 @@ public final class OpTerms extends Op
             final String scorerName = pars.getString(SCORER, "");
             // partition query on dates
             Query yearQuery = yearQuery(index, pars);
-
+            // TODO tags
+            Query typeQuery = typeQuery(index, pars);
+            FixedBitSet bits = null;
+            if (typeQuery != null) {
+                bits = index.searcher().search(typeQuery, new BitsCollectorManager(index.searcher()));
+            }
             
             if (yearQuery != null && scorerName.startsWith("part")) {
-                FlucNum years = index.flucNum(YEAR);
-                final int start = pars.getInt(START, (int)years.min());
-                int end = pars.getInt(END, (int)years.min());
+                FlucNum fyears = index.flucNum(YEAR);
+                final int start = pars.getInt(START, (int)fyears.min());
+                int end = pars.getInt(END, (int)fyears.max());
+                
                 // TODO filter by tags
-                final Partition partition = years.partition(start, end, null, null);
+                final Partition partition = Partition.build(fyears, ftext, start, end, bits);
+                if (bits != null) {System.out.println(bits.cardinality());}
+                System.out.println(partition);
                 
 
                 
