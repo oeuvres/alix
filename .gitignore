@@ -18,3 +18,4 @@ buildNumber.properties
 .project
 .~*
 *.bak
+common/src/java/com/github/oeuvres/alix/lucene/terms/*.html

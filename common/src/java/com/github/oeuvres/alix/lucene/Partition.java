@@ -1,7 +1,10 @@
 package com.github.oeuvres.alix.lucene;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.lucene.util.FixedBitSet;
@@ -55,11 +58,14 @@ import com.github.oeuvres.alix.lucene.terms.FieldStats;
  */
 public final class Partition
 {
-    /** Default number of non-focus comparison parts. */
-    private static final int DEFAULT_COMPARISON_PARTS = 16;
+    /** Maximum number of parts representable in a signed byte. */
+    private static final int MAX_PARTS = 128;
 
-    /** Default minimum token mass used to cap comparison part count. */
-    private static final long DEFAULT_MIN_PART_TOKENS = 50_000L;
+    /** Default minimum document count for a comparison part before expansion. */
+    private static final int MIN_PART_DOCS = 10;
+
+    /** Default minimum token count for a comparison part before expansion. */
+    private static final long MIN_PART_TOKENS = 25_000L;
 
     /** No focus part is defined. */
     public static final int NO_FOCUS = -1;
@@ -70,12 +76,6 @@ public final class Partition
     /** Document-to-part map, indexed by global Lucene document id. */
     private final byte[] docPart;
 
-    /** Number of accepted documents per part. */
-    private final int[] partDocs;
-
-    /** Number of indexed tokens per part. */
-    private final long[] partTokens;
-
     /** Optional focus part, or {@link #NO_FOCUS}. */
     private final int focusPart;
 
@@ -85,16 +85,22 @@ public final class Partition
     /** Number of valid parts. */
     private final int partCount;
 
+    /** Number of accepted documents per part. */
+    private final int[] partDocs;
+
+    /** Number of indexed tokens per part. */
+    private final long[] partTokens;
+
     /**
      * Creates an empty partition.
      *
      * <p>
      * All documents are initially rejected. Package builders fill the partition
-     * with {@link #set(int, int)} and {@link #addTokens(int, int)} before
-     * returning it to callers.
+     * with {@link #set(int, int)} or {@link #set(int, int, int)} before returning
+     * it to callers.
      * </p>
      *
-     * @param maxDoc    reader {@code maxDoc}; also {@code docPart.length}
+     * @param maxDoc reader {@code maxDoc}; also {@code docPart.length}
      * @param partCount number of valid parts
      * @param focusPart focus part id, or {@link #NO_FOCUS}
      * @throws IllegalArgumentException if arguments are inconsistent
@@ -110,9 +116,9 @@ public final class Partition
         if (partCount < 1) {
             throw new IllegalArgumentException("partCount < 1: " + partCount);
         }
-        if (partCount > 128) {
+        if (partCount > MAX_PARTS) {
             throw new IllegalArgumentException(
-                "partCount > 128 cannot be represented in signed byte: " + partCount);
+                "partCount > " + MAX_PARTS + " cannot be represented in signed byte: " + partCount);
         }
         if (focusPart != NO_FOCUS && (focusPart < 0 || focusPart >= partCount)) {
             throw new IllegalArgumentException(
@@ -147,19 +153,27 @@ public final class Partition
      *
      * <p>
      * The focus interval {@code [start, end]} is kept as one indivisible part.
-     * Non-focus documents are split into chronological parts balanced by indexed
-     * token mass from the text field. Numeric value boundaries are preserved: a
-     * value is never split, and no comparison part crosses the focus interval.
+     * Non-focus parts are first cut into calendar periods of the same width as
+     * the focus interval. Weak extremity periods are then expanded by merging
+     * with an adjacent period on the same side of the focus. A period is weak
+     * when it has too few calendar years, too few accepted documents, or too few
+     * indexed tokens. The builder never splits one numeric value, never splits
+     * the focus, and never merges across the focus interval.
+     * </p>
+     *
+     * <p>
+     * Tokens are used only as reliability data and as scoring denominators. They
+     * do not define the normal boundaries of the partition.
      * </p>
      *
      * <p>
      * Documents are accepted only when they satisfy all constraints: optional
      * accepted-documents filter, numeric value present on {@code num}, and a
-     * positive indexed-token count on {@code text}. This keeps document counts and
-     * token denominators aligned for keyness scoring.
+     * positive indexed-token count on {@code text}. This keeps document counts
+     * and token denominators aligned for keyness scoring.
      * </p>
      *
-     * @param num numeric field used as the chronological/value axis
+     * @param num numeric field used as the chronological or value axis
      * @param text tokenized field used to obtain per-document token counts
      * @param start inclusive focus start value
      * @param end inclusive focus end value
@@ -179,7 +193,6 @@ public final class Partition
     ) throws IOException {
         Objects.requireNonNull(num, "num");
         Objects.requireNonNull(text, "text");
-
         if (start > end) {
             throw new IllegalArgumentException(
                 "Invalid focus interval: [" + start + ',' + end + ']');
@@ -188,8 +201,11 @@ public final class Partition
         num.cacheDense();
         final FieldStats stats = text.fieldStats();
         final int maxDoc = stats.maxDoc();
-        final int[] docTokens = stats.docTokensRef();
-
+        if (num.reader.maxDoc() != maxDoc) {
+            throw new IllegalArgumentException(
+                "Numeric field reader maxDoc=" + num.reader.maxDoc()
+                + " != text field stats maxDoc=" + maxDoc);
+        }
         if (acceptedDocs != null && acceptedDocs.length() < maxDoc) {
             throw new IllegalArgumentException(
                 "acceptedDocs.length()=" + acceptedDocs.length()
@@ -198,7 +214,6 @@ public final class Partition
 
         final int intMin = exactInt(num.min(), "min");
         final int intMax = exactInt(num.max(), "max");
-
         if (end < intMin || start > intMax) {
             throw new IllegalArgumentException(
                 "Focus interval [" + start + ',' + end
@@ -206,106 +221,50 @@ public final class Partition
                 + intMin + ',' + intMax + ']');
         }
 
+        // Phase 1: tally per-value document and token counts.
         final int range = denseRange(intMin, intMax);
+        final int[] docTokens = stats.docTokensRef();
+        final int[] valueDocs = new int[range];
         final long[] valueTokens = new long[range];
+        tallyValues(num, docTokens, acceptedDocs, intMin, valueDocs, valueTokens);
 
-        for (int docId = 0; docId < maxDoc; docId++) {
-            if (acceptedDocs != null && !acceptedDocs.get(docId)) {
-                continue;
-            }
-
-            final int tokens = docTokens[docId];
-            if (tokens <= 0 || !num.hasValue(docId)) {
-                continue;
-            }
-
-            final int value = num.docValue(docId);
-            final int offset = value - intMin;
-
-            valueTokens[offset] += tokens;
-        }
-
+        // Phase 2: build the focus period and verify it carries data.
         final int focusFirst = Math.max(start, intMin) - intMin;
         final int focusLast = Math.min(end, intMax) - intMin;
-        final long focusTokens = sum(valueTokens, focusFirst, focusLast);
-
-        if (focusTokens <= 0L) {
+        final Period focus = new Period(focusFirst, focusLast, valueDocs, valueTokens);
+        if (focus.docs <= 0 || focus.tokens <= 0L) {
             throw new IllegalArgumentException(
                 "Focus interval [" + start + ',' + end
                 + "] contains no accepted text tokens.");
         }
 
-        final SideStats leftStats = sideStats(valueTokens, 0, focusFirst - 1);
-        final SideStats rightStats = sideStats(valueTokens, focusLast + 1, range - 1);
-        final long nonFocusTokens = leftStats.tokens + rightStats.tokens;
-        final int nonFocusValues = leftStats.activeValues + rightStats.activeValues;
-
-        if (nonFocusTokens <= 0L || nonFocusValues <= 0) {
+        // Phase 3: cut left and right of the focus, repair weak extremities.
+        final int baseWidth = focus.width();
+        final List<Period> left = repairExtremities(
+            leftPeriods(focusFirst, baseWidth, valueDocs, valueTokens), baseWidth);
+        final List<Period> right = repairExtremities(
+            rightPeriods(focusLast, range, baseWidth, valueDocs, valueTokens), baseWidth);
+        if (left.isEmpty() && right.isEmpty()) {
             throw new IllegalArgumentException(
                 "No non-focus accepted text tokens available outside ["
                 + start + ',' + end + "].");
         }
 
-        int comparisonParts = comparisonPartCount(nonFocusTokens, nonFocusValues);
-        if (leftStats.activeValues > 0 && rightStats.activeValues > 0) {
-            comparisonParts = Math.max(2, comparisonParts);
+        // Phase 4: assemble the chronological list of periods.
+        final List<Period> periods = new ArrayList<>(left.size() + 1 + right.size());
+        periods.addAll(left);
+        periods.add(focus);
+        periods.addAll(right);
+        if (periods.size() > MAX_PARTS) {
+            throw new IllegalArgumentException(
+                "Too many parts for byte partition: " + periods.size());
         }
-        final int leftPartCount = leftPartCount(
-            comparisonParts,
-            leftStats,
-            rightStats,
-            nonFocusTokens
-        );
-        final int rightPartCount = comparisonParts - leftPartCount;
+        final int focusPart = left.size();
 
-        final Segment[] leftSegments = segments(
-            valueTokens,
-            0,
-            focusFirst - 1,
-            leftPartCount
-        );
-        final Segment[] rightSegments = segments(
-            valueTokens,
-            focusLast + 1,
-            range - 1,
-            rightPartCount
-        );
-
-        final int focusPart = leftSegments.length;
-        final int partCount = leftSegments.length + 1 + rightSegments.length;
-        final int[] valuePart = new int[range];
-        Arrays.fill(valuePart, NO_PART);
-
-        for (int part = 0; part < leftSegments.length; part++) {
-            fill(valuePart, leftSegments[part], part);
-        }
-        Arrays.fill(valuePart, focusFirst, focusLast + 1, focusPart);
-        for (int i = 0; i < rightSegments.length; i++) {
-            fill(valuePart, rightSegments[i], focusPart + 1 + i);
-        }
-
-        final Partition partition = new Partition(maxDoc, partCount, focusPart);
-
-        for (int docId = 0; docId < maxDoc; docId++) {
-            if (acceptedDocs != null && !acceptedDocs.get(docId)) {
-                continue;
-            }
-
-            final int tokens = docTokens[docId];
-            if (tokens <= 0 || !num.hasValue(docId)) {
-                continue;
-            }
-
-            final int value = num.docValue(docId);
-            final int part = valuePart[value - intMin];
-            if (part == NO_PART) {
-                continue;
-            }
-
-            partition.set(docId, part);
-            partition.addTokens(part, tokens);
-        }
-
+        // Phase 5: map every dense value offset to its part, then assign documents.
+        final byte[] valuePart = mapValuesToParts(periods, range);
+        final Partition partition = new Partition(maxDoc, periods.size(), focusPart);
+        assignDocs(num, docTokens, acceptedDocs, intMin, valuePart, partition);
         return partition;
     }
 
@@ -406,7 +365,7 @@ public final class Partition
     }
 
     /**
-     * Returns the number of indexed tokens in one part.
+     * Returns the indexed-token count assigned to one part.
      *
      * @param part part id
      * @return token count for the part
@@ -419,7 +378,7 @@ public final class Partition
     }
 
     /**
-     * Returns the internal part to token count array.
+     * Returns the internal part-token count array.
      *
      * <p>
      * This method is intended for hot loops. The returned array must not be
@@ -451,20 +410,33 @@ public final class Partition
     }
 
     /**
-     * Adds indexed tokens to one part during construction.
+     * Filters documents and assigns each accepted one to its part.
      *
-     * @param part part id
-     * @param tokens token count to add
-     * @throws IllegalArgumentException if {@code part} is out of range or
-     *                                  {@code tokens < 0}
+     * @param num numeric value provider
+     * @param docTokens per-document token counts
+     * @param acceptedDocs optional accepted-documents filter, may be {@code null}
+     * @param intMin minimum integer value (dense offset origin)
+     * @param valuePart value-offset to part-id lookup
+     * @param target partition being filled
+     * @throws IOException if numeric value access fails
      */
-    void addTokens(final int part, final int tokens)
-    {
-        checkPart(part);
-        if (tokens < 0) {
-            throw new IllegalArgumentException("tokens < 0: " + tokens);
+    private static void assignDocs(
+        final FlucNum num,
+        final int[] docTokens,
+        final FixedBitSet acceptedDocs,
+        final int intMin,
+        final byte[] valuePart,
+        final Partition target
+    ) throws IOException {
+        final int maxDoc = target.maxDoc;
+        for (int docId = 0; docId < maxDoc; docId++) {
+            if (acceptedDocs != null && !acceptedDocs.get(docId)) continue;
+            final int tokens = docTokens[docId];
+            if (tokens <= 0 || !num.hasValue(docId)) continue;
+            final byte part = valuePart[num.docValue(docId) - intMin];
+            if (part == NO_PART) continue;
+            target.set(docId, part, tokens);
         }
-        partTokens[part] += tokens;
     }
 
     /**
@@ -498,68 +470,12 @@ public final class Partition
     }
 
     /**
-     * Assigns one document to a part.
-     *
-     * <p>
-     * Package-private construction method. Reassigning a document from one part
-     * to another updates document counts consistently. Token totals are updated
-     * separately by {@link #addTokens(int, int)}.
-     * </p>
-     *
-     * @param docId global Lucene document id
-     * @param part  target part id
-     * @throws IllegalArgumentException if {@code docId} or {@code part} is out
-     *                                  of range
-     */
-    void set(final int docId, final int part)
-    {
-        checkDocId(docId);
-        checkPart(part);
-
-        final byte newPart = (byte) part;
-        final byte oldPart = docPart[docId];
-
-        if (oldPart == newPart) return;
-
-        if (oldPart != NO_PART) {
-            partDocs[oldPart]--;
-        }
-
-        docPart[docId] = newPart;
-        partDocs[newPart]++;
-    }
-
-    /**
-     * Computes the number of comparison parts from token mass and value count.
-     *
-     * @param nonFocusTokens accepted non-focus token count
-     * @param activeValues number of non-focus values with accepted tokens
-     * @return comparison part count
-     */
-    private static int comparisonPartCount(
-        final long nonFocusTokens,
-        final int activeValues
-    ) {
-        final int byTokens = Math.max(
-            1,
-            (int) Math.min(
-                Integer.MAX_VALUE,
-                nonFocusTokens / DEFAULT_MIN_PART_TOKENS
-            )
-        );
-        return Math.min(
-            Math.min(DEFAULT_COMPARISON_PARTS, activeValues),
-            byTokens
-        );
-    }
-
-    /**
-     * Computes the dense numeric range length.
+     * Computes the dense integer range length.
      *
      * @param min minimum value
      * @param max maximum value
-     * @return range length
-     * @throws IllegalArgumentException if the range overflows {@code int}
+     * @return number of integer values in {@code [min, max]}
+     * @throws IllegalArgumentException if the range overflows an {@code int}
      */
     private static int denseRange(final int min, final int max)
     {
@@ -567,295 +483,367 @@ public final class Partition
             return Math.addExact(Math.subtractExact(max, min), 1);
         } catch (ArithmeticException e) {
             throw new IllegalArgumentException(
-                "Invalid dense numeric range: [" + min + ',' + max + ']', e);
+                "Invalid dense value range: [" + min + ',' + max + ']', e);
         }
     }
 
     /**
-     * Returns a double known to represent an exact {@code int} as an int.
+     * Converts an exactly representable integer-valued double to {@code int}.
      *
-     * @param value double value
-     * @param label diagnostic label
+     * @param value numeric value
+     * @param name value label for error reporting
      * @return integer value
-     * @throws IllegalStateException if the value is not an exact int
+     * @throws IllegalArgumentException if the value is not an exact int
      */
-    private static int exactInt(final double value, final String label)
+    private static int exactInt(final double value, final String name)
     {
         final int intValue = (int) value;
         if ((double) intValue != value) {
-            throw new IllegalStateException(label + " is not an exact int: " + value);
+            throw new IllegalArgumentException(
+                name + " is not an exact int value: " + value);
         }
         return intValue;
     }
 
     /**
-     * Fills one segment in the value-to-part map.
+     * Builds raw left-side periods in chronological order.
      *
-     * @param valuePart destination map
-     * @param segment segment to fill
-     * @param part part id
-     */
-    private static void fill(
-        final int[] valuePart,
-        final Segment segment,
-        final int part
-    ) {
-        Arrays.fill(valuePart, segment.first, segment.last + 1, part);
-    }
-
-    /**
-     * Allocates comparison parts to the left side.
+     * <p>
+     * Iteration cuts from the focus boundary backward, so the period adjacent
+     * to the focus has full width and the earliest period may be truncated.
+     * The result is reversed once so the returned list is chronological.
+     * </p>
      *
-     * @param comparisonParts total comparison part count
-     * @param left left-side statistics
-     * @param right right-side statistics
-     * @param nonFocusTokens total non-focus token count
-     * @return number of left-side parts
-     */
-    private static int leftPartCount(
-        final int comparisonParts,
-        final SideStats left,
-        final SideStats right,
-        final long nonFocusTokens
-    ) {
-        if (left.activeValues <= 0 || left.tokens <= 0L) {
-            return 0;
-        }
-        if (right.activeValues <= 0 || right.tokens <= 0L) {
-            return comparisonParts;
-        }
-
-        int leftCount = (int) Math.round(
-            (double) comparisonParts * (double) left.tokens / (double) nonFocusTokens
-        );
-        leftCount = Math.max(1, Math.min(comparisonParts - 1, leftCount));
-        leftCount = Math.min(leftCount, left.activeValues);
-
-        int rightCount = comparisonParts - leftCount;
-        if (rightCount > right.activeValues) {
-            final int excess = rightCount - right.activeValues;
-            rightCount = right.activeValues;
-            leftCount += excess;
-        }
-        if (leftCount > left.activeValues) {
-            final int excess = leftCount - left.activeValues;
-            leftCount = left.activeValues;
-            rightCount += excess;
-        }
-        if (rightCount <= 0) {
-            rightCount = 1;
-            leftCount = comparisonParts - 1;
-        }
-        if (leftCount <= 0) {
-            leftCount = 1;
-        }
-        return leftCount;
-    }
-
-    /**
-     * Segments a side into near-equal-token chronological blocks.
-     *
+     * @param focusFirst first focus offset
+     * @param width period width in integer values
+     * @param valueDocs document counts by value offset
      * @param valueTokens token counts by value offset
-     * @param first first offset, inclusive
-     * @param last last offset, inclusive
-     * @param partCount requested part count
-     * @return segments in chronological order
+     * @return raw left periods, chronological order
      */
-    private static Segment[] segments(
-        final long[] valueTokens,
-        final int first,
-        final int last,
-        final int partCount
+    private static ArrayList<Period> leftPeriods(
+        final int focusFirst,
+        final int width,
+        final int[] valueDocs,
+        final long[] valueTokens
     ) {
-        if (partCount <= 0 || first > last) {
-            return new Segment[0];
+        final ArrayList<Period> periods = new ArrayList<>();
+        for (int last = focusFirst - 1; last >= 0;) {
+            final int first = Math.max(0, last - width + 1);
+            periods.add(new Period(first, last, valueDocs, valueTokens));
+            last = first - 1;
         }
-
-        final int active = activeOffsets(valueTokens, first, last, null);
-        if (active <= 0) {
-            return new Segment[0];
-        }
-
-        final int count = Math.min(partCount, active);
-        final int[] offsets = new int[active];
-        activeOffsets(valueTokens, first, last, offsets);
-
-        final long[] prefix = new long[active + 1];
-        for (int i = 0; i < active; i++) {
-            prefix[i + 1] = prefix[i] + valueTokens[offsets[i]];
-        }
-
-        if (count == 1) {
-            return new Segment[] {
-                new Segment(offsets[0], offsets[active - 1], prefix[active])
-            };
-        }
-
-        final double target = (double) prefix[active] / (double) count;
-        final double[][] dp = new double[count + 1][active + 1];
-        final int[][] prev = new int[count + 1][active + 1];
-
-        for (int p = 0; p <= count; p++) {
-            Arrays.fill(dp[p], Double.POSITIVE_INFINITY);
-            Arrays.fill(prev[p], -1);
-        }
-        dp[0][0] = 0d;
-
-        for (int p = 1; p <= count; p++) {
-            for (int i = p; i <= active; i++) {
-                for (int j = p - 1; j < i; j++) {
-                    final long partTokens = prefix[i] - prefix[j];
-                    final double ratio = (double) partTokens / target;
-                    final double cost = Math.log(ratio) * Math.log(ratio);
-                    final double candidate = dp[p - 1][j] + cost;
-                    if (candidate < dp[p][i]) {
-                        dp[p][i] = candidate;
-                        prev[p][i] = j;
-                    }
-                }
-            }
-        }
-
-        final Segment[] segments = new Segment[count];
-        int end = active;
-        for (int p = count; p > 0; p--) {
-            final int start = prev[p][end];
-            if (start < 0) {
-                throw new IllegalStateException("Cannot reconstruct token partition.");
-            }
-            segments[p - 1] = new Segment(
-                offsets[start],
-                offsets[end - 1],
-                prefix[end] - prefix[start]
-            );
-            end = start;
-        }
-
-        return segments;
+        Collections.reverse(periods);
+        return periods;
     }
 
     /**
-     * Counts active offsets or fills the destination with them.
+     * Builds the value-offset to part-id lookup table.
      *
-     * @param valueTokens token counts by value offset
-     * @param first first offset, inclusive
-     * @param last last offset, inclusive
-     * @param dst optional destination; {@code null} means count only
-     * @return active offset count
+     * @param periods periods in chronological order
+     * @param range dense value range length
+     * @return lookup array sized {@code range}, with {@link #NO_PART} for gaps
+     * @throws IllegalStateException if periods would require more than
+     *                               {@link #MAX_PARTS} parts
      */
-    private static int activeOffsets(
-        final long[] valueTokens,
-        final int first,
-        final int last,
-        final int[] dst
-    ) {
-        int count = 0;
-        for (int offset = Math.max(0, first); offset <= last && offset < valueTokens.length; offset++) {
-            if (valueTokens[offset] <= 0L) {
-                continue;
-            }
-            if (dst != null) {
-                dst[count] = offset;
-            }
-            count++;
-        }
-        return count;
-    }
-
-    /**
-     * Computes side statistics on one inclusive offset range.
-     *
-     * @param valueTokens token counts by value offset
-     * @param first first offset, inclusive
-     * @param last last offset, inclusive
-     * @return side statistics
-     */
-    private static SideStats sideStats(
-        final long[] valueTokens,
-        final int first,
-        final int last
-    ) {
-        long tokens = 0L;
-        int activeValues = 0;
-
-        for (int offset = Math.max(0, first); offset <= last && offset < valueTokens.length; offset++) {
-            final long valueTokenCount = valueTokens[offset];
-            if (valueTokenCount <= 0L) {
-                continue;
-            }
-            tokens += valueTokenCount;
-            activeValues++;
-        }
-
-        return new SideStats(tokens, activeValues);
-    }
-
-    /**
-     * Sums an inclusive range of value-token counts.
-     *
-     * @param valueTokens token counts by value offset
-     * @param first first offset, inclusive
-     * @param last last offset, inclusive
-     * @return token sum
-     */
-    private static long sum(
-        final long[] valueTokens,
-        final int first,
-        final int last
-    ) {
-        long sum = 0L;
-        for (int offset = Math.max(0, first); offset <= last && offset < valueTokens.length; offset++) {
-            sum += valueTokens[offset];
-        }
-        return sum;
-    }
-
-    /** Segment over inclusive value offsets. */
-    private static final class Segment
+    private static byte[] mapValuesToParts(final List<Period> periods, final int range)
     {
-        /** First value offset, inclusive. */
+        final byte[] valuePart = new byte[range];
+        Arrays.fill(valuePart, NO_PART);
+        for (int part = 0; part < periods.size(); part++) {
+            final Period period = periods.get(part);
+            final byte partByte = (byte) part;
+            for (int offset = period.first; offset <= period.last; offset++) {
+                valuePart[offset] = partByte;
+            }
+        }
+        return valuePart;
+    }
+
+    /**
+     * Merges two adjacent periods at consecutive indices, in place.
+     *
+     * @param periods period list
+     * @param index index of the first period; the period at {@code index + 1}
+     *              is merged into it and removed
+     */
+    private static void mergeAdjacent(final List<Period> periods, final int index)
+    {
+        final Period merged = Period.merge(periods.get(index), periods.get(index + 1));
+        periods.set(index, merged);
+        periods.remove(index + 1);
+    }
+
+    /**
+     * Rejects one document.
+     *
+     * <p>
+     * Package-private construction method. Token counts are not changed by this
+     * overload. Token-aware builders should use {@link #reject(int, int)}.
+     * </p>
+     *
+     * @param docId global Lucene document id
+     * @throws IllegalArgumentException if {@code docId} is out of range
+     */
+    void reject(final int docId)
+    {
+        reject(docId, 0);
+    }
+
+    /**
+     * Rejects one document and subtracts its token count from the previous part.
+     *
+     * @param docId global Lucene document id
+     * @param tokens token count previously added for this document
+     * @throws IllegalArgumentException if {@code docId} is out of range or
+     *                                  {@code tokens < 0}
+     */
+    void reject(final int docId, final int tokens)
+    {
+        checkDocId(docId);
+        if (tokens < 0) {
+            throw new IllegalArgumentException("tokens < 0: " + tokens);
+        }
+
+        final byte oldPart = docPart[docId];
+        if (oldPart == NO_PART) return;
+
+        partDocs[oldPart]--;
+        partTokens[oldPart] -= tokens;
+        docPart[docId] = NO_PART;
+    }
+
+    /**
+     * Repairs weak extremity periods by merging them inward.
+     *
+     * <p>
+     * Internal periods are intentionally left untouched. Sparse internal years
+     * are part of the chronological corpus rhythm; only boundary artifacts are
+     * expanded.
+     * </p>
+     *
+     * @param raw raw periods in chronological order
+     * @param baseWidth normal calendar width for one comparison period
+     * @return repaired non-empty periods
+     */
+    private static ArrayList<Period> repairExtremities(
+        final ArrayList<Period> raw,
+        final int baseWidth
+    ) {
+        final ArrayList<Period> periods = new ArrayList<>(raw.size());
+        for (Period period : raw) {
+            if (period.docs > 0 && period.tokens > 0L) periods.add(period);
+        }
+
+        while (periods.size() > 1 && weakExtremity(periods.get(0), baseWidth)) {
+            mergeAdjacent(periods, 0);
+        }
+        while (periods.size() > 1
+            && weakExtremity(periods.get(periods.size() - 1), baseWidth)) {
+            mergeAdjacent(periods, periods.size() - 2);
+        }
+        return periods;
+    }
+
+    /**
+     * Builds raw right-side periods in chronological order.
+     *
+     * @param focusLast last focus offset
+     * @param range dense value range length
+     * @param width period width in integer values
+     * @param valueDocs document counts by value offset
+     * @param valueTokens token counts by value offset
+     * @return raw right periods, chronological order
+     */
+    private static ArrayList<Period> rightPeriods(
+        final int focusLast,
+        final int range,
+        final int width,
+        final int[] valueDocs,
+        final long[] valueTokens
+    ) {
+        final ArrayList<Period> periods = new ArrayList<>();
+        for (int first = focusLast + 1; first < range;) {
+            final int last = Math.min(range - 1, first + width - 1);
+            periods.add(new Period(first, last, valueDocs, valueTokens));
+            first = last + 1;
+        }
+        return periods;
+    }
+
+    /**
+     * Assigns one document to a part.
+     *
+     * <p>
+     * Reassigning a document from one part to another updates document counts.
+     * Token counts are not changed by this overload. Token-aware builders should
+     * use {@link #set(int, int, int)}.
+     * </p>
+     *
+     * @param docId global Lucene document id
+     * @param part target part id
+     * @throws IllegalArgumentException if {@code docId} or {@code part} is out
+     *                                  of range
+     */
+    void set(final int docId, final int part)
+    {
+        set(docId, part, 0);
+    }
+
+    /**
+     * Assigns one document to a part and updates token counts.
+     *
+     * @param docId global Lucene document id
+     * @param part target part id
+     * @param tokens indexed-token count for this document
+     * @throws IllegalArgumentException if {@code docId} or {@code part} is out
+     *                                  of range, or if {@code tokens < 0}
+     */
+    void set(final int docId, final int part, final int tokens)
+    {
+        checkDocId(docId);
+        checkPart(part);
+        if (tokens < 0) {
+            throw new IllegalArgumentException("tokens < 0: " + tokens);
+        }
+
+        final byte newPart = (byte) part;
+        final byte oldPart = docPart[docId];
+        if (oldPart == newPart) return;
+
+        if (oldPart != NO_PART) {
+            partDocs[oldPart]--;
+            partTokens[oldPart] -= tokens;
+        }
+        docPart[docId] = newPart;
+        partDocs[newPart]++;
+        partTokens[newPart] += tokens;
+    }
+
+    /**
+     * Tallies per-value document and token counts over the index.
+     *
+     * @param num numeric value provider
+     * @param docTokens per-document token counts
+     * @param acceptedDocs optional accepted-documents filter, may be {@code null}
+     * @param intMin minimum integer value (dense offset origin)
+     * @param valueDocs out parameter; per-value-offset document counts
+     * @param valueTokens out parameter; per-value-offset token counts
+     * @throws IOException if numeric value access fails
+     */
+    private static void tallyValues(
+        final FlucNum num,
+        final int[] docTokens,
+        final FixedBitSet acceptedDocs,
+        final int intMin,
+        final int[] valueDocs,
+        final long[] valueTokens
+    ) throws IOException {
+        final int maxDoc = docTokens.length;
+        for (int docId = 0; docId < maxDoc; docId++) {
+            if (acceptedDocs != null && !acceptedDocs.get(docId)) continue;
+            final int tokens = docTokens[docId];
+            if (tokens <= 0 || !num.hasValue(docId)) continue;
+            final int offset = num.docValue(docId) - intMin;
+            valueDocs[offset]++;
+            valueTokens[offset] += tokens;
+        }
+    }
+
+    /**
+     * Reports whether an extremity period should be expanded inward.
+     *
+     * @param period period to test
+     * @param baseWidth normal calendar width for one comparison period
+     * @return {@code true} if the extremity period should be expanded
+     */
+    private static boolean weakExtremity(final Period period, final int baseWidth)
+    {
+        return period.width() < baseWidth
+            || period.docs < MIN_PART_DOCS
+            || period.tokens < MIN_PART_TOKENS;
+    }
+
+    /** Chronological period over dense numeric offsets. */
+    private static final class Period
+    {
+        /** First dense value offset, inclusive. */
         final int first;
 
-        /** Last value offset, inclusive. */
+        /** Last dense value offset, inclusive. */
         final int last;
 
-        /** Segment token count. */
+        /** Number of accepted documents in the period. */
+        final int docs;
+
+        /** Number of indexed tokens in the period. */
         final long tokens;
 
         /**
-         * Creates a segment.
+         * Creates a period and computes its document and token totals.
          *
-         * @param first first value offset, inclusive
-         * @param last last value offset, inclusive
-         * @param tokens segment token count
+         * @param first first dense value offset, inclusive
+         * @param last last dense value offset, inclusive
+         * @param valueDocs document counts by dense value offset
+         * @param valueTokens token counts by dense value offset
          */
-        Segment(final int first, final int last, final long tokens)
+        Period(
+            final int first,
+            final int last,
+            final int[] valueDocs,
+            final long[] valueTokens
+        ) {
+            if (first > last) {
+                throw new IllegalArgumentException(
+                    "Invalid period: [" + first + ',' + last + ']');
+            }
+            int d = 0;
+            long t = 0L;
+            for (int offset = first; offset <= last; offset++) {
+                d += valueDocs[offset];
+                t += valueTokens[offset];
+            }
+            this.first = first;
+            this.last = last;
+            this.docs = d;
+            this.tokens = t;
+        }
+
+        /**
+         * Private constructor for pre-computed totals; used by {@link #merge}.
+         */
+        private Period(final int first, final int last, final int docs, final long tokens)
         {
             this.first = first;
             this.last = last;
+            this.docs = docs;
             this.tokens = tokens;
         }
-    }
-
-    /** Side token and active-value statistics. */
-    private static final class SideStats
-    {
-        /** Number of active values on the side. */
-        final int activeValues;
-
-        /** Token count on the side. */
-        final long tokens;
 
         /**
-         * Creates side statistics.
+         * Merges two adjacent or overlapping periods.
          *
-         * @param tokens token count
-         * @param activeValues number of active values
+         * @param a first period
+         * @param b second period
+         * @return merged period
          */
-        SideStats(final long tokens, final int activeValues)
+        static Period merge(final Period a, final Period b)
         {
-            this.tokens = tokens;
-            this.activeValues = activeValues;
+            return new Period(
+                Math.min(a.first, b.first),
+                Math.max(a.last, b.last),
+                a.docs + b.docs,
+                a.tokens + b.tokens
+            );
+        }
+
+        /**
+         * Returns the calendar width in integer values.
+         *
+         * @return number of values covered by this period
+         */
+        int width()
+        {
+            return last - first + 1;
         }
     }
 }
