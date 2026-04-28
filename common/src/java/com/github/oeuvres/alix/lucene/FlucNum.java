@@ -397,12 +397,11 @@ public class FlucNum extends Fluc
      *
      * @param start        inclusive focus start value
      * @param end          inclusive focus end value
-     * @param policy       policy for incomplete extremity parts
+     * @param policy       policy for incomplete extremity parts, default is {@link PartialExtremityPolicy#ABSORB}
      * @param acceptedDocs optional accepted-documents bitset; {@code null} means
      *                     all documents with a value are accepted
      * @return document partition aligned by global Lucene doc id
      * @throws IOException              if dense-cache construction fails
-     * @throws NullPointerException     if {@code policy == null}
      * @throws IllegalArgumentException if the focus interval is invalid, outside
      *                                  the field value range, creates too many
      *                                  parts for byte storage, or if

@@ -59,7 +59,7 @@ public final class Partition
     private final byte[] docPart;
 
     /** Number of accepted documents per part. */
-    private final int[] docs;
+    private final int[] partDocs;
 
     /** Optional focus part, or {@link #NO_FOCUS}. */
     private final int focusPart;
@@ -108,7 +108,7 @@ public final class Partition
         this.partCount = partCount;
         this.focusPart = focusPart;
         this.docPart = new byte[maxDoc];
-        this.docs = new int[partCount];
+        this.partDocs = new int[partCount];
 
         Arrays.fill(docPart, NO_PART);
     }
@@ -155,19 +155,6 @@ public final class Partition
     }
 
     /**
-     * Returns the number of accepted documents in one part.
-     *
-     * @param part part id
-     * @return document count for the part
-     * @throws IllegalArgumentException if {@code part} is out of range
-     */
-    public int docs(final int part)
-    {
-        checkPart(part);
-        return docs[part];
-    }
-
-    /**
      * Returns the focus part.
      *
      * @return focus part id, or {@link #NO_FOCUS}
@@ -208,6 +195,34 @@ public final class Partition
     }
 
     /**
+     * Returns the number of accepted documents in one part.
+     *
+     * @param part part id
+     * @return document count for the part
+     * @throws IllegalArgumentException if {@code part} is out of range
+     */
+    public int partDocs(final int part)
+    {
+        checkPart(part);
+        return partDocs[part];
+    }
+
+    /**
+     * Returns the internal part to document count array.
+     *
+     * <p>
+     * This method is intended for hot loops. The returned array must not be
+     * modified.
+     * </p>
+     *
+     * @return internal array indexed by part id
+     */
+    public int[] partDocsRef()
+    {
+        return partDocs;
+    }
+    
+    /**
      * Returns a compact textual summary.
      *
      * @return debug summary
@@ -219,7 +234,7 @@ public final class Partition
             + "{maxDoc=" + maxDoc
             + ", partCount=" + partCount
             + ", focusPart=" + focusPart
-            + ", docs=" + Arrays.toString(docs)
+            + ", docs=" + Arrays.toString(partDocs)
             + '}';
     }
 
@@ -272,7 +287,7 @@ public final class Partition
         final byte oldPart = docPart[docId];
         if (oldPart == NO_PART) return;
 
-        docs[oldPart]--;
+        partDocs[oldPart]--;
         docPart[docId] = NO_PART;
     }
 
@@ -301,10 +316,10 @@ public final class Partition
         if (oldPart == newPart) return;
 
         if (oldPart != NO_PART) {
-            docs[oldPart]--;
+            partDocs[oldPart]--;
         }
 
         docPart[docId] = newPart;
-        docs[newPart]++;
+        partDocs[newPart]++;
     }
 }

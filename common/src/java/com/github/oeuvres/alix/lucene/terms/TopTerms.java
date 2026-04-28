@@ -486,7 +486,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
 
         initFocus();
         this.focusTokens = partTokens[focusPart];
-        this.focusDocs = partition.docs(focusPart);
+        this.focusDocs = partition.partDocs(focusPart);
 
         final int vocabSize = fieldStats.vocabSize();
         final double[] termScores = new double[vocabSize];
@@ -523,7 +523,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
                     partTokens, 
                     focusPart,
                     focusDocsForTerm,
-                    partition.docs(focusPart)
+                    partition.partDocs(focusPart)
                 );
                 if (!Double.isNaN(s)) {
                     termScores[termId] = s;
