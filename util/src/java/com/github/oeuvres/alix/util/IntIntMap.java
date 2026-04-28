@@ -20,14 +20,18 @@ import java.util.Arrays;
  * <p>Every query method returns {@link #missingValue()} when a key is absent.
  * The default is {@code -1}, suitable for frequency maps whose values are
  * always non-negative. Storing a value equal to {@link #missingValue()} is
- * rejected with {@link IllegalArgumentException}.</p>
+ * rejected with {@link IllegalArgumentException}, and the rejection happens
+ * <em>before</em> any state mutation.</p>
  *
  * <h2>Limitations</h2>
  * <ul>
  *   <li>No removal.</li>
  *   <li>Linear probing; worst-case probe length degrades above ~0.75 load.</li>
- *   <li>Capacity is capped at 2<sup>30</sup> slots.</li>
+ *   <li>Capacity is capped at 2<sup>30</sup> slots; further growth attempts
+ *       throw {@link IllegalStateException}.</li>
  *   <li>Not thread-safe.</li>
+ *   <li>{@link #addTo(int, int)} does not guard against silent 32-bit
+ *       integer overflow of {@code previousValue + delta}.</li>
  * </ul>
  */
 public final class IntIntMap
@@ -58,10 +62,6 @@ public final class IntIntMap
 
     /** Value associated with key {@code 0}; meaningful only when {@link #hasZeroKey}. */
     private int zeroValue;
-
-    // -----------------------------------------------------------------------
-    // Constructors
-    // -----------------------------------------------------------------------
 
     /**
      * Creates a map sized for {@code expectedSize} entries using
@@ -98,40 +98,59 @@ public final class IntIntMap
         allocate(cap);
     }
 
-    // -----------------------------------------------------------------------
-    // Public accessors
-    // -----------------------------------------------------------------------
-
     /**
-     * Returns the sentinel value returned by query methods when a key is absent.
+     * Adds {@code delta} to the value associated with {@code key}. If the key
+     * is absent it is inserted with value {@code delta} (equivalent to a prior
+     * value of {@code 0}).
      *
-     * @return the missing-value sentinel supplied at construction
+     * <p>The resulting value must not equal {@link #missingValue()};
+     * {@link IllegalArgumentException} is thrown <em>before any state
+     * mutation</em> if it would. A negative {@code delta} is permitted.
+     * Silent 32-bit overflow of {@code previousValue + delta} is the
+     * caller's responsibility.</p>
+     *
+     * @param key   any int key
+     * @param delta amount to add to the current value (or to 0 if absent)
+     * @return the new value after addition
+     * @throws IllegalArgumentException if the resulting value equals {@link #missingValue()}
      */
-    public int missingValue() {
-        return missingValue;
+    public int addTo(final int key, final int delta) {
+        if (key == 0) {
+            final int newVal = (hasZeroKey ? zeroValue : 0) + delta;
+            checkValue(newVal);
+            if (!hasZeroKey) {
+                hasZeroKey = true;
+                size++;
+            }
+            zeroValue = newVal;
+            return newVal;
+        }
+
+        final int slot = insertSlot(key);
+        final long e = table[slot];
+        if (e == 0L) {
+            checkValue(delta);
+            table[slot] = pack(key, delta);
+            size++;
+            maybeGrow();
+            return delta;
+        }
+
+        final int newVal = unpackValue(e) + delta;
+        checkValue(newVal);
+        table[slot] = pack(key, newVal);
+        return newVal;
     }
 
     /**
-     * Returns the number of distinct keys currently in the map.
-     *
-     * @return current entry count
+     * Removes all entries from the map without releasing the underlying array.
      */
-    public int size() {
-        return size;
+    public void clear() {
+        Arrays.fill(table, 0L);
+        size = 0;
+        hasZeroKey = false;
+        zeroValue = missingValue;
     }
-
-    /**
-     * Returns {@code true} if the map contains no entries.
-     *
-     * @return {@code true} if {@link #size()} == 0
-     */
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
-    // -----------------------------------------------------------------------
-    // Public queries
-    // -----------------------------------------------------------------------
 
     /**
      * Returns {@code true} if the map contains an entry for {@code key}.
@@ -157,18 +176,22 @@ public final class IntIntMap
         return slot >= 0 ? unpackValue(table[slot]) : missingValue;
     }
 
-    // -----------------------------------------------------------------------
-    // Public mutators
-    // -----------------------------------------------------------------------
+    /**
+     * Returns {@code true} if the map contains no entries.
+     *
+     * @return {@code true} if {@link #size()} == 0
+     */
+    public boolean isEmpty() {
+        return size == 0;
+    }
 
     /**
-     * Removes all entries from the map without releasing the underlying array.
+     * Returns the sentinel value returned by query methods when a key is absent.
+     *
+     * @return the missing-value sentinel supplied at construction
      */
-    public void clear() {
-        Arrays.fill(table, 0L);
-        size = 0;
-        hasZeroKey = false;
-        zeroValue = missingValue;
+    public int missingValue() {
+        return missingValue;
     }
 
     /**
@@ -196,7 +219,8 @@ public final class IntIntMap
         final long e = table[slot];
         if (e == 0L) {
             table[slot] = pack(key, value);
-            if (++size >= resizeAt) rehash(table.length << 1);
+            size++;
+            maybeGrow();
             return missingValue;
         }
 
@@ -229,7 +253,8 @@ public final class IntIntMap
         final long e = table[slot];
         if (e == 0L) {
             table[slot] = pack(key, value);
-            if (++size >= resizeAt) rehash(table.length << 1);
+            size++;
+            maybeGrow();
             return missingValue;
         }
 
@@ -264,57 +289,46 @@ public final class IntIntMap
         }
 
         table[slot] = pack(key, value);
-        if (++size >= resizeAt) rehash(table.length << 1);
+        size++;
+        maybeGrow();
     }
 
     /**
-     * Adds {@code delta} to the value associated with {@code key}.
-     * If the key is absent it is inserted with value {@code delta}
-     * (equivalent to a prior value of {@code 0}).
+     * Returns the number of distinct keys currently in the map.
      *
-     * <p>The resulting value must not equal {@link #missingValue()};
-     * {@link IllegalArgumentException} is thrown if it does. A negative
-     * {@code delta} is permitted.</p>
-     *
-     * @param key   any int key
-     * @param delta amount to add to the current value (or to 0 if absent)
-     * @return the new value after addition
-     * @throws IllegalArgumentException if the resulting value equals {@link #missingValue()}
+     * @return current entry count
      */
-    public int addTo(final int key, final int delta) {
-        if (key == 0) {
-            if (!hasZeroKey) {
-                hasZeroKey = true;
-                zeroValue = 0;
-                size++;
-            }
-            zeroValue += delta;
-            checkValue(zeroValue);
-            return zeroValue;
-        }
-
-        final int slot = insertSlot(key);
-        final long e = table[slot];
-        final int newVal;
-        if (e == 0L) {
-            newVal = delta;
-            checkValue(newVal);
-            table[slot] = pack(key, newVal);
-            if (++size >= resizeAt) rehash(table.length << 1);
-        } else {
-            newVal = unpackValue(e) + delta;
-            checkValue(newVal);
-            table[slot] = pack(key, newVal);
-        }
-        return newVal;
+    public int size() {
+        return size;
     }
 
-    // -----------------------------------------------------------------------
-    // Internal slot resolution
-    // -----------------------------------------------------------------------
+    /**
+     * Allocates a fresh table of {@code capacity} (a power of two) and resets
+     * all dependent state. Callers that need to preserve the zero-key
+     * out-of-band state across the call must capture it before invoking and
+     * restore it afterwards.
+     */
+    private void allocate(final int capacity) {
+        table = new long[capacity];
+        mask = capacity - 1;
+        resizeAt = (int) (capacity * loadFactor);
+        hasZeroKey = false;
+        zeroValue = missingValue;
+        size = 0;
+    }
 
     /**
-     * Finds the slot occupied by {@code key}.
+     * Rejects values equal to the missing-value sentinel.
+     */
+    private void checkValue(final int value) {
+        if (value == missingValue) {
+            throw new IllegalArgumentException(
+                "value must not equal missingValue=" + missingValue);
+        }
+    }
+
+    /**
+     * Locates the slot occupied by {@code key}.
      *
      * @param key non-zero key to find
      * @return slot index if found; {@code -1} if absent
@@ -345,19 +359,48 @@ public final class IntIntMap
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Internal allocation and rehash
-    // -----------------------------------------------------------------------
-
-    private void allocate(final int capacity) {
-        table = new long[capacity];
-        mask = capacity - 1;
-        resizeAt = (int) (capacity * loadFactor);
-        hasZeroKey = false;
-        zeroValue = missingValue;
-        size = 0;
+    /**
+     * Triggers a rehash when the load threshold is reached. Throws if the
+     * table is already at {@link #MAX_CAPACITY} and cannot grow further;
+     * doubling would otherwise overflow {@code int} and produce a confusing
+     * {@code NegativeArraySizeException}.
+     */
+    private void maybeGrow() {
+        if (size < resizeAt) return;
+        if (table.length >= MAX_CAPACITY) {
+            throw new IllegalStateException(
+                "IntIntMap exceeded maximum capacity " + MAX_CAPACITY);
+        }
+        rehash(table.length << 1);
     }
 
+    /**
+     * Murmur3-style 32-bit finalizer used to disperse consecutive int keys.
+     *
+     * @param h raw key
+     * @return dispersed hash
+     */
+    static int mix32(int h) {
+        h ^= (h >>> 16);
+        h *= 0x85ebca6b;
+        h ^= (h >>> 13);
+        h *= 0xc2b2ae35;
+        h ^= (h >>> 16);
+        return h;
+    }
+
+    /**
+     * Packs a {@code (key, value)} pair into a single {@code long}.
+     */
+    private static long pack(final int key, final int value) {
+        return (((long) key) << 32) | (value & 0xffffffffL);
+    }
+
+    /**
+     * Reallocates the table at {@code newCapacity} (a power of two) and
+     * reinserts all entries. The zero-key state is preserved out-of-band
+     * across the call.
+     */
     private void rehash(final int newCapacity) {
         final long[] oldTable = table;
         final boolean oldHasZeroKey = hasZeroKey;
@@ -384,48 +427,6 @@ public final class IntIntMap
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Internal helpers
-    // -----------------------------------------------------------------------
-
-    private void checkValue(final int value) {
-        if (value == missingValue) {
-            throw new IllegalArgumentException(
-                "value must not equal missingValue=" + missingValue);
-        }
-    }
-
-    private static long pack(final int key, final int value) {
-        return (((long) key) << 32) | (value & 0xffffffffL);
-    }
-
-    private static int unpackKey(final long entry) {
-        return (int) (entry >>> 32);
-    }
-
-    private static int unpackValue(final long entry) {
-        return (int) entry;
-    }
-
-    // -----------------------------------------------------------------------
-    // Static utilities (package-visible for tests)
-    // -----------------------------------------------------------------------
-
-    /**
-     * Murmur3-style 32-bit finalizer used to disperse consecutive int keys.
-     *
-     * @param h raw key
-     * @return dispersed hash
-     */
-    static int mix32(int h) {
-        h ^= (h >>> 16);
-        h *= 0x85ebca6b;
-        h ^= (h >>> 13);
-        h *= 0xc2b2ae35;
-        h ^= (h >>> 16);
-        return h;
-    }
-
     /**
      * Returns the smallest power-of-two table capacity sufficient to hold
      * {@code expected} entries at load factor {@code f}.
@@ -445,5 +446,19 @@ public final class IntIntMap
         int cap = 1;
         while (cap < needed) cap <<= 1;
         return cap;
+    }
+
+    /**
+     * Extracts the key from a packed entry.
+     */
+    private static int unpackKey(final long entry) {
+        return (int) (entry >>> 32);
+    }
+
+    /**
+     * Extracts the value from a packed entry.
+     */
+    private static int unpackValue(final long entry) {
+        return (int) entry;
     }
 }
