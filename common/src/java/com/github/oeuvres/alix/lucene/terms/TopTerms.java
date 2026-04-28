@@ -518,7 +518,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry> {
             if (focusFreq > 0) {
                 focusTermFreq[termId] = focusFreq;
                 focusTermDocs[termId] = focusDocsForTerm;
-                final double s = scorer.score(partTermFreq, partTokens, focusPart);
+                final double s = scorer.score(
+                    partTermFreq, 
+                    partTokens, 
+                    focusPart,
+                    focusDocsForTerm,
+                    partition.docs(focusPart)
+                );
                 if (!Double.isNaN(s)) {
                     termScores[termId] = s;
                     top.push(termId, s);

@@ -105,6 +105,7 @@ public class AlixServlet extends HttpServlet
         final HttpServletResponse response
     ) throws IOException
     {
+        response.setContentType("text/html; charset=UTF-8");
         final String pathInfo = (request.getPathInfo() != null) ? request.getPathInfo() : "/";
         final String[] segments = pathInfo.split("/");
 

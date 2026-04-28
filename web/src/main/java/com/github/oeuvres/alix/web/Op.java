@@ -77,24 +77,24 @@ public abstract class Op
      * @param index  the target index
      * @param format the requested format extension, or {@code null}
      *               for the default full HTML page
-     * @param req    servlet request
-     * @param resp   servlet response
+     * @param request    servlet request
+     * @param response   servlet response
      */
     public final void dispatch(
         final LuceneIndex index,
         final String format,
-        final HttpServletRequest req,
-        final HttpServletResponse resp) throws IOException
+        final HttpServletRequest request,
+        final HttpServletResponse response) throws IOException
     {
         if (format == null) {
-            page(index, req, resp);
+            page(index, request, response);
         } else
             switch (format) {
-                case "json" -> json(index, req, resp);
-                case "html" -> html(index, req, resp);
-                case "jsonl" -> jsonl(index, req, resp);
-                case "csv" -> csv(index, req, resp);
-                default -> AlixServlet.jsonError(resp, 406,
+                case "json" -> json(index, request, response);
+                case "html" -> html(index, request, response);
+                case "jsonl" -> jsonl(index, request, response);
+                case "csv" -> csv(index, request, response);
+                default -> AlixServlet.jsonError(response, 406,
                         getClass().getSimpleName() + ": unsupported format: " + format);
             }
     }

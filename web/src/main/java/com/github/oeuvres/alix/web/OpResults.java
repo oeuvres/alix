@@ -39,7 +39,6 @@ public class OpResults extends Op
         throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
-        response.setContentType("text/html; charset=UTF-8");
         Writer writer = response.getWriter();
         writer.write("""
         <!DOCTYPE html>

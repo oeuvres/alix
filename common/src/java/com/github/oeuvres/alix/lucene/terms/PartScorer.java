@@ -1,38 +1,56 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import java.util.Arrays;
+
 /**
  * Computes a keyness score for one term from a partitioned corpus,
  * scoring the focus part against the other parts.
  *
  * <p>
- * All counts are raw token occurrences, not document frequencies. Inputs
- * are aligned by part id: {@code partTermFreq[p]} occurrences in part
- * {@code p}, with {@code partTokens[p]} total tokens in that part.
+ * All counts are raw token occurrences except where doc counts are
+ * explicitly named. Inputs are aligned by part id: {@code partTermFreq[p]}
+ * occurrences in part {@code p}, with {@code partTokens[p]} total tokens
+ * in that part.
  * </p>
  *
  * <p>
  * Implementations assume {@code partTermFreq.length == partTokens.length},
- * {@code 0 <= partTermFreq[p] <= partTokens[p]}, and a valid {@code focusPart}.
- * Caller bugs (length mismatch, out-of-range index, tf > tokens) throw
- * {@link IllegalArgumentException}; valid but degenerate inputs (zero focus
- * tokens, no usable comparison part) return {@link Double#NaN}.
+ * a valid {@code focusPart}, and {@code 0 <= partTermFreq[p] <= partTokens[p]}
+ * for every part. Caller bugs throw {@link IllegalArgumentException};
+ * valid but degenerate inputs return {@link Double#NaN}.
  * </p>
  *
  * <p>
- * Counts are aggregated as {@code double} for chi-square arithmetic.
- * Realistic text-corpus counts stay well below 2^53, so the cast is harmless.
+ * The {@code focusTermDocs} and {@code focusDocs} arguments support
+ * focus-internal weighting and dispersion checks. Scorers that don't use
+ * doc structure (e.g. {@link Pearson}) ignore them.
+ * </p>
+ *
+ * <p>
+ * Counts aggregate as {@code double} for chi-square arithmetic. Realistic
+ * text-corpus counts stay well below 2^53; the cast is harmless.
  * </p>
  */
 public interface PartScorer {
 
     /**
-     * @param partTermFreq term occurrences per part for the current term
-     * @param partTokens   total token count per part
-     * @param focusPart    part id to score
+     * @param partTermFreq   term occurrences per part for the current term
+     * @param partTokens     total token count per part
+     * @param focusPart      part id to score
+     * @param focusTermDocs  number of focus-part documents containing the
+     *                       term (0 if unknown or unused)
+     * @param focusDocs      total number of documents in the focus part
+     *                       (0 if unknown or unused)
      * @return signed score; positive when the term is over-represented in
      *         {@code focusPart}; {@link Double#NaN} when no signal is computable
      */
-    double score(long[] partTermFreq, long[] partTokens, int focusPart);
+    double score(
+        long[] partTermFreq,
+        long[] partTokens,
+        int focusPart,
+        int focusTermDocs,
+        int focusDocs
+    );
 
     /**
      * Pearson chi-square goodness-of-fit of the term's per-part counts
@@ -65,7 +83,9 @@ public interface PartScorer {
         public double score(
             final long[] partTermFreq,
             final long[] partTokens,
-            final int focusPart
+            final int focusPart,
+            final int focusTermDocs,
+            final int focusDocs
         ) {
             checkInputs(partTermFreq, partTokens, focusPart);
 
@@ -97,43 +117,111 @@ public interface PartScorer {
     }
     
     /**
-     * Minimum signed pairwise G² between the focus part and each other
-     * part taken individually.
+     * Configurable pairwise log-likelihood scorer for the focus part.
      *
      * <p>
-     * Conservative dominance criterion: the focus must out-rank every
-     * non-focus part to receive a positive score. <strong>Anti-robust to
-     * outliers</strong>: a single non-focus part with a high local rate
-     * flips the score regardless of behaviour elsewhere. Pairs with the
-     * other part holding fewer than {@code minPartTokens} tokens are
-     * skipped to keep noisy small parts out of the minimum.
+     * Base statistic: signed 2×2 G² between the focus part and every other
+     * non-focus part taken individually. Returns the {@code k}-th worst
+     * (smallest) pairwise G². With {@code k=1} this is strict dominance —
+     * the focus must out-rank every other part. With larger {@code k} the
+     * scorer tolerates a few outlier non-focus parts; setting {@code k} to
+     * the median position gives a robust dominance criterion that ignores
+     * a single bursty non-focus year.
+     * </p>
+     *
+     * <p>
+     * Optional focus-document weighting multiplies the pairwise score by
+     * {@code log(1 + focusTermDocs)}, surfacing terms that occur in many
+     * focus documents (typological terms, recurring motifs) rather than
+     * terms whose elevated rate comes from a few high-frequency documents.
+     * Mirrors the IDF half of BM25 ranking.
+     * </p>
+     *
+     * <p>
+     * Optional focus-dispersion demotion divides the score by a penalty
+     * when the term occurs in only a small fraction of focus documents.
+     * Penalty is {@code (focusDocs / focusTermDocs)^a}, with {@code a} the
+     * dispersion exponent (0 = no penalty, 1 = inverse coverage, 0.5 a
+     * gentler middle). This catches terms that look characteristic only
+     * because of one or two outlier documents inside the focus.
      * </p>
      */
     class LogLikelihood implements PartScorer {
-        /** Default minimum tokens for a part to enter the pairwise comparison. */
+
+        /** Default minimum tokens for a non-focus part to enter the comparison. */
         public static final long DEFAULT_MIN_PART_TOKENS = 1000L;
 
-        private final long minPartTokens;
+        /** Aggregation strategy across the per-part pairwise G² values. */
+        public enum Aggregation {
+            /** Strict dominance: smallest pairwise G² wins. */
+            MIN,
+            /** Robust dominance: median pairwise G² (k = (n+1)/2). */
+            MEDIAN,
+            /** Configurable: k-th worst pairwise G², with k set explicitly. */
+            KTH_WORST
+        }
 
-        /** Uses {@link #DEFAULT_MIN_PART_TOKENS}. */
-        public LogLikelihood() { this(DEFAULT_MIN_PART_TOKENS); }
+        private final long minPartTokens;
+        private final Aggregation aggregation;
+        private final int kthWorst;
+        private final boolean docFreqWeight;
+        private final double dispersionExponent;
+
+        /** Strict dominance, no doc-weighting, no dispersion penalty. */
+        public LogLikelihood() {
+            this(DEFAULT_MIN_PART_TOKENS, Aggregation.MIN, 1, false, 0d);
+        }
 
         /**
-         * @param minPartTokens minimum tokens for a non-focus part to be
-         *                      considered; must be {@code >= 0}
+         * Full configuration.
+         *
+         * @param minPartTokens       minimum tokens for a non-focus part to
+         *                            enter the comparison; must be >= 0
+         * @param aggregation         pairwise aggregation strategy
+         * @param kthWorst            with {@link Aggregation#KTH_WORST}, the
+         *                            1-based rank of pairwise G² to return;
+         *                            ignored otherwise
+         * @param docFreqWeight       multiply score by log(1 + focusTermDocs)
+         * @param dispersionExponent  exponent {@code a} in the focus-coverage
+         *                            penalty {@code (focusDocs/focusTermDocs)^a};
+         *                            0 disables; 0.5 gentle; 1 inverse coverage
          */
-        public LogLikelihood(final long minPartTokens) {
+        public LogLikelihood(
+            final long minPartTokens,
+            final Aggregation aggregation,
+            final int kthWorst,
+            final boolean docFreqWeight,
+            final double dispersionExponent
+        ) {
             if (minPartTokens < 0L) {
-                throw new IllegalArgumentException("minPartTokens < 0: " + minPartTokens);
+                throw new IllegalArgumentException(
+                    "minPartTokens < 0: " + minPartTokens);
+            }
+            if (aggregation == null) {
+                throw new IllegalArgumentException("aggregation is null");
+            }
+            if (aggregation == Aggregation.KTH_WORST && kthWorst < 1) {
+                throw new IllegalArgumentException(
+                    "kthWorst must be >= 1, got " + kthWorst);
+            }
+            if (dispersionExponent < 0d || Double.isNaN(dispersionExponent)) {
+                throw new IllegalArgumentException(
+                    "dispersionExponent must be >= 0, got " + dispersionExponent);
             }
             this.minPartTokens = minPartTokens;
+            this.aggregation = aggregation;
+            this.kthWorst = kthWorst;
+            this.docFreqWeight = docFreqWeight;
+            this.dispersionExponent = dispersionExponent;
         }
 
         @Override
         public double score(
             final long[] partTermFreq,
             final long[] partTokens,
-            final int focusPart
+            final int focusPart,
+            final int focusTermDocs,
+            final int focusDocs
         ) {
             checkInputs(partTermFreq, partTokens, focusPart);
 
@@ -141,8 +229,11 @@ public interface PartScorer {
             final long focusTokens = partTokens[focusPart];
             if (focusTokens <= 0L) return Double.NaN;
 
-            double minG2 = Double.POSITIVE_INFINITY;
-            boolean seen = false;
+            // Collect signed pairwise G² values against every usable non-focus part.
+            // Capacity is partCount - 1; actual fill may be smaller after the
+            // minPartTokens filter.
+            final double[] pairwise = new double[partTokens.length - 1];
+            int n = 0;
             for (int p = 0; p < partTokens.length; p++) {
                 if (p == focusPart) continue;
                 if (partTokens[p] < minPartTokens) continue;
@@ -151,13 +242,58 @@ public interface PartScorer {
                     partTermFreq[p], partTokens[p]
                 );
                 if (Double.isNaN(g2)) continue;
-                if (g2 < minG2) minG2 = g2;
-                seen = true;
+                pairwise[n++] = g2;
             }
-            return seen ? minG2 : Double.NaN;
+            if (n == 0) return Double.NaN;
+
+            // Aggregate. For MIN, a single linear scan beats sorting; for MEDIAN
+            // and KTH_WORST, sort once and index. Sort cost is O(n log n) over
+            // partCount values — partCount is small (dozens), this is cheap.
+            double base;
+            switch (aggregation) {
+                case MIN:
+                    base = pairwise[0];
+                    for (int i = 1; i < n; i++) {
+                        if (pairwise[i] < base) base = pairwise[i];
+                    }
+                    break;
+                case MEDIAN:
+                    Arrays.sort(pairwise, 0, n);
+                    // (n+1)/2 in 1-based ranks → index (n-1)/2 in 0-based
+                    base = pairwise[(n - 1) / 2];
+                    break;
+                case KTH_WORST:
+                    Arrays.sort(pairwise, 0, n);
+                    // k=1 → smallest → index 0; k=2 → next → index 1; ...
+                    // Cap at n if caller asked for a higher k than available.
+                    final int idx = Math.min(kthWorst, n) - 1;
+                    base = pairwise[idx];
+                    break;
+                default:
+                    throw new IllegalStateException(
+                        "unhandled aggregation: " + aggregation);
+            }
+
+            // Optional doc-frequency weight. log(1 + d) gives 0 for d=0 and
+            // grows slowly — same shape as IDF damping in BM25.
+            if (docFreqWeight && focusTermDocs > 0) {
+                base *= Math.log(1d + focusTermDocs);
+            }
+
+            // Optional focus-internal dispersion penalty. coverage = fraction
+            // of focus docs that contain the term. Penalty divides by
+            // (1/coverage)^a; equivalent to multiplying by coverage^a. With
+            // a=0 the penalty is 1 (no effect). With a=1 a term in 10% of
+            // focus docs is demoted by 10x.
+            if (dispersionExponent > 0d && focusDocs > 0 && focusTermDocs > 0) {
+                final double coverage = (double) focusTermDocs / (double) focusDocs;
+                base *= Math.pow(coverage, dispersionExponent);
+            }
+
+            return base;
         }
     }
-
+    
     /**
      * Validates per-part vector shapes and per-cell invariants. Called
      * once per term during ranking; kept to a single pass.

@@ -101,7 +101,26 @@ public final class OpTerms extends Op
                 int end = pars.getInt(END, (int)years.min());
                 // TODO filter by tags
                 final Partition partition = years.partition(start, end, null, null);
-                return topTerms.partScore(index.reader(), partition, new PartScorer.LogLikelihood(), topK);
+                PartScorer partScorer;
+                if ("part1".equals(scorerName)) {
+                    partScorer = new PartScorer.LogLikelihood();
+                }
+                else if ("part2".equals(scorerName)) {
+                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MEDIAN, 0, false, 0d);
+                }
+                else if ("part3".equals(scorerName)) {
+                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MIN, 0, true, 0d);
+                }
+                else if ("part4".equals(scorerName)) {
+                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MIN, 0, true, 0.5);
+                }
+                else if ("part5".equals(scorerName)) {
+                    partScorer = new PartScorer.LogLikelihood(1000, PartScorer.LogLikelihood.Aggregation.MEDIAN, 0, true, 0.5);
+                }
+                else {
+                    partScorer = new PartScorer.LogLikelihood();
+                }
+                return topTerms.partScore(index.reader(), partition, partScorer, topK);
             }
             
             // focus % all rest
@@ -177,25 +196,25 @@ public final class OpTerms extends Op
               <tr>
         """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),
                 idfexp,
-                "Parts, G2", "BM25.irdf", "BM25.rsj", LOGLIKELIHOOD, "Chi2"));
+                "Baseline", "Robust dominance", "Doc-weighted", "Doc-weighted + dispersion", "Combined"));
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, "part");
+        request.setAttribute(SCORER, "part1");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, "irdf");
+        request.setAttribute(SCORER, "part2");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, "rsj");
+        request.setAttribute(SCORER, "part3");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, LOGLIKELIHOOD);
+        request.setAttribute(SCORER, "part4");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td>\n");
-        request.setAttribute(SCORER, "chi2");
+        request.setAttribute(SCORER, "part5");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("""
