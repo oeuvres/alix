@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
+ * Was an experiment, use {@link PartScorer} instead.
+ * 
  * Scores focus-part candidates from per-part rank evidence.
  *
  * <p>
@@ -23,6 +25,7 @@ import java.util.Objects;
  * is bound to one ranking pass via {@link #init}.
  * </p>
  */
+@Deprecated
 public interface RankScorer
 {
     /** Default multiplier used to derive intermediate candidate capacity. */

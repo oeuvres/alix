@@ -3,6 +3,8 @@ package com.github.oeuvres.alix.lucene.terms;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
+ * Was an experiment, use {@link PartScorer} instead.
+ * 
  * Retains per-part top-count term rankings.
  *
  * <p>
@@ -11,6 +13,7 @@ import com.github.oeuvres.alix.util.TopArray;
  * {@code partCount * capacity}.
  * </p>
  */
+@Deprecated
 public final class PartRanker
 {
     private final TopArray[] tops;

@@ -20,7 +20,6 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.Partition;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
-import com.github.oeuvres.alix.lucene.terms.RankScorer;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -96,33 +95,7 @@ public final class OpTerms extends Op
             final String scorerName = pars.getString(SCORER, "");
             // partition query on dates
             Query yearQuery = yearQuery(index, pars);
-            if (yearQuery != null && scorerName.startsWith("rank")) {
-                FlucNum years = index.flucNum(YEAR);
-                final int start = pars.getInt(START, (int)years.min());
-                int end = pars.getInt(END, (int)years.min());
-                // TODO filter by tags
-                final Partition partition = years.partition(start, end, null, null);
-                RankScorer rankScorer;
-                if ("rank1".equals(scorerName)) {
-                    rankScorer = new RankScorer.RankGap();
-                }
-                else if ("rank2".equals(scorerName)) {
-                    rankScorer = new RankScorer.RrfRankGap();
-                }
-                else if ("rank3".equals(scorerName)) {
-                    rankScorer = new RankScorer.WeightedRrfRankGap();
-                }
-                else if ("rank4".equals(scorerName)) {
-                    rankScorer = new RankScorer.RrfRatio();
-                }
-                else if ("rank5".equals(scorerName)) {
-                    rankScorer = new RankScorer.RateWeightedRrfRankGap();
-                }
-                else {
-                    rankScorer = new RankScorer.RankGap();
-                }
-                return topTerms.partRanking(index.reader(), partition, rankScorer, topK);
-            }
+
             
             if (yearQuery != null && scorerName.startsWith("part")) {
                 FlucNum years = index.flucNum(YEAR);
@@ -138,13 +111,13 @@ public final class OpTerms extends Op
                     partScorer = new PartScorer.LogLikelihood();
                 }
                 else if ("part2".equals(scorerName)) {
-                    partScorer = new PartScorer.Pearson();
+                    partScorer = new PartScorer.LogLikelihoodTail();
                 }
                 else if ("part3".equals(scorerName)) {
-                    partScorer = new PartScorer.Specificity();
+                    partScorer = new PartScorer.LogLikelihoodResidual();
                 }
                 else if ("part4".equals(scorerName)) {
-                    partScorer = new PartScorer.RateRatio();
+                    partScorer = new PartScorer.Pearson();
                 }
                 else {
                     partScorer = new PartScorer.LogLikelihood();
@@ -230,16 +203,16 @@ public final class OpTerms extends Op
         request.setAttribute(SCORER, "part1");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td><b>Parts RateWeightedRrfRankGap</b><br/>\n");
-        request.setAttribute(SCORER, "rank5");
+        writer.append("      <td><b>Parts LogLikelihoodTail</b><br/>\n");
+        request.setAttribute(SCORER, "part2");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td><b>Parts RrfRankGap</b><br/>\n");
-        request.setAttribute(SCORER, "rank2");
+        writer.append("      <td><b>Parts LogLikelihoodResidual</b><br/>\n");
+        request.setAttribute(SCORER, "part3");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td><b>Parts WeightedRrfRankGap</b><br/>\n");
-        request.setAttribute(SCORER, "rank3");
+        writer.append("      <td><b>Parts Pearson</b><br/>\n");
+        request.setAttribute(SCORER, "part4");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("""

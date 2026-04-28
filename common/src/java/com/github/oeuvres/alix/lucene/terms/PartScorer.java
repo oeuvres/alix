@@ -1,56 +1,56 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import java.util.Arrays;
 
 /**
- * Computes a keyness score for one term from a partitioned corpus,
- * scoring the focus part against the other parts.
+ * Computes a keyness score for one term from a partitioned corpus.
  *
  * <p>
- * All counts are raw token occurrences except where doc counts are
+ * All counts are raw token occurrences except where document counts are
  * explicitly named. Inputs are aligned by part id: {@code partTermFreq[p]}
- * occurrences in part {@code p}, with {@code partTokens[p]} total tokens
- * in that part.
+ * occurrences in part {@code p}, with {@code partTokens[p]} total tokens in
+ * that part.
  * </p>
  *
  * <p>
- * Implementations assume {@code partTermFreq.length == partTokens.length},
- * a valid {@code focusPart}, and {@code 0 <= partTermFreq[p] <= partTokens[p]}
- * for every part. Caller bugs throw {@link IllegalArgumentException};
- * valid but degenerate inputs return {@link Double#NaN}.
+ * Implementations assume {@code partTermFreq.length == partTokens.length}, a
+ * valid {@code focusPart}, and {@code 0 <= partTermFreq[p] <= partTokens[p]}
+ * for every part. Caller bugs throw {@link IllegalArgumentException}; valid
+ * but degenerate inputs return {@link Double#NaN}.
  * </p>
  *
  * <p>
  * The {@code focusTermDocs} and {@code focusDocs} arguments support
- * focus-internal weighting and dispersion checks. Scorers that don't use
- * doc structure (e.g. {@link Pearson}) ignore them.
+ * focus-internal weighting and dispersion checks. Scorers that do not use
+ * document structure ignore them.
  * </p>
  *
  * <p>
- * Counts aggregate as {@code double} for chi-square arithmetic. Realistic
- * text-corpus counts stay well below 2^53; the cast is harmless.
+ * Counts are converted to {@code double} for statistical arithmetic.
+ * Realistic text-corpus counts stay well below {@code 2^53}; the conversion
+ * is exact in that range.
  * </p>
  */
-public interface PartScorer {
-    /** Default minimum tokens for a non-focus part to enter the pairwise comparison. */
-    public static final long DEFAULT_MIN_PART_TOKENS = 1000L;
+public interface PartScorer
+{
     /** Default minimum focus occurrences required for scoring. */
-    public static final long DEFAULT_MIN_FOCUS_TERM_FREQ = 5;
+    long DEFAULT_MIN_FOCUS_TERM_FREQ = 5L;
 
+    /** Default minimum tokens for a non-focus part to enter pairwise comparison. */
+    long DEFAULT_MIN_PART_TOKENS = 1000L;
 
     /**
-     * @param partTermFreq   term occurrences per part for the current term
-     * @param partTokens     total token count per part
-     * @param focusPart      part id to score
-     * @param focusTermDocs  number of focus-part documents containing the
-     *                       term; counted by the caller during the postings
-     *                       walk (e.g. {@code TopTerms.partScore(...)});
-     *                       0 if unknown or unused
-     * @param focusDocs      total number of documents in the focus part;
-     *                       typically
-     *                       {@code partition.docs(partition.focusPart())};
-     *                       0 if unknown or unused
-     * @return signed score; positive when the term is over-represented in
-     *         {@code focusPart}; {@link Double#NaN} when no signal is computable
+     * Computes a score for one term.
+     *
+     * @param partTermFreq term occurrences per part for the current term
+     * @param partTokens total token count per part
+     * @param focusPart part id to score
+     * @param focusTermDocs number of focus-part documents containing the term;
+     *                      {@code 0} if unknown or unused
+     * @param focusDocs total number of documents in the focus part;
+     *                  {@code 0} if unknown or unused
+     * @return signed score; positive when the term is over-represented in the
+     *         focus part; {@link Double#NaN} when no signal is computable
      */
     double score(
         long[] partTermFreq,
@@ -59,73 +59,238 @@ public interface PartScorer {
         int focusTermDocs,
         int focusDocs
     );
-    
+
+    /**
+     * Shared implementation for pairwise signed-G² scorers.
+     *
+     * <p>
+     * The class handles input validation, focus-document floors, non-focus
+     * part filtering, pairwise signed-G² collection, and focus-document
+     * dispersion. Subclasses only define how the collected pairwise G² values
+     * are aggregated.
+     * </p>
+     *
+     * <p>
+     * Instances reuse an internal scratch array and are not thread-safe.
+     * </p>
+     */
+    abstract class LogLikelihoodBase implements PartScorer
+    {
+        /** Dispersion exponent applied to focus-document coverage. */
+        protected final double dispersionExponent;
+
+        /** Minimum focus documents containing the term. */
+        protected final int minFocusTermDocs;
+
+        /** Minimum token count for a non-focus part to be compared. */
+        protected final long minPartTokens;
+
+        /** Reusable scratch buffer for pairwise scores. */
+        private double[] pairScores;
+
+        /**
+         * Creates a pairwise signed-G² scorer.
+         *
+         * @param minPartTokens minimum tokens for a non-focus part to enter the
+         *                      comparison; must be {@code >= 0}
+         * @param minFocusTermDocs minimum number of focus documents containing
+         *                         the term; must be {@code >= 0}; {@code 0}
+         *                         disables the floor
+         * @param dispersionExponent exponent {@code a} in the focus-coverage
+         *                           multiplier {@code coverage^a}; must be
+         *                           {@code >= 0}; {@code 0} disables it
+         * @throws IllegalArgumentException if an argument is invalid
+         */
+        protected LogLikelihoodBase(
+            final long minPartTokens,
+            final int minFocusTermDocs,
+            final double dispersionExponent
+        ) {
+            if (minPartTokens < 0L) {
+                throw new IllegalArgumentException(
+                    "minPartTokens < 0: " + minPartTokens
+                );
+            }
+            if (minFocusTermDocs < 0) {
+                throw new IllegalArgumentException(
+                    "minFocusTermDocs < 0: " + minFocusTermDocs
+                );
+            }
+            if (dispersionExponent < 0d || Double.isNaN(dispersionExponent)) {
+                throw new IllegalArgumentException(
+                    "dispersionExponent must be >= 0, got " + dispersionExponent
+                );
+            }
+
+            this.minPartTokens = minPartTokens;
+            this.minFocusTermDocs = minFocusTermDocs;
+            this.dispersionExponent = dispersionExponent;
+        }
+
+        /**
+         * Scores the current term by collecting pairwise signed-G² values,
+         * aggregating them through {@link #aggregate(double[], int)}, and
+         * applying focus-document dispersion.
+         *
+         * @param partTermFreq term occurrences per part for the current term
+         * @param partTokens total token count per part
+         * @param focusPart part id to score
+         * @param focusTermDocs number of focus-part documents containing the term
+         * @param focusDocs total number of documents in the focus part
+         * @return signed score, or {@link Double#NaN}
+         */
+        @Override
+        public final double score(
+            final long[] partTermFreq,
+            final long[] partTokens,
+            final int focusPart,
+            final int focusTermDocs,
+            final int focusDocs
+        ) {
+            checkInputs(partTermFreq, partTokens, focusPart);
+
+            if (minFocusTermDocs > 0 && focusTermDocs < minFocusTermDocs) {
+                return Double.NaN;
+            }
+
+            final long focusTokens = partTokens[focusPart];
+
+            if (focusTokens <= 0L) {
+                return Double.NaN;
+            }
+
+            final double[] scores = pairScores(partTokens.length);
+            final int count = collectPairScores(
+                partTermFreq,
+                partTokens,
+                focusPart,
+                scores
+            );
+
+            if (count <= 0) {
+                return Double.NaN;
+            }
+
+            double score = aggregate(scores, count);
+
+            if (Double.isNaN(score)) {
+                return Double.NaN;
+            }
+
+            if (dispersionExponent > 0d && focusDocs > 0 && focusTermDocs > 0) {
+                final double coverage = (double) focusTermDocs / (double) focusDocs;
+                score *= Math.pow(coverage, dispersionExponent);
+            }
+
+            return score;
+        }
+
+        /**
+         * Aggregates collected pairwise signed-G² values.
+         *
+         * <p>
+         * The {@code scores} array is caller-owned scratch and may be sorted or
+         * modified by the implementation.
+         * </p>
+         *
+         * @param scores pairwise signed-G² values in {@code [0, count)}
+         * @param count number of valid pairwise scores
+         * @return aggregate score
+         */
+        protected abstract double aggregate(double[] scores, int count);
+
+        /**
+         * Collects signed pairwise G² values against valid non-focus parts.
+         *
+         * @param partTermFreq term occurrences per part
+         * @param partTokens token count per part
+         * @param focusPart focus part id
+         * @param scores destination scratch array
+         * @return number of collected pairwise scores
+         */
+        private int collectPairScores(
+            final long[] partTermFreq,
+            final long[] partTokens,
+            final int focusPart,
+            final double[] scores
+        ) {
+            final long focusTermFreq = partTermFreq[focusPart];
+            final long focusTokens = partTokens[focusPart];
+            int count = 0;
+
+            for (int part = 0; part < partTokens.length; part++) {
+                if (part == focusPart) {
+                    continue;
+                }
+                if (partTokens[part] < minPartTokens) {
+                    continue;
+                }
+
+                final double g2 = signedG2(
+                    focusTermFreq,
+                    focusTokens,
+                    partTermFreq[part],
+                    partTokens[part]
+                );
+
+                if (Double.isNaN(g2)) {
+                    continue;
+                }
+
+                scores[count++] = g2;
+            }
+
+            return count;
+        }
+
+        /**
+         * Returns a scratch array large enough for pairwise scores.
+         *
+         * @param partCount number of parts
+         * @return scratch array
+         */
+        private double[] pairScores(final int partCount)
+        {
+            final int needed = Math.max(0, partCount - 1);
+
+            if (pairScores == null || pairScores.length < needed) {
+                pairScores = new double[needed];
+            }
+
+            return pairScores;
+        }
+    }
+
     /**
      * Strict-dominance log-likelihood scorer for the focus part.
      *
      * <p>
-     * Base statistic: signed 2×2 G² between the focus part and every other
-     * non-focus part taken individually. Returns the smallest pairwise G²,
-     * so the focus must out-rank every retained part to receive a positive
-     * score.
+     * The base statistic is signed pairwise 2×2 G² between the focus part and
+     * every valid non-focus part taken individually. The returned score is the
+     * smallest pairwise G² value, so the focus must dominate every compared
+     * part to receive a positive score.
      * </p>
      *
      * <p>
-     * Three filters operate on the score:
-     * </p>
-     * <ul>
-     *   <li><b>Min part tokens.</b> Non-focus parts with fewer than
-     *       {@code minPartTokens} tokens are skipped during the pairwise
-     *       comparison. Below that threshold a pairwise G² is dominated by
-     *       sampling noise and would routinely sink the minimum.</li>
-     *   <li><b>Min focus term docs.</b> Terms occurring in fewer than
-     *       {@code minFocusTermDocs} focus documents are excluded outright
-     *       ({@link Double#NaN}). Hard floor against singletons.</li>
-     *   <li><b>Dispersion exponent.</b> Multiplies the score by
-     *       {@code coverage^a}, where
-     *       {@code coverage = focusTermDocs / focusDocs} and
-     *       {@code a = dispersionExponent}. With {@code a = 0} the penalty
-     *       is inactive; with {@code a = 0.3} a term in 10% of focus
-     *       documents is demoted by roughly 2×; with {@code a = 1.0} by
-     *       10×. Smooth penalty for low coverage.</li>
-     * </ul>
-     *
-     * <p>
-     * Empirically on coarse chronological partitions, the doc-count floor
-     * is dominated by the dispersion exponent: any term the floor would
-     * filter at {@code minFocusTermDocs = 3} is already pushed out of the
-     * top ranks at {@code dispersionExponent = 0.3}. Both knobs are kept
-     * because they are independent: the floor is a hard exclusion (caller
-     * may want it active with {@code dispersionExponent = 0}), the
-     * exponent is a continuous demotion.
-     * </p>
-     *
-     * <p>
-     * For very fine partitions (single-year parts on a multi-decade
-     * corpus) the strict-minimum criterion is fragile because every
-     * non-focus part is small and noisy. That use case will get its own
-     * scorer; this one targets coarse partitions (years grouped into
-     * periods of several years).
+     * This scorer is intentionally severe. It is appropriate when a term should
+     * be considered focus-specific only if no valid non-focus part competes
+     * strongly with it.
      * </p>
      */
-    class LogLikelihood implements PartScorer {
-        
-        /** Default minimum focus documents containing the term for it to be scored. */
-        public static final int DEFAULT_MIN_FOCUS_TERM_DOCS = 3;
-
-        /** Default dispersion exponent: gentle penalty on low focus-document coverage. */
+    class LogLikelihood extends LogLikelihoodBase
+    {
+        /** Default dispersion exponent for focus-document coverage. */
         public static final double DEFAULT_DISPERSION_EXPONENT = 0.3d;
 
-        private final long minPartTokens;
-        private final int minFocusTermDocs;
-        private final double dispersionExponent;
+        /** Default minimum focus documents containing the term. */
+        public static final int DEFAULT_MIN_FOCUS_TERM_DOCS = 3;
 
         /**
-         * Defaults: {@link #DEFAULT_MIN_PART_TOKENS},
-         * {@link #DEFAULT_MIN_FOCUS_TERM_DOCS},
-         * {@link #DEFAULT_DISPERSION_EXPONENT}.
+         * Creates a strict pairwise log-likelihood scorer with default
+         * parameters.
          */
-        public LogLikelihood() {
+        public LogLikelihood()
+        {
             this(
                 DEFAULT_MIN_PART_TOKENS,
                 DEFAULT_MIN_FOCUS_TERM_DOCS,
@@ -134,132 +299,113 @@ public interface PartScorer {
         }
 
         /**
-         * @param minPartTokens       minimum tokens for a non-focus part to
-         *                            enter the pairwise comparison; must be
-         *                            {@code >= 0}
-         * @param minFocusTermDocs    minimum number of focus documents
-         *                            containing the term for it to be scored;
-         *                            terms below this floor return
-         *                            {@link Double#NaN}; must be {@code >= 0};
-         *                            0 disables the floor
-         * @param dispersionExponent  exponent {@code a} in the focus-coverage
-         *                            multiplier {@code coverage^a}; 0 disables
-         *                            the penalty; must be {@code >= 0}
-         * @throws IllegalArgumentException if any argument is negative or NaN
+         * Creates a strict pairwise log-likelihood scorer.
+         *
+         * @param minPartTokens minimum tokens for a non-focus part to enter the
+         *                      comparison
+         * @param minFocusTermDocs minimum number of focus documents containing
+         *                         the term
+         * @param dispersionExponent exponent in the focus-coverage multiplier
          */
         public LogLikelihood(
             final long minPartTokens,
             final int minFocusTermDocs,
             final double dispersionExponent
         ) {
-            if (minPartTokens < 0L) {
-                throw new IllegalArgumentException(
-                    "minPartTokens < 0: " + minPartTokens);
-            }
-            if (minFocusTermDocs < 0) {
-                throw new IllegalArgumentException(
-                    "minFocusTermDocs < 0: " + minFocusTermDocs);
-            }
-            if (dispersionExponent < 0d || Double.isNaN(dispersionExponent)) {
-                throw new IllegalArgumentException(
-                    "dispersionExponent must be >= 0, got " + dispersionExponent);
-            }
-            this.minPartTokens = minPartTokens;
-            this.minFocusTermDocs = minFocusTermDocs;
-            this.dispersionExponent = dispersionExponent;
+            super(minPartTokens, minFocusTermDocs, dispersionExponent);
         }
 
+        /**
+         * Returns the minimum collected pairwise signed-G² value.
+         *
+         * @param scores pairwise signed-G² values
+         * @param count number of valid scores
+         * @return minimum score
+         */
         @Override
-        public double score(
-            final long[] partTermFreq,
-            final long[] partTokens,
-            final int focusPart,
-            final int focusTermDocs,
-            final int focusDocs
-        ) {
-            checkInputs(partTermFreq, partTokens, focusPart);
+        protected double aggregate(final double[] scores, final int count)
+        {
+            double min = Double.POSITIVE_INFINITY;
 
-            // Hard floor on focus document count for the term. Disabled when
-            // minFocusTermDocs == 0.
-            if (minFocusTermDocs > 0 && focusTermDocs < minFocusTermDocs) {
-                return Double.NaN;
+            for (int i = 0; i < count; i++) {
+                if (scores[i] < min) {
+                    min = scores[i];
+                }
             }
 
-            final long focusTermFreq = partTermFreq[focusPart];
-            final long focusTokens = partTokens[focusPart];
-            if (focusTokens <= 0L) return Double.NaN;
-
-            // Strict minimum signed pairwise G² across retained non-focus parts.
-            // Single linear scan, no allocation.
-            double minG2 = Double.POSITIVE_INFINITY;
-            boolean seen = false;
-            for (int p = 0; p < partTokens.length; p++) {
-                if (p == focusPart) continue;
-                if (partTokens[p] < minPartTokens) continue;
-                final double g2 = signedG2(
-                    focusTermFreq, focusTokens,
-                    partTermFreq[p], partTokens[p]
-                );
-                if (Double.isNaN(g2)) continue;
-                if (g2 < minG2) minG2 = g2;
-                seen = true;
-            }
-            if (!seen) return Double.NaN;
-
-            // Focus-internal dispersion: demote terms concentrated in few
-            // focus documents. coverage in [0, 1]; coverage^a in [0, 1].
-            // Skipped when caller didn't supply doc counts (focusDocs <= 0).
-            if (dispersionExponent > 0d && focusDocs > 0 && focusTermDocs > 0) {
-                final double coverage = (double) focusTermDocs / (double) focusDocs;
-                minG2 *= Math.pow(coverage, dispersionExponent);
-            }
-
-            return minG2;
+            return min;
         }
     }
     
     /**
-     * Focus-cell adjusted Pearson residual.
+     * Focus-row log-likelihood deviance residual.
      *
      * <p>
      * Scores the focus part against the whole partition under the null hypothesis
-     * that the term is distributed proportionally to part size.
+     * that the term is distributed proportionally to part size. This is the
+     * likelihood-ratio analogue of {@link Pearson}: {@link Pearson} uses a
+     * focus-cell adjusted Pearson residual, while this scorer uses the signed
+     * square root of the focus row's G² deviance contribution.
      * </p>
      *
      * <pre>
-     * O = partTermFreq[focusPart]
-     * E = partTokens[focusPart] * totalTermFreq / totalTokens
+     * O1 = partTermFreq[focusPart]
+     * E1 = partTokens[focusPart] * totalTermFreq / totalTokens
+     * O0 = partTokens[focusPart] - O1
+     * E0 = partTokens[focusPart] - E1
      *
-     * score = (O - E) / sqrt(E * (1 - partProp) * (1 - termProp))
+     * score = sign(O1 - E1) * sqrt(
+     *     2 * O1 * log(O1 / E1)
+     *   + 2 * O0 * log(O0 / E0)
+     * )
      * </pre>
      *
      * <p>
-     * Positive values mean over-representation in the focus part.
-     * Negative values mean under-representation.
+     * Positive values mean over-representation in the focus part. Negative values
+     * mean under-representation.
      * </p>
      */
-    class Pearson implements PartScorer {
-
-
+    class LogLikelihoodResidual implements PartScorer
+    {
+        /** Minimum occurrences in the focus part required for scoring. */
         private final long minFocusTermFreq;
 
-        public Pearson() {
+        /**
+         * Creates a log-likelihood residual scorer with default parameters.
+         */
+        public LogLikelihoodResidual()
+        {
             this(DEFAULT_MIN_FOCUS_TERM_FREQ);
         }
 
         /**
+         * Creates a log-likelihood residual scorer.
+         *
          * @param minFocusTermFreq minimum occurrences in the focus part required
          *                         for scoring; {@code 0} disables the floor
+         * @throws IllegalArgumentException if {@code minFocusTermFreq < 0}
          */
-        public Pearson(final long minFocusTermFreq) {
+        public LogLikelihoodResidual(final long minFocusTermFreq)
+        {
             if (minFocusTermFreq < 0L) {
                 throw new IllegalArgumentException(
                     "minFocusTermFreq < 0: " + minFocusTermFreq
                 );
             }
+
             this.minFocusTermFreq = minFocusTermFreq;
         }
 
+        /**
+         * Computes the signed focus-row log-likelihood deviance residual.
+         *
+         * @param partTermFreq term occurrences per part
+         * @param partTokens token count per part
+         * @param focusPart focus part id
+         * @param focusTermDocs ignored
+         * @param focusDocs ignored
+         * @return signed deviance residual, or {@link Double#NaN}
+         */
         @Override
         public double score(
             final long[] partTermFreq,
@@ -273,21 +419,288 @@ public interface PartScorer {
             final long focusTermFreq = partTermFreq[focusPart];
             final long focusTokens = partTokens[focusPart];
 
-            if (focusTokens <= 0L) return Double.NaN;
-            if (focusTermFreq < minFocusTermFreq) return Double.NaN;
+            if (focusTokens <= 0L) {
+                return Double.NaN;
+            }
+            if (focusTermFreq < minFocusTermFreq) {
+                return Double.NaN;
+            }
 
             long totalTermFreq = 0L;
             long totalTokens = 0L;
             boolean seenOther = false;
 
-            for (int p = 0; p < partTokens.length; p++) {
-                final long tokens = partTokens[p];
-                if (tokens <= 0L) continue;
+            for (int part = 0; part < partTokens.length; part++) {
+                final long tokens = partTokens[part];
 
-                totalTermFreq += partTermFreq[p];
+                if (tokens <= 0L) {
+                    continue;
+                }
+
+                totalTermFreq += partTermFreq[part];
                 totalTokens += tokens;
 
-                if (p != focusPart) {
+                if (part != focusPart) {
+                    seenOther = true;
+                }
+            }
+
+            if (!seenOther || totalTermFreq <= 0L || totalTokens <= 0L) {
+                return Double.NaN;
+            }
+
+            final double expectedTerm =
+                (double) focusTokens * (double) totalTermFreq / (double) totalTokens;
+
+            if (expectedTerm <= 0d || expectedTerm >= (double) focusTokens) {
+                return Double.NaN;
+            }
+
+            final double observedTerm = (double) focusTermFreq;
+            final double observedNonTerm = (double) (focusTokens - focusTermFreq);
+            final double expectedNonTerm = (double) focusTokens - expectedTerm;
+
+            final double g2 =
+                  devianceCell(observedTerm, expectedTerm)
+                + devianceCell(observedNonTerm, expectedNonTerm);
+
+            if (g2 <= 0d) {
+                return 0d;
+            }
+
+            final double sign = observedTerm >= expectedTerm ? 1d : -1d;
+            return sign * Math.sqrt(g2);
+        }
+
+        /**
+         * Computes one non-negative deviance cell contribution.
+         *
+         * <p>
+         * This is {@code 2 * (O * log(O / E) - (O - E))}. It is non-negative for
+         * one Poisson-style deviance cell and is safe to sum before taking a square
+         * root.
+         * </p>
+         *
+         * @param observed observed value
+         * @param expected expected value
+         * @return non-negative deviance contribution
+         */
+        private static double devianceCell(
+            final double observed,
+            final double expected
+        ) {
+            if (expected <= 0d) {
+                return Double.NaN;
+            }
+
+            if (observed <= 0d) {
+                return 2d * expected;
+            }
+
+            return 2d * (observed * Math.log(observed / expected) - observed + expected);
+        }
+    }
+
+    /**
+     * Worst-tail log-likelihood scorer for the focus part.
+     *
+     * <p>
+     * The base statistic is signed pairwise 2×2 G² between the focus part and
+     * every valid non-focus part taken individually. Instead of returning the
+     * single smallest pairwise score, this scorer sorts pairwise scores and
+     * returns the mean of the worst lower tail.
+     * </p>
+     *
+     * <p>
+     * With {@code tailFraction = 0.20}, the score is the mean of the worst
+     * 20% of valid non-focus comparisons. This keeps the advantage of
+     * partitioned scoring while avoiding the brittleness of a single worst
+     * comparator.
+     * </p>
+     *
+     * <p>
+     * This is not equivalent to 2×2 focus-vs-rest scoring: it never aggregates
+     * all non-focus parts into one rest corpus. It keeps pairwise comparisons
+     * and only changes the lower-tail aggregation rule.
+     * </p>
+     */
+    class LogLikelihoodTail extends LogLikelihoodBase
+    {
+        /** Default dispersion exponent for focus-document coverage. */
+        public static final double DEFAULT_DISPERSION_EXPONENT =
+            LogLikelihood.DEFAULT_DISPERSION_EXPONENT;
+
+        /** Default minimum focus documents containing the term. */
+        public static final int DEFAULT_MIN_FOCUS_TERM_DOCS =
+            LogLikelihood.DEFAULT_MIN_FOCUS_TERM_DOCS;
+
+        /** Default lower-tail fraction. */
+        public static final double DEFAULT_TAIL_FRACTION = 0.20d;
+
+        /** Lower-tail fraction in {@code (0, 1]}. */
+        private final double tailFraction;
+
+        /**
+         * Creates a worst-tail log-likelihood scorer with default parameters.
+         */
+        public LogLikelihoodTail()
+        {
+            this(
+                DEFAULT_MIN_PART_TOKENS,
+                DEFAULT_MIN_FOCUS_TERM_DOCS,
+                DEFAULT_DISPERSION_EXPONENT,
+                DEFAULT_TAIL_FRACTION
+            );
+        }
+
+        /**
+         * Creates a worst-tail log-likelihood scorer.
+         *
+         * @param minPartTokens minimum tokens for a non-focus part to enter the
+         *                      comparison
+         * @param minFocusTermDocs minimum number of focus documents containing
+         *                         the term
+         * @param dispersionExponent exponent in the focus-coverage multiplier
+         * @param tailFraction fraction of worst pairwise scores to average;
+         *                     must be in {@code (0, 1]}
+         * @throws IllegalArgumentException if {@code tailFraction} is invalid
+         */
+        public LogLikelihoodTail(
+            final long minPartTokens,
+            final int minFocusTermDocs,
+            final double dispersionExponent,
+            final double tailFraction
+        ) {
+            super(minPartTokens, minFocusTermDocs, dispersionExponent);
+
+            if (!(tailFraction > 0d) || tailFraction > 1d || Double.isNaN(tailFraction)) {
+                throw new IllegalArgumentException(
+                    "tailFraction must be in (0, 1], got " + tailFraction
+                );
+            }
+
+            this.tailFraction = tailFraction;
+        }
+
+        /**
+         * Returns the lower-tail fraction.
+         *
+         * @return lower-tail fraction
+         */
+        public double tailFraction()
+        {
+            return tailFraction;
+        }
+
+        /**
+         * Returns the mean of the worst lower-tail pairwise signed-G² values.
+         *
+         * @param scores pairwise signed-G² values
+         * @param count number of valid scores
+         * @return lower-tail mean score
+         */
+        @Override
+        protected double aggregate(final double[] scores, final int count)
+        {
+            Arrays.sort(scores, 0, count);
+
+            final int tailCount = Math.max(1, (int) Math.ceil(count * tailFraction));
+            double sum = 0d;
+
+            for (int i = 0; i < tailCount; i++) {
+                sum += scores[i];
+            }
+
+            return sum / (double) tailCount;
+        }
+    }
+
+    /**
+     * Focus-cell adjusted Pearson residual.
+     *
+     * <p>
+     * Scores the focus part against the whole partition under the null
+     * hypothesis that the term is distributed proportionally to part size.
+     * Positive values mean over-representation in the focus part. Negative
+     * values mean under-representation.
+     * </p>
+     */
+    class Pearson implements PartScorer
+    {
+        /** Minimum occurrences in the focus part required for scoring. */
+        private final long minFocusTermFreq;
+
+        /**
+         * Creates a Pearson scorer with default parameters.
+         */
+        public Pearson()
+        {
+            this(DEFAULT_MIN_FOCUS_TERM_FREQ);
+        }
+
+        /**
+         * Creates a Pearson scorer.
+         *
+         * @param minFocusTermFreq minimum occurrences in the focus part required
+         *                         for scoring; {@code 0} disables the floor
+         * @throws IllegalArgumentException if {@code minFocusTermFreq < 0}
+         */
+        public Pearson(final long minFocusTermFreq)
+        {
+            if (minFocusTermFreq < 0L) {
+                throw new IllegalArgumentException(
+                    "minFocusTermFreq < 0: " + minFocusTermFreq
+                );
+            }
+
+            this.minFocusTermFreq = minFocusTermFreq;
+        }
+
+        /**
+         * Computes the adjusted Pearson residual for the focus cell.
+         *
+         * @param partTermFreq term occurrences per part
+         * @param partTokens token count per part
+         * @param focusPart focus part id
+         * @param focusTermDocs ignored
+         * @param focusDocs ignored
+         * @return adjusted Pearson residual, or {@link Double#NaN}
+         */
+        @Override
+        public double score(
+            final long[] partTermFreq,
+            final long[] partTokens,
+            final int focusPart,
+            final int focusTermDocs,
+            final int focusDocs
+        ) {
+            checkInputs(partTermFreq, partTokens, focusPart);
+
+            final long focusTermFreq = partTermFreq[focusPart];
+            final long focusTokens = partTokens[focusPart];
+
+            if (focusTokens <= 0L) {
+                return Double.NaN;
+            }
+            if (focusTermFreq < minFocusTermFreq) {
+                return Double.NaN;
+            }
+
+            long totalTermFreq = 0L;
+            long totalTokens = 0L;
+            boolean seenOther = false;
+
+            for (int part = 0; part < partTokens.length; part++) {
+                final long tokens = partTokens[part];
+
+                if (tokens <= 0L) {
+                    continue;
+                }
+
+                totalTermFreq += partTermFreq[part];
+                totalTokens += tokens;
+
+                if (part != focusPart) {
                     seenOther = true;
                 }
             }
@@ -299,44 +712,59 @@ public interface PartScorer {
             final double expected =
                 (double) focusTokens * (double) totalTermFreq / (double) totalTokens;
 
-            if (expected <= 0d) return Double.NaN;
+            if (expected <= 0d) {
+                return Double.NaN;
+            }
 
             final double partProp = (double) focusTokens / (double) totalTokens;
             final double termProp = (double) totalTermFreq / (double) totalTokens;
+            final double variance = expected * (1d - partProp) * (1d - termProp);
 
-            final double variance =
-                expected * (1d - partProp) * (1d - termProp);
-
-            if (variance <= 0d) return 0d;
+            if (variance <= 0d) {
+                return 0d;
+            }
 
             return ((double) focusTermFreq - expected) / Math.sqrt(variance);
         }
     }
-    
+
     /**
      * Smoothed log2 rate ratio between the focus part and the strongest
      * non-focus part.
      *
      * <p>
-     * This is an effect-size scorer, not a significance test. It should usually
-     * be used as a secondary score, filter, or rank-aggregation input, not as
-     * the only scorer.
+     * This is an effect-size scorer, not a significance test. It should
+     * usually be used as a secondary score, filter, or rank-aggregation input,
+     * not as the only scorer.
      * </p>
      */
-    class RateRatio implements PartScorer {
-
-        private final long minPartTokens;
-        private final long minFocusTermFreq;
+    class RateRatio implements PartScorer
+    {
+        /** Additive smoothing value. */
         private final double alpha;
 
-        public RateRatio() {
-            this(DEFAULT_MIN_PART_TOKENS, DEFAULT_MIN_FOCUS_TERM_FREQ, 0.3);
-        }
+        /** Minimum occurrences in the focus part required for scoring. */
+        private final long minFocusTermFreq;
+
+        /** Minimum tokens for a non-focus part to enter the comparison. */
+        private final long minPartTokens;
+
         /**
-         * @param minPartTokens     minimum tokens for a non-focus part to enter
-         *                          the comparison
-         * @param minFocusTermFreq  minimum occurrences in the focus part
-         * @param alpha             additive smoothing; use {@code 0.5} or {@code 1.0}
+         * Creates a rate-ratio scorer with default parameters.
+         */
+        public RateRatio()
+        {
+            this(DEFAULT_MIN_PART_TOKENS, DEFAULT_MIN_FOCUS_TERM_FREQ, 0.3d);
+        }
+
+        /**
+         * Creates a rate-ratio scorer.
+         *
+         * @param minPartTokens minimum tokens for a non-focus part to enter the
+         *                      comparison
+         * @param minFocusTermFreq minimum occurrences in the focus part
+         * @param alpha additive smoothing value
+         * @throws IllegalArgumentException if an argument is invalid
          */
         public RateRatio(
             final long minPartTokens,
@@ -344,7 +772,9 @@ public interface PartScorer {
             final double alpha
         ) {
             if (minPartTokens < 0L) {
-                throw new IllegalArgumentException("minPartTokens < 0: " + minPartTokens);
+                throw new IllegalArgumentException(
+                    "minPartTokens < 0: " + minPartTokens
+                );
             }
             if (minFocusTermFreq < 0L) {
                 throw new IllegalArgumentException(
@@ -360,6 +790,16 @@ public interface PartScorer {
             this.alpha = alpha;
         }
 
+        /**
+         * Computes the smoothed log2 rate ratio.
+         *
+         * @param partTermFreq term occurrences per part
+         * @param partTokens token count per part
+         * @param focusPart focus part id
+         * @param focusTermDocs ignored
+         * @param focusDocs ignored
+         * @return smoothed log2 rate ratio, or {@link Double#NaN}
+         */
         @Override
         public double score(
             final long[] partTermFreq,
@@ -373,8 +813,12 @@ public interface PartScorer {
             final long focusTermFreq = partTermFreq[focusPart];
             final long focusTokens = partTokens[focusPart];
 
-            if (focusTokens <= 0L) return Double.NaN;
-            if (focusTermFreq < minFocusTermFreq) return Double.NaN;
+            if (focusTokens <= 0L) {
+                return Double.NaN;
+            }
+            if (focusTermFreq < minFocusTermFreq) {
+                return Double.NaN;
+            }
 
             final double focusRate =
                 ((double) focusTermFreq + alpha) / ((double) focusTokens + alpha);
@@ -382,25 +826,35 @@ public interface PartScorer {
             double maxOtherRate = Double.NEGATIVE_INFINITY;
             boolean seen = false;
 
-            for (int p = 0; p < partTokens.length; p++) {
-                if (p == focusPart) continue;
+            for (int part = 0; part < partTokens.length; part++) {
+                if (part == focusPart) {
+                    continue;
+                }
 
-                final long tokens = partTokens[p];
-                if (tokens < minPartTokens) continue;
+                final long tokens = partTokens[part];
+
+                if (tokens < minPartTokens) {
+                    continue;
+                }
 
                 final double rate =
-                    ((double) partTermFreq[p] + alpha) / ((double) tokens + alpha);
+                    ((double) partTermFreq[part] + alpha) / ((double) tokens + alpha);
 
-                if (rate > maxOtherRate) maxOtherRate = rate;
+                if (rate > maxOtherRate) {
+                    maxOtherRate = rate;
+                }
+
                 seen = true;
             }
 
-            if (!seen) return Double.NaN;
+            if (!seen) {
+                return Double.NaN;
+            }
 
             return Math.log(focusRate / maxOtherRate) / Math.log(2d);
         }
     }
-    
+
     /**
      * Hypergeometric specificity score for the focus part.
      *
@@ -416,37 +870,57 @@ public interface PartScorer {
      * </pre>
      *
      * <p>
-     * If {@code k >= E}, returns {@code -log10(P[X >= k])}.
-     * If {@code k < E}, returns {@code log10(P[X <= k])}, i.e. negative
+     * If {@code k >= E}, returns {@code -log10(P[X >= k])}. If
+     * {@code k < E}, returns {@code log10(P[X <= k])}, i.e. negative
      * specificity.
      * </p>
-     *
-     * <p>
-     * This is appropriate as a specificity score. It is more expensive than
-     * Pearson but still practical for a filtered candidate set.
-     * </p>
      */
-    class Specificity implements PartScorer {
-
-
+    class Specificity implements PartScorer
+    {
+        /** Natural log of ten. */
         private static final double LOG10 = Math.log(10d);
+
+        /** Tail summation cutoff. */
         private static final double TAIL_EPS = 1e-14;
 
+        /** Minimum occurrences in the focus part required for scoring. */
         private final long minFocusTermFreq;
 
-        public Specificity() {
+        /**
+         * Creates a specificity scorer with default parameters.
+         */
+        public Specificity()
+        {
             this(DEFAULT_MIN_FOCUS_TERM_FREQ);
         }
 
-        public Specificity(final long minFocusTermFreq) {
+        /**
+         * Creates a specificity scorer.
+         *
+         * @param minFocusTermFreq minimum focus occurrences required for scoring
+         * @throws IllegalArgumentException if {@code minFocusTermFreq < 0}
+         */
+        public Specificity(final long minFocusTermFreq)
+        {
             if (minFocusTermFreq < 0L) {
                 throw new IllegalArgumentException(
                     "minFocusTermFreq < 0: " + minFocusTermFreq
                 );
             }
+
             this.minFocusTermFreq = minFocusTermFreq;
         }
 
+        /**
+         * Computes the signed hypergeometric specificity score.
+         *
+         * @param partTermFreq term occurrences per part
+         * @param partTokens token count per part
+         * @param focusPart focus part id
+         * @param focusTermDocs ignored
+         * @param focusDocs ignored
+         * @return signed specificity score, or {@link Double#NaN}
+         */
         @Override
         public double score(
             final long[] partTermFreq,
@@ -460,21 +934,28 @@ public interface PartScorer {
             final long k = partTermFreq[focusPart];
             final long n = partTokens[focusPart];
 
-            if (n <= 0L) return Double.NaN;
-            if (k < minFocusTermFreq) return Double.NaN;
+            if (n <= 0L) {
+                return Double.NaN;
+            }
+            if (k < minFocusTermFreq) {
+                return Double.NaN;
+            }
 
             long K = 0L;
             long N = 0L;
             boolean seenOther = false;
 
-            for (int p = 0; p < partTokens.length; p++) {
-                final long tokens = partTokens[p];
-                if (tokens <= 0L) continue;
+            for (int part = 0; part < partTokens.length; part++) {
+                final long tokens = partTokens[part];
 
-                K += partTermFreq[p];
+                if (tokens <= 0L) {
+                    continue;
+                }
+
+                K += partTermFreq[part];
                 N += tokens;
 
-                if (p != focusPart) {
+                if (part != focusPart) {
                     seenOther = true;
                 }
             }
@@ -486,10 +967,11 @@ public interface PartScorer {
             final long lo = Math.max(0L, n - (N - K));
             final long hi = Math.min(n, K);
 
-            if (k < lo || k > hi) return Double.NaN;
+            if (k < lo || k > hi) {
+                return Double.NaN;
+            }
 
             final double expected = (double) n * (double) K / (double) N;
-
             final double logTail;
             final double sign;
 
@@ -502,94 +984,31 @@ public interface PartScorer {
                 sign = -1d;
             }
 
-            if (Double.isNaN(logTail)) return Double.NaN;
+            if (Double.isNaN(logTail)) {
+                return Double.NaN;
+            }
 
             return sign * (-logTail / LOG10);
         }
 
         /**
-         * log P[X >= k], summed by recurrence from k upward.
+         * Computes {@code log(C(n,k))}.
+         *
+         * @param n population size
+         * @param k sample size
+         * @return log binomial coefficient
          */
-        private static double logUpperTail(
-            final long N,
-            final long K,
-            final long n,
-            final long k,
-            final long hi
-        ) {
-            double logP = logHyper(N, K, n, k);
-            if (Double.isNaN(logP)) return Double.NaN;
-
-            double sum = 1d;
-            double term = 1d;
-
-            for (long x = k; x < hi; x++) {
-                final double r =
-                    ((double) (K - x) / (double) (x + 1L))
-                  * ((double) (n - x) / (double) (N - K - n + x + 1L));
-
-                if (r <= 0d) break;
-
-                term *= r;
-                sum += term;
-
-                if (term <= sum * TAIL_EPS) break;
+        private static double logChoose(final long n, final long k)
+        {
+            if (k < 0L || k > n) {
+                return Double.NaN;
             }
-
-            return logP + Math.log(sum);
-        }
-
-        /**
-         * log P[X <= k], summed by recurrence from k downward.
-         */
-        private static double logLowerTail(
-            final long N,
-            final long K,
-            final long n,
-            final long k,
-            final long lo
-        ) {
-            double logP = logHyper(N, K, n, k);
-            if (Double.isNaN(logP)) return Double.NaN;
-
-            double sum = 1d;
-            double term = 1d;
-
-            for (long x = k; x > lo; x--) {
-                final double r =
-                    ((double) x / (double) (K - x + 1L))
-                  * ((double) (N - K - n + x) / (double) (n - x + 1L));
-
-                if (r <= 0d) break;
-
-                term *= r;
-                sum += term;
-
-                if (term <= sum * TAIL_EPS) break;
-            }
-
-            return logP + Math.log(sum);
-        }
-
-        /**
-         * log P[X = k] for the hypergeometric distribution.
-         */
-        private static double logHyper(
-            final long N,
-            final long K,
-            final long n,
-            final long k
-        ) {
-            return logChoose(K, k)
-                 + logChoose(N - K, n - k)
-                 - logChoose(N, n);
-        }
-
-        private static double logChoose(final long n, final long k) {
-            if (k < 0L || k > n) return Double.NaN;
 
             final long kk = Math.min(k, n - k);
-            if (kk == 0L) return 0d;
+
+            if (kk == 0L) {
+                return 0d;
+            }
 
             return logGamma((double) n + 1d)
                  - logGamma((double) kk + 1d)
@@ -597,9 +1016,13 @@ public interface PartScorer {
         }
 
         /**
-         * Lanczos approximation of log Γ(x), x > 0.
+         * Computes a Lanczos approximation of {@code log Γ(x)}.
+         *
+         * @param x positive input
+         * @return approximate log gamma
          */
-        private static double logGamma(final double x) {
+        private static double logGamma(final double x)
+        {
             final double[] c = {
                 676.5203681218851,
                -1259.1392167224028,
@@ -617,7 +1040,7 @@ public interface PartScorer {
                      - logGamma(1d - x);
             }
 
-            double y = x - 1d;
+            final double y = x - 1d;
             double a = 0.99999999999980993;
 
             for (int i = 0; i < c.length; i++) {
@@ -631,11 +1054,128 @@ public interface PartScorer {
                  - t
                  + Math.log(a);
         }
+
+        /**
+         * Computes the hypergeometric log probability at {@code k}.
+         *
+         * @param N total population
+         * @param K population successes
+         * @param n sample size
+         * @param k observed successes
+         * @return log probability
+         */
+        private static double logHyper(
+            final long N,
+            final long K,
+            final long n,
+            final long k
+        ) {
+            return logChoose(K, k)
+                 + logChoose(N - K, n - k)
+                 - logChoose(N, n);
+        }
+
+        /**
+         * Computes {@code log P[X <= k]} by recurrence from {@code k}
+         * downward.
+         *
+         * @param N total population
+         * @param K population successes
+         * @param n sample size
+         * @param k observed successes
+         * @param lo lower support bound
+         * @return lower-tail log probability
+         */
+        private static double logLowerTail(
+            final long N,
+            final long K,
+            final long n,
+            final long k,
+            final long lo
+        ) {
+            double logP = logHyper(N, K, n, k);
+
+            if (Double.isNaN(logP)) {
+                return Double.NaN;
+            }
+
+            double sum = 1d;
+            double term = 1d;
+
+            for (long x = k; x > lo; x--) {
+                final double r =
+                    ((double) x / (double) (K - x + 1L))
+                  * ((double) (N - K - n + x) / (double) (n - x + 1L));
+
+                if (r <= 0d) {
+                    break;
+                }
+
+                term *= r;
+                sum += term;
+
+                if (term <= sum * TAIL_EPS) {
+                    break;
+                }
+            }
+
+            return logP + Math.log(sum);
+        }
+
+        /**
+         * Computes {@code log P[X >= k]} by recurrence from {@code k} upward.
+         *
+         * @param N total population
+         * @param K population successes
+         * @param n sample size
+         * @param k observed successes
+         * @param hi upper support bound
+         * @return upper-tail log probability
+         */
+        private static double logUpperTail(
+            final long N,
+            final long K,
+            final long n,
+            final long k,
+            final long hi
+        ) {
+            double logP = logHyper(N, K, n, k);
+
+            if (Double.isNaN(logP)) {
+                return Double.NaN;
+            }
+
+            double sum = 1d;
+            double term = 1d;
+
+            for (long x = k; x < hi; x++) {
+                final double r =
+                    ((double) (K - x) / (double) (x + 1L))
+                  * ((double) (n - x) / (double) (N - K - n + x + 1L));
+
+                if (r <= 0d) {
+                    break;
+                }
+
+                term *= r;
+                sum += term;
+
+                if (term <= sum * TAIL_EPS) {
+                    break;
+                }
+            }
+
+            return logP + Math.log(sum);
+        }
     }
-    
+
     /**
-     * Validates per-part vector shapes and per-cell invariants. Called
-     * once per term during ranking; kept to a single pass.
+     * Validates per-part vector shapes and per-cell invariants.
+     *
+     * @param partTermFreq term occurrences per part
+     * @param partTokens token count per part
+     * @param focusPart focus part id
+     * @throws IllegalArgumentException if vector shapes or counts are invalid
      */
     static void checkInputs(
         final long[] partTermFreq,
@@ -645,32 +1185,43 @@ public interface PartScorer {
         if (partTermFreq.length != partTokens.length) {
             throw new IllegalArgumentException(
                 "partTermFreq.length=" + partTermFreq.length
-                + " != partTokens.length=" + partTokens.length);
+                + " != partTokens.length=" + partTokens.length
+            );
         }
         if (focusPart < 0 || focusPart >= partTokens.length) {
-            throw new IllegalArgumentException("focusPart out of range: " + focusPart);
+            throw new IllegalArgumentException(
+                "focusPart out of range: " + focusPart
+            );
         }
-        for (int p = 0; p < partTokens.length; p++) {
-            final long tf = partTermFreq[p];
-            final long n = partTokens[p];
-            if (tf < 0L || n < 0L || tf > n) {
+
+        for (int part = 0; part < partTokens.length; part++) {
+            final long termFreq = partTermFreq[part];
+            final long tokens = partTokens[part];
+
+            if (termFreq < 0L || tokens < 0L || termFreq > tokens) {
                 throw new IllegalArgumentException(
-                    "invalid counts at part " + p + ": tf=" + tf + ", tokens=" + n);
+                    "invalid counts at part " + part
+                    + ": tf=" + termFreq
+                    + ", tokens=" + tokens
+                );
             }
         }
     }
 
     /**
-     * Signed 2×2 log-likelihood G². Sign is positive when the focus rate
-     * meets or exceeds the other rate. Returns {@link Double#NaN} on
-     * zero-token sides and {@code 0} on degenerate vocabularies.
+     * Computes signed 2×2 log-likelihood G².
      *
      * <p>
-     * Most of the G² magnitude comes from the two non-term cells (per-cell
-     * contribution is {@code O · log(O/E)}, and non-term observed counts
-     * dominate by orders of magnitude in realistic text). Standard LL
-     * behaviour, not over-counting.
+     * The sign is positive when the focus rate meets or exceeds the other
+     * rate. The method returns {@link Double#NaN} on zero-token sides and
+     * {@code 0} on degenerate vocabularies.
      * </p>
+     *
+     * @param focusTermFreq term occurrences in focus
+     * @param focusTokens total tokens in focus
+     * @param otherTermFreq term occurrences in other part
+     * @param otherTokens total tokens in other part
+     * @return signed G² value
      */
     static double signedG2(
         final long focusTermFreq,
@@ -678,7 +1229,9 @@ public interface PartScorer {
         final long otherTermFreq,
         final long otherTokens
     ) {
-        if (focusTokens <= 0L || otherTokens <= 0L) return Double.NaN;
+        if (focusTokens <= 0L || otherTokens <= 0L) {
+            return Double.NaN;
+        }
 
         final long focusNonTerm = focusTokens - focusTermFreq;
         final long otherNonTerm = otherTokens - otherTermFreq;
@@ -686,7 +1239,9 @@ public interface PartScorer {
         final long allTerm = focusTermFreq + otherTermFreq;
         final long allNonTerm = focusNonTerm + otherNonTerm;
 
-        if (allTerm <= 0L || allNonTerm <= 0L) return 0d;
+        if (allTerm <= 0L || allNonTerm <= 0L) {
+            return 0d;
+        }
 
         final double eFocusTerm = (double) allTerm * focusTokens / allTokens;
         final double eOtherTerm = (double) allTerm * otherTokens / allTokens;
@@ -701,13 +1256,23 @@ public interface PartScorer {
 
         final double focusRate = (double) focusTermFreq / focusTokens;
         final double otherRate = (double) otherTermFreq / otherTokens;
+
         return focusRate >= otherRate ? g2 : -g2;
     }
 
-    /** One cell of the G² sum. Returns 0 for empty cells (limit of x·log x at 0). */
+    /**
+     * Computes one cell of the G² sum.
+     *
+     * @param observed observed count
+     * @param expected expected count
+     * @return cell contribution, or {@code 0} for empty cells
+     */
     private static double cell(final long observed, final double expected)
     {
-        if (observed <= 0L || expected <= 0d) return 0d;
+        if (observed <= 0L || expected <= 0d) {
+            return 0d;
+        }
+
         return 2d * observed * Math.log(observed / expected);
     }
 }

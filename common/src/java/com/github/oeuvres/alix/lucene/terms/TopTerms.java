@@ -450,6 +450,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
     
     /**
+     * Deprecated, was an experiment, kept for memory to not retry,
+     * use {@link #partScore(IndexReader, Partition, PartScorer, int)} instead.
+     * 
      * Ranks focus-part terms by contrast between per-part count rankings.
      *
      * <p>
@@ -492,6 +495,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *                               with term frequencies
      * @throws NullPointerException if any required argument is {@code null}
      */
+    @Deprecated
     public TopTerms partRanking(
         final IndexReader reader,
         final Partition partition,
