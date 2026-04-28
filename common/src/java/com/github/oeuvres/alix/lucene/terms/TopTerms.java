@@ -450,6 +450,187 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
     
     /**
+     * Ranks focus-part terms by contrast between per-part count rankings.
+     *
+     * <p>
+     * The method first walks the field postings once to build per-part top-count
+     * rankings. It then scores candidates from the focus part using the supplied
+     * {@link RankScorer}. This differs from
+     * {@link #partScore(IndexReader, Partition, PartScorer, int)}: a
+     * {@link PartScorer} scores a term immediately from its per-part frequency
+     * vector, while a {@link RankScorer} needs completed per-part rankings.
+     * </p>
+     *
+     * <p>
+     * For each focus candidate, the method builds two reusable vectors:
+     * </p>
+     *
+     * <ul>
+     *   <li>{@code partTermRank[p]}: zero-based retained rank of the term in part
+     *       {@code p}, or {@code candidateCapacity} if absent from that part's
+     *       retained top list;</li>
+     *   <li>{@code partTermFreq[p]}: retained occurrence count of the term in part
+     *       {@code p}, or {@code 0} if absent.</li>
+     * </ul>
+     *
+     * <p>
+     * After this call, {@link TermEntry#freq()} returns the term occurrence count
+     * in the focus part and {@link TermEntry#score()} returns the rank-based score.
+     * </p>
+     *
+     * @param reader reader snapshot matching this instance
+     * @param partition document partition aligned with {@code reader}
+     * @param scorer rank scorer
+     * @param topK maximum number of final terms to retain
+     * @return this instance
+     * @throws IOException if postings traversal fails
+     * @throws IllegalArgumentException if {@code topK < 1}, if the partition has
+     *                                  no focus part, if the partition is not
+     *                                  aligned with {@code reader}, or if the
+     *                                  scorer returns an invalid candidate capacity
+     * @throws IllegalStateException if the field has no terms or was not indexed
+     *                               with term frequencies
+     * @throws NullPointerException if any required argument is {@code null}
+     */
+    public TopTerms partRanking(
+        final IndexReader reader,
+        final Partition partition,
+        final RankScorer scorer,
+        final int topK
+    ) throws IOException {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(partition, "partition");
+        Objects.requireNonNull(scorer, "scorer");
+
+        checkTopK(topK);
+        checkPartition(reader, partition);
+        final int vocabSize = fieldStats.vocabSize();
+        // final int candidateCapacity = scorer.candidateCapacity(topK);
+        final int candidateCapacity = vocabSize;
+        if (candidateCapacity < topK) {
+            throw new IllegalArgumentException(
+                "candidateCapacity=" + candidateCapacity + " < topK=" + topK
+            );
+        }
+
+        final Terms terms = requireTerms(reader, "rank partition terms");
+
+        final int partCount = partition.partCount();
+        final int focusPart = partition.focusPart();
+        final int missingRank = candidateCapacity;
+        final byte[] docPart = partition.docPartRef();
+        final int[] docTokens = fieldStats.docTokensRef();
+        final long[] partTokens = new long[partCount];
+
+        for (int docId = 0; docId < docPart.length; docId++) {
+            final byte part = docPart[docId];
+
+            if (part == Partition.NO_PART) {
+                continue;
+            }
+
+            partTokens[part] += docTokens[docId];
+        }
+
+        initFocus();
+
+        focusTokens = partTokens[focusPart];
+        focusDocs = partition.partDocs(focusPart);
+
+        scorer.init(topK, candidateCapacity, focusPart, partTokens);
+
+        final PartRanker ranker = new PartRanker(partCount, candidateCapacity);
+        final long[] termPartFreq = new long[partCount];
+
+        final TermsEnum tenum = terms.iterator();
+        PostingsEnum postings = null;
+        int termId = 1;
+
+        while (tenum.next() != null) {
+            Arrays.fill(termPartFreq, 0L);
+
+            long focusFreq = 0L;
+            int focusDocsForTerm = 0;
+
+            postings = tenum.postings(postings, PostingsEnum.FREQS);
+            for (
+                int docId = postings.nextDoc();
+                docId != DocIdSetIterator.NO_MORE_DOCS;
+                docId = postings.nextDoc()
+            ) {
+                final byte part = docPart[docId];
+
+                if (part == Partition.NO_PART) {
+                    continue;
+                }
+
+                final int freq = postings.freq();
+
+                termPartFreq[part] += freq;
+
+                if (part == focusPart) {
+                    focusFreq += freq;
+                    focusDocsForTerm++;
+                }
+            }
+
+            if (focusFreq > 0L) {
+                focusTermFreq[termId] = focusFreq;
+                focusTermDocs[termId] = focusDocsForTerm;
+            }
+
+            ranker.add(termId, termPartFreq);
+            termId++;
+        }
+
+        final TopArray focusTop = ranker.top(focusPart);
+        final int focusTopSize = focusTop.size();
+        final int[] partTermRank = new int[partCount];
+        final double[] partTermFreq = new double[partCount];
+        final double[] scores = new double[vocabSize];
+        final TopArray top = new TopArray(topK);
+
+        for (int focusRank = 0; focusRank < focusTopSize; focusRank++) {
+            final int candidateTermId = focusTop.id(focusRank);
+
+            Arrays.fill(partTermRank, missingRank);
+            Arrays.fill(partTermFreq, 0d);
+
+            partTermRank[focusPart] = focusRank;
+            partTermFreq[focusPart] = focusTop.score(focusRank);
+
+            for (int part = 0; part < partCount; part++) {
+                if (part == focusPart) {
+                    continue;
+                }
+
+                final TopArray partTop = ranker.top(part);
+                final int rank = partTop.rank(candidateTermId);
+
+                if (rank < 0) {
+                    continue;
+                }
+
+                partTermRank[part] = rank;
+                partTermFreq[part] = partTop.score(rank);
+            }
+
+            final double score = scorer.score(partTermRank, partTermFreq);
+
+            if (Double.isNaN(score)) {
+                continue;
+            }
+
+            scores[candidateTermId] = score;
+            top.push(candidateTermId, score);
+        }
+
+        activeCounts = focusTermFreq;
+        buildRank(top, scores);
+
+        return this;
+    }    
+    /**
      * Ranks terms for the focus part of a partition.
      *
      * <p>

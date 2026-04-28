@@ -19,7 +19,9 @@ import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.Partition;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
+import com.github.oeuvres.alix.lucene.terms.PartRanker;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
+import com.github.oeuvres.alix.lucene.terms.RankScorer;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -95,12 +97,43 @@ public final class OpTerms extends Op
             final String scorerName = pars.getString(SCORER, "");
             // partition query on dates
             Query yearQuery = yearQuery(index, pars);
+            if (yearQuery != null && scorerName.startsWith("rank")) {
+                FlucNum years = index.flucNum(YEAR);
+                final int start = pars.getInt(START, (int)years.min());
+                int end = pars.getInt(END, (int)years.min());
+                // TODO filter by tags
+                final Partition partition = years.partition(start, end, null, null);
+                RankScorer rankScorer;
+                if ("rank1".equals(scorerName)) {
+                    rankScorer = new RankScorer.RankGap();
+                }
+                else if ("rank2".equals(scorerName)) {
+                    rankScorer = new RankScorer.RrfRankGap();
+                }
+                else if ("rank3".equals(scorerName)) {
+                    rankScorer = new RankScorer.WeightedRrfRankGap();
+                }
+                else if ("rank4".equals(scorerName)) {
+                    rankScorer = new RankScorer.MeanRrfRankGap();
+                }
+                else if ("rank5".equals(scorerName)) {
+                    rankScorer = new RankScorer.RateWeightedRrfRankGap();
+                }
+                else {
+                    rankScorer = new RankScorer.RankGap();
+                }
+                return topTerms.partRanking(index.reader(), partition, rankScorer, topK);
+            }
+            
             if (yearQuery != null && scorerName.startsWith("part")) {
                 FlucNum years = index.flucNum(YEAR);
                 final int start = pars.getInt(START, (int)years.min());
                 int end = pars.getInt(END, (int)years.min());
                 // TODO filter by tags
                 final Partition partition = years.partition(start, end, null, null);
+                
+
+                
                 PartScorer partScorer;
                 if ("part1".equals(scorerName)) {
                     partScorer = new PartScorer.LogLikelihood();
@@ -123,7 +156,11 @@ public final class OpTerms extends Op
             // focus % all rest
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
 
-            if ("rsj".equals(scorerName)) {
+            if (LOG_LIKELIHOOD.equals(scorerName)) {
+                topTerms.focus(index.reader(), focusDocs);
+                return topTerms.focusScore(new KeynessScorer.LogLikelihood(), topK);
+            }
+            else if ("rsj".equals(scorerName)) {
                 return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.RSJ), topK);
             }
             else if ("irdf".equals(scorerName)) {
@@ -186,20 +223,32 @@ public final class OpTerms extends Op
               <tr>
         """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),idfexp)
         );
-        writer.append("      <td><b>LogLikelihood</b><br/>\n");
+        writer.append("      <td><b>2x2 LogLikelihood</b><br/>\n");
+        request.setAttribute(SCORER, LOG_LIKELIHOOD);
+        html(index, request, response);
+        writer.append("      </td>\n");
+        writer.append("      <td><b>Parts LogLikelihood</b><br/>\n");
         request.setAttribute(SCORER, "part1");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td><b>Pearson</b><br/>\n");
-        request.setAttribute(SCORER, "part2");
+        writer.append("      <td><b>Parts RankGap</b><br/>\n");
+        request.setAttribute(SCORER, "rank1");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td><b>Specificity</b><br/>\n");
-        request.setAttribute(SCORER, "part3");
+        writer.append("      <td><b>Parts RrfRankGap</b><br/>\n");
+        request.setAttribute(SCORER, "rank2");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td><b>RateRatio</b><br/>\n");
-        request.setAttribute(SCORER, "part4");
+        writer.append("      <td><b>Parts WeightedRrfRankGap</b><br/>\n");
+        request.setAttribute(SCORER, "rank3");
+        html(index, request, response);
+        writer.append("      </td>\n");
+        writer.append("      <td><b>Parts MeanRrfRankGap</b><br/>\n");
+        request.setAttribute(SCORER, "rank4");
+        html(index, request, response);
+        writer.append("      </td>\n");
+        writer.append("      <td><b>Parts RateWeightedRrfRankGap</b><br/>\n");
+        request.setAttribute(SCORER, "rank5");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("""

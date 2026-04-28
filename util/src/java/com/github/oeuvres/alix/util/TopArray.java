@@ -48,6 +48,16 @@ public final class TopArray implements Iterable<TopArray.IdScore>
     private final int[] ids;
     private final double[] scores;
     
+    /**
+     * Lazy inverse rank cache: {@code id -> zero-based rank}.
+     *
+     * <p>
+     * The cache is built on first {@link #rank(int)} call and invalidated whenever
+     * the retained set changes. Missing ids return {@code -1}.
+     * </p>
+     */
+    private IntIntMap rankById;
+    
     /** Number of retained pairs. */
     private int size;
     
@@ -106,6 +116,7 @@ public final class TopArray implements Iterable<TopArray.IdScore>
     {
         size = 0;
         sorted = false;
+        rankById = null;
         return this;
     }
     
@@ -223,7 +234,7 @@ public final class TopArray implements Iterable<TopArray.IdScore>
                 m = scores[i];
         return m;
     }
-
+    
     /**
      * Returns the minimum retained score. Runs in {@code O(1)} when the
      * prefix is sorted, or when in heap state and {@link #REVERSE} is not
@@ -262,6 +273,7 @@ public final class TopArray implements Iterable<TopArray.IdScore>
             return this;
         }
         if (size < capacity) {
+            rankById = null;
             ensureHeap();
             ids[size] = id;
             scores[size] = score;
@@ -272,6 +284,7 @@ public final class TopArray implements Iterable<TopArray.IdScore>
         if (compare(score, id, scores[worst], ids[worst]) >= 0) {
             return this;
         }
+        rankById = null;
         ensureHeap();
         ids[0] = id;
         scores[0] = score;
@@ -308,6 +321,10 @@ public final class TopArray implements Iterable<TopArray.IdScore>
      */
     public TopArray push(final int[] vector)
     {
+        Objects.requireNonNull(vector, "vector");
+        if (capacity == 0) {
+            return this;
+        }
         for (int i = 0; i < vector.length; i++)
             push(i, vector[i]);
         return this;
@@ -323,9 +340,41 @@ public final class TopArray implements Iterable<TopArray.IdScore>
      */
     public TopArray push(final long[] vector)
     {
+        Objects.requireNonNull(vector, "vector");
+        if (capacity == 0) {
+            return this;
+        }
         for (int i = 0; i < vector.length; i++)
             push(i, vector[i]);
         return this;
+    }
+    
+    /**
+     * Returns the rank of a retained id.
+     *
+     * <p>
+     * Rank {@code 0} is the best retained pair. If the id is not retained, the
+     * method returns {@code -1}. The inverse rank map is built lazily on first
+     * use and invalidated when the retained set changes.
+     * </p>
+     *
+     * <p>
+     * If the same id occurs more than once, the best retained rank is returned.
+     * This matches the public ranking order and keeps the method well-defined
+     * even though this class does not deduplicate ids.
+     * </p>
+     *
+     * @param id retained id to look up
+     * @return zero-based rank, or {@code -1} if the id is absent
+     */
+    public int rank(final int id)
+    {
+        IntIntMap ranks = rankById;
+        if (ranks == null) {
+            ranks = buildRankById();
+            rankById = ranks;
+        }
+        return ranks.get(id);
     }
     
     /**
@@ -393,6 +442,29 @@ public final class TopArray implements Iterable<TopArray.IdScore>
         if (Double.isNaN(score))
             return false;
         return !(noZero && score == 0d);
+    }
+    
+    /**
+     * Builds the lazy inverse rank cache.
+     *
+     * <p>
+     * The retained prefix is first sorted in public ranking order. Duplicate ids
+     * keep their first, therefore best, retained rank.
+     * </p>
+     *
+     * @return inverse rank cache
+     */
+    private IntIntMap buildRankById()
+    {
+        ensureSorted();
+
+        final IntIntMap ranks = new IntIntMap(size, IntIntMap.DEFAULT_LOAD_FACTOR, -1);
+
+        for (int rank = 0; rank < size; rank++) {
+            ranks.putIfAbsent(ids[rank], rank);
+        }
+
+        return ranks;
     }
     
     /**
