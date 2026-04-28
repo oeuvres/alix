@@ -19,7 +19,6 @@ import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.Partition;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.terms.PartRanker;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.RankScorer;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
@@ -114,7 +113,7 @@ public final class OpTerms extends Op
                     rankScorer = new RankScorer.WeightedRrfRankGap();
                 }
                 else if ("rank4".equals(scorerName)) {
-                    rankScorer = new RankScorer.MeanRrfRankGap();
+                    rankScorer = new RankScorer.RrfRatio();
                 }
                 else if ("rank5".equals(scorerName)) {
                     rankScorer = new RankScorer.RateWeightedRrfRankGap();
@@ -231,8 +230,8 @@ public final class OpTerms extends Op
         request.setAttribute(SCORER, "part1");
         html(index, request, response);
         writer.append("      </td>\n");
-        writer.append("      <td><b>Parts RankGap</b><br/>\n");
-        request.setAttribute(SCORER, "rank1");
+        writer.append("      <td><b>Parts RateWeightedRrfRankGap</b><br/>\n");
+        request.setAttribute(SCORER, "rank5");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("      <td><b>Parts RrfRankGap</b><br/>\n");
@@ -241,14 +240,6 @@ public final class OpTerms extends Op
         writer.append("      </td>\n");
         writer.append("      <td><b>Parts WeightedRrfRankGap</b><br/>\n");
         request.setAttribute(SCORER, "rank3");
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td><b>Parts MeanRrfRankGap</b><br/>\n");
-        request.setAttribute(SCORER, "rank4");
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td><b>Parts RateWeightedRrfRankGap</b><br/>\n");
-        request.setAttribute(SCORER, "rank5");
         html(index, request, response);
         writer.append("      </td>\n");
         writer.append("""

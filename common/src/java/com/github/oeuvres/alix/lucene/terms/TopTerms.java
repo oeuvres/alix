@@ -505,8 +505,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         checkTopK(topK);
         checkPartition(reader, partition);
         final int vocabSize = fieldStats.vocabSize();
-        // final int candidateCapacity = scorer.candidateCapacity(topK);
-        final int candidateCapacity = vocabSize;
+        final int candidateCapacity = scorer.candidateCapacity(topK);
+        // final int candidateCapacity = vocabSize;
         if (candidateCapacity < topK) {
             throw new IllegalArgumentException(
                 "candidateCapacity=" + candidateCapacity + " < topK=" + topK
