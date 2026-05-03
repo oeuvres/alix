@@ -29,7 +29,7 @@ import static com.github.oeuvres.alix.common.Names.*;
  * ({@link #lastDocId} + 1). The caller is responsible for turning that into a
  * full URL.</p>
  */
-public class HtmlResults extends SpanListener
+public class HtmlResults implements SpanListener
 {
     private final Writer writer;
     private final StoredFields storedFields;
@@ -116,6 +116,25 @@ public class HtmlResults extends SpanListener
         return this.doclineFieldName;
     }
     
+    @Override
+    public void endDoc(final int spanTotal) throws IOException
+    {
+        if (spanCount > 0) {
+            writer.append("</ol>\n");
+        }
+        if (spanTotal == 0); //?
+        else if (spanTotal == spanCount);
+        else {
+            writer.append("<div class=\"span-count\">")
+                .append(String.valueOf(spanCount))
+                .append(" / ")
+                .append(String.valueOf(spanTotal))
+                .append("</div>");
+        }
+        writer.append("</article>\n\n");
+        writer.flush();
+    }
+
     public String hrefBase()
     {
         return this.hrefBase;
@@ -149,6 +168,11 @@ public class HtmlResults extends SpanListener
         return this;
     }
 
+    public int spanLimit()
+    {
+        return this.spanLimit;
+    }
+
     /** Sets the maximum number of spans emitted per document; {@code -1} = unlimited. */
     public HtmlResults spanLimit(final int spanLimit)
     {
@@ -156,16 +180,46 @@ public class HtmlResults extends SpanListener
         return this;
     }
 
-    public int spanLimit()
-    {
-        return this.spanLimit;
-    }
-
     @Override
-    public boolean wantsMoreDocs()
+    public boolean span(OffsetsCollector collector) throws IOException
     {
-        // docLimit < 0 means unlimited; otherwise stop once the limit is reached
-        return docLimit < 0 || docCount < docLimit;
+        if (spanLimit == 0) return false;
+        if (spanCount == 0) writer.append("<ol class=\"hit spans\">\n");
+        spanCount++;
+    
+        final int termCount = collector.size();
+        if (termCount < 1) return true;
+    
+        // Opening tag written first: no buffer needed, no prepend.
+        writer.append("<li class=\"hit span\"><a href=\"")
+            .append(hrefBase)
+            .append(id)
+            .append(hrefExt)
+            .append(hrefSearch)
+            .append("#span")
+            .append(String.valueOf(collector.ord() + 1))
+            .append("\">");
+    
+        // Left context: locate boundary, then detag forward directly into writer.
+        final int left = Markup.leftBoundary(content, collector.startOffset(0) - 1, ctx, -1);
+        detagger.detag(content, left, collector.startOffset(0), writer);
+    
+        // Pivot terms with inter-term text between them.
+        writer.append("<mark class=\"hit pivot\">");
+        writer.append(content, collector.startOffset(0), collector.endOffset(0));
+        writer.append("</mark>");
+        for (int termOrd = 1; termOrd < termCount; termOrd++) {
+            detagger.detag(content, collector.endOffset(termOrd - 1), collector.startOffset(termOrd), writer);
+            writer.append("<mark class=\"hit pivot\">");
+            writer.append(content, collector.startOffset(termOrd), collector.endOffset(termOrd));
+            writer.append("</mark>");
+        }
+    
+        // Right context.
+        final int right = Markup.rightBoundary(content, collector.endOffset(termCount - 1), ctx, -1);
+        detagger.detag(content, collector.endOffset(termCount - 1), right, writer); 
+        writer.append("</a></li>\n");
+        return spanLimit < 0 || spanCount < spanLimit;
     }
 
     @Override
@@ -199,64 +253,10 @@ public class HtmlResults extends SpanListener
     }
 
     @Override
-    public boolean span(OffsetsCollector collector) throws IOException
+    public boolean wantsMoreDocs()
     {
-        if (spanLimit == 0) return false;
-        if (spanCount == 0) writer.append("<ol class=\"hit spans\">\n");
-        spanCount++;
- 
-        final int termCount = collector.size();
-        if (termCount < 1) return true;
- 
-        // Opening tag written first: no buffer needed, no prepend.
-        writer.append("<li class=\"hit span\"><a href=\"")
-            .append(hrefBase)
-            .append(id)
-            .append(hrefExt)
-            .append(hrefSearch)
-            .append("#span")
-            .append(String.valueOf(collector.ord() + 1))
-            .append("\">");
- 
-        // Left context: locate boundary, then detag forward directly into writer.
-        final int left = Markup.leftBoundary(content, collector.startOffset(0) - 1, ctx, -1);
-        detagger.detag(content, left, collector.startOffset(0), writer);
- 
-        // Pivot terms with inter-term text between them.
-        writer.append("<mark class=\"hit pivot\">");
-        writer.append(content, collector.startOffset(0), collector.endOffset(0));
-        writer.append("</mark>");
-        for (int termOrd = 1; termOrd < termCount; termOrd++) {
-            detagger.detag(content, collector.endOffset(termOrd - 1), collector.startOffset(termOrd), writer);
-            writer.append("<mark class=\"hit pivot\">");
-            writer.append(content, collector.startOffset(termOrd), collector.endOffset(termOrd));
-            writer.append("</mark>");
-        }
- 
-        // Right context.
-        final int right = Markup.rightBoundary(content, collector.endOffset(termCount - 1), ctx, -1);
-        detagger.detag(content, collector.endOffset(termCount - 1), right, writer); 
-        writer.append("</a></li>\n");
-        return spanLimit < 0 || spanCount < spanLimit;
-    }
-
-    @Override
-    public void endDoc(final int spanTotal) throws IOException
-    {
-        if (spanCount > 0) {
-            writer.append("</ol>\n");
-        }
-        if (spanTotal == 0); //?
-        else if (spanTotal == spanCount);
-        else {
-            writer.append("<div class=\"span-count\">")
-                .append(String.valueOf(spanCount))
-                .append(" / ")
-                .append(String.valueOf(spanTotal))
-                .append("</div>");
-        }
-        writer.append("</article>\n\n");
-        writer.flush();
+        // docLimit < 0 means unlimited; otherwise stop once the limit is reached
+        return docLimit < 0 || docCount < docLimit;
     }
 
 

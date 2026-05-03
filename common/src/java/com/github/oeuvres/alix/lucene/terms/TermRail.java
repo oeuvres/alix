@@ -515,10 +515,6 @@ public final class TermRail implements Closeable {
         return totalPositions;
     }
 
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
-
     private void checkDocId(final int docId) {
         if (docId < 0 || docId >= docCount) {
             throw new IllegalArgumentException(

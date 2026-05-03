@@ -2,66 +2,70 @@ package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.IOException;
 
-import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.search.Query;
-
-
 /**
- * Receives streamed query results from a walker.
+ * Receives streamed span-match events from a {@link SpanWalker}.
  *
- * <p>This contract is intentionally broader than spans alone: the same listener can be
- * implemented once per output format (HTML, JSON…) and reused across different walker types.</p>
- *
- * <p>Methods are called in this lifecycle order for each walk:</p>
+ * <p>Lifecycle, per call to {@link SpanWalker#walk(int)}:</p>
  * <ol>
- *   <li>{@link #start(SpanQuery, Query, int)}</li>
- *   <li>For each matching document:
+ *   <li>{@link #start()}</li>
+ *   <li>For each matching document, in natural index order:
  *     <ol>
- *       <li>{@link #wantsMoreDocs()} — returning {@code false} stops traversal</li>
+ *       <li>{@link #wantsMoreDocs()} — return {@code false} to stop the walk</li>
  *       <li>{@link #startDoc(int)}</li>
- *       <li>{@link #span(OffsetsCollector)} — once per span match, returning {@code false}
- *           stops span enumeration for this document</li>
+ *       <li>{@link #span(OffsetsCollector)} — once per match; return {@code false} to skip the remaining matches of the current document</li>
  *       <li>{@link #endDoc(int)}</li>
  *     </ol>
  *   </li>
- *   <li>{@link #end(boolean)} — {@code completed} is {@code true} if the index was fully
- *       exhausted, {@code false} if {@link #wantsMoreDocs()} cut traversal short</li>
+ *   <li>{@link #end(boolean)}</li>
  * </ol>
+ *
+ * <p>The contract is shared across output formats (HTML, JSON, term aggregation…) and across walker types.</p>
  */
-public abstract class SpanListener
+public interface SpanListener
 {
-
+    /**
+     * Called once at the end of every walk, after the last document.
+     *
+     * @param exhausted {@code true} if the index was traversed to its end; {@code false} if {@link #wantsMoreDocs()} cut the walk short
+     */
+    default void end(final boolean exhausted) throws IOException {}
 
     /**
-     * Polled before the walker enters each matching document.
-     * Return {@code false} to stop traversal; {@link #end(boolean) end(false)} will be called.
+     * Called after all matches of the current document have been delivered to {@link #span(OffsetsCollector)}, or after {@code span} returned {@code false}.
+     *
+     * @param spanCount total number of matches in the document, including those skipped after {@code span} returned {@code false}
      */
-    abstract public boolean wantsMoreDocs();
+    void endDoc(int spanCount) throws IOException;
 
     /**
-     * Called before the spans of a matching document are emitted.
+     * Called once per match of the current document, in ascending start-position order.
      *
-     * @param docId global Lucene doc ID
+     * <p>The {@link OffsetsCollector} is reused across calls; do not retain a reference.</p>
+     *
+     * @param collector match data (term offsets, ordinal within the document) for the current span
+     * @return {@code true} to continue receiving matches in the current document; {@code false} to skip the remainder
      */
-    abstract public void startDoc(int docId) throws IOException;
+    boolean span(OffsetsCollector collector) throws IOException;
 
     /**
-     * Called for each span match within the current document, in start-position order.
-     *
-     * <p>The {@link OffsetsCollector} instance is reused across calls; do not retain it.</p>
-     *
-     * <p>Return {@code false} to stop span enumeration for this document; the walker still
-     * calls {@link #endDoc(int)} and then moves to the next document.</p>
-     *
-     * @param collector the current span's leaf terms, in ascending token-position order
-     * @return {@code true} to continue to the next span
+     * Called once at the start of every walk, before any document is visited.
      */
-    abstract public boolean span(OffsetsCollector collector) throws IOException;
+    default void start() throws IOException {}
+    
+    /**
+     * Called before the matches of a document are delivered.
+     *
+     * @param docId global Lucene document id
+     */
+    void startDoc(int docId) throws IOException;
 
     /**
-     * Called after all spans of a document have been emitted (or span enumeration was
-     * stopped early by {@link #span} returning {@code false}).
+     * Polled before each candidate document is opened.
+     *
+     * @return {@code true} to continue, {@code false} to stop the walk; {@link #end(boolean) end(false)} is then called
      */
-    abstract public void endDoc(final int spanCount) throws IOException;
-
+    default boolean wantsMoreDocs()
+    {
+        return true;
+    }
 }

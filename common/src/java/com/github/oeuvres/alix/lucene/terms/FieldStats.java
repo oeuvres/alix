@@ -130,6 +130,9 @@ public final class FieldStats
     /** Per-document field width (max position + 1), indexed by global doc id; 0 for docs without the field. */
     private final int[] docWidths;
     
+    /** Width of the biggest document, useful to prepare a reusable vector by doc. */
+    private final int maxWidth;
+    
     /** Per-document token count, indexed by global doc id; 0 for docs without the field. */
     private final int[] docTokens;
     
@@ -181,6 +184,7 @@ public final class FieldStats
             final String field,
             final int maxDoc,
             final int[] docWidths,
+            final int maxWidth,
             final int[] docTokens,
             final int vocabSize,
             final int[] termDocs,
@@ -193,6 +197,7 @@ public final class FieldStats
         this.field = field;
         this.maxDoc = maxDoc;
         this.docWidths = docWidths;
+        this.maxWidth = maxWidth;
         this.docTokens = docTokens;
         this.vocabSize = vocabSize;
         this.termDocs = termDocs;
@@ -278,7 +283,7 @@ public final class FieldStats
             throw e;
         }
     }
-
+    
     /**
      * Computes a corpus-level weight for every vocabulary term.
      *
@@ -312,7 +317,7 @@ public final class FieldStats
     {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(scorer, "scorer");
-
+        
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
             throw new IllegalStateException(
@@ -322,13 +327,13 @@ public final class FieldStats
             throw new IllegalStateException(
                     "Field '" + field + "' was not indexed with term frequencies");
         }
-
+        
         scorer.corpus(fieldTokens, fieldDocs);
         final double[] weights = new double[vocabSize];
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
         int termId = 1;
-
+        
         while (tenum.next() != null) {
             if (termId >= vocabSize) {
                 throw new IOException(
@@ -336,20 +341,21 @@ public final class FieldStats
                                 + "': seen more than " + vocabSize + " terms");
             }
             scorer.termStart(termFreq[termId], termDocs[termId]);
-
+            
             postings = tenum.postings(postings, PostingsEnum.FREQS);
             for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
                 final int freq = postings.freq();
-                if (freq <= 0) continue;
+                if (freq <= 0)
+                    continue;
                 scorer.termDocAdd(freq, docTokens[docId]);
             }
-
+            
             weights[termId] = scorer.termScore();
             termId++;
         }
         return weights;
     }
-
+    
     /**
      * Computes per-document widths and token counts in a single pass over the postings.
      * <p>
@@ -477,7 +483,7 @@ public final class FieldStats
         
         return new DocStats(docWidths, docTokens);
     }
-
+    
     /**
      * Returns the token count for one global Lucene document id.
      * Returns {@code 0} for documents that do not contain the field.
@@ -491,7 +497,7 @@ public final class FieldStats
         checkDocId(docId);
         return docTokens[docId];
     }
-
+    
     /**
      * Returns a direct reference to the internal {@code docTokens} array.
      * Intended for hot loops (e.g. BM25 scoring) that cannot afford bounds checks.
@@ -503,7 +509,7 @@ public final class FieldStats
     {
         return docTokens;
     }
-
+    
     /**
      * Returns the field width (max position + 1) for one global Lucene document id.
      * Returns {@code 0} for documents that do not contain the field.
@@ -527,10 +533,11 @@ public final class FieldStats
      * @return
      * @throws IOException
      */
-    public static int[] docWidths(IndexReader reader, String field, Report report) throws IOException {
+    public static int[] docWidths(IndexReader reader, String field, Report report) throws IOException
+    {
         return docStats(reader, field, report).docWidths();
     }
-
+    
     /**
      * Returns {@code true} if the persisted statistics file for the field exists as a regular file.
      * Cheap presence test only; does not validate content.
@@ -545,7 +552,7 @@ public final class FieldStats
         Objects.requireNonNull(field, "field");
         return Files.isRegularFile(statsPath(indexDir, field));
     }
-
+    
     /**
      * Returns the indexed field covered by these statistics.
      *
@@ -565,7 +572,7 @@ public final class FieldStats
     {
         return fieldDocs;
     }
-
+    
     /**
      * Returns the total indexed-token count across the field.
      * Derived at open as {@code Σ docTokens[d]}. This is the denominator
@@ -577,7 +584,7 @@ public final class FieldStats
     {
         return fieldTokens;
     }
-
+    
     /**
      * Returns the total position count across the field (including stripped positions).
      * Derived at open as {@code Σ docWidths[d]}.
@@ -588,7 +595,7 @@ public final class FieldStats
     {
         return fieldWidth;
     }
-
+    
     /**
      * Builds a global live-doc bitset aligned on top-level docIds.
      *
@@ -617,7 +624,7 @@ public final class FieldStats
         }
         return live;
     }
-
+    
     /**
      * Returns the Lucene document-address space size for this frozen reader snapshot.
      * Valid global document ids are in {@code [0, maxDoc())}.
@@ -627,6 +634,16 @@ public final class FieldStats
     public int maxDoc()
     {
         return maxDoc;
+    }
+    
+    /**
+     * From the biggest document, returns the width in positions.
+     *
+     * @return biggest with
+     */
+    public int maxWidth()
+    {
+        return maxWidth;
     }
     
     /**
@@ -683,12 +700,14 @@ public final class FieldStats
             
             final int[] docWidths = new int[maxDoc];
             long width = 0L;
+            int maxWidth = 0;
             for (int docId = 0; docId < maxDoc; docId++) {
                 final int v = in.readInt();
                 if (v < 0)
                     throw new IOException("Invalid docWidth=" + v + " for docId=" + docId);
                 docWidths[docId] = v;
                 width += v;
+                maxWidth = Math.max(maxWidth, v);
             }
             
             final int[] docTokens = new int[maxDoc];
@@ -732,6 +751,7 @@ public final class FieldStats
                     field,
                     maxDoc,
                     docWidths,
+                    maxWidth,
                     docTokens,
                     vocabSize,
                     termDocs,
@@ -743,7 +763,7 @@ public final class FieldStats
             throw new IOException("Truncated stats file: " + path, e);
         }
     }
-
+    
     /**
      * Opens the field statistics, building the sidecar file first if it does not exist.
      *
@@ -758,7 +778,7 @@ public final class FieldStats
     {
         return openOrBuild(reader, sideDir, field, null);
     }
-
+    
     /**
      * Opens the field statistics, building the sidecar file first if it does not exist.
      *
@@ -780,7 +800,7 @@ public final class FieldStats
         }
         return open(reader, sideDir, field, report);
     }
-
+    
     /**
      * Returns the directory from which these statistics were opened.
      *
@@ -891,7 +911,7 @@ public final class FieldStats
         }
         return new TermStats(vocabSize, termDocs, termCounts);
     }
-
+    
     /**
      * Returns the cached corpus-level term weight for one term.
      *
@@ -914,6 +934,7 @@ public final class FieldStats
     
     /**
      * Get reference to the last generated weights.
+     * 
      * @return {@link #termWeights}
      */
     public double[] termWeightsRef()
@@ -951,7 +972,7 @@ public final class FieldStats
     {
         return vocabSize;
     }
-
+    
     /**
      * Resolves the vocabulary size of a field.
      * Uses {@link Terms#size()} if available, otherwise counts by iteration.
@@ -977,7 +998,7 @@ public final class FieldStats
         report.setAttribute("field", field);
         return vocabSize(terms, report);
     }
-
+    
     /**
      * Per-document statistics produced in one unified pass.
      * Both arrays are indexed by global doc id, length {@code reader.maxDoc()}.
@@ -1039,7 +1060,7 @@ public final class FieldStats
     {
         return indexDir.resolve(field + ".stats");
     }
-
+    
     /**
      * Resolves vocabulary size directly from a {@link Terms} instance.
      *
