@@ -7,7 +7,7 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.StoredFields;
 
-import com.github.oeuvres.alix.lucene.spans.OffsetsCollector;
+import com.github.oeuvres.alix.lucene.spans.SpanMatch;
 import com.github.oeuvres.alix.lucene.spans.SpanListener;
 import com.github.oeuvres.alix.util.Detagger;
 import com.github.oeuvres.alix.util.Markup;
@@ -181,7 +181,7 @@ public class HtmlResults implements SpanListener
     }
 
     @Override
-    public boolean span(OffsetsCollector collector) throws IOException
+    public boolean span(SpanMatch collector) throws IOException
     {
         if (spanLimit == 0) return false;
         if (spanCount == 0) writer.append("<ol class=\"hit spans\">\n");

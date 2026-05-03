@@ -106,7 +106,7 @@ public final class SpanWalker
         final Weight filterWeight = (filterQuery == null)
                 ? null
                 : searcher.createWeight(filterQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
-        final OffsetsCollector collector = new OffsetsCollector(INITIAL_COLLECTOR_CAPACITY);
+        final SpanMatch collector = new SpanMatch(INITIAL_COLLECTOR_CAPACITY);
         
         int nextCursor = -1;
         boolean exhausted = true;

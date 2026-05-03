@@ -19,7 +19,7 @@ import org.apache.lucene.search.ScoreMode;
 /**
  * Injects span-query highlights into a stored HTML document as {@code <mark>}
  * and {@code <wbr>} milestone tags, operating purely on character offsets
- * recorded by {@link OffsetsCollector}.
+ * recorded by {@link SpanMatch}.
  *
  * <h2>Output structure</h2>
  * <ul>
@@ -43,7 +43,7 @@ import org.apache.lucene.search.ScoreMode;
  *
  * <h2>Thread safety</h2>
  * <p>
- * Instances are <em>not</em> thread-safe: the internal {@link OffsetsCollector}
+ * Instances are <em>not</em> thread-safe: the internal {@link SpanMatch}
  * is reused across calls to {@link #highlight}.
  * </p>
  */
@@ -62,7 +62,7 @@ public final class DocSpanHighlighter
     private final IndexSearcher searcher;
     private final SpanWeight spanWeight;
     private final Set<Term> queryTerms;
-    private final OffsetsCollector collector = new OffsetsCollector(8);
+    private final SpanMatch collector = new SpanMatch(8);
     
     /**
      * A tag string to be inserted at a specific character offset in the stored

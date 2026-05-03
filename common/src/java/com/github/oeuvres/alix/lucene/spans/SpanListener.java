@@ -12,7 +12,7 @@ import java.io.IOException;
  *     <ol>
  *       <li>{@link #wantsMoreDocs()} — return {@code false} to stop the walk</li>
  *       <li>{@link #startDoc(int)}</li>
- *       <li>{@link #span(OffsetsCollector)} — once per match; return {@code false} to skip the remaining matches of the current document</li>
+ *       <li>{@link #span(SpanMatch)} — once per match; return {@code false} to skip the remaining matches of the current document</li>
  *       <li>{@link #endDoc(int)}</li>
  *     </ol>
  *   </li>
@@ -31,7 +31,7 @@ public interface SpanListener
     default void end(final boolean exhausted) throws IOException {}
 
     /**
-     * Called after all matches of the current document have been delivered to {@link #span(OffsetsCollector)}, or after {@code span} returned {@code false}.
+     * Called after all matches of the current document have been delivered to {@link #span(SpanMatch)}, or after {@code span} returned {@code false}.
      *
      * @param spanCount total number of matches in the document, including those skipped after {@code span} returned {@code false}
      */
@@ -40,12 +40,12 @@ public interface SpanListener
     /**
      * Called once per match of the current document, in ascending start-position order.
      *
-     * <p>The {@link OffsetsCollector} is reused across calls; do not retain a reference.</p>
+     * <p>The {@link SpanMatch} is reused across calls; do not retain a reference.</p>
      *
      * @param collector match data (term offsets, ordinal within the document) for the current span
      * @return {@code true} to continue receiving matches in the current document; {@code false} to skip the remainder
      */
-    boolean span(OffsetsCollector collector) throws IOException;
+    boolean span(SpanMatch collector) throws IOException;
 
     /**
      * Called once at the start of every walk, before any document is visited.

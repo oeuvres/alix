@@ -63,7 +63,7 @@ import org.apache.lucene.queries.spans.Spans;
  * }
  * }</pre>
  */
-public final class OffsetsCollector implements SpanCollector
+public final class SpanMatch implements SpanCollector
 {
     
     /** Number of {@code int} slots per leaf entry: position, startOffset, endOffset. */
@@ -82,7 +82,7 @@ public final class OffsetsCollector implements SpanCollector
      * Constructs a collector with a default initial capacity of 4 leaf terms.
      * Suitable for use as a pre-allocated slot in {@link com.github.oeuvres.alix.util.TopSlot}.
      */
-    public OffsetsCollector()
+    public SpanMatch()
     {
         data = new int[4 * STRIDE];
     }
@@ -93,7 +93,7 @@ public final class OffsetsCollector implements SpanCollector
      * @param initialCapacity expected maximum number of leaf terms per span; resized automatically
      *                        on overflow (powers of two are slightly more efficient for the doubling strategy)
      */
-    public OffsetsCollector(final int initialCapacity)
+    public SpanMatch(final int initialCapacity)
     {
         data = new int[Math.max(2, initialCapacity) * STRIDE];
     }
@@ -132,7 +132,7 @@ public final class OffsetsCollector implements SpanCollector
      *
      * @param dest destination collector; must not be {@code null}
      */
-    public void copyTo(final OffsetsCollector dest)
+    public void copyTo(final SpanMatch dest)
     {
         final int needed = size * STRIDE;
         if (dest.data.length < needed) {

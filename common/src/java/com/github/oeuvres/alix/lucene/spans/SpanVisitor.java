@@ -51,8 +51,8 @@ import com.github.oeuvres.alix.util.TopSlot;
  * <h2>Span ordinal</h2>
  *
  * <p>
- * Each emitted {@link OffsetsCollector} carries its 0-based ordinal within the
- * document via {@link OffsetsCollector#spanOrd()}. This ordinal counts all spans
+ * Each emitted {@link SpanMatch} carries its 0-based ordinal within the
+ * document via {@link SpanMatch#spanOrd()}. This ordinal counts all spans
  * in the document, not only the emitted ones, and can be used to build a stable
  * link back to the span's position in the original document.
  * </p>
@@ -87,10 +87,10 @@ public final class SpanVisitor
     private final SpanWeight spanWeight;
     
     /** Pre-allocated top-k container for span scores within one document. */
-    private final TopSlot<OffsetsCollector> top;
+    private final TopSlot<SpanMatch> top;
     
     /** Reusable collector for the current span during enumeration. */
-    private final OffsetsCollector collector = new OffsetsCollector(8);
+    private final SpanMatch collector = new SpanMatch(8);
     
     /**
      * Stamp array for O(1) distinct-term deduplication during passage scoring.
@@ -144,7 +144,7 @@ public final class SpanVisitor
         this.leafLastDocId = new int[searcher.getLeafContexts().size()];
         java.util.Arrays.fill(this.leafLastDocId, -1);
         
-        this.top = new TopSlot<>(OffsetsCollector::new, Math.max(1, topSpans));
+        this.top = new TopSlot<>(SpanMatch::new, Math.max(1, topSpans));
         
         this.termStamp = new int[fieldStats.vocabSize()];
         Arrays.fill(termStamp, -1);
@@ -213,7 +213,7 @@ public final class SpanVisitor
             collector.ord(spanTotal);
             
             final double spanScore = scoreSpan(docId, spanTotal, collector, weights);
-            final OffsetsCollector slot = top.insert(spanScore);
+            final SpanMatch slot = top.insert(spanScore);
             if (slot != null) {
                 collector.copyTo(slot);
             }
@@ -221,7 +221,7 @@ public final class SpanVisitor
         }
         
         // Emit top spans to listener in descending passage score order.
-        for (TopSlot.Entry<OffsetsCollector> e : top) {
+        for (TopSlot.Entry<SpanMatch> e : top) {
             listener.span(e.value());
         }
     }
@@ -241,7 +241,7 @@ public final class SpanVisitor
     private double scoreSpan(
         final int docId,
         final int spanOrd,
-        final OffsetsCollector col,
+        final SpanMatch col,
         final double[] weights) throws IOException
     {
         final int posLo = Math.max(0, col.position(0) - ctx);
