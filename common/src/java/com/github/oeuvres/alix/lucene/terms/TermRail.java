@@ -49,7 +49,7 @@ import com.github.oeuvres.alix.util.Report;
  * <p>
  * For document {@code d}, the slice is:
  * </p>
- * 
+ *
  * <pre>{@code
  * long base = off[d];
  * int len = (int) ((off[d + 1] - off[d]) / Integer.BYTES);
@@ -91,10 +91,10 @@ public final class TermRail implements Closeable
 {
     /** Sentinel value stored at position gaps and unfilled slots. */
     public static final int NO_TERM = 0;
-    
-    /** Maximum tolerated mtime difference between the two rail files. */
+
+    /** Maximum tolerated mtime difference between the two rail files, in milliseconds. */
     private static final long MTIME_TOLERANCE_MS = 5_000L;
-    
+
     private final Path sideDir;
     private final String field;
     private final int docCount;
@@ -103,16 +103,28 @@ public final class TermRail implements Closeable
     private final MemorySegment dat;
     private final LongBuffer off;
     private final MappedByteBuffer offBuf;
-    
+
+    /**
+     * Private constructor. Use {@link #open(Path, String)} to obtain an instance.
+     *
+     * @param sideDir        directory containing the rail files
+     * @param field          indexed field name covered by this rail
+     * @param docCount       number of documents represented
+     * @param totalPositions total number of position slots across all documents
+     * @param datArena       arena owning the {@code dat} mapping; closed on {@link #close()}
+     * @param dat            memory-mapped view of {@code <field>.rail.dat}
+     * @param offBuf         memory-mapped view of {@code <field>.rail.off}, retained for explicit unmap
+     * @param off            long view over {@code offBuf}
+     */
     private TermRail(
-            final Path sideDir,
-            final String field,
-            final int docCount,
-            final long totalPositions,
-            final Arena datArena,
-            final MemorySegment dat,
-            final MappedByteBuffer offBuf,
-            final LongBuffer off)
+        final Path sideDir,
+        final String field,
+        final int docCount,
+        final long totalPositions,
+        final Arena datArena,
+        final MemorySegment dat,
+        final MappedByteBuffer offBuf,
+        final LongBuffer off)
     {
         this.sideDir = sideDir;
         this.field = field;
@@ -123,7 +135,7 @@ public final class TermRail implements Closeable
         this.offBuf = offBuf;
         this.off = off;
     }
-    
+
     /**
      * Builds the term-id rail for the given field and writes it to disk.
      *
@@ -135,10 +147,11 @@ public final class TermRail implements Closeable
      * @param sideDir directory for the output files
      * @param field   indexed field name
      * @param lexicon term lexicon mapping terms to dense ids; id {@link #NO_TERM} is reserved
-     * @param report  progress reporter; {@code null} accepted
+     * @param report  progress reporter; {@code null} accepted, mapped to a no-op reporter
      * @throws IOException              on I/O failure
-     * @throws IllegalArgumentException if the field has no term vectors
+     * @throws IllegalArgumentException if the field has no term vectors, or term vectors for some document have no positions
      * @throws IllegalStateException    if a document has stacked tokens or term-vector positions outside its postings-derived width
+     * @throws NullPointerException     if {@code reader}, {@code sideDir}, {@code field}, or {@code lexicon} is {@code null}
      */
     public static void build(
         final IndexReader reader,
@@ -153,21 +166,21 @@ public final class TermRail implements Closeable
         Objects.requireNonNull(lexicon, "lexicon");
         if (report == null)
             report = Report.ReportNull.INSTANCE;
-        
+
         final FieldInfo fi = FieldInfos.getMergedFieldInfos(reader).fieldInfo(field);
         if (fi == null || !fi.hasTermVectors()) {
             throw new IllegalArgumentException("field \"" + field + "\" has no term vectors");
         }
-        
+
         final Path offFinal = offPath(sideDir, field);
         IOUtil.ensureAbsent(offFinal);
         final Path offTmp = IOUtil.tmpPath(offFinal);
         IOUtil.deleteIfExists(offTmp);
-        
+
         final int maxDoc = reader.maxDoc();
         final BitSet liveDocs = FieldStats.liveDocs(reader);
         final int[] docWidths = FieldStats.docWidths(reader, field, report);
-        
+
         int widthMax = 0;
         final long[] offsets = new long[maxDoc + 1];
         long totalBytes = 0L;
@@ -181,16 +194,16 @@ public final class TermRail implements Closeable
             totalBytes += (long) docWidths[docId] * Integer.BYTES;
         }
         offsets[maxDoc] = totalBytes;
-        
+
         try (NumWriter offsetsWriter = NumWriter.open(offTmp, (long) offsets.length * Long.BYTES)) {
             offsetsWriter.put(0L, offsets, 0, offsets.length);
         }
-        
+
         final Path datFinal = datPath(sideDir, field);
         IOUtil.ensureAbsent(datFinal);
         final Path datTmp = IOUtil.tmpPath(datFinal);
         IOUtil.deleteIfExists(datTmp);
-        
+
         try (NumWriter railWriter = NumWriter.open(datTmp, totalBytes)) {
             final int[] rail = new int[widthMax];
             final TermVectors termVectors = reader.termVectors();
@@ -237,7 +250,7 @@ public final class TermRail implements Closeable
                 railWriter.put(offsets[docId], rail, 0, docWidth);
             }
         }
-        
+
         try {
             IOUtil.moveTemp(datTmp, datFinal);
             IOUtil.moveTemp(offTmp, offFinal);
@@ -249,9 +262,9 @@ public final class TermRail implements Closeable
             throw e;
         }
     }
-    
+
     /**
-     * Releases the memory-mapped regions. After close, all accessors produce undefined results.
+     * Releases the memory-mapped regions. After close, all accessors produce undefined results. Idempotency is not guaranteed.
      */
     @Override
     public void close()
@@ -259,20 +272,22 @@ public final class TermRail implements Closeable
         datArena.close();
         IOUtil.unmap(offBuf);
     }
-    
+
     /**
-     * @return the number of documents represented by this rail (equal to {@code IndexReader.maxDoc()} at build time)
+     * Returns the number of documents represented by this rail.
+     *
+     * @return document count, equal to {@code IndexReader.maxDoc()} at build time
      */
     public int docCount()
     {
         return docCount;
     }
-    
+
     /**
      * Returns the slot count for one document. May include {@link #NO_TERM} gap slots.
      *
      * @param docId Lucene doc id in {@code [0, docCount)}
-     * @return slot count
+     * @return slot count, {@code 0} for documents without the field or marked deleted at build time
      * @throws IllegalArgumentException if {@code docId} is out of range
      */
     public int docLength(final int docId)
@@ -280,13 +295,14 @@ public final class TermRail implements Closeable
         checkDocId(docId);
         return (int) ((off.get(docId + 1) - off.get(docId)) / Integer.BYTES);
     }
-    
+
     /**
-     * Tests whether both rail files for the given field exist as regular files. Presence check only.
+     * Tests whether both rail files for the given field exist as regular files. Presence check only; does not validate sizes, offsets, or modification times.
      *
      * @param sideDir directory containing the rail files
      * @param field   indexed field name
-     * @return {@code true} if both files exist
+     * @return {@code true} if both files exist as regular files
+     * @throws NullPointerException if {@code sideDir} or {@code field} is {@code null}
      */
     public static boolean exists(final Path sideDir, final String field)
     {
@@ -295,37 +311,51 @@ public final class TermRail implements Closeable
         return Files.isRegularFile(datPath(sideDir, field))
                 && Files.isRegularFile(offPath(sideDir, field));
     }
-    
+
     /**
-     * @return the indexed field name covered by this rail
+     * Returns the indexed field name covered by this rail.
+     *
+     * @return field name
      */
     public String field()
     {
         return field;
     }
-    
+
     /**
      * Opens an existing rail from disk and validates structural consistency. No data is loaded eagerly; pages of the {@code dat} file are demand-faulted by the OS on first access.
+     *
+     * <p>Checks performed:</p>
+     * <ul>
+     *   <li>both files exist as regular files</li>
+     *   <li>modification times agree within {@value #MTIME_TOLERANCE_MS}&nbsp;ms</li>
+     *   <li>{@code off} file size is a multiple of 8</li>
+     *   <li>{@code dat} file size is a multiple of 4</li>
+     *   <li>{@code off[0] == 0}</li>
+     *   <li>{@code off[last] == dat byte size}</li>
+     *   <li>offsets are monotonically non-decreasing (sampled for large corpora)</li>
+     * </ul>
      *
      * @param sideDir directory containing the rail files
      * @param field   indexed field name
      * @return opened rail; caller must {@link #close()} when done
-     * @throws IOException if files are missing or structurally inconsistent
+     * @throws IOException          if files are missing or structurally inconsistent
+     * @throws NullPointerException if {@code sideDir} or {@code field} is {@code null}
      */
     public static TermRail open(final Path sideDir, final String field) throws IOException
     {
         Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
-        
+
         final Path datPath = datPath(sideDir, field);
         final Path offPath = offPath(sideDir, field);
         IOUtil.ensureRegularFile(datPath);
         IOUtil.ensureRegularFile(offPath);
         IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, datPath, offPath);
-        
+
         final MappedByteBuffer offBuf = IOUtil.mapReadOnly(offPath);
         offBuf.order(ByteOrder.nativeOrder());
-        
+
         Arena datArena = null;
         try {
             final long offBytes = offBuf.remaining();
@@ -333,11 +363,11 @@ public final class TermRail implements Closeable
                 throw new IOException("off file size not a multiple of 8: " + offPath);
             if (offBytes < 16L)
                 throw new IOException("off file too small (need at least 2 entries): " + offPath);
-            
+
             final LongBuffer off = offBuf.asLongBuffer();
             if (off.get(0) != 0L)
                 throw new IOException("off[0] != 0 in " + offPath);
-            
+
             final long datBytes = Files.size(datPath);
             if ((datBytes & 3L) != 0)
                 throw new IOException("dat file size not a multiple of 4: " + datPath);
@@ -345,20 +375,20 @@ public final class TermRail implements Closeable
                 throw new IOException(
                         "off/dat mismatch: last offset=" + off.get(off.capacity() - 1)
                                 + ", dat bytes=" + datBytes + " in " + datPath);
-            
+
             validateMonotonic(off, offPath);
-            
+
             datArena = Arena.ofShared();
             final MemorySegment dat;
             try (FileChannel fc = FileChannel.open(datPath, StandardOpenOption.READ)) {
                 dat = fc.map(FileChannel.MapMode.READ_ONLY, 0L, datBytes, datArena);
             }
-            
+
             final int docCount = off.capacity() - 1;
             final long totalPositions = datBytes / Integer.BYTES;
             return new TermRail(sideDir, field, docCount, totalPositions,
                     datArena, dat, offBuf, off);
-            
+
         } catch (IOException | RuntimeException e) {
             if (datArena != null)
                 datArena.close();
@@ -366,12 +396,12 @@ public final class TermRail implements Closeable
             throw e;
         }
     }
-    
+
     /**
      * Iterates the set bits of {@code positions} in ascending order within the document and feeds each non-{@link #NO_TERM} term id to {@code sink}.
      *
      * <p>
-     * Primary entry point for {@code CoocListener}-style aggregation: the listener marks window positions in a reusable bitset across all matches of one document, then asks the rail for the corresponding term ids in one call. The base offset and document length are resolved once; bits beyond {@link #docLength(int)} are silently ignored, so the caller need not clip the bitset.
+     * Primary entry point for {@code CoocListener}-style aggregation: the listener marks window positions in a reusable bitset across all matches of one document, then asks the rail for the corresponding term ids in one call. The base offset and document length are resolved once; bits at indices {@code >= docLength(docId)} are ignored, so the caller need not clip the bitset.
      * </p>
      *
      * @param docId     Lucene doc id in {@code [0, docCount)}
@@ -399,15 +429,20 @@ public final class TermRail implements Closeable
                 sink.accept(id);
         }
     }
-    
+
     /**
-     * Scans a contiguous half-open position window {@code [posLo, posHi)} within one document and feeds each non-{@link #NO_TERM} term id to {@code sink}, in ascending position order. Both bounds are clamped to {@code [0, docLength(docId)]}.
+     * Scans a contiguous half-open position window {@code [posLo, posHi)} within one document and feeds each non-{@link #NO_TERM} term id to {@code sink}, in ascending position order.
+     *
+     * <p>
+     * The effective lower bound is {@code Math.max(0, posLo)} and the effective upper bound is {@code Math.min(docLength(docId), posHi)}. If the resulting interval is empty, the method returns without invoking {@code sink}.
+     * </p>
      *
      * @param docId Lucene doc id in {@code [0, docCount)}
-     * @param posLo first position to include (inclusive; clamped to {@code [0, docLength(docId)]})
-     * @param posHi one past the last position to include (exclusive; clamped to {@code [0, docLength(docId)]})
+     * @param posLo first position to include (inclusive); negative values are treated as {@code 0}
+     * @param posHi one past the last position to include (exclusive); values greater than {@code docLength(docId)} are clamped to it
      * @param sink  receives each non-{@link #NO_TERM} term id, in ascending position order
      * @throws IllegalArgumentException if {@code docId} is out of range
+     * @throws NullPointerException     if {@code sink} is {@code null}
      */
     public void scanWindow(
         final int docId,
@@ -415,6 +450,7 @@ public final class TermRail implements Closeable
         final int posHi,
         final IntConsumer sink)
     {
+        Objects.requireNonNull(sink, "sink");
         checkDocId(docId);
         final long base = off.get(docId);
         final int docLen = (int) ((off.get(docId + 1) - base) / Integer.BYTES);
@@ -427,15 +463,17 @@ public final class TermRail implements Closeable
                 sink.accept(id);
         }
     }
-    
+
     /**
-     * @return the directory from which this rail was opened
+     * Returns the side directory from which this rail was opened.
+     *
+     * @return side directory path
      */
     public Path sideDir()
     {
         return sideDir;
     }
-    
+
     /**
      * Returns the term id stored at one document position.
      *
@@ -457,15 +495,23 @@ public final class TermRail implements Closeable
         return dat.get(ValueLayout.JAVA_INT_UNALIGNED,
                 base + (long) position * Integer.BYTES);
     }
-    
+
     /**
-     * @return the total number of int position slots across all documents, including {@link #NO_TERM} gap slots
+     * Returns the total number of int position slots across all documents, including {@link #NO_TERM} gap slots. Equal to {@code dat byte size / Integer.BYTES}.
+     *
+     * @return total position slot count
      */
     public long totalPositions()
     {
         return totalPositions;
     }
-    
+
+    /**
+     * Validates a Lucene doc id against this rail's {@link #docCount}.
+     *
+     * @param docId doc id to validate
+     * @throws IllegalArgumentException if {@code docId} is out of range
+     */
     private void checkDocId(final int docId)
     {
         if (docId < 0 || docId >= docCount) {
@@ -473,19 +519,37 @@ public final class TermRail implements Closeable
                     "docId " + docId + " out of range (docCount=" + docCount + ")");
         }
     }
-    
+
+    /**
+     * Resolves the path of the data file for one field.
+     *
+     * @param dir   side directory
+     * @param field indexed field name
+     * @return path of {@code <field>.rail.dat} under {@code dir}
+     */
     private static Path datPath(final Path dir, final String field)
     {
         return dir.resolve(field + ".rail.dat");
     }
-    
+
+    /**
+     * Resolves the path of the offset file for one field.
+     *
+     * @param dir   side directory
+     * @param field indexed field name
+     * @return path of {@code <field>.rail.off} under {@code dir}
+     */
     private static Path offPath(final Path dir, final String field)
     {
         return dir.resolve(field + ".rail.off");
     }
-    
+
     /**
-     * Verifies the offset buffer is monotonically non-decreasing. Sampled on large corpora to keep {@link #open} O(1) amortised.
+     * Verifies the offset buffer is monotonically non-decreasing. For corpora with more than 1&nbsp;M offset entries, only every 4096th entry is checked to keep {@link #open} O(1) amortised.
+     *
+     * @param off     long view over the offset file
+     * @param offPath path of the offset file, used only for error messages
+     * @throws IOException if a non-monotonic offset is detected
      */
     private static void validateMonotonic(final LongBuffer off, final Path offPath) throws IOException
     {
