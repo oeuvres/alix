@@ -58,14 +58,61 @@ import com.github.oeuvres.alix.lucene.terms.FieldStats;
  */
 public final class Partition
 {
+    /**
+     * Default target number of non-focus parts.
+     *
+     * <p>
+     * Chosen so that {@link com.github.oeuvres.alix.lucene.terms.PartScorer}
+     * tail aggregations remain meaningful: at {@code tailFraction = 0.20} this
+     * yields {@code tailCount = ceil(12 * 0.20) = 3}, distinguishing
+     * {@code LogLikelihoodTail} from {@code LogLikelihood} (which always picks
+     * the single worst comparator).
+     * </p>
+     */
+    public static final int DEFAULT_TARGET_NON_FOCUS_PARTS = 12;
+
     /** Maximum number of parts representable in a signed byte. */
     private static final int MAX_PARTS = 128;
 
-    /** Default minimum document count for a comparison part before expansion. */
-    private static final int MIN_PART_DOCS = 10;
+    /**
+     * Minimum token count for an extremity (first or last) period before it is
+     * merged inward.
+     *
+     * <p>
+     * Set higher than {@link #MIN_INTERNAL_TOKENS} because corpus boundaries are
+     * typically the noisiest part of any chronological corpus and we want them
+     * to be genuinely well-formed buckets, not just statistically viable.
+     * </p>
+     */
+    private static final long MIN_EXTREMITY_TOKENS = 25_000L;
 
-    /** Default minimum token count for a comparison part before expansion. */
-    private static final long MIN_PART_TOKENS = 25_000L;
+    /**
+     * Minimum document count for any period before it is merged with a
+     * neighbor.
+     *
+     * <p>
+     * Applied uniformly by both extremity and internal repair: a part with too
+     * few documents is statistically unreliable regardless of its position in
+     * the chronological order. Pairwise G² over a 7-document bucket is no more
+     * trustworthy than pairwise G² over a 7-document bucket sitting at the
+     * boundary.
+     * </p>
+     */
+    private static final int MIN_INTERNAL_DOCS = 10;
+
+    /**
+     * Minimum token count for an internal period before it is merged with a
+     * neighbor.
+     *
+     * <p>
+     * Aligned with {@link com.github.oeuvres.alix.lucene.terms.PartScorer}'s
+     * {@code DEFAULT_MIN_PART_TOKENS} floor: any internal period kept by the
+     * partition is guaranteed to pass the scorer's chi-square reliability
+     * filter, so the scorer's filter never silently shrinks the effective
+     * comparator count.
+     * </p>
+     */
+    private static final long MIN_INTERNAL_TOKENS = 1_000L;
 
     /** No focus part is defined. */
     public static final int NO_FOCUS = -1;
@@ -149,16 +196,58 @@ public final class Partition
     }
 
     /**
+     * Builds the default document partition for contrastive chronological
+     * scoring, using {@link #DEFAULT_TARGET_NON_FOCUS_PARTS} non-focus parts.
+     *
+     * @param num numeric field used as the chronological or value axis
+     * @param text tokenized field used to obtain per-document token counts
+     * @param start inclusive focus start value
+     * @param end inclusive focus end value
+     * @param acceptedDocs optional accepted-documents bitset; {@code null} means
+     *                     all documents with a numeric value are eligible
+     * @return document partition aligned by global Lucene doc id
+     * @throws IOException if numeric-cache construction fails
+     * @throws IllegalArgumentException if arguments are invalid or if the focus
+     *                                  interval has no accepted text tokens
+     */
+    public static Partition build(
+        final FlucNum num,
+        final FlucText text,
+        final int start,
+        final int end,
+        final FixedBitSet acceptedDocs
+    ) throws IOException {
+        return build(num, text, start, end, acceptedDocs, DEFAULT_TARGET_NON_FOCUS_PARTS);
+    }
+
+    /**
      * Builds the default document partition for contrastive chronological scoring.
      *
      * <p>
      * The focus interval {@code [start, end]} is kept as one indivisible part.
-     * Non-focus parts are first cut into calendar periods of the same width as
-     * the focus interval. Weak extremity periods are then expanded by merging
-     * with an adjacent period on the same side of the focus. A period is weak
-     * when it has too few calendar years, too few accepted documents, or too few
-     * indexed tokens. The builder never splits one numeric value, never splits
-     * the focus, and never merges across the focus interval.
+     * Non-focus parts are cut into calendar periods of width
+     * {@code max(1, ceil(nonFocusOffsets / targetNonFocusParts))}, then weak
+     * periods are merged. Repair runs in two stages on each side of the focus
+     * independently, so a merge never crosses the focus interval:
+     * </p>
+     *
+     * <ol>
+     *   <li>Extremity repair: the first and last period are merged inward
+     *       until they have full calendar width, enough documents, and enough
+     *       tokens to count as well-formed boundary buckets.</li>
+     *   <li>Internal repair: any internal period whose token count falls below
+     *       the scorer's reliability floor is merged Huffman-style with its
+     *       smaller-token neighbor. After repair every part is guaranteed to
+     *       pass the scorer's {@code minPartTokens} filter, so the effective
+     *       comparator count matches {@code partCount - 1}.</li>
+     * </ol>
+     *
+     * <p>
+     * The cut width is independent of the focus width. This decouples
+     * {@code partCount} from the query, so pairwise scorers (notably
+     * {@link com.github.oeuvres.alix.lucene.terms.PartScorer.LogLikelihoodTail})
+     * receive a comparable population of non-focus comparators across queries
+     * with very different focus widths.
      * </p>
      *
      * <p>
@@ -179,6 +268,8 @@ public final class Partition
      * @param end inclusive focus end value
      * @param acceptedDocs optional accepted-documents bitset; {@code null} means
      *                     all documents with a numeric value are eligible
+     * @param targetNonFocusParts target number of non-focus parts. Must be in
+     *                            {@code [1, MAX_PARTS - 1]}.
      * @return document partition aligned by global Lucene doc id
      * @throws IOException if numeric-cache construction fails
      * @throws IllegalArgumentException if arguments are invalid or if the focus
@@ -189,13 +280,19 @@ public final class Partition
         final FlucText text,
         final int start,
         final int end,
-        final FixedBitSet acceptedDocs
+        final FixedBitSet acceptedDocs,
+        final int targetNonFocusParts
     ) throws IOException {
         Objects.requireNonNull(num, "num");
         Objects.requireNonNull(text, "text");
         if (start > end) {
             throw new IllegalArgumentException(
                 "Invalid focus interval: [" + start + ',' + end + ']');
+        }
+        if (targetNonFocusParts < 1 || targetNonFocusParts > MAX_PARTS - 1) {
+            throw new IllegalArgumentException(
+                "targetNonFocusParts out of range [1, " + (MAX_PARTS - 1)
+                + "]: " + targetNonFocusParts);
         }
 
         num.cacheDense();
@@ -238,12 +335,17 @@ public final class Partition
                 + "] contains no accepted text tokens.");
         }
 
-        // Phase 3: cut left and right of the focus, repair weak extremities.
-        final int baseWidth = focus.width();
-        final List<Period> left = repairExtremities(
-            leftPeriods(focusFirst, baseWidth, valueDocs, valueTokens), baseWidth);
-        final List<Period> right = repairExtremities(
-            rightPeriods(focusLast, range, baseWidth, valueDocs, valueTokens), baseWidth);
+        // Phase 3: pick the cut width and slice non-focus periods. The width
+        //          depends only on available non-focus range and target part
+        //          count, so partCount stays stable across queries.
+        //          Repair runs in two stages on each side independently so
+        //          merges never cross the focus: first extremity repair,
+        //          then internal repair.
+        final int baseWidth = baseWidth(focusFirst, focusLast, range, targetNonFocusParts);
+        final ArrayList<Period> left = repairInternal(repairExtremities(
+            leftPeriods(focusFirst, baseWidth, valueDocs, valueTokens), baseWidth));
+        final ArrayList<Period> right = repairInternal(repairExtremities(
+            rightPeriods(focusLast, range, baseWidth, valueDocs, valueTokens), baseWidth));
         if (left.isEmpty() && right.isEmpty()) {
             throw new IllegalArgumentException(
                 "No non-focus accepted text tokens available outside ["
@@ -437,6 +539,49 @@ public final class Partition
             if (part == NO_PART) continue;
             target.set(docId, part, tokens);
         }
+    }
+
+    /**
+     * Computes the cut width for non-focus periods.
+     *
+     * <p>
+     * Returns {@code max(1, ceil(nonFocusOffsets / targetNonFocusParts))}. The
+     * width depends only on the available non-focus range and the target part
+     * count, never on the focus width. This is what keeps {@code partCount}
+     * stable across queries with very different focus widths, so pairwise
+     * scorers (notably
+     * {@link com.github.oeuvres.alix.lucene.terms.PartScorer.LogLikelihoodTail})
+     * receive a consistent population of comparators.
+     * </p>
+     *
+     * <p>
+     * One may object that this can produce non-focus buckets wider than a
+     * narrow focus, breaking "comparable bucket scale". In practice the
+     * pairwise G² test compares rates rather than absolute counts and is
+     * insensitive to that asymmetry, while the {@code minPartTokens} floor in
+     * the scorer rejects buckets that are too small for the chi-square
+     * approximation. The stability of {@code partCount} is the more valuable
+     * invariant.
+     * </p>
+     *
+     * @param focusFirst first focus offset in dense space
+     * @param focusLast last focus offset in dense space
+     * @param range dense value range length
+     * @param targetNonFocusParts target number of non-focus parts
+     * @return cut width in integer values, at least {@code 1}
+     */
+    private static int baseWidth(
+        final int focusFirst,
+        final int focusLast,
+        final int range,
+        final int targetNonFocusParts
+    ) {
+        final int nonFocusOffsets = focusFirst + (range - focusLast - 1);
+        if (nonFocusOffsets <= 0) {
+            return 1;
+        }
+        return Math.max(1,
+            (int) Math.ceil((double) nonFocusOffsets / (double) targetNonFocusParts));
     }
 
     /**
@@ -645,6 +790,54 @@ public final class Partition
     }
 
     /**
+     * Repairs weak internal periods by merging them with their smaller-token
+     * neighbor.
+     *
+     * <p>
+     * An internal period is considered weak when its token count falls below
+     * {@link #MIN_INTERNAL_TOKENS} or its document count falls below
+     * {@link #MIN_INTERNAL_DOCS}. Both checks matter: a period can pass the
+     * token threshold (especially in corpora with long, sparse documents like
+     * recensions or chapter prefaces) while still containing too few
+     * documents for stable pairwise comparison. Such a period would otherwise
+     * either be silently dropped at scoring time by the {@code minPartTokens}
+     * filter in {@link com.github.oeuvres.alix.lucene.terms.PartScorer}, or
+     * worse, slip through and produce noisy G² values on a tiny sample.
+     * </p>
+     *
+     * <p>
+     * The merge direction is Huffman-style: the weak period merges with its
+     * smaller-token neighbor. Merging with the smaller side equalizes bucket
+     * sizes and minimizes cascades; merging with the larger side leaves the
+     * other neighbor still vulnerable. Boundary periods are left to
+     * {@link #repairExtremities}.
+     * </p>
+     *
+     * @param periods periods in chronological order, each at most one
+     *                {@link Period} thick
+     * @return same list, possibly with internal periods merged in place
+     */
+    private static ArrayList<Period> repairInternal(final ArrayList<Period> periods)
+    {
+        int i = 1;
+        while (i < periods.size() - 1) {
+            if (!weakInternal(periods.get(i))) {
+                i++;
+                continue;
+            }
+            final Period prev = periods.get(i - 1);
+            final Period next = periods.get(i + 1);
+            if (prev.tokens <= next.tokens) {
+                mergeAdjacent(periods, i - 1);
+                i = Math.max(1, i - 1);
+            } else {
+                mergeAdjacent(periods, i);
+            }
+        }
+        return periods;
+    }
+
+    /**
      * Builds raw right-side periods in chronological order.
      *
      * @param focusLast last focus offset
@@ -759,8 +952,20 @@ public final class Partition
     private static boolean weakExtremity(final Period period, final int baseWidth)
     {
         return period.width() < baseWidth
-            || period.docs < MIN_PART_DOCS
-            || period.tokens < MIN_PART_TOKENS;
+            || period.docs < MIN_INTERNAL_DOCS
+            || period.tokens < MIN_EXTREMITY_TOKENS;
+    }
+
+    /**
+     * Reports whether an internal period should be merged with a neighbor.
+     *
+     * @param period period to test
+     * @return {@code true} if the internal period should be merged
+     */
+    private static boolean weakInternal(final Period period)
+    {
+        return period.docs < MIN_INTERNAL_DOCS
+            || period.tokens < MIN_INTERNAL_TOKENS;
     }
 
     /** Chronological period over dense numeric offsets. */
