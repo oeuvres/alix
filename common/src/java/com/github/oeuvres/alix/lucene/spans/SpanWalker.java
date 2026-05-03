@@ -16,11 +16,9 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 
-import com.github.oeuvres.alix.lucene.ResultsListener;
-
 /**
  * Walks a {@link SpanQuery} in natural/index order, optionally intersected with a
- * non-scoring filter query (dates, tags…), and streams results to a {@link ResultsListener}.
+ * non-scoring filter query (dates, tags…), and streams results to a {@link SpanListener}.
  *
  * <p>Traversal is streaming: no results are retained in memory. If the index was built
  * with an index sort, natural order is that sort order.</p>
@@ -32,7 +30,7 @@ import com.github.oeuvres.alix.lucene.ResultsListener;
  * the last docId it wrote; the next page passes {@code lastDocId + 1} as {@code docStart}.</p>
  *
  * <p>Whether a page ended by natural exhaustion or by the listener is reported via
- * {@link ResultsListener#end(boolean)}: {@code true} means the index is fully exhausted and
+ * {@link SpanListener#end(boolean)}: {@code true} means the index is fully exhausted and
  * no further pages exist; {@code false} means more results are available.</p>
  *
  * <h2>Exact document count</h2>
@@ -52,7 +50,7 @@ public final class SpanWalker {
     private final IndexSearcher searcher;
     private final SpanQuery spanQuery;
     private final Query filterQuery; // nullable
-    private final ResultsListener listener;
+    private final SpanListener listener;
 
     /**
      * Creates a natural-order span walker.
@@ -67,7 +65,7 @@ public final class SpanWalker {
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
             final Query filterQuery,
-            final ResultsListener listener) throws IOException {
+            final SpanListener listener) throws IOException {
         this.searcher    = Objects.requireNonNull(searcher,  "searcher");
         Objects.requireNonNull(spanQuery, "spanQuery");
         this.spanQuery = (SpanQuery) searcher.rewrite(spanQuery);

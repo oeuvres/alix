@@ -11,14 +11,13 @@ import org.apache.lucene.queries.spans.Spans;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 
-import com.github.oeuvres.alix.lucene.ResultsListener;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.util.TopSlot;
 
 /**
  * Visits individual documents for a {@link SpanQuery}, scores spans by passage
- * informativeness, and streams the top spans to a {@link ResultsListener}.
+ * informativeness, and streams the top spans to a {@link SpanListener}.
  *
  * <p>The caller controls the outer loop — typically over a {@code ScoreDoc[]}
  * returned by {@link org.apache.lucene.search.IndexSearcher#search}:</p>
@@ -55,7 +54,7 @@ public final class SpanVisitor {
 
     private final IndexSearcher searcher;
     private final SpanQuery spanQuery;
-    private final ResultsListener listener;
+    private final SpanListener listener;
     private final FieldStats fieldStats;
     private final TermRail termRail;
 
@@ -116,7 +115,7 @@ public final class SpanVisitor {
     public SpanVisitor(
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
-            final ResultsListener listener,
+            final SpanListener listener,
             final FieldStats fieldStats,
             final TermRail termRail,
             final int topSpans,
@@ -145,7 +144,7 @@ public final class SpanVisitor {
     /**
      * Returns the total number of spans found in the most recently visited document,
      * including those not emitted. Useful for the caller to pass to
-     * {@link ResultsListener#endDoc(int)}.
+     * {@link SpanListener#endDoc(int)}.
      *
      * @return total span count for the last {@link #visit} call
      */
@@ -157,8 +156,8 @@ public final class SpanVisitor {
      * Visits one document: enumerates all its spans, scores them by passage
      * informativeness, and emits the top spans to the listener.
      *
-     * <p>The caller must have already called {@link ResultsListener#startDoc}
-     * before this method, and must call {@link ResultsListener#endDoc} after.</p>
+     * <p>The caller must have already called {@link SpanListener#startDoc}
+     * before this method, and must call {@link SpanListener#endDoc} after.</p>
      *
      * @param docId global Lucene doc id
      * @throws IOException if index access or listener output fails

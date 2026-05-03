@@ -8,13 +8,14 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.StoredFields;
 
 import com.github.oeuvres.alix.lucene.spans.OffsetsCollector;
+import com.github.oeuvres.alix.lucene.spans.SpanListener;
 import com.github.oeuvres.alix.util.Detagger;
 import com.github.oeuvres.alix.util.Markup;
 
 import static com.github.oeuvres.alix.common.Names.*;
 
 /**
- * A {@link ResultsListener} that writes span search results as an HTML fragment.
+ * A {@link SpanListener} that writes span search results as an HTML fragment.
  *
  * <p>Each matching document becomes an {@code <article>} element containing an
  * ordered list of span concordance lines. Each line shows a left context, one or
@@ -28,7 +29,7 @@ import static com.github.oeuvres.alix.common.Names.*;
  * ({@link #lastDocId} + 1). The caller is responsible for turning that into a
  * full URL.</p>
  */
-public class HtmlResults extends ResultsListener
+public class HtmlResults extends SpanListener
 {
     private final Writer writer;
     private final StoredFields storedFields;

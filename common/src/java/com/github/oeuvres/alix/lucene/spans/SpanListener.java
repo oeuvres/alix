@@ -1,11 +1,9 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.IOException;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
-
-import com.github.oeuvres.alix.lucene.spans.OffsetsCollector;
 
 
 /**
@@ -30,7 +28,7 @@ import com.github.oeuvres.alix.lucene.spans.OffsetsCollector;
  *       exhausted, {@code false} if {@link #wantsMoreDocs()} cut traversal short</li>
  * </ol>
  */
-public abstract class ResultsListener
+public abstract class SpanListener
 {
 
 
