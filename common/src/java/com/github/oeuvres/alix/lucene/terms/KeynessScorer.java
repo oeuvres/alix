@@ -39,6 +39,18 @@ public interface KeynessScorer {
      */
     double score(long focusCount, long focusTotal, long refCount, long refTotal);
 
+    class Count implements KeynessScorer {
+        @Override
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            return focusTermCount;
+        }
+    }
+    
     /** Log Ratio (Hardie): log₂(relFocus / relRef), with Laplace smoothing. */
     class LogRatio implements KeynessScorer {
         @Override

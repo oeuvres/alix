@@ -43,13 +43,13 @@ import org.apache.lucene.search.Weight;
  */
 public final class SpanWalker
 {
-    private static final int INITIAL_COLLECTOR_CAPACITY = 8;
-    
+    private static final int INITIAL_LEAF_CAPACITY = 8;
+
     private final IndexSearcher searcher;
     private final SpanQuery spanQuery;
     private final Query filterQuery;
     private final SpanListener listener;
-    
+
     /**
      * Creates a walker bound to a query, an optional filter, and a listener. Both queries are rewritten once, here.
      *
@@ -57,7 +57,8 @@ public final class SpanWalker
      * @param spanQuery   span query to enumerate
      * @param filterQuery non-scoring filter, or {@code null}
      * @param listener    consumer of streamed matches
-     * @throws IOException on rewrite failure
+     * @throws IOException          on rewrite failure
+     * @throws NullPointerException if {@code searcher}, {@code spanQuery}, or {@code listener} is {@code null}
      */
     public SpanWalker(
             final IndexSearcher searcher,
@@ -71,7 +72,7 @@ public final class SpanWalker
         this.spanQuery = (SpanQuery) searcher.rewrite(spanQuery);
         this.filterQuery = (filterQuery == null) ? null : searcher.rewrite(filterQuery);
     }
-    
+
     /**
      * Counts the documents matched by the span query intersected with the optional filter. Performs a full scan; does not interact with {@link #walk(int)}.
      *
@@ -88,12 +89,16 @@ public final class SpanWalker
                         .build();
         return searcher.count(countQuery);
     }
-    
+
     /**
      * Streams matches to the listener starting at the given global docId (inclusive).
      *
      * <p>
      * Each matching document is visited once, in natural order; for each document the matches are delivered in ascending start-position order. The listener may stop the walk at any document boundary by returning {@code false} from {@link SpanListener#wantsMoreDocs()}.
+     * </p>
+     *
+     * <p>
+     * Per match the walker performs the canonical {@link SpanMatch} lifecycle: {@link SpanMatch#reset()}, {@link SpanMatch#range(int, int)} from {@link Spans#startPosition()} / {@link Spans#endPosition()}, {@link SpanMatch#ord(int)}, then {@link Spans#collect(org.apache.lucene.queries.spans.SpanCollector)} and {@link SpanMatch#sort()}.
      * </p>
      *
      * @param docStart first global docId to visit, inclusive; pass {@code 0} on the first call
@@ -106,62 +111,58 @@ public final class SpanWalker
         final Weight filterWeight = (filterQuery == null)
                 ? null
                 : searcher.createWeight(filterQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
-        final SpanMatch collector = new SpanMatch(INITIAL_COLLECTOR_CAPACITY);
-        
+        final SpanMatch match = new SpanMatch(INITIAL_LEAF_CAPACITY);
+
         int nextCursor = -1;
         boolean exhausted = true;
         listener.start();
-        
+
         outer: for (final LeafReaderContext ctx : searcher.getLeafContexts()) {
-            if (ctx.docBase + ctx.reader().maxDoc() <= docStart)
-                continue;
-            
+            if (ctx.docBase + ctx.reader().maxDoc() <= docStart) continue;
+
             final Spans spans = spanWeight.getSpans(ctx, SpanWeight.Postings.OFFSETS);
-            if (spans == null)
-                continue;
-            
+            if (spans == null) continue;
+
             DocIdSetIterator filterIt = null;
             if (filterWeight != null) {
                 final Scorer filterScorer = filterWeight.scorer(ctx);
-                if (filterScorer == null)
-                    continue;
+                if (filterScorer == null) continue;
                 filterIt = filterScorer.iterator();
             }
-            
+
             final int localStart = Math.max(0, docStart - ctx.docBase);
             int localDocId = (localStart == 0) ? spans.nextDoc() : spans.advance(localStart);
             int filterDoc = (filterIt == null)
                     ? DocIdSetIterator.NO_MORE_DOCS
                     : (localStart == 0 ? filterIt.nextDoc() : filterIt.advance(localStart));
-            
+
             while (localDocId != DocIdSetIterator.NO_MORE_DOCS) {
                 if (filterIt != null) {
-                    if (filterDoc < localDocId)
-                        filterDoc = filterIt.advance(localDocId);
-                    if (filterDoc == DocIdSetIterator.NO_MORE_DOCS)
-                        break;
+                    if (filterDoc < localDocId) filterDoc = filterIt.advance(localDocId);
+                    if (filterDoc == DocIdSetIterator.NO_MORE_DOCS) break;
                     if (filterDoc > localDocId) {
                         localDocId = spans.advance(filterDoc);
                         continue;
                     }
                 }
-                
+
                 if (!listener.wantsMoreDocs()) {
                     nextCursor = ctx.docBase + localDocId;
                     exhausted = false;
                     break outer;
                 }
-                
+
                 listener.startDoc(ctx.docBase + localDocId);
                 int spanCount = 0;
                 boolean wantsMore = true;
                 while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
                     if (wantsMore) {
-                        collector.reset();
-                        spans.collect(collector);
-                        collector.sort();
-                        collector.ord(spanCount);
-                        wantsMore = listener.span(collector);
+                        match.reset();
+                        match.range(spans.startPosition(), spans.endPosition());
+                        match.ord(spanCount);
+                        spans.collect(match);
+                        match.sort();
+                        wantsMore = listener.span(match);
                     }
                     spanCount++;
                 }
@@ -169,7 +170,7 @@ public final class SpanWalker
                 localDocId = spans.nextDoc();
             }
         }
-        
+
         listener.end(exhausted);
         return nextCursor;
     }

@@ -1198,7 +1198,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param termFreq per-term occurrence count buffer
      * @param termDocs per-term document-frequency buffer
      */
-    record FocusBuffers(long[] termFreq, int[] termDocs)
+    public record FocusBuffers(long[] termFreq, int[] termDocs)
     {
     }
 

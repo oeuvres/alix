@@ -173,7 +173,7 @@ public final class OpTerms extends Op
                 filterQuery,
                 listener);
             topTerms.coocs(listener, walker);
-            // return topTerms.focusScore(new KeynessScorer.LMI(), topK);
+            topTerms.focusScore(new KeynessScorer.Count(), topK);
             return topTerms;
         }
     }
