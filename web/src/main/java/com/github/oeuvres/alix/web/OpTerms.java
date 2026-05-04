@@ -18,6 +18,8 @@ import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.Partition;
+import com.github.oeuvres.alix.lucene.spans.CoocListener;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
@@ -157,9 +159,22 @@ public final class OpTerms extends Op
         }
         // coocs, with or without doc filter TODO
         else {
-            pars.response().setStatus(501);
-            meta.put("error", "Co-occurrence mode not yet implemented");
-            return null;
+            final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
+            final int left = pars.getInt(CTX_LEFT, CTX_RANGE, ctx, CTX_LEFT);
+            final int right = pars.getInt(CTX_RIGHT, CTX_RANGE, ctx, CTX_RIGHT);
+            final CoocListener listener = new CoocListener(
+                ftext.fieldStats(),
+                ftext.termRail(),
+                left,
+                right);
+            final SpanWalker walker = new SpanWalker(
+                index.searcher(),
+                spanQuery,
+                filterQuery,
+                listener);
+            topTerms.coocs(listener, walker);
+            // return topTerms.focusScore(new KeynessScorer.LMI(), topK);
+            return topTerms;
         }
     }
     

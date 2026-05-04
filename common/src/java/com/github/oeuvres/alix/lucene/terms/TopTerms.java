@@ -15,6 +15,8 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.Partition;
+import com.github.oeuvres.alix.lucene.spans.CoocListener;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
@@ -116,6 +118,38 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         this.fieldStats = Objects.requireNonNull(fieldStats, "fieldStats");
         this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
     }
+    
+    /**
+     * Streams a span walk through the listener and collects per-term cooccurrence counts directly into this instance's focus buffers.
+     *
+     * <p>
+     * The listener is bound to this instance's focus arrays via {@link #focusBuffers()}, the walker is then driven from doc id {@code 0} to exhaustion, and the focus scalars (token total, doc total) are read back from the listener at the end. After this call, {@link #focusScore(KeynessScorer, int)} can be invoked exactly as after {@link #focus(IndexReader, FixedBitSet)}, with the cooccurrence counts in place of the doc-subset counts.
+     * </p>
+     *
+     * <p>
+     * The walker must be configured with the pivot {@link org.apache.lucene.queries.spans.SpanQuery} and any document-side filter. The listener must be a {@link com.github.oeuvres.alix.lucene.spans.CoocListener} bound to the same field as this instance.
+     * </p>
+     *
+     * @param listener cooccurrence listener that writes into the focus buffers
+     * @param walker   span walker that drives the listener
+     * @return this instance
+     * @throws IOException          on walker I/O failure
+     * @throws NullPointerException if {@code listener} or {@code walker} is {@code null}
+     */
+    public TopTerms coocs(
+        final CoocListener listener,
+        final SpanWalker walker) throws IOException
+    {
+        Objects.requireNonNull(listener, "listener");
+        Objects.requireNonNull(walker, "walker");
+        prepareFocus();
+        listener.bindTo(focusBuffers());
+        walker.walk(0);
+        setFocusTotals(listener.coocTokens(), listener.coocDocsTotal());
+        activeCounts = focusTermFreq;
+        return this;
+    }
+
     
     /**
      * Populates focus statistics from a document subset.
@@ -764,6 +798,14 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
     
     /**
+     * Allocates or zeros the focus buffers and resets the focus scalars. Idempotent. Called automatically by {@link #coocs} and {@link #focusBuffers()}.
+     */
+    public void prepareFocus()
+    {
+        initFocus();
+    }
+
+    /**
      * Ranks terms by a caller-supplied score vector.
      *
      * <p>
@@ -816,6 +858,18 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
     
     /**
+     * Sets the focus token total and focus document total. Used by external collectors after they have populated the focus buffers via {@link #focusBuffers()}.
+     *
+     * @param focusTokens total non-gap positions counted across the focus
+     * @param focusDocs   number of documents that contributed at least one focus position
+     */
+    public void setFocusTotals(final long focusTokens, final int focusDocs)
+    {
+        this.focusTokens = focusTokens;
+        this.focusDocs = focusDocs;
+    }
+
+    /**
      * Returns the current number of ranked terms.
      *
      * <p>
@@ -848,7 +902,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         termScores = scoreVec;
         hilites = null;
     }
-    
+
     /**
      * Checks that a document-id bitset can be safely addressed with reader
      * global document ids.
@@ -955,6 +1009,19 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         return terms;
     }
     
+    /**
+     * Returns the focus accumulation buffers of this instance, allocating them on first call. Used by external collectors that write counts directly into the buffers; see {@link #coocs}.
+     *
+     * @return aliased buffers; index {@code 0} is the absent-term sentinel and must not be written
+     */
+    FocusBuffers focusBuffers()
+    {
+        if (focusTermFreq == null) {
+            prepareFocus();
+        }
+        return new FocusBuffers(focusTermFreq, focusTermDocs);
+    }
+
     /**
      * Package-private setter used by specialized ranking producers.
      *
@@ -1116,4 +1183,23 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             return new TermEntry(rank, rank2termId[rank]);
         }
     }
+    
+    /**
+     * Handle to a {@link TopTerms} instance's focus accumulation buffers.
+     *
+     * <p>
+     * Returned by {@link TopTerms#focusBuffers()} and used by external collectors (such as cooccurrence listeners) that need to write per-term frequency and document-frequency counts directly into the {@link TopTerms} arrays without an intermediate copy. The arrays are aliased, not copied: writes into them are immediately visible to {@link TopTerms#focusScore}.
+     * </p>
+     *
+     * <p>
+     * Both arrays are indexed by dense term id and have length {@code FieldStats.vocabSize()}. Index {@code 0} is the absent-term sentinel and must not be written.
+     * </p>
+     *
+     * @param termFreq per-term occurrence count buffer
+     * @param termDocs per-term document-frequency buffer
+     */
+    record FocusBuffers(long[] termFreq, int[] termDocs)
+    {
+    }
+
 }

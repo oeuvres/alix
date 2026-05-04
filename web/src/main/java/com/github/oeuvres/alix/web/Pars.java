@@ -6,7 +6,9 @@ public class Pars
     public static final String BM25            = "bm25";
     public static final String CTX             = "ctx";
     public static final int    CTX_DEFAULT     = 10;
+    public static final String CTX_LEFT        = "ctxleft";
     public static final int[]  CTX_RANGE       = {0, 30};
+    public static final String CTX_RIGHT       = "ctxright";
     public static final String DATE            = "date";
     public static final String DOCS            = "docs";
     public static final int    DOCS_DEFAULT    = 100;
