@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.lucene.terms;
 
-import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
+import com.github.oeuvres.alix.lucene.TopTerms;
+import com.github.oeuvres.alix.lucene.TopTerms.TermEntry;
 import com.github.oeuvres.alix.util.TopArray;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;

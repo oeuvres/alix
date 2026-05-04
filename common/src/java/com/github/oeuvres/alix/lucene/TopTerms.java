@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.terms;
+package com.github.oeuvres.alix.lucene;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -14,9 +14,15 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 
-import com.github.oeuvres.alix.lucene.Partition;
 import com.github.oeuvres.alix.lucene.spans.CoocListener;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
+import com.github.oeuvres.alix.lucene.terms.PartRanker;
+import com.github.oeuvres.alix.lucene.terms.PartScorer;
+import com.github.oeuvres.alix.lucene.terms.RankScorer;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon;
+import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
@@ -667,7 +673,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         buildRank(top, scores);
 
         return this;
-    }    
+    }
+
     /**
      * Ranks terms for the focus part of a partition.
      *

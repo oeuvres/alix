@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.util.BitSet;
 import java.util.Objects;
 
+import com.github.oeuvres.alix.lucene.TopTerms;
+import com.github.oeuvres.alix.lucene.TopTerms.FocusBuffers;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
-import com.github.oeuvres.alix.lucene.terms.TopTerms.FocusBuffers;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
-import com.github.oeuvres.alix.lucene.terms.TopTerms;
 
 /**
  * {@link SpanListener} that accumulates per-term cooccurrence counts in a fixed-width window around
@@ -19,7 +19,7 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms;
  * {@code [end, min(docWidth, end + right))} in a per-document bitset. After the document is
  * exhausted, the marked positions are resolved to term ids via {@link TermRail#scanPositions} and
  * counts are written into a {@link FocusBuffers} obtained from a
- * {@link com.github.oeuvres.alix.lucene.terms.TopTerms} instance.
+ * {@link com.github.oeuvres.alix.lucene.TopTerms} instance.
  * </p>
  *
  * <h2>Pivot self-exclusion</h2>
@@ -44,7 +44,7 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms;
  *
  * <p>
  * The listener is bound to a {@link FocusBuffers} via {@link #bindTo(FocusBuffers)} before the walk
- * starts. {@link com.github.oeuvres.alix.lucene.terms.TopTerms#coocs} performs the binding, runs
+ * starts. {@link com.github.oeuvres.alix.lucene.TopTerms#coocs} performs the binding, runs
  * the walk, and reads back {@link #coocTokens()} and {@link #coocDocsTotal()}.
  * </p>
  *
@@ -125,7 +125,7 @@ public final class CoocListener implements SpanListener
     
     /**
      * Binds this listener to a {@link FocusBuffers} obtained from a
-     * {@link com.github.oeuvres.alix.lucene.terms.TopTerms} instance. Must be called before the
+     * {@link com.github.oeuvres.alix.lucene.TopTerms} instance. Must be called before the
      * walk starts.
      *
      * @param buffers focus buffers to write into

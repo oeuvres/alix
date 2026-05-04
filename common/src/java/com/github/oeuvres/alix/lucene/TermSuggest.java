@@ -1,8 +1,10 @@
-package com.github.oeuvres.alix.lucene.terms;
+package com.github.oeuvres.alix.lucene;
 
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.TopArray;
 

@@ -28,7 +28,6 @@ import com.github.oeuvres.alix.web.util.HttpPars;
 import static com.github.oeuvres.alix.web.Pars.*;
 import static com.github.oeuvres.alix.common.Names.*;
 
-
 /**
  * Base class for all search operations.
  *
@@ -74,11 +73,11 @@ public abstract class Op
     /**
      * Dispatch to the appropriate format method.
      *
-     * @param index  the target index
-     * @param format the requested format extension, or {@code null}
-     *               for the default full HTML page
-     * @param request    servlet request
-     * @param response   servlet response
+     * @param index    the target index
+     * @param format   the requested format extension, or {@code null}
+     *                 for the default full HTML page
+     * @param request  servlet request
+     * @param response servlet response
      */
     public final void dispatch(
         final LuceneIndex index,
@@ -201,7 +200,8 @@ public abstract class Op
         start = Math.max(start, min);
         end = Math.min(end, max);
         // not a filter
-        if (start == min && end == max) return null;
+        if (start == min && end == max)
+            return null;
         // after clamping, range may have collapsed out of corpus
         if (start > end)
             return null;
@@ -213,21 +213,28 @@ public abstract class Op
     Query typeQuery(LuceneIndex index, HttpPars pars) throws IOException
     {
         final String type = pars.getString(TYPE, null, Set.of(ARTICLE, CHAPTER));
-        if (type == null) return null;
+        if (type == null)
+            return null;
         return new TermQuery(new Term(ALIX_TYPE, type));
     }
     
-    Query filterQuery(LuceneIndex index,  HttpPars pars) throws IOException {
+    Query filterQuery(LuceneIndex index, HttpPars pars) throws IOException
+    {
         Builder builder = new BooleanQuery.Builder();
         Query q = yearQuery(index, pars);
-        if (q != null) builder.add(q, BooleanClause.Occur.MUST);
+        if (q != null)
+            builder.add(q, BooleanClause.Occur.MUST);
         q = typeQuery(index, pars);
-        if (q != null) builder.add(q, BooleanClause.Occur.MUST);
+        if (q != null)
+            builder.add(q, BooleanClause.Occur.MUST);
         BooleanQuery filterQuery = builder.build();
-        if (filterQuery.clauses().size() == 0) return null;
-        else if (filterQuery.clauses().size() == 1) return filterQuery.clauses().get(0).query();
-        else return filterQuery;
-     }
+        if (filterQuery.clauses().size() == 0)
+            return null;
+        else if (filterQuery.clauses().size() == 1)
+            return filterQuery.clauses().get(0).query();
+        else
+            return filterQuery;
+    }
     
     /**
      * Build a SpanQuery from parameters
@@ -254,36 +261,85 @@ public abstract class Op
      * Boolean, String, Enum, int[], String[]. Null is written as JSON null.
      * Any other type is written as its toString.
      */
-    protected static void jsonObject(JsonWriter jw, Object v) throws IOException {
-        if (v == null)                  { jw.nullValue(); return; }
-        if (v instanceof Integer i)     { jw.value(i); return; }
-        if (v instanceof Long l)        { jw.value(l); return; }
-        if (v instanceof Double d)      { jw.value(d); return; }
-        if (v instanceof Boolean b)     { jw.value(b); return; }
-        if (v instanceof String s)      { jw.value(s); return; }
-        if (v instanceof Enum<?> e)     { jw.value(e.name()); return; }
+    protected static void jsonObject(JsonWriter jw, Object v) throws IOException
+    {
+        if (v == null) {
+            jw.nullValue();
+            return;
+        }
+        if (v instanceof Integer i) {
+            jw.value(i);
+            return;
+        }
+        if (v instanceof Long l) {
+            jw.value(l);
+            return;
+        }
+        if (v instanceof Double d) {
+            jw.value(d);
+            return;
+        }
+        if (v instanceof Boolean b) {
+            jw.value(b);
+            return;
+        }
+        if (v instanceof String s) {
+            jw.value(s);
+            return;
+        }
+        if (v instanceof Enum<?> e) {
+            jw.value(e.name());
+            return;
+        }
         if (v instanceof int[] arr) {
             jw.beginArray();
-            for (int x : arr) jw.value(x);
+            for (int x : arr)
+                jw.value(x);
             jw.endArray();
             return;
         }
         if (v instanceof String[] arr) {
             jw.beginArray();
-            for (String s : arr) jw.value(s);
+            for (String s : arr)
+                jw.value(s);
             jw.endArray();
             return;
         }
         jw.value(v.toString());
     }
     
-    public class OpMeta {
-        private final Map<String, String> entries = new LinkedHashMap<>();
+    public class OpMeta
+    {
+        private final Map<String, Object> entries = new LinkedHashMap<>();
         long t0 = System.nanoTime();
-
-        public void put(String key, String value) { entries.put(key, value); }
-
-        public void toJson(JsonWriter jw, HttpPars pars) throws IOException {
+        
+        public void put(String key, String value)
+        {
+            entries.put(key, value);
+        }
+        
+        public void put(String key, long value)
+        {
+            entries.put(key, Long.valueOf(value) );
+        }
+        
+        public void put(String key, int value)
+        {
+            entries.put(key, Integer.valueOf(value) );
+        }
+        
+        public void put(String key, Float value)
+        {
+            entries.put(key, Float.valueOf(value) );
+        }
+        
+        public void put(String key, double value)
+        {
+            entries.put(key, Double.valueOf(value) );
+        }
+        
+        public void toJson(JsonWriter jw, HttpPars pars) throws IOException
+        {
             jw.name("status").value(pars.response().getStatus());
             jw.name("params").beginObject();
             for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
@@ -296,17 +352,18 @@ public abstract class Op
                 jw.name(e.getKey()).value(e.getValue().source().name());
             }
             jw.endObject();
-            for (Map.Entry<String, String> e : entries.entrySet()) {
-                jw.name(e.getKey()).value(e.getValue());
+            for (Map.Entry<String, Object> e : entries.entrySet()) {
+                jw.name(e.getKey());
+                jsonObject(jw, e.getValue());
             }
-            jw.name("time").value((System.nanoTime() - t0) / 1_000_000);
+            jw.name("timeMs").value((System.nanoTime() - t0) / 1_000_000);
         }
         
         @Override
         public String toString()
         {
             StringBuilder sb = new StringBuilder();
-            for (Map.Entry<String, String> e : entries.entrySet()) {
+            for (Map.Entry<String, Object> e : entries.entrySet()) {
                 sb.append("<li>" + e.getKey() + ": '" + e.getValue() + "'</li>\n");
             }
             return sb.toString();

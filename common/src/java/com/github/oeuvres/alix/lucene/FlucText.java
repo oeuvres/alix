@@ -16,7 +16,6 @@ import org.apache.lucene.index.TermsEnum;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
-import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.util.Report;
 
 /**

@@ -18,13 +18,13 @@ import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.Partition;
+import com.github.oeuvres.alix.lucene.TopTerms;
+import com.github.oeuvres.alix.lucene.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.spans.CoocListener;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
-import com.github.oeuvres.alix.lucene.terms.TopTerms;
-import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.web.Pars.*;
@@ -70,25 +70,25 @@ public final class OpTerms extends Op
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
         
-        String fieldName = pars.getString(F, index.content());
-        final FlucText ftext = index.flucText(fieldName);
-        if (ftext == null) {
+        String textField = pars.getString(F, index.content());
+        final FlucText textFluc = index.flucText(textField);
+        if (textFluc == null) {
             pars.response().setStatus(404);
-            meta.put("error", "field '" + fieldName + "' not found or not a text field");
+            meta.put("error", "field '" + textField + "' not found or not a text field");
             return null;
         }
-        
+        meta.put("textField", textField);
         // Build a filter query from years and tags
         final Query filterQuery = filterQuery(index, pars);
         final SpanQuery spanQuery = spanQuery(index, pars);
         
-        TopTerms topTerms = ftext.topTerms();
+        TopTerms topTerms = textFluc.topTerms();
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
             // an http param may change idfExp
             final TermScorer scorer = new TermScorer.BM25(idfExp);
             // The weights for full field are cached if same idfExp is requested
-            final double[] weights = ftext.fieldStats().termWeights(index.reader(), scorer);
+            final double[] weights = textFluc.fieldStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
             return topTerms.ranking(weights, topK);
         }
@@ -110,7 +110,7 @@ public final class OpTerms extends Op
                 int end = pars.getInt(END, (int)fyears.max());
                 
                 // TODO filter by tags
-                final Partition partition = Partition.build(fyears, ftext, start, end, bits);
+                final Partition partition = Partition.build(fyears, textFluc, start, end, bits);
                 if (bits != null) {System.out.println(bits.cardinality());}
                 System.out.println(partition);
                 
@@ -163,8 +163,8 @@ public final class OpTerms extends Op
             final int left = pars.getInt(CTX_LEFT, CTX_RANGE, ctx, CTX_LEFT);
             final int right = pars.getInt(CTX_RIGHT, CTX_RANGE, ctx, CTX_RIGHT);
             final CoocListener listener = new CoocListener(
-                ftext.fieldStats(),
-                ftext.termRail(),
+                textFluc.fieldStats(),
+                textFluc.termRail(),
                 left,
                 right);
             final SpanWalker walker = new SpanWalker(
@@ -173,6 +173,9 @@ public final class OpTerms extends Op
                 filterQuery,
                 listener);
             topTerms.coocs(listener, walker);
+            meta.put("focusTokens", listener.coocTokens());
+            meta.put("focusDocs", listener.coocDocsTotal());
+            meta.put("hits", walker.hits());
             topTerms.focusScore(new KeynessScorer.Count(), topK);
             return topTerms;
         }
@@ -256,8 +259,10 @@ public final class OpTerms extends Op
         Writer writer = response.getWriter();
         if (topTerms != null) {
             writer.append("<table class=\"terms\">\n");
+            int rank = 1;
             for (TermEntry term : topTerms) {
                 writer.append("  <tr>\n")
+                  .append("    <th class=\"term\">%d</th>\n".formatted(rank++))
                   .append("    <td class=\"term\">%s</td>\n".formatted(term.term()))
                   .append("    <td class=\"count\" align=\"right\">%d</td>\n".formatted(term.freq()))
                   .append("    <td class=\"score\" align=\"right\">%f</td>\n".formatted(term.score()))
@@ -296,8 +301,10 @@ public final class OpTerms extends Op
             if (topTerms != null) {
                 jw.name("data");
                 jw.beginArray();
+                int rank = 1;
                 for (TermEntry term : topTerms) {
                     jw.beginObject();
+                    jw.name("rank").value(rank++);
                     jw.name("term").value(term.term());
                     jw.name("count").value(term.freq());
                     jw.name("score").value(term.score());
