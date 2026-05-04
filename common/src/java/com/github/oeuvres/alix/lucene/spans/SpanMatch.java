@@ -56,17 +56,7 @@ import org.apache.lucene.queries.spans.Spans;
  * {@link SpanCollector#collectLeaf} is <em>not</em> guaranteed to be called in token-position
  * order. {@code NearSpansUnordered} iterates sub-spans in query-clause order, which need not match
  * token order. Call {@link #sort()} after {@link Spans#collect} whenever ascending position order
- * matters (e.g. before reading {@link #leafStartOffset()} / {@link #leafEndOffset()} or iterating
- * leaves sequentially).
- * </p>
- *
- * <h2>Span range vs leaf range</h2>
- *
- * <p>
- * {@link #startPosition()} / {@link #endPosition()} report the span's token-position interval as
- * defined by {@link Spans} (the authoritative source). {@link #leafStartOffset()} /
- * {@link #leafEndOffset()} report the character-offset hull of the collected leaves and are derived
- * from {@link #collectLeaf} data; they require {@link #sort()} when leaves may arrive out of order.
+ * matters (e.g. before iterating leaves sequentially).
  * </p>
  *
  * <h2>Lifecycle</h2>
@@ -206,35 +196,6 @@ public final class SpanMatch implements SpanCollector
     }
     
     /**
-     * Returns the largest leaf {@link #endOffset(int)} after {@link #sort()}. Useful to obtain the
-     * closing
-     * character boundary of the matched text. Requires that leaves were sorted; with
-     * {@code NearSpansUnordered}
-     * this means a prior {@link #sort()} call.
-     *
-     * @return character end offset of the rightmost leaf, or {@code -1} if {@link #size()} is
-     *         {@code 0}
-     */
-    public int leafEndOffset()
-    {
-        return size == 0 ? -1 : data[(size - 1) * STRIDE + 2];
-    }
-    
-    /**
-     * Returns the smallest leaf {@link #startOffset(int)} after {@link #sort()}. Useful to obtain
-     * the
-     * opening character boundary of the matched text. Requires that leaves were sorted; with
-     * {@code NearSpansUnordered} this means a prior {@link #sort()} call.
-     *
-     * @return character start offset of the leftmost leaf, or {@code -1} if {@link #size()} is
-     *         {@code 0}
-     */
-    public int leafStartOffset()
-    {
-        return size == 0 ? -1 : data[1];
-    }
-    
-    /**
      * Returns the ordinal of the current span within its document.
      *
      * @return 0-based ordinal, or {@code -1} if not set since {@link #reset()}
@@ -314,9 +275,8 @@ public final class SpanMatch implements SpanCollector
      * <p>
      * Insertion sort: optimal for the small N typical of span phrases (2–10 leaves) and
      * zero-overhead when leaves arrive already ordered (the {@code NearSpansOrdered} case). Must be
-     * called after {@link Spans#collect} and before {@link #leafStartOffset()} /
-     * {@link #leafEndOffset()} or any sequential leaf read when the underlying span query may be
-     * unordered.
+     * called after {@link Spans#collect} and before any sequential leaf read when the underlying
+     * span query may be unordered.
      * </p>
      */
     public void sort()
