@@ -9,6 +9,8 @@ import java.util.Objects;
 
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.lucene.fluc.FlucNum;
+import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 
 /**

@@ -20,8 +20,8 @@ import com.google.gson.stream.JsonWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.github.oeuvres.alix.lucene.FlucNum;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
 import com.github.oeuvres.alix.web.util.HttpPars;
 

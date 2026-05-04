@@ -20,8 +20,9 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.github.oeuvres.alix.lucene.Fluc;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.fluc.Fluc;
+import com.github.oeuvres.alix.lucene.fluc.OpTerms;
 
 /**
  * Frontal servlet for the Alix search API.

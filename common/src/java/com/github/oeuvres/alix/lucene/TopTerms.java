@@ -30,7 +30,7 @@ import com.github.oeuvres.alix.util.TopArray;
  *
  * <p>
  * A {@code TopTerms} instance is obtained from
- * {@link com.github.oeuvres.alix.lucene.FlucText#topTerms()} and is bound to
+ * {@link com.github.oeuvres.alix.lucene.fluc.FlucText#topTerms()} and is bound to
  * one field's {@link FieldStats} and {@link TermLexicon}. The instance holds no
  * ranking after construction. A ranking is produced by one of the ranking
  * methods.

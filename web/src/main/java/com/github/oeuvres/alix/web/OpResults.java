@@ -12,11 +12,11 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.BitsCollectorManager;
-import com.github.oeuvres.alix.lucene.Fluc;
-import com.github.oeuvres.alix.lucene.FlucNum;
-import com.github.oeuvres.alix.lucene.FlucText;
-import com.github.oeuvres.alix.lucene.HtmlResults;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.fluc.Fluc;
+import com.github.oeuvres.alix.lucene.fluc.FlucNum;
+import com.github.oeuvres.alix.lucene.fluc.FlucText;
+import com.github.oeuvres.alix.lucene.output.HtmlResults;
 import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;

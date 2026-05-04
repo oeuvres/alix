@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.output;
 
 import java.io.IOException;
 import java.io.Writer;

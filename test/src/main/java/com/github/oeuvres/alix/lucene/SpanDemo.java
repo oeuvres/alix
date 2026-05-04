@@ -16,6 +16,7 @@ import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.FSDirectory;
 
+import com.github.oeuvres.alix.lucene.output.HtmlResults;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 

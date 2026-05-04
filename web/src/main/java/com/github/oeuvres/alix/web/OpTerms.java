@@ -14,12 +14,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.BitsCollectorManager;
-import com.github.oeuvres.alix.lucene.FlucNum;
-import com.github.oeuvres.alix.lucene.FlucText;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.Partition;
 import com.github.oeuvres.alix.lucene.TopTerms;
 import com.github.oeuvres.alix.lucene.TopTerms.TermEntry;
+import com.github.oeuvres.alix.lucene.fluc.FlucNum;
+import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.spans.CoocListener;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;

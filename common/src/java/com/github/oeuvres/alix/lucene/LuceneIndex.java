@@ -17,6 +17,11 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
+import com.github.oeuvres.alix.lucene.fluc.Fluc;
+import com.github.oeuvres.alix.lucene.fluc.FlucCategory;
+import com.github.oeuvres.alix.lucene.fluc.FlucFacet;
+import com.github.oeuvres.alix.lucene.fluc.FlucNum;
+import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.util.Dir;
 
 /**

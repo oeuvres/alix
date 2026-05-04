@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.fluc;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -15,6 +15,8 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+
+import com.github.oeuvres.alix.lucene.LuceneIndex;
 
 /**
  * Field of a Lucene index, with type-specific cached resources.

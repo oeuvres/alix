@@ -10,9 +10,9 @@ import java.util.List;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
 
-import com.github.oeuvres.alix.lucene.TermSuggest;
 import com.github.oeuvres.alix.lucene.TopTerms;
 import com.github.oeuvres.alix.lucene.TopTerms.TermEntry;
+import com.github.oeuvres.alix.lucene.output.TermSuggest;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
