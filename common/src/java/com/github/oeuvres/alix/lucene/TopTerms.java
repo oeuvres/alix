@@ -18,63 +18,33 @@ import com.github.oeuvres.alix.lucene.spans.CoocListener;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.terms.PartRanker;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
-import com.github.oeuvres.alix.lucene.terms.RankScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
-import com.github.oeuvres.alix.lucene.terms.TermSuggest;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
- * Ranked, iterable view over vocabulary terms for one text field.
+ * Mutable term-population and optional ranking for one indexed text field.
  *
  * <p>
- * A {@code TopTerms} instance is obtained from
- * {@link com.github.oeuvres.alix.lucene.fluc.FlucText#topTerms()} and is bound to
- * one field's {@link FieldStats} and {@link TermLexicon}. The instance holds no
- * ranking after construction. A ranking is produced by one of the ranking
- * methods.
- * </p>
- *
- * <h2>Field-scope ranking</h2>
- *
- * <p>
- * {@link #ranking(double[], int)} ranks terms by a caller-supplied score vector
- * aligned with the term lexicon. In this mode, {@link TermEntry#freq()} returns
- * the full-field occurrence count.
- * </p>
- *
- * <h2>Focus subset ranking</h2>
- *
- * <p>
- * {@link #focus(IndexReader, FixedBitSet)} collects per-term occurrence and
- * document counts inside a document subset. {@link #focusScore(KeynessScorer, int)}
- * then scores the collected data against the full field.
+ * A {@code TopTerms} instance is bound to one field's immutable
+ * {@link FieldStats} and {@link TermLexicon}. The global field statistics remain
+ * owned by {@link FieldStats}; this class only keeps references to the current
+ * population counts.
  * </p>
  *
  * <p>
- * {@link #focus(IndexReader, FixedBitSet, TermScorer, int)} performs focus
- * collection and term scoring in one postings pass.
+ * On construction, the current population is the whole field: occurrence and
+ * document-count arrays alias {@link FieldStats}. Methods such as
+ * {@link #focus(IndexReader, FixedBitSet)}, {@link #coocs(CoocListener, SpanWalker)},
+ * and {@link #partScore(IndexReader, Partition, PartScorer, int)} switch the
+ * instance to local mutable buffers.
  * </p>
  *
- * <h2>Partition ranking</h2>
- *
  * <p>
- * {@link #partScore(IndexReader, Partition, PartScorer, int)} ranks terms for
- * the focus part of a document partition. The method walks postings once,
- * accumulates per-part term counts for each term, and scores the term using the
- * supplied {@link PartScorer}.
- * </p>
- *
- * <h2>Token denominator</h2>
- *
- * <p>
- * Keyness scoring uses {@link FieldStats#fieldTokens()} as the field-side
- * denominator, not {@link FieldStats#fieldWidth()}. The focus-side denominator
- * is produced from token frequencies or document token counts, depending on the
- * ranking mode.
+ * Ranking is optional. A population may be prepared without producing a ranking.
+ * Iteration is only available after a ranking method has been called.
  * </p>
  *
  * <p>
@@ -83,396 +53,392 @@ import com.github.oeuvres.alix.util.TopArray;
  */
 public final class TopTerms implements Iterable<TopTerms.TermEntry>
 {
-    /** Count vector used by {@link TermEntry#freq()} for the current ranking. */
-    private long[] activeCounts;
-    
-    /** Source of field-level statistics. */
+    /** Number of documents in the current population. */
+    private int docs;
+
+    /** Source of immutable field-level statistics. */
     private final FieldStats fieldStats;
-    
-    /** Number of documents in the current focus subset or focus part. */
-    private int focusDocs;
-    
-    /** Document occurrence counts per term id in the current focus. */
-    private int[] focusTermDocs;
-    
-    /** Occurrence counts per term id in the current focus. */
-    private long[] focusTermFreq;
-    
-    /** Total token occurrences in the current focus. */
-    private long focusTokens;
-    
-    /** Optional per-rank highlight strings, populated by suggest factories. */
+
+    /** Optional per-rank highlight strings. */
     private String[] hilites;
-    
-    /** Maps term id to term string. */
+
+    /** Maps dense term ids to display terms. */
     private final TermLexicon lexicon;
-    
-    /** Ranked term ids: {@code rank2termId[rank]} gives the term id. */
-    private int[] rank2termId;
-    
-    /** Score vector indexed by term id for the current ranking. */
-    private double[] termScores;
-    
+
     /**
-     * Creates an empty ranked view bound to one field.
+     * True when {@link #termFreq} and {@link #termDocs} are local mutable
+     * buffers owned by this instance.
+     */
+    private boolean local;
+
+    /** Ranked term ids; {@code null} means no ranking has been produced. */
+    private int[] rank2termId;
+
+    /** Score vector indexed by dense term id; {@code null} means score == frequency. */
+    private double[] scores;
+
+    /** Current population document counts, indexed by dense term id. */
+    private int[] termDocs;
+
+    /** Current population occurrence counts, indexed by dense term id. */
+    private long[] termFreq;
+
+    /** Number of token occurrences in the current population. */
+    private long tokens;
+
+    /**
+     * Creates a term-population container for one text field.
+     *
+     * <p>
+     * The initial population is the whole field. Count arrays alias
+     * {@link FieldStats}; they must not be modified until the instance has
+     * switched to local buffers.
+     * </p>
      *
      * @param fieldStats field-level statistics
-     * @param lexicon    term lexicon aligned with {@code fieldStats}
-     * @throws NullPointerException if {@code fieldStats == null} or
-     *                              {@code lexicon == null}
+     * @param lexicon dense term lexicon aligned with {@code fieldStats}
+     * @throws IllegalArgumentException if vocabulary sizes differ
+     * @throws NullPointerException if an argument is {@code null}
      */
     public TopTerms(final FieldStats fieldStats, final TermLexicon lexicon)
     {
         this.fieldStats = Objects.requireNonNull(fieldStats, "fieldStats");
         this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
+
+        if (lexicon.vocabSize() != fieldStats.vocabSize()) {
+            throw new IllegalArgumentException(
+                "Vocabulary size mismatch: lexicon=" + lexicon.vocabSize()
+                    + ", fieldStats=" + fieldStats.vocabSize()
+            );
+        }
+
+        reset();
     }
-    
+
     /**
-     * Streams a span walk through the listener and collects per-term cooccurrence counts directly into this instance's focus buffers.
+     * Collects cooccurrence counts into this instance's local population.
      *
      * <p>
-     * The listener is bound to this instance's focus arrays via {@link #focusBuffers()}, the walker is then driven from doc id {@code 0} to exhaustion, and the focus scalars (token total, doc total) are read back from the listener at the end. After this call, {@link #focusScore(KeynessScorer, int)} can be invoked exactly as after {@link #focus(IndexReader, FixedBitSet)}, with the cooccurrence counts in place of the doc-subset counts.
+     * The listener is bound to this instance's local buffers, the walker is
+     * executed, then population totals are copied from the listener.
      * </p>
      *
-     * <p>
-     * The walker must be configured with the pivot {@link org.apache.lucene.queries.spans.SpanQuery} and any document-side filter. The listener must be a {@link com.github.oeuvres.alix.lucene.spans.CoocListener} bound to the same field as this instance.
-     * </p>
-     *
-     * @param listener cooccurrence listener that writes into the focus buffers
-     * @param walker   span walker that drives the listener
+     * @param listener cooccurrence listener
+     * @param walker span walker
      * @return this instance
-     * @throws IOException          on walker I/O failure
-     * @throws NullPointerException if {@code listener} or {@code walker} is {@code null}
+     * @throws IOException if walking spans fails
+     * @throws NullPointerException if an argument is {@code null}
      */
     public TopTerms coocs(
         final CoocListener listener,
-        final SpanWalker walker) throws IOException
-    {
+        final SpanWalker walker
+    ) throws IOException {
         Objects.requireNonNull(listener, "listener");
         Objects.requireNonNull(walker, "walker");
-        prepareFocus();
+
+        useLocal();
         listener.bindTo(focusBuffers());
         walker.walk(0);
-        setFocusTotals(listener.coocTokens(), listener.coocDocsTotal());
-        activeCounts = focusTermFreq;
+
+        tokens = listener.coocTokens();
+        docs = listener.coocDocsTotal();
+
         return this;
     }
 
-    
     /**
-     * Populates focus statistics from a document subset.
+     * Returns the current population document count.
+     *
+     * @return document count
+     */
+    public int docs()
+    {
+        return docs;
+    }
+
+    /**
+     * Returns the current population document count for one term.
+     *
+     * @param termId dense term id
+     * @return number of population documents containing the term
+     */
+    public int docs(final int termId)
+    {
+        return termDocs[termId];
+    }
+
+    /**
+     * Collects occurrence and document counts for a document subset.
      *
      * <p>
-     * The method walks the merged term dictionary of this field once and
-     * records, for each term id, the number of occurrences and the number of
-     * focus documents containing the term. It does not produce a ranked list.
-     * Call {@link #focusScore(KeynessScorer, int)} afterwards to rank the
-     * collected focus data.
+     * This method prepares a local population but does not produce a ranking.
+     * Call {@link #focusScore(KeynessScorer, int)} or an external ranking
+     * producer afterwards.
      * </p>
      *
-     * <p>
-     * Term ids follow the merged {@link MultiTerms} lexicographic order used by
-     * {@link TermLexicon} and {@link FieldStats} for the same reader snapshot.
-     * </p>
-     *
-     * @param reader     reader snapshot matching this instance
-     * @param focusDocid global document-id bitset defining the focus subset
+     * @param reader reader snapshot matching this instance
+     * @param focusDocid global document-id bitset defining the local population
      * @return this instance
-     * @throws IOException              if postings traversal fails
+     * @throws IOException if postings traversal fails
      * @throws IllegalArgumentException if {@code focusDocid} is shorter than
      *                                  {@code reader.maxDoc()}
-     * @throws IllegalStateException    if the field has no terms or was not
-     *                                  indexed with term frequencies
-     * @throws NullPointerException     if {@code reader == null} or
-     *                                  {@code focusDocid == null}
+     * @throws IllegalStateException if the field has no terms or lacks frequencies
+     * @throws NullPointerException if an argument is {@code null}
      */
     public TopTerms focus(
         final IndexReader reader,
-        final FixedBitSet focusDocid) throws IOException
-    {
+        final FixedBitSet focusDocid
+    ) throws IOException {
         final IndexReader r = Objects.requireNonNull(reader, "reader");
         final FixedBitSet focus = Objects.requireNonNull(focusDocid, "focusDocid");
+
         checkDocIdSetLength(r, focus, "focusDocid");
-        
+
         final Terms terms = requireTerms(r, "collect focus statistics");
-        
-        initFocus();
-        
-        final long[] counts = focusTermFreq;
-        final int[] docCounts = focusTermDocs;
-        long totalTokens = 0L;
-        
+
+        useLocal();
+
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
         int termId = 1;
-        
+        long tokenCount = 0L;
+
         while (tenum.next() != null) {
             postings = tenum.postings(postings, PostingsEnum.FREQS);
-            for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
+
+            for (
+                int docId = postings.nextDoc();
+                docId != DocIdSetIterator.NO_MORE_DOCS;
+                docId = postings.nextDoc()
+            ) {
                 if (!focus.get(docId)) {
                     continue;
                 }
-                
+
                 final int freq = postings.freq();
-                
-                counts[termId] += freq;
-                docCounts[termId]++;
-                totalTokens += freq;
+
+                termFreq[termId] += freq;
+                termDocs[termId]++;
+                tokenCount += freq;
             }
+
             termId++;
         }
-        
-        focusTokens = totalTokens;
-        focusDocs = focus.cardinality();
-        
+
+        tokens = tokenCount;
+        docs = focus.cardinality();
+
         return this;
     }
-    
+
     /**
-     * Collects focus statistics and ranks terms in a single postings pass.
+     * Collects focus statistics and ranks terms in one postings pass.
      *
      * <p>
-     * This method is a one-pass alternative to
-     * {@link #focus(IndexReader, FixedBitSet)} followed by a later scoring
-     * call. It first computes the focus token and document totals from the
-     * supplied focus bitset, calls the supplied {@link TermScorer} with corpus
-     * and focus denominators, then walks all field postings. For every term, it
-     * feeds document-level evidence to the scorer through
-     * {@link TermScorer#termDocAdd(int, int, boolean)}, records focus
-     * occurrence and document counts, computes the term score, and inserts the
-     * term into the retained top list when the score is valid.
+     * This method switches to a local population, collects term frequencies and
+     * document counts for the supplied document subset, scores each term with
+     * the supplied {@link TermScorer}, and builds a ranking.
      * </p>
      *
-     * <p>
-     * After this call, {@link TermEntry#freq()} returns the focus occurrence
-     * count, {@link TermEntry#score()} returns the score produced by the
-     * supplied scorer, {@link #focusTermFreq(int)} and {@link #focusDocs(int)}
-     * are populated, and {@link #focusTokens()} / {@link #focusDocs()} describe
-     * the focus subset.
-     * </p>
-     *
-     * @param reader     reader snapshot matching this instance
-     * @param focusDocid global document-id bitset defining the focus subset
-     * @param scorer     term scorer receiving corpus, focus, and per-document
-     *                   evidence
-     * @param topK       maximum number of terms to retain
+     * @param reader reader snapshot matching this instance
+     * @param focusDocid global document-id bitset defining the local population
+     * @param scorer term scorer
+     * @param topK maximum number of ranked terms to retain
      * @return this instance
-     * @throws IOException              if postings traversal fails
+     * @throws IOException if postings traversal fails
      * @throws IllegalArgumentException if {@code topK < 1} or if
-     *                                  {@code focusDocid} is shorter than
-     *                                  {@code reader.maxDoc()}
-     * @throws IllegalStateException    if the field has no terms or was not
-     *                                  indexed with term frequencies
-     * @throws NullPointerException     if any required argument is {@code null}
+     *                                  {@code focusDocid} is too short
+     * @throws IllegalStateException if the field has no terms or lacks frequencies
+     * @throws NullPointerException if an argument is {@code null}
      */
     public TopTerms focus(
         final IndexReader reader,
         final FixedBitSet focusDocid,
         final TermScorer scorer,
-        final int topK) throws IOException
-    {
+        final int topK
+    ) throws IOException {
         final IndexReader r = Objects.requireNonNull(reader, "reader");
         final FixedBitSet focus = Objects.requireNonNull(focusDocid, "focusDocid");
         final TermScorer ts = Objects.requireNonNull(scorer, "scorer");
-        
+
         checkTopK(topK);
         checkDocIdSetLength(r, focus, "focusDocid");
-        
+
         final Terms terms = requireTerms(r, "score focus terms");
-        
         final int[] docTokens = fieldStats.docTokensRef();
-        final int[] termDocs = fieldStats.termDocsRef();
-        final long[] termCounts = fieldStats.termFreqRef();
-        
-        ts.corpus(fieldStats.fieldTokens(), fieldStats.fieldDocs());
-        
-        initFocus();
-        
-        long focusTokenTotal = 0L;
-        int focusDocCount = 0;
-        
-        for (int docId = focus.nextSetBit(0); docId != DocIdSetIterator.NO_MORE_DOCS; docId = focus
-                .nextSetBit(docId + 1))
-        {
-            focusTokenTotal += docTokens[docId];
-            focusDocCount++;
+        final int[] fieldTermDocs = fieldStats.termDocsRef();
+        final long[] fieldTermFreq = fieldStats.termFreqRef();
+
+        useLocal();
+
+        long tokenCount = 0L;
+        int docCount = 0;
+
+        for (
+            int docId = focus.nextSetBit(0);
+            docId != DocIdSetIterator.NO_MORE_DOCS && docId < r.maxDoc();
+            docId = focus.nextSetBit(docId + 1)
+        ) {
+            tokenCount += docTokens[docId];
+            docCount++;
         }
-        
-        focusTokens = focusTokenTotal;
-        focusDocs = focusDocCount;
-        
-        ts.focus(focusTokenTotal, focusDocCount);
-        
+
+        tokens = tokenCount;
+        docs = docCount;
+
+        ts.corpus(fieldStats.fieldTokens(), fieldStats.fieldDocs());
+        ts.focus(tokens, docs);
+
         final int vocabSize = fieldStats.vocabSize();
-        final double[] scores = new double[vocabSize];
+        final double[] scoreVec = new double[vocabSize];
         final TopArray top = new TopArray(topK);
         final TermsEnum tenum = terms.iterator();
-        
+
         PostingsEnum postings = null;
         int termId = 1;
-        
+
         while (tenum.next() != null) {
-            ts.termStart(termCounts[termId], termDocs[termId]);
-            
+            ts.termStart(fieldTermFreq[termId], fieldTermDocs[termId]);
+
             postings = tenum.postings(postings, PostingsEnum.FREQS);
-            for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
+
+            for (
+                int docId = postings.nextDoc();
+                docId != DocIdSetIterator.NO_MORE_DOCS;
+                docId = postings.nextDoc()
+            ) {
                 final int freq = postings.freq();
                 if (freq <= 0) {
                     continue;
                 }
-                
+
                 final boolean inFocus = focus.get(docId);
-                
+
                 if (inFocus) {
-                    focusTermDocs[termId]++;
-                    focusTermFreq[termId] += freq;
+                    termFreq[termId] += freq;
+                    termDocs[termId]++;
                 }
-                
+
                 ts.termDocAdd(freq, docTokens[docId], inFocus);
             }
-            
+
             final double score = ts.termScore();
-            
+
             if (!Double.isNaN(score)) {
-                scores[termId] = score;
+                scoreVec[termId] = score;
                 top.push(termId, score);
             }
-            
+
             termId++;
         }
-        
-        activeCounts = focusTermFreq;
-        buildRank(top, scores);
-        
+
+        buildRanking(top, scoreVec, null);
+
         return this;
     }
-    
+
     /**
-     * Returns the number of documents in the current focus.
+     * Compatibility alias for {@link #docs()}.
      *
-     * <p>
-     * Returns {@code 0} before a focus-collection method has been called.
-     * </p>
-     *
-     * @return focus document count
+     * @return current population document count
      */
     public int focusDocs()
     {
-        return focusDocs;
+        return docs();
     }
-    
+
     /**
-     * Returns the number of focus documents containing one term.
-     *
-     * <p>
-     * Returns {@code 0} before a focus-collection method has been called.
-     * </p>
+     * Compatibility alias for {@link #docs(int)}.
      *
      * @param termId dense term id
-     * @return number of focus documents containing the term
+     * @return number of current-population documents containing the term
      */
     public int focusDocs(final int termId)
     {
-        return focusTermDocs == null ? 0 : focusTermDocs[termId];
+        return docs(termId);
     }
-    
+
     /**
-     * Ranks already-collected focus data with a keyness scorer.
+     * Scores the current local population against the whole field.
      *
      * <p>
-     * {@link #focus(IndexReader, FixedBitSet)} must have been called first.
-     * The collected focus counts can be re-scored several times with different
-     * {@link KeynessScorer} instances without re-walking postings.
-     * </p>
-     *
-     * <p>
-     * After this call, {@link TermEntry#freq()} returns the focus occurrence
-     * count and {@link TermEntry#score()} returns the keyness score.
+     * The current population must be local, typically prepared by
+     * {@link #focus(IndexReader, FixedBitSet)} or
+     * {@link #coocs(CoocListener, SpanWalker)}.
      * </p>
      *
      * @param scorer keyness scorer
-     * @param topK   maximum number of terms to retain
+     * @param topK maximum number of ranked terms to retain
      * @return this instance
      * @throws IllegalArgumentException if {@code topK < 1}
-     * @throws IllegalStateException    if focus data has not been collected
-     * @throws NullPointerException     if {@code scorer == null}
+     * @throws IllegalStateException if the current population is not local
+     * @throws NullPointerException if {@code scorer == null}
      */
     public TopTerms focusScore(
         final KeynessScorer scorer,
-        final int topK)
-    {
+        final int topK
+    ) {
         final KeynessScorer ks = Objects.requireNonNull(scorer, "scorer");
-        
-        if (focusTermFreq == null) {
-            throw new IllegalStateException("No focus data: call focus(reader, focusDocid) first");
-        }
-        
+
         checkTopK(topK);
-        
+        checkLocal("score focus terms");
+
         final int vocabSize = fieldStats.vocabSize();
         final long fieldTokens = fieldStats.fieldTokens();
-        final long otherTokens = fieldTokens - focusTokens;
-        final double[] scores = new double[vocabSize];
+        final long otherTokens = fieldTokens - tokens;
+        final double[] scoreVec = new double[vocabSize];
         final TopArray top = new TopArray(topK);
-        
+
         for (int termId = 1; termId < vocabSize; termId++) {
-            final long focusTermCount = focusTermFreq[termId];
-            
-            if (focusTermCount == 0L) {
+            final long localTermCount = termFreq[termId];
+
+            if (localTermCount == 0L) {
                 continue;
             }
-            
+
             final long fieldTermCount = fieldStats.termFreq(termId);
-            final long otherTermCount = fieldTermCount - focusTermCount;
+            final long otherTermCount = fieldTermCount - localTermCount;
             final double score = ks.score(
-                    focusTermCount,
-                    focusTokens,
-                    otherTermCount,
-                    otherTokens);
-            
+                localTermCount,
+                tokens,
+                otherTermCount,
+                otherTokens
+            );
+
             if (Double.isNaN(score)) {
                 continue;
             }
-            
-            scores[termId] = score;
+
+            scoreVec[termId] = score;
             top.push(termId, score);
         }
-        
-        activeCounts = focusTermFreq;
-        buildRank(top, scores);
-        
+
+        buildRanking(top, scoreVec, null);
+
         return this;
     }
-    
+
     /**
-     * Returns the focus occurrence count for one term.
-     *
-     * <p>
-     * Returns {@code 0} before a focus-collection method has been called.
-     * </p>
+     * Compatibility alias for {@link #termFreq(int)}.
      *
      * @param termId dense term id
-     * @return focus occurrence count
+     * @return current population occurrence count for the term
      */
     public long focusTermFreq(final int termId)
     {
-        return focusTermFreq == null ? 0L : focusTermFreq[termId];
+        return termFreq(termId);
     }
-    
+
     /**
-     * Returns the total token count in the current focus.
+     * Compatibility alias for {@link #tokens()}.
      *
-     * <p>
-     * Returns {@code 0} before a focus-collection method has been called.
-     * </p>
-     *
-     * @return focus token total
+     * @return current population token count
      */
     public long focusTokens()
     {
-        return focusTokens;
+        return tokens();
     }
-    
+
     /**
      * Returns an iterator over the current ranking.
      *
@@ -484,88 +450,54 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     {
         if (rank2termId == null) {
             throw new IllegalStateException(
-                    "No ranking: call ranking(), focusScore(), focus(..., scorer, topK), "
-                            + "partScore(), or setRanking() first");
+                "No ranking: call ranking(), focusScore(), focus(..., scorer, topK), "
+                    + "partScore(), or setRanking() first"
+            );
         }
-        
+
         return new TermIter();
     }
-    
+
     /**
-     * Deprecated, was an experiment, kept for memory to not retry,
-     * use {@link #partScore(IndexReader, Partition, PartScorer, int)} instead.
-     * 
-     * Ranks focus-part terms by contrast between per-part count rankings.
+     * Collects and ranks terms for the focus part of a document partition.
      *
      * <p>
-     * The method first walks the field postings once to build per-part top-count
-     * rankings. It then scores candidates from the focus part using the supplied
-     * {@link RankScorer}. This differs from
-     * {@link #partScore(IndexReader, Partition, PartScorer, int)}: a
-     * {@link PartScorer} scores a term immediately from its per-part frequency
-     * vector, while a {@link RankScorer} needs completed per-part rankings.
-     * </p>
-     *
-     * <p>
-     * For each focus candidate, the method builds two reusable vectors:
-     * </p>
-     *
-     * <ul>
-     *   <li>{@code partTermRank[p]}: zero-based retained rank of the term in part
-     *       {@code p}, or {@code candidateCapacity} if absent from that part's
-     *       retained top list;</li>
-     *   <li>{@code partTermFreq[p]}: retained occurrence count of the term in part
-     *       {@code p}, or {@code 0} if absent.</li>
-     * </ul>
-     *
-     * <p>
-     * After this call, {@link TermEntry#freq()} returns the term occurrence count
-     * in the focus part and {@link TermEntry#score()} returns the rank-based score.
+     * This method switches to a local population. The local population is the
+     * focus part of the partition.
      * </p>
      *
      * @param reader reader snapshot matching this instance
      * @param partition document partition aligned with {@code reader}
-     * @param scorer rank scorer
-     * @param topK maximum number of final terms to retain
+     * @param scorer partition scorer
+     * @param topK maximum number of ranked terms to retain
      * @return this instance
      * @throws IOException if postings traversal fails
      * @throws IllegalArgumentException if {@code topK < 1}, if the partition has
-     *                                  no focus part, if the partition is not
-     *                                  aligned with {@code reader}, or if the
-     *                                  scorer returns an invalid candidate capacity
-     * @throws IllegalStateException if the field has no terms or was not indexed
-     *                               with term frequencies
-     * @throws NullPointerException if any required argument is {@code null}
+     *                                  no focus part, or if it is not aligned
+     * @throws IllegalStateException if the field has no terms or lacks frequencies
+     * @throws NullPointerException if an argument is {@code null}
      */
-    @Deprecated
-    public TopTerms partRanking(
+    public TopTerms partScore(
         final IndexReader reader,
         final Partition partition,
-        final RankScorer scorer,
+        final PartScorer scorer,
         final int topK
     ) throws IOException {
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(partition, "partition");
-        Objects.requireNonNull(scorer, "scorer");
+        final IndexReader r = Objects.requireNonNull(reader, "reader");
+        final Partition parts = Objects.requireNonNull(partition, "partition");
+        final PartScorer ps = Objects.requireNonNull(scorer, "scorer");
 
         checkTopK(topK);
-        checkPartition(reader, partition);
-        final int vocabSize = fieldStats.vocabSize();
-        final int candidateCapacity = scorer.candidateCapacity(topK);
-        // final int candidateCapacity = vocabSize;
-        if (candidateCapacity < topK) {
-            throw new IllegalArgumentException(
-                "candidateCapacity=" + candidateCapacity + " < topK=" + topK
-            );
-        }
+        checkPartition(r, parts);
 
-        final Terms terms = requireTerms(reader, "rank partition terms");
+        final Terms terms = requireTerms(r, "score partition terms");
 
-        final int partCount = partition.partCount();
-        final int focusPart = partition.focusPart();
-        final int missingRank = candidateCapacity;
-        final byte[] docPart = partition.docPartRef();
+        final int partCount = parts.partCount();
+        final int focusPart = parts.focusPart();
+        final int focusDocCount = parts.partDocs(focusPart);
+        final byte[] docPart = parts.docPartRef();
         final int[] docTokens = fieldStats.docTokensRef();
+
         final long[] partTokens = new long[partCount];
 
         for (int docId = 0; docId < docPart.length; docId++) {
@@ -578,27 +510,28 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             partTokens[part] += docTokens[docId];
         }
 
-        initFocus();
+        useLocal();
 
-        focusTokens = partTokens[focusPart];
-        focusDocs = partition.partDocs(focusPart);
+        tokens = partTokens[focusPart];
+        docs = focusDocCount;
 
-        scorer.init(topK, candidateCapacity, focusPart, partTokens);
-
-        final PartRanker ranker = new PartRanker(partCount, candidateCapacity);
-        final long[] termPartFreq = new long[partCount];
-
+        final int vocabSize = fieldStats.vocabSize();
+        final double[] scoreVec = new double[vocabSize];
+        final long[] partTermFreq = new long[partCount];
+        final TopArray top = new TopArray(topK);
         final TermsEnum tenum = terms.iterator();
+
         PostingsEnum postings = null;
         int termId = 1;
 
         while (tenum.next() != null) {
-            Arrays.fill(termPartFreq, 0L);
+            Arrays.fill(partTermFreq, 0L);
 
             long focusFreq = 0L;
             int focusDocsForTerm = 0;
 
             postings = tenum.postings(postings, PostingsEnum.FREQS);
+
             for (
                 int docId = postings.nextDoc();
                 docId != DocIdSetIterator.NO_MORE_DOCS;
@@ -612,352 +545,330 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
                 final int freq = postings.freq();
 
-                termPartFreq[part] += freq;
-
-                if (part == focusPart) {
-                    focusFreq += freq;
-                    focusDocsForTerm++;
-                }
-            }
-
-            if (focusFreq > 0L) {
-                focusTermFreq[termId] = focusFreq;
-                focusTermDocs[termId] = focusDocsForTerm;
-            }
-
-            ranker.add(termId, termPartFreq);
-            termId++;
-        }
-
-        final TopArray focusTop = ranker.top(focusPart);
-        final int focusTopSize = focusTop.size();
-        final int[] partTermRank = new int[partCount];
-        final double[] partTermFreq = new double[partCount];
-        final double[] scores = new double[vocabSize];
-        final TopArray top = new TopArray(topK);
-
-        for (int focusRank = 0; focusRank < focusTopSize; focusRank++) {
-            final int candidateTermId = focusTop.id(focusRank);
-
-            Arrays.fill(partTermRank, missingRank);
-            Arrays.fill(partTermFreq, 0d);
-
-            partTermRank[focusPart] = focusRank;
-            partTermFreq[focusPart] = focusTop.score(focusRank);
-
-            for (int part = 0; part < partCount; part++) {
-                if (part == focusPart) {
-                    continue;
-                }
-
-                final TopArray partTop = ranker.top(part);
-                final int rank = partTop.rank(candidateTermId);
-
-                if (rank < 0) {
-                    continue;
-                }
-
-                partTermRank[part] = rank;
-                partTermFreq[part] = partTop.score(rank);
-            }
-
-            final double score = scorer.score(partTermRank, partTermFreq);
-
-            if (Double.isNaN(score)) {
-                continue;
-            }
-
-            scores[candidateTermId] = score;
-            top.push(candidateTermId, score);
-        }
-
-        activeCounts = focusTermFreq;
-        buildRank(top, scores);
-
-        return this;
-    }
-
-    /**
-     * Ranks terms for the focus part of a partition.
-     *
-     * <p>
-     * The supplied {@link Partition} must be aligned with the supplied reader
-     * and must declare a focus part. The method first computes token totals per
-     * part from the partition and document token counts. It then walks the
-     * field's postings once. For each term, it accumulates occurrence counts by
-     * part in a scratch array, counts focus documents containing the term, calls
-     * the supplied {@link PartScorer}, and retains the term when the score is
-     * valid.
-     * </p>
-     *
-     * <p>
-     * After this call, {@link TermEntry#freq()} returns the term's occurrence
-     * count in the focus part and {@link TermEntry#score()} returns the
-     * partition score.
-     * </p>
-     *
-     * @param reader    reader snapshot matching this instance
-     * @param partition document partition aligned with {@code reader}
-     * @param scorer    partition scorer
-     * @param topK      maximum number of terms to retain
-     * @return this instance
-     * @throws IOException              if postings traversal fails
-     * @throws IllegalArgumentException if {@code topK < 1}, if the partition has
-     *                                  no focus part, or if the partition is not
-     *                                  aligned with {@code reader}
-     * @throws IllegalStateException    if the field has no terms or was not indexed
-     *                                  with term frequencies
-     * @throws NullPointerException     if any required argument is {@code null}
-     */
-    public TopTerms partScore(
-        final IndexReader reader,
-        final Partition partition,
-        final PartScorer scorer,
-        final int topK) throws IOException
-    {
-        final IndexReader r = Objects.requireNonNull(reader, "reader");
-        final Partition parts = Objects.requireNonNull(partition, "partition");
-        final PartScorer ps = Objects.requireNonNull(scorer, "scorer");
-        
-        checkTopK(topK);
-        checkPartition(r, parts);
-        
-        final Terms terms = requireTerms(r, "score partition terms");
-        
-        final int partCount = parts.partCount();
-        final int focusPart = parts.focusPart();
-        final int focusDocCount = parts.partDocs(focusPart);
-        final byte[] docPart = parts.docPartRef();
-        final int[] docTokens = fieldStats.docTokensRef();
-        
-        final long[] partTokens = new long[partCount];
-        
-        for (int docId = 0; docId < docPart.length; docId++) {
-            final byte part = docPart[docId];
-            
-            if (part == Partition.NO_PART) {
-                continue;
-            }
-            
-            partTokens[part] += docTokens[docId];
-        }
-        
-        initFocus();
-        
-        focusTokens = partTokens[focusPart];
-        focusDocs = focusDocCount;
-        
-        final int vocabSize = fieldStats.vocabSize();
-        final double[] scores = new double[vocabSize];
-        final long[] partTermFreq = new long[partCount];
-        final TopArray top = new TopArray(topK);
-        final TermsEnum tenum = terms.iterator();
-        
-        PostingsEnum postings = null;
-        int termId = 1;
-        
-        while (tenum.next() != null) {
-            Arrays.fill(partTermFreq, 0L);
-            
-            long focusFreq = 0L;
-            int focusDocsForTerm = 0;
-            
-            postings = tenum.postings(postings, PostingsEnum.FREQS);
-            for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
-                final byte part = docPart[docId];
-                
-                if (part == Partition.NO_PART) {
-                    continue;
-                }
-                
-                final int freq = postings.freq();
-                
                 partTermFreq[part] += freq;
-                
+
                 if (part == focusPart) {
                     focusFreq += freq;
                     focusDocsForTerm++;
                 }
             }
-            
+
             if (focusFreq > 0L) {
-                focusTermFreq[termId] = focusFreq;
-                focusTermDocs[termId] = focusDocsForTerm;
-                
+                termFreq[termId] = focusFreq;
+                termDocs[termId] = focusDocsForTerm;
+
                 final double score = ps.score(
-                        partTermFreq,
-                        partTokens,
-                        focusPart,
-                        focusDocsForTerm,
-                        focusDocCount);
-                
+                    partTermFreq,
+                    partTokens,
+                    focusPart,
+                    focusDocsForTerm,
+                    focusDocCount
+                );
+
                 if (!Double.isNaN(score)) {
-                    scores[termId] = score;
+                    scoreVec[termId] = score;
                     top.push(termId, score);
                 }
             }
-            
+
             termId++;
         }
-        
-        activeCounts = focusTermFreq;
-        buildRank(top, scores);
-        
+
+        buildRanking(top, scoreVec, null);
+
         return this;
-    }
-    
-    /**
-     * Allocates or zeros the focus buffers and resets the focus scalars. Idempotent. Called automatically by {@link #coocs} and {@link #focusBuffers()}.
-     */
-    public void prepareFocus()
-    {
-        initFocus();
     }
 
     /**
-     * Ranks terms by a caller-supplied score vector.
+     * Ranks the current population by a caller-supplied score vector.
      *
      * <p>
-     * The vector must be aligned with this field's {@link TermLexicon}. The
-     * full field is used as the active population, so {@link TermEntry#freq()}
-     * returns the full-field occurrence count and {@link TermEntry#score()}
-     * returns the corresponding score from {@code weights}.
+     * This method does not change the current population. A fresh instance ranks
+     * the whole field because {@link #reset()} is the constructor state.
      * </p>
      *
-     * <p>
-     * Only positive, non-NaN weights enter the ranking.
-     * </p>
-     *
-     * @param weights score vector indexed by term id
-     * @param topK    maximum number of terms to retain
+     * @param weights score vector indexed by dense term id
+     * @param topK maximum number of ranked terms to retain
      * @return this instance
      * @throws IllegalArgumentException if {@code weights.length != vocabSize()}
      *                                  or if {@code topK < 1}
-     * @throws NullPointerException     if {@code weights == null}
+     * @throws NullPointerException if {@code weights == null}
      */
     public TopTerms ranking(final double[] weights, final int topK)
     {
         final double[] w = Objects.requireNonNull(weights, "weights");
-        
+
         checkTopK(topK);
-        
-        final int vocabSize = fieldStats.vocabSize();
-        
-        if (w.length != vocabSize) {
-            throw new IllegalArgumentException(
-                    "weights.length=" + w.length + ", expected " + vocabSize);
-        }
-        
+        checkVectorLength(w.length, "weights.length");
+
         final TopArray top = new TopArray(topK);
-        
-        for (int termId = 1; termId < vocabSize; termId++) {
+
+        for (int termId = 1; termId < w.length; termId++) {
             final double score = w[termId];
-            
+
             if (Double.isNaN(score) || score <= 0d) {
                 continue;
             }
-            
+
             top.push(termId, score);
         }
-        
-        activeCounts = fieldStats.termFreqRef();
-        buildRank(top, w);
-        
+
+        buildRanking(top, w, null);
+
         return this;
-    }
-    
-    /**
-     * Sets the focus token total and focus document total. Used by external collectors after they have populated the focus buffers via {@link #focusBuffers()}.
-     *
-     * @param focusTokens total non-gap positions counted across the focus
-     * @param focusDocs   number of documents that contributed at least one focus position
-     */
-    public void setFocusTotals(final long focusTokens, final int focusDocs)
-    {
-        this.focusTokens = focusTokens;
-        this.focusDocs = focusDocs;
     }
 
     /**
-     * Returns the current number of ranked terms.
+     * Resets this instance to the whole-field population and clears ranking.
      *
      * <p>
-     * Returns {@code 0} before a ranking has been produced.
+     * After reset, occurrence and document-count arrays alias
+     * {@link FieldStats}. They must not be modified. Methods that collect local
+     * statistics switch back to local mutable buffers before writing.
      * </p>
      *
-     * @return ranked term count
+     * @return this instance
+     */
+    public TopTerms reset()
+    {
+        termFreq = fieldStats.termFreqRef();
+        termDocs = fieldStats.termDocsRef();
+        tokens = fieldStats.fieldTokens();
+        docs = fieldStats.fieldDocs();
+        local = false;
+        clearRanking();
+
+        return this;
+    }
+
+    /**
+     * Sets current population totals after an external collector has written
+     * into this instance's local buffers.
+     *
+     * @param tokens current population token count
+     * @param docs current population document count
+     * @throws IllegalArgumentException if a value is negative
+     */
+    public void setFocusTotals(final long tokens, final int docs)
+    {
+        if (tokens < 0L) {
+            throw new IllegalArgumentException("tokens must be >= 0");
+        }
+        if (docs < 0) {
+            throw new IllegalArgumentException("docs must be >= 0");
+        }
+
+        this.tokens = tokens;
+        this.docs = docs;
+    }
+
+    /**
+     * Sets a ranking produced by an external component.
+     *
+     * <p>
+     * The current population is not changed. {@link TermEntry#freq()} continues
+     * to report counts from the current population.
+     * </p>
+     *
+     * @param rank2termId ranked dense term ids
+     * @param scores score vector indexed by dense term id, or {@code null}
+     * @param hilites optional per-rank highlight strings, or {@code null}
+     * @return this instance
+     * @throws IllegalArgumentException if arrays are not aligned with this field
+     * @throws NullPointerException if {@code rank2termId == null}
+     */
+    public TopTerms setRanking(
+        final int[] rank2termId,
+        final double[] scores,
+        final String[] hilites
+    ) {
+        final int[] ranks = Objects.requireNonNull(rank2termId, "rank2termId");
+
+        checkRankIds(ranks);
+
+        if (scores != null) {
+            checkVectorLength(scores.length, "scores.length");
+        }
+
+        if (hilites != null && hilites.length != ranks.length) {
+            throw new IllegalArgumentException(
+                "hilites.length=" + hilites.length
+                    + ", expected " + ranks.length
+            );
+        }
+
+        this.rank2termId = ranks;
+        this.scores = scores;
+        this.hilites = hilites;
+
+        return this;
+    }
+
+    /**
+     * Returns the number of ranked terms.
+     *
+     * @return ranked term count, or {@code 0} before ranking
      */
     public int size()
     {
         return rank2termId == null ? 0 : rank2termId.length;
     }
-    
+
     /**
-     * Builds the rank vector from a retained top list.
+     * Returns the current population document-count vector.
      *
-     * @param top      retained top list
-     * @param scoreVec score vector indexed by term id
+     * <p>
+     * The returned array is aliased, not copied.
+     * </p>
+     *
+     * @return document-count vector indexed by dense term id
      */
-    private void buildRank(final TopArray top, final double[] scoreVec)
+    public int[] termDocsRef()
     {
-        final int n = top.size();
-        final int[] ranks = new int[n];
-        
-        for (int rank = 0; rank < n; rank++) {
-            ranks[rank] = top.id(rank);
-        }
-        
-        rank2termId = ranks;
-        termScores = scoreVec;
-        hilites = null;
+        return termDocs;
     }
 
     /**
-     * Checks that a document-id bitset can be safely addressed with reader
-     * global document ids.
+     * Returns the current population occurrence count for one term.
+     *
+     * @param termId dense term id
+     * @return occurrence count
+     */
+    public long termFreq(final int termId)
+    {
+        return termFreq[termId];
+    }
+
+    /**
+     * Returns the current population occurrence-count vector.
+     *
+     * <p>
+     * The returned array is aliased, not copied.
+     * </p>
+     *
+     * @return occurrence-count vector indexed by dense term id
+     */
+    public long[] termFreqRef()
+    {
+        return termFreq;
+    }
+
+    /**
+     * Returns the current population token count.
+     *
+     * @return token count
+     */
+    public long tokens()
+    {
+        return tokens;
+    }
+
+    /**
+     * Builds a ranking from a retained top list.
+     *
+     * @param top retained top list
+     * @param scores score vector indexed by dense term id, or {@code null}
+     * @param hilites optional per-rank highlight strings, or {@code null}
+     */
+    private void buildRanking(
+        final TopArray top,
+        final double[] scores,
+        final String[] hilites
+    ) {
+        final int size = top.size();
+        final int[] ranks = new int[size];
+
+        for (int rank = 0; rank < size; rank++) {
+            ranks[rank] = top.id(rank);
+        }
+
+        this.rank2termId = ranks;
+        this.scores = scores;
+        this.hilites = hilites;
+    }
+
+    /**
+     * Checks that the current population is local.
+     *
+     * @param action action label for error messages
+     * @throws IllegalStateException if the current population aliases field stats
+     */
+    private void checkLocal(final String action)
+    {
+        if (!local) {
+            throw new IllegalStateException(
+                "No local population: call focus(), coocs(), or partScore() before " + action
+            );
+        }
+    }
+
+    /**
+     * Checks that a document-id bitset can address reader document ids.
      *
      * @param reader reader snapshot
-     * @param bits   global document-id bitset
-     * @param name   parameter name for error messages
-     * @throws IllegalArgumentException if the bitset is shorter than
-     *                                  {@code reader.maxDoc()}
+     * @param bits document-id bitset
+     * @param name parameter name for error messages
+     * @throws IllegalArgumentException if the bitset is shorter than reader maxDoc
      */
     private static void checkDocIdSetLength(
         final IndexReader reader,
         final FixedBitSet bits,
-        final String name)
-    {
+        final String name
+    ) {
         if (bits.length() < reader.maxDoc()) {
             throw new IllegalArgumentException(
-                    name + ".length()=" + bits.length()
-                            + " < reader.maxDoc()=" + reader.maxDoc());
+                name + ".length()=" + bits.length()
+                    + " < reader.maxDoc()=" + reader.maxDoc()
+            );
         }
     }
-    
+
     /**
-     * Validates a partition used by {@link #partScore(IndexReader, Partition, PartScorer, int)}.
+     * Validates a partition against a reader.
      *
-     * @param reader    reader snapshot
+     * @param reader reader snapshot
      * @param partition document partition
-     * @throws IllegalArgumentException if the partition has no focus part or is
-     *                                  not aligned with the reader
+     * @throws IllegalArgumentException if the partition is invalid
      */
     private static void checkPartition(
         final IndexReader reader,
-        final Partition partition)
-    {
+        final Partition partition
+    ) {
         if (!partition.hasFocus()) {
             throw new IllegalArgumentException("partition has no focus part");
         }
         if (partition.maxDoc() != reader.maxDoc()) {
             throw new IllegalArgumentException(
-                    "partition.maxDoc()=" + partition.maxDoc()
-                            + " != reader.maxDoc()=" + reader.maxDoc());
+                "partition.maxDoc()=" + partition.maxDoc()
+                    + " != reader.maxDoc()=" + reader.maxDoc()
+            );
         }
     }
-    
+
     /**
-     * Checks a top-list capacity argument.
+     * Checks ranked term ids.
+     *
+     * @param rank2termId ranked dense term ids
+     * @throws IllegalArgumentException if a term id is outside the vocabulary
+     */
+    private void checkRankIds(final int[] rank2termId)
+    {
+        final int vocabSize = fieldStats.vocabSize();
+
+        for (int rank = 0; rank < rank2termId.length; rank++) {
+            final int termId = rank2termId[rank];
+
+            if (termId <= 0 || termId >= vocabSize) {
+                throw new IllegalArgumentException(
+                    "rank2termId[" + rank + "]=" + termId
+                        + ", expected 1.." + (vocabSize - 1)
+                );
+            }
+        }
+    }
+
+    /**
+     * Checks a top-list capacity.
      *
      * @param topK maximum retained term count
      * @throws IllegalArgumentException if {@code topK < 1}
@@ -968,98 +879,116 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             throw new IllegalArgumentException("topK must be >= 1");
         }
     }
-    
+
     /**
-     * Allocates or resets focus arrays.
+     * Checks a vector length against the vocabulary size.
+     *
+     * @param length actual length
+     * @param name label for error messages
+     * @throws IllegalArgumentException if the length does not match
      */
-    private void initFocus()
+    private void checkVectorLength(final int length, final String name)
     {
         final int vocabSize = fieldStats.vocabSize();
-        
-        if (focusTermFreq == null) {
-            focusTermFreq = new long[vocabSize];
-        } else {
-            Arrays.fill(focusTermFreq, 0L);
+
+        if (length != vocabSize) {
+            throw new IllegalArgumentException(
+                name + "=" + length + ", expected " + vocabSize
+            );
         }
-        
-        if (focusTermDocs == null) {
-            focusTermDocs = new int[vocabSize];
-        } else {
-            Arrays.fill(focusTermDocs, 0);
-        }
-        
-        focusTokens = 0L;
-        focusDocs = 0;
     }
-    
+
+    /**
+     * Clears the ranked projection without changing the current population.
+     */
+    private void clearRanking()
+    {
+        rank2termId = null;
+        scores = null;
+        hilites = null;
+    }
+
+    /**
+     * Returns writable local buffers for external collectors.
+     *
+     * @return local population buffers
+     */
+    FocusBuffers focusBuffers()
+    {
+        if (!local) {
+            useLocal();
+        }
+
+        return new FocusBuffers(termFreq, termDocs);
+    }
+
     /**
      * Returns field terms or fails with a mode-specific message.
      *
      * @param reader reader snapshot
      * @param action action label for error messages
      * @return field terms
-     * @throws IOException           if Lucene term metadata access fails
-     * @throws IllegalStateException if the field has no terms or lacks
-     *                               frequencies
+     * @throws IOException if Lucene term metadata access fails
+     * @throws IllegalStateException if the field has no terms or lacks frequencies
      */
-    private Terms requireTerms(final IndexReader reader, final String action) throws IOException
-    {
+    private Terms requireTerms(
+        final IndexReader reader,
+        final String action
+    ) throws IOException {
         final String field = fieldStats.field();
         final Terms terms = MultiTerms.getTerms(reader, field);
-        
+
         if (terms == null) {
-            throw new IllegalStateException("Field '" + field + "' has no terms; cannot " + action);
+            throw new IllegalStateException(
+                "Field '" + field + "' has no terms; cannot " + action
+            );
         }
         if (!terms.hasFreqs()) {
             throw new IllegalStateException(
-                    "Field '" + field + "' was not indexed with term frequencies");
+                "Field '" + field + "' was not indexed with term frequencies"
+            );
         }
-        
+
         return terms;
-    }
-    
-    /**
-     * Returns the focus accumulation buffers of this instance, allocating them on first call. Used by external collectors that write counts directly into the buffers; see {@link #coocs}.
-     *
-     * @return aliased buffers; index {@code 0} is the absent-term sentinel and must not be written
-     */
-    FocusBuffers focusBuffers()
-    {
-        if (focusTermFreq == null) {
-            prepareFocus();
-        }
-        return new FocusBuffers(focusTermFreq, focusTermDocs);
     }
 
     /**
-     * Package-private setter used by specialized ranking producers.
+     * Switches this instance to local mutable buffers and clears them.
+     */
+    private void useLocal()
+    {
+        final int vocabSize = fieldStats.vocabSize();
+
+        if (!local) {
+            termFreq = new long[vocabSize];
+            termDocs = new int[vocabSize];
+            local = true;
+        }
+        else {
+            Arrays.fill(termFreq, 0L);
+            Arrays.fill(termDocs, 0);
+        }
+
+        tokens = 0L;
+        docs = 0;
+        clearRanking();
+    }
+
+    /**
+     * Writable local population buffers.
      *
      * <p>
-     * This method is used by producers such as {@link TermSuggest}, whose
-     * ranking logic does not fit {@link #ranking(double[], int)} or
-     * {@link #focusScore(KeynessScorer, int)}.
+     * The arrays are aliased, not copied. They are indexed by dense term id.
+     * Index {@code 0} is the absent-term sentinel and must not be written.
      * </p>
      *
-     * @param rank2termId  ranked term ids, already in ranking order
-     * @param activeCounts count vector backing {@link TermEntry#freq()}
-     * @param scores       score vector indexed by term id, or {@code null} to use
-     *                     count as score
-     * @param hilites      optional per-rank highlight strings, or {@code null}
-     * @throws NullPointerException if {@code rank2termId == null} or
-     *                              {@code activeCounts == null}
+     * @param termFreq per-term occurrence-count buffer
+     * @param termDocs per-term document-count buffer
      */
-    public void setRanking(
-        final int[] rank2termId,
-        final long[] activeCounts,
-        final double[] scores,
-        final String[] hilites)
+    public record FocusBuffers(long[] termFreq, int[] termDocs)
     {
-        this.rank2termId = Objects.requireNonNull(rank2termId, "rank2termId");
-        this.activeCounts = Objects.requireNonNull(activeCounts, "activeCounts");
-        this.termScores = scores;
-        this.hilites = hilites;
     }
-    
+
     /**
      * Read-only view of one ranked term.
      */
@@ -1067,14 +996,14 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     {
         /** Rank in the current ranked list. */
         private final int rank;
-        
+
         /** Dense term id. */
         private final int termId;
-        
+
         /**
          * Creates one ranked term entry.
          *
-         * @param rank   zero-based rank
+         * @param rank zero-based rank
          * @param termId dense term id
          */
         TermEntry(final int rank, final int termId)
@@ -1082,7 +1011,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             this.rank = rank;
             this.termId = termId;
         }
-        
+
         /**
          * Returns the full-field occurrence count.
          *
@@ -1092,24 +1021,17 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         {
             return fieldStats.termFreq(termId);
         }
-        
+
         /**
-         * Returns the occurrence count in the active population.
+         * Returns the current population occurrence count.
          *
-         * <p>
-         * The active population is set by the most recent ranking method:
-         * full-field counts after {@link TopTerms#ranking(double[], int)},
-         * focus counts after focus methods, and partition-focus counts after
-         * {@link TopTerms#partScore(IndexReader, Partition, PartScorer, int)}.
-         * </p>
-         *
-         * @return active occurrence count
+         * @return current population occurrence count
          */
         public long freq()
         {
-            return activeCounts[termId];
+            return termFreq[termId];
         }
-        
+
         /**
          * Returns optional highlight markup.
          *
@@ -1119,32 +1041,32 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         {
             return hilites == null ? null : hilites[rank];
         }
-        
+
         /**
-         * Returns the score from the current ranking.
+         * Returns the ranking score.
          *
          * <p>
-         * If the current ranking has no score vector, the active count is used
-         * as the score.
+         * If no score vector is attached, the current population frequency is
+         * used as score.
          * </p>
          *
          * @return ranking score
          */
         public double score()
         {
-            return termScores != null ? termScores[termId] : (double) activeCounts[termId];
+            return scores != null ? scores[termId] : (double) termFreq[termId];
         }
-        
+
         /**
-         * Returns the term string.
+         * Returns the display term.
          *
-         * @return term string
+         * @return display term
          */
         public String term()
         {
             return lexicon.term(termId);
         }
-        
+
         /**
          * Returns the dense term id.
          *
@@ -1155,15 +1077,15 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             return termId;
         }
     }
-    
+
     /**
-     * Iterator over the current ranked term list.
+     * Iterator over the current ranking.
      */
     private final class TermIter implements Iterator<TermEntry>
     {
         /** Cursor in {@link TopTerms#rank2termId}. */
         private int cursor;
-        
+
         /**
          * Reports whether another ranked term is available.
          *
@@ -1174,11 +1096,11 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         {
             return cursor < rank2termId.length;
         }
-        
+
         /**
-         * Returns the next ranked term entry.
+         * Returns the next ranked term.
          *
-         * @return next ranked term entry
+         * @return next ranked term
          * @throws NoSuchElementException if no ranked term remains
          */
         @Override
@@ -1187,28 +1109,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             if (!hasNext()) {
                 throw new NoSuchElementException();
             }
-            
+
             final int rank = cursor++;
             return new TermEntry(rank, rank2termId[rank]);
         }
     }
-    
-    /**
-     * Handle to a {@link TopTerms} instance's focus accumulation buffers.
-     *
-     * <p>
-     * Returned by {@link TopTerms#focusBuffers()} and used by external collectors (such as cooccurrence listeners) that need to write per-term frequency and document-frequency counts directly into the {@link TopTerms} arrays without an intermediate copy. The arrays are aliased, not copied: writes into them are immediately visible to {@link TopTerms#focusScore}.
-     * </p>
-     *
-     * <p>
-     * Both arrays are indexed by dense term id and have length {@code FieldStats.vocabSize()}. Index {@code 0} is the absent-term sentinel and must not be written.
-     * </p>
-     *
-     * @param termFreq per-term occurrence count buffer
-     * @param termDocs per-term document-frequency buffer
-     */
-    public record FocusBuffers(long[] termFreq, int[] termDocs)
-    {
-    }
-
 }
