@@ -122,6 +122,7 @@ public class AlixServlet extends HttpServlet
         final HttpServletResponse response
     ) throws IOException {
         response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setCharacterEncoding("UTF-8");
 
         final String pathInfo = pathInfo(request);
         final String[] segments = pathInfo.split("/");
