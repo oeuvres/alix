@@ -21,7 +21,7 @@ import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
-import com.github.oeuvres.alix.lucene.terms.TermScorer;
+import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
@@ -86,7 +86,7 @@ public final class OpTerms extends Op
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
             // an http param may change idfExp
-            final TermScorer scorer = new TermScorer.BM25(idfExp);
+            final IdfTermScorer scorer = new IdfTermScorer.BM25(idfExp);
             // The weights for full field are cached if same idfExp is requested
             final double[] weights = textFluc.fieldStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
@@ -112,9 +112,6 @@ public final class OpTerms extends Op
                 // TODO filter by tags
                 final Partition partition = Partition.build(fyears, textFluc, start, end, bits);
                 if (bits != null) {System.out.println(bits.cardinality());}
-                System.out.println(partition);
-                
-
                 
                 PartScorer partScorer;
                 if ("part1".equals(scorerName)) {
@@ -140,21 +137,21 @@ public final class OpTerms extends Op
 
             if (LOG_LIKELIHOOD.equals(scorerName)) {
                 topTerms.focus(index.reader(), focusDocs);
-                return topTerms.focusScore(new KeynessScorer.LogLikelihood(), topK);
+                return topTerms.rank(new KeynessScorer.LogLikelihood(), topK);
             }
             else if ("rsj".equals(scorerName)) {
-                return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.RSJ), topK);
+                return topTerms.focus(index.reader(), focusDocs, new IdfTermScorer.BM25(idfExp, IdfTermScorer.BM25.Mode.RSJ), topK);
             }
             else if ("irdf".equals(scorerName)) {
-                return topTerms.focus(index.reader(), focusDocs, new TermScorer.BM25(idfExp, TermScorer.BM25.Mode.IRDF), topK);
+                return topTerms.focus(index.reader(), focusDocs, new IdfTermScorer.BM25(idfExp, IdfTermScorer.BM25.Mode.IRDF), topK);
             }
             else if ("chi2".equals(scorerName)) {
                 topTerms.focus(index.reader(), focusDocs);
-                return topTerms.focusScore(new KeynessScorer.Chi2(), topK);
+                return topTerms.rank(new KeynessScorer.Chi2(), topK);
             }
             else {
                 topTerms.focus(index.reader(), focusDocs);
-                return topTerms.focusScore(new KeynessScorer.LogLikelihood(), topK);
+                return topTerms.rank(new KeynessScorer.LogLikelihood(), topK);
             }
         }
         // coocs, with or without doc filter TODO
@@ -176,7 +173,7 @@ public final class OpTerms extends Op
             meta.put("focusTokens", listener.coocTokens());
             meta.put("focusDocs", listener.coocDocsTotal());
             meta.put("hits", walker.hits());
-            topTerms.focusScore(new KeynessScorer.Count(), topK);
+            topTerms.rank(new KeynessScorer.Count(), topK);
             return topTerms;
         }
     }

@@ -61,22 +61,22 @@ public final class ThemeTermsDemo {
             // final TermStats stats = new TermStats(field, lexicon.vocabSize());
             // final int maxDoc = fieldStats.maxDoc();
 
-            List<TermScorer> scorers = List.of(
-                new TermScorer.BM25(0.9),
-                new TermScorer.BM25(1.0),
-                new TermScorer.BM25(1.1),
-                new TermScorer.BM25(1.2),
-                new TermScorer.BM25(1.3),
-                new TermScorer.BM25(1.4),
-                new TermScorer.BM25(1.5),
-                new TermScorer.BM25(1.6),
-                new TermScorer.G(),
-                new TermScorer.Jaccard()
+            List<IdfTermScorer> scorers = List.of(
+                new IdfTermScorer.BM25(0.9),
+                new IdfTermScorer.BM25(1.0),
+                new IdfTermScorer.BM25(1.1),
+                new IdfTermScorer.BM25(1.2),
+                new IdfTermScorer.BM25(1.3),
+                new IdfTermScorer.BM25(1.4),
+                new IdfTermScorer.BM25(1.5),
+                new IdfTermScorer.BM25(1.6),
+                new IdfTermScorer.G(),
+                new IdfTermScorer.Jaccard()
             );
             // scorers[1] = new TermScorer.G();
             // scorers[2] = new TermScorer.Jaccard();
             
-            for (TermScorer scorer: scorers) {
+            for (IdfTermScorer scorer: scorers) {
                 System.out.println("\n\n" + scorer + "\n");
                 fieldStats.termWeights(luceneReader, scorer);
                 TopTerms top = TopTerms.theme(fieldStats, lexicon, topK);

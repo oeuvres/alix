@@ -30,7 +30,7 @@ package com.github.oeuvres.alix.lucene.terms;
  * Stateful. One instance must not be reused concurrently.
  * </p>
  */
-public abstract class TermScorer
+public abstract class IdfTermScorer
 {
     
     /** Total token count of the full corpus/field. */
@@ -191,7 +191,7 @@ public abstract class TermScorer
      * {@code 2 × docTermFreq × ln(docTermFreq / expected)}.
      * Positive when over-represented, negative when under-represented.
      */
-    public static class G extends TermScorer
+    public static class G extends IdfTermScorer
     {
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
@@ -214,7 +214,7 @@ public abstract class TermScorer
     /**
      * Count-form Jaccard: {@code docTermFreq / (docTokens + corpusTermFreq - docTermFreq)}.
      */
-    public static class Jaccard extends TermScorer
+    public static class Jaccard extends IdfTermScorer
     {
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
@@ -252,7 +252,7 @@ public abstract class TermScorer
      * a matter of editing {@code result()} to the alternative formula.
      * </p>
      */
-    public static class BM25 extends TermScorer
+    public static class BM25 extends IdfTermScorer
     {
         /** Term frequency saturation. */
         protected double k1 = 1.2d;
@@ -429,7 +429,7 @@ public abstract class TermScorer
         }
     }
     
-    public static class DklContrast extends TermScorer
+    public static class DklContrast extends IdfTermScorer
     {
         /** Σ tf_i on focus side for current term. */
         protected long focusTermFreqAcc;

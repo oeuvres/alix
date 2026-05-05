@@ -19,7 +19,7 @@ import com.github.oeuvres.alix.lucene.output.HtmlResults;
 import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
-import com.github.oeuvres.alix.lucene.terms.TermScorer;
+import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
@@ -307,7 +307,7 @@ public class OpResults extends Op
             
             final FieldStats fieldStats = fluc.fieldStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-            fieldStats.termWeights(index.reader(), new TermScorer.BM25(idfExp));
+            fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
             
             final SpanVisitor visitor = new SpanVisitor(
                     index.searcher(),

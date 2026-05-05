@@ -160,7 +160,7 @@ public final class TermSuggest
 
         final String foldedQuery = Char.toAscii(infix);
         if (foldedQuery.isEmpty()) {
-            return source.setRanking(new int[0], null, null);
+            return source.rank(limit);
         }
 
         final boolean prefixOnly = foldedQuery.length() < INFIX_THRESHOLD;

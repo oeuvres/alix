@@ -102,10 +102,17 @@ public final class OpSuggest extends Op
         final HttpPars pars = new HttpPars(request, response);
         final OpMeta meta = new OpMeta();
         TopTerms topTerms = topTerms(index, pars, meta);
-        // here we should now filter terms by infix and select the topK according to their freq in focus part
-        // something should here filter topTerms by infix and collect the most frequent in focus
-        final String infix = pars.getString(INFIX, "");
-        final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
+        if (topTerms != null) {
+            String textField = pars.getString(F, index.content());
+            final FlucText textFluc = index.flucText(textField);
+            final String infix = pars.getString(INFIX, "");
+            final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
+            meta.put("infix", infix);
+            meta.put("limit", topK);
+            // should rank the terms
+            textFluc.termSuggest().suggest(topTerms, infix, topK);
+        }
+        
         
         
         try (JsonWriter jw = jsonWriter(response)) {
