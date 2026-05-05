@@ -3,251 +3,287 @@ package com.github.oeuvres.alix.lucene.terms;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.github.oeuvres.alix.lucene.TopTerms;
-import com.github.oeuvres.alix.lucene.TopTerms.TermEntry;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
  * Diacritic-insensitive term suggestion for one indexed field.
  *
- * <p>At construction, all terms from a {@link TermLexicon} are ASCII-folded
- * and concatenated into a single {@link String} with {@code '\0'} separators.
- * Queries are matched against this string using {@link String#indexOf}, which
- * benefits from JVM intrinsic vectorized scanning.</p>
+ * <p>
+ * At construction, all terms from a {@link TermLexicon} are ASCII-folded and
+ * concatenated into a single {@link String} with {@code '\0'} separators.
+ * Queries are matched against this string using {@link String#indexOf(String)}.
+ * </p>
  *
- * <p>Queries of 1–2 folded characters use prefix matching (the separator is
- * prepended to the needle so only term-initial positions match). Queries of 3+
- * characters use infix (substring) matching.</p>
+ * <p>
+ * Queries of one or two folded characters use prefix matching. Queries of three
+ * or more folded characters use infix matching.
+ * </p>
  *
- * <p>Results are returned as a {@link TopTerms} ranked by descending corpus
- * frequency. {@link TopTerms.TermEntry#hilite()} contains the original term
- * string with all matched substrings wrapped in configurable markup
- * (default {@code <mark>…</mark>}).</p>
- *
- * <h2>Folding</h2>
- * <p>Unicode NFKD decomposition, removal of combining marks, lower-casing.
- * Maps {@code œ → oe}, {@code æ → ae}, {@code é → e}, {@code ç → c}, etc.
- * The folded form may be longer than the original ({@code cœur → coeur}).</p>
- *
- * <h2>Memory layout</h2>
- * <p>The internal string has the form {@code "\0term0\0term1\0…\0termN\0"}.
- * An {@code int[vocabSize + 1]} offset array maps each termId to the character
- * position of its first folded character. For 55K terms at ~8 chars average:
- * ~1.2 MB total.</p>
+ * <p>
+ * Suggestions are ranked by the current population frequencies of the supplied
+ * {@link TopTerms} source. The source may represent the full field, a filtered
+ * document subset, a cooccurrence context, or another local population.
+ * </p>
  */
-public final class TermSuggest {
-
+public final class TermSuggest
+{
     /** Minimum folded query length for infix matching; shorter uses prefix. */
     static final int INFIX_THRESHOLD = 3;
 
+    private static final String DEFAULT_MARK_AFTER = "</mark>";
     private static final String DEFAULT_MARK_BEFORE = "<mark>";
-    private static final String DEFAULT_MARK_AFTER  = "</mark>";
-    private static final char   SEP                 = '\0';
-    private static final String SEP_STRING          = String.valueOf(SEP);
+    private static final char SEP = '\0';
+    private static final String SEP_STRING = String.valueOf(SEP);
 
-    private final TermLexicon lexicon;
-    private final FieldStats  stats;
-    private final int         vocabSize;
-    private final String      markBefore;
-    private final String      markAfter;
-
-    /**
-     * Concatenated ASCII-folded terms separated by {@link #SEP}.
-     * Layout: {@code SEP term0 SEP term1 SEP … SEP termN SEP}.
-     */
+    /** Concatenated ASCII-folded terms separated by {@link #SEP}. */
     private final String ascii;
 
+    /** Term lexicon addressed by dense term id. */
+    private final TermLexicon lexicon;
+
+    /** Markup inserted after a highlighted span. */
+    private final String markAfter;
+
+    /** Markup inserted before a highlighted span. */
+    private final String markBefore;
+
     /**
-     * {@code offsets[id]} is the char position in {@link #ascii} where termId
-     * {@code id} begins (the character after its leading separator).
-     * {@code offsets[vocabSize]} is {@code ascii.length()}, the sentinel.
+     * {@code offsets[id]} is the character position in {@link #ascii} where
+     * term id {@code id} begins. {@code offsets[vocabSize]} is the sentinel.
      */
     private final int[] offsets;
 
+    /** Number of terms in the lexicon. */
+    private final int vocabSize;
+
     /**
-     * Builds the suggest index with default HTML markup ({@code <mark>…</mark>}).
+     * Builds the suggest index with default HTML markup.
      *
      * @param lexicon opened term lexicon
-     * @param stats   field statistics for the same field and snapshot
+     * @param stats field statistics for the same field and reader snapshot
      * @throws IllegalArgumentException if vocabulary sizes differ
+     * @throws NullPointerException if an argument is {@code null}
      */
-    public TermSuggest(final TermLexicon lexicon, final FieldStats stats) {
+    public TermSuggest(final TermLexicon lexicon, final FieldStats stats)
+    {
         this(lexicon, stats, DEFAULT_MARK_BEFORE, DEFAULT_MARK_AFTER);
     }
 
     /**
      * Builds the suggest index with configurable highlight markup.
      *
-     * @param lexicon    opened term lexicon
-     * @param stats      field statistics for the same field and snapshot
+     * @param lexicon opened term lexicon
+     * @param stats field statistics for the same field and reader snapshot
      * @param markBefore string inserted before each matched span
-     * @param markAfter  string inserted after each matched span
+     * @param markAfter string inserted after each matched span
      * @throws IllegalArgumentException if vocabulary sizes differ
+     * @throws NullPointerException if an argument is {@code null}
      */
     public TermSuggest(
         final TermLexicon lexicon,
-        final FieldStats  stats,
-        final String      markBefore,
-        final String      markAfter
+        final FieldStats stats,
+        final String markBefore,
+        final String markAfter
     ) {
-        Objects.requireNonNull(lexicon,    "lexicon");
-        Objects.requireNonNull(stats,      "stats");
-        Objects.requireNonNull(markBefore, "markBefore");
-        Objects.requireNonNull(markAfter,  "markAfter");
-
-        this.lexicon    = lexicon;
-        this.stats      = stats;
-        this.markBefore = markBefore;
-        this.markAfter  = markAfter;
-        this.vocabSize  = lexicon.vocabSize();
+        this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
+        Objects.requireNonNull(stats, "stats");
+        this.markBefore = Objects.requireNonNull(markBefore, "markBefore");
+        this.markAfter = Objects.requireNonNull(markAfter, "markAfter");
+        this.vocabSize = lexicon.vocabSize();
 
         if (stats.vocabSize() != vocabSize) {
             throw new IllegalArgumentException(
                 "Vocabulary size mismatch: lexicon=" + vocabSize
-                + ", stats=" + stats.vocabSize());
+                    + ", stats=" + stats.vocabSize()
+            );
         }
 
         this.offsets = new int[vocabSize + 1];
+
         final StringBuilder sb = new StringBuilder();
-        for (int id = 0; id < vocabSize; id++) {
+        for (int termId = 0; termId < vocabSize; termId++) {
             sb.append(SEP);
-            offsets[id] = sb.length();
-            sb.append(Char.toAscii(lexicon.term(id)));
+            offsets[termId] = sb.length();
+            sb.append(Char.toAscii(lexicon.term(termId)));
         }
         sb.append(SEP);
         offsets[vocabSize] = sb.length();
+
         this.ascii = sb.toString();
     }
 
     /**
-     * Searches for terms matching the user query and returns results as a
-     * {@link TopTerms} ranked by descending corpus frequency.
+     * Searches matching terms and ranks them against a prepared population.
      *
-     * <p>Matching is diacritic- and case-insensitive. For queries of 1–2 folded
-     * characters only prefix matches are returned; for 3+ characters infix
-     * (substring) matching is used.</p>
+     * <p>
+     * Matching is diacritic- and case-insensitive. For queries of one or two
+     * folded characters, only term-initial matches are returned. For queries of
+     * three or more folded characters, substring matches are returned.
+     * </p>
      *
-     * <p>{@link TopTerms.TermEntry#hilite()} contains the original term string
-     * with the matched span wrapped in the configured markup.
-     * {@link TopTerms.TermEntry#score()} equals {@link TopTerms.TermEntry#freq()}
-     * (full-field frequency) since ranking is by frequency alone.</p>
+     * <p>
+     * This method mutates {@code source} by replacing its current ranking. It
+     * does not change the source population counts. Since scores are not stored,
+     * {@link TopTerms.TermEntry#score()} returns the same value as
+     * {@link TopTerms.TermEntry#freq()}.
+     * </p>
      *
-     * @param query user input (folded internally)
-     * @param limit maximum number of results
-     * @return matching terms sorted by descending frequency;
-     *         empty iterable if query folds to empty or limit &le; 0
+     * @param source source population to rank
+     * @param infix user input, folded internally
+     * @param limit maximum number of suggestions
+     * @return {@code source}, with its ranking replaced by suggestions
+     * @throws IllegalArgumentException if the source count vector is not aligned
+     *                                  with this suggester vocabulary
+     * @throws NullPointerException if {@code source} or {@code infix} is
+     *                              {@code null}
      */
-    public TopTerms suggest(final String query, final int limit) {
-        Objects.requireNonNull(query, "query");
+    public TopTerms suggest(
+        final TopTerms source,
+        final String infix,
+        final int limit
+    ) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(infix, "infix");
 
-        final TopTerms result = new TopTerms(stats, lexicon);
-        final long[]   counts = stats.termFreqRef();
-
-        if (limit <= 0) {
-            result.setRanking(new int[0], counts, null, null);
-            return result;
+        final long[] counts = source.termFreqRef();
+        if (counts.length != vocabSize) {
+            throw new IllegalArgumentException(
+                "Source frequency vector length mismatch: termFreq=" + counts.length
+                    + ", expected " + vocabSize
+            );
         }
 
-        final String foldedQuery = Char.toAscii(query);
+        if (limit <= 0) {
+            return source.setRanking(new int[0], null, null);
+        }
+
+        final String foldedQuery = Char.toAscii(infix);
         if (foldedQuery.isEmpty()) {
-            result.setRanking(new int[0], counts, null, null);
-            return result;
+            return source.setRanking(new int[0], null, null);
         }
 
         final boolean prefixOnly = foldedQuery.length() < INFIX_THRESHOLD;
-        final String  needle     = prefixOnly ? (SEP + foldedQuery) : foldedQuery;
-
-        // Phase 1: indexOf scan, collect top-k by frequency into TopArray.
+        final String needle = prefixOnly ? (SEP + foldedQuery) : foldedQuery;
         final TopArray top = new TopArray(limit);
+
         int fromIndex = 0;
         while (fromIndex < ascii.length()) {
             final int index = ascii.indexOf(needle, fromIndex);
-            if (index < 0) break;
+            if (index < 0) {
+                break;
+            }
 
             final int termStart = prefixOnly ? index + 1 : index;
             int termId = Arrays.binarySearch(offsets, 0, vocabSize + 1, termStart);
-            if (termId < 0) termId = -termId - 2;
 
-            if (termId < 0 || termId >= vocabSize) {
+            if (termId < 0) {
+                termId = -termId - 2;
+            }
+
+            if (termId < 1 || termId >= vocabSize) {
                 fromIndex = index + 1;
                 continue;
             }
 
-            final long freq = stats.termFreq(termId);
-            top.push(termId, (double) freq);
+            final long count = counts[termId];
+            if (count > 0L) {
+                top.push(termId, (double) count);
+            }
+
             fromIndex = offsets[termId + 1] - 1;
         }
 
-        final int n = top.size();
-        if (n == 0) {
-            result.setRanking(new int[0], counts, null, null);
-            return result;
+        final int size = top.size();
+        if (size == 0) {
+            return source.setRanking(new int[0], null, null);
         }
 
-        // Phase 2: resolve highlights for ranked results only.
-        final int[]    rank2termId = new int[n];
-        final String[] hilites     = new String[n];
+        final int[] rank2termId = new int[size];
+        final String[] hilites = new String[size];
+
         int rank = 0;
         for (TopArray.IdScore entry : top) {
-            final int    termId     = entry.id();
-            final String term       = lexicon.term(termId);
-            final String termFolded = ascii.substring(offsets[termId], offsets[termId + 1] - 1);
+            final int termId = entry.id();
+            final String term = lexicon.term(termId);
+            final String termFolded = ascii.substring(
+                offsets[termId],
+                offsets[termId + 1] - 1
+            );
+
             rank2termId[rank] = termId;
-            hilites[rank]     = mark(term, termFolded, foldedQuery);
+            hilites[rank] = mark(term, termFolded, foldedQuery);
             rank++;
         }
 
-        result.setRanking(rank2termId, counts, null, hilites);
-        return result;
+        return source.setRanking(rank2termId, null, hilites);
     }
 
     /**
-     * Highlights all non-overlapping occurrences of a folded query in
-     * the original term string.
+     * Highlights all non-overlapping occurrences of a folded query in the
+     * original term string.
      *
-     * <p>When the original and folded forms have different lengths (ligatures),
-     * a parallel work string is built by inserting {@link #SEP} dummies after each
-     * character whose fold is longer than 1. This makes the work string the same
-     * length as the folded form so match positions transfer directly. Dummies are
-     * stripped from the result.</p>
+     * <p>
+     * When the original and folded forms have different lengths, a parallel
+     * work string is built by inserting {@link #SEP} dummy characters after each
+     * character whose fold is longer than one character. This makes the work
+     * string align with the folded form, so match positions transfer directly.
+     * Dummy characters are removed from the returned string.
+     * </p>
      *
-     * @param term        original indexed term
-     * @param termFolded  ASCII-folded form (from the concatenated string)
-     * @param foldedQuery the folded user query
-     * @return term with matched spans wrapped in {@link #markBefore}/{@link #markAfter}
+     * @param term original indexed term
+     * @param termFolded ASCII-folded form from the concatenated string
+     * @param foldedQuery folded user query
+     * @return term with matched spans wrapped in configured markup
      */
-    private String mark(final String term, final String termFolded, final String foldedQuery) {
-        final boolean ligature = (term.length() != termFolded.length());
-
+    private String mark(
+        final String term,
+        final String termFolded,
+        final String foldedQuery
+    ) {
+        final boolean expanded = term.length() != termFolded.length();
         final String work;
-        if (ligature) {
+
+        if (expanded) {
             final StringBuilder wb = new StringBuilder(termFolded.length());
+
             for (int i = 0; i < term.length(); i++) {
-                wb.append(term.charAt(i));
-                final int foldedLen = Char.toAscii(String.valueOf(term.charAt(i))).length();
-                for (int pad = 1; pad < foldedLen; pad++) wb.append(SEP);
+                final char c = term.charAt(i);
+                wb.append(c);
+
+                final int foldedLength = Char.toAscii(String.valueOf(c)).length();
+                for (int pad = 1; pad < foldedLength; pad++) {
+                    wb.append(SEP);
+                }
             }
+
             work = wb.toString();
-        } else {
+        }
+        else {
             work = term;
         }
 
-        final int qLen = foldedQuery.length();
+        final int queryLength = foldedQuery.length();
         final StringBuilder sb = new StringBuilder(
-            work.length() + markBefore.length() + markAfter.length());
+            work.length() + markBefore.length() + markAfter.length()
+        );
+
         int fromIndex = 0;
         while (true) {
             final int index = termFolded.indexOf(foldedQuery, fromIndex);
-            if (index < 0) break;
+            if (index < 0) {
+                break;
+            }
+
             sb.append(work, fromIndex, index);
             sb.append(markBefore);
-            sb.append(work, index, index + qLen);
+            sb.append(work, index, index + queryLength);
             sb.append(markAfter);
-            fromIndex = index + qLen;
+            fromIndex = index + queryLength;
         }
+
         sb.append(work, fromIndex, work.length());
 
-        return ligature ? sb.toString().replace(SEP_STRING, "") : sb.toString();
+        return expanded ? sb.toString().replace(SEP_STRING, "") : sb.toString();
     }
 }

@@ -18,6 +18,7 @@ public class Pars
     public static final String END             = "end";
     public static final String F               = "f";
     public static final String FROM            = "from";
+    public static final String INFIX           = "infix";
     public static final String IDFEXP          = "idfexp";
     public static final Double IDFEXP_DEFAULT  = 1.0;
     public static final String LOG_LIKELIHOOD  = "loglikelihood";

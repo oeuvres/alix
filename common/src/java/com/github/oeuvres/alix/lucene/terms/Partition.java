@@ -11,7 +11,6 @@ import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.terms.PartScorer.LogLikelihoodTail;
 
 /**
  * Document-to-part map aligned with one Lucene reader snapshot.

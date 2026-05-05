@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.terms;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -16,12 +16,6 @@ import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.spans.CoocListener;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
-import com.github.oeuvres.alix.lucene.terms.FieldStats;
-import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.terms.PartScorer;
-import com.github.oeuvres.alix.lucene.terms.Partition;
-import com.github.oeuvres.alix.lucene.terms.TermLexicon;
-import com.github.oeuvres.alix.lucene.terms.TermScorer;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**

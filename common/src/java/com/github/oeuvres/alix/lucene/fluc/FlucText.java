@@ -11,11 +11,11 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Terms;
 
-import com.github.oeuvres.alix.lucene.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermSuggest;
+import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.util.Report;
 
 /**
