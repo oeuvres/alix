@@ -981,6 +981,26 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
         
         /**
+         * Returns the current doc count for this term
+         *
+         * @return current count of document with this term
+         */
+        public long docs()
+        {
+            return termDocs[termId];
+        }
+
+        /**
+         * Returns the global doc count for this term
+         *
+         * @return global count of document with this term
+         */
+        public long fieldDocs()
+        {
+            return fieldStats.termDocs(termId);
+        }
+
+        /**
          * Returns the full-field occurrence count.
          *
          * @return full-field occurrence count
@@ -1030,9 +1050,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
          *
          * @return display term
          */
-        public String term()
+        public String form()
         {
-            return lexicon.term(termId);
+            return lexicon.form(termId);
         }
         
         /**

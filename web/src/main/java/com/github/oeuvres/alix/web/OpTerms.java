@@ -139,12 +139,7 @@ public final class OpTerms extends Op
                 topTerms.focus(index.reader(), focusDocs);
                 return topTerms.rank(new KeynessScorer.LogLikelihood(), topK);
             }
-            else if ("rsj".equals(scorerName)) {
-                return topTerms.focus(index.reader(), focusDocs, new IdfTermScorer.BM25(idfExp, IdfTermScorer.BM25.Mode.RSJ), topK);
-            }
-            else if ("irdf".equals(scorerName)) {
-                return topTerms.focus(index.reader(), focusDocs, new IdfTermScorer.BM25(idfExp, IdfTermScorer.BM25.Mode.IRDF), topK);
-            }
+
             else if ("chi2".equals(scorerName)) {
                 topTerms.focus(index.reader(), focusDocs);
                 return topTerms.rank(new KeynessScorer.Chi2(), topK);
@@ -260,7 +255,7 @@ public final class OpTerms extends Op
             for (TermEntry term : topTerms) {
                 writer.append("  <tr>\n")
                   .append("    <th class=\"term\">%d</th>\n".formatted(rank++))
-                  .append("    <td class=\"term\">%s</td>\n".formatted(term.term()))
+                  .append("    <td class=\"term\">%s</td>\n".formatted(term.form()))
                   .append("    <td class=\"count\" align=\"right\">%d</td>\n".formatted(term.freq()))
                   .append("    <td class=\"score\" align=\"right\">%f</td>\n".formatted(term.score()))
                   .append("  </tr>\n");
@@ -302,9 +297,12 @@ public final class OpTerms extends Op
                 for (TermEntry term : topTerms) {
                     jw.beginObject();
                     jw.name("rank").value(rank++);
-                    jw.name("term").value(term.term());
-                    jw.name("count").value(term.freq());
+                    jw.name("form").value(term.form());
+                    jw.name("docs").value(term.docs());
+                    jw.name("freq").value(term.freq());
                     jw.name("score").value(term.score());
+                    jw.name("fieldDocs").value(term.fieldDocs());
+                    jw.name("fieldFreq").value(term.fieldFreq());
                     jw.endObject();
                 }
                 jw.endArray();

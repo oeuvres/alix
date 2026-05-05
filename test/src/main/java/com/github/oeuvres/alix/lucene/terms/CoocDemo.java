@@ -234,7 +234,7 @@ public class CoocDemo {
                 final int limit = Math.min(topN, entries.size());
                 for (int i = 0; i < limit; i++) {
                     final Entry e = entries.get(i);
-                    System.out.printf("  %-28s %8d %8.4f%n", lex.term(e.termId()), e.count(), e.score());
+                    System.out.printf("  %-28s %8d %8.4f%n", lex.form(e.termId()), e.count(), e.score());
                 }
                 if (entries.isEmpty()) {
                     System.out.println("  (no co-occurrents above minCount=" + minCount + ")");

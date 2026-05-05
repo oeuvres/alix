@@ -105,7 +105,7 @@ public final class TermSuggest
         for (int termId = 0; termId < vocabSize; termId++) {
             sb.append(SEP);
             offsets[termId] = sb.length();
-            sb.append(Char.toAscii(lexicon.term(termId)));
+            sb.append(Char.toAscii(lexicon.form(termId)));
         }
         sb.append(SEP);
         offsets[vocabSize] = sb.length();
@@ -205,7 +205,7 @@ public final class TermSuggest
         int rank = 0;
         for (TopArray.IdScore entry : top) {
             final int termId = entry.id();
-            final String term = lexicon.term(termId);
+            final String term = lexicon.form(termId);
             final String termFolded = ascii.substring(
                 offsets[termId],
                 offsets[termId + 1] - 1

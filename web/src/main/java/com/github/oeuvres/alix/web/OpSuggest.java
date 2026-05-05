@@ -132,9 +132,12 @@ public final class OpSuggest extends Op
                 for (TermEntry term : topTerms) {
                     jw.beginObject();
                     jw.name("rank").value(rank++);
-                    jw.name("term").value(term.term());
+                    jw.name("term").value(term.form());
                     jw.name("html").value(term.hilite());
-                    jw.name("count").value(term.freq());
+                    jw.name("docs").value(term.docs());
+                    jw.name("freq").value(term.freq());
+                    jw.name("fieldDocs").value(term.fieldDocs());
+                    jw.name("fieldFreq").value(term.fieldFreq());
                     // score has no sense here
                     jw.endObject();
                 }

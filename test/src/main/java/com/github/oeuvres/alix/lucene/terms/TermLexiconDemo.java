@@ -42,10 +42,10 @@ public final class TermLexiconDemo {
                 return;
             }
     
-            System.out.println("term(" + termId + ") = " + lexicon.term(termId));
+            System.out.println("term(" + termId + ") = " + lexicon.form(termId));
 
 
-            final BytesRef termBytes = new BytesRef(lexicon.term(termId));
+            final BytesRef termBytes = new BytesRef(lexicon.form(termId));
             final PostingsEnum postings = MultiTerms.getTermPostingsEnum(
                 reader,
                 field,

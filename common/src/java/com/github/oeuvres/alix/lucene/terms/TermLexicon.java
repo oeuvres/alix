@@ -46,7 +46,7 @@ import static java.lang.Math.toIntExact;
  * Real term ids start at 1 and are dense and stable for the frozen snapshot from which the
  * lexicon was built. The id assignment follows the lexicographic iteration order returned by
  * Lucene's merged {@link TermsEnum} for the field. The reserved id is stored as a zero-length
- * phantom entry in the {@code .dat}/{@code .off} files so that {@link #term(int) term(0)}
+ * phantom entry in the {@code .dat}/{@code .off} files so that {@link #form(int) term(0)}
  * returns {@code ""} and all sidecar files remain self-consistent.
  * </p>
  * <p>
@@ -107,7 +107,7 @@ public final class TermLexicon implements Closeable {
     private static final ThreadLocal<BytesRefBuilder> TL_TERM_BYTES =
         ThreadLocal.withInitial(BytesRefBuilder::new);
 
-    /** Per-thread reusable scratch buffer for {@link #term(int)} to avoid allocation per call. */
+    /** Per-thread reusable scratch buffer for {@link #form(int)} to avoid allocation per call. */
     private static final ThreadLocal<BytesRefBuilder> TL_TERM_STRING =
         ThreadLocal.withInitial(BytesRefBuilder::new);
 
@@ -252,6 +252,54 @@ public final class TermLexicon implements Closeable {
      */
     public String field() {
         return field;
+    }
+
+    /**
+     * Returns the term string for one dense term id.
+     * <p>
+     * {@code term(0)} returns the empty string (reserved absent-term slot).
+     * Uses a per-thread scratch buffer internally. Suitable for moderate use
+     * (e.g. resolving 50 term ids for display). For tight loops over the full
+     * vocabulary, prefer {@link #formBytes(int, BytesRefBuilder)} with a caller-owned buffer.
+     * </p>
+     *
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @return decoded UTF-8 term string, never null; empty for the reserved id 0
+     * @throws IllegalArgumentException if {@code termId} is out of range
+     */
+    public String form(final int termId) {
+        return formBytes(termId, TL_TERM_STRING.get()).utf8ToString();
+    }
+
+    /**
+     * Copies the raw UTF-8 bytes of one term into a caller-provided reusable buffer.
+     * <p>
+     * This avoids allocation when called in a loop. The bytes are read directly
+     * from the memory-mapped {@code .dat} buffer.
+     * </p>
+     *
+     * @param termId dense term id in {@code [0, vocabSize)}
+     * @param reuse  destination buffer that will receive the term bytes;
+     *               grown automatically if needed
+     * @return {@code reuse.get()} after the copy, valid until the next call on the same buffer
+     * @throws IllegalArgumentException if {@code termId} is out of range
+     * @throws NullPointerException     if {@code reuse} is null
+     */
+    public BytesRef formBytes(final int termId, final BytesRefBuilder reuse) {
+        checkTermId(termId);
+        Objects.requireNonNull(reuse, "reuse");
+    
+        final int start = off.get(termId);
+        final int end = off.get(termId + 1);
+        final int length = end - start;
+    
+        reuse.grow(length);
+        final ByteBuffer dup = dat.duplicate();
+        dup.position(start);
+        dup.limit(end);
+        dup.get(reuse.bytes(), 0, length);
+        reuse.setLength(length);
+        return reuse.get();
     }
 
     /**
@@ -412,55 +460,6 @@ public final class TermLexicon implements Closeable {
         return open(sideDir, field);
     }
 
-    /**
-     * Returns the term string for one dense term id.
-     * <p>
-     * {@code term(0)} returns the empty string (reserved absent-term slot).
-     * Uses a per-thread scratch buffer internally. Suitable for moderate use
-     * (e.g. resolving 50 term ids for display). For tight loops over the full
-     * vocabulary, prefer {@link #termBytes(int, BytesRefBuilder)} with a caller-owned buffer.
-     * </p>
-     *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @return decoded UTF-8 term string, never null; empty for the reserved id 0
-     * @throws IllegalArgumentException if {@code termId} is out of range
-     */
-    public String term(final int termId) {
-        return termBytes(termId, TL_TERM_STRING.get()).utf8ToString();
-    }
-
-    /**
-     * Copies the raw UTF-8 bytes of one term into a caller-provided reusable buffer.
-     * <p>
-     * This avoids allocation when called in a loop. The bytes are read directly
-     * from the memory-mapped {@code .dat} buffer.
-     * </p>
-     *
-     * @param termId dense term id in {@code [0, vocabSize)}
-     * @param reuse  destination buffer that will receive the term bytes;
-     *               grown automatically if needed
-     * @return {@code reuse.get()} after the copy, valid until the next call on the same buffer
-     * @throws IllegalArgumentException if {@code termId} is out of range
-     * @throws NullPointerException     if {@code reuse} is null
-     */
-    public BytesRef termBytes(final int termId, final BytesRefBuilder reuse) {
-        checkTermId(termId);
-        Objects.requireNonNull(reuse, "reuse");
-
-        final int start = off.get(termId);
-        final int end = off.get(termId + 1);
-        final int length = end - start;
-
-        reuse.grow(length);
-        final ByteBuffer dup = dat.duplicate();
-        dup.position(start);
-        dup.limit(end);
-        dup.get(reuse.bytes(), 0, length);
-        reuse.setLength(length);
-        return reuse.get();
-    }
-
-    
     /**
      * Returns the number of entries in the lexicon, including the reserved id 0.
      * <p>
