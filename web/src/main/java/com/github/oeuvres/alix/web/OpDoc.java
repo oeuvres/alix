@@ -13,7 +13,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.spans.DocSpanHighlighter;
+import com.github.oeuvres.alix.lucene.output.DocSpanHighlighter;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;

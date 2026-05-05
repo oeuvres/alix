@@ -69,11 +69,11 @@ public final class FlucCategory extends FlucString
      * @throws IllegalArgumentException if the field is not a
      *                                  {@code SortedDocValues} field
      */
-    public FlucCategory(
+    protected FlucCategory(
         final FieldInfo fi,
         final IndexReader reader
     ) throws IOException {
-        super(reader, fi);
+        super(fi, reader);
         final int[] labelIds = new int[reader.maxDoc()];
         Arrays.fill(labelIds, -1);
         for (LeafReaderContext ctx : reader.leaves()) {
@@ -97,13 +97,7 @@ public final class FlucCategory extends FlucString
         this.docId4labelId = labelIds;
     }
 
-    /**
-     * LabelId for one document, or {@code -1} if the document carries
-     * no value for this field.
-     *
-     * @param docId internal Lucene document id
-     * @return labelId &ge; 0, or {@code -1}
-     */
+    @Override
     public int docLabel(final int docId)
     {
         return docId4labelId[docId];
@@ -122,14 +116,6 @@ public final class FlucCategory extends FlucString
         return labelId < 0 ? null : sortedLabels[labelId];
     }
 
-    /**
-     * Filtered document count by labelId.
-     * Element {@code i} holds the count of documents in {@code docFilter}
-     * whose label equals {@code label(i)}.
-     *
-     * @param docFilter set of Lucene internal document ids
-     * @return counts array of length {@link #labelCount()}
-     */
     @Override
     public int[] countByLabel(final BitSet docFilter)
     {

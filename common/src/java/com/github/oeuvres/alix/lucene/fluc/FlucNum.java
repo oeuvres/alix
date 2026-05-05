@@ -102,7 +102,7 @@ public class FlucNum extends Fluc
      * @throws IllegalArgumentException if the field is not a single-dimension
      *                                  point field with numeric doc values
      */
-    public FlucNum(
+    protected FlucNum(
         final FieldInfo info,
         final IndexReader reader
     ) throws IOException {

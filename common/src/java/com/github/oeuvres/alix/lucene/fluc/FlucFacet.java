@@ -84,11 +84,11 @@ public final class FlucFacet extends FlucString
      * @param fi     field metadata
      * @throws IOException on Lucene I/O errors
      */
-    public FlucFacet(
+    protected FlucFacet(
         final FieldInfo fi,
         final IndexReader reader
     ) throws IOException {
-        super(reader, fi);
+        super(fi, reader);
         final int maxDoc = reader.maxDoc();
         final int[] pos = new int[maxDoc + 1];
 
@@ -155,29 +155,13 @@ public final class FlucFacet extends FlucString
         return Arrays.copyOfRange(labelIds, start, end);
     }
 
-    /**
-     * First labelId for one document, or {@code -1} if the document
-     * carries no value for this field.
-     * Convenient for cases where values are known to be unique per doc
-     * in practice, without the single-value guarantee of {@link FlucCategory}.
-     *
-     * @param docId internal Lucene document id
-     * @return first labelId, or {@code -1}
-     */
+    @Override
     public int docLabel(final int docId)
     {
         if (docId4pos[docId] == docId4pos[docId + 1]) return -1;
         return labelIds[docId4pos[docId]];
     }
 
-    /**
-     * Filtered document count by labelId.
-     * Element {@code i} holds the count of documents in {@code docFilter}
-     * that carry label {@code label(i)}.
-     *
-     * @param docFilter set of Lucene internal document ids
-     * @return counts array of length {@link #labelCount()}
-     */
     @Override
     public int[] countByLabel(final BitSet docFilter)
     {

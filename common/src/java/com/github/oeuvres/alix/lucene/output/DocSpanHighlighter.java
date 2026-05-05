@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.spans;
+package com.github.oeuvres.alix.lucene.output;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,6 +22,8 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 
+import com.github.oeuvres.alix.lucene.spans.SpanMatch;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.util.IntIntMap;
 
 /**

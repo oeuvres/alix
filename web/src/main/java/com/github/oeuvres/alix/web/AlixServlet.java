@@ -22,7 +22,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
-import com.github.oeuvres.alix.lucene.fluc.OpTerms;
 
 /**
  * Frontal servlet for the Alix search API.

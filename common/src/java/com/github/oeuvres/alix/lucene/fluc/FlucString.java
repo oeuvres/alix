@@ -4,16 +4,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -91,11 +87,11 @@ public abstract class FlucString extends Fluc
      * @throws IOException              on Lucene I/O errors
      * @throws IllegalArgumentException if the field has no inverted index
      */
-    public FlucString(
-        final IndexReader reader,
-        final FieldInfo fi
+    protected FlucString(
+        final FieldInfo fi,
+        final IndexReader reader
     ) throws IOException {
-        super(fi, probeStored(reader, fi.name), reader.getDocCount(fi.name));
+        super(fi, probeStoredViaPostings(reader, fi.name), reader.getDocCount(fi.name));
         final List<LabelDocs> list = new ArrayList<>();
         final Terms terms = MultiTerms.getTerms(reader, fi.name);
         if (terms != null) {
@@ -148,6 +144,17 @@ public abstract class FlucString extends Fluc
         final int id = Arrays.binarySearch(sortedLabels, label);
         return id < 0 ? -1 : id;
     }
+    
+    /**
+     * First labelId for one document, or {@code -1} if the document
+     * carries no value for this field.
+     * Convenient for cases where values are known to be unique per doc
+     * in practice, without the single-value guarantee of {@link FlucCategory}.
+     *
+     * @param docId internal Lucene document id
+     * @return first labelId, or {@code -1}
+     */
+    abstract public int docLabel(final int docId);
 
     /**
      * Full-corpus document count for a labelId.
@@ -195,22 +202,4 @@ public abstract class FlucString extends Fluc
     @Override
     public void close() { }
 
-    private static boolean probeStored(
-        final IndexReader reader,
-        final String fieldName
-    ) throws IOException {
-        final Set<String> selector = Set.of(fieldName);
-        for (LeafReaderContext ctx : reader.leaves()) {
-            final Terms terms = ctx.reader().terms(fieldName);
-            if (terms == null) continue;
-            final TermsEnum te = terms.iterator();
-            if (te.next() == null) continue;
-            final var pe = te.postings(null, 0);
-            if (pe.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) continue;
-            final Document doc = reader.storedFields()
-                .document(ctx.docBase + pe.docID(), selector);
-            return doc.getField(fieldName) != null;
-        }
-        return false;
-    }
 }

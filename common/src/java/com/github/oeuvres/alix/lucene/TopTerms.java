@@ -20,9 +20,11 @@ import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartRanker;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
+import com.github.oeuvres.alix.lucene.terms.Partition;
 import com.github.oeuvres.alix.lucene.terms.RankScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
+import com.github.oeuvres.alix.lucene.terms.TermSuggest;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
@@ -1046,7 +1048,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @throws NullPointerException if {@code rank2termId == null} or
      *                              {@code activeCounts == null}
      */
-    void setRanking(
+    public void setRanking(
         final int[] rank2termId,
         final long[] activeCounts,
         final double[] scores,

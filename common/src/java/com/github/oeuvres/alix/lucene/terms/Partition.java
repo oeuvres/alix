@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene;
+package com.github.oeuvres.alix.lucene.terms;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,7 +11,7 @@ import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.PartScorer.LogLikelihoodTail;
 
 /**
  * Document-to-part map aligned with one Lucene reader snapshot.
@@ -300,11 +300,6 @@ public final class Partition
         num.cacheDense();
         final FieldStats stats = text.fieldStats();
         final int maxDoc = stats.maxDoc();
-        if (num.reader.maxDoc() != maxDoc) {
-            throw new IllegalArgumentException(
-                "Numeric field reader maxDoc=" + num.reader.maxDoc()
-                + " != text field stats maxDoc=" + maxDoc);
-        }
         if (acceptedDocs != null && acceptedDocs.length() < maxDoc) {
             throw new IllegalArgumentException(
                 "acceptedDocs.length()=" + acceptedDocs.length()

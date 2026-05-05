@@ -14,7 +14,12 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 
@@ -72,8 +77,14 @@ public class Fluc implements Closeable
      * subclasses or {@link #inferFields(DirectoryReader, Path)} for diagnostics
      * and JSON serialization. Insertion order is preserved.
      */
-    public final Map<String, Object> description = new LinkedHashMap<>(10);
+    protected final Map<String, Object> description = new LinkedHashMap<>(10);
 
+    protected Fluc(
+        final FieldInfo info
+    ) {
+        this(info, false, -1);
+    }
+    
     /**
      * Build a field descriptor from a probed {@link FieldInfo}.
      *
@@ -106,19 +117,6 @@ public class Fluc implements Closeable
         description.put("stored", stored);
         this.docs = docs;
         description.put("docs", docs);
-    }
-
-    /**
-     * Convenience factory for fields Alix has no specialized helper for.
-     * Sets {@code stored=false} and {@code docs=-1} (unknown), and lets
-     * the caller add subclass-specific keys to {@link #description}.
-     *
-     * @param info segment-level field metadata
-     * @return a base {@code Fluc} with no resources
-     */
-    static Fluc unknown(final FieldInfo info)
-    {
-        return new Fluc(info, false, -1);
     }
 
     /**
@@ -228,17 +226,17 @@ public class Fluc implements Closeable
             }
             // KNN dense vector field (Lucene 9+): no Alix helper yet
             else if (hasVectors) {
-                fluc = unknown(info);
+                fluc = new Fluc(info);
                 fluc.description.put("vectorDimension", info.getVectorDimension());
             }
             // Multi-dimensional point: geo/spatial, no Alix helper
             else if (pointDims > 1) {
-                fluc = unknown(info);
+                fluc = new Fluc(info);
                 fluc.description.put("dimensions", pointDims);
             }
             // Single-dimension point without numeric doc values: exotic, no Alix helper
             else if (pointDims == 1) {
-                fluc = unknown(info);
+                fluc = new Fluc(info);
                 fluc.description.put("dimensions", pointDims);
             }
             // SORTED/SORTED_SET doc values without inverted index: no dictionary buildable
@@ -246,7 +244,7 @@ public class Fluc implements Closeable
             // SORTED_NUMERIC doc values: multi-valued numeric, no Alix helper
             // NUMERIC doc values without points: legacy or external indexer
             else if (hasDocValues) {
-                fluc = unknown(info);
+                fluc = new Fluc(info);
                 fluc.description.put("docValueType", dvType.toString().toLowerCase().replace('_', '+'));
             }
             // Inverted index without positions and without recognised doc values:
@@ -285,6 +283,33 @@ public class Fluc implements Closeable
             }
         }
         return count;
+    }
+    
+    /**
+     * Probes whether the field stores values in addition to postings.
+     * Finds the first document with a posting for this field and checks
+     * whether it also carries a stored value.
+     *
+     * @param reader    index reader
+     * @param fieldName field to probe
+     * @return {@code true} if at least one document has a stored value
+     * @throws IOException if reader access fails
+     */
+    static boolean probeStoredViaPostings(IndexReader reader, String fieldName) throws IOException
+    {
+        final Set<String> selector = Set.of(fieldName);
+        for (LeafReaderContext ctx : reader.leaves()) {
+            final Terms terms = ctx.reader().terms(fieldName);
+            if (terms == null) continue;
+            final TermsEnum te = terms.iterator();
+            if (te.next() == null) continue;
+            final var pe = te.postings(null, 0);
+            if (pe.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) continue;
+            final Document doc = reader.storedFields()
+                .document(ctx.docBase + pe.docID(), selector);
+            return doc.getField(fieldName) != null;
+        }
+        return false;
     }
 
     /**

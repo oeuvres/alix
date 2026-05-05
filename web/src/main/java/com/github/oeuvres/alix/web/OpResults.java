@@ -11,7 +11,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.FixedBitSet;
 
-import com.github.oeuvres.alix.lucene.BitsCollectorManager;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
@@ -21,6 +20,7 @@ import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermScorer;
+import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;

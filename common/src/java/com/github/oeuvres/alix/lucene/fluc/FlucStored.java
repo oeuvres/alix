@@ -1,9 +1,7 @@
 package com.github.oeuvres.alix.lucene.fluc;
 
 import java.io.IOException;
-import java.util.Set;
 
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.util.Bits;
@@ -24,7 +22,7 @@ import org.apache.lucene.index.StoredFieldVisitor;
  */
 final class FlucStored extends Fluc
 {
-    FlucStored(
+    protected FlucStored(
         final FieldInfo fi
     ) {
         super(fi, true, -1);

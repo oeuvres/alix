@@ -6,12 +6,8 @@ import java.nio.file.Path;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
 
 import com.github.oeuvres.alix.lucene.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
@@ -84,12 +80,12 @@ public final class FlucText extends Fluc
      * @param sideDir directory for sidecar files (typically the index directory)
      * @throws IOException if probing stored values on the reader fails
      */
-    public FlucText(
+    protected FlucText(
         final FieldInfo   fi,
         final IndexReader reader,
         final Path        sideDir
     ) throws IOException {
-        super(fi, probeStored(reader, fi.name), reader.getDocCount(fi.name));
+        super(fi, probeStoredViaPostings(reader, fi.name), reader.getDocCount(fi.name));
         this.indexOptions = fi.getIndexOptions();
         description.put("indexOptions",
             this.indexOptions.toString().replace("_AND_", " ").toLowerCase().replace('_', ' '));
@@ -248,32 +244,4 @@ public final class FlucText extends Fluc
         fieldStatsHolder.close();
     }
 
-    /**
-     * Probes whether the field stores values in addition to postings.
-     * Finds the first document with a posting for this field and checks
-     * whether it also carries a stored value.
-     *
-     * @param reader    index reader
-     * @param fieldName field to probe
-     * @return {@code true} if at least one document has a stored value
-     * @throws IOException if reader access fails
-     */
-    static boolean probeStored(
-        final IndexReader reader,
-        final String      fieldName
-    ) throws IOException
-    {
-        for (LeafReaderContext ctx : reader.leaves()) {
-            final LeafReader leaf  = ctx.reader();
-            final Terms      terms = leaf.terms(fieldName);
-            if (terms == null) continue;
-            final TermsEnum te = terms.iterator();
-            if (te.next() == null) continue;
-            final PostingsEnum pe      = te.postings(null, PostingsEnum.NONE);
-            final int          localDoc = pe.nextDoc();
-            if (localDoc == PostingsEnum.NO_MORE_DOCS) continue;
-            return hasStoredValue(reader, ctx.docBase + localDoc, fieldName);
-        }
-        return false;
-    }
 }
