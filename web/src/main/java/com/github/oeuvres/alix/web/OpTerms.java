@@ -21,6 +21,7 @@ import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
+import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -113,41 +114,24 @@ public final class OpTerms extends Op
                 final Partition partition = Partition.build(fyears, textFluc, start, end, bits);
                 if (bits != null) {System.out.println(bits.cardinality());}
                 
-                PartScorer partScorer;
-                if ("part1".equals(scorerName)) {
-                    partScorer = new PartScorer.LogLikelihood();
-                }
-                else if ("part2".equals(scorerName)) {
-                    partScorer = new PartScorer.LogLikelihoodTail();
-                }
-                else if ("part3".equals(scorerName)) {
-                    partScorer = new PartScorer.LogLikelihoodResidual();
-                }
-                else if ("part4".equals(scorerName)) {
-                    partScorer = new PartScorer.Pearson();
-                }
-                else {
-                    partScorer = new PartScorer.LogLikelihood();
-                }
-                return topTerms.partScore(index.reader(), partition, partScorer, topK);
+                final PartScorer partScorer = switch (scorerName) {
+                    case "part2" -> new PartScorer.LogLikelihoodTail();
+                    case "part3" -> new PartScorer.LogLikelihoodResidual();
+                    case "part4" -> new PartScorer.Pearson();
+                    default      -> new PartScorer.LogLikelihoodTail();
+                };
+
+                return new PartitionScorer(partition, partScorer)
+                    .score(index.reader(), topTerms, topK);
             }
             
             // focus % all rest
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
+            final KeynessScorer scorer = "chi2".equals(scorerName)
+                    ? new KeynessScorer.Chi2()
+                    : new KeynessScorer.LogLikelihood();
 
-            if (LOG_LIKELIHOOD.equals(scorerName)) {
-                topTerms.focus(index.reader(), focusDocs);
-                return topTerms.rank(new KeynessScorer.LogLikelihood(), topK);
-            }
-
-            else if ("chi2".equals(scorerName)) {
-                topTerms.focus(index.reader(), focusDocs);
-                return topTerms.rank(new KeynessScorer.Chi2(), topK);
-            }
-            else {
-                topTerms.focus(index.reader(), focusDocs);
-                return topTerms.rank(new KeynessScorer.LogLikelihood(), topK);
-            }
+            return topTerms.select(index.reader(), focusDocs).rank(scorer, topK);
         }
         // coocs, with or without doc filter TODO
         else {
@@ -164,7 +148,10 @@ public final class OpTerms extends Op
                 spanQuery,
                 filterQuery,
                 listener);
-            topTerms.coocs(listener, walker);
+            listener.bindTo(topTerms.buffers());
+            walker.walk(0);
+            topTerms.setTotals(listener.coocTokens(), listener.coocDocsTotal());
+            
             meta.put("focusTokens", listener.coocTokens());
             meta.put("focusDocs", listener.coocDocsTotal());
             meta.put("hits", walker.hits());
@@ -299,10 +286,10 @@ public final class OpTerms extends Op
                     jw.name("rank").value(rank++);
                     jw.name("form").value(term.form());
                     jw.name("docs").value(term.docs());
-                    jw.name("freq").value(term.freq());
-                    jw.name("score").value(term.score());
                     jw.name("fieldDocs").value(term.fieldDocs());
+                    jw.name("freq").value(term.freq());
                     jw.name("fieldFreq").value(term.fieldFreq());
+                    jw.name("score").value(term.score());
                     jw.endObject();
                 }
                 jw.endArray();

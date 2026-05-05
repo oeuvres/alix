@@ -63,8 +63,7 @@ public final class OpSuggest extends Op
         else if (spanQuery == null) {
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
             // should set focusTermFreq for the selected terms
-            topTerms.focus(index.reader(), focusDocs);
-            return topTerms;
+            return topTerms.select(index.reader(), focusDocs);
         }
         // coocs, with or without doc filter TODO
         else {
@@ -81,7 +80,11 @@ public final class OpSuggest extends Op
                 spanQuery,
                 filterQuery,
                 listener);
-            topTerms.coocs(listener, walker);
+            
+            listener.bindTo(topTerms.buffers());
+            walker.walk(0);
+            topTerms.setTotals(listener.coocTokens(), listener.coocDocsTotal());
+            
             meta.put("focusTokens", listener.coocTokens());
             meta.put("focusDocs", listener.coocDocsTotal());
             meta.put("hits", walker.hits());
@@ -132,11 +135,11 @@ public final class OpSuggest extends Op
                 for (TermEntry term : topTerms) {
                     jw.beginObject();
                     jw.name("rank").value(rank++);
-                    jw.name("term").value(term.form());
+                    jw.name("form").value(term.form());
                     jw.name("html").value(term.hilite());
                     jw.name("docs").value(term.docs());
-                    jw.name("freq").value(term.freq());
                     jw.name("fieldDocs").value(term.fieldDocs());
+                    jw.name("freq").value(term.freq());
                     jw.name("fieldFreq").value(term.fieldFreq());
                     // score has no sense here
                     jw.endObject();

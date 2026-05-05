@@ -199,8 +199,7 @@
     <xsl:if test="/*/@cert">
       <alix:field name="cert" type="category" value="{normalize-space(/*/@cert)}"/>
     </xsl:if>
-    <alix:field name="title" type="category" value="{normalize-space($doctitle)}"/>
-
+    <alix:field name="title" type="store" value="{normalize-space($doctitle)}"/>
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:notesStmt">
       <xsl:call-template name="note-bibl"/>
     </xsl:for-each>

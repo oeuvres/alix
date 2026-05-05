@@ -5,6 +5,7 @@ import java.lang.reflect.Type;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -67,12 +68,12 @@ public class AlixServlet extends HttpServlet
 
     /** Resolved configuration directory. */
     private Path configDir;
-
     /** Loaded indices, replaced atomically after startup or reload. */
     private volatile Map<String, LuceneIndex> indices = Map.of();
-
     /** Registered operations, keyed by URL operation name. */
     private final Map<String, Op> ops = new LinkedHashMap<>();
+    /** Time at which this servlet instance was initialized, in epoch milliseconds. */
+    private volatile long servletStartedMillis;
 
     /**
      * Closes all loaded indices and clears the registry.
@@ -138,7 +139,7 @@ public class AlixServlet extends HttpServlet
             return;
         }
 
-        if (notModified(request, response, index.lastModified())) {
+        if (notModified(request, response, servletStartedMillis)) {
             return;
         }
 
@@ -166,6 +167,7 @@ public class AlixServlet extends HttpServlet
     {
         super.init(config);
 
+        servletStartedMillis = System.currentTimeMillis();
         configDir = resolveConfigDir(config);
         indices = loadIndices(configDir);
 
@@ -326,7 +328,9 @@ public class AlixServlet extends HttpServlet
             jw.name("name").value(index.name());
             jw.name("label").value(index.label());
             jw.name("numDocs").value(index.numDocs());
-
+            jw.name("servletStarted").value(Instant.ofEpochMilli(servletStartedMillis).toString());
+            jw.name("indexModified").value(Instant.ofEpochMilli(index.lastModified()).toString());
+            
             if (index.content() != null) {
                 jw.name("content").value(index.content());
             }

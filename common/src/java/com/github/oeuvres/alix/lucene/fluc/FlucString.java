@@ -3,7 +3,11 @@ package com.github.oeuvres.alix.lucene.fluc;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -49,6 +53,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public abstract class FlucString extends Fluc
 {
+    private static final int TOP_LABELS = 20;
     /**
      * Sorted label dictionary: {@code sortedLabels[labelId]} is the string
      * label for that id. Order is {@link String#compareTo(String)};
@@ -61,15 +66,15 @@ public abstract class FlucString extends Fluc
      * {@code sortedLabels[labelId]}.
      */
     protected final int[] labelId4docs;
-
+    
     /**
      * A label and its corpus-level document count, used during construction.
      *
-     * @param label  string label as read from the inverted index
-     * @param docs   document frequency across all segments
+     * @param label string label as read from the inverted index
+     * @param docs  document frequency across all segments
      */
     private record LabelDocs(String label, int docs)
-        implements Comparable<LabelDocs>
+            implements Comparable<LabelDocs>
     {
         @Override
         public int compareTo(final LabelDocs other)
@@ -77,7 +82,7 @@ public abstract class FlucString extends Fluc
             return this.label.compareTo(other.label);
         }
     }
-
+    
     /**
      * Builds the sorted label dictionary and corpus doc counts from the
      * keyword inverted index via {@link MultiTerms}.
@@ -88,9 +93,9 @@ public abstract class FlucString extends Fluc
      * @throws IllegalArgumentException if the field has no inverted index
      */
     protected FlucString(
-        final FieldInfo fi,
-        final IndexReader reader
-    ) throws IOException {
+            final FieldInfo fi,
+            final IndexReader reader) throws IOException
+    {
         super(fi, probeStoredViaPostings(reader, fi.name), reader.getDocCount(fi.name));
         final List<LabelDocs> list = new ArrayList<>();
         final Terms terms = MultiTerms.getTerms(reader, fi.name);
@@ -109,8 +114,29 @@ public abstract class FlucString extends Fluc
             sortedLabels[i] = sorted[i].label();
             labelId4docs[i] = sorted[i].docs();
         }
+        
+        // inside FlucString constructor, after labelId4docs is filled
+        final int k = Math.min(TOP_LABELS, sortedLabels.length);
+        final PriorityQueue<Long> heap = new PriorityQueue<>(k);
+        for (int id = 0; id < labelId4docs.length; id++) {
+            final long packed = ((long) labelId4docs[id] << 32) | (id & 0xFFFFFFFFL);
+            if (heap.size() < k) {
+                heap.add(packed);
+            } else if (packed > heap.peek()) {
+                heap.poll();
+                heap.add(packed);
+            }
+        }
+        final Long[] toSort = heap.toArray(new Long[0]);
+        Arrays.sort(toSort, Comparator.reverseOrder());
+        final Map<String, Integer> top = new LinkedHashMap<>(k);
+        for (Long packed : toSort) {
+            final int id = (int) (packed & 0xFFFFFFFFL);
+            top.put(sortedLabels[id], (int) (packed >>> 32));
+        }
+        description.put("topLabels", top);
     }
-
+    
     /**
      * Number of distinct labels in this field.
      *
@@ -120,7 +146,7 @@ public abstract class FlucString extends Fluc
     {
         return sortedLabels.length;
     }
-
+    
     /**
      * String label for a labelId.
      *
@@ -131,7 +157,7 @@ public abstract class FlucString extends Fluc
     {
         return sortedLabels[labelId];
     }
-
+    
     /**
      * LabelId for a string label, or {@code -1} if not found.
      * Uses binary search on the sorted dictionary.
@@ -155,7 +181,7 @@ public abstract class FlucString extends Fluc
      * @return first labelId, or {@code -1}
      */
     abstract public int docLabel(final int docId);
-
+    
     /**
      * Full-corpus document count for a labelId.
      *
@@ -166,7 +192,7 @@ public abstract class FlucString extends Fluc
     {
         return labelId4docs[labelId];
     }
-
+    
     /**
      * Full-corpus document count by labelId.
      * Returns a defensive copy of the precomputed array.
@@ -178,7 +204,7 @@ public abstract class FlucString extends Fluc
     {
         return labelId4docs.clone();
     }
-
+    
     /**
      * Filtered document count by labelId.
      * Implemented by subclasses, which hold the per-document value vectors.
@@ -188,7 +214,7 @@ public abstract class FlucString extends Fluc
      * @throws IOException on Lucene I/O errors
      */
     public abstract int[] countByLabel(BitSet docFilter) throws IOException;
-
+    
     /**
      * For each labelId, the rank in {@code topDocs} of its first
      * representative document, or {@link Integer#MIN_VALUE} if absent.
@@ -198,8 +224,10 @@ public abstract class FlucString extends Fluc
      * @return array of length {@link #labelCount()}, indexed by labelId
      */
     public abstract int[] nos(TopDocs topDocs);
-
+    
     @Override
-    public void close() { }
-
+    public void close()
+    {
+    }
+    
 }

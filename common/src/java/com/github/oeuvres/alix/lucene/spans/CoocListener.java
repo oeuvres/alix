@@ -7,7 +7,7 @@ import java.util.Objects;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
-import com.github.oeuvres.alix.lucene.terms.TopTerms.FocusBuffers;
+import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
 
 /**
  * {@link SpanListener} that accumulates per-term cooccurrence counts in a fixed-width window around
@@ -82,7 +82,7 @@ public final class CoocListener implements SpanListener
     private final BitSet termSeen;
     
     /** Bound focus buffers; {@code null} until {@link #bindTo(FocusBuffers)} is called. */
-    private TopTerms.FocusBuffers buffers;
+    private Buffers buffers;
     
     /** Whether the current document contributed at least one cooc position. */
     private boolean docContributed;
@@ -133,7 +133,7 @@ public final class CoocListener implements SpanListener
      * @throws IllegalArgumentException if buffer lengths do not match
      *                                  {@code fieldStats.vocabSize()}
      */
-    public void bindTo(final FocusBuffers buffers)
+    public void bindTo(final Buffers buffers)
     {
         Objects.requireNonNull(buffers, "buffers");
         final int vocab = fieldStats.vocabSize();
