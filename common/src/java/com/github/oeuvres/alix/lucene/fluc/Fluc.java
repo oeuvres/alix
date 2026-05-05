@@ -71,13 +71,13 @@ public class Fluc implements Closeable
     /** Number of documents with at least one value in this field, or {@code -1} when unknown. */
     private final int docs;
     /** Underlying Lucene field info. */
-    protected final FieldInfo info;
+    public final FieldInfo info;
     /**
      * Free-form key-value description, populated by the constructor and by
      * subclasses or {@link #inferFields(DirectoryReader, Path)} for diagnostics
      * and JSON serialization. Insertion order is preserved.
      */
-    protected final Map<String, Object> description = new LinkedHashMap<>(10);
+    public final Map<String, Object> description = new LinkedHashMap<>(10);
 
     protected Fluc(
         final FieldInfo info

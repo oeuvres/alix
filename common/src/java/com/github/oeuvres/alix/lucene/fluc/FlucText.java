@@ -1,6 +1,8 @@
 package com.github.oeuvres.alix.lucene.fluc;
 
+import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 
 import org.apache.lucene.index.FieldInfo;
@@ -13,214 +15,320 @@ import com.github.oeuvres.alix.lucene.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.FieldStats;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
+import com.github.oeuvres.alix.lucene.terms.TermSuggest;
 import com.github.oeuvres.alix.util.Report;
 
 /**
- * A tokenized field with positions: the primary Alix field type.
+ * Tokenized Lucene field with positional resources used by Alix operations.
  *
  * <p>
- * Lazily loads per-field analysis resources from sidecar files stored
- * alongside the Lucene index. If a sidecar file does not exist, it is
- * built from the frozen reader on first access.
+ * A {@code FlucText} represents one indexed text field. It exposes lazily loaded
+ * field resources:
  * </p>
+ *
  * <ul>
- *   <li>{@link FieldStats} — field-level term occurrence counts and corpus
- *       totals ({@code <field>.stats})</li>
- *   <li>{@link TermLexicon} — FST-based dense term-to-id mapping
- *       ({@code <field>.fst})</li>
- *   <li>{@link TermRail} — memory-mapped forward positional index
- *       ({@code <field>.rail.dat}, {@code <field>.rail.off})</li>
+ *   <li>{@link FieldStats}: field-level term and document statistics;</li>
+ *   <li>{@link TermLexicon}: dense term-id mapping and term display strings;</li>
+ *   <li>{@link TermRail}: forward positional rail for spans and co-occurrences;</li>
+ *   <li>{@link TermSuggest}: folded term-suggestion index.</li>
  * </ul>
  *
  * <p>
- * Each resource is loaded at most once on success. If building or opening
- * fails, the holder remains unresolved and a subsequent call will retry.
- * Build order respects dependencies: {@link TermRail} requires
- * {@link TermLexicon}.
+ * Sidecar-backed resources are built on first access if their sidecar files are
+ * absent, then opened and cached. Failed builds or opens do not poison the
+ * object; a later call retries because the corresponding field remains
+ * {@code null}.
  * </p>
  *
- * <h2>Thread safety</h2>
  * <p>
- * All resource accessors are synchronized on this instance. Once loaded,
- * resources are immutable or read-only and safe for concurrent access.
- * {@link #topTerms()} is not synchronized: it delegates to the synchronized
- * accessors and then constructs a fresh, caller-owned object.
+ * Public resource accessors are synchronized. Loaded resources are shared by
+ * requests and are expected to be immutable or read-only. {@link #topTerms()}
+ * returns a fresh mutable {@link TopTerms} object for each call.
  * </p>
  *
  * @see Fluc#inferFields
  */
 public final class FlucText extends Fluc
 {
-    /** Frozen reader, held for sidecar building. */
-    private final IndexReader reader;
-    /** Directory where sidecar files are stored and read. */
-    private final Path sideDir;
-    /** Lucene index options for this field. */
-    private final IndexOptions indexOptions;
-    /** Whether term vectors are stored. */
-    private final boolean hasTermVectors;
-    /** Whether norms are present. */
+    /** Field statistics, loaded lazily. */
+    private FieldStats fieldStats;
+
+    /** Whether norms are available for this field. */
     private final boolean hasNorms;
 
-    private final LazyResource<FieldStats>  fieldStatsHolder = new LazyResource<>();
-    private final LazyResource<TermLexicon> lexiconHolder    = new LazyResource<>();
-    private final LazyResource<TermRail>    railHolder       = new LazyResource<>();
+    /** Whether term vectors are stored for this field. */
+    private final boolean hasTermVectors;
+
+    /** Lucene index options for this field. */
+    private final IndexOptions indexOptions;
+
+    /** Frozen reader used to build sidecar resources. */
+    private final IndexReader reader;
+
+    /** Directory where sidecar resources are stored. */
+    private final Path sideDir;
+
+    /** Dense term lexicon, loaded lazily. */
+    private TermLexicon termLexicon;
+
+    /** Forward positional rail, loaded lazily. */
+    private TermRail termRail;
+
+    /** Term suggester, built lazily from the lexicon and field statistics. */
+    private TermSuggest termSuggest;
 
     /**
      * Creates a text-field handle.
      *
      * <p>
-     * Called by {@link Fluc#inferFields} after stored-field probing.
-     * No I/O is performed here; all resources are loaded lazily on
-     * first access.
+     * The constructor validates that the field has indexed terms but does not
+     * load sidecar resources. Resource loading is deferred to the corresponding
+     * accessor methods.
      * </p>
      *
-     * @param fi      segment-level field metadata
-     * @param reader  frozen index reader
-     * @param sideDir directory for sidecar files (typically the index directory)
-     * @throws IOException if probing stored values on the reader fails
+     * @param fi Lucene field metadata
+     * @param reader frozen index reader
+     * @param sideDir directory where sidecar files are stored
+     * @throws IOException if stored-field probing or term metadata access fails
+     * @throws IllegalStateException if the field has no indexed terms
      */
     protected FlucText(
-        final FieldInfo   fi,
+        final FieldInfo fi,
         final IndexReader reader,
-        final Path        sideDir
+        final Path sideDir
     ) throws IOException {
         super(fi, probeStoredViaPostings(reader, fi.name), reader.getDocCount(fi.name));
+
+        this.reader = reader;
+        this.sideDir = sideDir;
         this.indexOptions = fi.getIndexOptions();
-        description.put("indexOptions",
-            this.indexOptions.toString().replace("_AND_", " ").toLowerCase().replace('_', ' '));
-        this.hasTermVectors = fi.hasTermVectors();
-        description.put("termVectors", this.hasTermVectors);
         this.hasNorms = fi.hasNorms();
-        description.put("norms", this.hasNorms);
+        this.hasTermVectors = fi.hasTermVectors();
+
+        description.put(
+            "indexOptions",
+            indexOptions.toString().replace("_AND_", " ").toLowerCase().replace('_', ' ')
+        );
+        description.put("norms", hasNorms);
+        description.put("termVectors", hasTermVectors);
+
         final Terms terms = MultiTerms.getTerms(reader, fi.name);
         if (terms == null) {
-            throw new IllegalStateException("Field '" + fi.name + "' has no terms; cannot be used by Alix");
+            throw new IllegalStateException(
+                "Field '" + fi.name + "' has no terms; cannot be used by Alix"
+            );
         }
         description.put("terms", terms.size());
-        this.reader  = reader;
-        this.sideDir = sideDir;
     }
 
-    /** Directory where sidecar files are stored and read. */
-    public Path sideDir() { return sideDir; }
+    /**
+     * Releases loaded resources and clears cached handles.
+     *
+     * <p>
+     * {@link TermRail} and {@link TermLexicon} may hold closeable resources.
+     * {@link TermSuggest} is cleared because it depends on the current lexicon
+     * and statistics handles.
+     * </p>
+     *
+     * @throws IOException if closing a loaded resource fails
+     */
+    @Override
+    public synchronized void close() throws IOException
+    {
+        IOException failure = null;
 
-    /** True if norms are present (required for scoring). */
-    public boolean hasNorms() { return hasNorms; }
+        try {
+            failure = closeResource(termRail, failure);
+            failure = closeResource(termLexicon, failure);
+        }
+        finally {
+            termSuggest = null;
+            termRail = null;
+            termLexicon = null;
+            fieldStats = null;
+        }
+
+        if (failure != null) {
+            throw failure;
+        }
+    }
 
     /**
-     * True if character offsets are indexed.
-     * Required for highlight and concordance operations.
+     * Returns field-level term occurrence counts and corpus totals.
+     *
+     * <p>
+     * If the statistics sidecar does not exist, it is built from the frozen
+     * reader before opening.
+     * </p>
+     *
+     * @return field statistics
+     * @throws UncheckedIOException if building or opening statistics fails
+     */
+    public synchronized FieldStats fieldStats()
+    {
+        if (fieldStats != null) {
+            return fieldStats;
+        }
+
+        try {
+            if (!FieldStats.exists(sideDir, name())) {
+                FieldStats.build(reader, sideDir, name(), Report.ReportNull.INSTANCE);
+            }
+            fieldStats = FieldStats.open(reader, sideDir, name(), null);
+            return fieldStats;
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Reports whether norms are present.
+     *
+     * @return {@code true} if norms are available
+     */
+    public boolean hasNorms()
+    {
+        return hasNorms;
+    }
+
+    /**
+     * Reports whether character offsets are indexed.
+     *
+     * @return {@code true} if offsets are available
      */
     public boolean hasOffsets()
     {
         return indexOptions.compareTo(
-            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS
+        ) >= 0;
     }
 
     /**
-     * True if positions are indexed.
-     * Required for phrase queries, KWIC, and co-occurrence analysis.
+     * Reports whether token positions are indexed.
+     *
+     * @return {@code true} if positions are available
      */
     public boolean hasPositions()
     {
         return indexOptions.compareTo(
-            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+            IndexOptions.DOCS_AND_FREQS_AND_POSITIONS
+        ) >= 0;
     }
 
-    /** True if term vectors are stored. */
-    public boolean hasTermVectors() { return hasTermVectors; }
-
     /**
-     * Field-level term occurrence counts and corpus totals.
-     * Read from a sidecar file, or built from postings on first access.
+     * Reports whether term vectors are stored.
      *
-     * <p>
-     * The returned instance is immutable and shared. Callers must not
-     * modify its contents.
-     * </p>
-     *
-     * @return field statistics, never {@code null}
-     * @throws java.io.UncheckedIOException if building or reading the sidecar fails
+     * @return {@code true} if term vectors are stored
      */
-    public synchronized FieldStats fieldStats()
+    public boolean hasTermVectors()
     {
-        return fieldStatsHolder.get(
-            () -> FieldStats.exists(sideDir, name()),
-            () -> FieldStats.build(reader, sideDir, name(), Report.ReportNull.INSTANCE),
-            () -> FieldStats.open(reader, sideDir, name(), null)
-        );
+        return hasTermVectors;
     }
 
     /**
-     * Dense term lexicon (FST + memory-mapped term data).
-     * Read from sidecar files, or built from postings on first access.
+     * Returns the sidecar directory.
+     *
+     * @return sidecar directory
+     */
+    public Path sideDir()
+    {
+        return sideDir;
+    }
+
+    /**
+     * Returns the dense term lexicon for this field.
      *
      * <p>
-     * The returned instance is immutable and shared. Callers must not
-     * modify its contents.
+     * If the lexicon sidecar does not exist, it is built from the frozen reader
+     * before opening.
      * </p>
      *
-     * @return lexicon, never {@code null}
-     * @throws java.io.UncheckedIOException if building or reading the sidecar fails
+     * @return dense term lexicon
+     * @throws UncheckedIOException if building or opening the lexicon fails
      */
     public synchronized TermLexicon termLexicon()
     {
-        return lexiconHolder.get(
-            () -> TermLexicon.exists(sideDir, name()),
-            () -> TermLexicon.build(reader, sideDir, name()),
-            () -> TermLexicon.open(sideDir, name())
-        );
+        if (termLexicon != null) {
+            return termLexicon;
+        }
+
+        try {
+            if (!TermLexicon.exists(sideDir, name())) {
+                TermLexicon.build(reader, sideDir, name());
+            }
+            termLexicon = TermLexicon.open(sideDir, name());
+            return termLexicon;
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /**
-     * Forward positional rail (memory-mapped).
-     * Read from sidecar files, or built from postings on first access.
-     * Ensures {@link #termLexicon()} is loaded first.
+     * Returns the forward positional rail for this field.
      *
-     * @return rail, never {@code null}
-     * @throws java.io.UncheckedIOException if building or reading the sidecar fails
+     * <p>
+     * The term lexicon is loaded first because rail construction requires dense
+     * term ids.
+     * </p>
+     *
+     * @return forward positional rail
+     * @throws UncheckedIOException if building or opening the rail fails
      */
     public synchronized TermRail termRail()
     {
-        final TermLexicon lex = termLexicon();
-        return railHolder.get(
-            () -> TermRail.exists(sideDir, name()),
-            () -> TermRail.build(reader, sideDir, name(), lex, Report.ReportNull.INSTANCE),
-            () -> TermRail.open(sideDir, name())
-        );
+        if (termRail != null) {
+            return termRail;
+        }
+
+        final TermLexicon lexicon = termLexicon();
+
+        try {
+            if (!TermRail.exists(sideDir, name())) {
+                TermRail.build(reader, sideDir, name(), lexicon, Report.ReportNull.INSTANCE);
+            }
+            termRail = TermRail.open(sideDir, name());
+            return termRail;
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /**
-     * Creates a fresh {@link TopTerms} instance for this field, ready to
-     * receive focus-subset statistics and be scored.
+     * Returns the term suggester for this field.
      *
      * <p>
-     * The returned object holds array references from {@link FieldStats}
-     * (field-level term counts) and {@link TermLexicon} (term display),
-     * both loaded lazily if not already available. Focus arrays are
-     * pre-allocated but empty; call
-     * {@code TermCollector.collect(focusDocs, topTerms)} to populate them,
-     * then {@code topTerms.score(scorer, ...)} to rank.
+     * The suggester is an in-memory folded term index built from
+     * {@link #termLexicon()} and {@link #fieldStats()}. It is cached because it
+     * scans all vocabulary terms during construction. The returned object should
+     * be treated as read-only and shared.
      * </p>
+     *
+     * @return term suggester
+     * @throws UncheckedIOException if loading the lexicon or statistics fails
+     */
+    public synchronized TermSuggest termSuggest()
+    {
+        if (termSuggest != null) {
+            return termSuggest;
+        }
+
+        termSuggest = new TermSuggest(termLexicon(), fieldStats());
+        return termSuggest;
+    }
+
+    /**
+     * Creates a fresh ranked-term container for this field.
      *
      * <p>
-     * The returned instance is <em>not</em> cached. Each call allocates
-     * fresh focus arrays, so concurrent requests for different subsets
-     * do not share mutable state.
+     * The returned object is not cached. It is mutable and belongs to the caller.
+     * It is initialized with this field's shared statistics and lexicon.
      * </p>
      *
-     * <h2>Typical usage</h2>
-     * <pre>{@code
-     * TopTerms topTerms = fluc.topTerms();
-     * collector.collect(focusDocs, topTerms);
-     * topTerms.score(new KeynessScorer.LogRatio(), 10.83, 3, topK);
-     * for (TopTerms.TermEntry e : topTerms) { ... }
-     * }</pre>
-     *
-     * @return a new, uncollected {@code TopTerms} for this field
-     * @throws java.io.UncheckedIOException if loading {@link FieldStats} or
-     *         {@link TermLexicon} fails
+     * @return fresh term-list container
+     * @throws UncheckedIOException if loading the lexicon or statistics fails
      */
     public TopTerms topTerms()
     {
@@ -228,20 +336,30 @@ public final class FlucText extends Fluc
     }
 
     /**
-     * Releases memory-mapped resources (lexicon and rail).
+     * Closes one resource and records the first failure.
      *
-     * <p>
-     * After close, all accessors on this instance will fail or return stale
-     * data. {@link FieldStats} holds no native resources; its holder is
-     * simply reset.
-     * </p>
+     * @param resource resource to close, ignored if it is not closeable
+     * @param failure previous failure, or {@code null}
+     * @return the first failure, or {@code null} if no close failed
      */
-    @Override
-    public synchronized void close() throws IOException
-    {
-        railHolder.close();
-        lexiconHolder.close();
-        fieldStatsHolder.close();
-    }
+    private static IOException closeResource(
+        final Object resource,
+        final IOException failure
+    ) {
+        if (!(resource instanceof Closeable closeable)) {
+            return failure;
+        }
 
+        try {
+            closeable.close();
+            return failure;
+        }
+        catch (IOException e) {
+            if (failure == null) {
+                return e;
+            }
+            failure.addSuppressed(e);
+            return failure;
+        }
+    }
 }
