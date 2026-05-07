@@ -117,6 +117,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
         KEEP_AS_IS.add("n'est-ce");
         KEEP_AS_IS.add("n'importe");
         KEEP_AS_IS.add("qu'est-ce");
+        KEEP_AS_IS.add("quelqu'un");
     }
 
     /** Ellisions prefix (case-insensitive). */

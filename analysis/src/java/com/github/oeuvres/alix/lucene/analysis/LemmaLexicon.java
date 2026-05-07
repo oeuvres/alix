@@ -86,10 +86,6 @@ public final class LemmaLexicon
      */
     private final LongIntMap lemmaByFormPos;
 
-    // ------------------------------------------------------------------------
-    // Construction / lifecycle
-    // ------------------------------------------------------------------------
-
     /**
      * Creates a lemma lexicon with an expected number of distinct forms.
      *
@@ -117,10 +113,6 @@ public final class LemmaLexicon
     }
 
     
-
-    // ------------------------------------------------------------------------
-    // Form interning / form dictionary access
-    // ------------------------------------------------------------------------
 
     /**
      * Tests whether the given form slice exists in the lexicon.
@@ -222,18 +214,6 @@ public final class LemmaLexicon
         return forms.getAsString(formId);
     }
 
-    // ------------------------------------------------------------------------
-    // Lemma lookup by ids
-    // ------------------------------------------------------------------------
-
-    // ------------------------------------------------------------------------
-    // Form interning / form dictionary access
-    // ------------------------------------------------------------------------
-    
-    // ------------------------------------------------------------------------
-    // Form interning / form dictionary access
-    // ------------------------------------------------------------------------
-    
     /**
      * Interns a slice of a character array and returns its stable {@code formId}.
      *
@@ -289,14 +269,6 @@ public final class LemmaLexicon
         return (result >= 0) ? result : (-result - 1);
     }
 
-    // ------------------------------------------------------------------------
-    // Form interning / form dictionary access
-    // ------------------------------------------------------------------------
-    
-    // ------------------------------------------------------------------------
-    // Form interning / form dictionary access
-    // ------------------------------------------------------------------------
-    
     /**
      * Returns the form id for a form slice, or {@code -1} if unknown.
      *
@@ -310,10 +282,6 @@ public final class LemmaLexicon
         return forms.find(form, off, len);
     }
 
-    // ------------------------------------------------------------------------
-    // Form interning / form dictionary access
-    // ------------------------------------------------------------------------
-    
     /**
      * Returns the form id for the contents of a Lucene {@link CharTermAttribute}, or {@code -1} if
      * unknown.
@@ -338,10 +306,6 @@ public final class LemmaLexicon
         return forms.find(form);
     }
 
-    // ------------------------------------------------------------------------
-    // Form interning / form dictionary access
-    // ------------------------------------------------------------------------
-    
     /**
      * Returns the form id for a form slice, or {@code -1} if unknown.
      *
@@ -379,11 +343,6 @@ public final class LemmaLexicon
     {
         return lemmaByFormPos.get(formId, posId);
     }
-
-
-    // ------------------------------------------------------------------------
-    // One-shot lookup from form text
-    // ------------------------------------------------------------------------
 
     /**
      * Resolves a lemma form id from a form slice and POS id.
@@ -502,10 +461,6 @@ public final class LemmaLexicon
         return lemmaByFormPos.get(formId, posId);
     }
 
-    // ------------------------------------------------------------------------
-    // Lemma copy helpers (TokenFilter-oriented)
-    // ------------------------------------------------------------------------
-
     /**
      * Returns the number of distinct interned forms (surface + lemma forms).
      *
@@ -603,11 +558,6 @@ public final class LemmaLexicon
         copyForm(lemmaId, dstLemmaAtt);
         return lemmaId;
     }
-
-
-    // ------------------------------------------------------------------------
-    // Mapping insertion API
-    // ------------------------------------------------------------------------
 
     /**
      * Returns the maximum length of any interned form (in UTF-16 code units).
@@ -819,10 +769,6 @@ public final class LemmaLexicon
         }
     }
 
-    // ------------------------------------------------------------------------
-    // Duplicate policy
-    // ------------------------------------------------------------------------
-
     /**
      * Duplicate handling policy for {@code putEntry(...)} methods.
      */
@@ -848,10 +794,6 @@ public final class LemmaLexicon
          */
         ERROR
     }
-
-    // ------------------------------------------------------------------------
-    // Private helpers
-    // ------------------------------------------------------------------------
 
     /**
      * Validates that a form id refers to an assigned entry in the internal form dictionary.

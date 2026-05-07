@@ -169,7 +169,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         
     }
 
-    
+    /**
+     * Not used yet.
+     */
     public class AsciiAnalyzer extends Analyzer
     {
         
@@ -191,7 +193,6 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     
     /**
      * Build the shared canonic filter chain starting from an arbitrary upstream.
-     * Optionally fold accents for _ascii fields.
      */
     private TokenStream canonicChain(TokenStream ts)
     {

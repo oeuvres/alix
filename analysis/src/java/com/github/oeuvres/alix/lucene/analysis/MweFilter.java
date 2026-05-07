@@ -164,8 +164,6 @@ public final class MweFilter extends TokenFilter
         inputExhausted = false;
     }
 
-    // ---- Private -------------------------------------------------------------
-
     /**
      * Emits the merged token for the match spanning queue slots {@code [0..matchPos]}.
      * Restores all attributes from slot 0 (preserving posIncr, startOffset, etc.),
