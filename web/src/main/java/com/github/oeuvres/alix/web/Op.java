@@ -86,13 +86,27 @@ public abstract class Op
         final HttpServletResponse response) throws IOException
     {
         if (format == null) {
+            AlixServlet.prepareHtml(response);
             page(index, request, response);
-        } else
+        } 
+        else
             switch (format) {
-                case "json" -> json(index, request, response);
-                case "html" -> html(index, request, response);
-                case "jsonl" -> jsonl(index, request, response);
-                case "csv" -> csv(index, request, response);
+                case "csv" -> {
+                    AlixServlet.prepareCsv(response);
+                    csv(index, request, response);
+                }
+                case "html" -> {
+                    AlixServlet.prepareHtml(response);
+                    html(index, request, response);
+                }
+                case "json" -> {
+                    AlixServlet.prepareJson(response);
+                    json(index, request, response);
+                }
+                case "jsonl" -> {
+                    AlixServlet.prepareJsonl(response);
+                    jsonl(index, request, response);
+                }
                 default -> AlixServlet.jsonError(response, 406,
                         getClass().getSimpleName() + ": unsupported format: " + format);
             }

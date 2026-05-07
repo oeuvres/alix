@@ -59,8 +59,10 @@ import com.github.oeuvres.alix.lucene.fluc.Fluc;
  */
 public class AlixServlet extends HttpServlet
 {
-    private static final String CONF_DIR_PARAM = "alix.conf.dir";
+    private static final String CONTENT_CSV = "text/csv";
+    private static final String CONTENT_HTML = "text/html";
     private static final String CONTENT_JSON = "application/json";
+    private static final String CONF_DIR_PARAM = "alix.conf.dir";
     private static final Gson GSON = new Gson();
     private static final Logger LOG = Logger.getLogger(AlixServlet.class.getName());
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>(){}.getType();
@@ -123,6 +125,7 @@ public class AlixServlet extends HttpServlet
     ) throws IOException {
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setCharacterEncoding("UTF-8");
+        response.setHeader("Cache-Control", "no-cache");
 
         final String pathInfo = pathInfo(request);
         final String[] segments = pathInfo.split("/");
@@ -139,8 +142,8 @@ public class AlixServlet extends HttpServlet
             jsonError(response, 404, "Unknown index: " + indexName);
             return;
         }
-
-        if (notModified(request, response, servletStartedMillis)) {
+        final long lastModified = Math.max(servletStartedMillis, index.lastModified());
+        if (notModified(request, response, lastModified)) {
             return;
         }
 
@@ -514,17 +517,48 @@ public class AlixServlet extends HttpServlet
         final String pathInfo = request.getPathInfo();
         return pathInfo == null ? "/" : pathInfo;
     }
+    
+    /**
+     * Sets response headers for CSV output.
+     *
+     * @param response HTTP response
+     */
+    protected static void prepareCsv(final HttpServletResponse response)
+    {
+        response.setContentType(CONTENT_CSV);
+    }
+
+
+    /**
+     * Sets response headers for HTML output.
+     *
+     * @param response HTTP response
+     */
+    protected static void prepareHtml(final HttpServletResponse response)
+    {
+        response.setContentType(CONTENT_HTML);
+    }
 
     /**
      * Sets response headers for JSON output.
      *
      * @param response HTTP response
      */
-    private static void prepareJson(final HttpServletResponse response)
+    protected static void prepareJson(final HttpServletResponse response)
     {
         response.setContentType(CONTENT_JSON);
-        response.setCharacterEncoding("UTF-8");
     }
+    
+    /**
+     * Sets response headers for JSONL output.
+     *
+     * @param response HTTP response
+     */
+    protected static void prepareJsonl(final HttpServletResponse response)
+    {
+        response.setContentType(CONTENT_JSON);
+    }
+
 
     /**
      * Registers all available operations.
