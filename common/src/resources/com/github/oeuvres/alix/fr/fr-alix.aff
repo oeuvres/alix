@@ -4762,9 +4762,9 @@ SFX xN soudre solue résoudre
 SFX xN soudre solues résoudre
 SFX xN soudre sous soudre
 SFX xN soudre sout soudre
-SFX xN soudre souts soudre
-SFX xN soudre soute soudre
-SFX xN soudre soutes soudre
+SFX xN soudre souts [bs]soudre
+SFX xN soudre soute [bs]soudre
+SFX xN soudre soutes [bs]soudre
 SFX xN soudre sous soudre
 SFX xN soudre sout soudre
 SFX xN soudre solvons soudre

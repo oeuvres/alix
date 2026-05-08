@@ -1713,7 +1713,7 @@ aiglon/F+
 aigre/S.
 aigre-douce
 aigre-doux
-aigrefin/F.
+aigrefin/S.
 aigrelet/F+
 aigrement
 aigremoine/S.
@@ -5152,7 +5152,7 @@ asservir/f0p+
 asservissant/F.
 asservissement/S.
 asservisseur/S.
-assesseur/F.Gs
+assesseur/F.
 assette/S.
 assez
 assibilation/S.
@@ -8425,7 +8425,7 @@ blanchisserie/S.
 blanchisseur/Fs
 blanchité/S.
 blanchon/S.
-blanchoyer/a0p+
+blanchoyer/a0p.
 blanc-manger
 blancs-becs
 blanc-seing
@@ -12198,7 +12198,7 @@ chamarrure/S.
 chambard/S.
 chambardement/S.
 chambarder/a0p+
-chambellan/F.
+chambellan/S.
 chambellanie/S.
 chambérien/F+
 chambertin/S.
@@ -12326,7 +12326,7 @@ chape/S.
 chapeau/X.
 chapeautage/S.
 chapeauter/a0p+
-chapelain/F.
+chapelain/S.
 chapeler/d0p+
 chapelet/S.
 chapelier/F.
@@ -15712,8 +15712,8 @@ contrebord
 contrebouter/a0p+
 contrebraquage/S.
 contre-braquage/S.
-contrebraquer/a0p+
-contre-braquer/a0p+
+contrebraquer/a0p.
+contre-braquer/a0p.
 contrebutement/S.
 contrebuter/a0p+
 contre-buter/a0p+
@@ -19578,7 +19578,7 @@ demi-sommeil/S.
 demi-soupir/S.
 démission/S.
 démissionnaire/S.
-démissionner/a0p+
+démissionner/a0p.
 demi-succès
 demi-tarif/S.
 demi-teinte/S.
@@ -21020,7 +21020,7 @@ devenir/i0q+
 déventer/a0p+
 déverbal/W.
 déverbatif/S.
-déverdir/f0p+
+déverdir/f0p.
 dévergondage/S.
 dévergondé/F.
 dévergonder/a0p+
@@ -27719,7 +27719,7 @@ fantasme/S.
 fantasmer/a0p+
 fantasque/S.
 fantasquement
-fantassin/F.
+fantassin/S.
 fantastique/S.
 fantastiquement
 fantasy
@@ -32212,7 +32212,7 @@ grincer/a0p.
 grinche/S.
 grincher/a0p+
 grincheux/W.
-gringalet/F+
+gringalet/S.
 gringe/S.
 gringo/S.
 gringolé/F.
@@ -43187,7 +43187,7 @@ mesurer/a0p+
 mesurette/S.
 mesureur/Fs
 mésusage/S.
-mésuser/a0p+
+mésuser/a0p.
 méta/S.
 métabole/S.
 métabole/S.
@@ -48599,7 +48599,7 @@ oui
 oui-da
 ouï-dire
 ouïe/S.
-ouïghour/F.
+ouïghour/S.
 ouillage/S.
 ouille
 ouiller/a0p+
@@ -57374,7 +57374,7 @@ ravissement/S.
 ravisseur/Fs
 ravitaillement/S.
 ravitailler/a0p+
-ravitailleur/Fs
+ravitailleur/S.
 ravivage/S.
 ravivement/S.
 raviver/a0p+
@@ -69018,7 +69018,7 @@ transgénique/S.
 transgénose/S.
 transgenre/S.
 transgresser/a0p+
-transgresseur/Fs
+transgresseur/S.
 transgressif/F.
 transgression/S.
 transhistorique/S.
@@ -69184,7 +69184,7 @@ traumatologie/S.
 traumatologique/S.
 traumatologiste/S.
 traumatologue/S.
-travail/X.S.
+travail/X.
 travailler/a0p+
 travailleur/Fs
 travaillisme/S.
