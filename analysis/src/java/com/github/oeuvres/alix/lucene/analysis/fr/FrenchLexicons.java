@@ -44,8 +44,8 @@ import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
-import com.github.oeuvres.alix.lucene.analysis.MweLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
+import com.github.oeuvres.alix.util.MweLexicon;
 
 public class FrenchLexicons
 {

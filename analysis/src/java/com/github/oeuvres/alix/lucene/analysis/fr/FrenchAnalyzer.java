@@ -53,10 +53,10 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
-import com.github.oeuvres.alix.lucene.analysis.MweLexicon;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
+import com.github.oeuvres.alix.util.MweLexicon;
 
 import opennlp.tools.postag.POSModel;
 

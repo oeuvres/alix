@@ -4,7 +4,7 @@ import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
-import com.github.oeuvres.alix.lucene.analysis.MweLexicon;
+import com.github.oeuvres.alix.util.MweLexicon;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;

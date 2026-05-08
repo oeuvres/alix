@@ -43,6 +43,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 
+import com.github.oeuvres.alix.util.MweLexicon;
+
 
 /**
  * A {@link TokenFilter} that merges multi-word expressions (MWEs) into single tokens,
@@ -179,7 +181,10 @@ public final class MweFilter extends TokenFilter
         // Restore all attributes from first component (posIncr, startOffset, flags, ...).
         queue.restoreTo(this, 0);
 
-        lexicon.formToAttribute(matchOrd, termAtt);
+        final int len = lexicon.formLength(matchOrd);
+        final char[] buf = termAtt.resizeBuffer(len);
+        lexicon.formToChars(matchOrd, buf, 0);
+        termAtt.setLength(len);
 
         // Fix endOffset and type.
         offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);

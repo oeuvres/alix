@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.github.oeuvres.alix.util.CharsDic;
+import com.github.oeuvres.alix.util.MweLexicon;
 
 import java.io.IOException;
 
