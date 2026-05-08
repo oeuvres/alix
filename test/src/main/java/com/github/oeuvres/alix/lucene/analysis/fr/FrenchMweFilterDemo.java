@@ -5,11 +5,12 @@ import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.util.MweLexicon;
+import com.github.oeuvres.alix.util.WordTokenizer;
+import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 
 import java.util.List;
 
@@ -39,8 +40,10 @@ public final class FrenchMweFilterDemo {
         )    );
 
     public static void main(String[] args) throws Exception {
-        MweLexicon lexicon = new MweLexicon(expressionAnalyzer(), "mwe", 2000);
-        LexiconHelper.loadExpressions(lexicon, LexiconHelper.class, "/com/github/oeuvres/alix/fr/expressions.csv");
+        MweLexicon lexicon = new MweLexicon(2000);
+        WordTokenizer tokenizer = new FrenchCliticTokenizer();
+
+        LexiconHelper.loadExpressions(lexicon, tokenizer, LexiconHelper.class, "/com/github/oeuvres/alix/fr/expressions.csv");
         lexicon.freeze();
         try (Analyzer analyzer = buildAnalyzer(lexicon)) {
             
@@ -51,17 +54,6 @@ public final class FrenchMweFilterDemo {
         }
     }
     
-    private static Analyzer expressionAnalyzer() {
-        return new Analyzer() {
-            @Override
-            protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new WhitespaceTokenizer();
-                TokenStream ts = new FrenchCliticSplitFilter(tokenizer);
-                return new TokenStreamComponents(tokenizer, ts);
-            }
-        };
-    }
-
 
     /** Minimal Analyzer for MLTokenizer -> FrenchCliticSplitFilter. */
     private static Analyzer buildAnalyzer(MweLexicon lexicon) {

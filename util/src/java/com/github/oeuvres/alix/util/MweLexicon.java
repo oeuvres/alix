@@ -100,21 +100,6 @@ public final class MweLexicon {
     }
 
     /**
-     * Adds a tokenized expression using the expression itself as canonical form.
-     *
-     * <p>The canonical form is reconstructed by joining tokens with underscores.
-     * If the caller needs a specific display form, use
-     * {@link #addExpression(List, CharSequence)}.</p>
-     *
-     * @param expression the already-tokenized multi-word expression
-     * @throws IllegalStateException if the lexicon has already been frozen
-     */
-    public void addExpression(final List<? extends CharSequence> expression) {
-        Objects.requireNonNull(expression, "expression");
-        addExpression(expression, joinCanonical(expression));
-    }
-
-    /**
      * Adds a tokenized expression with an explicit canonical form.
      *
      * <p>Expressions yielding fewer than two non-empty tokens are silently skipped.
@@ -271,7 +256,7 @@ public final class MweLexicon {
      *
      * @return the underlying vocabulary
      */
-    protected CharsDic vocab() {
+    protected CharsDic vocabRef() {
         return vocab;
     }
 
@@ -320,30 +305,6 @@ public final class MweLexicon {
         }
 
         idsBuf = Arrays.copyOf(idsBuf, newLength);
-    }
-
-    /**
-     * Builds a default canonical form from tokenized expression components.
-     *
-     * @param expression the tokenized expression
-     * @return the default canonical form
-     */
-    private static String joinCanonical(final List<? extends CharSequence> expression) {
-        final StringBuilder builder = new StringBuilder();
-
-        for (CharSequence token : expression) {
-            if (token == null || token.length() == 0) {
-                continue;
-            }
-
-            if (builder.length() > 0) {
-                builder.append('_');
-            }
-
-            builder.append(token);
-        }
-
-        return builder.toString();
     }
 
     /**

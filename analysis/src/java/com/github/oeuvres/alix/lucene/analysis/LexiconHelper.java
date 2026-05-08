@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -17,6 +18,7 @@ import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.Report;
+import com.github.oeuvres.alix.util.WordTokenizer;
 
 import opennlp.tools.postag.POSModel;
 
@@ -99,6 +101,57 @@ public final class LexiconHelper
     }
     
     /**
+     * Load one column of expressions
+     *
+     * @param lexicon
+     * @param anchor       class used to resolve the resource path
+     * @param resourcePath classpath resource path
+     * @throws UncheckedIOException              on read error
+     * @throws NullPointerException     if {@code lexicon}, {@code anchor}, or
+     *                                  {@code resourcePath} is null
+     */
+    public static void loadExpressions(
+        final MweLexicon lexicon,
+        final WordTokenizer tokenizer,
+        final Path file
+    )
+    {
+        Objects.requireNonNull(file, "file");
+        try (CSVReader csv = new CSVReader(file, ',', 2)) {
+            loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+
+    /**
+     * Load one column of expressions
+     *
+     * @param lexicon
+     * @param anchor       class used to resolve the resource path
+     * @param resourcePath classpath resource path
+     * @throws UncheckedIOException              on read error
+     * @throws NullPointerException     if {@code lexicon}, {@code anchor}, or
+     *                                  {@code resourcePath} is null
+     */
+    public static void loadExpressions(
+        final MweLexicon lexicon,
+        final WordTokenizer tokenizer,
+        final Class<?> anchor,
+        final String resourcePath
+    )
+    {
+        Objects.requireNonNull(anchor, "anchor");
+        Objects.requireNonNull(resourcePath, "resourcePath");
+        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
+            loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+    
+    /**
      * Load a CSV reader into a {@link MweLexicon}.
      *
      * @param lexicon
@@ -111,6 +164,7 @@ public final class LexiconHelper
      */
     public static void loadExpressions(
         final MweLexicon lexicon,
+        final WordTokenizer tokenizer,
         final CSVReader csv,
         final int colExpression,
         final int colCanonical,
@@ -129,11 +183,13 @@ public final class LexiconHelper
                 final StringBuilder expression = row.getCell(colExpression);
                 if (expression.length() == 0) return false;
                 final StringBuilder canonical = row.getCell(colCanonical);
+                List<String> words = tokenizer.tokenize(expression);
+                
                 if (canonical.length() > 0) {
-                    lexicon.addExpression(expression, canonical);
-                    return true;
+                    lexicon.addExpression(words, canonical);
+                } else {
+                    lexicon.addExpression(words, expression);
                 }
-                lexicon.addExpression(expression);
                 return true;
             }
         };
@@ -141,57 +197,7 @@ public final class LexiconHelper
         forEachDataRow(csv, csvHeader, handler);
     }
 
-    
-    /**
-     * Load one column of expressions
-     *
-     * @param lexicon
-     * @param anchor       class used to resolve the resource path
-     * @param resourcePath classpath resource path
-     * @throws UncheckedIOException              on read error
-     * @throws NullPointerException     if {@code lexicon}, {@code anchor}, or
-     *                                  {@code resourcePath} is null
-     */
-    public static void loadExpressions(
-        final MweLexicon lexicon,
-        final Class<?> anchor,
-        final String resourcePath
-    )
-    {
-        Objects.requireNonNull(anchor, "anchor");
-        Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
-            loadExpressions(lexicon, csv, 0, 1, CsvHeader.SKIP);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-    
-    /**
-     * Load one column of expressions
-     *
-     * @param lexicon
-     * @param anchor       class used to resolve the resource path
-     * @param resourcePath classpath resource path
-     * @throws UncheckedIOException              on read error
-     * @throws NullPointerException     if {@code lexicon}, {@code anchor}, or
-     *                                  {@code resourcePath} is null
-     */
-    public static void loadExpressions(
-        final MweLexicon lexicon,
-        final Path file
-    )
-    {
-        Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file, ',', 2)) {
-            loadExpressions(lexicon, csv, 0, 1, CsvHeader.SKIP);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-    
 
-    
     /**
      * Load a 2-column CSV reader into a {@link CharArrayMap}.
      * <p>

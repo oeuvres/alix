@@ -57,6 +57,8 @@ import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
 import com.github.oeuvres.alix.util.MweLexicon;
+import com.github.oeuvres.alix.util.WordTokenizer;
+import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 
 import opennlp.tools.postag.POSModel;
 
@@ -112,8 +114,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         }
     }
     public void addExpressions(List<Path> files) throws IOException {
+        WordTokenizer tokenizer = new FrenchCliticTokenizer();
         for (Path path: files) {
-            LexiconHelper.loadExpressions(expressions, path);
+            LexiconHelper.loadExpressions(expressions, tokenizer, path);
         }
         expressions.freeze();
     }

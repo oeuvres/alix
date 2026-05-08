@@ -35,17 +35,15 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.util.Map;
 
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
 import com.github.oeuvres.alix.util.MweLexicon;
+import com.github.oeuvres.alix.util.WordTokenizer;
+import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 
 public class FrenchLexicons
 {
@@ -129,15 +127,9 @@ public class FrenchLexicons
     
     public static MweLexicon buildMweLexicon()
     {
-        MweLexicon lexicon = new MweLexicon(new Analyzer() {
-            @Override
-            protected TokenStreamComponents createComponents(String fieldName) {
-                Tokenizer tokenizer = new WhitespaceTokenizer();
-                TokenStream ts = new FrenchCliticSplitFilter(tokenizer);
-                return new TokenStreamComponents(tokenizer, ts);
-            }
-        }, "mwe", 2000);
-        LexiconHelper.loadExpressions(lexicon, LexiconHelper.class, "/com/github/oeuvres/alix/fr/expressions.csv");
+        MweLexicon lexicon = new MweLexicon(2000);
+        WordTokenizer tokenizer = new FrenchCliticTokenizer();
+        LexiconHelper.loadExpressions(lexicon, tokenizer, LexiconHelper.class, "/com/github/oeuvres/alix/fr/expressions.csv");
         return lexicon;
     }
 

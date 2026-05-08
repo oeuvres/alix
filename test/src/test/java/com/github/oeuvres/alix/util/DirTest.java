@@ -175,27 +175,3 @@ public class DirTest
         return Files.write(path, content.getBytes(StandardCharsets.UTF_8));
     }
 }
-
-/*
- * public void testDirGlob() throws IOException {
- * String resources = new File("src/test/resources/").getAbsolutePath();
- * String[] globs = {
- * resources + "/globtest/a.txt",
- * resources + "\\globtest\\a.txt",
- * resources + "/globtest/*",
- * resources + "/globtest/*.txt",
- * };
- * String[] expected = {
- * "",
- * "",
- * };
- * for (int i = 0; i < globs.length; i++) {
- * List<Path> paths = Dir.ls(globs[i]);
- * System.out.println(
- * globs[i] + ":" +
- * paths.stream().map(n -> n.toString()).collect(Collectors.joining("\n    ", "\n    ", ""))
- * );
- * // assertEquals( expected[i], result);
- * }
- * }
- */
