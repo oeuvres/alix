@@ -159,8 +159,6 @@ public final class CharsDic
         slab = new char[Math.max(16, expectedSize * 4)];
     }
 
-    // ---- Public mutating API -------------------------------------------------
-
     /**
      * Adds the specified character sequence if absent, or returns the existing ordinal if present.
      *
@@ -394,8 +392,6 @@ public final class CharsDic
     {
         return slab;
     }
-
-    // ---- Private add / probe core -------------------------------------------
 
     /**
      * Shrinks internal storage to approximately the minimum needed for the current contents.

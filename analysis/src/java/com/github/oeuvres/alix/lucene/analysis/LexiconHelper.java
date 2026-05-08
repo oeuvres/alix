@@ -16,6 +16,7 @@ import org.apache.lucene.analysis.CharArraySet;
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.Char;
+import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.WordTokenizer;
@@ -520,7 +521,6 @@ public final class LexiconHelper
      */
     public static void loadLemma(
         final LemmaLexicon lex,
-        final LemmaLexicon.OnDuplicate policy,
         final Class<?> anchor,
         final String resourcePath,
         final char sep,
@@ -536,7 +536,7 @@ public final class LexiconHelper
         
         final int maxCol = maxRequiredCol(formCol, posCol, lemmaCol);
         try (CSVReader csv = new CSVReader(anchor, resourcePath, sep, maxCol)) {
-            loadLemma(lex, policy, csv, csvHeader, formCol, posCol, lemmaCol, posResolver);
+            loadLemma(lex, csv, csvHeader, formCol, posCol, lemmaCol, posResolver);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -581,7 +581,6 @@ public final class LexiconHelper
      */
     public static void loadLemma(
         final LemmaLexicon lex,
-        final LemmaLexicon.OnDuplicate policy,
         final CSVReader csv,
         final CsvHeader csvHeader,
         final int formCol,
@@ -591,7 +590,6 @@ public final class LexiconHelper
         throws UncheckedIOException
     {
         Objects.requireNonNull(lex, "lex");
-        Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(csv, "csv");
         
         checkColumnIndex(formCol, "formCol");
@@ -617,9 +615,9 @@ public final class LexiconHelper
                 StringBuilder lemma = row.getCell(lemmaCol);
                 Char.translate(lemma, "’", "'");
                 if (form.isEmpty() || lemma.isEmpty()) return false;
-                lex.putEntry(form, lemma, policy);
+                lex.put(form, lemma);
                 if (posId >= 0) {
-                    lex.putEntry(form, posId, lemma, policy);
+                    lex.put(form, posId, lemma);
                 }
                 return true;
             }

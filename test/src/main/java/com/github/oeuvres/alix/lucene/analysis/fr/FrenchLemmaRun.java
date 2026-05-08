@@ -53,7 +53,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
@@ -62,6 +61,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import com.github.oeuvres.alix.util.Dir;
+import com.github.oeuvres.alix.util.LemmaLexicon;
 
 import opennlp.tools.postag.POSModel;
 

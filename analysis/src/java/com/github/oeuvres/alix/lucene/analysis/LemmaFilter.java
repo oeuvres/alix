@@ -46,6 +46,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.util.LemmaLexicon;
 
 
 /**
@@ -130,7 +131,7 @@ public final class LemmaFilter extends TokenFilter
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-    private final LemmaAttribute lemAtt = addAttribute(LemmaAttribute.class);
+    // private final LemmaAttribute lemAtt = addAttribute(LemmaAttribute.class);
 
     /**
      * Creates a lemmatization side-channel filter.
@@ -160,9 +161,6 @@ public final class LemmaFilter extends TokenFilter
     {
         if (!input.incrementToken()) return false;
         
-        // Invariant: lemma slot is empty unless this filter resolves and writes one.
-        lemAtt.setEmpty();
-        
         if (keywordAtt.isKeyword()) return true;
 
         final int posId = posAtt.getPos();
@@ -176,22 +174,25 @@ public final class LemmaFilter extends TokenFilter
         }
         
         // Surface known ?
-        final int formId = lex.findFormId(termAtt);
+        final int formId = lex.id(termAtt);
         if (formId < 0) return true;
 
         // Lookup with pos
-        int lemmaId = (posId >= 0) ? lex.findLemmaId(formId, posId) : -1;
+        int lemmaId = (posId >= 0) ? lex.lemmaId(formId, posId) : -1;
 
         // Default lemma (pos-agnostic)
         if (lemmaId < 0) {
-            lemmaId = lex.findLemmaId(formId); // returns -1 if none
+            lemmaId = lex.lemmaId(formId); // returns -1 if none
         }
 
         // Nothing usable
         if (lemmaId < 0 || lemmaId == formId) return true;
 
-        // Copy lemma 
-        lex.copyForm(lemmaId, termAtt);
+        // Copy lemma to term for indexation
+        final int len = lex.length(lemmaId);
+        final char[] dst = termAtt.resizeBuffer(len);
+        lex.copy(lemmaId, dst, 0);
+        termAtt.setLength(len);
 
         return true;
     }

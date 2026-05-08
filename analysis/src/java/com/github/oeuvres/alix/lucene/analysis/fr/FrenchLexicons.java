@@ -38,9 +38,9 @@ import java.util.Map;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 
-import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
+import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.WordTokenizer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
@@ -61,7 +61,7 @@ public class FrenchLexicons
 
     public static LemmaLexicon buildLemmaLexicon()
     {
-        LemmaLexicon lex = new LemmaLexicon(500_000);
+        LemmaLexicon lexicon = new LemmaLexicon(500_000);
         final Map<String, String> posList = Map.ofEntries(
             Map.entry("VERB", "VERB"), // 305193
             Map.entry("NOUN", "NOUN"), // 110474
@@ -110,9 +110,10 @@ public class FrenchLexicons
                 return posList.get(posName);
             }
         };
+        // for main dic, ignore on duplicate
+        lexicon.onDuplicate(LemmaLexicon.OnDuplicate.IGNORE);
         LexiconHelper.loadLemma(
-            lex,
-            LemmaLexicon.OnDuplicate.IGNORE,
+            lexicon,
             FrenchLexicons.class,
             "/com/github/oeuvres/alix/fr/word.csv",
             ',',
@@ -122,7 +123,7 @@ public class FrenchLexicons
             2,
             posResolver
         );
-        return lex;
+        return lexicon;
     }
     
     public static MweLexicon buildMweLexicon()

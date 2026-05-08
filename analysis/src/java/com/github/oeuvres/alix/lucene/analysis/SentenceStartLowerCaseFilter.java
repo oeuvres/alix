@@ -45,6 +45,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
+import com.github.oeuvres.alix.util.LemmaLexicon;
 
 /**
  * Lowercase the first lexical token after a sentence boundary if its lowercase form
@@ -131,12 +132,16 @@ public final class SentenceStartLowerCaseFilter extends TokenFilter
 
         // 6) Probe lowercase form in lexicon; if known, rewrite with canonical form.
         probe.copyFrom(termAtt).toLowerCase();
-        final int formId = lex.findFormId(probe);
+        final int formId = lex.id(probe);
         if (formId < 0) {
             return true;
         }
 
-        lex.copyForm(formId, termAtt);
+        final int len = lex.length(formId);
+        final char[] dst = termAtt.resizeBuffer(len);
+        lex.copy(formId, dst, 0);
+        termAtt.setLength(len);
+
         return true;
     }
 

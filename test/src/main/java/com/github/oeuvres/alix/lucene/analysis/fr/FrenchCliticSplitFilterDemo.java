@@ -2,9 +2,9 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.LemmaLexicon;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
+import com.github.oeuvres.alix.util.LemmaLexicon;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;

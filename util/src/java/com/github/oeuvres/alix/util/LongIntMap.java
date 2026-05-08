@@ -54,7 +54,7 @@ import java.util.Arrays;
  */
 public final class LongIntMap
 {
-
+    
     /**
      * Default load factor (speed/memory trade-off).
      * <p>
@@ -62,28 +62,28 @@ public final class LongIntMap
      * </p>
      */
     public static final float DEFAULT_LOAD_FACTOR = 0.70f;
-
+    
     private final float loadFactor;
     private final int missingValue;
-
+    
     /**
      * Keys table; {@code 0L} denotes an empty slot (real key {@code 0L} is
      * stored separately).
      */
     private long[] keys;
     private int[] values;
-
+    
     private int mask;
     private int size;
     private int resizeAt;
-
+    
     /**
      * Special-case storage for key {@code 0L} (because {@code 0L} in
      * {@link #keys} marks empty slots).
      */
     private boolean hasZeroKey;
     private int zeroValue;
-
+    
     /**
      * Creates a map sized for an expected number of entries, using
      * {@link #DEFAULT_LOAD_FACTOR} and a {@code missingValue} of {@code -1}.
@@ -94,7 +94,7 @@ public final class LongIntMap
     {
         this(expectedSize, DEFAULT_LOAD_FACTOR, -1);
     }
-
+    
     /**
      * Creates a map sized for an expected number of entries.
      *
@@ -119,11 +119,11 @@ public final class LongIntMap
         }
         this.loadFactor = loadFactor;
         this.missingValue = missingValue;
-
+        
         final int cap = arraySize(Math.max(2, expectedSize), loadFactor);
         allocate(cap);
     }
-
+    
     /**
      * Returns the sentinel returned by {@link #get(long)} when a key is absent.
      * <p>
@@ -134,7 +134,7 @@ public final class LongIntMap
     {
         return missingValue;
     }
-
+    
     /**
      * Returns the number of entries currently stored in the map.
      * <p>
@@ -145,7 +145,7 @@ public final class LongIntMap
     {
         return size;
     }
-
+    
     /**
      * Removes all entries.
      *
@@ -162,7 +162,7 @@ public final class LongIntMap
         hasZeroKey = false;
         zeroValue = missingValue;
     }
-
+    
     /**
      * Returns {@code true} if this map contains {@code key}.
      *
@@ -175,7 +175,7 @@ public final class LongIntMap
         final int slot = findSlot(key);
         return slot >= 0;
     }
-
+    
     /**
      * Returns the value associated with {@code key}, or {@link #missingValue()}
      * if absent.
@@ -189,7 +189,7 @@ public final class LongIntMap
         final int slot = findSlot(key);
         return slot >= 0 ? values[slot] : missingValue;
     }
-
+    
     /**
      * Returns the value associated with {@code key}, or {@code defaultValue} if
      * absent.
@@ -207,7 +207,7 @@ public final class LongIntMap
         final int v = get(key);
         return (v == missingValue) ? defaultValue : v;
     }
-
+    
     /**
      * Associates {@code value} with {@code key}.
      *
@@ -222,7 +222,7 @@ public final class LongIntMap
         if (value == missingValue) {
             throw new IllegalArgumentException("value must not equal missingValue=" + missingValue);
         }
-
+        
         if (key == 0L) {
             final int prev = hasZeroKey ? zeroValue : missingValue;
             if (!hasZeroKey) {
@@ -232,7 +232,7 @@ public final class LongIntMap
             zeroValue = value;
             return prev;
         }
-
+        
         int slot = insertSlot(key);
         final long k = keys[slot];
         if (k == 0L) {
@@ -248,7 +248,7 @@ public final class LongIntMap
             return prev;
         }
     }
-
+    
     /**
      * Associates {@code value} with {@code key} only if the key is absent.
      *
@@ -257,7 +257,7 @@ public final class LongIntMap
      * @return the existing value if the key was already present, otherwise
      *         {@link #missingValue()}
      * @throws IllegalArgumentException if {@code value == missingValue}
-     *
+     *        
      *                                  <p>
      *                                  This corresponds to "keep first"
      *                                  semantics (useful when loading ordered
@@ -269,7 +269,7 @@ public final class LongIntMap
         if (value == missingValue) {
             throw new IllegalArgumentException("value must not equal missingValue=" + missingValue);
         }
-
+        
         if (key == 0L) {
             if (hasZeroKey)
                 return zeroValue;
@@ -278,7 +278,7 @@ public final class LongIntMap
             size++;
             return missingValue;
         }
-
+        
         int slot = insertSlot(key);
         final long k = keys[slot];
         if (k == 0L) {
@@ -290,11 +290,11 @@ public final class LongIntMap
         }
         return values[slot]; // existing
     }
-
+    
     // ---------------------------------------------------------------------
     // Convenience for packed (int,int) keys
     // ---------------------------------------------------------------------
-
+    
     /**
      * Packs two 32-bit integers into one 64-bit key.
      *
@@ -316,7 +316,7 @@ public final class LongIntMap
     {
         return (((long) prefix) << 32) | (suffix & 0xFFFFFFFFL);
     }
-
+    
     /**
      * Convenience lookup for a packed key built from two {@code int}s.
      */
@@ -324,7 +324,7 @@ public final class LongIntMap
     {
         return get(packIntPair(prefix, suffix));
     }
-
+    
     /**
      * Convenience update for a packed key built from two {@code int}s.
      */
@@ -332,7 +332,7 @@ public final class LongIntMap
     {
         return put(packIntPair(prefix, suffix), value);
     }
-
+    
     /**
      * Convenience conditional insert for a packed key built from two
      * {@code int}s.
@@ -341,7 +341,7 @@ public final class LongIntMap
     {
         return putIfAbsent(packIntPair(prefix, suffix), value);
     }
-
+    
     /**
      * Shrinks the backing arrays to the smallest power-of-two capacity that can
      * hold the current number of entries at this instance's
@@ -364,11 +364,11 @@ public final class LongIntMap
         rehash(target);
         return true;
     }
-
+    
     // ---------------------------------------------------------------------
     // Internals
     // ---------------------------------------------------------------------
-
+    
     private void allocate(int capacity)
     {
         keys = new long[capacity];
@@ -380,7 +380,7 @@ public final class LongIntMap
         zeroValue = missingValue;
         size = 0;
     }
-
+    
     /**
      * Finds the slot containing {@code key}.
      *
@@ -398,7 +398,7 @@ public final class LongIntMap
             slot = (slot + 1) & mask;
         }
     }
-
+    
     /**
      * Finds a slot suitable for insertion: either an empty slot or one
      * containing {@code key}.
@@ -418,23 +418,23 @@ public final class LongIntMap
             slot = (slot + 1) & mask;
         }
     }
-
+    
     private void rehash(int newCapacity)
     {
         final long[] oldKeys = keys;
         final int[] oldValues = values;
-
+        
         final boolean oldHasZero = hasZeroKey;
         final int oldZeroValue = zeroValue;
-
+        
         allocate(newCapacity);
-
+        
         if (oldHasZero) {
             hasZeroKey = true;
             zeroValue = oldZeroValue;
             size = 1;
         }
-
+        
         for (int i = 0; i < oldKeys.length; i++) {
             final long k = oldKeys[i];
             if (k != 0L) {
@@ -446,7 +446,7 @@ public final class LongIntMap
         }
         // size was recomputed; no resize check needed here
     }
-
+    
     /**
      * Hash mixing for long keys.
      *
@@ -469,7 +469,7 @@ public final class LongIntMap
         h ^= (h >>> 16);
         return h;
     }
-
+    
     /**
      * Returns the next power-of-two capacity satisfying the requested load
      * factor.

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.util.LemmaLexicon;
 
 public class LemmaFilterTest {
 
@@ -53,8 +54,8 @@ public class LemmaFilterTest {
         // -------------------------
         // POS-agnostic (DEFAULT_POS) entries
         // -------------------------
-        put(lex, "children", lex.DEFAULT_POS_ID, "child");
-        put(lex, "mice",     lex.DEFAULT_POS_ID, "mouse");
+        put(lex, "children", LemmaLexicon.ANY_POS, "child");
+        put(lex, "mice",     LemmaLexicon.ANY_POS, "mouse");
 
         // A normal plural -> singular POS-specific example
         put(lex, "cats", POS_NOUN, "cat");
@@ -173,7 +174,8 @@ public class LemmaFilterTest {
     private static void put(LemmaLexicon lex, String inflected, int posId, String lemma) {
         char[] i = inflected.toCharArray();
         char[] l = lemma.toCharArray();
-        lex.putEntry(i, 0, i.length, posId, l, 0, l.length, LemmaLexicon.OnDuplicate.ERROR);
+        lex.onDuplicate(LemmaLexicon.OnDuplicate.ERROR);
+        lex.put(i, 0, i.length, posId, l, 0, l.length);
     }
 
     private String[] runFilter(String[] terms, int[] pos, boolean[] keyword) throws Exception {
