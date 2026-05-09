@@ -4,10 +4,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -162,8 +158,6 @@ public final class NumWriter implements Closeable
         }
     }
 
-    // ---- fill -------------------------------------------------------------
-
     /**
      * Fill the entire file with a constant byte value.
      * Typical use: {@code fill((byte) 0)} to zero the file.
@@ -209,8 +203,6 @@ public final class NumWriter implements Closeable
         pageLen = 0;
         dirty = false;
     }
-
-    // ---- single-element puts ----------------------------------------------
 
     /**
      * Write a single {@code int} at the given byte position.
@@ -445,8 +437,6 @@ public final class NumWriter implements Closeable
             remaining -= count;
         }
     }
-
-    // ---- internal I/O -----------------------------------------------------
 
     /** Check that {@code [bytePos, bytePos + size)} fits in the file. */
     private void checkRange(final long bytePos, final long size)
