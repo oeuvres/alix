@@ -17,42 +17,17 @@ package com.github.oeuvres.alix.util;
 import java.util.Arrays;
 
 /**
- * Dependency-free hash dictionary of UTF-16 character sequences, with optional
- * value association. Both keys and values are stored as char sequences and
- * share the same ordinal space: a sequence is interned at most once,
- * regardless of whether it appears as a key, a value, or both. This is a
- * deliberate divergence from {@link java.util.Map}; it makes self-referential
- * dictionaries (lemma maps, alias tables) cost the minimum.
+ * Dependency-free hash dictionary of UTF-16 character sequences with stable
+ * integer ordinals. Each distinct sequence is interned at most once and
+ * receives a 0-based ord that does not change for the lifetime of this
+ * instance.
  *
- * <h2>Semantics</h2>
- * <ul>
- *   <li>{@link #add(CharSequence) add(...)} interns a sequence and returns
- *       its ordinal. Idempotent.</li>
- *   <li>{@link #put(CharSequence, CharSequence) put(k, v)} interns both
- *       sequences if absent, then associates {@code k}'s ord with {@code v}'s
- *       ord. Replace-on-put: returns the previous value ord, or
- *       {@link #HAS_NO_VALUE} if the key had no association.</li>
- *   <li>{@link #ord(CharSequence) ord(...)} returns the ordinal of an existing
- *       sequence, or {@link #NOT_IN_DIC} if absent. Never inserts.</li>
- *   <li>{@link #valueOrd(CharSequence) valueOrd(...)} returns the ord of the
- *       value associated with a key. Returns {@link #NOT_IN_DIC} if the key
- *       sequence is not in the dictionary, or {@link #HAS_NO_VALUE} if it is
- *       in the dictionary but has no associated value.</li>
- *   <li>{@link #copy(int, char[], int) copy(ord, dst, off)} writes a
- *       sequence's chars into a caller-supplied buffer. Returns the char count
- *       written, or echoes a negative ord unchanged.</li>
- * </ul>
- *
- * <p>Composition pattern for keyed lookup:</p>
- * <pre>{@code
- * int len = dic.copy(dic.valueOrd("-ce"), buf, 0);
- * if (len < 0) {
- *     // -1 (NOT_IN_DIC): key absent, or
- *     // -2 (HAS_NO_VALUE): key present without value
- * } else {
- *     // buf[0..len) holds the value
- * }
- * }</pre>
+ * <p>This class provides set semantics only. Value associations on top of a
+ * dictionary belong to companion classes that compose a {@code CharsDic} with
+ * a parallel array (see {@code CharsMap}, {@code CharsFreq}). Composition
+ * preserves the property that any sequence ever passed in (whether as a key,
+ * a value, or a counter target) is interned exactly once and shares the same
+ * ord space.</p>
  *
  * <h2>Implementation</h2>
  * <ul>
@@ -62,13 +37,11 @@ import java.util.Arrays;
  *       metadata holds slab offset and length. A 16-bit fingerprint per slot
  *       rejects most probes before slab comparison.</li>
  *   <li>Per-ord hashes are retained for rehashing without re-walking the slab.</li>
- *   <li>Per-ord value associations are held in a parallel {@code int[]},
- *       initialised to {@link #HAS_NO_VALUE}.</li>
  *   <li>Hash function: Murmur3-32 over UTF-16 code units.</li>
  * </ul>
  *
- * <p>Memory at <i>n</i> ords (rough): 16 bytes/ord (meta + termHash + values)
- * plus ~8 bytes/slot in the open-addressing table at 0.75 load, plus the slab
+ * <p>Memory at <i>n</i> ords (rough): 12 bytes/ord (meta + termHash) plus
+ * ~8 bytes/slot in the open-addressing table at 0.75 load, plus the slab
  * itself (sum of all sequence lengths in chars).</p>
  *
  * <p>Thread-safety: not thread-safe under mutation. Concurrent reads are safe
@@ -77,16 +50,9 @@ import java.util.Arrays;
 public final class CharsDic
 {
     /**
-     * Returned by {@link #valueOrd(int)} and related lookups when the key is
-     * present in the dictionary but has no associated value.
-     */
-    public static final int HAS_NO_VALUE = -2;
-
-    /**
-     * Returned by {@link #ord(CharSequence)}, {@link #valueOrd(CharSequence)}
-     * and related lookups when the queried sequence is not in the dictionary.
-     * Also the value of {@link #copy(int, char[], int)} when the supplied ord
-     * is negative.
+     * Returned by {@link #ord(CharSequence)} and related lookups when the
+     * queried sequence is not in the dictionary. Also returned by
+     * {@link #copy(int, char[], int)} when the supplied ord is negative.
      */
     public static final int NOT_IN_DIC = -1;
 
@@ -139,9 +105,6 @@ public final class CharsDic
     /** Full 32-bit hash per ord, retained for rehashing. */
     private int[] termHash;
 
-    /** Per-ord associated value ord, initialised to {@link #HAS_NO_VALUE}. */
-    private int[] values;
-
     /**
      * Constructs the dictionary with an expected number of unique sequences.
      *
@@ -166,18 +129,12 @@ public final class CharsDic
         final int metaCap = Math.max(8, expectedSize);
         meta = new long[metaCap];
         termHash = new int[metaCap];
-        values = new int[metaCap];
-        Arrays.fill(values, HAS_NO_VALUE);
 
         slab = new char[Math.max(16, expectedSize * 4)];
     }
 
     /**
-     * Interns a sequence without setting any associated value.
-     *
-     * <p>Idempotent. If the sequence already has a value association from a
-     * previous {@link #put(CharSequence, CharSequence)}, that association is
-     * preserved.</p>
+     * Interns a sequence.
      *
      * @param key source sequence (UTF-16 code units)
      * @return the assigned 0-based ord ({@code >= 0})
@@ -193,7 +150,7 @@ public final class CharsDic
     }
 
     /**
-     * Interns a slice of a {@code char[]} without setting any associated value.
+     * Interns a slice of a {@code char[]}.
      *
      * @param key source array (UTF-16 code units)
      * @param off start offset (inclusive)
@@ -211,10 +168,9 @@ public final class CharsDic
     }
 
     /**
-     * Interns a slice of a {@link CharSequence} without setting any associated
-     * value.
+     * Interns a slice of a {@link CharSequence}.
      *
-     * @param key source character sequence (UTF-16 code units)
+     * @param key source character sequence
      * @param off start offset (inclusive)
      * @param len number of code units to read
      * @return the assigned 0-based ord ({@code >= 0})
@@ -246,8 +202,7 @@ public final class CharsDic
     }
 
     /**
-     * Tells whether a sequence is interned, regardless of whether it appears
-     * as a key, a value, or both.
+     * Tells whether a sequence is interned.
      *
      * @param key source sequence
      * @return true iff the sequence is in the dictionary
@@ -259,8 +214,7 @@ public final class CharsDic
     }
 
     /**
-     * Tells whether a slice of a {@code char[]} is interned, regardless of
-     * whether it appears as a key, a value, or both.
+     * Tells whether a slice of a {@code char[]} is interned.
      *
      * @param key source array
      * @param off start offset
@@ -275,8 +229,7 @@ public final class CharsDic
     }
 
     /**
-     * Tells whether a slice of a {@link CharSequence} is interned, regardless
-     * of whether it appears as a key, a value, or both.
+     * Tells whether a slice of a {@link CharSequence} is interned.
      *
      * @param key source sequence
      * @param off start offset
@@ -293,16 +246,10 @@ public final class CharsDic
     /**
      * Copies the sequence stored at {@code ord} into a destination buffer.
      *
-     * <p>If {@code ord} is negative (typically a value returned by
-     * {@link #ord(CharSequence)} or {@link #valueOrd(CharSequence)} on a miss),
-     * the same negative value is returned and {@code dst} is left
-     * untouched. This lets callers compose lookups without an intermediate
-     * branch:</p>
-     *
-     * <pre>{@code
-     * int len = dic.copy(dic.valueOrd(key), buf, 0);
-     * if (len < 0) { ...miss... } else { ...buf[0..len)... }
-     * }</pre>
+     * <p>If {@code ord} is negative (typically {@link #NOT_IN_DIC} from a
+     * lookup miss), the same negative value is returned and {@code dst} is
+     * left untouched. This lets callers compose lookups without an
+     * intermediate branch.</p>
      *
      * @param ord ord to read; negative values pass through
      * @param dst destination array (must be non-null when {@code ord >= 0})
@@ -458,91 +405,7 @@ public final class CharsDic
     }
 
     /**
-     * Associates the value sequence with the key sequence. Both are interned
-     * if absent. Replace-on-put.
-     *
-     * @param key   key sequence
-     * @param value value sequence
-     * @return the previous associated value ord, or {@link #HAS_NO_VALUE} if
-     *         the key had no association before this call
-     * @throws NullPointerException if either argument is {@code null}
-     * @throws IllegalArgumentException if either length exceeds 65535
-     */
-    public int put(final CharSequence key, final CharSequence value)
-    {
-        if (key == null) {
-            throw new NullPointerException("key");
-        }
-        if (value == null) {
-            throw new NullPointerException("value");
-        }
-        return put(key, 0, key.length(), value, 0, value.length());
-    }
-
-    /**
-     * Associates a value-slice sequence with a key-slice sequence. Both are
-     * interned if absent. Replace-on-put.
-     *
-     * @param key      key sequence
-     * @param keyOff   key start offset
-     * @param keyLen   key length
-     * @param value    value sequence
-     * @param valueOff value start offset
-     * @param valueLen value length
-     * @return the previous associated value ord, or {@link #HAS_NO_VALUE} if
-     *         the key had no association before this call
-     * @throws NullPointerException if either sequence is {@code null}
-     * @throws IndexOutOfBoundsException if any offset/length is invalid
-     * @throws IllegalArgumentException if either length exceeds 65535
-     */
-    public int put(
-        final CharSequence key, final int keyOff, final int keyLen,
-        final CharSequence value, final int valueOff, final int valueLen)
-    {
-        checkBounds(key, keyOff, keyLen);
-        checkBounds(value, valueOff, valueLen);
-        checkLen(keyLen);
-        checkLen(valueLen);
-        final int kOrd = intern(null, keyOff, keyLen, key);
-        final int vOrd = intern(null, valueOff, valueLen, value);
-        final int prev = values[kOrd];
-        values[kOrd] = vOrd;
-        return prev;
-    }
-
-    /**
-     * Associates a value-slice {@code char[]} with a key-slice {@code char[]}.
-     * Both are interned if absent. Replace-on-put.
-     *
-     * @param key      key array
-     * @param keyOff   key start offset
-     * @param keyLen   key length
-     * @param value    value array
-     * @param valueOff value start offset
-     * @param valueLen value length
-     * @return the previous associated value ord, or {@link #HAS_NO_VALUE} if
-     *         the key had no association before this call
-     * @throws NullPointerException if either array is {@code null}
-     * @throws IndexOutOfBoundsException if any offset/length is invalid
-     * @throws IllegalArgumentException if either length exceeds 65535
-     */
-    public int put(
-        final char[] key, final int keyOff, final int keyLen,
-        final char[] value, final int valueOff, final int valueLen)
-    {
-        checkBounds(key, keyOff, keyLen);
-        checkBounds(value, valueOff, valueLen);
-        checkLen(keyLen);
-        checkLen(valueLen);
-        final int kOrd = intern(key, keyOff, keyLen, null);
-        final int vOrd = intern(value, valueOff, valueLen, null);
-        final int prev = values[kOrd];
-        values[kOrd] = vOrd;
-        return prev;
-    }
-
-    /**
-     * Returns the number of unique sequences interned (keys, values, or both).
+     * Returns the number of unique sequences interned.
      *
      * @return number of assigned ords
      */
@@ -605,70 +468,7 @@ public final class CharsDic
         if (meta.length != sizeOrds) {
             meta = Arrays.copyOf(meta, sizeOrds);
             termHash = Arrays.copyOf(termHash, sizeOrds);
-            values = Arrays.copyOf(values, sizeOrds);
         }
-    }
-
-    /**
-     * Returns the value-ord associated with a key sequence.
-     *
-     * @param key key sequence
-     * @return associated value ord, {@link #NOT_IN_DIC} if the key sequence
-     *         is not in the dictionary, or {@link #HAS_NO_VALUE} if it is in
-     *         the dictionary but has no associated value
-     * @throws NullPointerException if {@code key} is {@code null}
-     */
-    public int valueOrd(final CharSequence key)
-    {
-        final int o = ord(key);
-        return (o < 0) ? o : values[o];
-    }
-
-    /**
-     * Returns the value-ord associated with a key by direct ord lookup.
-     *
-     * @param keyOrd key ord
-     * @return associated value ord, or {@link #HAS_NO_VALUE} if no association
-     * @throws IllegalArgumentException if {@code keyOrd} is invalid
-     */
-    public int valueOrd(final int keyOrd)
-    {
-        checkOrd(keyOrd);
-        return values[keyOrd];
-    }
-
-    /**
-     * Returns the value-ord associated with a key {@code char[]} slice.
-     *
-     * @param key key array
-     * @param off start offset
-     * @param len number of code units
-     * @return associated value ord, {@link #NOT_IN_DIC} if the key is not in
-     *         the dictionary, or {@link #HAS_NO_VALUE} if it has no association
-     * @throws NullPointerException if {@code key} is {@code null}
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     */
-    public int valueOrd(final char[] key, final int off, final int len)
-    {
-        final int o = ord(key, off, len);
-        return (o < 0) ? o : values[o];
-    }
-
-    /**
-     * Returns the value-ord associated with a key {@link CharSequence} slice.
-     *
-     * @param key key sequence
-     * @param off start offset
-     * @param len number of code units
-     * @return associated value ord, {@link #NOT_IN_DIC} if the key is not in
-     *         the dictionary, or {@link #HAS_NO_VALUE} if it has no association
-     * @throws NullPointerException if {@code key} is {@code null}
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     */
-    public int valueOrd(final CharSequence key, final int off, final int len)
-    {
-        final int o = ord(key, off, len);
-        return (o < 0) ? o : values[o];
     }
 
     /**
@@ -780,9 +580,6 @@ public final class CharsDic
         final int cap = Math.max(required, meta.length + (meta.length >>> 1) + 16);
         meta = Arrays.copyOf(meta, cap);
         termHash = Arrays.copyOf(termHash, cap);
-        final int oldLen = values.length;
-        values = Arrays.copyOf(values, cap);
-        Arrays.fill(values, oldLen, cap, HAS_NO_VALUE);
     }
 
     /**
@@ -873,8 +670,7 @@ public final class CharsDic
 
     /**
      * Shared insertion core. Exactly one of {@code a} or {@code cs} must be
-     * non-null. Returns the ord whether newly assigned or pre-existing
-     * (B1 ingestion semantics).
+     * non-null. Returns the ord whether newly assigned or pre-existing.
      *
      * @param a   source array, or {@code null}
      * @param off offset in the chosen source
