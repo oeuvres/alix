@@ -11,6 +11,8 @@
  */
 package com.github.oeuvres.alix.util;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -73,6 +75,27 @@ public final class CharsMap
         this.dic = new CharsDic(expectedSize);
         this.values = new int[Math.max(8, expectedSize)];
         Arrays.fill(this.values, HAS_NO_VALUE);
+    }
+    
+    /**
+     * Appends the sequence stored at {@code ord} to an {@link Appendable}.
+     *
+     * <p>If {@code ord} is negative, typically {@link #NOT_IN_DIC}, the same
+     * negative value is returned and {@code dst} is left untouched. This allows
+     * callers to propagate lookup
+     * misses without a separate branch.</p>
+     *
+     * @param ord ord to read; negative values pass through
+     * @param dst destination appendable, required only when {@code ord >= 0}
+     * @return the number of chars appended, or {@code ord} unchanged if negative
+     * @throws NullPointerException if {@code dst} is {@code null} and
+     *         {@code ord >= 0}
+     * @throws IllegalArgumentException if {@code ord >= size()}
+     * @throws UncheckedIOException if {@code dst} throws IOException while appending
+     */
+    public int append(final int ord, final Appendable dst)
+    {
+        return dic.append(ord, dst);
     }
 
     /**

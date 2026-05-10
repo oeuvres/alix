@@ -6,58 +6,22 @@ import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans .SpanTermQuery;
 
+import com.github.oeuvres.alix.util.WordTokenizer;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses a pivot specification into a {@link SpanQuery}.
+ * Parses a user query into a {@link SpanQuery}.
  *
- * <h2>Input syntax</h2>
- * <p>Groups are separated by commas or newlines (both are equivalent).
- * Terms within a group are whitespace-separated and combined with OR.
- * Groups are combined with AND (all must occur within the span).</p>
- *
- * <pre>
- * libre liberté, responsable responsabilité
- * </pre>
- * <p>is equivalent to:</p>
- * <pre>
- * libre liberté
- * responsable responsabilité
- * </pre>
- * <p>and produces:</p>
- * <pre>
- * SpanNearQuery(
- *   SpanOrQuery(libre, liberté),
- *   SpanOrQuery(responsable, responsabilité),
- *   slop, inOrder=false
- * )
- * </pre>
- *
- * <h2>Degenerate cases</h2>
- * <table border="1">
- *   <tr><th>Input</th><th>Result</th></tr>
- *   <tr><td>{@code libre}</td><td>{@link SpanTermQuery}</td></tr>
- *   <tr><td>{@code libre liberté}</td><td>{@link SpanOrQuery}</td></tr>
- *   <tr><td>{@code libre, responsable}</td><td>{@link SpanNearQuery}</td></tr>
- * </table>
- *
- * <h2>Slop semantics</h2>
- * <p>Lucene slop counts the minimum number of position moves to bring all
- * matched terms adjacent. For a two-group unordered match, pass
- * {@code slop = maxGap - 1} to get a maximum token distance of
- * {@code maxGap} between the two outermost matched tokens. For three or
- * more groups the total span width is {@code slop + numberOfGroups - 1};
- * verify this matches intent before use.</p>
- *
- * <h2>Terms</h2>
- * <p>No analysis is applied. Terms are used verbatim; the caller is
- * responsible for passing tokens in the form stored in the index.</p>
  */
 public class SpanQueryParser {
 
     private final String field;
     private final int slop;
+    private final WordTokenizer tokenizer;
+    private final String OR_OPEN = "OrOpen";
+    private final String OR_CLOSE = "OrClose";
 
     /**
      * Creates a parser for the given field and slop.
@@ -67,80 +31,89 @@ public class SpanQueryParser {
      *              token distance of {@code maxGap} between outermost pivots
      * @throws IllegalArgumentException if {@code field} is blank or {@code slop} is negative
      */
-    public SpanQueryParser(final String field, final int slop) {
+    public SpanQueryParser(final String field, final int slop, final WordTokenizer tokenizer) {
         if (field == null || field.isBlank())
             throw new IllegalArgumentException("field must not be blank");
         if (slop < 0)
             throw new IllegalArgumentException("slop must be >= 0, got " + slop);
         this.field = field;
         this.slop = slop;
+        this.tokenizer = tokenizer;
     }
 
     /**
-     * Parses the pivot specification and returns the most specific
-     * {@link SpanQuery} that represents it.
+     * Parses the user query.
      *
-     * <p>The return type depends on the number of groups found:</p>
-     * <ul>
-     *   <li>0 non-empty groups → {@link IllegalArgumentException}</li>
-     *   <li>1 group, 1 term → {@link SpanTermQuery}</li>
-     *   <li>1 group, N terms → {@link SpanOrQuery}</li>
-     *   <li>2+ groups → {@link SpanNearQuery} whose clauses are
-     *       {@link SpanTermQuery} (single-term group) or
-     *       {@link SpanOrQuery} (multi-term group)</li>
-     * </ul>
-     *
-     * @param spec pivot specification; groups separated by {@code ,} or
-     *             newline; terms within a group separated by whitespace
-     * @return assembled query
-     * @throws IllegalArgumentException if {@code spec} is blank or yields no terms
+     * @param queryText user query text
+     * @return assembled span query, or {@code null} if the query is blank or yields no term
      */
-    public SpanQuery parse(final String spec) {
-        if (spec == null || spec.isBlank())
-            throw new IllegalArgumentException("spec must not be blank");
-
-        final List<SpanQuery> groups = new ArrayList<>();
-        for (final String groupStr : spec.split("[,\\n\\r]+")) {
-            final String trimmed = groupStr.strip();
-            if (trimmed.isEmpty()) continue;
-            final SpanQuery group = buildGroup(trimmed);
-            if (group != null) groups.add(group);
+    public SpanQuery parse(final String queryText) {
+        if (queryText == null || queryText.isBlank()) {
+            return null; // let caller alert user
         }
 
-        switch (groups.size()) {
-            case 0:
-                throw new IllegalArgumentException("spec contains no usable terms: \"" + spec + "\"");
-            case 1:
-                return groups.get(0);
-            default:
-                return new SpanNearQuery(
-                    groups.toArray(new SpanQuery[0]),
-                    slop,
-                    false
-                );
-        }
-    }
+        final String q = queryText
+            .replace("(", " " + OR_OPEN + " ")
+            .replace(")", " " + OR_CLOSE + " ");
 
-    /**
-     * Builds a {@link SpanTermQuery} or {@link SpanOrQuery} from the
-     * whitespace-separated terms of one group.
-     *
-     * @param groupStr non-empty, already stripped group string
-     * @return query, or {@code null} if the string yields no tokens
-     */
-    private SpanQuery buildGroup(final String groupStr) {
-        final String[] tokens = groupStr.split("\\s+");
-        final List<SpanTermQuery> alternatives = new ArrayList<>(tokens.length);
-        for (String token : tokens) {
-            token = token.replace('_', ' ');
-            if (!token.isEmpty()) {
-                alternatives.add(new SpanTermQuery(new Term(field, token)));
+        final List<String> words = tokenizer.tokenize(q);
+        final List<SpanQuery> clauses = new ArrayList<>();
+        List<SpanQuery> orClauses = null;
+
+        for (final String word : words) {
+            if (OR_OPEN.equals(word)) {
+                if (orClauses == null) {
+                    orClauses = new ArrayList<>();
+                }
+                continue; // nested opening parenthesis: skip silently
+            }
+
+            if (OR_CLOSE.equals(word)) {
+                if (orClauses == null) {
+                    continue; // closing parenthesis without opening: skip silently
+                }
+                if (orClauses.size() == 1) {
+                    clauses.add(orClauses.get(0));
+                }
+                else if (!orClauses.isEmpty()) {
+                    clauses.add(new SpanOrQuery(orClauses.toArray(new SpanQuery[0])));
+                }
+                orClauses = null;
+                continue;
+            }
+
+            // TODO eliminate stop words
+            // TODO hunspell lemmatize
+            // TODO concat know multi-word expression for the field
+            // TODO first suggest hunspell
+            // TODO eliminate unknown word from field
+            final SpanQuery term = new SpanTermQuery(new Term(field, word));
+
+            if (orClauses != null) {
+                orClauses.add(term);
+            }
+            else {
+                clauses.add(term);
             }
         }
-        switch (alternatives.size()) {
-            case 0:  return null;
-            case 1:  return alternatives.get(0);
-            default: return new SpanOrQuery(alternatives.toArray(new SpanQuery[0]));
+
+        // Opening parenthesis without closing: go to end of query string.
+        if (orClauses != null) {
+            if (orClauses.size() == 1) {
+                clauses.add(orClauses.get(0));
+            }
+            else if (!orClauses.isEmpty()) {
+                clauses.add(new SpanOrQuery(orClauses.toArray(new SpanQuery[0])));
+            }
         }
+
+        if (clauses.isEmpty()) {
+            return null;
+        }
+        if (clauses.size() == 1) {
+            return clauses.get(0);
+        }
+        return new SpanNearQuery(clauses.toArray(new SpanQuery[0]), slop, true);
     }
+
 }

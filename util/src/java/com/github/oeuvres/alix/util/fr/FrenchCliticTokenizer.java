@@ -93,13 +93,10 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     }
 
     private CharSequence text;
-    private int offset;
-
     private final StringBuilder raw = new StringBuilder(32);
-    private final StringBuilder key = new StringBuilder(16);
-    private final char[] scratch;
     private final StringBuilder[] pending = new StringBuilder[MAX_SPLITS + 1];
 
+    private int offset;
     private int pendingEnd;
     private int pendingStart;
 
@@ -107,13 +104,8 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
     /**
      * Constructs a reusable French clitic tokenizer.
-     *
-     * <p>The {@link #scratch} buffer is sized once from the longest sequence
-     * interned by {@link #PREFIX} or {@link #SUFFIX}.</p>
      */
     public FrenchCliticTokenizer() {
-        final int max = Math.max(PREFIX.maxLen(), SUFFIX.maxLen());
-        scratch = new char[Math.max(16, max)];
         for (int i = 0; i < pending.length; i++) {
             pending[i] = new StringBuilder(16);
         }
@@ -130,7 +122,6 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         offset = 0;
         current = null;
         raw.setLength(0);
-        key.setLength(0);
         pendingStart = 0;
         pendingEnd = 0;
     }
@@ -195,13 +186,9 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         if (pendingEnd >= pending.length) {
             return false;
         }
-
-        final int vLen = map.len(valueOrd);
-        map.copy(valueOrd, scratch, 0);
-
         final StringBuilder builder = pending[pendingEnd++];
         builder.setLength(0);
-        builder.append(scratch, 0, vLen);
+        map.append(valueOrd, builder);
         return true;
     }
 
@@ -371,11 +358,11 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     /**
      * Splits one raw-buffer range into pending words.
      *
-     * <p>The apostrophe branch builds a lowercase lookup key in {@link #key}
-     * rather than mutating {@link #raw}; this preserves the original case of
-     * the first character so the proper-name guard ({@code D'Artagnan},
-     * {@code L'Hôpital}) operates correctly and the no-split fall-through
-     * emits the original token unchanged.</p>
+     * <p>The apostrophe branch lowercases {@code raw.charAt(start)} only for
+     * the duration of the dictionary lookup and restores it immediately after,
+     * so the proper-name guard ({@code D'Artagnan}, {@code L'Hôpital}) reads
+     * the original case via the saved {@code first} local, and the no-split
+     * fall-through emits the original token unchanged.</p>
      *
      * @param start the inclusive raw-buffer start offset
      * @param end the exclusive raw-buffer end offset
@@ -406,19 +393,15 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
         if (apostrophe > start) {
             final int prefixEnd = apostrophe + 1;
-
-            key.setLength(0);
-            key.append(Character.toLowerCase(raw.charAt(start)));
-            for (int i = start + 1; i < prefixEnd; i++) {
-                key.append(raw.charAt(i));
-            }
-
-            final int valueOrd = PREFIX.valueOrd(key, 0, key.length());
+            final char first = raw.charAt(start);
+            raw.setCharAt(start, Character.toLowerCase(first));
+            final int valueOrd = PREFIX.valueOrd(raw, start, prefixEnd - start);
+            raw.setCharAt(start, first);
 
             if (valueOrd >= 0 && prefixEnd < end) {
                 final char next = raw.charAt(prefixEnd);
 
-                if (!(isUpperOrTitle(next) && isUpperOrTitle(raw.charAt(start)))) {
+                if (!(isUpperOrTitle(next) && isUpperOrTitle(first))) {
                     if (!appendLiteral(PREFIX, valueOrd)) {
                         return false;
                     }

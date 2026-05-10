@@ -14,7 +14,10 @@
  */
 package com.github.oeuvres.alix.util;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Dependency-free hash dictionary of UTF-16 character sequences with stable
@@ -222,6 +225,51 @@ public final class CharsDic
     }
 
     /**
+     * Appends the sequence stored at {@code ord} to an {@link Appendable}.
+     *
+     * <p>If {@code ord} is negative, typically {@link #NOT_IN_DIC}, the same
+     * negative value is returned and {@code dst} is left untouched. This mirrors
+     * {@link #copy(int, char[], int)} and allows callers to propagate lookup
+     * misses without a separate branch.</p>
+     *
+     * <p>The appended characters are the stored UTF-16 code units. In
+     * ignore-case dictionaries, this means the lowercased form stored in the slab
+     * is appended, not the original input spelling.</p>
+     *
+     * @param ord ord to read; negative values pass through
+     * @param dst destination appendable, required only when {@code ord >= 0}
+     * @return the number of chars appended, or {@code ord} unchanged if negative
+     * @throws NullPointerException if {@code dst} is {@code null} and
+     *         {@code ord >= 0}
+     * @throws IllegalArgumentException if {@code ord >= size()}
+     * @throws UncheckedIOException if {@code dst} throws IOException while appending
+     */
+    public int append(final int ord, final Appendable dst)
+    {
+        if (ord < 0) {
+            return ord;
+        }
+        if (ord >= sizeOrds) {
+            throw new IllegalArgumentException("bad ord " + ord + " (size=" + sizeOrds + ")");
+        }
+        Objects.requireNonNull(dst, "dst");
+
+        final long m = meta[ord];
+        int off = metaOff(m);
+        final int len = metaLen(m);
+        final int lim = off + len;
+        for (; off < lim; off++) {
+            try {
+                dst.append(slab[off]);
+            }
+            catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return len;
+    }
+
+    /**
      * Returns the stored sequence at {@code ord} as a newly allocated string.
      *
      * @param ord 0-based ord ({@code 0 <= ord < size()})
@@ -230,6 +278,7 @@ public final class CharsDic
      */
     public String asString(final int ord)
     {
+        if (ord < 0) return null;
         checkOrd(ord);
         final long m = meta[ord];
         return new String(slab, metaOff(m), metaLen(m));
@@ -319,7 +368,7 @@ public final class CharsDic
         System.arraycopy(slab, metaOff(m), dst, dstOff, len);
         return len;
     }
-
+    
     /**
      * Returns the length of the sequence stored at {@code ord}.
      *
