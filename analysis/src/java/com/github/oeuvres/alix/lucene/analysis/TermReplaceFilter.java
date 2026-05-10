@@ -41,6 +41,8 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
+import com.github.oeuvres.alix.util.CharsMap;
+
 /**
  * Rewrite tokens by applying an exact, dictionary-based term mapping.
  *
@@ -75,7 +77,7 @@ public final class TermReplaceFilter extends TokenFilter {
      * Term rewrite table. Keys are matched against the current token term; values are copied
      * into the {@link CharTermAttribute} when a match is found.
      */
-    private final CharArrayMap<char[]> map;
+    private final CharsMap map;
 
     /** The current token term. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -86,7 +88,7 @@ public final class TermReplaceFilter extends TokenFilter {
      * @param input the upstream {@link TokenStream} (tokenizer or previous filter)
      * @param map the rewrite table mapping surface forms to replacement forms
      */
-    public TermReplaceFilter(final TokenStream input, final CharArrayMap<char[]> map) {
+    public TermReplaceFilter(final TokenStream input, final CharsMap map) {
         super(input);
         this.map = map;
     }
@@ -100,10 +102,13 @@ public final class TermReplaceFilter extends TokenFilter {
     @Override
     public boolean incrementToken() throws IOException {
         if (!input.incrementToken()) return false;
-
-        final char[] replacement = map.get(termAtt.buffer(), 0, termAtt.length());
-        if (replacement != null) {
-            termAtt.copyBuffer(replacement, 0, replacement.length);
+        
+        int vOrd = map.valueOrd(termAtt.buffer(), 0, termAtt.length());
+        if (vOrd >= 0) { 
+            int vLen = map.len(vOrd); 
+            char[] dst = termAtt.resizeBuffer(vLen);
+            map.copy(vOrd, dst, 0);
+            termAtt.setLength(vLen);
         }
         return true;
     }

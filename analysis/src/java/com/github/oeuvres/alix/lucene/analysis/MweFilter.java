@@ -85,7 +85,6 @@ public final class MweFilter extends TokenFilter
 
     private final CharTermAttribute          termAtt     = addAttribute(CharTermAttribute.class);
     private final OffsetAttribute            offsetAtt   = addAttribute(OffsetAttribute.class);
-    private final PositionIncrementAttribute posIncrAtt  = addAttribute(PositionIncrementAttribute.class);
     private final TypeAttribute              typeAtt     = addAttribute(TypeAttribute.class);
 
     private boolean inputExhausted = false;

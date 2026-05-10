@@ -37,7 +37,7 @@ class CharsDicTest
         assertEquals(ord0, dic.add(core));
         assertEquals(1, dic.size());
         assertEquals(core, dic.asString(ord0));
-        assertEquals(core.length(), dic.termLength(ord0));
+        assertEquals(core.length(), dic.len(ord0));
         assertTrue(dic.maxTermLength() >= core.length());
     }
 

@@ -231,7 +231,7 @@ public final class LemmaLexicon
      */
     public int length(final int id)
     {
-        return forms.termLength(id);
+        return forms.len(id);
     }
 
     /**

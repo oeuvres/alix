@@ -79,7 +79,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Words with ending dots */
     public final CharArraySet brevidots;
     /** Term normalizer */
-    public final CharArrayMap<char[]> normalizer;
+    public final CharsMap normalizer;
     /** Multi-Word Expressions */
     public final MweLexicon expressions;
     /** Big dic */

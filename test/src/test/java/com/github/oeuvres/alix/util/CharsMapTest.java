@@ -37,10 +37,10 @@ class CharsMapTest
         assertTrue(m.contains("v"),
             "values share the same dictionary as keys (B1)");
 
-        assertTrue(m.containsKey("k"));
-        assertEquals(false, m.containsKey("v"),
+        assertTrue(m.keyOrd("k"));
+        assertEquals(false, m.keyOrd("v"),
             "v has no value associated with it");
-        assertEquals(false, m.containsKey("absent"));
+        assertEquals(false, m.keyOrd("absent"));
     }
 
     /**

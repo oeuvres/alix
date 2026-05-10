@@ -279,7 +279,7 @@ public final class CharsFreq
      */
     public int termLength(final int ord)
     {
-        return dic.termLength(ord);
+        return dic.len(ord);
     }
 
     /**

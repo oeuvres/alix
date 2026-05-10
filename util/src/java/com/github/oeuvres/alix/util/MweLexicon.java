@@ -179,7 +179,7 @@ public final class MweLexicon
     public int formLength(final int ord)
     {
         checkFrozen();
-        return vocab.termLength(ord);
+        return vocab.len(ord);
     }
 
     /**

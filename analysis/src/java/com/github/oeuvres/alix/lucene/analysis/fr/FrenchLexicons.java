@@ -40,6 +40,7 @@ import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
+import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.WordTokenizer;
@@ -135,9 +136,9 @@ public class FrenchLexicons
     }
 
 
-    public static CharArrayMap<char[]> buildNormalizer()
+    public static CharsMap buildNormalizer()
     {
-        CharArrayMap<char[]> map = new CharArrayMap<char[]>(2000, false);
+        CharsMap map = new CharsMap(2000);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv", LexiconHelper.OnDuplicate.REPLACE);

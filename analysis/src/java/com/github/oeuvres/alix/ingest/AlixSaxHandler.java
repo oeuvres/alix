@@ -265,10 +265,10 @@ public final class AlixSaxHandler extends DefaultHandler2
     @Override
     public void characters(char[] ch, int start, int length) throws SAXException
     {
-        if (fieldMode == FieldMode.NONE)
-            return;
-        
         switch (fieldMode) {
+            case NONE -> {
+                return;
+            }
             case SCALAR, DERIVED -> {
                 if (!isAllWhitespace(ch, start, length)) {
                     throw new SAXException(

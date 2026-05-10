@@ -280,6 +280,19 @@ public final class CharsDic
     }
 
     /**
+     * Returns the length of the sequence stored at {@code ord}.
+     *
+     * @param ord 0-based ord
+     * @return length in UTF-16 code units
+     * @throws IllegalArgumentException if {@code ord} is invalid
+     */
+    public int len(final int ord)
+    {
+        checkOrd(ord);
+        return metaLen(meta[ord]);
+    }
+
+    /**
      * Returns the maximum sequence length ever added.
      *
      * @return maximum length in UTF-16 code units
@@ -408,29 +421,16 @@ public final class CharsDic
      *
      * @return internal slab array
      */
-    public char[] slab()
+    public char[] slabRef()
     {
         return slab;
-    }
-
-    /**
-     * Returns the length of the sequence stored at {@code ord}.
-     *
-     * @param ord 0-based ord
-     * @return length in UTF-16 code units
-     * @throws IllegalArgumentException if {@code ord} is invalid
-     */
-    public int termLength(final int ord)
-    {
-        checkOrd(ord);
-        return metaLen(meta[ord]);
     }
 
     /**
      * Returns the slab offset of the sequence stored at {@code ord}.
      *
      * @param ord 0-based ord
-     * @return offset within {@link #slab()}
+     * @return offset within {@link #slabRef()}
      * @throws IllegalArgumentException if {@code ord} is invalid
      */
     public int termOffset(final int ord)
