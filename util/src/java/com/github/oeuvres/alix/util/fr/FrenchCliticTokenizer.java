@@ -15,6 +15,12 @@ import com.github.oeuvres.alix.util.WordTokenizer;
  * <p>This class is stateful, reusable, and not thread-safe. Returned words are
  * transient {@link CharSequence} values backed by internal {@link StringBuilder}
  * buffers. Callers must copy {@link #word()} if they need to retain it.</p>
+ *
+ * <p>The hot path is allocation-free: clitic lookups go through
+ * {@link CharsMap#valueOrd(CharSequence, int, int)} and
+ * {@link CharsMap#copy(int, char[], int)} into a reusable {@link #scratch}
+ * buffer rather than {@link CharsMap#get(CharSequence, int, int)}, which
+ * allocates a {@link String} per call.</p>
  */
 public final class FrenchCliticTokenizer implements WordTokenizer {
     private static final int MAX_SPLITS = 8;
@@ -42,48 +48,48 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
     private static final CharsMap PREFIX = new CharsMap(15);
     static {
-        PREFIX.put("c'", "ce");
-        PREFIX.put("d'", "de");
-        PREFIX.put("j'", "je");
-        PREFIX.put("jusqu'", "jusque");
-        PREFIX.put("l'", "l'");
+        PREFIX.put("c'",      "ce");
+        PREFIX.put("d'",      "de");
+        PREFIX.put("j'",      "je");
+        PREFIX.put("jusqu'",  "jusque");
+        PREFIX.put("l'",      "l'");
         PREFIX.put("lorsqu'", "lorsque");
-        PREFIX.put("m'", "me");
-        PREFIX.put("n'", "ne");
+        PREFIX.put("m'",      "me");
+        PREFIX.put("n'",      "ne");
         PREFIX.put("puisqu'", "puisque");
-        PREFIX.put("qu'", "que");
+        PREFIX.put("qu'",     "que");
         PREFIX.put("quoiqu'", "quoique");
-        PREFIX.put("s'", "se");
-        PREFIX.put("t'", "te");
+        PREFIX.put("s'",      "se");
+        PREFIX.put("t'",      "te");
     }
 
     private static final CharsMap SUFFIX = new CharsMap(25);
     static {
-        SUFFIX.put("-ce", "ce");
-        SUFFIX.put("-ci", "");
-        SUFFIX.put("-elle", "elle");
+        SUFFIX.put("-ce",    "ce");
+        SUFFIX.put("-ci",    "");
+        SUFFIX.put("-elle",  "elle");
         SUFFIX.put("-elles", "elles");
-        SUFFIX.put("-en", "en");
-        SUFFIX.put("-eux", "eux");
-        SUFFIX.put("-il", "il");
-        SUFFIX.put("-ils", "ils");
-        SUFFIX.put("-je", "je");
-        SUFFIX.put("-la", "la");
-        SUFFIX.put("-là", "");
-        SUFFIX.put("-le", "le");
-        SUFFIX.put("-les", "les");
-        SUFFIX.put("-leur", "leur");
-        SUFFIX.put("-lui", "lui");
-        SUFFIX.put("-me", "me");
-        SUFFIX.put("-moi", "moi");
-        SUFFIX.put("-nous", "nous");
-        SUFFIX.put("-on", "on");
-        SUFFIX.put("-t", "");
-        SUFFIX.put("-te", "te");
-        SUFFIX.put("-toi", "toi");
-        SUFFIX.put("-tu", "tu");
-        SUFFIX.put("-vous", "vous");
-        SUFFIX.put("-y", "y");
+        SUFFIX.put("-en",    "en");
+        SUFFIX.put("-eux",   "eux");
+        SUFFIX.put("-il",    "il");
+        SUFFIX.put("-ils",   "ils");
+        SUFFIX.put("-je",    "je");
+        SUFFIX.put("-la",    "la");
+        SUFFIX.put("-là",    "");
+        SUFFIX.put("-le",    "le");
+        SUFFIX.put("-les",   "les");
+        SUFFIX.put("-leur",  "leur");
+        SUFFIX.put("-lui",   "lui");
+        SUFFIX.put("-me",    "me");
+        SUFFIX.put("-moi",   "moi");
+        SUFFIX.put("-nous",  "nous");
+        SUFFIX.put("-on",    "on");
+        SUFFIX.put("-t",     "");
+        SUFFIX.put("-te",    "te");
+        SUFFIX.put("-toi",   "toi");
+        SUFFIX.put("-tu",    "tu");
+        SUFFIX.put("-vous",  "vous");
+        SUFFIX.put("-y",     "y");
     }
 
     private CharSequence text;
@@ -91,6 +97,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
     private final StringBuilder raw = new StringBuilder(32);
     private final StringBuilder key = new StringBuilder(16);
+    private final char[] scratch;
     private final StringBuilder[] pending = new StringBuilder[MAX_SPLITS + 1];
 
     private int pendingEnd;
@@ -100,8 +107,13 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
     /**
      * Constructs a reusable French clitic tokenizer.
+     *
+     * <p>The {@link #scratch} buffer is sized once from the longest sequence
+     * interned by {@link #PREFIX} or {@link #SUFFIX}.</p>
      */
     public FrenchCliticTokenizer() {
+        final int max = Math.max(PREFIX.maxLen(), SUFFIX.maxLen());
+        scratch = new char[Math.max(16, max)];
         for (int i = 0; i < pending.length; i++) {
             pending[i] = new StringBuilder(16);
         }
@@ -170,19 +182,26 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     }
 
     /**
-     * Appends a literal replacement word to the pending queue.
+     * Appends a dictionary-resident replacement word to the pending queue.
      *
-     * @param value the literal replacement
+     * <p>Reads {@code valueOrd} from {@code map} into {@link #scratch} and
+     * copies it into the next pending slot, without allocating a String.</p>
+     *
+     * @param map the dictionary that owns {@code valueOrd}
+     * @param valueOrd the value ord to materialize
      * @return true if the word was appended
      */
-    private boolean appendLiteral(final String value) {
+    private boolean appendLiteral(final CharsMap map, final int valueOrd) {
         if (pendingEnd >= pending.length) {
             return false;
         }
 
+        final int vLen = map.len(valueOrd);
+        map.copy(valueOrd, scratch, 0);
+
         final StringBuilder builder = pending[pendingEnd++];
         builder.setLength(0);
-        builder.append(value);
+        builder.append(scratch, 0, vLen);
         return true;
     }
 
@@ -314,8 +333,6 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         };
     }
 
-
-
     /**
      * Reads the next raw token into the reusable raw buffer.
      *
@@ -354,6 +371,12 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     /**
      * Splits one raw-buffer range into pending words.
      *
+     * <p>The apostrophe branch builds a lowercase lookup key in {@link #key}
+     * rather than mutating {@link #raw}; this preserves the original case of
+     * the first character so the proper-name guard ({@code D'Artagnan},
+     * {@code L'Hôpital}) operates correctly and the no-split fall-through
+     * emits the original token unchanged.</p>
+     *
      * @param start the inclusive raw-buffer start offset
      * @param end the exclusive raw-buffer end offset
      * @param depth the current split depth
@@ -383,15 +406,20 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
         if (apostrophe > start) {
             final int prefixEnd = apostrophe + 1;
-            // lower case prefix
-            raw.setCharAt(start, Character.toLowerCase(raw.charAt(start)));
-            final String value = PREFIX.get(raw, start, prefixEnd - start);
 
-            if (value != null && prefixEnd < end) {
+            key.setLength(0);
+            key.append(Character.toLowerCase(raw.charAt(start)));
+            for (int i = start + 1; i < prefixEnd; i++) {
+                key.append(raw.charAt(i));
+            }
+
+            final int valueOrd = PREFIX.valueOrd(key, 0, key.length());
+
+            if (valueOrd >= 0 && prefixEnd < end) {
                 final char next = raw.charAt(prefixEnd);
 
                 if (!(isUpperOrTitle(next) && isUpperOrTitle(raw.charAt(start)))) {
-                    if (!appendLiteral(value)) {
+                    if (!appendLiteral(PREFIX, valueOrd)) {
                         return false;
                     }
                     return splitRange(prefixEnd, end, depth + 1);
@@ -400,15 +428,15 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         }
 
         if (hyphen > start) {
-            final String value = SUFFIX.get(raw, hyphen, end - hyphen);
+            final int valueOrd = SUFFIX.valueOrd(raw, hyphen, end - hyphen);
 
-            if (value != null) {
+            if (valueOrd >= 0) {
                 if (!splitRange(start, hyphen, depth + 1)) {
                     return false;
                 }
 
-                if (!value.isEmpty()) {
-                    return appendLiteral(value);
+                if (SUFFIX.len(valueOrd) > 0) {
+                    return appendLiteral(SUFFIX, valueOrd);
                 }
 
                 return true;
