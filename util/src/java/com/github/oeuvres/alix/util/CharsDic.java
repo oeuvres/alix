@@ -56,6 +56,9 @@ public final class CharsDic
      * {@link #copy(int, char[], int)} when the supplied ord is negative.
      */
     public static final int NOT_IN_DIC = -1;
+    
+    /** Empty dic instance */
+    public static final CharsDic EMPTY = new CharsDic();
 
     /** Target maximum fill ratio before rehashing. */
     private static final float LOAD_FACTOR = 0.75f;
@@ -70,7 +73,10 @@ public final class CharsDic
     private static final int MURMUR_C1 = 0xcc9e2d51;
 
     /** Murmur3 x86_32 mix constant 2. */
-    private static final int MURMUR_C2 = 0x1b873593;
+    private static final int MURMUR_C2 = 0x1b873593;    
+    
+    /** True for the {@link #EMPTY} singleton; blocks mutation and lookup probes. */
+    private final boolean empty;
 
     /** Per-slot 16-bit fingerprint ({@code hash >>> 16}). */
     private short[] fp16;
@@ -108,6 +114,14 @@ public final class CharsDic
 
     /** Full 32-bit hash per ord, retained for rehashing. */
     private int[] termHash;
+    
+    private CharsDic()
+    {
+        this.empty = true;
+        this.ignoreCase = false;
+        this.slab = new char[0];   // keep slabRef() non-null
+        // table, fp16, meta, termHash stay null; mask, sizeOrds, etc. default to 0
+    }
 
     /**
      * Constructs a case-sensitive dictionary with an expected number of unique
@@ -137,6 +151,7 @@ public final class CharsDic
      */
     public CharsDic(int expectedSize, final boolean ignoreCase)
     {
+        this.empty = false;
         this.ignoreCase = ignoreCase;
         if (expectedSize < 1) {
             expectedSize = 1;
@@ -641,7 +656,7 @@ public final class CharsDic
      *
      * @param ord candidate ord
      */
-    private void checkOrd(final int ord)
+    protected void checkOrd(final int ord)
     {
         if (ord < 0 || ord >= sizeOrds) {
             throw new IllegalArgumentException("bad ord " + ord + " (size=" + sizeOrds + ")");
@@ -805,6 +820,7 @@ public final class CharsDic
      */
     private int intern(final char[] a, final int off, final int len, final CharSequence cs)
     {
+        if (empty) throw new UnsupportedOperationException("immutable empty dictionary");
         final boolean arraySrc = (a != null);
         final int h = arraySrc ? hash(a, off, len) : hash(cs, off, len);
         final short f = (short) (h >>> 16);
@@ -856,6 +872,7 @@ public final class CharsDic
      */
     private int lookup(final char[] a, final int off, final int len, final CharSequence cs)
     {
+        if (empty) return NOT_IN_DIC;
         final boolean arraySrc = (a != null);
         final int h = arraySrc ? hash(a, off, len) : hash(cs, off, len);
         final short f = (short) (h >>> 16);

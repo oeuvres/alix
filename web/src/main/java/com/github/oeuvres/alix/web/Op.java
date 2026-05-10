@@ -23,6 +23,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
+import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.web.Pars.*;
@@ -265,7 +266,8 @@ public abstract class Op
             return null;
         final String content = pars.getString(F, index.content());
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
-        SpanQuery spanQuery = new SpanQueryParser(content, slop).parse(q);
+        // Make it configurable
+        SpanQuery spanQuery = new SpanQueryParser(content, slop, new FrenchCliticTokenizer()).parse(q);
         return spanQuery;
     }
     

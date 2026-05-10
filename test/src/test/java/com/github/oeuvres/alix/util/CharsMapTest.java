@@ -140,7 +140,7 @@ class CharsMapTest
             m.put(p[0], p[1]);
         }
 
-        final char[] buf = new char[Math.max(1, m.maxTermLength())];
+        final char[] buf = new char[Math.max(1, m.maxLen())];
         for (String[] p : pairs) {
             final int len = m.copy(m.valueOrd(p[0]), buf, 0);
             assertEquals(p[1].length(), len, "len for " + p[0]);
@@ -232,7 +232,7 @@ class CharsMapTest
         final HashSet<String> everSubmitted,
         final String when)
     {
-        final char[] buf = new char[Math.max(1, m.maxTermLength())];
+        final char[] buf = new char[Math.max(1, m.maxLen())];
         for (HashMap.Entry<String, String> e : finalState.entrySet()) {
             final String k = e.getKey();
             final String expected = e.getValue();

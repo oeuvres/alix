@@ -35,7 +35,6 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.util.Map;
 
-import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;

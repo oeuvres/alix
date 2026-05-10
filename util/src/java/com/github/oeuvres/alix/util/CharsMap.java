@@ -12,6 +12,7 @@
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Char-sequence to char-sequence map backed by one {@link CharsDic}. Keys and
@@ -87,66 +88,14 @@ public final class CharsMap
     }
 
     /**
-     * Tells whether {@code key} has an associated value.
-     *
-     * <p>This is a map-level test. It does not merely test whether the sequence
-     * is interned in the shared dictionary.</p>
-     *
-     * @param key source sequence
-     * @return true iff {@code key} is mapped to a value
-     * @throws NullPointerException if {@code key} is {@code null}
+
      */
     public int keyOrd(final CharSequence key)
     {
-        return keyOrd(key);
+        return keyOrd(key, 0, key.length());
     }
 
-    /**
-     * Tells whether a {@code char[]} slice has an associated value.
-     *
-     * <p>This is a map-level test. It does not merely test whether the sequence
-     * is interned in the shared dictionary.</p>
-     *
-     * @param key source array
-     * @param off start offset
-     * @param len number of code units
-     * @return true iff the slice is mapped to a value
-     * @throws NullPointerException if {@code key} is {@code null}
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     */
-    public int keyOrd(final char[] key, final int off, final int len)
-    {
-        return keyOrd(key, off, len);
-    }
 
-    /**
-     * Tells whether {@code key} has an associated value.
-     *
-     * @param key source sequence
-     * @return true iff {@code key} is mapped to a value
-     * @throws NullPointerException if {@code key} is {@code null}
-     */
-    public int keyOrd(final CharSequence key)
-    {
-        final int kOrd = dic.ord(key);
-        return kOrd >= 0 && values[kOrd] >= 0;
-    }
-
-    /**
-     * Tells whether a {@code char[]} slice has an associated value.
-     *
-     * @param key source array
-     * @param off start offset
-     * @param len number of code units
-     * @return true iff the slice is mapped to a value
-     * @throws NullPointerException if {@code key} is {@code null}
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     */
-    public int keyOrd(final char[] key, final int off, final int len)
-    {
-        final int kOrd = dic.ord(key, off, len);
-        return kOrd >= 0 && values[kOrd] >= 0;
-    }
 
     /**
      * Tells whether a {@link CharSequence} slice has an associated value.
@@ -158,11 +107,23 @@ public final class CharsMap
      * @throws NullPointerException if {@code key} is {@code null}
      * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
      */
-    public boolean containsKey(final CharSequence key, final int off, final int len)
+    public int keyOrd(final CharSequence key, final int off, final int len)
     {
-        final int kOrd = dic.ord(key, off, len);
-        return kOrd >= 0 && values[kOrd] >= 0;
+        final int keyOrd = dic.ord(key, off, len);
+        if (keyOrd< 0) return keyOrd;
+        return values[keyOrd];
     }
+    
+    /**
+
+     */
+    public int keyOrd(final char[] key, final int off, final int len)
+    {
+        final int keyOrd = dic.ord(key, off, len);
+        if (keyOrd< 0) return keyOrd;
+        return values[keyOrd];
+    }
+
 
     /**
      * Copies the sequence stored at {@code ord} into a destination buffer.
@@ -198,8 +159,8 @@ public final class CharsMap
      */
     public String get(final CharSequence key)
     {
-        final int vOrd = valueOrd(key);
-        return (vOrd < 0) ? null : dic.asString(vOrd);
+        final int valueOrd = valueOrd(key);
+        return (valueOrd < 0) ? null : dic.asString(valueOrd);
     }
 
     /**
@@ -219,8 +180,8 @@ public final class CharsMap
      */
     public String get(final char[] key, final int off, final int len)
     {
-        final int vOrd = valueOrd(key, off, len);
-        return (vOrd < 0) ? null : dic.asString(vOrd);
+        final int valueOrd = valueOrd(key, off, len);
+        return (valueOrd < 0) ? null : dic.asString(valueOrd);
     }
 
     /**
@@ -240,8 +201,8 @@ public final class CharsMap
      */
     public String get(final CharSequence key, final int off, final int len)
     {
-        final int vOrd = valueOrd(key, off, len);
-        return (vOrd < 0) ? null : dic.asString(vOrd);
+        final int valueOrd = valueOrd(key, off, len);
+        return (valueOrd < 0) ? null : dic.asString(valueOrd);
     }
 
     /**
@@ -261,61 +222,9 @@ public final class CharsMap
      *
      * @return maximum length in UTF-16 code units
      */
-    public int maxTermLength()
+    public int maxLen()
     {
         return dic.maxTermLength();
-    }
-
-    /**
-     * Returns the ord of an interned sequence in the shared dictionary.
-     *
-     * <p>This is a dictionary-level lookup, not a map lookup. It returns the ord
-     * of any interned sequence, whether the sequence was seen as a key, as a
-     * value, or both.</p>
-     *
-     * @param key source sequence
-     * @return ord, or {@link CharsDic#NOT_IN_DIC} if absent
-     * @throws NullPointerException if {@code key} is {@code null}
-     */
-    public int ord(final CharSequence key)
-    {
-        return dic.ord(key);
-    }
-
-    /**
-     * Returns the ord of an interned {@code char[]} slice in the shared
-     * dictionary.
-     *
-     * <p>This is a dictionary-level lookup, not a map lookup.</p>
-     *
-     * @param key source array
-     * @param off start offset
-     * @param len number of code units
-     * @return ord, or {@link CharsDic#NOT_IN_DIC} if absent
-     * @throws NullPointerException if {@code key} is {@code null}
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     */
-    public int ord(final char[] key, final int off, final int len)
-    {
-        return dic.ord(key, off, len);
-    }
-
-    /**
-     * Returns the ord of an interned {@link CharSequence} slice in the shared
-     * dictionary.
-     *
-     * <p>This is a dictionary-level lookup, not a map lookup.</p>
-     *
-     * @param key source sequence
-     * @param off start offset
-     * @param len number of code units
-     * @return ord, or {@link CharsDic#NOT_IN_DIC} if absent
-     * @throws NullPointerException if {@code key} is {@code null}
-     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
-     */
-    public int ord(final CharSequence key, final int off, final int len)
-    {
-        return dic.ord(key, off, len);
     }
 
     /**
@@ -385,10 +294,33 @@ public final class CharsMap
         final char[] key, final int keyOff, final int keyLen,
         final char[] value, final int valueOff, final int valueLen)
     {
-        final int kOrd = dic.add(key, keyOff, keyLen);
-        final int vOrd = dic.add(value, valueOff, valueLen);
-        return install(kOrd, vOrd);
+        final int keyOrd = dic.add(key, keyOff, keyLen);
+        final int valueOrd = dic.add(value, valueOff, valueLen);
+        return install(keyOrd, valueOrd);
     }
+    
+    public int put(final int keyOrd, final CharSequence value)
+    {
+        Objects.requireNonNull(value, "value");
+        return put(keyOrd, value, 0, value.length());
+    }
+
+    public int put(final int keyOrd, final CharSequence value, final int valueOff, final int valueLen)
+    {
+        Objects.requireNonNull(value, "value");
+        final int valueOrd = dic.add(value, valueOff, valueLen);
+        return install(keyOrd, valueOrd);
+    }
+
+    
+    public int put(
+        final int keyOrd,
+        final char[] value, final int valueOff, final int valueLen)
+    {
+        final int valueOrd = dic.add(value, valueOff, valueLen);
+        return install(keyOrd, valueOrd);
+    }
+
 
     /**
      * Returns the number of mapped keys.
@@ -533,18 +465,20 @@ public final class CharsMap
     /**
      * Installs a value ord at the key-ord slot.
      *
-     * @param kOrd key ord already interned in {@link #dic}
-     * @param vOrd value ord already interned in {@link #dic}
+     * @param keyOrd key ord already interned in {@link #dic}
+     * @param valueOrd value ord already interned in {@link #dic}
      * @return previous value ord at {@code kOrd}, or {@link #HAS_NO_VALUE}
      */
-    private int install(final int kOrd, final int vOrd)
+    private int install(final int keyOrd, final int valueOrd)
     {
+        dic.checkOrd(keyOrd);
+        dic.checkOrd(valueOrd);
         ensureValuesCapacity(dic.size());
-        final int prev = values[kOrd];
+        final int prev = values[keyOrd];
         if (prev == HAS_NO_VALUE) {
             keyCount++;
         }
-        values[kOrd] = vOrd;
+        values[keyOrd] = valueOrd;
         return prev;
     }
 }

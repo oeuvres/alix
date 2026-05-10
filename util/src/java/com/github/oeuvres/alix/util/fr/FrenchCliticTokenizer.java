@@ -1,8 +1,7 @@
 package com.github.oeuvres.alix.util.fr;
 
-import java.util.Map;
-import java.util.Set;
-
+import com.github.oeuvres.alix.util.CharsDic;
+import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.WordTokenizer;
 
 /**
@@ -20,69 +19,72 @@ import com.github.oeuvres.alix.util.WordTokenizer;
 public final class FrenchCliticTokenizer implements WordTokenizer {
     private static final int MAX_SPLITS = 8;
 
-    private static final Set<String> KEEP_AS_IS = Set.of(
-            "c'est-à-dire",
-            "d'abord",
-            "d'accord",
-            "d'ailleurs",
-            "d'après",
-            "d'autant",
-            "d'autre",
-            "d'autres",
-            "d'avec",
-            "d'emblée",
-            "d'entre",
-            "d'ici",
-            "n'empêche",
-            "n'est-ce",
-            "n'importe",
-            "qu'est-ce",
-            "quelqu'un"
-    );
+    private static final CharsDic KEEP_AS_IS = new CharsDic(17, true);
+    static {
+        KEEP_AS_IS.add("c'est-à-dire");
+        KEEP_AS_IS.add("d'abord");
+        KEEP_AS_IS.add("d'accord");
+        KEEP_AS_IS.add("d'ailleurs");
+        KEEP_AS_IS.add("d'après");
+        KEEP_AS_IS.add("d'autant");
+        KEEP_AS_IS.add("d'autre");
+        KEEP_AS_IS.add("d'autres");
+        KEEP_AS_IS.add("d'avec");
+        KEEP_AS_IS.add("d'emblée");
+        KEEP_AS_IS.add("d'entre");
+        KEEP_AS_IS.add("d'ici");
+        KEEP_AS_IS.add("n'empêche");
+        KEEP_AS_IS.add("n'est-ce");
+        KEEP_AS_IS.add("n'importe");
+        KEEP_AS_IS.add("qu'est-ce");
+        KEEP_AS_IS.add("quelqu'un");
+    }
 
-    private static final Map<String, String> PREFIX = Map.ofEntries(
-            Map.entry("c'", "ce"),
-            Map.entry("d'", "de"),
-            Map.entry("j'", "je"),
-            Map.entry("jusqu'", "jusque"),
-            Map.entry("l'", "l'"),
-            Map.entry("lorsqu'", "lorsque"),
-            Map.entry("m'", "me"),
-            Map.entry("n'", "ne"),
-            Map.entry("puisqu'", "puisque"),
-            Map.entry("qu'", "que"),
-            Map.entry("quoiqu'", "quoique"),
-            Map.entry("s'", "se"),
-            Map.entry("t'", "te")
-    );
+    private static final CharsMap PREFIX = new CharsMap(15);
+    static {
+        PREFIX.put("c'", "ce");
+        PREFIX.put("d'", "de");
+        PREFIX.put("j'", "je");
+        PREFIX.put("jusqu'", "jusque");
+        PREFIX.put("l'", "l'");
+        PREFIX.put("lorsqu'", "lorsque");
+        PREFIX.put("m'", "me");
+        PREFIX.put("n'", "ne");
+        PREFIX.put("puisqu'", "puisque");
+        PREFIX.put("qu'", "que");
+        PREFIX.put("quoiqu'", "quoique");
+        PREFIX.put("s'", "se");
+        PREFIX.put("t'", "te");
+    }
 
-    private static final Map<String, String> SUFFIX = Map.ofEntries(
-            Map.entry("-ce", "ce"),
-            Map.entry("-ci", ""),
-            Map.entry("-elle", "elle"),
-            Map.entry("-elles", "elles"),
-            Map.entry("-en", "en"),
-            Map.entry("-eux", "eux"),
-            Map.entry("-il", "il"),
-            Map.entry("-ils", "ils"),
-            Map.entry("-je", "je"),
-            Map.entry("-la", "la"),
-            Map.entry("-là", ""),
-            Map.entry("-le", "le"),
-            Map.entry("-les", "les"),
-            Map.entry("-leur", "leur"),
-            Map.entry("-lui", "lui"),
-            Map.entry("-me", "me"),
-            Map.entry("-moi", "moi"),
-            Map.entry("-nous", "nous"),
-            Map.entry("-on", "on"),
-            Map.entry("-t", ""),
-            Map.entry("-te", "te"),
-            Map.entry("-toi", "toi"),
-            Map.entry("-tu", "tu"),
-            Map.entry("-vous", "vous"),
-            Map.entry("-y", "y")
-    );
+    private static final CharsMap SUFFIX = new CharsMap(25);
+    static {
+        SUFFIX.put("-ce", "ce");
+        SUFFIX.put("-ci", "");
+        SUFFIX.put("-elle", "elle");
+        SUFFIX.put("-elles", "elles");
+        SUFFIX.put("-en", "en");
+        SUFFIX.put("-eux", "eux");
+        SUFFIX.put("-il", "il");
+        SUFFIX.put("-ils", "ils");
+        SUFFIX.put("-je", "je");
+        SUFFIX.put("-la", "la");
+        SUFFIX.put("-là", "");
+        SUFFIX.put("-le", "le");
+        SUFFIX.put("-les", "les");
+        SUFFIX.put("-leur", "leur");
+        SUFFIX.put("-lui", "lui");
+        SUFFIX.put("-me", "me");
+        SUFFIX.put("-moi", "moi");
+        SUFFIX.put("-nous", "nous");
+        SUFFIX.put("-on", "on");
+        SUFFIX.put("-t", "");
+        SUFFIX.put("-te", "te");
+        SUFFIX.put("-toi", "toi");
+        SUFFIX.put("-tu", "tu");
+        SUFFIX.put("-vous", "vous");
+        SUFFIX.put("-y", "y");
+    }
 
     private CharSequence text;
     private int offset;
@@ -233,7 +235,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
             return false;
         }
 
-        if (keepAsIs(0, raw.length()) || tooManyHyphens(0, raw.length())) {
+        if (KEEP_AS_IS.contains(raw, 0, raw.length()) || tooManyHyphens(0, raw.length())) {
             return appendRange(0, raw.length());
         }
 
@@ -263,17 +265,6 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     }
 
     /**
-     * Tells whether a raw-buffer range should be kept unsplit.
-     *
-     * @param start the inclusive raw-buffer start offset
-     * @param end the exclusive raw-buffer end offset
-     * @return true if the token should be kept unsplit
-     */
-    private boolean keepAsIs(final int start, final int end) {
-        return KEEP_AS_IS.contains(key(start, end));
-    }
-
-    /**
      * Tells whether a character belongs to a raw token.
      *
      * @param c the character
@@ -291,23 +282,6 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
      */
     private static boolean isUpperOrTitle(final char c) {
         return Character.isUpperCase(c) || Character.isTitleCase(c);
-    }
-
-    /**
-     * Builds a lowercase lookup key from a raw-buffer range.
-     *
-     * @param start the inclusive raw-buffer start offset
-     * @param end the exclusive raw-buffer end offset
-     * @return a lowercase lookup key
-     */
-    private String key(final int start, final int end) {
-        key.setLength(0);
-
-        for (int i = start; i < end; i++) {
-            key.append(Character.toLowerCase(raw.charAt(i)));
-        }
-
-        return key.toString();
     }
 
     /**
@@ -340,16 +314,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         };
     }
 
-    /**
-     * Returns the replacement for an elided prefix.
-     *
-     * @param start the inclusive prefix start offset
-     * @param end the exclusive prefix end offset
-     * @return the replacement, or null if the prefix is not recognized
-     */
-    private String prefixReplacement(final int start, final int end) {
-        return PREFIX.get(key(start, end));
-    }
+
 
     /**
      * Reads the next raw token into the reusable raw buffer.
@@ -418,7 +383,9 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
         if (apostrophe > start) {
             final int prefixEnd = apostrophe + 1;
-            final String value = prefixReplacement(start, prefixEnd);
+            // lower case prefix
+            raw.setCharAt(start, Character.toLowerCase(raw.charAt(start)));
+            final String value = PREFIX.get(raw, start, prefixEnd - start);
 
             if (value != null && prefixEnd < end) {
                 final char next = raw.charAt(prefixEnd);
@@ -433,7 +400,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         }
 
         if (hyphen > start) {
-            final String value = suffixReplacement(hyphen, end);
+            final String value = SUFFIX.get(raw, hyphen, end - hyphen);
 
             if (value != null) {
                 if (!splitRange(start, hyphen, depth + 1)) {
@@ -449,19 +416,6 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         }
 
         return appendRange(start, end);
-    }
-
-    /**
-     * Returns the replacement for a hyphen suffix.
-     *
-     * <p>An empty string means that the suffix is recognized and dropped.</p>
-     *
-     * @param start the inclusive suffix start offset
-     * @param end the exclusive suffix end offset
-     * @return the replacement, an empty string, or null if not recognized
-     */
-    private String suffixReplacement(final int start, final int end) {
-        return SUFFIX.get(key(start, end));
     }
 
     /**

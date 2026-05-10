@@ -103,12 +103,12 @@ public final class TermReplaceFilter extends TokenFilter {
     public boolean incrementToken() throws IOException {
         if (!input.incrementToken()) return false;
         
-        int vOrd = map.valueOrd(termAtt.buffer(), 0, termAtt.length());
-        if (vOrd >= 0) { 
-            int vLen = map.len(vOrd); 
-            char[] dst = termAtt.resizeBuffer(vLen);
-            map.copy(vOrd, dst, 0);
-            termAtt.setLength(vLen);
+        int valueOrd = map.valueOrd(termAtt.buffer(), 0, termAtt.length());
+        if (valueOrd >= 0) { 
+            int valueLen = map.len(valueOrd); 
+            char[] dst = termAtt.resizeBuffer(valueLen);
+            map.copy(valueOrd, dst, 0);
+            termAtt.setLength(valueLen);
         }
         return true;
     }
