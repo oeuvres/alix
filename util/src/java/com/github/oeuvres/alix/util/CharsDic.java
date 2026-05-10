@@ -36,7 +36,9 @@ import java.util.Arrays;
  *       metadata holds slab offset and length. A 16-bit fingerprint per slot
  *       rejects most probes before slab comparison.</li>
  *   <li>Per-ord hashes are retained for rehashing without re-walking the slab.</li>
- *   <li>Hash function: Murmur3-32 over UTF-16 code units.</li>
+ *   <li>Hash function: Murmur3-32 over UTF-16 code units. In ignore-case
+ *       mode, {@link Character#toLowerCase(char)} is applied to each code unit
+ *       before hashing, storage, and comparison.</li>
  * </ul>
  *
  * <p>Memory at <i>n</i> ords: 12 bytes/ord (meta + termHash) plus ~8 bytes/slot
@@ -73,6 +75,9 @@ public final class CharsDic
     /** Per-slot 16-bit fingerprint ({@code hash >>> 16}). */
     private short[] fp16;
 
+    /** True to intern and lookup sequences using per-char lowercasing. */
+    private final boolean ignoreCase;
+
     /** Power-of-two table mask ({@code index = hash & mask}). */
     private int mask;
 
@@ -105,13 +110,34 @@ public final class CharsDic
     private int[] termHash;
 
     /**
-     * Constructs the dictionary with an expected number of unique sequences.
+     * Constructs a case-sensitive dictionary with an expected number of unique
+     * sequences.
      *
      * @param expectedSize estimate of distinct sequences to add; values
      *                     {@code <= 0} are treated as 1
      */
-    public CharsDic(int expectedSize)
+    public CharsDic(final int expectedSize)
     {
+        this(expectedSize, false);
+    }
+
+    /**
+     * Constructs the dictionary with an expected number of unique sequences.
+     *
+     * <p>If {@code ignoreCase} is true, all hashing, storage, and equality tests
+     * apply {@link Character#toLowerCase(char)} independently to each UTF-16
+     * code unit. No code point logic is used. Stored keys keep the same length
+     * in the slab because each input {@code char} writes exactly one output
+     * {@code char}.</p>
+     *
+     * @param expectedSize estimate of distinct sequences to add; values
+     *                     {@code <= 0} are treated as 1
+     * @param ignoreCase true for per-char lowercased dictionary semantics,
+     *                   false for exact UTF-16 code-unit semantics
+     */
+    public CharsDic(int expectedSize, final boolean ignoreCase)
+    {
+        this.ignoreCase = ignoreCase;
         if (expectedSize < 1) {
             expectedSize = 1;
         }
@@ -353,6 +379,60 @@ public final class CharsDic
     }
 
     /**
+     * Computes Murmur3-32 over a UTF-16 {@code char[]} slice after applying
+     * {@link Character#toLowerCase(char)} to each code unit. No bounds
+     * checking. No code point logic.
+     *
+     * @param a   source array
+     * @param off start offset (inclusive)
+     * @param len number of code units
+     * @return 32-bit hash
+     */
+    private static int murmur3Lower(final char[] a, final int off, final int len)
+    {
+        int h1 = MURMUR_SEED;
+        int i = off;
+        final int endPair = off + (len & ~1);
+        while (i < endPair) {
+            final int k1 = (Character.toLowerCase(a[i]) & 0xFFFF)
+                | ((Character.toLowerCase(a[i + 1]) & 0xFFFF) << 16);
+            i += 2;
+            h1 = mixH1(h1, mixK1(k1));
+        }
+        if ((len & 1) != 0) {
+            h1 ^= mixK1(Character.toLowerCase(a[i]) & 0xFFFF);
+        }
+        return finishHash(h1, len);
+    }
+
+    /**
+     * Computes Murmur3-32 over a UTF-16 {@link CharSequence} slice after
+     * applying {@link Character#toLowerCase(char)} to each code unit. No bounds
+     * checking. No code point logic.
+     *
+     * @param a   source sequence
+     * @param off start offset (inclusive)
+     * @param len number of code units
+     * @return 32-bit hash
+     */
+    private static int murmur3Lower(final CharSequence a, final int off, final int len)
+    {
+        int h1 = MURMUR_SEED;
+        int i = off;
+        final int endPair = off + (len & ~1);
+        while (i < endPair) {
+            final int k1 = (Character.toLowerCase(a.charAt(i)) & 0xFFFF)
+                | ((Character.toLowerCase(a.charAt(i + 1)) & 0xFFFF) << 16);
+            i += 2;
+            h1 = mixH1(h1, mixK1(k1));
+        }
+        if ((len & 1) != 0) {
+            h1 ^= mixK1(Character.toLowerCase(a.charAt(i)) & 0xFFFF);
+        }
+        return finishHash(h1, len);
+    }
+
+    /**
      * Returns the ord of an interned sequence, or {@link #NOT_IN_DIC}.
      *
      * @param key source sequence
@@ -470,8 +550,15 @@ public final class CharsDic
     {
         ensureSlabCapacity(len);
         final int base = slabUsed;
-        for (int i = 0, j = off; i < len; i++, j++) {
-            slab[base + i] = cs.charAt(j);
+        if (ignoreCase) {
+            for (int i = 0, j = off; i < len; i++, j++) {
+                slab[base + i] = Character.toLowerCase(cs.charAt(j));
+            }
+        }
+        else {
+            for (int i = 0, j = off; i < len; i++, j++) {
+                slab[base + i] = cs.charAt(j);
+            }
         }
         slabUsed = base + len;
         return base;
@@ -489,7 +576,14 @@ public final class CharsDic
     {
         ensureSlabCapacity(len);
         final int base = slabUsed;
-        System.arraycopy(a, off, slab, base, len);
+        if (ignoreCase) {
+            for (int i = 0, j = off; i < len; i++, j++) {
+                slab[base + i] = Character.toLowerCase(a[j]);
+            }
+        }
+        else {
+            System.arraycopy(a, off, slab, base, len);
+        }
         slabUsed = base + len;
         return base;
     }
@@ -597,9 +691,18 @@ public final class CharsDic
     private boolean equalsAt(final int ord, final char[] a, final int off, final int len)
     {
         final int s = metaOff(meta[ord]);
-        for (int i = 0; i < len; i++) {
-            if (slab[s + i] != a[off + i]) {
-                return false;
+        if (ignoreCase) {
+            for (int i = 0, j = off; i < len; i++, j++) {
+                if (slab[s + i] != Character.toLowerCase(a[j])) {
+                    return false;
+                }
+            }
+        }
+        else {
+            for (int i = 0, j = off; i < len; i++, j++) {
+                if (slab[s + i] != a[j]) {
+                    return false;
+                }
             }
         }
         return true;
@@ -618,9 +721,18 @@ public final class CharsDic
     private boolean equalsAt(final int ord, final CharSequence cs, final int off, final int len)
     {
         final int s = metaOff(meta[ord]);
-        for (int i = 0, j = off; i < len; i++, j++) {
-            if (slab[s + i] != cs.charAt(j)) {
-                return false;
+        if (ignoreCase) {
+            for (int i = 0, j = off; i < len; i++, j++) {
+                if (slab[s + i] != Character.toLowerCase(cs.charAt(j))) {
+                    return false;
+                }
+            }
+        }
+        else {
+            for (int i = 0, j = off; i < len; i++, j++) {
+                if (slab[s + i] != cs.charAt(j)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -656,6 +768,32 @@ public final class CharsDic
     }
 
     /**
+     * Computes the instance hash for a {@code char[]} slice.
+     *
+     * @param a   source array
+     * @param off start offset
+     * @param len number of code units
+     * @return 32-bit hash
+     */
+    private int hash(final char[] a, final int off, final int len)
+    {
+        return ignoreCase ? murmur3Lower(a, off, len) : murmur3(a, off, len);
+    }
+
+    /**
+     * Computes the instance hash for a {@link CharSequence} slice.
+     *
+     * @param cs  source sequence
+     * @param off start offset
+     * @param len number of code units
+     * @return 32-bit hash
+     */
+    private int hash(final CharSequence cs, final int off, final int len)
+    {
+        return ignoreCase ? murmur3Lower(cs, off, len) : murmur3(cs, off, len);
+    }
+
+    /**
      * Shared insertion core. Exactly one of {@code a} or {@code cs} must be
      * non-null.
      *
@@ -668,7 +806,7 @@ public final class CharsDic
     private int intern(final char[] a, final int off, final int len, final CharSequence cs)
     {
         final boolean arraySrc = (a != null);
-        final int h = arraySrc ? murmur3(a, off, len) : murmur3(cs, off, len);
+        final int h = arraySrc ? hash(a, off, len) : hash(cs, off, len);
         final short f = (short) (h >>> 16);
         int i = h & mask;
         for (;;) {
@@ -719,7 +857,7 @@ public final class CharsDic
     private int lookup(final char[] a, final int off, final int len, final CharSequence cs)
     {
         final boolean arraySrc = (a != null);
-        final int h = arraySrc ? murmur3(a, off, len) : murmur3(cs, off, len);
+        final int h = arraySrc ? hash(a, off, len) : hash(cs, off, len);
         final short f = (short) (h >>> 16);
         int i = h & mask;
         for (;;) {

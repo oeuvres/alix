@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -85,6 +86,22 @@ class CharsDicTest
     }
 
     /**
+     * The default constructor keeps exact UTF-16 code-unit semantics.
+     */
+    @Test
+    void constructor_defaultIsCaseSensitive()
+    {
+        final CharsDic dic = new CharsDic(4);
+        final int ord = dic.add("Alpha");
+
+        assertEquals(ord, dic.ord("Alpha"));
+        assertEquals(CharsDic.NOT_IN_DIC, dic.ord("alpha"));
+        assertEquals(1, dic.add("alpha"));
+        assertEquals(2, dic.size());
+        assertEquals("Alpha", dic.asString(ord));
+    }
+
+    /**
      * {@link CharsDic#copy} echoes negative ords without touching the buffer
      * and copies positive ords correctly.
      */
@@ -108,6 +125,131 @@ class CharsDicTest
             () -> dic.copy(ord, new char[2], 0));
         assertThrows(IllegalArgumentException.class,
             () -> dic.copy(dic.size(), buf, 0));
+    }
+
+    /**
+     * Ignore-case mode interns mixed-case variants as one ord across source
+     * representations and slice offsets.
+     */
+    @Test
+    void ignoreCase_addAndOrdAcrossRepresentations()
+    {
+        final CharsDic dic = new CharsDic(4, true);
+        final String core = "ÉcOleİŒA";
+        final String lower = lowerChars(core);
+        final char[] paddedArray = ("<<" + lower + ">>").toCharArray();
+        final StringBuilder paddedBuilder = new StringBuilder("[[" + core + "]]");
+
+        final int ord = dic.add(core);
+
+        assertEquals(ord, dic.add(paddedArray, 2, lower.length()));
+        assertEquals(ord, dic.add(paddedBuilder, 2, core.length()));
+        assertEquals(ord, dic.ord(lower));
+        assertEquals(ord, dic.ord(paddedArray, 2, lower.length()));
+        assertEquals(ord, dic.ord(paddedBuilder, 2, core.length()));
+        assertTrue(dic.contains("écoleiœa"));
+        assertEquals(1, dic.size());
+        assertEquals(lower, dic.asString(ord));
+    }
+
+    /**
+     * Ignore-case mode stores the per-char lowercased form and copies that
+     * stored form without changing the number of UTF-16 code units.
+     */
+    @Test
+    void ignoreCase_copyAndAsStringReturnCharLoweredStorage()
+    {
+        final CharsDic dic = new CharsDic(4, true);
+        final String src = "ÀÉÎÖÜİŒA🙂Z";
+        final String expected = lowerChars(src);
+        final int ord = dic.add(src.toCharArray(), 0, src.length());
+        final char[] copied = new char[src.length() + 4];
+
+        assertEquals(src.length(), expected.length());
+        assertEquals(expected, dic.asString(ord));
+        assertEquals(src.length(), dic.len(ord));
+        assertEquals(src.length(), dic.copy(ord, copied, 2));
+        assertEquals(expected, new String(copied, 2, src.length()));
+        assertEquals(expected, new String(dic.slabRef(), dic.termOffset(ord), dic.len(ord)));
+    }
+
+    /**
+     * Ignore-case mode rejects strings that differ after per-char lowercasing;
+     * equality must not collapse merely similar prefixes or lengths.
+     */
+    @Test
+    void ignoreCase_equalsStillChecksEveryChar()
+    {
+        final CharsDic dic = new CharsDic(4, true);
+        final int alpha = dic.add("Alpha");
+        final int alphb = dic.add("Alphb");
+
+        assertEquals(alpha, dic.ord("ALPHA"));
+        assertEquals(alphb, dic.ord("ALPHB"));
+        assertEquals(CharsDic.NOT_IN_DIC, dic.ord("Alph"));
+        assertEquals(CharsDic.NOT_IN_DIC, dic.ord("AlphaX"));
+        assertEquals(2, dic.size());
+    }
+
+    /**
+     * Ignore-case mode is explicitly UTF-16-char based. A supplementary
+     * uppercase/lowercase pair that would match with code-point lowercasing
+     * must remain distinct here because each surrogate char is lowercased
+     * independently.
+     */
+    @Test
+    void ignoreCase_hasNoCodePointFolding()
+    {
+        final CharsDic dic = new CharsDic(4, true);
+        final String deseretCapitalLongI = "\uD801\uDC00";
+        final String deseretSmallLongI = "\uD801\uDC28";
+        final int ord = dic.add(deseretCapitalLongI);
+
+        assertEquals(2, deseretCapitalLongI.length());
+        assertEquals(2, deseretSmallLongI.length());
+        assertEquals(ord, dic.ord(deseretCapitalLongI));
+        assertEquals(CharsDic.NOT_IN_DIC, dic.ord(deseretSmallLongI));
+        assertEquals(deseretCapitalLongI, dic.asString(ord));
+        assertEquals(2, dic.len(ord));
+    }
+
+    /**
+     * Ignore-case hashes retained in {@code termHash} must survive rehashing
+     * and {@link CharsDic#trimToSize}.
+     */
+    @Test
+    void ignoreCase_rehashAndTrimPreserveFoldedLookups()
+    {
+        final CharsDic dic = new CharsDic(1, true);
+        final HashSet<String> shadow = new HashSet<>();
+
+        for (int i = 0; i < 900; i++) {
+            final String s = (i % 2 == 0 ? "Mot" : "MOT") + i + (i % 7 == 0 ? "É" : "A");
+            dic.add(s);
+            shadow.add(lowerChars(s));
+        }
+
+        assertIgnoreCaseContentMatches(dic, shadow, "after bulk add");
+
+        dic.trimToSize();
+        assertIgnoreCaseContentMatches(dic, shadow, "after trimToSize");
+
+        for (int i = 0; i < 50; i++) {
+            final String s = "Post" + i + "İ";
+            dic.add(s);
+            shadow.add(lowerChars(s));
+        }
+        assertIgnoreCaseContentMatches(dic, shadow, "after post-trim insertions");
+    }
+
+    /**
+     * Public static Murmur3 helpers remain exact/case-sensitive helpers;
+     * ignore-case behavior is an instance dictionary policy.
+     */
+    @Test
+    void murmur3_publicHelperRemainsCaseSensitive()
+    {
+        assertFalse(CharsDic.murmur3("Alpha", 0, 5) == CharsDic.murmur3("alpha", 0, 5));
     }
 
     /**
@@ -233,6 +375,31 @@ class CharsDicTest
     }
 
     /**
+     * Verifies that every lowercased entry in {@code shadow} round-trips
+     * through both lower- and upper-case probes.
+     *
+     * @param dic    dictionary under test
+     * @param shadow expected lowercased contents
+     * @param when   label used in failure messages
+     */
+    private static void assertIgnoreCaseContentMatches(
+        final CharsDic dic,
+        final HashSet<String> shadow,
+        final String when)
+    {
+        for (String lower : shadow) {
+            final int ord = dic.ord(lower);
+            assertTrue(ord >= 0, () -> "missing lower " + when + ": " + lower);
+            assertEquals(ord, dic.ord(upperAscii(lower)),
+                () -> "missing upper probe " + when + ": " + lower);
+            assertEquals(lower, dic.asString(ord),
+                () -> "round-trip " + when + ": " + lower);
+        }
+        assertEquals(shadow.size(), dic.size(),
+            () -> "dictionary size " + when);
+    }
+
+    /**
      * Verifies that every entry in {@code shadow} round-trips through
      * {@code ord}/{@code asString}, and that {@code dic.size()} equals
      * {@code shadow.size()}.
@@ -311,6 +478,22 @@ class CharsDicTest
     }
 
     /**
+     * Applies {@link Character#toLowerCase(char)} independently to each UTF-16
+     * code unit.
+     *
+     * @param s source string
+     * @return per-char lowercased string
+     */
+    private static String lowerChars(final String s)
+    {
+        final char[] chars = s.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = Character.toLowerCase(chars[i]);
+        }
+        return new String(chars);
+    }
+
+    /**
      * Creates a debug message for a randomized failure.
      *
      * @param msg  label
@@ -326,6 +509,25 @@ class CharsDicTest
         return "murmur3 " + msg + " mismatch at iter=" + iter
             + " off=" + off + " len=" + len
             + " data=\"" + escape(new String(arr)) + "\"";
+    }
+
+    /**
+     * Uppercases ASCII letters only, leaving other UTF-16 code units unchanged.
+     * This makes ignore-case probes deterministic without invoking full string
+     * case mapping.
+     *
+     * @param s source string
+     * @return ASCII-uppercase variant
+     */
+    private static String upperAscii(final String s)
+    {
+        final char[] chars = s.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            if (chars[i] >= 'a' && chars[i] <= 'z') {
+                chars[i] = (char) (chars[i] - ('a' - 'A'));
+            }
+        }
+        return new String(chars);
     }
 
     /**
