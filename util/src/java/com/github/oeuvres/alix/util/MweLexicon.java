@@ -150,6 +150,19 @@ public final class MweLexicon
     }
     
     /**
+     * Returns the canonical form identified by an accept ordinal.
+     *
+     * @param ord the ordinal returned by {@link #accept(int)}
+     * @return the canonical form
+     * @throws IllegalStateException if the lexicon has not been frozen
+     */
+    public String asString(final int ord)
+    {
+        checkFrozen();
+        return vocab.asString(ord);
+    }
+
+    /**
      * Checks that the lexicon has been frozen.
      *
      * @throws IllegalStateException if the lexicon has not been frozen
@@ -162,43 +175,30 @@ public final class MweLexicon
     }
     
     /**
-     * Returns the canonical form identified by an accept ordinal.
-     *
-     * @param acceptOrd the ordinal returned by {@link #accept(int)}
-     * @return the canonical form
-     * @throws IllegalStateException if the lexicon has not been frozen
-     */
-    public String formAsString(final int acceptOrd)
-    {
-        checkFrozen();
-        return vocab.getAsString(acceptOrd);
-    }
-    
-    /**
-     * Returns the length of a canonical form.
-     *
-     * @param acceptOrd the ordinal returned by {@link #accept(int)}
-     * @return the canonical-form length in UTF-16 code units
-     * @throws IllegalStateException if the lexicon has not been frozen
-     */
-    public int formLength(final int acceptOrd)
-    {
-        checkFrozen();
-        return vocab.termLength(acceptOrd);
-    }
-    
-    /**
      * Copies a canonical form into a destination character buffer.
      *
-     * @param acceptOrd the ordinal returned by {@link #accept(int)}
+     * @param ord the ordinal returned by {@link #accept(int)}
      * @param dst       the destination buffer
      * @param off       the destination offset
      * @throws IllegalStateException if the lexicon has not been frozen
      */
-    public void formToChars(final int acceptOrd, final char[] dst, final int off)
+    public void copy(final int ord, final char[] dst, final int off)
     {
         checkFrozen();
-        vocab.get(acceptOrd, dst, off);
+        vocab.copy(ord, dst, off);
+    }
+
+    /**
+     * Returns the length of a canonical form.
+     *
+     * @param ord the ordinal returned by {@link #accept(int)}
+     * @return the canonical-form length in UTF-16 code units
+     * @throws IllegalStateException if the lexicon has not been frozen
+     */
+    public int formLength(final int ord)
+    {
+        checkFrozen();
+        return vocab.termLength(ord);
     }
     
     /**
@@ -270,7 +270,7 @@ public final class MweLexicon
     {
         checkFrozen();
         
-        final int tokOrd = vocab.find(buf, 0, len);
+        final int tokOrd = vocab.ord(buf, 0, len);
         if (tokOrd < 0) {
             return -1;
         }

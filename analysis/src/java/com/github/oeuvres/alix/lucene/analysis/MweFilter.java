@@ -183,7 +183,7 @@ public final class MweFilter extends TokenFilter
 
         final int len = lexicon.formLength(matchOrd);
         final char[] buf = termAtt.resizeBuffer(len);
-        lexicon.formToChars(matchOrd, buf, 0);
+        lexicon.copy(matchOrd, buf, 0);
         termAtt.setLength(len);
 
         // Fix endOffset and type.

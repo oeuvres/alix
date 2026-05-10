@@ -51,10 +51,10 @@ public class MweLexiconTest {
     void canonicalFormsAreInVocab() {
         final CharsDic vocab = lexicon.vocabRef();
 
-        assertTrue(vocab.find("machine learning") >= 0);
-        assertTrue(vocab.find("New York") >= 0);
-        assertTrue(vocab.find("New York City") >= 0);
-        assertTrue(vocab.find("state of the art") >= 0);
+        assertTrue(vocab.ord("machine learning") >= 0);
+        assertTrue(vocab.ord("New York") >= 0);
+        assertTrue(vocab.ord("New York City") >= 0);
+        assertTrue(vocab.ord("state of the art") >= 0);
     }
 
     /**
@@ -64,15 +64,15 @@ public class MweLexiconTest {
     void componentTokensAreInVocab() {
         final CharsDic vocab = lexicon.vocabRef();
 
-        assertTrue(vocab.find("machine") >= 0);
-        assertTrue(vocab.find("learning") >= 0);
-        assertTrue(vocab.find("New") >= 0);
-        assertTrue(vocab.find("York") >= 0);
-        assertTrue(vocab.find("City") >= 0);
-        assertTrue(vocab.find("state") >= 0);
-        assertTrue(vocab.find("of") >= 0);
-        assertTrue(vocab.find("the") >= 0);
-        assertTrue(vocab.find("art") >= 0);
+        assertTrue(vocab.ord("machine") >= 0);
+        assertTrue(vocab.ord("learning") >= 0);
+        assertTrue(vocab.ord("New") >= 0);
+        assertTrue(vocab.ord("York") >= 0);
+        assertTrue(vocab.ord("City") >= 0);
+        assertTrue(vocab.ord("state") >= 0);
+        assertTrue(vocab.ord("of") >= 0);
+        assertTrue(vocab.ord("the") >= 0);
+        assertTrue(vocab.ord("art") >= 0);
     }
 
     /**
@@ -93,7 +93,7 @@ public class MweLexiconTest {
         final int acceptOrd = walkAndAccept("state", "of", "the", "art");
 
         assertTrue(acceptOrd >= 0);
-        assertEquals("state of the art", lexicon.formAsString(acceptOrd));
+        assertEquals("state of the art", lexicon.asString(acceptOrd));
     }
 
     /**
@@ -132,7 +132,7 @@ public class MweLexiconTest {
         final int acceptOrd = lexicon.accept(state2);
 
         assertTrue(acceptOrd >= 0, "should accept at New York");
-        assertEquals("New York", lexicon.formAsString(acceptOrd));
+        assertEquals("New York", lexicon.asString(acceptOrd));
     }
 
     /**
@@ -149,7 +149,7 @@ public class MweLexiconTest {
         final int acceptOrd = lexicon.accept(state3);
 
         assertTrue(acceptOrd >= 0, "should accept at New York City");
-        assertEquals("New York City", lexicon.formAsString(acceptOrd));
+        assertEquals("New York City", lexicon.asString(acceptOrd));
     }
 
     /**
@@ -182,9 +182,8 @@ public class MweLexiconTest {
     @Test
     void sharedComponentHasOneOrdinal() {
         final CharsDic vocab = lexicon.vocabRef();
-        final int ord1 = vocab.find("New");
-        final int ord2 = vocab.find("New");
-
+        final int ord1 = vocab.ord("New");
+        final int ord2 = vocab.ord("New");
         assertEquals(ord1, ord2);
         assertTrue(ord1 >= 0);
     }
@@ -194,7 +193,7 @@ public class MweLexiconTest {
      */
     @Test
     void singleTokenExpressionSkipped() {
-        assertEquals(-1, lexicon.vocabRef().find("single"));
+        assertEquals(-1, lexicon.vocabRef().ord("single"));
     }
 
     /**
@@ -207,7 +206,7 @@ public class MweLexiconTest {
         final int acceptOrd = walkAndAccept("machine", "learning");
 
         assertTrue(acceptOrd >= 0, "fresh walk from root must succeed after a failed one");
-        assertEquals("machine learning", lexicon.formAsString(acceptOrd));
+        assertEquals("machine learning", lexicon.asString(acceptOrd));
     }
 
     /**
@@ -218,7 +217,7 @@ public class MweLexiconTest {
         final int acceptOrd = walkAndAccept("machine", "learning");
 
         assertTrue(acceptOrd >= 0, "expected accepting state");
-        assertEquals("machine learning", lexicon.formAsString(acceptOrd));
+        assertEquals("machine learning", lexicon.asString(acceptOrd));
     }
 
     /**
@@ -229,7 +228,7 @@ public class MweLexiconTest {
         final int acceptOrd = walkAndAccept("New", "York");
 
         assertTrue(acceptOrd >= 0);
-        assertEquals("New York", lexicon.formAsString(acceptOrd));
+        assertEquals("New York", lexicon.asString(acceptOrd));
     }
 
     /**
@@ -247,7 +246,7 @@ public class MweLexiconTest {
      */
     @Test
     void unknownTokenNotInVocab() {
-        assertEquals(-1, lexicon.vocabRef().find("philosophy"));
+        assertEquals(-1, lexicon.vocabRef().ord("philosophy"));
     }
 
     /**

@@ -71,7 +71,7 @@ public class LemmaLexiconTest {
         lex.put("axes", NOUN, "axe");
         lex.put("axes", NOUN, "axis");
 
-        assertEquals("axe", lex.string(lex.lemmaId("axes", NOUN)));
+        assertEquals("axe", lex.asString(lex.lemmaId("axes", NOUN)));
     }
 
     /**
@@ -88,7 +88,7 @@ public class LemmaLexiconTest {
         lex.onDuplicate(LemmaLexicon.OnDuplicate.REPLACE);
         lex.put("axes", NOUN, "axis");
 
-        assertEquals("axis", lex.string(lex.lemmaId("axes", NOUN)));
+        assertEquals("axis", lex.asString(lex.lemmaId("axes", NOUN)));
     }
 
     /**
@@ -104,10 +104,10 @@ public class LemmaLexiconTest {
         final char[] running = "__running__".toCharArray();
         final String children = "xxchildrenyy";
 
-        assertTrue(lex.id("running") >= 0);
-        assertEquals(lex.id("running"), lex.id(running, 2, 7));
-        assertEquals(lex.id("children"), lex.id(children, 2, 8));
-        assertEquals(-1, lex.id("unknown"));
+        assertTrue(lex.ord("running") >= 0);
+        assertEquals(lex.ord("running"), lex.ord(running, 2, 7));
+        assertEquals(lex.ord("children"), lex.ord(children, 2, 8));
+        assertEquals(-1, lex.ord("unknown"));
     }
 
     /**
@@ -125,7 +125,7 @@ public class LemmaLexiconTest {
 
         assertTrue(lemmaId1 >= 0);
         assertEquals(lemmaId1, lemmaId2);
-        assertEquals("go", lex.string(lemmaId1));
+        assertEquals("go", lex.asString(lemmaId1));
     }
 
     /**
@@ -141,7 +141,7 @@ public class LemmaLexiconTest {
         final int lemmaId = lex.lemmaId(form, 2, 4);
 
         assertTrue(lemmaId >= 0);
-        assertEquals("go", lex.string(lemmaId));
+        assertEquals("go", lex.asString(lemmaId));
     }
 
     /**
@@ -157,7 +157,7 @@ public class LemmaLexiconTest {
         final int lemmaId = lex.lemmaId(form, 2, 4);
 
         assertTrue(lemmaId >= 0);
-        assertEquals("mouse", lex.string(lemmaId));
+        assertEquals("mouse", lex.asString(lemmaId));
     }
 
     /**
@@ -172,9 +172,9 @@ public class LemmaLexiconTest {
         lex.put("saw", VERB, "see");
         lex.put("saw", NOUN, "saw");
 
-        assertEquals("see", lex.string(lex.lemmaId("saw")));
-        assertEquals("see", lex.string(lex.lemmaId("saw", VERB)));
-        assertEquals("saw", lex.string(lex.lemmaId("saw", NOUN)));
+        assertEquals("see", lex.asString(lex.lemmaId("saw")));
+        assertEquals("see", lex.asString(lex.lemmaId("saw", VERB)));
+        assertEquals("saw", lex.asString(lex.lemmaId("saw", NOUN)));
         assertEquals(-1, lex.lemmaId("saw", ADJ));
     }
 
@@ -187,12 +187,12 @@ public class LemmaLexiconTest {
 
         lex.put("teeth", NOUN, "tooth");
 
-        final int formId = lex.id("teeth");
+        final int formId = lex.ord("teeth");
         final int lemmaId = lex.lemmaId(formId, NOUN);
 
         assertTrue(formId >= 0);
         assertTrue(lemmaId >= 0);
-        assertEquals("tooth", lex.string(lemmaId));
+        assertEquals("tooth", lex.asString(lemmaId));
     }
 
     /**
@@ -224,8 +224,8 @@ public class LemmaLexiconTest {
         final int lemmaId = lex.put(form, 2, 5, NOUN, lemma, 2, 5);
 
         assertTrue(lemmaId >= 0);
-        assertEquals("goose", lex.string(lemmaId));
-        assertEquals("goose", lex.string(lex.lemmaId("geese", NOUN)));
+        assertEquals("goose", lex.asString(lemmaId));
+        assertEquals("goose", lex.asString(lex.lemmaId("geese", NOUN)));
     }
 
     /**
@@ -237,11 +237,11 @@ public class LemmaLexiconTest {
 
         lex.put("geese", NOUN, "goose");
 
-        final int formId = lex.id("geese");
-        final int lemmaId = lex.id("goose");
+        final int formId = lex.ord("geese");
+        final int lemmaId = lex.ord("goose");
 
         assertDoesNotThrow(() -> lex.put(formId, VERB, lemmaId, LemmaLexicon.OnDuplicate.ERROR));
-        assertEquals("goose", lex.string(lex.lemmaId("geese", VERB)));
+        assertEquals("goose", lex.asString(lex.lemmaId("geese", VERB)));
     }
 
     /**
@@ -253,8 +253,8 @@ public class LemmaLexiconTest {
 
         lex.put("geese", NOUN, "goose");
 
-        final int formId = lex.id("geese");
-        final int lemmaId = lex.id("goose");
+        final int formId = lex.ord("geese");
+        final int lemmaId = lex.ord("goose");
 
         final IllegalArgumentException ex1 = assertThrows(
                 IllegalArgumentException.class,
@@ -279,9 +279,9 @@ public class LemmaLexiconTest {
         lex.put("mice", "mouse");
         lex.put("went", "go");
 
-        assertEquals("child", lex.string(lex.lemmaId("children")));
-        assertEquals("mouse", lex.string(lex.lemmaId("mice")));
-        assertEquals("go", lex.string(lex.lemmaId("went")));
+        assertEquals("child", lex.asString(lex.lemmaId("children")));
+        assertEquals("mouse", lex.asString(lex.lemmaId("mice")));
+        assertEquals("go", lex.asString(lex.lemmaId("went")));
         assertEquals(-1, lex.lemmaId("aardvarks"));
     }
 
@@ -297,10 +297,10 @@ public class LemmaLexiconTest {
         lex.put("saw", VERB, "see");
         lex.put("saw", NOUN, "saw");
 
-        assertEquals("leave", lex.string(lex.lemmaId("left", VERB)));
-        assertEquals("left", lex.string(lex.lemmaId("left", ADJ)));
-        assertEquals("see", lex.string(lex.lemmaId("saw", VERB)));
-        assertEquals("saw", lex.string(lex.lemmaId("saw", NOUN)));
+        assertEquals("leave", lex.asString(lex.lemmaId("left", VERB)));
+        assertEquals("left", lex.asString(lex.lemmaId("left", ADJ)));
+        assertEquals("see", lex.asString(lex.lemmaId("saw", VERB)));
+        assertEquals("saw", lex.asString(lex.lemmaId("saw", NOUN)));
     }
 
     /**
@@ -312,7 +312,7 @@ public class LemmaLexiconTest {
 
         final int lemmaId = lex.put("running", VERB, "run");
 
-        assertEquals("run", lex.string(lemmaId));
+        assertEquals("run", lex.asString(lemmaId));
     }
 
     /**
@@ -335,8 +335,8 @@ public class LemmaLexiconTest {
         assertEquals(teethLemma, lex.lemmaId("teeth"));
         assertEquals(sawVerbLemma, lex.lemmaId("saw", VERB));
         assertEquals(sawNounLemma, lex.lemmaId("saw", NOUN));
-        assertEquals("tooth", lex.string(teethLemma));
-        assertEquals("see", lex.string(sawVerbLemma));
-        assertEquals("saw", lex.string(sawNounLemma));
+        assertEquals("tooth", lex.asString(teethLemma));
+        assertEquals("see", lex.asString(sawVerbLemma));
+        assertEquals("saw", lex.asString(sawNounLemma));
     }
 }

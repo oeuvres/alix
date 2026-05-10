@@ -1,11 +1,9 @@
 package com.github.oeuvres.alix.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -14,18 +12,15 @@ import org.junit.jupiter.api.Test;
 /**
  * JUnit 5 tests for {@link CharsDic}.
  *
- * <p>Covers: B1 ingestion (a sequence has one ord whether seen as key, as
- * value, or both); {@link CharsDic#put} replace-on-put semantics; the
- * negative-ord composition pattern of {@link CharsDic#copy}; rehash and
- * {@link CharsDic#trimToSize} preserving value associations; hash consistency
- * across {@code char[]}, {@link String}, {@link StringBuilder}; bounds
- * checks.</p>
+ * <p>Covers set semantics: idempotent intern across {@code char[]},
+ * {@link String}, {@link StringBuilder}; the negative-ord composition pattern
+ * of {@link CharsDic#copy}; rehash and {@link CharsDic#trimToSize}; hash
+ * consistency; bounds checks.</p>
  */
 class CharsDicTest
 {
     /**
-     * {@code add} should return the same ord on repeated insertion, regardless
-     * of source representation. New API: ord is non-negative on every call.
+     * Repeated insertion across representations returns the same ord.
      */
     @Test
     void add_idempotentAcrossRepresentations()
@@ -36,17 +31,11 @@ class CharsDicTest
         final StringBuilder padded2 = new StringBuilder("[[" + core + "]]");
 
         final int ord0 = dic.add(padded1.toCharArray(), 2, core.length());
-        assertTrue(ord0 >= 0, "first insertion returns a non-negative ord");
+        assertTrue(ord0 >= 0);
 
-        final int ord1 = dic.add(padded2, 2, core.length());
-        assertEquals(ord0, ord1,
-            "same logical sequence from CharSequence slice returns the same ord");
-
-        final int ord2 = dic.add(core);
-        assertEquals(ord0, ord2,
-            "same logical sequence as String returns the same ord");
-
-        assertEquals(1, dic.size(), "size counts unique sequences only");
+        assertEquals(ord0, dic.add(padded2, 2, core.length()));
+        assertEquals(ord0, dic.add(core));
+        assertEquals(1, dic.size());
         assertEquals(core, dic.asString(ord0));
         assertEquals(core.length(), dic.termLength(ord0));
         assertTrue(dic.maxTermLength() >= core.length());
@@ -74,72 +63,55 @@ class CharsDicTest
         assertThrows(IndexOutOfBoundsException.class, () -> dic.add(sb, 0, -1));
         assertThrows(IndexOutOfBoundsException.class, () -> dic.add(sb, 2, 2));
 
-        // ord on absent terms returns NOT_IN_DIC, not throws (lookup path).
         assertEquals(CharsDic.NOT_IN_DIC, dic.ord("absent"));
     }
 
     /**
-     * {@link CharsDic#contains} reports presence whether a sequence was added
-     * directly or only as a value of {@code put}.
+     * {@link CharsDic#contains} returns true for added sequences and false
+     * otherwise.
      */
     @Test
-    void contains_seesKeysAndValues()
+    void contains_reportsPresence()
     {
         final CharsDic dic = new CharsDic(4);
         dic.add("alpha");
-        dic.put("key", "value");
+        dic.add("beta");
 
         assertTrue(dic.contains("alpha"));
-        assertTrue(dic.contains("key"));
-        assertTrue(dic.contains("value"),
-            "values are interned in the same dictionary as keys");
-
+        assertTrue(dic.contains("beta"));
         assertEquals(false, dic.contains("absent"));
+        assertEquals(false, dic.contains("alph"));
+        assertEquals(false, dic.contains("alphae"));
     }
 
     /**
-     * {@link CharsDic#copy} echoes negative ords without touching the buffer,
-     * supporting the composition pattern {@code copy(valueOrd(k), buf, 0)}.
+     * {@link CharsDic#copy} echoes negative ords without touching the buffer
+     * and copies positive ords correctly.
      */
     @Test
     void copy_echoesNegativeOrdsAndCopiesPositive()
     {
         final CharsDic dic = new CharsDic(4);
-        dic.put("k", "vvv");
+        final int ord = dic.add("hello");
         final char[] buf = new char[10];
 
-        // Composition pattern: negative ord passes through.
-        assertEquals(CharsDic.NOT_IN_DIC, dic.copy(dic.valueOrd("missing"), buf, 0));
-        assertEquals(CharsDic.HAS_NO_VALUE, dic.copy(dic.valueOrd(dic.add("noVal")), buf, 0));
+        assertEquals(CharsDic.NOT_IN_DIC, dic.copy(dic.ord("missing"), buf, 0));
+        // Custom negative codes pass through unchanged.
+        assertEquals(-2, dic.copy(-2, buf, 0));
+        assertEquals(-42, dic.copy(-42, buf, 0));
 
-        // Positive ord: chars copied, length returned.
-        final int len = dic.copy(dic.valueOrd("k"), buf, 0);
-        assertEquals(3, len);
-        assertEquals("vvv", new String(buf, 0, len));
+        final int len = dic.copy(ord, buf, 0);
+        assertEquals(5, len);
+        assertEquals("hello", new String(buf, 0, len));
 
-        // dst-too-small still throws (caller bug, not a data outcome).
-        final int kOrd = dic.ord("k");
         assertThrows(IllegalArgumentException.class,
-            () -> dic.copy(dic.valueOrd(kOrd), new char[2], 0));
-
-        // Out-of-range positive ord throws.
+            () -> dic.copy(ord, new char[2], 0));
         assertThrows(IllegalArgumentException.class,
             () -> dic.copy(dic.size(), buf, 0));
     }
 
     /**
-     * Sentinel constants are distinct and negative.
-     */
-    @Test
-    void errorCodes_areDistinctAndNegative()
-    {
-        assertTrue(CharsDic.NOT_IN_DIC < 0);
-        assertTrue(CharsDic.HAS_NO_VALUE < 0);
-        assertNotEquals(CharsDic.NOT_IN_DIC, CharsDic.HAS_NO_VALUE);
-    }
-
-    /**
-     * Hash function must yield the same value for the same logical content at
+     * Hash function yields the same value for the same logical content at
      * different physical offsets and across {@code char[]}, {@link String},
      * {@link StringBuilder}.
      */
@@ -162,47 +134,41 @@ class CharsDicTest
                     final String padded = prefix + core + suffix;
                     final char[] arr = padded.toCharArray();
                     final StringBuilder sb = new StringBuilder(padded);
-
                     final int off = prefix.length();
                     final int len = core.length();
 
                     final int hArr = CharsDic.murmur3(arr, off, len);
                     assertEquals(hArr, CharsDic.murmur3(padded, off, len),
-                        () -> debugSlice("murmur3 String mismatch", padded, off, len));
+                        () -> debugSlice("murmur3 String", padded, off, len));
                     assertEquals(hArr, CharsDic.murmur3(sb, off, len),
-                        () -> debugSlice("murmur3 StringBuilder mismatch", padded, off, len));
+                        () -> debugSlice("murmur3 StringBuilder", padded, off, len));
                 }
             }
         }
     }
 
     /**
-     * Hash function fuzzed over many random char distributions and slice
-     * windows.
+     * Hash function fuzzed over many random char distributions.
      */
     @Test
     void murmur3_consistentOnRandomSlices()
     {
         final Random rnd = new Random(0x5EEDBEEFL);
-        final int iterations = 10_000;
-
-        for (int i = 0; i < iterations; i++) {
+        for (int i = 0; i < 10_000; i++) {
             final int iter = i;
             final int n = rnd.nextInt(96);
             final char[] arr = new char[n];
             fillRandomChars(rnd, arr);
-
             final String str = new String(arr);
             final StringBuilder sb = new StringBuilder(str);
-
             final int off = rnd.nextInt(n + 1);
             final int len = rnd.nextInt(n - off + 1);
 
             final int hArr = CharsDic.murmur3(arr, off, len);
             assertEquals(hArr, CharsDic.murmur3(str, off, len),
-                () -> randomFailure("murmur3 String", arr, off, len, iter));
+                () -> randomFailure("String", arr, off, len, iter));
             assertEquals(hArr, CharsDic.murmur3(sb, off, len),
-                () -> randomFailure("murmur3 StringBuilder", arr, off, len, iter));
+                () -> randomFailure("StringBuilder", arr, off, len, iter));
         }
     }
 
@@ -225,134 +191,38 @@ class CharsDicTest
     }
 
     /**
-     * {@link CharsDic#put} interns key and value into the same ord space.
-     * If the value sequence equals the key sequence, both share one ord.
-     */
-    @Test
-    void put_keyAndValueShareOrdSpace()
-    {
-        final CharsDic dic = new CharsDic(4);
-
-        // Self-mapping: same chars as key and as value -> one ord, one slab entry.
-        dic.put("manger", "manger");
-        assertEquals(1, dic.size());
-        final int kOrd = dic.ord("manger");
-        assertEquals(kOrd, dic.valueOrd("manger"));
-
-        // Cross-mapping: value sequence reused as someone else's key.
-        dic.put("mangeait", "manger");
-        assertEquals(2, dic.size(),
-            "manger already interned, only mangeait is new");
-        assertEquals(kOrd, dic.valueOrd("mangeait"));
-
-        // The value seen earlier is now usable as a key.
-        final int mangerOrd = dic.ord("manger");
-        assertEquals(kOrd, mangerOrd);
-    }
-
-    /**
-     * {@link CharsDic#put} returns the previous value-ord, or
-     * {@link CharsDic#HAS_NO_VALUE} when there was no prior association.
-     */
-    @Test
-    void put_replaceSemanticsAndReturnValue()
-    {
-        final CharsDic dic = new CharsDic(4);
-
-        // Brand-new key: previous is HAS_NO_VALUE.
-        assertEquals(CharsDic.HAS_NO_VALUE, dic.put("k", "v1"));
-        final int v1Ord = dic.ord("v1");
-
-        // Key exists from a prior add() with no value: previous is still HAS_NO_VALUE.
-        dic.add("k2");
-        assertEquals(CharsDic.HAS_NO_VALUE, dic.put("k2", "v2"));
-
-        // Key has a prior value: previous returned, new value installed.
-        final int returned = dic.put("k", "v3");
-        assertEquals(v1Ord, returned);
-        assertEquals(dic.ord("v3"), dic.valueOrd("k"));
-    }
-
-    /**
-     * Round-trip through put + valueOrd + copy returns the original value
-     * chars for a representative French-lemmatization-like input.
-     */
-    @Test
-    void put_roundTripValueRecoversOriginalChars()
-    {
-        final CharsDic dic = new CharsDic(8);
-        final String[][] pairs = {
-            { "-ce",   "ce" },
-            { "-ci",   ""    },
-            { "j'",    "je"  },
-            { "qu'",   "que" },
-            { "M.",    "Monsieur" },
-            { "œuf",   "oeuf" },
-            { "🙂",    "smile" },
-        };
-
-        for (String[] p : pairs) {
-            dic.put(p[0], p[1]);
-        }
-
-        final char[] buf = new char[dic.maxTermLength()];
-        for (String[] p : pairs) {
-            final int len = dic.copy(dic.valueOrd(p[0]), buf, 0);
-            assertEquals(p[1].length(), len, "value length for key=" + p[0]);
-            assertEquals(p[1], new String(buf, 0, len), "value chars for key=" + p[0]);
-        }
-    }
-
-    /**
      * Forces many rehashes from a small initial capacity and verifies that
-     * key-value associations and slab content survive intact, including after
-     * {@link CharsDic#trimToSize}.
-     *
-     * <p>Two shadow structures are tracked: {@code finalState} mirrors the
-     * dictionary's user-visible mapping under replace-on-put semantics;
-     * {@code everSubmitted} accumulates every sequence ever passed in
-     * (regardless of whether a later put overwrote it as a value). Under B1
-     * ingestion with no removal API, {@code dic.size()} must equal
-     * {@code everSubmitted.size()}.</p>
+     * content survives intact, including after {@link CharsDic#trimToSize}.
      */
     @Test
-    void rehashAndTrim_preserveContentAndValueAssociations()
+    void rehashAndTrim_preserveContent()
     {
         final CharsDic dic = new CharsDic(2);
         final Random rnd = new Random(987654321L);
-        final HashMap<String, String> finalState = new HashMap<>();
-        final HashSet<String> everSubmitted = new HashSet<>();
+        final HashSet<String> shadow = new HashSet<>();
 
         for (int i = 0; i < 800; i++) {
-            final String k = randomAsciiWord(rnd, 1 + rnd.nextInt(14))
+            final String s = randomAsciiWord(rnd, 1 + rnd.nextInt(14))
                 + (i % 5 == 0 ? "é" : "")
                 + (i % 11 == 0 ? "🙂" : "");
-            final String v = randomAsciiWord(rnd, 1 + rnd.nextInt(10));
-            dic.put(k, v);
-            finalState.put(k, v);
-            everSubmitted.add(k);
-            everSubmitted.add(v);
+            dic.add(s);
+            shadow.add(s);
         }
-
-        assertContentMatches(dic, finalState, everSubmitted, "after bulk put");
+        assertContentMatches(dic, shadow, "after bulk add");
 
         dic.trimToSize();
-        assertContentMatches(dic, finalState, everSubmitted, "after trimToSize");
+        assertContentMatches(dic, shadow, "after trimToSize");
 
-        // Adding more entries after trim must still work.
         for (int i = 0; i < 50; i++) {
-            final String k = "post-" + i;
-            final String v = "value-" + i;
-            dic.put(k, v);
-            finalState.put(k, v);
-            everSubmitted.add(k);
-            everSubmitted.add(v);
+            final String s = "post-" + i;
+            dic.add(s);
+            shadow.add(s);
         }
-        assertContentMatches(dic, finalState, everSubmitted, "after post-trim insertions");
+        assertContentMatches(dic, shadow, "after post-trim insertions");
     }
 
     /**
-     * {@link CharsDic#trimToSize} on an empty dictionary must not throw.
+     * {@link CharsDic#trimToSize} on an empty dictionary is a no-op.
      */
     @Test
     void trimToSize_onEmptyIsNoOp()
@@ -363,75 +233,26 @@ class CharsDicTest
     }
 
     /**
-     * {@link CharsDic#valueOrd} distinguishes "key absent" from "key present
-     * without value".
-     */
-    @Test
-    void valueOrd_threeOutcomes()
-    {
-        final CharsDic dic = new CharsDic(4);
-        dic.add("present-no-value");
-        dic.put("present-with-value", "v");
-
-        assertEquals(CharsDic.NOT_IN_DIC, dic.valueOrd("absent"),
-            "key not in dictionary -> NOT_IN_DIC");
-        assertEquals(CharsDic.HAS_NO_VALUE, dic.valueOrd("present-no-value"),
-            "key in dictionary, no association -> HAS_NO_VALUE");
-        assertEquals(dic.ord("v"), dic.valueOrd("present-with-value"),
-            "key with association -> value ord");
-
-        // Same three outcomes via the int overload.
-        final int presentNoValue = dic.ord("present-no-value");
-        assertEquals(CharsDic.HAS_NO_VALUE, dic.valueOrd(presentNoValue));
-
-        // Out-of-range keyOrd throws (caller bug, not a data outcome).
-        assertThrows(IllegalArgumentException.class, () -> dic.valueOrd(dic.size()));
-        assertThrows(IllegalArgumentException.class, () -> dic.valueOrd(-1));
-    }
-
-    /**
-     * Verifies that every entry in {@code finalState} is present in
-     * {@code dic} with the recorded value, and that {@code dic.size()} equals
-     * {@code everSubmitted.size()}.
+     * Verifies that every entry in {@code shadow} round-trips through
+     * {@code ord}/{@code asString}, and that {@code dic.size()} equals
+     * {@code shadow.size()}.
      *
-     * <p>The size invariant is necessary in addition to the per-entry checks:
-     * under B1 ingestion with no removal API, every sequence ever submitted
-     * (key or value, even values later overwritten by replace-on-put) keeps
-     * its ord forever. Decoupling the two shadows keeps replace-on-put
-     * semantics testable separately from interning.</p>
-     *
-     * @param dic           dictionary under test
-     * @param finalState    expected key -> value mapping under replace-on-put
-     * @param everSubmitted every sequence ever passed in (keys and values)
-     * @param when          label used in failure messages
+     * @param dic    dictionary under test
+     * @param shadow expected contents
+     * @param when   label used in failure messages
      */
     private static void assertContentMatches(
         final CharsDic dic,
-        final HashMap<String, String> finalState,
-        final HashSet<String> everSubmitted,
+        final HashSet<String> shadow,
         final String when)
     {
-        final char[] buf = new char[Math.max(1, dic.maxTermLength())];
-        for (HashMap.Entry<String, String> e : finalState.entrySet()) {
-            final String k = e.getKey();
-            final String expected = e.getValue();
-
-            final int kOrd = dic.ord(k);
-            assertTrue(kOrd >= 0, () -> "missing key " + when + ": " + k);
-            assertEquals(k, dic.asString(kOrd),
-                () -> "key chars round-trip " + when + ": " + k);
-
-            final int vOrd = dic.valueOrd(kOrd);
-            assertTrue(vOrd >= 0, () -> "missing value " + when + " for key: " + k);
-
-            final int len = dic.copy(vOrd, buf, 0);
-            assertEquals(expected.length(), len,
-                () -> "value length " + when + " for key: " + k);
-            assertEquals(expected, new String(buf, 0, len),
-                () -> "value chars " + when + " for key: " + k);
+        for (String s : shadow) {
+            final int ord = dic.ord(s);
+            assertTrue(ord >= 0, () -> "missing " + when + ": " + s);
+            assertEquals(s, dic.asString(ord),
+                () -> "round-trip " + when + ": " + s);
         }
-
-        assertEquals(everSubmitted.size(), dic.size(),
+        assertEquals(shadow.size(), dic.size(),
             () -> "dictionary size " + when);
     }
 
@@ -445,14 +266,11 @@ class CharsDicTest
      * @return formatted debug message
      */
     private static String debugSlice(
-        final String msg,
-        final String padded,
-        final int off,
-        final int len)
+        final String msg, final String padded, final int off, final int len)
     {
         final String slice = padded.substring(off, off + len);
-        return msg + " [padded=\"" + escape(padded) + "\", off=" + off
-            + ", len=" + len + ", slice=\"" + escape(slice) + "\"]";
+        return msg + " mismatch [padded=\"" + escape(padded)
+            + "\", off=" + off + ", len=" + len + ", slice=\"" + escape(slice) + "\"]";
     }
 
     /**
@@ -503,13 +321,9 @@ class CharsDicTest
      * @return formatted debug message
      */
     private static String randomFailure(
-        final String msg,
-        final char[] arr,
-        final int off,
-        final int len,
-        final int iter)
+        final String msg, final char[] arr, final int off, final int len, final int iter)
     {
-        return msg + " mismatch at iter=" + iter
+        return "murmur3 " + msg + " mismatch at iter=" + iter
             + " off=" + off + " len=" + len
             + " data=\"" + escape(new String(arr)) + "\"";
     }

@@ -75,68 +75,32 @@ public final class LemmaLexicon
     }
     
     /**
+     * Returns an interned form as a new {@link String}.
+     *
+     * <p>
+     * This method is intended for tests, diagnostics, and messages, not hot
+     * paths.
+     * </p>
+     *
+     * @param id form or lemma id
+     * @return form string
+     */
+    public String asString(final int id)
+    {
+        return forms.asString(id);
+    }
+
+    /**
      * Copies an interned form into a destination character array.
      *
-     * @param id  form or lemma id
+     * @param ord  form or lemma id
      * @param dst destination character array
      * @param off destination offset
      * @return number of copied characters
      */
-    public int copy(final int id, final char[] dst, final int off)
+    public int copy(final int ord, final char[] dst, final int off)
     {
-        return forms.get(id, dst, off);
-    }
-    
-    /**
-     * Returns the id of a character-array slice.
-     *
-     * <p>
-     * This method never inserts. It returns {@code -1} when the form is not
-     * already present.
-     * </p>
-     *
-     * @param form source character array
-     * @param off  start offset
-     * @param len  number of characters
-     * @return form id, or {@code -1} if absent
-     */
-    public int id(final char[] form, final int off, final int len)
-    {
-        return forms.find(form, off, len);
-    }
-    
-    /**
-     * Returns the id of a character sequence.
-     *
-     * <p>
-     * This method never inserts. It returns {@code -1} when the form is not
-     * already present.
-     * </p>
-     *
-     * @param form source form
-     * @return form id, or {@code -1} if absent
-     */
-    public int id(final CharSequence form)
-    {
-        return forms.find(form);
-    }
-    
-    /**
-     * Returns the id of a character-sequence slice.
-     *
-     * <p>
-     * This method never inserts. It returns {@code -1} when the form is not
-     * already present.
-     * </p>
-     *
-     * @param form source character sequence
-     * @param off  start offset
-     * @param len  number of characters
-     * @return form id, or {@code -1} if absent
-     */
-    public int id(final CharSequence form, final int off, final int len)
-    {
-        return forms.find(form, off, len);
+        return forms.copy(ord, dst, off);
     }
     
     /**
@@ -205,7 +169,7 @@ public final class LemmaLexicon
      */
     public int lemmaId(final char[] form, final int off, final int len, final int posId)
     {
-        final int formId = id(form, off, len);
+        final int formId = ord(form, off, len);
         if (formId < 0) {
             return -1;
         }
@@ -240,7 +204,7 @@ public final class LemmaLexicon
      */
     public int lemmaId(final CharSequence form, final int posId)
     {
-        final int formId = id(form);
+        final int formId = ord(form);
         if (formId < 0) {
             return -1;
         }
@@ -279,7 +243,7 @@ public final class LemmaLexicon
      */
     public int lemmaId(final CharSequence form, final int off, final int len, final int posId)
     {
-        final int formId = id(form, off, len);
+        final int formId = ord(form, off, len);
         if (formId < 0) {
             return -1;
         }
@@ -327,6 +291,58 @@ public final class LemmaLexicon
         this.onDuplicate = Objects.requireNonNull(policy, "policy");
     }
     
+    /**
+     * Returns the id of a character-array slice.
+     *
+     * <p>
+     * This method never inserts. It returns {@code -1} when the form is not
+     * already present.
+     * </p>
+     *
+     * @param form source character array
+     * @param off  start offset
+     * @param len  number of characters
+     * @return form id, or {@code -1} if absent
+     */
+    public int ord(final char[] form, final int off, final int len)
+    {
+        return forms.ord(form, off, len);
+    }
+
+    /**
+     * Returns the id of a character sequence.
+     *
+     * <p>
+     * This method never inserts. It returns {@code -1} when the form is not
+     * already present.
+     * </p>
+     *
+     * @param form source form
+     * @return form id, or {@code -1} if absent
+     */
+    public int ord(final CharSequence form)
+    {
+        return forms.ord(form);
+    }
+
+    /**
+     * Returns the id of a character-sequence slice.
+     *
+     * <p>
+     * This method never inserts. It returns {@code -1} when the form is not
+     * already present.
+     * </p>
+     *
+     * @param form source character sequence
+     * @param off  start offset
+     * @param len  number of characters
+     * @return form id, or {@code -1} if absent
+     */
+    public int ord(final CharSequence form, final int off, final int len)
+    {
+        return forms.ord(form, off, len);
+    }
+
     /**
      * Inserts a POS-agnostic lemma mapping using the current duplicate policy.
      *
@@ -437,12 +453,12 @@ public final class LemmaLexicon
                 if (previous != lemmas.missingValue() && previous != lemmaId) {
                     throw new IllegalArgumentException(
                             "Duplicate lemma mapping: formId=" + formId
-                                    + " \"" + string(formId) + "\""
+                                    + " \"" + asString(formId) + "\""
                                     + ", posId=" + posId
                                     + ", previous lemmaId=" + previous
-                                    + " \"" + string(previous) + "\""
+                                    + " \"" + asString(previous) + "\""
                                     + ", new lemmaId=" + lemmaId
-                                    + " \"" + string(lemmaId) + "\"");
+                                    + " \"" + asString(lemmaId) + "\"");
                 }
                 return;
             
@@ -459,22 +475,6 @@ public final class LemmaLexicon
     public int size()
     {
         return forms.size();
-    }
-    
-    /**
-     * Returns an interned form as a new {@link String}.
-     *
-     * <p>
-     * This method is intended for tests, diagnostics, and messages, not hot
-     * paths.
-     * </p>
-     *
-     * @param id form or lemma id
-     * @return form string
-     */
-    public String string(final int id)
-    {
-        return forms.getAsString(id);
     }
     
     /**

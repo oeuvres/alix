@@ -14,49 +14,46 @@ package com.github.oeuvres.alix.util;
 import java.util.Arrays;
 
 /**
- * Frequency counter over UTF-16 character sequences with stable integer ords.
+ * Frequency counter over UTF-16 character sequences. Composes a
+ * {@link CharsDic} for the term storage with a parallel {@code int[]} of
+ * counts. Each distinct sequence receives a stable ord from the dictionary;
+ * counts are indexed by that ord.
  *
- * <p>Composes a {@link CharsDic} (the storage layer) with a parallel
- * {@code int[]} of counts indexed by ord. The intended use case is recording
- * out-of-vocabulary words during analysis: a token absent from a reference
- * dictionary is fed to {@link #inc(char[], int, int)}, which interns it on
- * first sight and increments its counter on every occurrence.</p>
+ * <h2>Typical use</h2>
+ * <p>Recording out-of-vocabulary terms during a Lucene analysis pipeline:</p>
+ * <pre>{@code
+ * if (!dictionary.contains(term, 0, len)) {
+ *     freq.inc(term, 0, len);
+ * }
+ * // ... later ...
+ * for (TopArray.IdScore p : freq.top(50)) {
+ *     System.out.println((int) p.score() + "\t" + freq.asString(p.id()));
+ * }
+ * }</pre>
  *
- * <h2>API</h2>
- * <ul>
- *   <li>{@link #inc(CharSequence) inc(...)} interns the sequence (if absent),
- *       increments its count, and returns the new count.</li>
- *   <li>{@link #count(CharSequence) count(...)} reads the current count without
- *       interning; returns 0 if the sequence is absent.</li>
- *   <li>{@link #top(int) top(n)} returns a {@link TopArray} of the {@code n}
- *       highest-frequency ords, ranked by count descending.</li>
- * </ul>
- *
- * <p>{@link #ord(CharSequence) ord(...)}, {@link #copy(int, char[], int)
- * copy(...)} and {@link #asString(int) asString(...)} expose the underlying
- * dictionary so callers can render top-ranked ords back to text without
- * holding a separate reference to the dictionary.</p>
- *
- * <p>Counts are stored in {@code int[]}: maximum 2^31 − 1 occurrences per
- * term. For corpora where a single term can exceed this (a full Web crawl,
- * for instance), use a different structure.</p>
+ * <h2>Counter capacity</h2>
+ * <p>Counts are stored as {@code int}, supporting up to ~2.1B occurrences per
+ * term.</p>
  *
  * <p>Thread-safety: not thread-safe under mutation. Concurrent reads are safe
  * only if no thread mutates the instance.</p>
  */
 public final class CharsFreq
 {
-    /** Per-ord counters, parallel to {@link #dic} ords. */
-    private int[] counts;
-
-    /** Underlying string dictionary. */
+    /** Backing dictionary; provides ords for every counted sequence. */
     private final CharsDic dic;
 
     /**
-     * Constructs a frequency counter with an expected number of distinct
-     * sequences.
+     * Per-ord counters. Length is at least {@code dic.size()} after every
+     * mutation. Index range {@code [0..dic.size())} holds valid counts;
+     * indices beyond are zero.
+     */
+    private int[] counts;
+
+    /**
+     * Creates an empty frequency counter.
      *
-     * @param expectedSize estimate of distinct sequences; values
+     * @param expectedSize estimate of distinct sequences to count; values
      *                     {@code <= 0} are treated as 1
      */
     public CharsFreq(final int expectedSize)
@@ -68,10 +65,8 @@ public final class CharsFreq
     /**
      * Returns the stored sequence at {@code ord} as a newly allocated string.
      *
-     * <p>Intended for diagnostics, top-n reports, and tests, not hot paths.</p>
-     *
      * @param ord 0-based ord
-     * @return sequence as a string
+     * @return a newly allocated string
      * @throws IllegalArgumentException if {@code ord} is invalid
      */
     public String asString(final int ord)
@@ -80,10 +75,11 @@ public final class CharsFreq
     }
 
     /**
-     * Tells whether a sequence has been observed at least once.
+     * Tells whether a sequence has been counted at least once.
      *
      * @param key source sequence
      * @return true iff the sequence is in the underlying dictionary
+     * @throws NullPointerException if {@code key} is {@code null}
      */
     public boolean contains(final CharSequence key)
     {
@@ -91,13 +87,14 @@ public final class CharsFreq
     }
 
     /**
-     * Tells whether a slice of a {@code char[]} has been observed at least
-     * once.
+     * Tells whether a sequence has been counted at least once.
      *
      * @param key source array
      * @param off start offset
      * @param len number of code units
      * @return true iff the sequence is in the underlying dictionary
+     * @throws NullPointerException if {@code key} is {@code null}
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
      */
     public boolean contains(final char[] key, final int off, final int len)
     {
@@ -107,13 +104,10 @@ public final class CharsFreq
     /**
      * Copies the sequence stored at {@code ord} into a destination buffer.
      *
-     * <p>Echoes negative ords without touching {@code dst}, allowing
-     * {@code copy(top.id(rank), buf, 0)} to compose with iteration.</p>
-     *
      * @param ord ord to read; negative values pass through
      * @param dst destination array
      * @param dstOff start offset in {@code dst}
-     * @return chars written, or {@code ord} unchanged if negative
+     * @return the number of chars written, or {@code ord} unchanged if negative
      */
     public int copy(final int ord, final char[] dst, final int dstOff)
     {
@@ -121,38 +115,55 @@ public final class CharsFreq
     }
 
     /**
-     * Returns the current count for a sequence, or {@code 0} if absent.
+     * Returns the count for a sequence, or {@code 0} if absent.
      *
      * @param key source sequence
-     * @return current count, or {@code 0} if the sequence has never been
-     *         {@code inc}'d
+     * @return count
+     * @throws NullPointerException if {@code key} is {@code null}
      */
     public int count(final CharSequence key)
     {
         final int ord = dic.ord(key);
-        return (ord < 0) ? 0 : counts[ord];
+        return ord < 0 ? 0 : counts[ord];
     }
 
     /**
-     * Returns the current count for a slice of a {@code char[]}, or {@code 0}
-     * if absent.
+     * Returns the count for a sequence slice, or {@code 0} if absent.
      *
      * @param key source array
      * @param off start offset
      * @param len number of code units
-     * @return current count, or {@code 0} if absent
+     * @return count
+     * @throws NullPointerException if {@code key} is {@code null}
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
      */
     public int count(final char[] key, final int off, final int len)
     {
         final int ord = dic.ord(key, off, len);
-        return (ord < 0) ? 0 : counts[ord];
+        return ord < 0 ? 0 : counts[ord];
     }
 
     /**
-     * Returns the count at a given ord.
+     * Returns the count for a sequence slice, or {@code 0} if absent.
+     *
+     * @param key source sequence
+     * @param off start offset
+     * @param len number of code units
+     * @return count
+     * @throws NullPointerException if {@code key} is {@code null}
+     * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
+     */
+    public int count(final CharSequence key, final int off, final int len)
+    {
+        final int ord = dic.ord(key, off, len);
+        return ord < 0 ? 0 : counts[ord];
+    }
+
+    /**
+     * Returns the count by ord.
      *
      * @param ord 0-based ord
-     * @return current count
+     * @return count
      * @throws IllegalArgumentException if {@code ord} is invalid
      */
     public int countOrd(final int ord)
@@ -164,11 +175,8 @@ public final class CharsFreq
     }
 
     /**
-     * Returns the underlying dictionary.
-     *
-     * <p>Useful for callers that need to walk every interned sequence (e.g.
-     * to dump every {@code (term, count)} pair) without going through
-     * {@link #top(int)}. Treat as read-only.</p>
+     * Returns the underlying dictionary. Treat as read-only; mutating it
+     * directly bypasses the counter and breaks invariants.
      *
      * @return underlying dictionary
      */
@@ -178,10 +186,11 @@ public final class CharsFreq
     }
 
     /**
-     * Increments the count for a sequence, interning if absent.
+     * Increments the count for a sequence and returns the new count. Interns
+     * the sequence on first occurrence.
      *
      * @param key source sequence
-     * @return new count after increment
+     * @return the count after this increment ({@code >= 1})
      * @throws NullPointerException if {@code key} is {@code null}
      * @throws IllegalArgumentException if the sequence length exceeds 65535
      */
@@ -193,13 +202,12 @@ public final class CharsFreq
     }
 
     /**
-     * Increments the count for a slice of a {@code char[]}, interning if
-     * absent.
+     * Increments the count for a sequence slice and returns the new count.
      *
      * @param key source array
      * @param off start offset
      * @param len number of code units
-     * @return new count after increment
+     * @return the count after this increment ({@code >= 1})
      * @throws NullPointerException if {@code key} is {@code null}
      * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
      * @throws IllegalArgumentException if {@code len > 65535}
@@ -212,13 +220,12 @@ public final class CharsFreq
     }
 
     /**
-     * Increments the count for a slice of a {@link CharSequence}, interning
-     * if absent.
+     * Increments the count for a sequence slice and returns the new count.
      *
      * @param key source sequence
      * @param off start offset
      * @param len number of code units
-     * @return new count after increment
+     * @return the count after this increment ({@code >= 1})
      * @throws NullPointerException if {@code key} is {@code null}
      * @throws IndexOutOfBoundsException if {@code off}/{@code len} are invalid
      * @throws IllegalArgumentException if {@code len > 65535}
@@ -231,7 +238,7 @@ public final class CharsFreq
     }
 
     /**
-     * Returns the maximum sequence length ever observed.
+     * Returns the maximum interned sequence length.
      *
      * @return maximum length in UTF-16 code units
      */
@@ -241,10 +248,12 @@ public final class CharsFreq
     }
 
     /**
-     * Returns the ord of an observed sequence, or {@link CharsDic#NOT_IN_DIC}.
+     * Returns the ord of an interned sequence, or
+     * {@link CharsDic#NOT_IN_DIC}.
      *
      * @param key source sequence
      * @return ord or {@link CharsDic#NOT_IN_DIC}
+     * @throws NullPointerException if {@code key} is {@code null}
      */
     public int ord(final CharSequence key)
     {
@@ -252,22 +261,9 @@ public final class CharsFreq
     }
 
     /**
-     * Returns the ord of an observed slice, or {@link CharsDic#NOT_IN_DIC}.
+     * Returns the number of distinct sequences counted.
      *
-     * @param key source array
-     * @param off start offset
-     * @param len number of code units
-     * @return ord or {@link CharsDic#NOT_IN_DIC}
-     */
-    public int ord(final char[] key, final int off, final int len)
-    {
-        return dic.ord(key, off, len);
-    }
-
-    /**
-     * Returns the number of distinct sequences observed.
-     *
-     * @return number of assigned ords
+     * @return distinct count
      */
     public int size()
     {
@@ -275,24 +271,38 @@ public final class CharsFreq
     }
 
     /**
-     * Returns the {@code n} highest-frequency ords ranked by count descending.
+     * Returns the length of the sequence stored at {@code ord}.
      *
-     * <p>Iterating the returned {@link TopArray} yields {@code (ord, count)}
-     * pairs as {@link TopArray.IdScore} where the count fits losslessly in the
-     * {@code double} score. Ords whose count is {@code 0} are excluded.</p>
+     * @param ord 0-based ord
+     * @return length in UTF-16 code units
+     * @throws IllegalArgumentException if {@code ord} is invalid
+     */
+    public int termLength(final int ord)
+    {
+        return dic.termLength(ord);
+    }
+
+    /**
+     * Returns the top {@code n} sequences by count, descending. Zero counts
+     * are skipped ({@link TopArray#NO_ZERO}); ties are broken by lower ord.
      *
-     * @param n maximum number of ords to return ({@code n >= 0})
-     * @return ranked top-n ords; empty if {@code n == 0} or no observations
+     * <p>The returned {@link TopArray} is iterable: each iteration yields an
+     * {@link TopArray.IdScore} where {@code id} is the ord and {@code score}
+     * is the count cast to {@code double}. Cast {@code score} back to
+     * {@code int} for the integer count.</p>
+     *
+     * @param n maximum number of results
+     * @return top-n selector populated with up to {@code n} (ord, count) pairs
      * @throws IllegalArgumentException if {@code n < 0}
      */
     public TopArray top(final int n)
     {
         if (n < 0) {
-            throw new IllegalArgumentException("n=" + n + ", expected >= 0");
+            throw new IllegalArgumentException("n=" + n);
         }
         final TopArray top = new TopArray(n, TopArray.NO_ZERO);
-        final int s = dic.size();
-        for (int ord = 0; ord < s; ord++) {
+        final int sz = dic.size();
+        for (int ord = 0; ord < sz; ord++) {
             top.push(ord, counts[ord]);
         }
         return top;
@@ -300,8 +310,7 @@ public final class CharsFreq
 
     /**
      * Shrinks internal storage to roughly the minimum needed for the current
-     * contents. Forwards to {@link CharsDic#trimToSize()} and resizes the
-     * counters array.
+     * contents.
      */
     public void trimToSize()
     {
@@ -312,8 +321,8 @@ public final class CharsFreq
     }
 
     /**
-     * Ensures the counters array can address {@code required} ords. Geometric
-     * growth; new entries default to {@code 0}.
+     * Ensures the counts array can address {@code required} ords. New slots
+     * are zero (default array initialisation).
      *
      * @param required ord count that must be addressable
      */

@@ -22,12 +22,11 @@ import java.util.Arrays;
  * receives a 0-based ord that does not change for the lifetime of this
  * instance.
  *
- * <p>This class provides set semantics only. Value associations on top of a
- * dictionary belong to companion classes that compose a {@code CharsDic} with
- * a parallel array (see {@code CharsMap}, {@code CharsFreq}). Composition
- * preserves the property that any sequence ever passed in (whether as a key,
- * a value, or a counter target) is interned exactly once and shares the same
- * ord space.</p>
+ * <p>Set semantics only. Value associations on top of a dictionary belong to
+ * companion classes that compose a {@code CharsDic} with a parallel array
+ * (see {@code CharsMap}, {@code CharsFreq}). Composition preserves the
+ * property that any sequence ever passed in (as a key, a value, or a counter
+ * target) is interned exactly once and shares the same ord space.</p>
  *
  * <h2>Implementation</h2>
  * <ul>
@@ -40,9 +39,9 @@ import java.util.Arrays;
  *   <li>Hash function: Murmur3-32 over UTF-16 code units.</li>
  * </ul>
  *
- * <p>Memory at <i>n</i> ords (rough): 12 bytes/ord (meta + termHash) plus
- * ~8 bytes/slot in the open-addressing table at 0.75 load, plus the slab
- * itself (sum of all sequence lengths in chars).</p>
+ * <p>Memory at <i>n</i> ords: 12 bytes/ord (meta + termHash) plus ~8 bytes/slot
+ * in the open-addressing table at 0.75 load, plus the slab itself (sum of all
+ * sequence lengths in chars).</p>
  *
  * <p>Thread-safety: not thread-safe under mutation. Concurrent reads are safe
  * only if no thread mutates the instance.</p>
@@ -108,10 +107,6 @@ public final class CharsDic
     /**
      * Constructs the dictionary with an expected number of unique sequences.
      *
-     * <p>The initial table capacity is chosen so that {@code expectedSize}
-     * sequences fit under the target load factor. Other arrays are sized
-     * heuristically and grow on demand.</p>
-     *
      * @param expectedSize estimate of distinct sequences to add; values
      *                     {@code <= 0} are treated as 1
      */
@@ -134,7 +129,7 @@ public final class CharsDic
     }
 
     /**
-     * Interns a sequence.
+     * Interns a sequence and returns its ord. Idempotent.
      *
      * @param key source sequence (UTF-16 code units)
      * @return the assigned 0-based ord ({@code >= 0})
@@ -150,7 +145,7 @@ public final class CharsDic
     }
 
     /**
-     * Interns a slice of a {@code char[]}.
+     * Interns a slice of a {@code char[]} and returns its ord.
      *
      * @param key source array (UTF-16 code units)
      * @param off start offset (inclusive)
@@ -168,9 +163,9 @@ public final class CharsDic
     }
 
     /**
-     * Interns a slice of a {@link CharSequence}.
+     * Interns a slice of a {@link CharSequence} and returns its ord.
      *
-     * @param key source character sequence
+     * @param key source character sequence (UTF-16 code units)
      * @param off start offset (inclusive)
      * @param len number of code units to read
      * @return the assigned 0-based ord ({@code >= 0})
@@ -187,8 +182,6 @@ public final class CharsDic
 
     /**
      * Returns the stored sequence at {@code ord} as a newly allocated string.
-     *
-     * <p>Intended for diagnostics and tests, not hot paths.</p>
      *
      * @param ord 0-based ord ({@code 0 <= ord < size()})
      * @return a newly allocated string containing the sequence
@@ -246,10 +239,10 @@ public final class CharsDic
     /**
      * Copies the sequence stored at {@code ord} into a destination buffer.
      *
-     * <p>If {@code ord} is negative (typically {@link #NOT_IN_DIC} from a
-     * lookup miss), the same negative value is returned and {@code dst} is
-     * left untouched. This lets callers compose lookups without an
-     * intermediate branch.</p>
+     * <p>If {@code ord} is negative (typically a value returned by
+     * {@link #ord(CharSequence)} on a miss, or by a companion class such as
+     * {@code CharsMap.valueOrd} on a key-without-value), the same negative
+     * value is returned and {@code dst} is left untouched.</p>
      *
      * @param ord ord to read; negative values pass through
      * @param dst destination array (must be non-null when {@code ord >= 0})
@@ -289,9 +282,6 @@ public final class CharsDic
     /**
      * Returns the maximum sequence length ever added.
      *
-     * <p>Useful to pre-size reusable scratch buffers before
-     * {@link #copy(int, char[], int)}.</p>
-     *
      * @return maximum length in UTF-16 code units
      */
     public int maxTermLength()
@@ -300,8 +290,7 @@ public final class CharsDic
     }
 
     /**
-     * Computes Murmur3-32 over a UTF-16 {@code char[]} slice. Public for
-     * callers wishing to share hash state with this dictionary; no bounds
+     * Computes Murmur3-32 over a UTF-16 {@code char[]} slice. No bounds
      * checking.
      *
      * @param a   source array
@@ -326,8 +315,7 @@ public final class CharsDic
     }
 
     /**
-     * Computes Murmur3-32 over a UTF-16 {@link CharSequence} slice. Public for
-     * callers wishing to share hash state with this dictionary; no bounds
+     * Computes Murmur3-32 over a UTF-16 {@link CharSequence} slice. No bounds
      * checking.
      *
      * @param a   source sequence
@@ -453,8 +441,7 @@ public final class CharsDic
 
     /**
      * Shrinks internal storage to roughly the minimum needed for the current
-     * contents. Intended for bulk-build workflows: construct, fill, then trim
-     * once.
+     * contents.
      */
     public void trimToSize()
     {
@@ -670,7 +657,7 @@ public final class CharsDic
 
     /**
      * Shared insertion core. Exactly one of {@code a} or {@code cs} must be
-     * non-null. Returns the ord whether newly assigned or pre-existing.
+     * non-null.
      *
      * @param a   source array, or {@code null}
      * @param off offset in the chosen source

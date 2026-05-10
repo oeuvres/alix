@@ -132,7 +132,7 @@ public final class SentenceStartLowerCaseFilter extends TokenFilter
 
         // 6) Probe lowercase form in lexicon; if known, rewrite with canonical form.
         probe.copyFrom(termAtt).toLowerCase();
-        final int formId = lex.id(probe);
+        final int formId = lex.ord(probe);
         if (formId < 0) {
             return true;
         }

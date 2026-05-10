@@ -174,7 +174,7 @@ public final class LemmaFilter extends TokenFilter
         }
         
         // Surface known ?
-        final int formId = lex.id(termAtt);
+        final int formId = lex.ord(termAtt);
         if (formId < 0) return true;
 
         // Lookup with pos
