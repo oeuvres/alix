@@ -365,10 +365,7 @@ public final class LongIntMap
         return true;
     }
     
-    // ---------------------------------------------------------------------
-    // Internals
-    // ---------------------------------------------------------------------
-    
+
     private void allocate(int capacity)
     {
         keys = new long[capacity];
@@ -448,26 +445,26 @@ public final class LongIntMap
     }
     
     /**
-     * Hash mixing for long keys.
+     * Hash mixing for {@code long} keys.
      *
      * <p>
-     * Cheap enough for hot paths; avoids the "low bits only" trap when masking.
+     * This method applies a 64-bit finalizer before folding the result to
+     * 32 bits. This avoids losing information for packed {@code (int,int)}
+     * keys before the avalanche step.
      * </p>
      *
-     * <p>
-     * Implementation: a 32-bit finalizer similar to Murmur3 fmix32 applied to
-     * {@code (int)(key ^ (key >>> 32))}.
-     * </p>
+     * @param key the key to mix
+     * @return a 32-bit hash suitable for masking into a power-of-two table
      */
-    static int mix32(long key)
+    static int mix32(final long key)
     {
-        int h = (int) (key ^ (key >>> 32));
-        h ^= (h >>> 16);
-        h *= 0x85ebca6b;
-        h ^= (h >>> 13);
-        h *= 0xc2b2ae35;
-        h ^= (h >>> 16);
-        return h;
+        long h = key;
+        h ^= h >>> 30;
+        h *= 0xbf58476d1ce4e5b9L;
+        h ^= h >>> 27;
+        h *= 0x94d049bb133111ebL;
+        h ^= h >>> 31;
+        return (int) (h ^ (h >>> 32));
     }
     
     /**
