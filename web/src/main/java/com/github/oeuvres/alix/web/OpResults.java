@@ -279,18 +279,18 @@ public class OpResults extends Op
         }
         
         int nextDoc = 0;
+        
         // sorted?
         String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
         // relevance
         if (DATE.equals(sort)) {
             SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, filterQuery, results);
-            writer
-                    .append("<p class=\"statshits\">")
-                    .append(String.valueOf(walker.hits()))
-                    .append(" documents ")
-                    .append(String.valueOf(System.currentTimeMillis() - t0))
-                    .append("ms")
-                    .append("</p>\n");
+            writer.append("<p class=\"statshits\">");
+            final int hitsCount = walker.hits();
+            if (docs < hitsCount) writer.append(String.valueOf(docs)).append("/");
+            writer.append(String.valueOf(hitsCount))
+                .append(" documents ")
+                .append("</p>\n");
             writer.flush();
             nextDoc = walker.walk(from);
         } else {
@@ -303,6 +303,7 @@ public class OpResults extends Op
             } else {
                 query = spanQuery;
             }
+            final int hitsCount = index.searcher().count(query);
             ScoreDoc[] hits = index.searcher().search(query, docs).scoreDocs;
             
             final FieldStats fieldStats = fluc.fieldStats();
@@ -318,12 +319,11 @@ public class OpResults extends Op
                     spans,
                     ctx);
             
-            writer
-                    .append("<p class=\"statshits\">")
-                    .append(String.valueOf(hits.length))
-                    .append(" documents ")
-                    .append(String.valueOf(System.currentTimeMillis() - t0))
-                    .append("ms</p>\n");
+            writer.append("<p class=\"statshits\">");
+            if (docs < hitsCount) writer.append(String.valueOf(docs)).append("/");
+            writer.append(String.valueOf(hitsCount))
+                .append(" documents ")
+                .append("</p>\n");
             writer.flush();
             
             for (ScoreDoc sd : hits) {

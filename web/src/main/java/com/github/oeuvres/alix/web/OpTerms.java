@@ -105,7 +105,7 @@ public final class OpTerms extends Op
                 bits = index.searcher().search(typeQuery, new BitsCollectorManager(index.searcher()));
             }
             
-            if (yearQuery != null && scorerName.startsWith("part")) {
+            if (yearQuery != null && (scorerName.startsWith("part") || "".equals(scorerName))) {
                 FlucNum fyears = index.flucNum(YEAR);
                 final int start = pars.getInt(START, (int)fyears.min());
                 int end = pars.getInt(END, (int)fyears.max());
