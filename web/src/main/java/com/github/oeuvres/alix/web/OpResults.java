@@ -192,10 +192,10 @@ public class OpResults extends Op
         
         Writer writer = response.getWriter();
         final String content = pars.getString(F, index.content());
-        final FlucText fluc = index.flucText(content);
+        final FlucText flucText = index.flucText(content);
         
         // field not found
-        if (fluc == null) {
+        if (flucText == null) {
             response.setStatus(404);
             writer.append("<p class=\"error\">Field ");
             Fluc ofluc = index.fluc(content);
@@ -226,15 +226,12 @@ public class OpResults extends Op
         final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
         final int spans = pars.getInt(SPANS, SPANS_RANGE, SPANS_DEFAULT, SPANS);
         
-        HtmlResults results = new HtmlResults(
-                writer,
-                index.reader().storedFields(),
-                content)
-                .doclineFieldName(docline)
-                .docLimit(docs)
-                .spanLimit(spans)
-                .ctx(ctx)
-                .hrefSearch("?" + pars.queryString(CTX, F, Q, SLOP));
+        HtmlResults results = new HtmlResults(writer, index.reader().storedFields(), content)
+            .doclineFieldName(docline)
+            .docLimit(docs)
+            .spanLimit(spans)
+            .ctx(ctx)
+            .hrefSearch("?" + pars.queryString(CTX, F, Q, SLOP));
         final int from = pars.getInt(FROM, 0);
         
         // final String q = pars.getString(Q, null);
@@ -247,7 +244,7 @@ public class OpResults extends Op
         // no query, list docs
         if (spanQuery == null) {
             final int rows = pars.getInt(ROWS, ROWS_RANGE, ROWS_DEFAULT, ROWS);
-            FieldStats fieldStats = fluc.fieldStats();
+            FieldStats fieldStats = flucText.fieldStats();
             int docCount = 0;
             boolean more = false;
             int docId = from;
@@ -284,7 +281,14 @@ public class OpResults extends Op
         String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
         // relevance
         if (DATE.equals(sort)) {
-            SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, filterQuery, results);
+            SpanWalker walker = new SpanWalker(
+                index.searcher(),
+                flucText.termLexicon(),
+                spanQuery, 
+                filterQuery, 
+                results
+            );
+            
             writer.append("<p class=\"statshits\">");
             final int hitsCount = walker.hits();
             if (docs < hitsCount) writer.append(String.valueOf(docs)).append("/");
@@ -306,7 +310,7 @@ public class OpResults extends Op
             final int hitsCount = index.searcher().count(query);
             ScoreDoc[] hits = index.searcher().search(query, docs).scoreDocs;
             
-            final FieldStats fieldStats = fluc.fieldStats();
+            final FieldStats fieldStats = flucText.fieldStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
             
@@ -315,7 +319,7 @@ public class OpResults extends Op
                     spanQuery,
                     results,
                     fieldStats,
-                    fluc.termRail(),
+                    flucText.termRail(),
                     spans,
                     ctx);
             

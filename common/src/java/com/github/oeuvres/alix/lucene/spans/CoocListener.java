@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
 
@@ -89,6 +90,10 @@ public final class CoocListener implements SpanListener
     /** Window positions in the current document, accumulated across all matches. */
     private final BitSet windowMask;
     
+    private static final int[] EMPTY_INT = new int[0];
+    /** Do not count pivots occurrences */
+    private int[] pivotIds = EMPTY_INT;
+    
     /**
      * Constructs a cooccurrence listener.
      *
@@ -123,11 +128,27 @@ public final class CoocListener implements SpanListener
     }
     
     /**
+     * Provide the set of pivot term ids that should be
+     * excluded from co-occurrence accounting. Called in
+     * {@link }
+     * 
+     * @throws NullPointerException if {@code buffers} is {@code null}
+     */
+    protected void setPivotIds(final int[] pivotIds)
+    {
+        Objects.requireNonNull(pivotIds, "pivotIds");
+        this.pivotIds = pivotIds;
+    }
+    
+    /**
      * Binds this listener to a {@link FocusBuffers} obtained from a
-     * {@link com.github.oeuvres.alix.lucene.terms.TopTerms} instance. Must be called before the
+     * {@link TopTerms} instance. Must be called before the
      * walk starts.
      *
-     * @param buffers focus buffers to write into
+     * @param buffers      focus buffers to write into
+     * @param pivotTermIds term ids of the query terms; positions resolving to one of these ids
+     *                     are excluded from both {@code termFreq}/{@code termDocs} and
+     *                     {@code coocTokens}. May be empty but not {@code null}.
      * @throws NullPointerException     if {@code buffers} is {@code null}
      * @throws IllegalArgumentException if buffer lengths do not match
      *                                  {@code fieldStats.vocabSize()}
@@ -181,6 +202,8 @@ public final class CoocListener implements SpanListener
         final int docId = lastDocId;
         
         rail.scanPositions(docId, windowMask, termId -> {
+            if (Arrays.binarySearch(pivotIds, termId) >= 0)
+                return;
             termFreq[termId]++;
             coocTokens++;
             if (!termSeen.get(termId)) {

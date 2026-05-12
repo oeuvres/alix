@@ -16,6 +16,8 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 
+import com.github.oeuvres.alix.lucene.terms.TermLexicon;
+
 /**
  * Streams the matches of a {@link SpanQuery}, optionally intersected with a non-scoring filter, to
  * a {@link SpanListener}, in natural index order.
@@ -70,15 +72,20 @@ public final class SpanWalker
      *                              {@code null}
      */
     public SpanWalker(
-            final IndexSearcher searcher,
-            final SpanQuery spanQuery,
-            final Query filterQuery,
-            final SpanListener listener) throws IOException
+        final IndexSearcher searcher,
+        final TermLexicon lexicon,
+        final SpanQuery spanQuery,
+        final Query filterQuery,
+        final SpanListener listener) throws IOException
     {
         this.searcher = Objects.requireNonNull(searcher, "searcher");
         Objects.requireNonNull(spanQuery, "spanQuery");
         this.listener = Objects.requireNonNull(listener, "listener");
         this.spanQuery = (SpanQuery) searcher.rewrite(spanQuery);
+        if (listener instanceof CoocListener) {
+            int[] pivotIds = lexicon.termIds(spanQuery);
+            ((CoocListener)listener).setPivotIds(pivotIds);
+        }
         this.filterQuery = (filterQuery == null) ? null : searcher.rewrite(filterQuery);
     }
     

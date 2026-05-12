@@ -2,8 +2,12 @@ package com.github.oeuvres.alix.lucene.terms;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -13,11 +17,13 @@ import org.apache.lucene.util.fst.PositiveIntOutputs;
 import org.apache.lucene.util.fst.Util;
 
 import com.github.oeuvres.alix.util.IOUtil;
+import com.github.oeuvres.alix.util.IntList;
 
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -458,6 +464,37 @@ public final class TermLexicon implements Closeable {
             build(reader, sideDir, field);
         }
         return open(sideDir, field);
+    }
+
+    /**
+     * Resolves the terms in a Query to their termIds in the given lexicon, restricted to a
+     * single field. Terms that the lexicon does not know (e.g. because they were never indexed)
+     * are silently dropped.
+     *
+     * @param query   A {@link Query} already rewrittent with {@link IndexSearcher#rewrite(Query)}
+     * @param field   the field whose terms to keep; foreign-field terms are ignored
+     * @return distinct termIds, sorted
+     */
+    public int[] termIds(final Query query)
+    {
+        final IntList ids = new IntList();
+        query.visit(new QueryVisitor()
+        {
+            @Override
+            public void consumeTerms(final Query q, final Term... ts)
+            {
+                for (final Term t : ts) {
+                    // if (!field.equals(t.field())) continue; // user should know
+                    try {
+                        final int id = id(t.bytes());
+                        if (id >= 0) ids.push(id);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                }
+            }
+        });
+        return ids.toArray();
     }
 
     /**

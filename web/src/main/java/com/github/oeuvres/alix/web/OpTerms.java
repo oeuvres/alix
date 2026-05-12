@@ -22,6 +22,7 @@ import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
 import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -145,6 +146,7 @@ public final class OpTerms extends Op
                 right);
             final SpanWalker walker = new SpanWalker(
                 index.searcher(),
+                textFluc.termLexicon(),
                 spanQuery,
                 filterQuery,
                 listener);

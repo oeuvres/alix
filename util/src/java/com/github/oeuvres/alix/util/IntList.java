@@ -1,8 +1,8 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
- * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
- *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org>
+ * Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
@@ -12,17 +12,17 @@
  * 
  * Alix has been started in 2009 under the javacrim project
  * https://sf.net/projects/javacrim/
- * for a java course at Inalco  http://www.er-tim.fr/
+ * for a java course at Inalco http://www.er-tim.fr/
  * Alix continues the concepts of SDX under another licence
  * «Système de Documentation XML»
- * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * 2000-2010 Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,37 +54,41 @@ public class IntList
     protected boolean hashOK;
     /** Hash code producer */
     protected Murmur3A murmur = new Murmur3A();
-
+    private static final int[] EMPTY_INT_ARRAY = new int[0];
+    
     /**
      * Simple constructor.
      */
-    public IntList() {
+    public IntList()
+    {
         data = new int[4];
     }
-
+    
     /**
      * Constructor with an estimated size.
      * 
      * @param capacity initial size.
      */
-    public IntList(final int capacity) {
+    public IntList(final int capacity)
+    {
         data = new int[capacity];
     }
-
+    
     /**
      * Wrap an existing int array.
      * 
      * @param data source array.
      */
-    public IntList(int[] data) {
+    public IntList(int[] data)
+    {
         this.data = data;
     }
-
+    
     /**
      * Add value to a position
      * 
      * @param position index in list.
-     * @param amount value to add.
+     * @param amount   value to add.
      * @return this
      */
     public IntList add(int position, int amount)
@@ -96,7 +100,7 @@ public class IntList
         }
         return this;
     }
-
+    
     /**
      * Light reset data, with no erase.
      * 
@@ -105,9 +109,10 @@ public class IntList
     public IntList clear()
     {
         size = 0;
+        hashOK = false;
         return this;
     }
-
+    
     /**
      * Get a pointer on underlaying array (unsafe).
      * 
@@ -117,7 +122,7 @@ public class IntList
     {
         return data;
     }
-
+    
     @Override
     public boolean equals(final Object o)
     {
@@ -137,7 +142,7 @@ public class IntList
         }
         return false;
     }
-
+    
     /**
      * Get first value or cry if list is empty
      * 
@@ -150,7 +155,7 @@ public class IntList
         }
         return data[0];
     }
-
+    
     /**
      * Get value at a position.
      * 
@@ -161,14 +166,14 @@ public class IntList
     {
         return data[position];
     }
-
+    
     /**
      * Call it before write
      * 
      * @param position index to ensure in unederlying array.
      * @return true if resized.
      */
-
+    
     protected boolean grow(final int position)
     {
         // do not set size here
@@ -182,18 +187,19 @@ public class IntList
         System.arraycopy(oldData, 0, data, 0, oldLength);
         return true;
     }
-
+    
     @Override
     public int hashCode()
     {
-        if (hashOK) return hashCache;
+        if (hashOK)
+            return hashCache;
         murmur.reset();
         murmur.updateInt(data, 0, size);
         hashCache = murmur.getHashCode();
         hashOK = true;
         return hashCache;
     }
-
+    
     /**
      * Increment value at a position.
      * 
@@ -209,7 +215,7 @@ public class IntList
         }
         return this;
     }
-
+    
     /**
      * Test if vector is empty
      * 
@@ -219,7 +225,7 @@ public class IntList
     {
         return (size < 1);
     }
-
+    
     /**
      * Get last value or cry if list is empty.
      *
@@ -232,7 +238,7 @@ public class IntList
         }
         return data[size - 1];
     }
-
+    
     /**
      * Push one value at the end
      * 
@@ -247,7 +253,7 @@ public class IntList
         data[pos] = value;
         return this;
     }
-
+    
     /**
      * Push a copy of an int array at the end.
      * 
@@ -262,12 +268,12 @@ public class IntList
         size = newSize;
         return this;
     }
-
+    
     /**
      * Change value at a position.
      * 
      * @param position index in list.
-     * @param value value to set.
+     * @param value    value to set.
      * @return this.
      */
     public IntList set(int position, int value)
@@ -279,7 +285,7 @@ public class IntList
         }
         return this;
     }
-
+    
     /**
      * Fisher–Yates shuffle, by random swaps (no copy, array modified in place).
      * 
@@ -296,7 +302,7 @@ public class IntList
             ar[i] = a;
         }
     }
-
+    
     /**
      * Size of data.
      * 
@@ -306,7 +312,7 @@ public class IntList
     {
         return size;
     }
-
+    
     /**
      * Get a copy of data trim to {@link #size}.
      * 
@@ -318,11 +324,11 @@ public class IntList
         System.arraycopy(data, 0, dest, 0, size);
         return dest;
     }
-
+    
     /**
      * Get a subset of data.
      * 
-     * @param size limit 
+     * @param size limit
      * @return data[0, size].
      */
     public int[] toArray(final int size)
@@ -331,7 +337,7 @@ public class IntList
         System.arraycopy(data, 0, dest, 0, size);
         return dest;
     }
-
+    
     /**
      * Get data as an int array, without the duplicates, keeping initial order for uniq value.
      * 
@@ -344,13 +350,14 @@ public class IntList
         Set<Integer> set = new HashSet<>(size);
         for (int srcPos = 0; srcPos < size; srcPos++) {
             final int value = data[srcPos];
-            if (set.contains(value)) continue;
+            if (set.contains(value))
+                continue;
             set.add(value);
             dst[dstPos++] = value;
         }
         return Arrays.copyOf(dst, dstPos);
     }
-
+    
     @Override
     public String toString()
     {
@@ -364,54 +371,56 @@ public class IntList
         sb.append(')');
         return sb.toString();
     }
-
-    /**
-     * Return a sorted array without duplicates.
-     * 
-     * @param duplicates random values.
-     * @return sorted with no duplicates.
-     */
-    static public int[] uniq(int[] duplicates)
-    {
-        if (duplicates == null) {
-            return null;
-        }
-        final int len = duplicates.length;
-        if (len < 2) return duplicates;
-        // work on a copy, to not sort source
-        int[] work = Arrays.copyOf(duplicates, len);
-        Arrays.sort(work);
-        int previous = work[0];
-        int destI = 1;
-        for (int i = 1; i < len; i++) {
-            if (work[i] == previous) continue;
-            work[destI++] = previous = work[i];
-        }
-        return Arrays.copyOf(work, destI);
-    }
-    
     
     /**
-     * Return a sorted int array of unique values from this list.
-     * @return sorted with no duplicates.
+     * Returns a sorted int array of unique values from this list. The returned array is freshly
+     * allocated; the caller may mutate it freely.
+     *
+     * @return sorted values with no duplicates; empty array if the list is empty.
      */
     public int[] uniq()
     {
-        int[] work = new int[size];
-        System.arraycopy(data, 0, work, 0, size);
+        if (size == 0)
+            return EMPTY_INT_ARRAY;
+        final int[] work = Arrays.copyOf(data, size);
         Arrays.sort(work);
         int destSize = 1;
         int last = work[0];
-        // copying in same array
-        for (int i = destSize; i < size; i++) {
+        for (int i = 1; i < size; i++) {
             if (work[i] == last)
                 continue;
-            work[destSize] = last = work[i];
-            destSize++;
+            work[destSize++] = last = work[i];
         }
-        int[] dest = new int[destSize];
-        System.arraycopy(work, 0, dest, 0, destSize);
-        return dest;
+        if (destSize == work.length)
+            return work;
+        return Arrays.copyOf(work, destSize);
     }
-
+    
+    /**
+     * Returns a sorted int array of unique values. The source array is not modified; the returned
+     * array is always freshly allocated.
+     */
+    public static int[] uniq(final int[] duplicates)
+    {
+        if (duplicates == null)
+            return null;
+        final int len = duplicates.length;
+        if (len == 0)
+            return EMPTY_INT_ARRAY;
+        final int[] work = Arrays.copyOf(duplicates, len);
+        if (len == 1)
+            return work;
+        Arrays.sort(work);
+        int destSize = 1;
+        int last = work[0];
+        for (int i = 1; i < len; i++) {
+            if (work[i] == last)
+                continue;
+            work[destSize++] = last = work[i];
+        }
+        if (destSize == work.length)
+            return work;
+        return Arrays.copyOf(work, destSize);
+    }
+    
 }

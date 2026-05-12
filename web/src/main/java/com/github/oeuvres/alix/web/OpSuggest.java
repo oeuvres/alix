@@ -77,6 +77,7 @@ public final class OpSuggest extends Op
                 right);
             final SpanWalker walker = new SpanWalker(
                 index.searcher(),
+                textFluc.termLexicon(),
                 spanQuery,
                 filterQuery,
                 listener);
