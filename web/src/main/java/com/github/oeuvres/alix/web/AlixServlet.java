@@ -62,6 +62,7 @@ public class AlixServlet extends HttpServlet
     private static final String CONTENT_CSV = "text/csv";
     private static final String CONTENT_HTML = "text/html";
     private static final String CONTENT_JSON = "application/json";
+    private static final String CONTENT_JSONL = "application/x-ndjson";
     private static final String CONF_DIR_PARAM = "alix.conf.dir";
     private static final Gson GSON = new Gson();
     private static final Logger LOG = Logger.getLogger(AlixServlet.class.getName());
@@ -556,7 +557,7 @@ public class AlixServlet extends HttpServlet
      */
     protected static void prepareJsonl(final HttpServletResponse response)
     {
-        response.setContentType(CONTENT_JSON);
+        response.setContentType(CONTENT_JSONL);
     }
 
 
