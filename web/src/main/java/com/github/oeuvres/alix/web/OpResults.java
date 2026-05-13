@@ -225,13 +225,15 @@ public class OpResults extends Op
         final String docline = pars.getString(DOCLINE, index.docline());
         final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
         final int spans = pars.getInt(SPANS, SPANS_RANGE, SPANS_DEFAULT, SPANS);
+        // transmit the slop parameter explicitly, cookie maybe not transmitted in some context
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         
         HtmlResults results = new HtmlResults(writer, index.reader().storedFields(), content)
             .doclineFieldName(docline)
             .docLimit(docs)
             .spanLimit(spans)
             .ctx(ctx)
-            .hrefSearch("?" + pars.queryString(CTX, F, Q, SLOP));
+            .hrefSearch("?" + pars.queryString(CTX, F, Q) + "&amp;slop=" + slop);
         final int from = pars.getInt(FROM, 0);
         
         // final String q = pars.getString(Q, null);
@@ -268,7 +270,7 @@ public class OpResults extends Op
                         .append("\" name=\"next-results\" href=\"")
                         .append("?")
                         .append(pars.queryString(DOCLINE, END, F, ROWS, START))
-                        .append("&amp;from=" + docId)
+                        .append("&amp;from=" + docId )
                         .append("\">…</a></p>\n");
                 ;
             }

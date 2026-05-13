@@ -416,7 +416,10 @@
         <xsl:call-template name="toclocal"/>
       </alix:field>
       <alix:field name="content" type="text">
-        <article class="chapter">
+        <xsl:variable name="hourglass">
+          <xsl:if test="/*/@cert and /*/@cert = 'low'"> hourglass</xsl:if>
+        </xsl:variable>
+        <article class="chapter{$hourglass}">
           <xsl:choose>
             <xsl:when test="descendant::*[key('split', generate-id())]">
               <!-- take content before sections -->

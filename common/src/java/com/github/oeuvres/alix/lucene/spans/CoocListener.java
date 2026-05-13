@@ -117,9 +117,6 @@ public final class CoocListener implements SpanListener
         if (left < 0 || right < 0) {
             throw new IllegalArgumentException("left and right must be >= 0; got left=" + left + ", right=" + right);
         }
-        if (left == 0 && right == 0) {
-            throw new IllegalArgumentException("left and right cannot both be 0");
-        }
         this.left = left;
         this.right = right;
         this.windowMask = new BitSet(fieldStats.maxWidth());

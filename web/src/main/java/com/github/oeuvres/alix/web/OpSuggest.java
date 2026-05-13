@@ -18,7 +18,6 @@ import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
-import com.github.oeuvres.alix.web.Op.OpMeta;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.web.Pars.*;
@@ -67,14 +66,17 @@ public final class OpSuggest extends Op
         }
         // coocs, with or without doc filter TODO
         else {
+            /*
             final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
             final int left = pars.getInt(CTX_LEFT, CTX_RANGE, ctx, CTX_LEFT);
             final int right = pars.getInt(CTX_RIGHT, CTX_RANGE, ctx, CTX_RIGHT);
+            */
+            final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
             final CoocListener listener = new CoocListener(
                 textFluc.fieldStats(),
                 textFluc.termRail(),
-                left,
-                right);
+                slop,
+                slop);
             final SpanWalker walker = new SpanWalker(
                 index.searcher(),
                 textFluc.termLexicon(),
@@ -109,7 +111,7 @@ public final class OpSuggest extends Op
         if (topTerms != null) {
             String textField = pars.getString(F, index.content());
             final FlucText textFluc = index.flucText(textField);
-            final String infix = pars.getString(INFIX, "");
+            final String infix = pars.getString(INFIX, "").replace("(", "").replace(")", "");;
             final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
             meta.put("infix", infix);
             meta.put("limit", topK);

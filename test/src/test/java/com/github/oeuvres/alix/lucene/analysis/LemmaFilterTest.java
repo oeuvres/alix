@@ -28,9 +28,6 @@ public class LemmaFilterTest {
     void setUp() {
         lex = new LemmaLexicon(64);
 
-        // -------------------------
-        // POS-dependent homographs
-        // -------------------------
         // "saw": noun lemma == surface; verb lemma == "see"
         put(lex, "saw",  POS_NOUN, "saw");
         put(lex, "saw",  POS_VERB, "see");
@@ -51,9 +48,7 @@ public class LemmaFilterTest {
         put(lex, "left", POS_ADJ,  "left");
         put(lex, "left", POS_VERB, "leave");
 
-        // -------------------------
         // POS-agnostic (DEFAULT_POS) entries
-        // -------------------------
         put(lex, "children", LemmaLexicon.ANY_POS, "child");
         put(lex, "mice",     LemmaLexicon.ANY_POS, "mouse");
 

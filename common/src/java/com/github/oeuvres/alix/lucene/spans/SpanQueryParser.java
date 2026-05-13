@@ -113,7 +113,7 @@ public class SpanQueryParser {
         if (clauses.size() == 1) {
             return clauses.get(0);
         }
-        return new SpanNearQuery(clauses.toArray(new SpanQuery[0]), slop, true);
+        return new SpanNearQuery(clauses.toArray(new SpanQuery[0]), slop, false);
     }
 
 }

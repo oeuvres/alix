@@ -47,6 +47,7 @@ public class Markup
     public static int leftBoundary(final String xml, int offset, final int words, final int chars)
     {
         if (offset < 0) return 0;
+        if (words == 0 || chars == 0) return offset + 1;
         int wc = 0;
         int cc = 0;
         boolean inTag = false; // scanning backward: '>' opens a tag, '<' closes it
@@ -122,6 +123,7 @@ public class Markup
      */
     public static int rightBoundary(final String xml, int offset, final int words, final int chars)
     {
+        if (words == 0 || chars == 0) return offset;
         final int length = xml.length();
         int wc = 0;
         int cc = 0;
