@@ -145,10 +145,11 @@ public final class OpTerms extends Op
                 right);
             final SpanWalker walker = new SpanWalker(
                 index.searcher(),
-                textFluc.termLexicon(),
                 spanQuery,
                 filterQuery,
-                listener);
+                listener,
+                textFluc.termLexicon()
+            );
             listener.bindTo(topTerms.buffers());
             walker.walk(0);
             topTerms.setTotals(listener.coocTokens(), listener.coocDocsTotal());

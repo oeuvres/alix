@@ -73,20 +73,44 @@ public final class SpanWalker
      */
     public SpanWalker(
         final IndexSearcher searcher,
-        final TermLexicon lexicon,
         final SpanQuery spanQuery,
         final Query filterQuery,
-        final SpanListener listener) throws IOException
+        final SpanListener listener
+    ) throws IOException
     {
         this.searcher = Objects.requireNonNull(searcher, "searcher");
         Objects.requireNonNull(spanQuery, "spanQuery");
         this.listener = Objects.requireNonNull(listener, "listener");
         this.spanQuery = (SpanQuery) searcher.rewrite(spanQuery);
-        if (listener instanceof CoocListener) {
-            int[] pivotIds = lexicon.termIds(spanQuery);
-            ((CoocListener)listener).setPivotIds(pivotIds);
-        }
         this.filterQuery = (filterQuery == null) ? null : searcher.rewrite(filterQuery);
+    }
+    
+    /**
+     * Creates a walker bound to a query, an optional filter, and a listener. Both queries are
+     * rewritten once, here.
+     *
+     * @param searcher    used for query rewrite and leaf access
+     * @param spanQuery   span query to enumerate
+     * @param filterQuery non-scoring filter, or {@code null}
+     * @param listener    consumer of streamed matches
+     * @param 
+     * @throws IOException          on rewrite failure
+     * @throws NullPointerException if {@code searcher}, {@code spanQuery}, or {@code listener} is
+     *                              {@code null}
+     */
+    public SpanWalker(
+        final IndexSearcher searcher,
+        final SpanQuery spanQuery,
+        final Query filterQuery,
+        final CoocListener listener,
+        final TermLexicon lexicon
+    ) throws IOException
+    {
+        this(searcher, spanQuery, filterQuery, listener);
+        // CoocListener needs lexicon to get termId from SpanQuery as unique sorted int[] of termIds
+        // Should be handled after that queries are rewritten
+        int[] pivotIds = lexicon.termIds(spanQuery);
+        listener.setPivotIds(pivotIds);
     }
     
     /**

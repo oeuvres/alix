@@ -405,7 +405,8 @@ public final class TermLexicon implements Closeable {
         IOUtil.ensureRegularFile(fstPath);
         IOUtil.ensureRegularFile(datPath);
         IOUtil.ensureRegularFile(offPath);
-        IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, fstPath, datPath, offPath);
+        // do not check mtime, will not work if index is copied in server
+        // IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, fstPath, datPath, offPath);
     
         final MappedByteBuffer datBuf = IOUtil.mapReadOnly(datPath);
         final MappedByteBuffer offByteBuf = IOUtil.mapReadOnly(offPath);

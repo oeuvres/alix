@@ -61,6 +61,8 @@ public class HtmlResults implements SpanListener
     private String hrefBase = "";
     private String hrefExt = "";
     private String hrefSearch = "";
+    private String docCss= "hit";
+    private String spanCss= "span";
     
 
     /**
@@ -116,6 +118,18 @@ public class HtmlResults implements SpanListener
         return this.doclineFieldName;
     }
     
+    public HtmlResults docCss(String docCss)
+    {
+        this.docCss = docCss;
+        return this;
+    }
+
+    public HtmlResults spanCss(String spanCss)
+    {
+        this.spanCss = spanCss;
+        return this;
+    }
+
     @Override
     public void endDoc(final int spanTotal) throws IOException
     {
@@ -234,7 +248,7 @@ public class HtmlResults implements SpanListener
 
         writer.append("<article id=\"").append(id)
               .append("\" data-docid=\"").append(String.valueOf(docId))
-              .append("\" class=\"hit\">\n");
+              .append("\" class=\"").append(docCss).append("\">\n");
 
         if (doclineFieldName != null) {
             final String docline = doc.get(doclineFieldName);

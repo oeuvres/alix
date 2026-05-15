@@ -351,7 +351,8 @@ public final class TermRail implements Closeable
         final Path offPath = offPath(sideDir, field);
         IOUtil.ensureRegularFile(datPath);
         IOUtil.ensureRegularFile(offPath);
-        IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, datPath, offPath);
+        // do not check mtime, will not work if index is copied in server
+        // IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, datPath, offPath);
 
         final MappedByteBuffer offBuf = IOUtil.mapReadOnly(offPath);
         offBuf.order(ByteOrder.nativeOrder());

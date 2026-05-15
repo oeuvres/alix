@@ -79,10 +79,11 @@ public final class OpSuggest extends Op
                 slop);
             final SpanWalker walker = new SpanWalker(
                 index.searcher(),
-                textFluc.termLexicon(),
                 spanQuery,
                 filterQuery,
-                listener);
+                listener,
+                textFluc.termLexicon()
+            );
             
             listener.bindTo(topTerms.buffers());
             walker.walk(0);

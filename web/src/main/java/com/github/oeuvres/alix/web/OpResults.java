@@ -250,6 +250,7 @@ public class OpResults extends Op
             int docCount = 0;
             boolean more = false;
             int docId = from;
+            results.docCss("hit-row");
             for (; docId < fieldStats.maxDoc(); docId++) {
                 if (fieldStats.docWidth(docId) == 0)
                     continue;
@@ -281,11 +282,9 @@ public class OpResults extends Op
         
         // sorted?
         String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
-        // relevance
         if (DATE.equals(sort)) {
             SpanWalker walker = new SpanWalker(
                 index.searcher(),
-                flucText.termLexicon(),
                 spanQuery, 
                 filterQuery, 
                 results
@@ -300,6 +299,7 @@ public class OpResults extends Op
             writer.flush();
             nextDoc = walker.walk(from);
         } else {
+            // relevance
             Query query;
             if (filterQuery != null) {
                 query = new BooleanQuery.Builder()
