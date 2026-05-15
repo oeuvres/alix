@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -16,6 +15,8 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
+
+import com.github.oeuvres.alix.lucene.output.HistoNum;
 
 /**
  * Helper for one Lucene numeric field.
@@ -30,27 +31,29 @@ import org.apache.lucene.util.NumericUtils;
  * </ul>
  *
  * <p>
- * Construction is cheap: it reads point min/max values leaf by leaf, but does
- * not scan all documents. Per-document lookup is available only after calling
- * {@link #cacheDense()}, which builds an in-memory dense integer cache.
+ * Construction reads point min/max leaf by leaf; it does not scan all
+ * documents. Per-document lookup and per-value counts are available only
+ * after the dense arrays are built, either explicitly by
+ * {@link #cacheHisto()} or implicitly by any method that needs them.
  * </p>
  *
- * <h2>Dense integer cache</h2>
+ * <h2>Dense arrays</h2>
  *
  * <p>
- * The dense cache covers the full integer value range of the field:
- * {@code [intMin(), intMax()]}. It stores:
+ * Three arrays cover the full integer value range {@code [intMin, intMax]}:
  * </p>
  *
  * <ul>
- *   <li>{@code docId -> numeric value};</li>
- *   <li>{@code value -> number of live documents with that value}.</li>
+ *   <li>{@code docValues}: {@code docId &rarr; numeric value};</li>
+ *   <li>{@code docHasValue}: presence bitset over global doc ids;</li>
+ *   <li>{@code valueDocs}: {@code value - intMin &rarr; live document count}.</li>
  * </ul>
  *
  * <p>
- * Internally, {@code valueDocs[value - min]} is used to address dense arrays.
- * This offset is an implementation detail. Public methods expose real numeric
- * values.
+ * The arrays are exposed by reference through {@link #histo()} and
+ * {@link #valueDocs()}. Holders must not write through them: every
+ * histogram produced by this field, and every {@link FlucNum} accessor,
+ * reads the same memory.
  * </p>
  *
  * <h2>Numeric type limitation</h2>
@@ -59,20 +62,21 @@ import org.apache.lucene.util.NumericUtils;
  * Lucene point metadata exposes the point byte width, not the original Java
  * numeric type. {@code IntPoint} and {@code FloatPoint} are both 4 bytes;
  * {@code LongPoint} and {@code DoublePoint} are both 8 bytes. This class
- * assumes integer encoding. Dense caching is therefore restricted to 4-byte
- * integer point fields.
+ * assumes integer encoding. Dense building is restricted to 4-byte integer
+ * point fields with integer-exact min and max.
  * </p>
  *
  * <h2>Thread safety</h2>
  *
  * <p>
- * Field metadata is immutable after construction. The dense cache is built
- * under synchronization and published through a {@code volatile} reference.
+ * Field metadata is immutable after construction. The dense arrays are built
+ * under synchronization and published through {@code volatile} field
+ * {@link #dense}.
  * </p>
  */
 public class FlucNum extends Fluc
 {
-    /** Reader retained for lazy dense-cache construction. */
+    /** Reader retained for lazy dense-array construction. */
     protected final IndexReader reader;
 
     /** Byte width of the point encoding: 4 for int/float, 8 for long/double. */
@@ -84,16 +88,31 @@ public class FlucNum extends Fluc
     /** Global minimum value decoded from point metadata. */
     private final double min;
 
-    /** Dense integer cache; {@code null} until {@link #cacheDense()} succeeds. */
-    private volatile DenseIntCache dense;
+    /** Set to {@code true} when the dense arrays are built; published volatile. */
+    private volatile boolean dense;
+
+    /** Documents that have a value for this field; {@code null} until built. */
+    private FixedBitSet docHasValue;
+
+    /** Document values by global Lucene doc id; {@code null} until built. */
+    private int[] docValues;
+
+    /** Global maximum cast to {@code int}; valid after {@link #cacheHisto()}. */
+    private int intMax;
+
+    /** Global minimum cast to {@code int}; valid after {@link #cacheHisto()}. */
+    private int intMin;
+
+    /** Document counts by value: {@code valueDocs[value - intMin]}; {@code null} until built. */
+    private int[] valueDocs;
 
     /**
      * Creates a numeric-field helper.
      *
      * <p>
-     * The constructor validates that the field is a single-dimension numeric
-     * point field with numeric doc values. It reads global min/max from point
-     * metadata, but does not build the dense cache.
+     * Validates that the field is a single-dimension numeric point field with
+     * numeric doc values. Reads global min and max from point metadata. Does
+     * not build the dense arrays.
      * </p>
      *
      * @param info   field metadata
@@ -150,48 +169,102 @@ public class FlucNum extends Fluc
     }
 
     /**
-     * Builds the dense integer cache for the full field value range.
+     * Builds the dense arrays for the full field value range.
      *
      * <p>
      * The dense range is {@code intMax - intMin + 1}. The method refuses
      * non-4-byte point fields and non-exact integer min/max values.
-     * </p>
-     *
-     * <p>
-     * Repeated calls are cheap. If the cache already exists, the method returns
-     * immediately.
+     * Repeated calls are cheap; if the arrays already exist, the method
+     * returns immediately.
      * </p>
      *
      * @return this instance, for chaining
      * @throws IOException           if Lucene doc-values access fails
-     * @throws IllegalStateException if the field cannot be represented as a
-     *                               dense 4-byte integer cache
+     * @throws IllegalStateException if the field cannot be represented as
+     *                               dense 4-byte integer arrays
      */
-    public FlucNum cacheDense() throws IOException
+    public FlucNum cacheHisto() throws IOException
     {
-        DenseIntCache c = dense;
-        if (c != null) return this;
-
+        if (dense) return this;
         synchronized (this) {
-            c = dense;
-            if (c != null) return this;
+            if (dense) return this;
             if (numBytes != 4) {
                 throw new IllegalStateException(
                     "Field \"" + name() + "\" is not a 4-byte integer point field.");
             }
-            dense = new DenseIntCache();
+            final int lo = (int) min;
+            final int hi = (int) max;
+            if ((double) lo != min || (double) hi != max) {
+                throw new IllegalStateException(
+                    "Field \"" + name() + "\" min/max are not exact int values: "
+                    + "min=" + min + ", max=" + max);
+            }
+            final int range;
+            try {
+                range = Math.addExact(Math.subtractExact(hi, lo), 1);
+            } catch (ArithmeticException e) {
+                throw new IllegalStateException(
+                    "Field \"" + name() + "\" invalid dense int range: ["
+                    + lo + ',' + hi + ']', e);
+            }
+
+            final int maxDoc = reader.maxDoc();
+            final int[] values = new int[maxDoc];
+            final FixedBitSet hasValue = new FixedBitSet(maxDoc);
+            final int[] counts = new int[range];
+
+            for (LeafReaderContext ctx : reader.leaves()) {
+                final NumericDocValues ndv = ctx.reader().getNumericDocValues(name());
+                if (ndv == null) continue;
+
+                final Bits liveDocs = ctx.reader().getLiveDocs();
+                final int docBase = ctx.docBase;
+
+                for (int leafDocId = ndv.nextDoc();
+                     leafDocId != DocIdSetIterator.NO_MORE_DOCS;
+                     leafDocId = ndv.nextDoc()) {
+
+                    if (liveDocs != null && !liveDocs.get(leafDocId)) continue;
+
+                    final long longValue = ndv.longValue();
+                    if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
+                        throw new IllegalStateException(
+                            "Numeric value out of int range for field \"" + name()
+                            + "\": value=" + longValue);
+                    }
+
+                    final int value = (int) longValue;
+                    final int off = value - lo;
+
+                    if (off < 0 || off >= range) {
+                        throw new IllegalStateException(
+                            "Numeric value out of dense range for field \"" + name()
+                            + "\": value=" + value
+                            + ", min=" + lo
+                            + ", max=" + hi
+                            + ", range=" + range);
+                    }
+
+                    final int docId = docBase + leafDocId;
+                    values[docId] = value;
+                    hasValue.set(docId);
+                    counts[off]++;
+                }
+            }
+
+            this.intMin = lo;
+            this.intMax = hi;
+            this.docValues = values;
+            this.docHasValue = hasValue;
+            this.valueDocs = counts;
+            this.dense = true;
             return this;
-            
         }
     }
 
     /**
-     * Closes this helper.
-     *
-     * <p>
-     * This class owns no closeable resource. The method exists to satisfy the
-     * {@link Fluc} contract.
-     * </p>
+     * Closes this helper. No closeable resource is owned; the method exists
+     * to satisfy the {@link Fluc} contract.
      */
     @Override
     public void close()
@@ -199,64 +272,41 @@ public class FlucNum extends Fluc
     }
 
     /**
-     * Returns full-corpus document counts by numeric value.
+     * Counts filtered documents by numeric value.
      *
      * <p>
-     * This is an alias of {@link #valueDocs()}. The returned array is a
-     * defensive copy. Slot {@code value - intMin()} contains the number of
-     * live documents with that value.
-     * </p>
-     *
-     * @return document counts by dense numeric value
-     * @throws IllegalStateException if the dense cache has not been built
-     */
-    public int[] countByValue()
-    {
-        return valueDocs();
-    }
-
-    /**
-     * Returns filtered document counts by numeric value.
-     *
-     * <p>
-     * Slot {@code value - intMin()} contains the number of documents in
-     * {@code docFilter} whose numeric value is {@code value}.
+     * Slot {@code value - intMin()} of the returned array contains the number
+     * of documents in {@code docFilter} whose numeric value is {@code value}.
+     * The returned array is freshly allocated and owned by the caller.
      * </p>
      *
      * @param docFilter set of global Lucene document ids to count
      * @return filtered document counts by dense numeric value
-     * @throws NullPointerException  if {@code docFilter == null}
-     * @throws IllegalStateException if the dense cache has not been built
+     * @throws NullPointerException if {@code docFilter == null}
+     * @throws IOException          if lazy dense build fails
      */
-    public int[] countByValue(final BitSet docFilter)
+    public int[] countByValue(final BitSet docFilter) throws IOException
     {
-        if (docFilter == null) {
-            throw new NullPointerException("docFilter");
+        if (docFilter == null) throw new NullPointerException("docFilter");
+        cacheHisto();
+        final int[] counts = new int[valueDocs.length];
+        for (int docId = docFilter.nextSetBit(0);
+             docId != DocIdSetIterator.NO_MORE_DOCS;
+             docId = docFilter.nextSetBit(docId + 1)) {
+            if (!docHasValue.get(docId)) continue;
+            counts[docValues[docId] - intMin]++;
         }
-        return requireDense().countByValue(docFilter);
+        return counts;
     }
 
     /**
-     * Reports whether the dense integer cache has been built.
+     * Reports whether the dense arrays have been built.
      *
-     * @return {@code true} if the dense cache exists
+     * @return {@code true} once {@link #cacheHisto()} has succeeded
      */
     public boolean denseCached()
     {
-        return dense != null;
-    }
-
-    /**
-     * Returns the number of live documents with one numeric value.
-     *
-     * @param value numeric field value
-     * @return number of live documents with {@code value}, or {@code 0} if the
-     *         value is outside the dense range
-     * @throws IllegalStateException if the dense cache has not been built
-     */
-    public int docs(final int value)
-    {
-        return requireDense().docs(value);
+        return dense;
     }
 
     /**
@@ -266,22 +316,25 @@ public class FlucNum extends Fluc
      * @return numeric field value
      * @throws IllegalArgumentException if {@code docId} is outside the reader
      *                                  document-address space
-     * @throws IllegalStateException    if the dense cache has not been built
+     * @throws IOException              if lazy dense build fails
      * @throws NoSuchElementException   if the document has no value for this field
      */
-    public int docValue(final int docId)
+    public int docValue(final int docId) throws IOException
     {
         checkDocId(docId);
-        return requireDense().docValue(docId);
+        cacheHisto();
+        if (!docHasValue.get(docId)) {
+            throw new NoSuchElementException(
+                "Document " + docId + " has no numeric value for field \"" + name() + "\".");
+        }
+        return docValues[docId];
     }
 
     /**
-     * Returns the numeric value of one document, or a fallback if the document
-     * has no value.
+     * Returns the numeric value of one document, or a fallback if absent.
      *
      * <p>
-     * This overload is intended for hot loops where a missing value is expected
-     * and should not throw.
+     * For hot loops where a missing value is expected and should not throw.
      * </p>
      *
      * @param docId   global Lucene document id
@@ -289,12 +342,29 @@ public class FlucNum extends Fluc
      * @return numeric field value, or {@code noValue}
      * @throws IllegalArgumentException if {@code docId} is outside the reader
      *                                  document-address space
-     * @throws IllegalStateException    if the dense cache has not been built
+     * @throws IOException              if lazy dense build fails
      */
-    public int docValue(final int docId, final int noValue)
+    public int docValue(final int docId, final int noValue) throws IOException
     {
         checkDocId(docId);
-        return requireDense().docValue(docId, noValue);
+        cacheHisto();
+        return docHasValue.get(docId) ? docValues[docId] : noValue;
+    }
+
+    /**
+     * Returns the number of live documents carrying a given numeric value.
+     *
+     * @param value numeric field value
+     * @return number of live documents with {@code value}, or {@code 0} if
+     *         the value is outside the dense range
+     * @throws IOException if lazy dense build fails
+     */
+    public int docsWithValue(final int value) throws IOException
+    {
+        cacheHisto();
+        final int off = value - intMin;
+        if (off < 0 || off >= valueDocs.length) return 0;
+        return valueDocs[off];
     }
 
     /**
@@ -304,25 +374,25 @@ public class FlucNum extends Fluc
      * @return {@code true} if the document has a numeric value
      * @throws IllegalArgumentException if {@code docId} is outside the reader
      *                                  document-address space
-     * @throws IllegalStateException    if the dense cache has not been built
+     * @throws IOException              if lazy dense build fails
      */
-    public boolean hasValue(final int docId)
+    public boolean hasValue(final int docId) throws IOException
     {
         checkDocId(docId);
-        return requireDense().hasValue(docId);
+        cacheHisto();
+        return docHasValue.get(docId);
     }
 
     /**
-     * Returns a fresh {@link NumHisto} bound to this field's coordinate system,
-     * with the document-count channel pre-attached by reference.
+     * Returns a fresh {@link HistoNum} bound to this field's coordinate
+     * system, with the document-count channel pre-attached by reference.
      *
      * <p>
-     * Builds the dense cache on first call; idempotent thereafter. Each call
-     * returns a new {@link NumHisto} instance, but the three arrays it carries
-     * &mdash; {@link NumHisto#docValues}, {@link NumHisto#docHasValue} and the
-     * {@link NumHisto#valueDocs()} channel &mdash; are the cached arrays
-     * shared by every histogram produced by this field. Callers must not write
-     * through them: a write into one histogram would corrupt every other.
+     * Each call returns a new {@link HistoNum} instance. The three arrays it
+     * carries &mdash; {@link HistoNum#docValues}, {@link HistoNum#docHasValue}
+     * and the {@link HistoNum#valueDocs()} channel &mdash; are this field's
+     * cached arrays, shared by every histogram and every accessor. Holders
+     * must not write through them.
      * </p>
      *
      * <p>
@@ -332,16 +402,15 @@ public class FlucNum extends Fluc
      * </p>
      *
      * @return per-request histogram assembly
-     * @throws IOException           if dense-cache construction fails
-     * @throws IllegalStateException if the field cannot be represented as a
-     *                               dense 4-byte integer cache
+     * @throws IOException           if dense-array construction fails
+     * @throws IllegalStateException if the field cannot be represented as
+     *                               dense 4-byte integer arrays
      */
-    public NumHisto histo() throws IOException
+    public HistoNum histo() throws IOException
     {
-        cacheDense();
-        final DenseIntCache c = dense;
-        final NumHisto h = new NumHisto((int) min, (int) max, c.docValues, c.docHasValue);
-        h.setValueDocs(c.valueDocs);
+        cacheHisto();
+        final HistoNum h = new HistoNum(intMin, intMax, docValues, docHasValue);
+        h.setValueDocs(valueDocs);
         return h;
     }
 
@@ -369,17 +438,27 @@ public class FlucNum extends Fluc
      * Returns min and max values within a filtered document set.
      *
      * @param docFilter set of global Lucene document ids to inspect
-     * @return {@code int[]{min, max}}, or {@code null} if no filtered document
-     *         has a value for this field
-     * @throws NullPointerException  if {@code docFilter == null}
-     * @throws IllegalStateException if the dense cache has not been built
+     * @return {@code int[]{min, max}}, or {@code null} if no filtered
+     *         document has a value for this field
+     * @throws NullPointerException if {@code docFilter == null}
+     * @throws IOException          if lazy dense build fails
      */
-    public int[] minmax(final BitSet docFilter)
+    public int[] minmax(final BitSet docFilter) throws IOException
     {
-        if (docFilter == null) {
-            throw new NullPointerException("docFilter");
+        if (docFilter == null) throw new NullPointerException("docFilter");
+        cacheHisto();
+        int lo = Integer.MAX_VALUE;
+        int hi = Integer.MIN_VALUE;
+        for (int docId = docFilter.nextSetBit(0);
+             docId != DocIdSetIterator.NO_MORE_DOCS;
+             docId = docFilter.nextSetBit(docId + 1)) {
+            if (!docHasValue.get(docId)) continue;
+            final int value = docValues[docId];
+            if (value < lo) lo = value;
+            if (value > hi) hi = value;
         }
-        return requireDense().minmax(docFilter);
+        if (lo == Integer.MAX_VALUE) return null;
+        return new int[] { lo, hi };
     }
 
     /**
@@ -391,14 +470,13 @@ public class FlucNum extends Fluc
     {
         return numBytes;
     }
-    
+
     /**
      * Returns a human-readable point type label.
      *
      * <p>
-     * This label is inferred only from byte width:
-     * {@code "int"} for 4 bytes, {@code "long"} for 8 bytes,
-     * and {@code "point"} otherwise.
+     * Inferred only from byte width: {@code "int"} for 4 bytes,
+     * {@code "long"} for 8 bytes, and {@code "point"} otherwise.
      * </p>
      *
      * @return point type label
@@ -413,19 +491,22 @@ public class FlucNum extends Fluc
     }
 
     /**
-     * Returns full-corpus document counts by numeric value.
+     * Returns full-corpus document counts by numeric value, shared by
+     * reference.
      *
      * <p>
-     * The returned array is a defensive copy. Slot {@code value - intMin()}
-     * contains the number of live documents with that value.
+     * Slot {@code value - intMin()} contains the number of live documents
+     * with that value. The returned array is this field's cached array;
+     * callers must not write through it.
      * </p>
      *
      * @return document counts by dense numeric value
-     * @throws IllegalStateException if the dense cache has not been built
+     * @throws IOException if lazy dense build fails
      */
-    public int[] valueDocs()
+    public int[] valueDocs() throws IOException
     {
-        return requireDense().valueDocs();
+        cacheHisto();
+        return valueDocs;
     }
 
     /**
@@ -448,8 +529,8 @@ public class FlucNum extends Fluc
      * Decodes a packed point value.
      *
      * <p>
-     * The decoding assumes integer point encodings:
-     * 4-byte values are decoded as {@code int}, 8-byte values as {@code long}.
+     * The decoding assumes integer point encodings: 4-byte values are
+     * decoded as {@code int}, 8-byte values as {@code long}.
      * </p>
      *
      * @param packed packed point value
@@ -467,24 +548,6 @@ public class FlucNum extends Fluc
     }
 
     /**
-     * Returns the dense cache or fails.
-     *
-     * @return dense integer cache
-     * @throws IllegalStateException if {@link #cacheDense()} has not been called
-     *                               successfully
-     */
-    private DenseIntCache requireDense()
-    {
-        final DenseIntCache c = dense;
-        if (c == null) {
-            throw new IllegalStateException(
-                "Dense cache not built for field \"" + name()
-                + "\"; call cacheDense() first.");
-        }
-        return c;
-    }
-
-    /**
      * Counts documents carrying point values for a field.
      *
      * @param reader    index reader
@@ -492,7 +555,7 @@ public class FlucNum extends Fluc
      * @return point-values document count summed across leaves
      * @throws IOException if Lucene metadata access fails
      */
-    static int countDocs(
+    private static int countDocs(
         final IndexReader reader,
         final String fieldName
     ) throws IOException {
@@ -508,8 +571,8 @@ public class FlucNum extends Fluc
      * Probes whether a field is stored.
      *
      * <p>
-     * This is a sample-based probe. It inspects at most 256 documents per leaf.
-     * It is intended for UI metadata, not for formal validation.
+     * Sample-based: inspects at most 256 documents per leaf. Intended for
+     * UI metadata, not for formal validation.
      * </p>
      *
      * @param reader    index reader
@@ -527,7 +590,7 @@ public class FlucNum extends Fluc
 
             final int probe = Math.min(ctx.reader().maxDoc(), 256);
             for (int i = 0; i < probe; i++) {
-                final Document doc = reader.storedFields().document(
+                final var doc = reader.storedFields().document(
                     ctx.docBase + i,
                     Set.of(fieldName)
                 );
@@ -535,225 +598,5 @@ public class FlucNum extends Fluc
             }
         }
         return false;
-    }
-    
-    /**
-     * Private dense cache for this numeric field.
-     *
-     * <p>
-     * The cache stores only materialized lookup arrays. Field metadata such as
-     * min, max, and range stays owned by the enclosing {@link FlucNum}.
-     * </p>
-     *
-     * <p>
-     * Document values are stored directly:
-     * {@code docValues[docId] = value}. Missing values are represented by
-     * {@link #docHasValue}.
-     * </p>
-     *
-     * <p>
-     * Counts by value are stored densely:
-     * {@code valueDocs[value - (int) FlucNum.this.min]}.
-     * </p>
-     */
-    private final class DenseIntCache
-    {
-        /** Document values by global Lucene doc id. */
-        final int[] docValues;
-
-        /** Documents that have a value for this field. */
-        final FixedBitSet docHasValue;
-
-        /** Document counts by value: {@code valueDocs[value - intMin]}. */
-        final int[] valueDocs;
-
-        /**
-         * Builds the dense cache by scanning {@link NumericDocValues}.
-         *
-         * @throws IOException if doc-values iteration fails
-         * @throws IllegalStateException if the field is not a dense int-compatible field
-         */
-        private DenseIntCache() throws IOException
-        {
-            if (numBytes != 4) {
-                throw new IllegalStateException(
-                    "Field \"" + name() + "\" is not a 4-byte integer point field.");
-            }
-
-            final int intMin = (int) min;
-            final int intMax = (int) max;
-
-            if ((double) intMin != min || (double) intMax != max) {
-                throw new IllegalStateException(
-                    "Field \"" + name() + "\" min/max are not exact int values: "
-                    + "min=" + min + ", max=" + max);
-            }
-
-            final int range;
-            try {
-                range = Math.addExact(Math.subtractExact(intMax, intMin), 1);
-            } catch (ArithmeticException e) {
-                throw new IllegalStateException(
-                    "Field \"" + name() + "\" invalid dense int range: ["
-                    + intMin + ',' + intMax + ']', e);
-            }
-
-            this.docValues = new int[reader.maxDoc()];
-            this.docHasValue = new FixedBitSet(reader.maxDoc());
-            this.valueDocs = new int[range];
-
-            for (LeafReaderContext ctx : reader.leaves()) {
-                final NumericDocValues ndv = ctx.reader().getNumericDocValues(name());
-                if (ndv == null) continue;
-
-                final Bits liveDocs = ctx.reader().getLiveDocs();
-                final int docBase = ctx.docBase;
-
-                for (int leafDocId = ndv.nextDoc();
-                     leafDocId != DocIdSetIterator.NO_MORE_DOCS;
-                     leafDocId = ndv.nextDoc()) {
-
-                    if (liveDocs != null && !liveDocs.get(leafDocId)) continue;
-
-                    final long longValue = ndv.longValue();
-                    if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
-                        throw new IllegalStateException(
-                            "Numeric value out of int range for field \"" + name()
-                            + "\": value=" + longValue);
-                    }
-
-                    final int value = (int) longValue;
-                    final int off = value - intMin;
-
-                    if (off < 0 || off >= valueDocs.length) {
-                        throw new IllegalStateException(
-                            "Numeric value out of dense range for field \"" + name()
-                            + "\": value=" + value
-                            + ", min=" + intMin
-                            + ", max=" + intMax
-                            + ", range=" + valueDocs.length);
-                    }
-
-                    final int docId = docBase + leafDocId;
-
-                    docValues[docId] = value;
-                    docHasValue.set(docId);
-                    valueDocs[off]++;
-                }
-            }
-        }
-
-        /**
-         * Counts filtered documents by numeric value.
-         *
-         * @param docFilter document ids to count
-         * @return document counts by dense value
-         */
-        int[] countByValue(final BitSet docFilter)
-        {
-            final int[] counts = new int[valueDocs.length];
-            final int intMin = (int) min;
-
-            for (int docId = docFilter.nextSetBit(0);
-                 docId != DocIdSetIterator.NO_MORE_DOCS;
-                 docId = docFilter.nextSetBit(docId + 1)) {
-
-                if (!docHasValue.get(docId)) continue;
-
-                counts[docValues[docId] - intMin]++;
-            }
-
-            return counts;
-        }
-
-        /**
-         * Returns the number of documents with one numeric value.
-         *
-         * @param value numeric value
-         * @return document count, or {@code 0} if the value is outside range
-         */
-        int docs(final int value)
-        {
-            final int intMin = (int) min;
-            final int off = value - intMin;
-
-            if (off < 0 || off >= valueDocs.length) return 0;
-            return valueDocs[off];
-        }
-
-        /**
-         * Returns the numeric value of one document.
-         *
-         * @param docId global Lucene document id
-         * @return numeric value
-         * @throws NoSuchElementException if the document has no value
-         */
-        int docValue(final int docId)
-        {
-            if (!docHasValue.get(docId)) {
-                throw new NoSuchElementException(
-                    "Document " + docId + " has no numeric value for field \"" + name() + "\".");
-            }
-            return docValues[docId];
-        }
-
-        /**
-         * Returns the numeric value of one document, or a fallback if absent.
-         *
-         * @param docId   global Lucene document id
-         * @param noValue fallback value
-         * @return numeric value, or {@code noValue}
-         */
-        int docValue(final int docId, final int noValue)
-        {
-            return docHasValue.get(docId) ? docValues[docId] : noValue;
-        }
-
-        /**
-         * Reports whether one document has a numeric value.
-         *
-         * @param docId global Lucene document id
-         * @return {@code true} if the document has a value
-         */
-        boolean hasValue(final int docId)
-        {
-            return docHasValue.get(docId);
-        }
-
-        /**
-         * Computes min and max values inside a document filter.
-         *
-         * @param docFilter document ids to inspect
-         * @return {@code int[]{min, max}}, or {@code null} if no filtered document has a value
-         */
-        int[] minmax(final BitSet docFilter)
-        {
-            int lo = Integer.MAX_VALUE;
-            int hi = Integer.MIN_VALUE;
-
-            for (int docId = docFilter.nextSetBit(0);
-                 docId != DocIdSetIterator.NO_MORE_DOCS;
-                 docId = docFilter.nextSetBit(docId + 1)) {
-
-                if (!docHasValue.get(docId)) continue;
-
-                final int value = docValues[docId];
-                if (value < lo) lo = value;
-                if (value > hi) hi = value;
-            }
-
-            if (lo == Integer.MAX_VALUE) return null;
-            return new int[] { lo, hi };
-        }
-
-        /**
-         * Returns a defensive copy of document counts by value.
-         *
-         * @return document counts by dense numeric value
-         */
-        int[] valueDocs()
-        {
-            return valueDocs.clone();
-        }
     }
 }

@@ -296,7 +296,7 @@ public final class Partition
                 + "]: " + targetNonFocusParts);
         }
 
-        num.cacheDense();
+        num.cacheHisto();
         final FieldStats stats = text.fieldStats();
         final int maxDoc = stats.maxDoc();
         if (acceptedDocs != null && acceptedDocs.length() < maxDoc) {

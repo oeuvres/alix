@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.fluc;
+package com.github.oeuvres.alix.lucene.output;
 
 import java.util.Objects;
 
@@ -42,7 +42,7 @@ import org.apache.lucene.util.FixedBitSet;
  * mutable working copy.
  * </p>
  */
-public final class NumHisto
+public final class HistoNum
 {
     /** Documents that have a value for the coordinate field. Shared by reference; not mutated. */
     public final FixedBitSet docHasValue;
@@ -78,7 +78,7 @@ public final class NumHisto
      * @throws NullPointerException     if {@code docValues} or {@code docHasValue} is {@code null}
      * @throws IllegalArgumentException if {@code max < min}
      */
-    public NumHisto(
+    public HistoNum(
         final int min,
         final int max,
         final int[] docValues,
