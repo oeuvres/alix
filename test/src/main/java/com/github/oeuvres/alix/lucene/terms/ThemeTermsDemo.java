@@ -57,7 +57,7 @@ public final class ThemeTermsDemo {
             final DirectoryReader luceneReader = DirectoryReader.open(dir);
             final TermLexicon lexicon = TermLexicon.openOrBuild(luceneReader, indexPath, field);
         ) {
-            final FieldStats fieldStats = FieldStats.openOrBuild(luceneReader, indexPath, field);
+            final TermStats fieldStats = TermStats.openOrBuild(luceneReader, indexPath, field);
             // final TermStats stats = new TermStats(field, lexicon.vocabSize());
             // final int maxDoc = fieldStats.maxDoc();
 

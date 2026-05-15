@@ -65,7 +65,7 @@ public final class TermSuggest
      * @throws IllegalArgumentException if vocabulary sizes differ
      * @throws NullPointerException if an argument is {@code null}
      */
-    public TermSuggest(final TermLexicon lexicon, final FieldStats stats)
+    public TermSuggest(final TermLexicon lexicon, final TermStats stats)
     {
         this(lexicon, stats, DEFAULT_MARK_BEFORE, DEFAULT_MARK_AFTER);
     }
@@ -82,7 +82,7 @@ public final class TermSuggest
      */
     public TermSuggest(
         final TermLexicon lexicon,
-        final FieldStats stats,
+        final TermStats stats,
         final String markBefore,
         final String markAfter
     ) {

@@ -110,7 +110,7 @@ import java.util.Objects;
  * <li>The field must store term frequencies (needed for {@code docTokens} and per-term stats).</li>
  * </ul>
  */
-public final class FieldStats
+public final class TermStats
 {
     /** File magic: ASCII "FSTS". */
     private static final int MAGIC = 0x46535453;
@@ -179,7 +179,7 @@ public final class FieldStats
      * @param width      derived: sum of docWidths
      * @param tokens     derived: sum of docTokens
      */
-    private FieldStats(
+    private TermStats(
             final Path sideDir,
             final String field,
             final int maxDoc,
@@ -247,7 +247,7 @@ public final class FieldStats
         
         final int maxDoc = reader.maxDoc();
         final DocStats d = docStats(reader, field, report);
-        final TermStats t = termStats(reader, field, report);
+        final VocabCounts t = vocabCounts(reader, field, report);
         
         final Path statsPath = statsPath(sideDir, field);
         IOUtil.ensureAbsent(statsPath);
@@ -661,7 +661,7 @@ public final class FieldStats
      * @return opened immutable field statistics
      * @throws IOException if the file is missing, inconsistent, or unreadable
      */
-    public static FieldStats open(
+    public static TermStats open(
         final IndexReader reader,
         final Path sideDir,
         final String field,
@@ -746,7 +746,7 @@ public final class FieldStats
                 throw new IOException("Trailing bytes in stats file: " + path);
             }
             
-            return new FieldStats(
+            return new TermStats(
                     sideDir,
                     field,
                     maxDoc,
@@ -773,7 +773,7 @@ public final class FieldStats
      * @return opened immutable field statistics
      * @throws IOException if building or opening fails
      */
-    public static FieldStats openOrBuild(final IndexReader reader, final Path sideDir, final String field)
+    public static TermStats openOrBuild(final IndexReader reader, final Path sideDir, final String field)
         throws IOException
     {
         return openOrBuild(reader, sideDir, field, null);
@@ -789,7 +789,7 @@ public final class FieldStats
      * @return opened immutable field statistics
      * @throws IOException if building or opening fails
      */
-    public static FieldStats openOrBuild(
+    public static TermStats openOrBuild(
         final IndexReader reader,
         final Path sideDir,
         final String field,
@@ -870,7 +870,7 @@ public final class FieldStats
      * @throws IOException              if term iteration fails or frequencies are unavailable
      * @throws IllegalArgumentException if the field does not exist or has no terms
      */
-    public static TermStats termStats(final IndexReader reader, final String field, Report report)
+    public static VocabCounts vocabCounts(final IndexReader reader, final String field, Report report)
         throws IOException
     {
         Objects.requireNonNull(reader, "reader");
@@ -909,7 +909,7 @@ public final class FieldStats
             termCounts[termId] = tf;
             termId++;
         }
-        return new TermStats(vocabSize, termDocs, termCounts);
+        return new VocabCounts(vocabSize, termDocs, termCounts);
     }
     
     /**
@@ -1017,7 +1017,7 @@ public final class FieldStats
      * @param termDocs   document frequency per term
      * @param termCounts total occurrences per term
      */
-    public record TermStats(int vocabSize, int[] termDocs, long[] termCounts)
+    public record VocabCounts(int vocabSize, int[] termDocs, long[] termCounts)
     {
     }
     

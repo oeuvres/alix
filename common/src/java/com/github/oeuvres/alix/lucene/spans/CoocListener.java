@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
 
-import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
 
@@ -64,7 +64,7 @@ public final class CoocListener implements SpanListener
     private long coocTokens;
     
     /** Field statistics for the pivot field; used for vocabulary size and max document width. */
-    private final FieldStats fieldStats;
+    private final TermStats fieldStats;
     
     /** Number of context positions to read on the right of each match. */
     private final int left;
@@ -107,7 +107,7 @@ public final class CoocListener implements SpanListener
      * @throws NullPointerException     if {@code fieldStats} or {@code rail} is {@code null}
      */
     public CoocListener(
-            final FieldStats fieldStats,
+            final TermStats fieldStats,
             final TermRail rail,
             final int left,
             final int right)

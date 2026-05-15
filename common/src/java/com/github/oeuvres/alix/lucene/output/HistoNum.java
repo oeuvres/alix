@@ -1,8 +1,13 @@
 package com.github.oeuvres.alix.lucene.output;
 
+import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 
 /**
  * Multi-channel aggregation indexed by a dense integer key.
@@ -44,46 +49,76 @@ import org.apache.lucene.util.FixedBitSet;
  */
 public final class HistoNum
 {
+    public enum Col {
+        DOCS_ALL("docsAll"),
+        DOCS("docs"),
+        WIDTH("width"),
+        TOKENS("tokens"),
+        SPANS("spans"),
+        SCORE("score"),
+        ;
+        public final String label;
+        Col(final String name) { this.label = name; }
+        @Override public String toString() { return label; }
+    }
+    EnumSet<Col> cols = EnumSet.noneOf(Col.class);
+    
     /** Documents that have a value for the coordinate field. Shared by reference; not mutated. */
-    public final FixedBitSet docHasValue;
-
-    /** Document id &rarr; raw value. Shared by reference; not mutated. */
-    public final int[] docValues;
-
+    private final FixedBitSet docHasValue;
+    
+    /** docId → value. Shared by reference; not mutated. */
+    private final int[] docValues;
+    
     /** Number of bins; length of every attached channel array. */
-    public final int length;
-
-    /** Inclusive lower bound of the value range; offset to subtract from a raw value to obtain its bin index. */
-    public final int min;
-
-    /** Document count per bin. */
-    private int[] valueDocs;
-
+    private final int length;
+    
+    /**
+     * Inclusive lower bound of the value range; offset to subtract from a raw value to obtain its
+     * bin index.
+     */
+    private final int min;
+    
+    /** Name of the text field used */
+    private String textField;
+    
+    /** A document count per bin, set with a {@link FieldStats}. */
+    public int[] valueDocs;
+    
+    /** Document count for the numeric field */
+    public final int[] valueDocsAll;
+    
+    /**
+     * A width (word positions with stripped stopwords, not tokens) per bin, set with a
+     * {@link FieldStats}.
+     */
+    public long[] valueWidth;
+    
+    /** Global token count per bin. */
+    public long[] valueTokens;
+    
     /** Mean (or other floating-point aggregate) per bin. */
-    private double[] valueScore;
-
+    public double[] valueScore;
+    
     /** Span count per bin. */
-    private long[] valueSpans;
-
-    /** Token count per bin. */
-    private long[] valueTokens;
-
+    public int[] valueSpans;
+    
     /**
      * Creates a histogram bound to a coordinate system. No channels attached.
      *
-     * @param min          inclusive lower bound of the value range
-     * @param max          inclusive upper bound; must be {@code >= min}
-     * @param docValues    doc id &rarr; raw value, shared by reference
-     * @param docHasValue  presence bitset, shared by reference
+     * @param min         inclusive lower bound of the value range
+     * @param max         inclusive upper bound; must be {@code >= min}
+     * @param docValues   doc id &rarr; raw value, shared by reference
+     * @param docHasValue presence bitset, shared by reference
      * @throws NullPointerException     if {@code docValues} or {@code docHasValue} is {@code null}
      * @throws IllegalArgumentException if {@code max < min}
      */
     public HistoNum(
-        final int min,
-        final int max,
-        final int[] docValues,
-        final FixedBitSet docHasValue
-    ) {
+            final int min,
+            final int max,
+            final int[] docValues,
+            final FixedBitSet docHasValue,
+            final int[] valueDocsAll)
+    {
         if (max < min) {
             throw new IllegalArgumentException("max (" + max + ") < min (" + min + ")");
         }
@@ -91,84 +126,164 @@ public final class HistoNum
         this.length = max - min + 1;
         this.docValues = Objects.requireNonNull(docValues, "docValues");
         this.docHasValue = Objects.requireNonNull(docHasValue, "docHasValue");
+        this.valueDocsAll = Objects.requireNonNull(valueDocsAll, "valueDocsAll");
+        cols.add(Col.DOCS_ALL);
+    }
+    
+    public Set<Col> cols()
+    {
+        return cols;
+    }
+    
+    /**
+     * Distributes corpus-wide per-document statistics into this histogram's bins.
+     *
+     * <p>
+     * For each live document with a value, increments the doc count and adds
+     * the document's width and token count to the bin
+     * {@code docValues[docId] - min}. Walks the full document address space
+     * {@code [0, stats.maxDoc())}.
+     * </p>
+     *
+     * <p>
+     * The three channels {@code valueDocs}, {@code valueWidth} and
+     * {@code valueTokens} are freshly allocated and overwritten. Repeated
+     * calls discard previous data. The source field name is recorded in
+     * {@code textField}.
+     * </p>
+     *
+     * @param stats per-document statistics aligned with this histogram's
+     *              document address space
+     * @throws NullPointerException     if {@code stats} is {@code null}
+     * @throws IllegalArgumentException if {@code stats.maxDoc()} does not match
+     *                                  this histogram's document address space
+     */
+    public void distribute(final TermStats stats)
+    {
+        Objects.requireNonNull(stats, "stats");
+        final int maxDoc = stats.maxDoc();
+        if (maxDoc != docValues.length) {
+            throw new IllegalArgumentException(
+                "stats.maxDoc() (" + maxDoc
+                + ") != histogram document address space (" + docValues.length + ')');
+        }
+        textField = stats.field();
+        valueDocs = new int[length];
+        valueWidth = new long[length];
+        valueTokens = new long[length];
+        for (int docId = 0; docId < maxDoc; docId++) {
+            if (!docHasValue.get(docId)) continue;
+            final int index = docValues[docId] - min;
+            valueDocs[index]++;
+            valueWidth[index] += stats.docWidth(docId);
+            valueTokens[index] += stats.docTokens(docId);
+        }
+        cols.add(Col.WIDTH);
+        cols.add(Col.DOCS);
+        cols.add(Col.TOKENS);
     }
 
     /**
-     * Bin index for a document, or {@code noValue} if the document has no value
+     * Distributes per-document statistics into this histogram's bins,
+     * restricted to documents in a filter.
+     *
+     * <p>
+     * For each document in {@code docFilter} that has a value, increments the
+     * doc count and adds the document's width and token count to the bin
+     * {@code docValues[docId] - min}. Walks the filter via
+     * {@link FixedBitSet#nextSetBit(int)}, which is faster than a full scan
+     * when the filter is sparse.
+     * </p>
+     *
+     * <p>
+     * The three channels {@code valueDocs}, {@code valueWidth} and
+     * {@code valueTokens} are freshly allocated and overwritten. Repeated
+     * calls discard previous data. The source field name is recorded in
+     * {@code textField}.
+     * </p>
+     *
+     * <p>
+     * If {@code docFilter} is {@code null}, this call delegates to
+     * {@link #distribute(TermStats)}.
+     * </p>
+     *
+     * @param stats     per-document statistics aligned with this histogram's
+     *                  document address space
+     * @param docFilter set of global Lucene document ids to include, or
+     *                  {@code null} for all documents
+     * @throws NullPointerException     if {@code stats} is {@code null}
+     * @throws IllegalArgumentException if {@code stats.maxDoc()} does not match
+     *                                  this histogram's document address space
+     */
+    public void distribute(final TermStats stats, final FixedBitSet docFilter)
+    {
+        if (docFilter == null) {
+            distribute(stats);
+            return;
+        }
+        Objects.requireNonNull(stats, "stats");
+        final int maxDoc = stats.maxDoc();
+        if (maxDoc != docValues.length) {
+            throw new IllegalArgumentException(
+                "stats.maxDoc() (" + maxDoc
+                + ") != histogram document address space (" + docValues.length + ')');
+        }
+        textField = stats.field();
+        valueDocs = new int[length];
+        valueWidth = new long[length];
+        valueTokens = new long[length];
+        for (int docId = docFilter.nextSetBit(0);
+             docId != DocIdSetIterator.NO_MORE_DOCS && docId < maxDoc;
+             docId = docFilter.nextSetBit(docId + 1)) {
+            if (!docHasValue.get(docId)) continue;
+            final int index = docValues[docId] - min;
+            valueDocs[index]++;
+            valueWidth[index] += stats.docWidth(docId);
+            valueTokens[index] += stats.docTokens(docId);
+        }
+    }
+    
+    /**
+     * Index o the value for a document, or {@code noValue} if the document has no value
      * or its value is outside {@code [min, max]}.
      *
      * @param docId    global Lucene document id
      * @param noValue  sentinel returned for absent or out-of-range values
      * @return bin index in {@code [0, length())}, or {@code noValue}
      */
-    public int bin(final int docId, final int noValue)
+    public int index(final int docId, final int noValue)
     {
         if (!docHasValue.get(docId)) {
             return noValue;
         }
-        final int b = docValues[docId] - min;
-        if (b < 0 || b >= length) {
+        final int index = docValues[docId] - min;
+        if (index < 0 || index >= length) {
             return noValue;
         }
-        return b;
+        return index;
     }
-
+    
+    
     /**
-     * Returns {@link #valueDocs}, allocating a fresh zero-filled array of
-     * length {@link #length()} if absent.
+     * Count of values.
      *
-     * @return the channel array, owned by this histogram
+     * @return {@link #length}
      */
-    public int[] ensureValueDocs()
+    public int length()
     {
-        if (valueDocs == null) {
-            valueDocs = new int[length];
-        }
-        return valueDocs;
+        return length;
     }
-
+    
     /**
-     * Returns {@link #valueScore}, allocating a fresh zero-filled array of
-     * length {@link #length()} if absent.
+     * Inclusive lower bound of the value range.
      *
-     * @return the channel array, owned by this histogram
+     * @return {@link #min}
      */
-    public double[] ensureValueScore()
+    public int min()
     {
-        if (valueScore == null) {
-            valueScore = new double[length];
-        }
-        return valueScore;
+        return min;
     }
-
-    /**
-     * Returns {@link #valueSpans}, allocating a fresh zero-filled array of
-     * length {@link #length()} if absent.
-     *
-     * @return the channel array, owned by this histogram
-     */
-    public long[] ensureValueSpans()
-    {
-        if (valueSpans == null) {
-            valueSpans = new long[length];
-        }
-        return valueSpans;
-    }
-
-    /**
-     * Returns {@link #valueTokens}, allocating a fresh zero-filled array of
-     * length {@link #length()} if absent.
-     *
-     * @return the channel array, owned by this histogram
-     */
-    public long[] ensureValueTokens()
-    {
-        if (valueTokens == null) {
-            valueTokens = new long[length];
-        }
-        return valueTokens;
-    }
-
+    
     /**
      * Inclusive upper bound of the value range.
      *
@@ -178,112 +293,6 @@ public final class HistoNum
     {
         return min + length - 1;
     }
+    
 
-    /**
-     * Attaches a document-count channel by reference.
-     *
-     * @param values array of exactly {@link #length()} entries
-     * @throws NullPointerException     if {@code values} is {@code null}
-     * @throws IllegalArgumentException if {@code values.length != length()}
-     */
-    public void setValueDocs(final int[] values)
-    {
-        Objects.requireNonNull(values, "values");
-        if (values.length != length) {
-            throw new IllegalArgumentException(
-                "channel length " + values.length + " != " + length);
-        }
-        this.valueDocs = values;
-    }
-
-    /**
-     * Attaches a score channel by reference.
-     *
-     * @param values array of exactly {@link #length()} entries
-     * @throws NullPointerException     if {@code values} is {@code null}
-     * @throws IllegalArgumentException if {@code values.length != length()}
-     */
-    public void setValueScore(final double[] values)
-    {
-        Objects.requireNonNull(values, "values");
-        if (values.length != length) {
-            throw new IllegalArgumentException(
-                "channel length " + values.length + " != " + length);
-        }
-        this.valueScore = values;
-    }
-
-    /**
-     * Attaches a span-count channel by reference.
-     *
-     * @param values array of exactly {@link #length()} entries
-     * @throws NullPointerException     if {@code values} is {@code null}
-     * @throws IllegalArgumentException if {@code values.length != length()}
-     */
-    public void setValueSpans(final long[] values)
-    {
-        Objects.requireNonNull(values, "values");
-        if (values.length != length) {
-            throw new IllegalArgumentException(
-                "channel length " + values.length + " != " + length);
-        }
-        this.valueSpans = values;
-    }
-
-    /**
-     * Attaches a token-count channel by reference.
-     *
-     * @param values array of exactly {@link #length()} entries
-     * @throws NullPointerException     if {@code values} is {@code null}
-     * @throws IllegalArgumentException if {@code values.length != length()}
-     */
-    public void setValueTokens(final long[] values)
-    {
-        Objects.requireNonNull(values, "values");
-        if (values.length != length) {
-            throw new IllegalArgumentException(
-                "channel length " + values.length + " != " + length);
-        }
-        this.valueTokens = values;
-    }
-
-    /**
-     * Document-count channel, or {@code null} if not attached.
-     *
-     * @return the channel array, or {@code null}
-     */
-    public int[] valueDocs()
-    {
-        return valueDocs;
-    }
-
-    /**
-     * Score channel, or {@code null} if not attached.
-     *
-     * @return the channel array, or {@code null}
-     */
-    public double[] valueScore()
-    {
-        return valueScore;
-    }
-
-    /**
-     * Span-count channel, or {@code null} if not attached.
-     *
-     * @return the channel array, or {@code null}
-     */
-    public long[] valueSpans()
-    {
-        return valueSpans;
-    }
-
-    /**
-     * Token-count channel, or {@code null} if not attached.
-     *
-     * @return the channel array, or {@code null}
-     */
-    public long[] valueTokens()
-    {
-        return valueTokens;
-    }
 }

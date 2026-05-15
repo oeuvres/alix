@@ -51,7 +51,7 @@ import com.github.oeuvres.alix.lucene.output.HistoNum;
  *
  * <p>
  * The arrays are exposed by reference through {@link #histo()} and
- * {@link #valueDocs()}. Holders must not write through them: every
+ * {@link #valueDocsAll()}. Holders must not write through them: every
  * histogram produced by this field, and every {@link FlucNum} accessor,
  * reads the same memory.
  * </p>
@@ -71,7 +71,7 @@ import com.github.oeuvres.alix.lucene.output.HistoNum;
  * <p>
  * Field metadata is immutable after construction. The dense arrays are built
  * under synchronization and published through {@code volatile} field
- * {@link #dense}.
+ * {@link #histoReady}.
  * </p>
  */
 public class FlucNum extends Fluc
@@ -88,8 +88,8 @@ public class FlucNum extends Fluc
     /** Global minimum value decoded from point metadata. */
     private final double min;
 
-    /** Set to {@code true} when the dense arrays are built; published volatile. */
-    private volatile boolean dense;
+    /** Set to {@code true} when the histo arrays are built; published volatile. */
+    private volatile boolean histoReady;
 
     /** Documents that have a value for this field; {@code null} until built. */
     private FixedBitSet docHasValue;
@@ -104,7 +104,7 @@ public class FlucNum extends Fluc
     private int intMin;
 
     /** Document counts by value: {@code valueDocs[value - intMin]}; {@code null} until built. */
-    private int[] valueDocs;
+    private int[] valueDocsAll;
 
     /**
      * Creates a numeric-field helper.
@@ -185,9 +185,9 @@ public class FlucNum extends Fluc
      */
     public FlucNum cacheHisto() throws IOException
     {
-        if (dense) return this;
+        if (histoReady) return this;
         synchronized (this) {
-            if (dense) return this;
+            if (histoReady) return this;
             if (numBytes != 4) {
                 throw new IllegalStateException(
                     "Field \"" + name() + "\" is not a 4-byte integer point field.");
@@ -256,8 +256,8 @@ public class FlucNum extends Fluc
             this.intMax = hi;
             this.docValues = values;
             this.docHasValue = hasValue;
-            this.valueDocs = counts;
-            this.dense = true;
+            this.valueDocsAll = counts;
+            this.histoReady = true;
             return this;
         }
     }
@@ -289,7 +289,7 @@ public class FlucNum extends Fluc
     {
         if (docFilter == null) throw new NullPointerException("docFilter");
         cacheHisto();
-        final int[] counts = new int[valueDocs.length];
+        final int[] counts = new int[valueDocsAll.length];
         for (int docId = docFilter.nextSetBit(0);
              docId != DocIdSetIterator.NO_MORE_DOCS;
              docId = docFilter.nextSetBit(docId + 1)) {
@@ -304,9 +304,9 @@ public class FlucNum extends Fluc
      *
      * @return {@code true} once {@link #cacheHisto()} has succeeded
      */
-    public boolean denseCached()
+    public boolean histoReady()
     {
-        return dense;
+        return histoReady;
     }
 
     /**
@@ -363,8 +363,8 @@ public class FlucNum extends Fluc
     {
         cacheHisto();
         final int off = value - intMin;
-        if (off < 0 || off >= valueDocs.length) return 0;
-        return valueDocs[off];
+        if (off < 0 || off >= valueDocsAll.length) return 0;
+        return valueDocsAll[off];
     }
 
     /**
@@ -390,7 +390,7 @@ public class FlucNum extends Fluc
      * <p>
      * Each call returns a new {@link HistoNum} instance. The three arrays it
      * carries &mdash; {@link HistoNum#docValues}, {@link HistoNum#docHasValue}
-     * and the {@link HistoNum#valueDocs()} channel &mdash; are this field's
+     * and the {@link HistoNum#valueDocsAll()} channel &mdash; are this field's
      * cached arrays, shared by every histogram and every accessor. Holders
      * must not write through them.
      * </p>
@@ -409,8 +409,7 @@ public class FlucNum extends Fluc
     public HistoNum histo() throws IOException
     {
         cacheHisto();
-        final HistoNum h = new HistoNum(intMin, intMax, docValues, docHasValue);
-        h.setValueDocs(valueDocs);
+        final HistoNum h = new HistoNum(intMin, intMax, docValues, docHasValue, valueDocsAll);
         return h;
     }
 
@@ -503,10 +502,10 @@ public class FlucNum extends Fluc
      * @return document counts by dense numeric value
      * @throws IOException if lazy dense build fails
      */
-    public int[] valueDocs() throws IOException
+    public int[] valueDocsAll() throws IOException
     {
         cacheHisto();
-        return valueDocs;
+        return valueDocsAll;
     }
 
     /**

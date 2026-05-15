@@ -57,10 +57,14 @@ public final class Names
     public static final String ARTICLE = "article";
     /** &lt;alix:book&gt; (contains &lt;alix:chapter&gt;) */
     public static final String BOOK = "book";
+    /** Default field name */
+    public final static String CONTENT = "content";
     /** Field type */
     public final static String CATEGORY = "category";
     /** &lt;alix:chapter&gt; text inside a book */
     public static final String CHAPTER = "chapter";
+    /** Default field name */
+    public final static String DOCLINE = "docline";
     /** &lt;alix:document&gt; independant document */
     public static final String DOCUMENT = "document";
     /** Field type */
@@ -91,4 +95,6 @@ public final class Names
     public final static String UNKNOWN = "unknown";
     /** Field type */
     public final static String XML = "xml";
+    /** Default field name */
+    public final static String YEAR = "year";
 }

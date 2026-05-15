@@ -90,7 +90,7 @@ public final class PartitionScorer
                             + " != reader.maxDoc()=" + r.maxDoc());
         }
 
-        final FieldStats fieldStats = tt.fieldStats();
+        final TermStats fieldStats = tt.fieldStats();
         final String field = fieldStats.field();
         final Terms terms = MultiTerms.getTerms(r, field);
 

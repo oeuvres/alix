@@ -71,7 +71,7 @@ public final class OpTerms extends Op
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
         
-        String textField = pars.getString(F, index.content());
+        String textField = pars.getString(FTEXT, index.content());
         final FlucText textFluc = index.flucText(textField);
         if (textFluc == null) {
             pars.response().setStatus(404);
@@ -89,7 +89,7 @@ public final class OpTerms extends Op
             // an http param may change idfExp
             final IdfTermScorer scorer = new IdfTermScorer.BM25(idfExp);
             // The weights for full field are cached if same idfExp is requested
-            final double[] weights = textFluc.fieldStats().termWeights(index.reader(), scorer);
+            final double[] weights = textFluc.termStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
             return topTerms.ranking(weights, topK);
         }
@@ -139,7 +139,7 @@ public final class OpTerms extends Op
             final int left = pars.getInt(CTX_LEFT, CTX_RANGE, ctx, CTX_LEFT);
             final int right = pars.getInt(CTX_RIGHT, CTX_RANGE, ctx, CTX_RIGHT);
             final CoocListener listener = new CoocListener(
-                textFluc.fieldStats(),
+                textFluc.termStats(),
                 textFluc.termRail(),
                 left,
                 right);

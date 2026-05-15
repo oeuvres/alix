@@ -297,7 +297,7 @@ public final class Partition
         }
 
         num.cacheHisto();
-        final FieldStats stats = text.fieldStats();
+        final TermStats stats = text.termStats();
         final int maxDoc = stats.maxDoc();
         if (acceptedDocs != null && acceptedDocs.length() < maxDoc) {
             throw new IllegalArgumentException(

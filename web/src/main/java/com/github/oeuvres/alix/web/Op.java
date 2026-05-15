@@ -187,6 +187,15 @@ public abstract class Op
      */
     Query yearQuery(LuceneIndex index, HttpPars pars) throws IOException
     {
+        String yearName = pars.getString(FYEAR, index.year());
+        final FlucNum flucYear = index.flucNum(yearName);
+        if (flucYear == null) {
+            // no need to inform Op consumer
+            // problem may come from a generic interface
+            return null;
+        }
+
+        
         int start = pars.getInt(START, Integer.MIN_VALUE);
         int end = pars.getInt(END, Integer.MAX_VALUE);
         if (start == Integer.MIN_VALUE && end == Integer.MAX_VALUE)
@@ -197,15 +206,8 @@ public abstract class Op
             end = start;
             start = tmp;
         }
-        // a bit hard coded name for now
-        FlucNum years = index.flucNum(YEAR);
-        if (years == null) {
-            // no need to inform html consumer
-            // problem may come from a generic interface
-            return null;
-        }
-        final int min = (int) years.min();
-        final int max = (int) years.max();
+        final int min = (int) flucYear.min();
+        final int max = (int) flucYear.max();
         // resolve open bounds to corpus bounds
         if (start == Integer.MIN_VALUE)
             start = min;
@@ -221,8 +223,8 @@ public abstract class Op
         if (start > end)
             return null;
         if (start == end)
-            return IntPoint.newExactQuery(YEAR, start);
-        return IntPoint.newRangeQuery(YEAR, start, end);
+            return IntPoint.newExactQuery(flucYear.name(), start);
+        return IntPoint.newRangeQuery(flucYear.name(), start, end);
     }
     
     Query typeQuery(LuceneIndex index, HttpPars pars) throws IOException
@@ -264,7 +266,7 @@ public abstract class Op
         final String q = pars.getString(Q, null);
         if (q == null)
             return null;
-        final String content = pars.getString(F, index.content());
+        final String content = pars.getString(FTEXT, index.content());
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         // Make it configurable
         SpanQuery spanQuery = new SpanQueryParser(content, slop, new FrenchCliticTokenizer()).parse(q);

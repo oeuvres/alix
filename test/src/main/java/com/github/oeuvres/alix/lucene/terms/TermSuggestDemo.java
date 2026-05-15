@@ -20,7 +20,7 @@ import com.github.oeuvres.alix.util.Report.ReportConsole;
  * Interactive CLI for testing {@link TermSuggest}.
  * <p>
  * Opens a frozen Lucene index, builds the suggest index from
- * {@link TermLexicon} and {@link FieldStats} with ANSI bold+underline
+ * {@link TermLexicon} and {@link TermStats} with ANSI bold+underline
  * markup, then loops reading queries from stdin.
  * </p>
  *
@@ -50,7 +50,7 @@ public final class TermSuggestDemo
             final DirectoryReader luceneReader = DirectoryReader.open(dir);
             final TermLexicon lexicon = TermLexicon.openOrBuild(luceneReader, indexPath, field);
         ) {
-            final FieldStats stats = FieldStats.openOrBuild(luceneReader, indexPath, field, report);
+            final TermStats stats = TermStats.openOrBuild(luceneReader, indexPath, field, report);
             
 
             System.err.printf("Lexicon: %,d terms, FST heap %,d bytes%n",

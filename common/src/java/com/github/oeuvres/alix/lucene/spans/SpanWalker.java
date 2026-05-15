@@ -132,6 +132,17 @@ public final class SpanWalker
     }
     
     /**
+     * See {@link #walk(int)} with {@code int docStart=0};
+     * 
+     * @return
+     * @throws IOException
+     */
+    public int walk() throws IOException
+    {
+        return walk(0);
+    }
+    
+    /**
      * Streams matches to the listener starting at the given global docId (inclusive).
      *
      * <p>

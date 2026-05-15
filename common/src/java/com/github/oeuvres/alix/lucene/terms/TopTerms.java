@@ -21,14 +21,14 @@ import com.github.oeuvres.alix.util.TopArray;
  *
  * <p>
  * A {@code TopTerms} instance is bound to one field's immutable
- * {@link FieldStats} and {@link TermLexicon}. The global field statistics remain
- * owned by {@link FieldStats}; this class only keeps references to the current
+ * {@link TermStats} and {@link TermLexicon}. The global field statistics remain
+ * owned by {@link TermStats}; this class only keeps references to the current
  * population counts.
  * </p>
  *
  * <p>
  * On construction, the current population is the whole field: occurrence and
- * document-count arrays alias {@link FieldStats}. Calling
+ * document-count arrays alias {@link TermStats}. Calling
  * {@link #select(IndexReader, FixedBitSet)} or writing through {@link #buffers()}
  * switches the instance to local mutable buffers.
  * </p>
@@ -48,7 +48,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     private int docs;
 
     /** Source of immutable field-level statistics. */
-    private final FieldStats fieldStats;
+    private final TermStats fieldStats;
 
     /** Optional per-rank highlight strings. */
     private String[] hilites;
@@ -82,7 +82,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * <p>
      * The initial population is the whole field. Count arrays alias
-     * {@link FieldStats}; they must not be modified until the instance has
+     * {@link TermStats}; they must not be modified until the instance has
      * switched to local buffers.
      * </p>
      *
@@ -91,7 +91,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @throws IllegalArgumentException if vocabulary sizes differ
      * @throws NullPointerException     if an argument is {@code null}
      */
-    public TopTerms(final FieldStats fieldStats, final TermLexicon lexicon)
+    public TopTerms(final TermStats fieldStats, final TermLexicon lexicon)
     {
         this.fieldStats = Objects.requireNonNull(fieldStats, "fieldStats");
         this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
@@ -150,7 +150,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * @return field-level statistics
      */
-    public FieldStats fieldStats()
+    public TermStats fieldStats()
     {
         return fieldStats;
     }
@@ -286,7 +286,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * <p>
      * After reset, occurrence and document-count arrays alias
-     * {@link FieldStats}. They must not be modified. Methods that collect local
+     * {@link TermStats}. They must not be modified. Methods that collect local
      * statistics switch back to local mutable buffers before writing.
      * </p>
      *

@@ -11,7 +11,7 @@ import org.apache.lucene.queries.spans.Spans;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 
-import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.util.TopSlot;
 
@@ -41,7 +41,7 @@ import com.github.oeuvres.alix.util.TopSlot;
  *
  * <p>
  * All spans in the document are enumerated. Each span is scored by summing the
- * corpus-level {@link FieldStats#termWeight} of distinct terms in a window of
+ * corpus-level {@link TermStats#termWeight} of distinct terms in a window of
  * {@link #ctx} token positions around the span. Term deduplication within
  * each window is done in O(1) per term using a stamp array — no per-span reset
  * is needed. The top {@code topSpans} spans by this score are emitted to the
@@ -63,7 +63,7 @@ public final class SpanVisitor
     private final IndexSearcher searcher;
     private final SpanQuery spanQuery;
     private final SpanListener listener;
-    private final FieldStats fieldStats;
+    private final TermStats fieldStats;
     private final TermRail termRail;
     
     /** Token radius around the span used for passage scoring. */
@@ -114,7 +114,7 @@ public final class SpanVisitor
      * @param spanQuery  span query to enumerate; rewritten at construction
      * @param listener   consumer of streamed span results
      * @param fieldStats corpus statistics providing term weights; must have
-     *                   {@link FieldStats#buildWeights} already called
+     *                   {@link TermStats#buildWeights} already called
      * @param termRail   position index for the same field and snapshot
      * @param topSpans   maximum number of spans to emit per document
      * @param ctx        token radius around each span for passage scoring
@@ -124,7 +124,7 @@ public final class SpanVisitor
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
             final SpanListener listener,
-            final FieldStats fieldStats,
+            final TermStats fieldStats,
             final TermRail termRail,
             final int topSpans,
             final int ctx) throws IOException

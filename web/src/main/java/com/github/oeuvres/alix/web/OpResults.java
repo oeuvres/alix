@@ -18,7 +18,7 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.output.HtmlResults;
 import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
-import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -191,7 +191,7 @@ public class OpResults extends Op
         Query filterQuery = filterQuery(index, pars);
         
         Writer writer = response.getWriter();
-        final String content = pars.getString(F, index.content());
+        final String content = pars.getString(FTEXT, index.content());
         final FlucText flucText = index.flucText(content);
         
         // field not found
@@ -233,7 +233,7 @@ public class OpResults extends Op
             .docLimit(docs)
             .spanLimit(spans)
             .ctx(ctx)
-            .hrefSearch("?" + pars.queryString(CTX, F, Q) + "&amp;slop=" + slop);
+            .hrefSearch("?" + pars.queryString(CTX, FTEXT, Q) + "&amp;slop=" + slop);
         final int from = pars.getInt(FROM, 0);
         
         // final String q = pars.getString(Q, null);
@@ -246,7 +246,7 @@ public class OpResults extends Op
         // no query, list docs
         if (spanQuery == null) {
             final int rows = pars.getInt(ROWS, ROWS_RANGE, ROWS_DEFAULT, ROWS);
-            FieldStats fieldStats = flucText.fieldStats();
+            TermStats fieldStats = flucText.termStats();
             int docCount = 0;
             boolean more = false;
             int docId = from;
@@ -270,7 +270,7 @@ public class OpResults extends Op
                         .append(String.valueOf(docId))
                         .append("\" name=\"next-results\" href=\"")
                         .append("?")
-                        .append(pars.queryString(DOCLINE, END, F, ROWS, START))
+                        .append(pars.queryString(DOCLINE, END, FTEXT, ROWS, START))
                         .append("&amp;from=" + docId )
                         .append("\">…</a></p>\n");
                 ;
@@ -312,7 +312,7 @@ public class OpResults extends Op
             final int hitsCount = index.searcher().count(query);
             ScoreDoc[] hits = index.searcher().search(query, docs).scoreDocs;
             
-            final FieldStats fieldStats = flucText.fieldStats();
+            final TermStats fieldStats = flucText.termStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
             
@@ -345,7 +345,7 @@ public class OpResults extends Op
                     .append(String.valueOf(nextDoc))
                     .append("\" name=\"next-results\" href=\"")
                     .append("?")
-                    .append(pars.queryString(Q, SLOP, END, START, CTX, DOCS, F, DOCLINE))
+                    .append(pars.queryString(Q, SLOP, END, START, CTX, DOCS, FTEXT, DOCLINE))
                     .append("&amp;from=" + nextDoc)
                     .append("\">…</a></p>");
             ;

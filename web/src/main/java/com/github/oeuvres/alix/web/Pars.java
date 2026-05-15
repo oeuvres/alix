@@ -16,7 +16,8 @@ public class Pars
     public static final String DOCID           = "docid";
     public static final String DOCLINE         = "docline";
     public static final String END             = "end";
-    public static final String F               = "f";
+    public static final String FTEXT           = "ftext";
+    public static final String FYEAR           = "fyear";
     public static final String FROM            = "from";
     public static final String INFIX           = "infix";
     public static final String IDFEXP          = "idfexp";

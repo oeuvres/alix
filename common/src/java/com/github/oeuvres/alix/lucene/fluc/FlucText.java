@@ -11,7 +11,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Terms;
 
-import com.github.oeuvres.alix.lucene.terms.FieldStats;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermSuggest;
@@ -27,7 +27,7 @@ import com.github.oeuvres.alix.util.Report;
  * </p>
  *
  * <ul>
- *   <li>{@link FieldStats}: field-level term and document statistics;</li>
+ *   <li>{@link TermStats}: field-level term and document statistics;</li>
  *   <li>{@link TermLexicon}: dense term-id mapping and term display strings;</li>
  *   <li>{@link TermRail}: forward positional rail for spans and co-occurrences;</li>
  *   <li>{@link TermSuggest}: folded term-suggestion index.</li>
@@ -50,8 +50,6 @@ import com.github.oeuvres.alix.util.Report;
  */
 public final class FlucText extends Fluc
 {
-    /** Field statistics, loaded lazily. */
-    private FieldStats fieldStats;
 
     /** Whether norms are available for this field. */
     private final boolean hasNorms;
@@ -74,6 +72,9 @@ public final class FlucText extends Fluc
     /** Forward positional rail, loaded lazily. */
     private TermRail termRail;
 
+    /** Field statistics, loaded lazily. */
+    private TermStats termStats;
+    
     /** Term suggester, built lazily from the lexicon and field statistics. */
     private TermSuggest termSuggest;
 
@@ -145,40 +146,11 @@ public final class FlucText extends Fluc
             termSuggest = null;
             termRail = null;
             termLexicon = null;
-            fieldStats = null;
+            termStats = null;
         }
 
         if (failure != null) {
             throw failure;
-        }
-    }
-
-    /**
-     * Returns field-level term occurrence counts and corpus totals.
-     *
-     * <p>
-     * If the statistics sidecar does not exist, it is built from the frozen
-     * reader before opening.
-     * </p>
-     *
-     * @return field statistics
-     * @throws UncheckedIOException if building or opening statistics fails
-     */
-    public synchronized FieldStats fieldStats()
-    {
-        if (fieldStats != null) {
-            return fieldStats;
-        }
-
-        try {
-            if (!FieldStats.exists(sideDir, name())) {
-                FieldStats.build(reader, sideDir, name(), Report.ReportNull.INSTANCE);
-            }
-            fieldStats = FieldStats.open(reader, sideDir, name(), null);
-            return fieldStats;
-        }
-        catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
     }
 
@@ -297,11 +269,40 @@ public final class FlucText extends Fluc
     }
 
     /**
+     * Returns field-level term occurrence counts and corpus totals.
+     *
+     * <p>
+     * If the statistics sidecar does not exist, it is built from the frozen
+     * reader before opening.
+     * </p>
+     *
+     * @return field statistics
+     * @throws UncheckedIOException if building or opening statistics fails
+     */
+    public synchronized TermStats termStats()
+    {
+        if (termStats != null) {
+            return termStats;
+        }
+    
+        try {
+            if (!TermStats.exists(sideDir, name())) {
+                TermStats.build(reader, sideDir, name(), Report.ReportNull.INSTANCE);
+            }
+            termStats = TermStats.open(reader, sideDir, name(), null);
+            return termStats;
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
      * Returns the term suggester for this field.
      *
      * <p>
      * The suggester is an in-memory folded term index built from
-     * {@link #termLexicon()} and {@link #fieldStats()}. It is cached because it
+     * {@link #termLexicon()} and {@link #termStats()}. It is cached because it
      * scans all vocabulary terms during construction. The returned object should
      * be treated as read-only and shared.
      * </p>
@@ -315,7 +316,7 @@ public final class FlucText extends Fluc
             return termSuggest;
         }
 
-        termSuggest = new TermSuggest(termLexicon(), fieldStats());
+        termSuggest = new TermSuggest(termLexicon(), termStats());
         return termSuggest;
     }
 
@@ -332,7 +333,7 @@ public final class FlucText extends Fluc
      */
     public TopTerms topTerms()
     {
-        return new TopTerms(fieldStats(), termLexicon());
+        return new TopTerms(termStats(), termLexicon());
     }
 
     /**

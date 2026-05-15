@@ -35,15 +35,15 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
  *
  * <h2>Subclasses</h2>
  * <ul>
- *   <li>{@link FlucText} — tokenized fields with positions: lexicon,
- *       rail, field statistics, theme terms, co-occurrence.</li>
- *   <li>{@link FlucNum} — single-dimension numeric points with
- *       numeric doc values.</li>
- *   <li>{@link FlucCategory} — single sorted doc-value per document,
- *       with inverted index used as the dictionary.</li>
- *   <li>{@link FlucFacet} — multi-valued sorted-set doc values,
- *       with inverted index used as the dictionary.</li>
- *   <li>{@link FlucStored} — stored-only fields, no resources.</li>
+ * <li>{@link FlucText} — tokenized fields with positions: lexicon,
+ * rail, field statistics, theme terms, co-occurrence.</li>
+ * <li>{@link FlucNum} — single-dimension numeric points with
+ * numeric doc values.</li>
+ * <li>{@link FlucCategory} — single sorted doc-value per document,
+ * with inverted index used as the dictionary.</li>
+ * <li>{@link FlucFacet} — multi-valued sorted-set doc values,
+ * with inverted index used as the dictionary.</li>
+ * <li>{@link FlucStored} — stored-only fields, no resources.</li>
  * </ul>
  *
  * <h2>Construction</h2>
@@ -55,13 +55,15 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
  * {@link LuceneIndex}.
  * </p>
  *
- * <p>Thread safety: instances are safe for concurrent reads.
+ * <p>
+ * Thread safety: instances are safe for concurrent reads.
  * Subclasses that cache resources must ensure thread-safe lazy
- * initialization.</p>
+ * initialization.
+ * </p>
  */
 public class Fluc implements Closeable
 {
-
+    
     /** Field name as declared in the index. */
     private final String name;
     /** Whether the field has stored values. */
@@ -76,10 +78,10 @@ public class Fluc implements Closeable
      * and JSON serialization. Insertion order is preserved.
      */
     public final Map<String, Object> description = new LinkedHashMap<>(10);
-
+    
     protected Fluc(
-        final FieldInfo info
-    ) {
+            final FieldInfo info)
+    {
         this(info, false, -1);
     }
     
@@ -93,30 +95,30 @@ public class Fluc implements Closeable
      * construction path. Direct callers must supply already-probed values.
      * </p>
      *
-     * @param info    segment-level field metadata
-     * @param stored  whether the field has stored values
-     * @param docs    number of documents with at least one value, or {@code -1} when unknown
+     * @param info   segment-level field metadata
+     * @param stored whether the field has stored values
+     * @param docs   number of documents with at least one value, or {@code -1} when unknown
      */
     public Fluc(
-        final FieldInfo info,
-        final boolean stored,
-        final int docs
-    ) {
+            final FieldInfo info,
+            final boolean stored,
+            final int docs)
+    {
         this.info = info;
         this.name = info.name;
         // Subclass name → short type label, e.g. "FlucText" → "text".
         // FlucStored declared as "stored" by FlucStored constructor.
         final String className = getClass().getSimpleName();
         final String type = className.startsWith("Fluc")
-            ? className.substring(4).toLowerCase()
-            : className.toLowerCase();
+                ? className.substring(4).toLowerCase()
+                : className.toLowerCase();
         description.put("type", type);
         this.stored = stored;
         description.put("stored", stored);
         this.docs = docs;
         description.put("docs", docs);
     }
-
+    
     /**
      * Release resources held by this field. Default is a no-op;
      * subclasses with mapped buffers or open files must override.
@@ -125,32 +127,43 @@ public class Fluc implements Closeable
     public void close() throws IOException
     {
     }
-
+    
     /**
      * Number of documents with at least one value in this field,
      * or {@code -1} when the count was not probed (e.g. stored-only
      * fields, where counting requires a full scan).
      */
-    public int docs() { return docs; }
-
+    public int docs()
+    {
+        return docs;
+    }
+    
     /** Field name as declared in the index. */
-    public String name() { return name; }
-
+    public String name()
+    {
+        return name;
+    }
+    
     /**
      * Whether the field has stored values.
      *
-     * <p>Detection strategy used by {@link #inferFields(DirectoryReader, Path)}:</p>
+     * <p>
+     * Detection strategy used by {@link #inferFields(DirectoryReader, Path)}:
+     * </p>
      * <ul>
-     *   <li>Indexed: probed via the first document from postings.</li>
-     *   <li>Doc-values-only: probed via the first document from the
-     *       doc-values iterator.</li>
-     *   <li>Point-only: probed via the first document from a
-     *       point-values scan.</li>
-     *   <li>No index, no doc-values, no points: inferred as stored.</li>
+     * <li>Indexed: probed via the first document from postings.</li>
+     * <li>Doc-values-only: probed via the first document from the
+     * doc-values iterator.</li>
+     * <li>Point-only: probed via the first document from a
+     * point-values scan.</li>
+     * <li>No index, no doc-values, no points: inferred as stored.</li>
      * </ul>
      */
-    public boolean stored() { return stored; }
-
+    public boolean stored()
+    {
+        return stored;
+    }
+    
     /**
      * Build the field inventory for a frozen index.
      *
@@ -161,18 +174,20 @@ public class Fluc implements Closeable
      * alphabetically by field name.
      * </p>
      *
-     * <p>Field classification rules, in order of precedence:</p>
+     * <p>
+     * Field classification rules, in order of precedence:
+     * </p>
      * <ol>
-     *   <li>Positions in postings → {@link FlucText}</li>
-     *   <li>1-D point + numeric doc values → {@link FlucNum}</li>
-     *   <li>Indexed + sorted doc values → {@link FlucCategory}</li>
-     *   <li>Indexed + sorted-set doc values → {@link FlucFacet}</li>
-     *   <li>KNN vectors → base {@code Fluc} with vector dimension</li>
-     *   <li>Multi-dimensional points → base {@code Fluc} with dimension count</li>
-     *   <li>1-D point without numeric doc values → base {@code Fluc}</li>
-     *   <li>Other doc values (binary, sorted-numeric, etc.) → base {@code Fluc}</li>
-     *   <li>Indexed only (keyword field from external indexer) → base {@code Fluc}</li>
-     *   <li>None of the above → {@link FlucStored}</li>
+     * <li>Positions in postings → {@link FlucText}</li>
+     * <li>1-D point + numeric doc values → {@link FlucNum}</li>
+     * <li>Indexed + sorted doc values → {@link FlucCategory}</li>
+     * <li>Indexed + sorted-set doc values → {@link FlucFacet}</li>
+     * <li>KNN vectors → base {@code Fluc} with vector dimension</li>
+     * <li>Multi-dimensional points → base {@code Fluc} with dimension count</li>
+     * <li>1-D point without numeric doc values → base {@code Fluc}</li>
+     * <li>Other doc values (binary, sorted-numeric, etc.) → base {@code Fluc}</li>
+     * <li>Indexed only (keyword field from external indexer) → base {@code Fluc}</li>
+     * <li>None of the above → {@link FlucStored}</li>
      * </ol>
      *
      * @param reader  frozen directory reader
@@ -182,8 +197,7 @@ public class Fluc implements Closeable
      */
     public static Map<String, Fluc> inferFields(
         final DirectoryReader reader,
-        final Path sideDir
-    ) throws IOException
+        final Path sideDir) throws IOException
     {
         // Use first-seen FieldInfo per name. We do not call
         // getMergedFieldInfos() because codec attributes (FieldInfo.getAttribute)
@@ -194,17 +208,17 @@ public class Fluc implements Closeable
                 infoMap.putIfAbsent(fieldInfo.name, fieldInfo);
             }
         }
-
+        
         final Map<String, Fluc> map = new TreeMap<>();
         for (FieldInfo info : infoMap.values()) {
-            final boolean isIndexed   = info.getIndexOptions() != IndexOptions.NONE;
+            final boolean isIndexed = info.getIndexOptions() != IndexOptions.NONE;
             final boolean hasPositions = info.getIndexOptions().compareTo(
-                IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-            final int pointDims       = info.getPointDimensionCount();
+                    IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+            final int pointDims = info.getPointDimensionCount();
             final DocValuesType dvType = info.getDocValuesType();
             final boolean hasDocValues = dvType != DocValuesType.NONE;
-            final boolean hasVectors   = info.getVectorDimension() > 0;
-
+            final boolean hasVectors = info.getVectorDimension() > 0;
+            
             final Fluc fluc;
             // Alix primary text field: tokenized, with positions
             if (hasPositions) {
@@ -255,13 +269,13 @@ public class Fluc implements Closeable
             else {
                 fluc = new FlucStored(info);
             }
-
+            
             map.put(info.name, fluc);
         }
-
+        
         return map;
     }
-
+    
     /**
      * Sum point-values doc counts across all leaves of a reader.
      *
@@ -298,18 +312,21 @@ public class Fluc implements Closeable
         final Set<String> selector = Set.of(fieldName);
         for (LeafReaderContext ctx : reader.leaves()) {
             final Terms terms = ctx.reader().terms(fieldName);
-            if (terms == null) continue;
+            if (terms == null)
+                continue;
             final TermsEnum te = terms.iterator();
-            if (te.next() == null) continue;
+            if (te.next() == null)
+                continue;
             final var pe = te.postings(null, 0);
-            if (pe.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) continue;
+            if (pe.nextDoc() == DocIdSetIterator.NO_MORE_DOCS)
+                continue;
             final Document doc = reader.storedFields()
-                .document(ctx.docBase + pe.docID(), selector);
+                    .document(ctx.docBase + pe.docID(), selector);
             return doc.getField(fieldName) != null;
         }
         return false;
     }
-
+    
     /**
      * Whether a specific document has a stored value for a field.
      * O(1) per call but requires loading the stored fields of one document.
@@ -321,18 +338,19 @@ public class Fluc implements Closeable
      * @throws IOException on stored-field access failure
      */
     static boolean hasStoredValue(
-        final IndexReader reader, final int docId, final String fieldName
-    ) throws IOException
+        final IndexReader reader,
+        final int docId,
+        final String fieldName) throws IOException
     {
         final Document doc = reader.storedFields().document(docId, Set.of(fieldName));
         return doc.getField(fieldName) != null;
     }
-
+    
     @Override
     public String toString()
     {
         return name() + " " + description.entrySet().stream()
-            .map(e -> e.getKey() + "=" + e.getValue())
-            .collect(java.util.stream.Collectors.joining(", ", "{", "}"));
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(java.util.stream.Collectors.joining(", ", "{", "}"));
     }
 }

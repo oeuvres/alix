@@ -41,7 +41,7 @@ public final class OpSuggest extends Op
      */
     private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final OpMeta meta) throws IOException
     {
-        String textField = pars.getString(F, index.content());
+        String textField = pars.getString(FTEXT, index.content());
         final FlucText textFluc = index.flucText(textField);
         if (textFluc == null) {
             pars.response().setStatus(404);
@@ -73,7 +73,7 @@ public final class OpSuggest extends Op
             */
             final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
             final CoocListener listener = new CoocListener(
-                textFluc.fieldStats(),
+                textFluc.termStats(),
                 textFluc.termRail(),
                 slop,
                 slop);
@@ -110,7 +110,7 @@ public final class OpSuggest extends Op
         final OpMeta meta = new OpMeta();
         TopTerms topTerms = topTerms(index, pars, meta);
         if (topTerms != null) {
-            String textField = pars.getString(F, index.content());
+            String textField = pars.getString(FTEXT, index.content());
             final FlucText textFluc = index.flucText(textField);
             final String infix = pars.getString(INFIX, "").replace("(", "").replace(")", "");;
             final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);

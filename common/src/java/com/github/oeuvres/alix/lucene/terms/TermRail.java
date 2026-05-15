@@ -71,7 +71,7 @@ import com.github.oeuvres.alix.util.Report;
  * Two passes over different sources:
  * </p>
  * <ol>
- * <li>One pass over the inverted-index postings (via {@link FieldStats#docWidths}) to compute each document's width and size the offset table.</li>
+ * <li>One pass over the inverted-index postings (via {@link TermStats#docWidths}) to compute each document's width and size the offset table.</li>
  * <li>One pass over the term vectors to fill the {@code (docId, position) → termId} array. Term-vector positions for a document are required to fit within its postings-derived width; an out-of-range position aborts the build.</li>
  * </ol>
  *
@@ -178,8 +178,8 @@ public final class TermRail implements Closeable
         IOUtil.deleteIfExists(offTmp);
 
         final int maxDoc = reader.maxDoc();
-        final BitSet liveDocs = FieldStats.liveDocs(reader);
-        final int[] docWidths = FieldStats.docWidths(reader, field, report);
+        final BitSet liveDocs = TermStats.liveDocs(reader);
+        final int[] docWidths = TermStats.docWidths(reader, field, report);
 
         int widthMax = 0;
         final long[] offsets = new long[maxDoc + 1];
