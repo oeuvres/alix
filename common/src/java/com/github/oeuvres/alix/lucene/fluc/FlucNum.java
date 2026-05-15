@@ -313,6 +313,39 @@ public class FlucNum extends Fluc
     }
 
     /**
+     * Returns a fresh {@link NumHisto} bound to this field's coordinate system,
+     * with the document-count channel pre-attached by reference.
+     *
+     * <p>
+     * Builds the dense cache on first call; idempotent thereafter. Each call
+     * returns a new {@link NumHisto} instance, but the three arrays it carries
+     * &mdash; {@link NumHisto#docValues}, {@link NumHisto#docHasValue} and the
+     * {@link NumHisto#valueDocs()} channel &mdash; are the cached arrays
+     * shared by every histogram produced by this field. Callers must not write
+     * through them: a write into one histogram would corrupt every other.
+     * </p>
+     *
+     * <p>
+     * Per-request channels populated downstream &mdash; {@code valueSpans},
+     * {@code valueTokens}, {@code valueScore} &mdash; are owned by the
+     * returned histogram and may be mutated freely by their producers.
+     * </p>
+     *
+     * @return per-request histogram assembly
+     * @throws IOException           if dense-cache construction fails
+     * @throws IllegalStateException if the field cannot be represented as a
+     *                               dense 4-byte integer cache
+     */
+    public NumHisto histo() throws IOException
+    {
+        cacheDense();
+        final DenseIntCache c = dense;
+        final NumHisto h = new NumHisto((int) min, (int) max, c.docValues, c.docHasValue);
+        h.setValueDocs(c.valueDocs);
+        return h;
+    }
+
+    /**
      * Returns the global maximum value decoded from point metadata.
      *
      * @return maximum numeric value
