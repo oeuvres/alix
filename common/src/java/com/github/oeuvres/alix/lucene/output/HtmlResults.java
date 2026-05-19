@@ -8,6 +8,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.StoredFields;
 
 import com.github.oeuvres.alix.lucene.spans.SpanMatch;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.spans.SpanListener;
 import com.github.oeuvres.alix.util.Detagger;
 import com.github.oeuvres.alix.util.Markup;
@@ -29,7 +30,7 @@ import static com.github.oeuvres.alix.common.Names.*;
  * ({@link #lastDocId} + 1). The caller is responsible for turning that into a
  * full URL.</p>
  */
-public class HtmlResults implements SpanListener
+public class HtmlResults implements SnippetsConsumer
 {
     private final Writer writer;
     private final StoredFields storedFields;

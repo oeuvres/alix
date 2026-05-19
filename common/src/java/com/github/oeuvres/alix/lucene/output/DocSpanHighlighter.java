@@ -23,7 +23,6 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 
 import com.github.oeuvres.alix.lucene.spans.SpanMatch;
-import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 import com.github.oeuvres.alix.util.IntIntMap;
 
 /**

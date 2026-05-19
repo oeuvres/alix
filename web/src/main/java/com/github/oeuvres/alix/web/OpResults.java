@@ -283,7 +283,7 @@ public class OpResults extends Op
         // sorted?
         String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
         if (DATE.equals(sort)) {
-            SpanWalkerDeprecated walker = new SpanWalkerDeprecated(
+            SpanWalker walker = new SpanWalker(
                 index.searcher(),
                 spanQuery, 
                 filterQuery, 
@@ -294,7 +294,7 @@ public class OpResults extends Op
             final int hitsCount = walker.hits();
             if (docs < hitsCount) writer.append(String.valueOf(docs)).append("/");
             writer.append(String.valueOf(hitsCount))
-                .append(" documents ")
+                .append(" textes ")
                 .append("</p>\n");
             writer.flush();
             nextDoc = walker.walk(from);

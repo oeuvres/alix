@@ -13,8 +13,9 @@ import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.output.HistoNum;
 import com.github.oeuvres.alix.lucene.output.HistoNum.Col;
-import com.github.oeuvres.alix.lucene.spans.HistoListener;
-import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
+import com.github.oeuvres.alix.lucene.spans.HistoSnippets;
+import com.github.oeuvres.alix.lucene.spans.Snippets;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 
@@ -53,16 +54,17 @@ public class OpChrono extends Op
             return histo;
         }
         meta.put("spanQuery", spanQuery.toString());
-        /*
-        final HistoListener listener = new HistoListener(histo);
+        final HistoSnippets consumer = new HistoSnippets(histo);
+        // same as for the span query parser
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,
             filterQuery,
-            listener
+            new Snippets(Snippets.Usage.FREQS, slop),
+            consumer
         );
         walker.walk();
-        */
         return histo;
     }
     
