@@ -17,7 +17,9 @@ public class HistoListener implements SpanListener
     {
         this.histo = Objects.requireNonNull(histo);
         histo.valueSpans = new int[histo.length()];
+        histo.valueDocs = new int[histo.length()];
         histo.cols().add(Col.SPANS);
+        histo.cols().add(Col.DOCS);
     }
 
     @Override
@@ -37,6 +39,7 @@ public class HistoListener implements SpanListener
     {
         if (histoIndex < 0) return;
         histo.valueSpans[histoIndex] += spanCount;
+        if (spanCount > 0) histo.valueDocs[histoIndex]++;
     }
     
     
