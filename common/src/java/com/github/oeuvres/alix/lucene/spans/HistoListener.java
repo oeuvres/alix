@@ -11,14 +11,14 @@ public class HistoListener implements SpanListener
     private int histoIndex = -1;
     
     /**
-     * Accumulates span counts into {@link NumHisto#SPANS} of the given histogram.
+     * Accumulates span counts into {@link NumHisto#SNIPPETS} of the given histogram.
      */
     public HistoListener(final HistoNum histo)
     {
         this.histo = Objects.requireNonNull(histo);
-        histo.valueSpans = new int[histo.length()];
+        histo.valueSnippets = new int[histo.length()];
         histo.valueDocs = new int[histo.length()];
-        histo.cols().add(Col.SPANS);
+        histo.cols().add(Col.SNIPPETS);
         histo.cols().add(Col.DOCS);
     }
 
@@ -38,7 +38,7 @@ public class HistoListener implements SpanListener
     public void endDoc(final int spanCount)
     {
         if (histoIndex < 0) return;
-        histo.valueSpans[histoIndex] += spanCount;
+        histo.valueSnippets[histoIndex] += spanCount;
         if (spanCount > 0) histo.valueDocs[histoIndex]++;
     }
     

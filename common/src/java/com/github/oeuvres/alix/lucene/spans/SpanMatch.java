@@ -11,7 +11,7 @@ import org.apache.lucene.queries.spans.SpanWeight.Postings;
 import org.apache.lucene.queries.spans.Spans;
 
 /**
- * Reusable per-match record produced by {@link SpanWalker} and consumed by {@link SpanListener}.
+ * Reusable per-match record produced by {@link SpanWalkerDeprecated} and consumed by {@link SpanListener}.
  *
  * <p>
  * Carries two pieces of information about one span match:
@@ -206,7 +206,7 @@ public final class SpanMatch implements SpanCollector
     }
     
     /**
-     * Sets the span ordinal. Called by {@link SpanWalker} during the
+     * Sets the span ordinal. Called by {@link SpanWalkerDeprecated} during the
      * {@link Spans#nextStartPosition()} loop.
      *
      * @param ord 0-based ordinal of this span in the document
@@ -229,7 +229,7 @@ public final class SpanMatch implements SpanCollector
     }
     
     /**
-     * Sets the span's token-position range. Called by {@link SpanWalker} after {@link #reset()} and
+     * Sets the span's token-position range. Called by {@link SpanWalkerDeprecated} after {@link #reset()} and
      * before {@link Spans#collect}.
      *
      * @param startPosition span start position (inclusive), from {@link Spans#startPosition()}
@@ -246,7 +246,7 @@ public final class SpanMatch implements SpanCollector
      *
      * <p>
      * Resets the leaf count to {@code 0}, span range and ordinal to {@code -1}. The backing array
-     * is retained for reuse. {@link SpanWalker} calls this before each {@link Spans#collect}
+     * is retained for reuse. {@link SpanWalkerDeprecated} calls this before each {@link Spans#collect}
      * invocation.
      * </p>
      */

@@ -17,7 +17,7 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.spans.CoocListener;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
@@ -143,7 +143,7 @@ public final class OpTerms extends Op
                 textFluc.termRail(),
                 left,
                 right);
-            final SpanWalker walker = new SpanWalker(
+            final SpanWalkerDeprecated walker = new SpanWalkerDeprecated(
                 index.searcher(),
                 spanQuery,
                 filterQuery,

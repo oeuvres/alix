@@ -3,10 +3,10 @@ package com.github.oeuvres.alix.lucene.spans;
 import java.io.IOException;
 
 /**
- * Receives streamed span-match events from a {@link SpanWalker}.
+ * Receives streamed span-match events from a {@link SpanWalkerDeprecated}.
  *
  * <p>
- * Lifecycle, per call to {@link SpanWalker#walk(int)}:
+ * Lifecycle, per call to {@link SpanWalkerDeprecated#walk(int)}:
  * </p>
  * <ol>
  * <li>{@link #start()}</li>

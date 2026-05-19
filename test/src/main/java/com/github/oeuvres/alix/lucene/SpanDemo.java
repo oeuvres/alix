@@ -18,7 +18,7 @@ import org.apache.lucene.store.FSDirectory;
 
 import com.github.oeuvres.alix.lucene.output.HtmlResults;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 
 
 public class SpanDemo {
@@ -128,7 +128,7 @@ public class SpanDemo {
                         .docLimit(20)
                         .spanLimit(5)
                         .ctx(20);
-                    SpanWalker walker = new SpanWalker(searcher, query, null, results);
+                    SpanWalkerDeprecated walker = new SpanWalkerDeprecated(searcher, query, null, results);
                     writer.append(String.valueOf(walker.hits())).append(" hits " + (System.currentTimeMillis() - t0) + "ms \n");
                     int nextDoc = walker.walk(0);
 

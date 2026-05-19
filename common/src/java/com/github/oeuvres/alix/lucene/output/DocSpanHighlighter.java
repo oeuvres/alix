@@ -23,7 +23,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 
 import com.github.oeuvres.alix.lucene.spans.SpanMatch;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 import com.github.oeuvres.alix.util.IntIntMap;
 
 /**
@@ -180,7 +180,7 @@ public final class DocSpanHighlighter
      * match there.
      *
      * <p>
-     * Single-document counterpart of the multi-document loop in {@link SpanWalker}: locates the
+     * Single-document counterpart of the multi-document loop in {@link SpanWalkerDeprecated}: locates the
      * leaf containing {@code docId} via {@link ReaderUtil#subIndex}, creates a fresh {@link Spans}
      * with {@link SpanWeight.Postings#OFFSETS}, and advances it to the local doc id. No caching:
      * each call allocates a new {@link Spans}, which is the correct shape for random-access

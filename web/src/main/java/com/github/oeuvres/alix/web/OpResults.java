@@ -17,7 +17,7 @@ import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.output.HtmlResults;
 import com.github.oeuvres.alix.lucene.spans.SpanVisitor;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
@@ -283,7 +283,7 @@ public class OpResults extends Op
         // sorted?
         String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
         if (DATE.equals(sort)) {
-            SpanWalker walker = new SpanWalker(
+            SpanWalkerDeprecated walker = new SpanWalkerDeprecated(
                 index.searcher(),
                 spanQuery, 
                 filterQuery, 

@@ -14,7 +14,7 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.output.HistoNum;
 import com.github.oeuvres.alix.lucene.output.HistoNum.Col;
 import com.github.oeuvres.alix.lucene.spans.HistoListener;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 
@@ -53,6 +53,7 @@ public class OpChrono extends Op
             return histo;
         }
         meta.put("spanQuery", spanQuery.toString());
+        /*
         final HistoListener listener = new HistoListener(histo);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
@@ -61,6 +62,7 @@ public class OpChrono extends Op
             listener
         );
         walker.walk();
+        */
         return histo;
     }
     
@@ -111,7 +113,7 @@ public class OpChrono extends Op
                             case DOCS     -> json.value(histo.valueDocs[row]);
                             case WIDTH    -> json.value(histo.valueWidth[row]);
                             case TOKENS   -> json.value(histo.valueTokens[row]);
-                            case SPANS    -> json.value(histo.valueSpans[row]);
+                            case SNIPPETS    -> json.value(histo.valueSnippets[row]);
                             case SCORE    -> json.value(histo.valueScore[row]);
                         }
                     }

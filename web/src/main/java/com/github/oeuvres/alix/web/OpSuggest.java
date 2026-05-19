@@ -14,7 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.spans.CoocListener;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
@@ -77,7 +77,7 @@ public final class OpSuggest extends Op
                 textFluc.termRail(),
                 slop,
                 slop);
-            final SpanWalker walker = new SpanWalker(
+            final SpanWalkerDeprecated walker = new SpanWalkerDeprecated(
                 index.searcher(),
                 spanQuery,
                 filterQuery,

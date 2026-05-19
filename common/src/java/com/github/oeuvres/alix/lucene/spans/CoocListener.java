@@ -14,7 +14,7 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
  * each pivot match.
  *
  * <p>
- * For each match {@code [start, end)} delivered by {@link SpanWalker}, the listener marks the
+ * For each match {@code [start, end)} delivered by {@link SpanWalkerDeprecated}, the listener marks the
  * context positions {@code [max(0, start - left), start)} and
  * {@code [end, min(docWidth, end + right))} in a per-document bitset. After the document is
  * exhausted, the marked positions are resolved to term ids via {@link TermRail#scanPositions} and
