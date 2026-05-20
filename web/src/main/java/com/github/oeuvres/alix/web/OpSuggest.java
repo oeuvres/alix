@@ -13,8 +13,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.spans.CoocListener;
-import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
+import com.github.oeuvres.alix.lucene.spans.CoocSnippets;
+import com.github.oeuvres.alix.lucene.spans.Snippets;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
@@ -64,33 +65,27 @@ public final class OpSuggest extends Op
             // should set focusTermFreq for the selected terms
             return topTerms.select(index.reader(), focusDocs);
         }
-        // coocs, with or without doc filter TODO
         else {
-            /*
-            final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
-            final int left = pars.getInt(CTX_LEFT, CTX_RANGE, ctx, CTX_LEFT);
-            final int right = pars.getInt(CTX_RIGHT, CTX_RANGE, ctx, CTX_RIGHT);
-            */
+            // same as for the span query parser
             final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
-            final CoocListener listener = new CoocListener(
+            final CoocSnippets consumer = new CoocSnippets(
                 textFluc.termStats(),
                 textFluc.termRail(),
                 slop,
                 slop);
-            final SpanWalkerDeprecated walker = new SpanWalkerDeprecated(
+            consumer.bindTo(topTerms.buffers()).pivotIds(textFluc.termLexicon().termIds(spanQuery));
+            final SpanWalker walker = new SpanWalker(
                 index.searcher(),
                 spanQuery,
                 filterQuery,
-                listener,
-                textFluc.termLexicon()
-            );
-            
-            listener.bindTo(topTerms.buffers());
+                new Snippets(Snippets.Usage.FREQS, slop),
+                consumer
+            );            
             walker.walk(0);
-            topTerms.setTotals(listener.coocTokens(), listener.coocDocsTotal());
+            topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
             
-            meta.put("focusTokens", listener.coocTokens());
-            meta.put("focusDocs", listener.coocDocsTotal());
+            meta.put("focusTokens", consumer.coocTokens());
+            meta.put("focusDocs", consumer.coocDocsTotal());
             meta.put("hits", walker.hits());
             return topTerms;
         }

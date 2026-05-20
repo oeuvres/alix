@@ -378,7 +378,7 @@ public class IntList
      *
      * @return sorted values with no duplicates; empty array if the list is empty.
      */
-    public int[] uniq()
+    public int[] toUniq()
     {
         if (size == 0)
             return EMPTY_INT_ARRAY;

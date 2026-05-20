@@ -103,9 +103,6 @@ public final class TermLexicon implements Closeable {
     /** Number of entries including the reserved id 0; valid ids span {@code [0, vocabSize)}. */
     private final int vocabSize;
 
-    /** Maximum tolerated mtime difference between the three lexicon files at open time, in milliseconds. */
-    private static final long MTIME_TOLERANCE_MS = 5_000L;
-
     /** Number of offsets checked at the head and tail of {@code .off} for a quick monotonicity test. */
     private static final int MONO_CHECK = 1024;
 

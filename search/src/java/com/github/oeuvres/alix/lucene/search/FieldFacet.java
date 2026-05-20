@@ -183,7 +183,7 @@ public class FieldFacet extends FieldCharsAbstract
                     docIdRow.push(formId);
                     docsByForm.inc(formId);
                 }
-                docId4facetId[docId] = docIdRow.uniq();
+                docId4facetId[docId] = docIdRow.toUniq();
             }
         }
         this.formId4docs = docsByForm.toArray();

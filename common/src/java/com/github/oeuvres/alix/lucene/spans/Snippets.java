@@ -32,9 +32,9 @@ import org.apache.lucene.queries.spans.SpanCollector;
  *
  * <p>
  * After {@link #closeDoc()}, snippets are read sequentially by ordinal via
- * {@link #snipStartPos(int)} / {@link #snipEndPos(int)}, and matches are read sequentially by
- * ordinal via {@link #matchPos(int)} / {@link #matchOffsetStart(int)} /
- * {@link #matchOffsetEnd(int)}. The two ordinal spaces are independent; consumers that need to
+ * {@link #snipStartPosition(int)} / {@link #snipEndPosition(int)}, and matches are read sequentially by
+ * ordinal via {@link #matchPos(int)} / {@link #matchStartOffset(int)} /
+ * {@link #matchEndOffset(int)}. The two ordinal spaces are independent; consumers that need to
  * pair a snippet with the matches inside its position range walk both arrays with a single
  * match-cursor variable, advancing the cursor while the match position falls inside the current
  * snippet. No per-snippet slice is stored.
@@ -273,7 +273,7 @@ public final class Snippets implements SpanCollector
      *                                   not {@link Usage#OFFSETS}
      * @throws IndexOutOfBoundsException if {@code matchOrd} is outside {@code [0, matchCount())}
      */
-    public int matchOffsetEnd(final int matchOrd)
+    public int matchEndOffset(final int matchOrd)
     {
         requireFinished();
         requireOffsets();
@@ -290,7 +290,7 @@ public final class Snippets implements SpanCollector
      *                                   not {@link Usage#OFFSETS}
      * @throws IndexOutOfBoundsException if {@code matchOrd} is outside {@code [0, matchCount())}
      */
-    public int matchOffsetStart(final int matchOrd)
+    public int matchStartOffset(final int matchOrd)
     {
         requireFinished();
         requireOffsets();
@@ -345,6 +345,54 @@ public final class Snippets implements SpanCollector
     }
 
     /**
+     * TODO, javadoc
+     */
+    public int snipEndMatch(final int snipOrd)
+    {
+        requireFinished();
+        requireOffsets();
+        checkIndex(snipOrd, snips4doc, "snippet");
+        if (matchCount == 0) {
+            return -1;
+        }
+        final int snipStartPosition = unpackHigh(snippets[snipOrd]);
+        final int snipEndPosition = unpackLow(snippets[snipOrd]);
+        final int boundary = firstMatchAtOrAfterPos(snipEndPosition);
+        if (boundary == 0) {
+            return -1;
+        }
+        final int matchOrd = boundary - 1;
+        if (unpackHigh(matches[matchOrd]) < snipStartPosition) {
+            return -1;
+        }
+        return matchOrd;
+    }
+
+    
+    /**
+     * Returns the character end offset of the {@code snipOrd}-th merged snippet, defined as the
+     * char end offset of the last match falling inside the snippet's position range.
+     *
+     * <p>
+     * Performs a binary search over {@link #matches}, O(log matchCount). For sequential walks
+     * over all snippets a forward match cursor derives the same value at O(1); this method is
+     * intended for random access (e.g. top-K rendering).
+     * </p>
+     *
+     * @param snipOrd snippet ordinal
+     * @return character end offset of the snippet, or {@code -1} if the snippet has no matches
+     * @throws IllegalStateException     if called before {@link #closeDoc()} or when usage is
+     *                                   not {@link Usage#OFFSETS}
+     * @throws IndexOutOfBoundsException if {@code snipOrd} is outside {@code [0, snips4doc())}
+     */
+    public int snipEndOffset(final int snipOrd)
+    {
+        final int matchOrd = snipEndMatch(snipOrd);
+        if (matchOrd < 0) return -1;
+        return unpackLow(matchOffsets[unpackLow(matches[matchOrd])]);
+    }
+
+    /**
      * Returns the end position (exclusive) of the {@code snipOrd}-th merged snippet.
      *
      * @param snipOrd snippet ordinal
@@ -353,7 +401,7 @@ public final class Snippets implements SpanCollector
      *                                   {@link Usage#FREQS}
      * @throws IndexOutOfBoundsException if {@code snipOrd} is outside {@code [0, snips4doc())}
      */
-    public int snipEndPos(final int snipOrd)
+    public int snipEndPosition(final int snipOrd)
     {
         requireFinished();
         requirePositions();
@@ -372,6 +420,52 @@ public final class Snippets implements SpanCollector
         requireFinished();
         return snips4doc;
     }
+    
+    /**
+     * TODO Javadoc
+     */
+    public int snipStartMatch(final int snipOrd)
+    {
+        requireFinished();
+        requireOffsets();
+        checkIndex(snipOrd, snips4doc, "snippet");
+        if (matchCount == 0) {
+            return -1;
+        }
+        final int snipStartPosition = unpackHigh(snippets[snipOrd]);
+        final int snipEndPosition = unpackLow(snippets[snipOrd]);
+        final int firstMatchOrd = firstMatchAtOrAfterPos(snipStartPosition);
+        if (firstMatchOrd >= matchCount) {
+            return -1;
+        }
+        if (unpackHigh(matches[firstMatchOrd]) >= snipEndPosition) {
+            return -1;
+        }
+        return firstMatchOrd;
+    }
+
+    /**
+     * Returns the character start offset of the {@code snipOrd}-th merged snippet, defined as
+     * the char start offset of the first match falling inside the snippet's position range.
+     *
+     * <p>
+     * Performs a binary search over {@link #matches}, O(log matchCount). For sequential walks
+     * over all snippets a forward match cursor derives the same value at O(1); this method is
+     * intended for random access (e.g. top-K rendering).
+     * </p>
+     *
+     * @param snipOrd snippet ordinal
+     * @return character start offset of the snippet, or {@code -1} if the snippet has no matches
+     * @throws IllegalStateException     if called before {@link #closeDoc()} or when usage is
+     *                                   not {@link Usage#OFFSETS}
+     * @throws IndexOutOfBoundsException if {@code snipOrd} is outside {@code [0, snips4doc())}
+     */
+    public int snipStartOffset(final int snipOrd)
+    {
+        final int matchOrd = snipStartMatch(snipOrd);
+        if (matchOrd < 0) return -1;
+        return unpackHigh(matchOffsets[unpackLow(matches[matchOrd])]);
+    }
 
     /**
      * Returns the start position (inclusive) of the {@code snipOrd}-th merged snippet.
@@ -382,7 +476,7 @@ public final class Snippets implements SpanCollector
      *                                   {@link Usage#FREQS}
      * @throws IndexOutOfBoundsException if {@code snipOrd} is outside {@code [0, snips4doc())}
      */
-    public int snipStartPos(final int snipOrd)
+    public int snipStartPosition(final int snipOrd)
     {
         requireFinished();
         requirePositions();
@@ -465,6 +559,28 @@ public final class Snippets implements SpanCollector
             length <<= 1;
         }
         snippets = Arrays.copyOf(snippets, length);
+    }
+
+    /**
+     * Binary search over {@link #matches} for the smallest match ordinal whose token position
+     * is greater than or equal to {@code position}.
+     *
+     * @return match ordinal in {@code [0, matchCount]}; equals {@link #matchCount} when no
+     *         match satisfies the condition
+     */
+    private int firstMatchAtOrAfterPos(final int position)
+    {
+        int lo = 0;
+        int hi = matchCount;
+        while (lo < hi) {
+            final int mid = (lo + hi) >>> 1;
+            if (unpackHigh(matches[mid]) < position) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        return lo;
     }
 
     /**

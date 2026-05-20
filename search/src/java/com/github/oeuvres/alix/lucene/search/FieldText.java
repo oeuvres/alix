@@ -649,7 +649,7 @@ public class FieldText extends FieldCharsAbstract
         if (list.isEmpty()) {
             return null;
         }
-        int[] pivots = list.uniq();
+        int[] pivots = list.toUniq();
         return pivots;
     }
 

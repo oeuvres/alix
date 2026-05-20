@@ -113,7 +113,7 @@ public class Detagger {
      * @param dest  destination; receives normalized text and any preserved tags
      * @throws IOException if {@code dest.append} throws
      */
-    public void detag(final String xml, int begin, int end, final Appendable dest)
+    public void detag(final Appendable dest, final String xml, int begin, int end)
             throws IOException
     {
         if (xml == null || dest == null) return;

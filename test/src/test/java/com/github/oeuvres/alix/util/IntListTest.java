@@ -634,7 +634,7 @@ class IntListTest
     void uniq_returnsFreshSortedArrayWithoutDuplicates()
     {
         IntList list = new IntList().push(5).push(2).push(5).push(1).push(3).push(2);
-        int[] result = list.uniq();
+        int[] result = list.toUniq();
         assertArrayEquals(new int[] { 1, 2, 3, 5 }, result);
         assertNotSame(list.data(), result);
     }
@@ -703,7 +703,7 @@ class IntListTest
     void uniq_emptyListReturnsEmpty()
     {
         IntList list = new IntList();
-        int[] result = list.uniq();
+        int[] result = list.toUniq();
         assertEquals(0, result.length, "uniq() on empty list must return empty array, not throw");
     }
 

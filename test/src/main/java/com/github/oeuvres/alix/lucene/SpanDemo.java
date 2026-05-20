@@ -16,7 +16,7 @@ import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.FSDirectory;
 
-import com.github.oeuvres.alix.lucene.output.HtmlResults;
+import com.github.oeuvres.alix.lucene.spans.HtmlSnippets;
 import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.spans.SpanWalkerDeprecated;
 
@@ -123,10 +123,10 @@ public class SpanDemo {
                 
                 
                 try {
-                    HtmlResults results = new HtmlResults(writer, storedFields, storedField)
+                    HtmlSnippets results = new HtmlSnippets(writer, storedFields, storedField)
                         .doclineFieldName("docline")
                         .docLimit(20)
-                        .spanLimit(5)
+                        .snipLimit(5)
                         .ctx(20);
                     SpanWalkerDeprecated walker = new SpanWalkerDeprecated(searcher, query, null, results);
                     writer.append(String.valueOf(walker.hits())).append(" hits " + (System.currentTimeMillis() - t0) + "ms \n");
