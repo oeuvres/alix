@@ -70,7 +70,7 @@ import com.github.oeuvres.alix.util.IntIntMap;
  * {@link #highlight}.
  * </p>
  */
-public final class DocSpanHighlighter
+public final class DocSnipHiliter
 {
     /** Emitted first at a given offset: span opens before its first pivot mark. */
     private static final int PRI_WBR_START = 0;
@@ -121,7 +121,7 @@ public final class DocSpanHighlighter
      * @throws IOException          on rewrite failure
      * @throws NullPointerException if {@code searcher} or {@code spanQuery} is {@code null}
      */
-    public DocSpanHighlighter(final IndexSearcher searcher, final SpanQuery spanQuery) throws IOException
+    public DocSnipHiliter(final IndexSearcher searcher, final SpanQuery spanQuery) throws IOException
     {
         this.searcher = Objects.requireNonNull(searcher, "searcher");
         Objects.requireNonNull(spanQuery, "spanQuery");
