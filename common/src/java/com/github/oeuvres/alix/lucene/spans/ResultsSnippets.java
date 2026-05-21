@@ -55,7 +55,7 @@ import static com.github.oeuvres.alix.common.Names.*;
  * this renderer. This class is not thread-safe.
  * </p>
  */
-public class HtmlSnippets implements SnippetsConsumer
+public class ResultsSnippets implements SnippetsConsumer
 {
     private final String contentFieldName;
     private final Detagger detagger = new Detagger(Set.of("i", "em"));
@@ -93,7 +93,7 @@ public class HtmlSnippets implements SnippetsConsumer
      * @throws IllegalArgumentException if {@code snipLimit < 0}
      * @throws NullPointerException if any non-primitive argument is {@code null}
      */
-    public HtmlSnippets(
+    public ResultsSnippets(
         final Writer writer,
         final StoredFields storedFields,
         final String contentFieldName,
@@ -106,12 +106,14 @@ public class HtmlSnippets implements SnippetsConsumer
         this.contentFieldName = Objects.requireNonNull(contentFieldName, "contentFieldName");
         this.rail = Objects.requireNonNull(rail, "rail");
         this.termWeights = Objects.requireNonNull(termWeights, "termWeights");
-        if (snipLimit < 0) {
-            throw new IllegalArgumentException("snipLimit=" + snipLimit + ", expected >= 0");
-        }
         this.snipLimit = snipLimit;
         this.termDedup = new int[termWeights.length];
-        this.topSnips = new TopArray(snipLimit);
+        if (snipLimit > 0) {
+            this.topSnips = new TopArray(snipLimit);
+        }
+        else {
+            this.topSnips = null; // should be OK for docSnippets()
+        }
     }
 
     /**
@@ -131,7 +133,7 @@ public class HtmlSnippets implements SnippetsConsumer
      * @param ctx context width in words
      * @return this instance
      */
-    public HtmlSnippets ctx(final int ctx)
+    public ResultsSnippets ctx(final int ctx)
     {
         this.ctx = ctx;
         return this;
@@ -169,7 +171,7 @@ public class HtmlSnippets implements SnippetsConsumer
      * @param doclineFieldName stored-field name, or {@code null}
      * @return this instance
      */
-    public HtmlSnippets doclineFieldName(final String doclineFieldName)
+    public ResultsSnippets doclineFieldName(final String doclineFieldName)
     {
         this.doclineFieldName = doclineFieldName;
         return this;
@@ -183,14 +185,16 @@ public class HtmlSnippets implements SnippetsConsumer
      * @param docId Lucene document id
      * @throws IOException if the writer or stored-fields access fails
      */
-    public void docOpen(final int docId) throws IOException
+    public void docOpen(final int docId, String css) throws IOException
     {
+        if (css == null || css.isBlank()) {css=""; }
+        else { css = " " + css;};
         doc = storedFields.document(docId);
         id = doc.get(ALIX_ID);
         writer.append("<article")
         .append(" id=\"").append(id).append("\"")
         .append(" data-docid=\"").append(String.valueOf(docId)).append("\"")
-        .append(" class=\"result\"")
+        .append(" class=\"result").append(css).append("\"")
         .append(">\n");
 
         String url = hrefBase + id + hrefExt + hrefSearch;
@@ -198,13 +202,12 @@ public class HtmlSnippets implements SnippetsConsumer
             final String docline = doc.get(doclineFieldName);
             if (docline != null) {
                 writer.append("<h4")
-                .append(" data-href=\"").append(url).append("\"")
+                .append(" class=\"result-title\"")
                 .append(">\n")
-                .append("<span>").append(docline).append("</span>\n")
                 .append("<a")
                 .append(" href=\"").append(url).append("\"")
-                .append(" class=\"result-open\"")
-                .append(">→</a>\n")
+                .append(">").append(docline)
+                .append("</a>\n")
                 .append("</h4>\n");
             }
         }
@@ -227,10 +230,27 @@ public class HtmlSnippets implements SnippetsConsumer
     @Override
     public void docSnippets(final int docId, final Snippets snippets) throws IOException
     {
-        docOpen(docId);
-        content = doc.get(contentFieldName);
         final int snipCount = snippets.snips4doc();
-        if (snipLimit > 0 && content != null && snipCount > 0) {
+        docOpen(docId, "hassnippets");
+        content = doc.get(contentFieldName);
+        if (content == null) {
+            writer.append("<!-- No text stored for field: '" + contentFieldName + "' -->");
+        }
+        else if (snipCount <= 0) {
+            writer.append("<!-- No snippets found -->");
+        }
+        else if (snipLimit <  0) {
+            // list all snippets in document order
+            writer.append("<ol class=\"snippets\">\n");
+            for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
+                print(snippets, snipOrd);
+            }
+            writer.append("</ol>\n");
+        }
+        else if (snipLimit == 0) {
+            
+        }
+        else {
             topSnips.clear();
             for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
                 final int startPos = Math.max(0, snippets.snipStartPosition(snipOrd) - ctx);
@@ -262,7 +282,7 @@ public class HtmlSnippets implements SnippetsConsumer
      * @param hrefBase URL prefix
      * @return this instance
      */
-    public HtmlSnippets hrefBase(final String hrefBase)
+    public ResultsSnippets hrefBase(final String hrefBase)
     {
         this.hrefBase = hrefBase;
         return this;
@@ -284,7 +304,7 @@ public class HtmlSnippets implements SnippetsConsumer
      * @param hrefExt URL suffix
      * @return this instance
      */
-    public HtmlSnippets hrefExt(final String hrefExt)
+    public ResultsSnippets hrefExt(final String hrefExt)
     {
         this.hrefExt = hrefExt;
         return this;
@@ -306,7 +326,7 @@ public class HtmlSnippets implements SnippetsConsumer
      * @param hrefSearch query-string fragment
      * @return this instance
      */
-    public HtmlSnippets hrefSearch(final String hrefSearch)
+    public ResultsSnippets hrefSearch(final String hrefSearch)
     {
         this.hrefSearch = hrefSearch;
         return this;
@@ -345,7 +365,8 @@ public class HtmlSnippets implements SnippetsConsumer
         final int leftMatchStartOffset = snippets.matchStartOffset(leftMatchOrd);
         final int rightMatchEndOffset = snippets.matchEndOffset(rightMatchOrd);
 
-        final String url = hrefBase + id + hrefExt + hrefSearch + "#snippet" + snipOrd;
+        final int snipAnchor = snipOrd + 1;
+        final String url = hrefBase + id + hrefExt + hrefSearch + "#snippet-" + snipAnchor;
         writer
             .append("<li")
             .append(" class=\"snippet\"")
@@ -380,7 +401,7 @@ public class HtmlSnippets implements SnippetsConsumer
         .append("\n<a")
         .append(" class=\"snippet-open\"")
         .append(" href=\"").append(url).append("\"")
-        .append("\">→</a>");
+        .append(">→</a>");
         writer.append("</li>\n");
     }
 

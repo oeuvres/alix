@@ -15,7 +15,7 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.spans.HtmlSnippets;
+import com.github.oeuvres.alix.lucene.spans.ResultsSnippets;
 import com.github.oeuvres.alix.lucene.spans.Snippets;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
@@ -69,7 +69,7 @@ public class OpResults extends Op {
         final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
         final String docline = pars.getString(DOCLINE, index.docline());
         final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
-        final int spans = pars.getInt(SPANS, SPANS_RANGE, SPANS_DEFAULT, SPANS);
+        final int snips = pars.getInt(SNIPS, SNIPS_RANGE, SNIPS_DEFAULT, SNIPS);
         // transmit the slop parameter explicitly; cookie may not be transmitted in some contexts
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final int from = pars.getInt(FROM, 0);
@@ -93,15 +93,19 @@ public class OpResults extends Op {
             final TermStats fieldStats = flucText.termStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
-            snipLimit = spans;
+            snipLimit = snips;
         }
 
-        final HtmlSnippets results = new HtmlSnippets(
-                writer, index.reader().storedFields(), content,
-                rail, termWeights, snipLimit)
-            .doclineFieldName(docline)
-            .ctx(ctx)
-            .hrefSearch("?" + pars.queryString(CTX, FTEXT, Q) + "&amp;slop=" + slop);
+        final ResultsSnippets results = new ResultsSnippets(
+            writer, 
+            index.reader().storedFields(), 
+            content,
+            rail,
+            termWeights,
+            snipLimit
+        ).doclineFieldName(docline)
+         .ctx(ctx)
+         .hrefSearch("?" + pars.queryString(CTX, FTEXT, Q) + "&amp;slop=" + slop);
 
         // no query, list docs
         if (spanQuery == null) {
@@ -110,7 +114,6 @@ public class OpResults extends Op {
             int docCount = 0;
             boolean more = false;
             int docId = from;
-            writer.append("<div class=\"results-rows\">");
             for (; docId < fieldStats.maxDoc(); docId++) {
                 if (fieldStats.docWidth(docId) == 0)
                     continue;
@@ -121,10 +124,9 @@ public class OpResults extends Op {
                     break;
                 }
                 docCount++;
-                results.docOpen(docId);
+                results.docOpen(docId, "result-row");
                 results.docClose(docId);
             }
-            writer.append("</div>\n");
             if (more) {
                 writer.append("<p class=\"next-results\"><a data-from=\"").append(String.valueOf(docId))
                         .append("\" name=\"next-results\" href=\"").append("?")

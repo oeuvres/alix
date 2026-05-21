@@ -13,7 +13,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.spans.DocSnipHiliter;
+import com.github.oeuvres.alix.lucene.spans.HiliteSnippets;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -88,7 +88,7 @@ public class OpDoc extends Op
         if (spanQuery != null) {
             // same as for the span query parser
             final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
-            content = new DocSnipHiliter(index.searcher(), spanQuery, slop).highlight(docId, content);
+            content = new HiliteSnippets(index.searcher(), spanQuery, slop).highlight(docId, content);
         }
         writer.write(content);
     }

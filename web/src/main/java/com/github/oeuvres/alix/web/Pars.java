@@ -35,9 +35,9 @@ public class Pars
     public static final int    SLOP_DEFAULT    = 20;
     public static final int[]  SLOP_RANGE      = {0, 200};
     public static final String SORT            = "sort";
-    public static final String SPANS           = "spans";
-    public static final int    SPANS_DEFAULT   = 10;
-    public static final int[]  SPANS_RANGE     = {-1, 100};
+    public static final String SNIPS           = "snips";
+    public static final int    SNIPS_DEFAULT   = 3;
+    public static final int[]  SNIPS_RANGE     = {-1, 100};
     public static final String TERMS           = "terms";
     public static final int    TERMS_DEFAULT   = 50;
     public static final int[]  TERMS_RANGE     = {1, 200};

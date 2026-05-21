@@ -64,7 +64,7 @@ import org.apache.lucene.search.ScoreMode;
  * analysis. Tag injection is a linear merge that never re-parses HTML.
  * </p>
  */
-public final class DocSnipHiliter
+public final class HiliteSnippets
 {
     /** Snippet opens; outermost at this offset. */
     private static final int SNIP_OPEN = 0;
@@ -110,7 +110,7 @@ public final class DocSnipHiliter
      * @throws IllegalArgumentException if {@code mergeGap} is negative
      * @throws NullPointerException     if {@code searcher} or {@code spanQuery} is {@code null}
      */
-    public DocSnipHiliter(
+    public HiliteSnippets(
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
             final int mergeGap) throws IOException
@@ -175,7 +175,7 @@ public final class DocSnipHiliter
                 sb.append(content, cursor, offset);
                 cursor = offset;
             }
-            writeTag(sb, kind, snipOrd);
+            writeTag(sb, kind, snipOrd, offset);
         }
         sb.append(content, cursor, content.length());
         return sb.toString();
@@ -208,9 +208,8 @@ public final class DocSnipHiliter
             if (snipCharStart < 0) {
                 continue;
             }
-            final int userOrd = snipOrd + 1;
-            addEvent(snipCharStart, SNIP_OPEN, userOrd);
-            addEvent(snipCharEnd, SNIP_CLOSE, userOrd);
+            addEvent(snipCharStart, SNIP_OPEN, snipOrd);
+            addEvent(snipCharEnd, SNIP_CLOSE, snipOrd);
         }
     }
 
@@ -308,12 +307,21 @@ public final class DocSnipHiliter
     /**
      * Writes one tag for the given event kind into the output buffer.
      */
-    private static void writeTag(final StringBuilder sb, final int kind, final int snipOrd)
+    private static void writeTag(final StringBuilder sb, final int kind, final int snipOrd, final int offset)
     {
+        final int snipAnchor = snipOrd + 1;
         switch (kind) {
             case SNIP_OPEN:
-                sb.append("<wbr id=\"snippet").append(snipOrd)
-                        .append("\" class=\"hl-start\" data-hl=\"").append(snipOrd).append("\"/>");
+                sb
+                .append("<span")
+                .append(" class=\"hl-anchor\"")
+                .append(" data-hl=\"").append(snipAnchor).append("\"")
+                .append(" id=\"snippet-").append(snipAnchor).append("\"")
+                .append("></span>")
+                .append("<wbr")
+                .append(" class=\"hl-start\"")
+                .append(" data-hl=\"").append(snipAnchor).append("\"")
+                .append("/>");
                 break;
             case MATCH_OPEN:
                 sb.append("<mark class=\"term match\">");
@@ -328,7 +336,7 @@ public final class DocSnipHiliter
                 sb.append("</mark>");
                 break;
             case SNIP_CLOSE:
-                sb.append("<wbr class=\"hl-end\" data-hl=\"").append(snipOrd).append("\"/>");
+                sb.append("<wbr class=\"hl-end\" data-hl=\"").append(snipAnchor).append("\"/>");
                 break;
             default:
                 throw new AssertionError("unknown event kind: " + kind);
