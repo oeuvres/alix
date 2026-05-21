@@ -78,7 +78,7 @@ public final class OpSuggest extends Op
                 index.searcher(),
                 spanQuery,
                 filterQuery,
-                new Snippets(Snippets.Usage.FREQS, slop),
+                new Snippets(Snippets.Usage.POSITIONS, slop),
                 consumer
             );            
             walker.walk(0);

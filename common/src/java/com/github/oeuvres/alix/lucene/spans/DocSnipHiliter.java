@@ -319,7 +319,7 @@ public final class DocSnipHiliter
                 sb.append("<mark class=\"term match\">");
                 break;
             case TERM_OPEN:
-                sb.append("<mark class=\"term\">");
+                sb.append("<mark class=\"term orphan\">");
                 break;
             case TERM_CLOSE:
                 sb.append("</mark>");

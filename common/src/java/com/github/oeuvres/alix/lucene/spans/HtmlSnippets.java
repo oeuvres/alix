@@ -68,12 +68,10 @@ public class HtmlSnippets implements SnippetsConsumer
     private final Writer writer;
 
     private int ctx = 10;
-    private String docCss = "hit";
     private String doclineFieldName = "docline";
     private String hrefBase = "";
     private String hrefExt = "";
     private String hrefSearch = "";
-    private String snipCss = "hit snippet";
 
     private String content;
     private Document doc;
@@ -155,28 +153,6 @@ public class HtmlSnippets implements SnippetsConsumer
     }
 
     /**
-     * Returns the CSS class applied to the {@code <article>} element.
-     *
-     * @return CSS class string
-     */
-    public String docCss()
-    {
-        return docCss;
-    }
-
-    /**
-     * Sets the CSS class applied to the {@code <article>} element.
-     *
-     * @param docCss CSS class string
-     * @return this instance
-     */
-    public HtmlSnippets docCss(final String docCss)
-    {
-        this.docCss = docCss;
-        return this;
-    }
-
-    /**
      * Returns the name of the stored field used as the document heading.
      *
      * @return stored-field name, or {@code null} when the heading is suppressed
@@ -211,15 +187,25 @@ public class HtmlSnippets implements SnippetsConsumer
     {
         doc = storedFields.document(docId);
         id = doc.get(ALIX_ID);
-        writer.append("<article id=\"").append(id)
-            .append("\" data-docid=\"").append(String.valueOf(docId))
-            .append("\" class=\"").append(docCss).append("\">\n");
+        writer.append("<article")
+        .append(" id=\"").append(id).append("\"")
+        .append(" data-docid=\"").append(String.valueOf(docId)).append("\"")
+        .append(" class=\"result\"")
+        .append(">\n");
+
+        String url = hrefBase + id + hrefExt + hrefSearch;
         if (doclineFieldName != null) {
             final String docline = doc.get(doclineFieldName);
             if (docline != null) {
-                writer.append("<h2><a href=\"").append(hrefBase).append(id)
-                    .append(hrefExt).append(hrefSearch).append("\">")
-                    .append(docline).append("</a></h2>\n");
+                writer.append("<h4")
+                .append(" data-href=\"").append(url).append("\"")
+                .append(">\n")
+                .append("<span>").append(docline).append("</span>\n")
+                .append("<a")
+                .append(" href=\"").append(url).append("\"")
+                .append(" class=\"result-open\"")
+                .append(">→</a>\n")
+                .append("</h4>\n");
             }
         }
     }
@@ -243,17 +229,19 @@ public class HtmlSnippets implements SnippetsConsumer
     {
         docOpen(docId);
         content = doc.get(contentFieldName);
-        if (snipLimit > 0 && content != null) {
+        final int snipCount = snippets.snips4doc();
+        if (snipLimit > 0 && content != null && snipCount > 0) {
             topSnips.clear();
-            final int snipCount = snippets.snips4doc();
             for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
                 final int startPos = Math.max(0, snippets.snipStartPosition(snipOrd) - ctx);
                 final int endPos = snippets.snipEndPosition(snipOrd) + ctx;
                 topSnips.push(snipOrd, scoreSnippet(docId, startPos, endPos));
             }
+            writer.append("<ol class=\"snippets\">\n");
             for (final TopArray.IdScore pair : topSnips) {
                 print(snippets, pair.id());
             }
+            writer.append("</ol>\n");
         }
         docClose(docId);
     }
@@ -325,30 +313,6 @@ public class HtmlSnippets implements SnippetsConsumer
     }
 
     /**
-     * Returns the CSS class applied to {@code <li>} elements emitted for each
-     * snippet line.
-     *
-     * @return CSS class string
-     */
-    public String snipCss()
-    {
-        return snipCss;
-    }
-
-    /**
-     * Sets the CSS class applied to {@code <li>} elements emitted for each
-     * snippet line.
-     *
-     * @param snipCss CSS class string
-     * @return this instance
-     */
-    public HtmlSnippets snipCss(final String snipCss)
-    {
-        this.snipCss = snipCss;
-        return this;
-    }
-
-    /**
      * Returns the maximum number of snippets rendered per document.
      *
      * @return snippet cap; {@code 0} means no snippet lines are rendered
@@ -381,9 +345,14 @@ public class HtmlSnippets implements SnippetsConsumer
         final int leftMatchStartOffset = snippets.matchStartOffset(leftMatchOrd);
         final int rightMatchEndOffset = snippets.matchEndOffset(rightMatchOrd);
 
-        writer.append("<li class=\"").append(snipCss).append("\"><a href=\"")
-            .append(hrefBase).append(id).append(hrefExt).append(hrefSearch)
-            .append("#snippet").append(String.valueOf(snipOrd)).append("\">");
+        final String url = hrefBase + id + hrefExt + hrefSearch + "#snippet" + snipOrd;
+        writer
+            .append("<li")
+            .append(" class=\"snippet\"")
+            .append(" data-href=\"").append(url).append("\"")
+            .append(">")
+            .append("<p>");
+        
 
         final int leftOffset = Markup.leftBoundary(content, leftMatchStartOffset, ctx, -1);
         detagger.detag(writer, content, leftOffset, leftMatchStartOffset);
@@ -406,7 +375,13 @@ public class HtmlSnippets implements SnippetsConsumer
 
         final int rightOffset = Markup.rightBoundary(content, rightMatchEndOffset, ctx, -1);
         detagger.detag(writer, content, rightMatchEndOffset, rightOffset);
-        writer.append("</a></li>\n");
+        // gutter snippet link
+        writer.append("</p>")
+        .append("\n<a")
+        .append(" class=\"snippet-open\"")
+        .append(" href=\"").append(url).append("\"")
+        .append("\">→</a>");
+        writer.append("</li>\n");
     }
 
     /**

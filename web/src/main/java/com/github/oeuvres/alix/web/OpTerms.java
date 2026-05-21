@@ -147,7 +147,7 @@ public final class OpTerms extends Op
                 index.searcher(),
                 spanQuery,
                 filterQuery,
-                new Snippets(Snippets.Usage.FREQS, slop),
+                new Snippets(Snippets.Usage.POSITIONS, slop),
                 consumer
             );
             

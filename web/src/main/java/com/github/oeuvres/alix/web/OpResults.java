@@ -18,8 +18,9 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.spans.HtmlSnippets;
 import com.github.oeuvres.alix.lucene.spans.Snippets;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
-import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
+import com.github.oeuvres.alix.lucene.terms.TermRail;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
@@ -29,289 +30,297 @@ import jakarta.servlet.http.HttpServletResponse;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 /**
- * Full concordance in natural docId order
+ * Full concordance in natural docId order.
  */
 public class OpResults extends Op {
 
-	@Override
-	protected void page(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
-			throws IOException {
-		final HttpPars pars = new HttpPars(request, response);
-		Writer writer = response.getWriter();
-		writer.write("""
-				<!DOCTYPE html>
-				<html>
-				  <head>
-				    <title>Alix, concordance</title>
-				    <link rel="stylesheet"
-				        href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.css">
-				    <style>
-				      body {
-				        font-family: sans-serif;
-				      }
-				      .hit a {
-				         text-decoration: none;
-				         color:inherit;
-				      }
-				      #slider {
-				        display:flex;
-				        justify-content: space-between;
-				      }
-				      #slider input {
-				        width: 6ex;
-				        text-align: center;
-				      }
-				      #slider-cell {
-				        width: 100%;
-				        padding-bottom: 1em;
-				      }
-				      .noUi-pips-horizontal {
-				        height: auto;
-				        padding-top: 0;
-				      }
-				      .noUi-value-sub {
-				        color: #000;
-				      }
-				      #slider-year {
-				        margin: 0 0.5em;
-				      }
-				    </style>
-				  </head>
-				  <body>
-				""");
-		// NoUiSlider
-		FlucNum years = index.flucNum(YEAR);
-		if (years != null) {
-			writer.write("""
-					    <div id="slider">
-					      <div>
-					        <input name="start" id="label-start" autocomplete="hidden" for="search-form"/>
-					      </div>
-					      <div id="slider-cell">
-					        <div id="slider-year"></div>
-					      </div>
-					      <div>
-					        <input name="end" id="label-end" autocomplete="hidden" for="search-form"/>
-					      </div>
-					    </div>
+    @Override
+    protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        final long t0 = System.currentTimeMillis();
 
-					      <script
-					        src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js">
-					      </script>
-					      <script>
-					      (function () {
-					        // Corpus bounds injected by the server
-					        const MIN = %d;
-					        const MAX = %d;
+        final HttpPars pars = new HttpPars(request, response);
+        final Query filterQuery = filterQuery(index, pars);
 
-					        // Read current URL params to restore slider position
-					        const params  = new URLSearchParams(location.search);
-					        const initStart = parseInt(params.get('start')) || MIN;
-					        const initEnd   = parseInt(params.get('end'))   || MAX;
+        final Writer writer = response.getWriter();
+        final String content = pars.getString(FTEXT, index.content());
+        final FlucText flucText = index.flucText(content);
 
-					        const slider = document.getElementById('slider-year');
+        // field not found
+        if (flucText == null) {
+            response.setStatus(404);
+            writer.append("<p class=\"error\">Field ");
+            Fluc ofluc = index.fluc(content);
+            if (ofluc == null)
+                writer.append(content + " doesn’t exist.");
+            else
+                writer.append(ofluc.toString());
+            writer.append("\n<br>Choose among:");
+            for (Fluc f : index.flucs().values()) {
+                if (!(f instanceof FlucText))
+                    continue;
+                writer.append("<br/><a href=\"?").append(pars.queryString(CTX, DOCLINE, DOCS, END, Q, SLOP, START))
+                        .append("&amp;f=").append(f.name()).append("\">").append(f.name()).append("</a>\n");
+            }
+            writer.append("</p>");
+            return;
+        }
 
-					        noUiSlider.create(slider, {
-					          start:   [initStart, initEnd],
-					          connect: true,
-					          step:    1,
-					          range:   { min: MIN, max: MAX },
-					          format: {
-					            to:   v => Math.round(v),
-					            from: v => parseInt(v)
-					          },
-					          // Scale / pips
-					          pips: {
-					            mode: "steps",
-					            density: 3,
-					            filter: (value, type) => {
-					              // Keep only decade ticks (small) and labels on decades.
-					              if (value %% 10 === 0) return 2;
-					              if (value %% 5 === 0) return 0;
-					              return -1;
-					            },
-					          },
-					        });
+        final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
+        final String docline = pars.getString(DOCLINE, index.docline());
+        final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
+        final int spans = pars.getInt(SPANS, SPANS_RANGE, SPANS_DEFAULT, SPANS);
+        // transmit the slop parameter explicitly; cookie may not be transmitted in some contexts
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+        final int from = pars.getInt(FROM, 0);
 
-					        const labelStart = document.getElementById('label-start');
-					        const labelEnd   = document.getElementById('label-end');
+        FixedBitSet bits = null;
+        if (filterQuery != null) {
+            bits = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
+        }
+        final SpanQuery spanQuery = spanQuery(index, pars);
 
-					        slider.noUiSlider.on('update', function (values) {
-					          labelStart.value = values[0];
-					          labelEnd.value   = values[1];
-					        });
+        // Snippet-scoring resources, prepared once.
+        // No-query branch only emits article shells: snippet scoring is disabled.
+        // Query branches use BM25-weighted term scores for in-document snippet ranking.
+        final TermRail rail = flucText.termRail();
+        final double[] termWeights;
+        final int snipLimit;
+        if (spanQuery == null) {
+            termWeights = new double[0];
+            snipLimit = 0;
+        } else {
+            final TermStats fieldStats = flucText.termStats();
+            final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
+            termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
+            snipLimit = spans;
+        }
 
-					        // Submit on release — fires the search
-					        slider.noUiSlider.on('change', function (values) {
-					          const url = new URLSearchParams(location.search);
-					          url.set('start', values[0]);
-					          url.set('end',   values[1]);
-					          location.search = url.toString();
-					        });
-					      }());
-					      </script>
-					""".formatted((int) years.min(), (int) years.max()));
-		}
+        final HtmlSnippets results = new HtmlSnippets(
+                writer, index.reader().storedFields(), content,
+                rail, termWeights, snipLimit)
+            .doclineFieldName(docline)
+            .ctx(ctx)
+            .hrefSearch("?" + pars.queryString(CTX, FTEXT, Q) + "&amp;slop=" + slop);
 
-		writer.write("""
-				    <form id="search-form">
-				      <textarea name="%s">%s</textarea>
-				      <button type="submit" name="%s" value="%s">by date</button>
-				      <button type="submit" name="%s" value="%s">by score</button>
-				    </form>
-				    <section class="hits">
-				""".formatted(Q, pars.getString(Q, ""), SORT, DATE, SORT, SCORE));
+        // no query, list docs
+        if (spanQuery == null) {
+            final int rows = pars.getInt(ROWS, ROWS_RANGE, ROWS_DEFAULT, ROWS);
+            final TermStats fieldStats = flucText.termStats();
+            int docCount = 0;
+            boolean more = false;
+            int docId = from;
+            writer.append("<div class=\"results-rows\">");
+            for (; docId < fieldStats.maxDoc(); docId++) {
+                if (fieldStats.docWidth(docId) == 0)
+                    continue;
+                if (bits != null && !bits.get(docId))
+                    continue;
+                if (docCount >= rows) {
+                    more = true;
+                    break;
+                }
+                docCount++;
+                results.docOpen(docId);
+                results.docClose(docId);
+            }
+            writer.append("</div>\n");
+            if (more) {
+                writer.append("<p class=\"next-results\"><a data-from=\"").append(String.valueOf(docId))
+                        .append("\" name=\"next-results\" href=\"").append("?")
+                        .append(pars.queryString(DOCLINE, END, FTEXT, ROWS, START)).append("&amp;from=" + docId)
+                        .append("\">…</a></p>\n");
+            }
+            return;
+        }
 
-		html(index, request, response); // writes the fragment directly into the same response
-		writer.write("""
-				    </section>
-				  </body>
-				</html>
-				""");
-		writer.flush();
-	}
+        final SpanWalker walker = new SpanWalker(
+            index.searcher(),
+            spanQuery,
+            filterQuery,
+            new Snippets(Snippets.Usage.OFFSETS, slop),
+            results);
+        int nextDoc = 0;
 
-	@Override
-	protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
-			throws IOException {
-		final long t0 = System.currentTimeMillis();
+        final String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
+        if (DATE.equals(sort)) {
+            // linear walk in docId order
+            writer.append("<p class=\"statshits\">");
+            final int hitsCount = walker.hits();
+            if (docs < hitsCount)
+                writer.append(String.valueOf(docs)).append("/");
+            writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
+            writer.flush();
+            nextDoc = walker.walk(from, docs);
+        } else {
+            // relevance
+            final Query query;
+            if (filterQuery != null) {
+                query = new BooleanQuery.Builder()
+                        .add(filterQuery, BooleanClause.Occur.FILTER)
+                        .add(spanQuery, BooleanClause.Occur.MUST).build();
+            } else {
+                query = spanQuery;
+            }
+            final int hitsCount = index.searcher().count(query);
+            final ScoreDoc[] hits = index.searcher().search(query, docs).scoreDocs;
 
-		final HttpPars pars = new HttpPars(request, response);
-		// Build a filter query from years and tags
-		Query filterQuery = filterQuery(index, pars);
+            writer.append("<p class=\"statshits\">");
+            if (docs < hitsCount)
+                writer.append(String.valueOf(docs)).append("/");
+            writer.append(String.valueOf(hitsCount)).append(" documents ").append("</p>\n");
+            writer.flush();
 
-		Writer writer = response.getWriter();
-		final String content = pars.getString(FTEXT, index.content());
-		final FlucText flucText = index.flucText(content);
+            for (ScoreDoc sd : hits) {
+                walker.visitDoc(sd.doc);
+            }
+        }
 
-		// field not found
-		if (flucText == null) {
-			response.setStatus(404);
-			writer.append("<p class=\"error\">Field ");
-			Fluc ofluc = index.fluc(content);
-			if (ofluc == null)
-				writer.append(content + " doesn’t exist.");
-			else
-				writer.append(ofluc.toString());
-			writer.append("/n<br>Choose among:");
-			for (Fluc f : index.flucs().values()) {
-				if (!(f instanceof FlucText))
-					continue;
-				writer.append("<br/><a href=\"?").append(pars.queryString(CTX, DOCLINE, DOCS, END, Q, SLOP, START))
-						.append("&amp;f=").append(f.name()).append("\">").append(f.name()).append("</a>\n");
-			}
-			writer.append("</p>");
-			return;
-		}
+        if (nextDoc > 0) {
+            writer.append("<p class=\"next-results\"><a data-from=\"").append(String.valueOf(nextDoc))
+                    .append("\" name=\"next-results\" href=\"").append("?")
+                    .append(pars.queryString(Q, SLOP, END, START, CTX, DOCS, FTEXT, DOCLINE))
+                    .append("&amp;from=" + nextDoc).append("\">…</a></p>");
+        }
+        writer.append("<p class=\"statshits\">").append(String.valueOf(System.currentTimeMillis() - t0)).append("ms")
+                .append("</p>\n");
+    }
 
-		// Build an HTML results writer
-		final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
-		final String docline = pars.getString(DOCLINE, index.docline());
-		final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
-		final int spans = pars.getInt(SPANS, SPANS_RANGE, SPANS_DEFAULT, SPANS);
-		// transmit the slop parameter explicitly, cookie maybe not transmitted in some
-		// context
-		final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+    @Override
+    protected void page(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        final HttpPars pars = new HttpPars(request, response);
+        final Writer writer = response.getWriter();
+        writer.write("""
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <title>Alix, concordance</title>
+                    <link rel="stylesheet"
+                        href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.css">
+                    <style>
+                      body {
+                        font-family: sans-serif;
+                      }
+                      .hit a {
+                         text-decoration: none;
+                         color:inherit;
+                      }
+                      #slider {
+                        display:flex;
+                        justify-content: space-between;
+                      }
+                      #slider input {
+                        width: 6ex;
+                        text-align: center;
+                      }
+                      #slider-cell {
+                        width: 100%;
+                        padding-bottom: 1em;
+                      }
+                      .noUi-pips-horizontal {
+                        height: auto;
+                        padding-top: 0;
+                      }
+                      .noUi-value-sub {
+                        color: #000;
+                      }
+                      #slider-year {
+                        margin: 0 0.5em;
+                      }
+                    </style>
+                  </head>
+                  <body>
+                """);
+        // NoUiSlider
+        final FlucNum years = index.flucNum(YEAR);
+        if (years != null) {
+            writer.write("""
+                    <div id="slider">
+                      <div>
+                        <input name="start" id="label-start" autocomplete="hidden" for="search-form"/>
+                      </div>
+                      <div id="slider-cell">
+                        <div id="slider-year"></div>
+                      </div>
+                      <div>
+                        <input name="end" id="label-end" autocomplete="hidden" for="search-form"/>
+                      </div>
+                    </div>
 
-		HtmlSnippets results = new HtmlSnippets(writer, index.reader().storedFields(), content)
-				.doclineFieldName(docline).docLimit(docs).snipLimit(spans).ctx(ctx)
-				.hrefSearch("?" + pars.queryString(CTX, FTEXT, Q) + "&amp;slop=" + slop);
-		final int from = pars.getInt(FROM, 0);
+                      <script
+                        src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js">
+                      </script>
+                      <script>
+                      (function () {
+                        // Corpus bounds injected by the server
+                        const MIN = %d;
+                        const MAX = %d;
 
-		// final String q = pars.getString(Q, null);
+                        // Read current URL params to restore slider position
+                        const params  = new URLSearchParams(location.search);
+                        const initStart = parseInt(params.get('start')) || MIN;
+                        const initEnd   = parseInt(params.get('end'))   || MAX;
 
-		FixedBitSet bits = null;
-		if (filterQuery != null) {
-			bits = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
-		}
-		final SpanQuery spanQuery = spanQuery(index, pars);
-		// no query, list docs
-		if (spanQuery == null) {
-			final int rows = pars.getInt(ROWS, ROWS_RANGE, ROWS_DEFAULT, ROWS);
-			TermStats fieldStats = flucText.termStats();
-			int docCount = 0;
-			boolean more = false;
-			int docId = from;
-			results.docCss("hit-row");
-			for (; docId < fieldStats.maxDoc(); docId++) {
-				if (fieldStats.docWidth(docId) == 0)
-					continue;
-				if (bits != null && !bits.get(docId))
-					continue;
-				if (docCount >= rows) {
-					more = true;
-					break;
-				}
-				docCount++;
-				results.docOpen(docId);
-				results.docClose(docId);
-			}
-			if (more) {
-				writer.append("<p class=\"next-results\"><a data-from=\"").append(String.valueOf(docId))
-						.append("\" name=\"next-results\" href=\"").append("?")
-						.append(pars.queryString(DOCLINE, END, FTEXT, ROWS, START)).append("&amp;from=" + docId)
-						.append("\">…</a></p>\n");
-				;
-			}
-			return;
-		}
+                        const slider = document.getElementById('slider-year');
 
-		final SpanWalker walker = new SpanWalker(
-			index.searcher(),
-			spanQuery,
-			filterQuery,
-			new Snippets(Snippets.Usage.OFFSETS, slop), 
-			results);
-		int nextDoc = 0;
+                        noUiSlider.create(slider, {
+                          start:   [initStart, initEnd],
+                          connect: true,
+                          step:    1,
+                          range:   { min: MIN, max: MAX },
+                          format: {
+                            to:   v => Math.round(v),
+                            from: v => parseInt(v)
+                          },
+                          // Scale / pips
+                          pips: {
+                            mode: "steps",
+                            density: 3,
+                            filter: (value, type) => {
+                              // Keep only decade ticks (small) and labels on decades.
+                              if (value %% 10 === 0) return 2;
+                              if (value %% 5 === 0) return 0;
+                              return -1;
+                            },
+                          },
+                        });
 
-		String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
-		if (DATE.equals(sort)) {
-			// linear read of docs
+                        const labelStart = document.getElementById('label-start');
+                        const labelEnd   = document.getElementById('label-end');
 
-			writer.append("<p class=\"statshits\">");
-			final int hitsCount = walker.hits();
-			if (docs < hitsCount)
-				writer.append(String.valueOf(docs)).append("/");
-			writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
-			writer.flush();
-			// linear walk, in docs limit, the nextDoc should allow a go next link
-			nextDoc = walker.walk(from, docs);
-		} else {
-			// relevance
-			Query query;
-			if (filterQuery != null) {
-				query = new BooleanQuery.Builder().add(filterQuery, BooleanClause.Occur.FILTER)
-						.add(spanQuery, BooleanClause.Occur.MUST).build();
-			} else {
-				query = spanQuery;
-			}
-			final int hitsCount = index.searcher().count(query);
-			ScoreDoc[] hits = index.searcher().search(query, docs).scoreDocs;
+                        slider.noUiSlider.on('update', function (values) {
+                          labelStart.value = values[0];
+                          labelEnd.value   = values[1];
+                        });
 
-			final TermStats fieldStats = flucText.termStats();
-			final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-			fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
+                        // Submit on release — fires the search
+                        slider.noUiSlider.on('change', function (values) {
+                          const url = new URLSearchParams(location.search);
+                          url.set('start', values[0]);
+                          url.set('end',   values[1]);
+                          location.search = url.toString();
+                        });
+                      }());
+                      </script>
+                    """.formatted((int) years.min(), (int) years.max()));
+        }
 
+        writer.write("""
+                    <form id="search-form">
+                      <textarea name="%s">%s</textarea>
+                      <button type="submit" name="%s" value="%s">by date</button>
+                      <button type="submit" name="%s" value="%s">by score</button>
+                    </form>
+                    <section class="hits">
+                """.formatted(Q, pars.getString(Q, ""), SORT, DATE, SORT, SCORE));
 
-			writer.append("<p class=\"statshits\">");
-			if (docs < hitsCount)
-				writer.append(String.valueOf(docs)).append("/");
-			writer.append(String.valueOf(hitsCount)).append(" documents ").append("</p>\n");
-			writer.flush();
-
-			for (ScoreDoc sd : hits) {
-				walker.visitDoc(sd.doc);
-			}
-		}
-
-		if (nextDoc > 0) {
-			writer.append("<p class=\"next-results\"><a data-from=\"").append(String.valueOf(nextDoc))
-					.append("\" name=\"next-results\" href=\"").append("?")
-					.append(pars.queryString(Q, SLOP, END, START, CTX, DOCS, FTEXT, DOCLINE))
-					.append("&amp;from=" + nextDoc).append("\">…</a></p>");
-			;
-		}
-		writer.append("<p class=\"statshits\">").append(String.valueOf(System.currentTimeMillis() - t0)).append("ms")
-				.append("</p>\n");
-	}
+        html(index, request, response); // writes the fragment directly into the same response
+        writer.write("""
+                    </section>
+                  </body>
+                </html>
+                """);
+        writer.flush();
+    }
 }
