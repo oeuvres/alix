@@ -2,7 +2,9 @@ package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.ResourceBundle;
 import java.util.Set;
 
 import org.apache.lucene.document.Document;
@@ -66,6 +68,7 @@ public class ResultsSnippets implements SnippetsConsumer
     private final double[] termWeights;
     private final TopArray topSnips;
     private final Writer writer;
+    private final ResourceBundle messages;
 
     private int ctx = 10;
     private String doclineFieldName = "docline";
@@ -99,7 +102,8 @@ public class ResultsSnippets implements SnippetsConsumer
         final String contentFieldName,
         final TermRail rail,
         final double[] termWeights,
-        final int snipLimit
+        final int snipLimit,
+        final Locale locale
     ) {
         this.writer = Objects.requireNonNull(writer, "writer");
         this.storedFields = Objects.requireNonNull(storedFields, "storedFields");
@@ -114,6 +118,7 @@ public class ResultsSnippets implements SnippetsConsumer
         else {
             this.topSnips = null; // should be OK for docSnippets()
         }
+        this.messages = ResourceBundle.getBundle("com.github.oeuvres.alix.common.messages", locale);
     }
 
     /**
@@ -206,6 +211,8 @@ public class ResultsSnippets implements SnippetsConsumer
                 .append(">\n")
                 .append("<a")
                 .append(" href=\"").append(url).append("\"")
+                .append(" draggable=\"false\"")
+                .append(" class=\"selectable\"")
                 .append(">").append(docline)
                 .append("</a>\n")
                 .append("</h4>\n");
@@ -257,6 +264,7 @@ public class ResultsSnippets implements SnippetsConsumer
                 final int endPos = snippets.snipEndPosition(snipOrd) + ctx;
                 topSnips.push(snipOrd, scoreSnippet(docId, startPos, endPos));
             }
+            writer.append("<p></p>")
             writer.append("<ol class=\"snippets\">\n");
             for (final TopArray.IdScore pair : topSnips) {
                 print(snippets, pair.id());
@@ -399,8 +407,8 @@ public class ResultsSnippets implements SnippetsConsumer
         // gutter snippet link
         writer.append("</p>")
         .append("\n<a")
-        .append(" class=\"snippet-open\"")
         .append(" href=\"").append(url).append("\"")
+        .append(" class=\"snippet-open\"")
         .append(">→</a>");
         writer.append("</li>\n");
     }
