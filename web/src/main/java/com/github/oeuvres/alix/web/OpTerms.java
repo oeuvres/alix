@@ -137,22 +137,20 @@ public final class OpTerms extends Op
         else {
             // same as for the span query parser
             final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+            final SpanWalker walker = new SpanWalker(
+                index.searcher(),
+                spanQuery,
+                new Snippets(Snippets.Usage.POSITIONS, slop),
+                filterQuery
+            );
+            
             final CoocSnippets consumer = new CoocSnippets(
                 textFluc.termStats(),
                 textFluc.termRail(),
                 slop,
                 slop);
             consumer.bindTo(topTerms.buffers()).pivotIds(textFluc.termLexicon().termIds(spanQuery));
-            final SpanWalker walker = new SpanWalker(
-                index.searcher(),
-                spanQuery,
-                filterQuery,
-                new Snippets(Snippets.Usage.POSITIONS, slop),
-                consumer
-            );
-            
-            
-            walker.walk(0);
+            walker.walk(consumer);
             topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
             
             meta.put("focusTokens", consumer.coocTokens());

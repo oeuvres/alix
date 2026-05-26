@@ -54,17 +54,16 @@ public class OpChrono extends Op
             return histo;
         }
         meta.put("spanQuery", spanQuery.toString());
-        final HistoSnippets consumer = new HistoSnippets(histo);
         // same as for the span query parser
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,
-            filterQuery,
             new Snippets(Snippets.Usage.FREQS, slop),
-            consumer
+            filterQuery
         );
-        walker.walk();
+        final HistoSnippets consumer = new HistoSnippets(histo);
+        walker.walk(consumer);
         return histo;
     }
     

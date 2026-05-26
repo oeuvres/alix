@@ -75,6 +75,10 @@ public final class Names
     public final static String HTML = "html";
     /** Field type */
     public final static String INT = "int";
+    /** Configuration field, locale */
+    public final static String LOCALE = "locale";
+    /** Configuration field, default locale */
+    public final static String LOCALE_DEFAULT = "fr-CH";
     /** Field type */
     public final static String META = "meta";
     /** For information */

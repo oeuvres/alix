@@ -17,223 +17,185 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
+
 /**
- * Walks a {@link SpanQuery} and folds every accepted document's span positions into a reusable
- * {@link Snippets} instance.
+ * Walks a {@link SpanQuery} and drains every accepted document's span positions into a reusable
+ * {@link Snippets} buffer supplied at construction.
  *
- * <p>
- * The walker is deliberately limited to Lucene iteration and document-level dispatch. It does not
- * aggregate histograms, compute co-occurrents, score passages, or render snippets. Such operations
- * belong to the supplied {@link SnippetsConsumer}, which receives one finished {@link Snippets} object
- * per accepted document.
- * </p>
+ * <p>Two entry points are provided. {@link #visit(int)} drains the spans of one global document id
+ * into the configured snippets — intended for relevance-sorted hit lists where documents are
+ * addressed in arbitrary order and a consumer callback would be ceremony. {@link #walk(SnippetsConsumer)}
+ * scans documents in increasing global-doc-id order, calling the supplied consumer once per
+ * accepted document — intended for aggregations such as histograms or co-occurrence collection.</p>
  *
- * <p>
- * Filtering is conjunctive. A document must match the span query and, when provided, the Lucene
- * filter query and the global-document-id {@link FixedBitSet}. The Lucene filter query is evaluated
- * as a non-scoring filter. The bit set is addressed with global Lucene document ids.
- * </p>
+ * <p>An optional filter query restricts the walked documents. When provided, the filter is
+ * rewritten and materialized into a global-doc-id bit set at construction. This costs one full
+ * pass over the filter's matching documents up front, paid once per walker. Filtering at the call
+ * site is then a single bit test per visited document, which is the relevant cost on
+ * {@link #visit(int)} for hit-list pages. For exhaustive walks the cost is amortized across every
+ * accepted document.</p>
  *
- * <p>
- * Two traversal modes are provided:
- * </p>
- * <ul>
- * <li>{@link #walk()} and {@link #walk(int, int)} scan documents in increasing global-doc-id order.
- * They are intended for exhaustive operations such as histograms or co-occurrence collection.</li>
- * <li>{@link #visitDoc(int)} visits one global document id. It is intended for relevance-sorted hit
- * lists, where documents arrive in arbitrary order and snippets must be extracted on demand.</li>
- * </ul>
- *
- * <p>
- * The random visitor caches one forward-only cursor per leaf. When the next requested document in a
- * leaf is greater than the last requested document in that leaf, the existing cursor is advanced.
+ * <p>The visit cache stores one forward-only cursor per leaf. When the next visited document in a
+ * leaf is greater than the last visited document in that leaf, the existing cursor advances.
  * Otherwise the cursor is rebuilt, because Lucene {@link DocIdSetIterator} and {@link Spans}
- * instances cannot move backwards.
- * </p>
+ * cannot move backwards. The walk methods open their own fresh cursors and do not interact with
+ * the visit cache.</p>
  *
- * <p>
- * The {@link Snippets} instance is reused. A consumer must copy data it needs to keep after
- * {@link SnippetsConsumer#docSnippets(int, Snippets)} returns.
- * </p>
- *
- * <p>
- * This class is not thread-safe.
- * </p>
+ * <p>This class is not thread-safe.</p>
  */
 public final class SpanWalker
 {
-	/** Optional global-doc-id filter; documents not set are skipped before span extraction. */
-	private final FixedBitSet acceptedDocs;
+    /** Optional materialized filter; documents not set are skipped before span draining. */
+    private final FixedBitSet acceptedDocs;
 
-	/** Per-document receiver called after snippets have been collected and closed. */
-	private final SnippetsConsumer consumer;
+    /** Rewritten filter query, kept for {@link #hits()}; {@code null} when no filter was given. */
+    private final Query filterQuery;
 
-	/** Optional rewritten Lucene filter query, applied in addition to {@link #acceptedDocs}. */
-	private final Query filterQuery;
+    /** Per-leaf reusable cursors for {@link #visit(int)}. */
+    private final LeafCursor[] leafCursors;
 
-	/** Optional weight built from {@link #filterQuery}, reused across leaves. */
-	private final Weight filterWeight;
+    /** Top-level leaf contexts of the searched index reader. */
+    private final List<LeafReaderContext> leaves;
 
-	/** Per-leaf reusable cursors for random document visits. */
-	private final LeafCursor[] leafCursors;
+    /** Maximum global Lucene document id plus one. */
+    private final int maxDoc;
 
-	/** Top-level leaf contexts of the searched index reader. */
-	private final List<LeafReaderContext> leaves;
+    /** Postings detail derived from {@link #snippets}; requested from leaves. */
+    private final Postings postings;
 
-	/** Maximum global Lucene document id plus one. */
-	private final int maxDoc;
+    /** Searcher used to rewrite queries, build weights, and access index leaves. */
+    private final IndexSearcher searcher;
 
-	/** Postings detail required by the configured {@link #snippets} collector. */
-	private final Postings postings;
+    /** Snippet buffer this walker drains into; reused across documents. */
+    private final Snippets snippets;
 
-	/** Searcher used to rewrite queries, build weights, and access index leaves. */
-	private final IndexSearcher searcher;
+    /** Rewritten span query enumerated by this walker. */
+    private final SpanQuery spanQuery;
 
-	/** Reusable per-document snippet collector. */
-	private final Snippets snippets;
-
-	/** Rewritten span query enumerated by this walker. */
-	private final SpanQuery spanQuery;
-
-	/** Weight built from {@link #spanQuery}, reused across leaves and document visits. */
-	private final SpanWeight spanWeight;
+    /** Weight built from {@link #spanQuery}, reused across leaves and visits. */
+    private final SpanWeight spanWeight;
 
     /**
-     * Consumes snippets collected for one accepted document.
+     * Receives the snippets collected for one accepted document during a walk.
      */
     @FunctionalInterface
     public interface SnippetsConsumer
     {
         /**
-         * Consumes the finished snippets of one document.
+         * Receives the finished snippets of one document.
          *
-         * @param docId global Lucene document id
-         * @param snippets finished snippets for {@code docId}; reused after this call returns
+         * @param docId    global Lucene document id
+         * @param snippets finished snippets for {@code docId}; reused after this call returns, so
+         *                 a consumer must copy any data it needs to keep
          * @throws IOException if the consumer performs Lucene I/O and it fails
          */
         public void docSnippets(int docId, Snippets snippets) throws IOException;
     }
 
     /**
-     * Creates a walker without a global-doc-id bit-set filter.
+     * Creates a walker with no filter. The walker drains spans into {@code snippets} on every
+     * matched document.
      *
-     * @param searcher index searcher used for query rewrite, weight creation, and leaf access
+     * @param searcher  index searcher used for query rewrite, weight creation, and leaf access
      * @param spanQuery span query to enumerate
-     * @param filterQuery optional non-scoring Lucene filter query, or {@code null}
-     * @param snippets reusable per-document snippet collector
-     * @param consumer document-level consumer called after every accepted document
-     * @throws IOException if query rewrite or weight creation fails
-     * @throws NullPointerException if {@code searcher}, {@code spanQuery}, {@code snippets}, or
-     *         {@code consumer} is {@code null}
+     * @param snippets  reusable per-document snippet collector; its
+     *                  {@link Snippets#usage() usage} fixes the postings level requested from
+     *                  leaves
+     * @throws IOException              if query rewrite or weight creation fails
+     * @throws NullPointerException     if any argument is {@code null}
+     * @throws IllegalArgumentException if the rewritten span query is not a {@link SpanQuery}
      */
     public SpanWalker(
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
-            final Query filterQuery,
-            final Snippets snippets,
-            final SnippetsConsumer consumer) throws IOException
+            final Snippets snippets) throws IOException
     {
-        this(searcher, spanQuery, filterQuery, null, snippets, consumer);
+        this(searcher, spanQuery, snippets, null);
     }
 
     /**
-     * Creates a walker.
+     * Creates a walker with an optional filter query.
      *
-     * @param searcher index searcher used for query rewrite, weight creation, and leaf access
-     * @param spanQuery span query to enumerate
+     * <p>When {@code filterQuery} is non-null it is rewritten and immediately materialized into a
+     * global-doc-id bit set. The bit set replaces lazy iteration over the filter's scorer at walk
+     * time. See the class-level note on the trade-off.</p>
+     *
+     * @param searcher    index searcher used for query rewrite, weight creation, and leaf access
+     * @param spanQuery   span query to enumerate
+     * @param snippets    reusable per-document snippet collector; its
+     *                    {@link Snippets#usage() usage} fixes the postings level requested from
+     *                    leaves
      * @param filterQuery optional non-scoring Lucene filter query, or {@code null}
-     * @param acceptedDocs optional global-doc-id filter bit set, or {@code null}
-     * @param snippets reusable per-document snippet collector
-     * @param consumer document-level consumer called after every accepted document
-     * @throws IOException if query rewrite or weight creation fails
-     * @throws NullPointerException if {@code searcher}, {@code spanQuery}, {@code snippets}, or
-     *         {@code consumer} is {@code null}
-     * @throws IllegalArgumentException if {@code acceptedDocs} is shorter than the searcher's
-     *         document address space
+     * @throws IOException              if query rewrite, weight creation, or filter materialization
+     *                                  fails
+     * @throws NullPointerException     if {@code searcher}, {@code spanQuery}, or
+     *                                  {@code snippets} is {@code null}
+     * @throws IllegalArgumentException if the rewritten span query is not a {@link SpanQuery}
      */
     public SpanWalker(
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
-            final Query filterQuery,
-            final FixedBitSet acceptedDocs,
             final Snippets snippets,
-            final SnippetsConsumer consumer) throws IOException
+            final Query filterQuery) throws IOException
     {
         this.searcher = Objects.requireNonNull(searcher, "searcher");
+        Objects.requireNonNull(spanQuery, "spanQuery");
         this.snippets = Objects.requireNonNull(snippets, "snippets");
-        this.consumer = Objects.requireNonNull(consumer, "consumer");
         this.maxDoc = searcher.getIndexReader().maxDoc();
-        if (acceptedDocs != null && acceptedDocs.length() < maxDoc) {
-            throw new IllegalArgumentException("acceptedDocs.length() (" + acceptedDocs.length()
-                    + ") < maxDoc (" + maxDoc + ")");
-        }
-        this.acceptedDocs = acceptedDocs;
         this.leaves = searcher.getLeafContexts();
         this.leafCursors = new LeafCursor[leaves.size()];
         this.postings = snippets.usage() == Snippets.Usage.OFFSETS
                 ? Postings.OFFSETS
                 : Postings.POSITIONS;
 
-        this.spanQuery = rewriteSpanQuery(searcher, Objects.requireNonNull(spanQuery, "spanQuery"));
+        final Query rewrittenSpan = searcher.rewrite(spanQuery);
+        if (!(rewrittenSpan instanceof SpanQuery)) {
+            throw new IllegalArgumentException("rewritten span query is not a SpanQuery: "
+                    + rewrittenSpan.getClass().getName() + " " + rewrittenSpan);
+        }
+        this.spanQuery = (SpanQuery) rewrittenSpan;
         this.spanWeight = this.spanQuery.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
 
-        this.filterQuery = filterQuery == null ? null : searcher.rewrite(filterQuery);
-        this.filterWeight = this.filterQuery == null
-                ? null
-                : searcher.createWeight(this.filterQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        if (filterQuery == null) {
+            this.filterQuery = null;
+            this.acceptedDocs = null;
+        }
+        else {
+            this.filterQuery = searcher.rewrite(filterQuery);
+            this.acceptedDocs = searcher.search(this.filterQuery, new BitsCollectorManager(searcher));
+        }
     }
 
     /**
-     * Returns the number of documents matching the span query and configured filters.
-     *
-     * <p>
-     * When no global-doc-id bit set is configured, this delegates to {@link IndexSearcher#count(Query)}.
-     * When a bit set is configured, the matching document ids are scanned and intersected with the
-     * bit set.
-     * </p>
+     * Returns the number of documents matching the span query and, when present, the filter
+     * query. Delegates to {@link IndexSearcher#count(Query)} on the conjunction; does not walk
+     * spans.
      *
      * @return matching document count
-     * @throws IOException if Lucene counting or iteration fails
+     * @throws IOException if Lucene counting fails
      */
     public int hits() throws IOException
     {
-        final Query query = queryForHits();
-        if (acceptedDocs == null) {
-            return searcher.count(query);
+        if (filterQuery == null) {
+            return searcher.count(spanQuery);
         }
-
-        final Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f);
-        int count = 0;
-        for (final LeafReaderContext leaf : leaves) {
-            final Scorer scorer = weight.scorer(leaf);
-            if (scorer == null) {
-                continue;
-            }
-            final DocIdSetIterator docs = matchingDocs(scorer);
-            for (int leafDoc = docs.nextDoc();
-                    leafDoc != DocIdSetIterator.NO_MORE_DOCS;
-                    leafDoc = docs.nextDoc()) {
-                if (acceptedDocs.get(leaf.docBase + leafDoc)) {
-                    count++;
-                }
-            }
-        }
-        return count;
+        final Query both = new BooleanQuery.Builder()
+                .add(spanQuery, BooleanClause.Occur.MUST)
+                .add(filterQuery, BooleanClause.Occur.FILTER)
+                .build();
+        return searcher.count(both);
     }
 
     /**
-     * Clears cached random-access cursors.
+     * Clears cached random-access cursors used by {@link #visit(int)}.
      *
-     * <p>
-     * This is optional. Call it before a new relevance-ordered page if the previous page contained
-     * many backwards jumps and retaining the current per-leaf cursors is unlikely to help. It is not
-     * needed for correctness.
-     * </p>
+     * <p>This is optional. Call it before a new relevance-ordered page if the previous page
+     * contained many backwards jumps and retaining the current per-leaf cursors is unlikely to
+     * help. It is not needed for correctness.</p>
      */
     public void resetCursors()
     {
@@ -241,24 +203,38 @@ public final class SpanWalker
     }
 
     /**
-     * Visits one document by global Lucene document id.
+     * Returns the rewritten span query held by this walker. Useful for callers that need to
+     * enumerate query terms via {@link org.apache.lucene.search.QueryVisitor}: the rewritten form
+     * exposes terms hidden inside multi-term clauses that the original query did not.
      *
-     * <p>
-     * This method is intended for relevance-sorted hit lists and on-demand extraction, where the
-     * caller already has global Lucene document ids and wants snippets for those documents only.
-     * The method calls the configured consumer when and only when {@code docId} matches the span
-     * query and all filters.
-     * </p>
+     * @return the rewritten span query
+     */
+    public SpanQuery spanQuery()
+    {
+        return spanQuery;
+    }
+
+    /**
+     * Drains the spans of one document into the configured snippets buffer. The walker calls
+     * {@link Snippets#openDoc(int)} on entry and {@link Snippets#closeDoc()} on exit, so the
+     * caller may treat the buffer as a fresh snapshot of the document on return.
+     *
+     * <p>Intended for relevance-sorted hit lists. Repeated forward-leaning calls in the same leaf
+     * reuse the cached cursor; a call into a leaf-local doc id less than or equal to the previous
+     * one in that leaf rebuilds it.</p>
      *
      * @param docId global Lucene document id to visit
-     * @return {@code true} if the document matched and the consumer was called, otherwise
+     * @return {@code true} if the document matched the span query and the filter, otherwise
      *         {@code false}
-     * @throws IOException if Lucene iteration or the consumer fails
+     * @throws IOException              if Lucene iteration fails
      * @throws IllegalArgumentException if {@code docId} is outside {@code [0, maxDoc)}
      */
-    public boolean visitDoc(final int docId) throws IOException
+    public boolean visit(final int docId) throws IOException
     {
-        checkDocId(docId);
+        if (docId < 0 || docId >= maxDoc) {
+            throw new IllegalArgumentException(
+                    "docId " + docId + " outside [0, " + maxDoc + ")");
+        }
         if (!acceptedByBitSet(docId)) {
             return false;
         }
@@ -277,65 +253,53 @@ public final class SpanWalker
         }
 
         final int spanDoc = cursor.spanDocs.advance(leafDoc);
+        cursor.lastLeafDoc = spanDoc;
         if (spanDoc != leafDoc) {
-            cursor.lastLeafDoc = spanDoc;
             return false;
         }
 
-        final int filterDoc = advanceFilterTo(cursor.filterDocs, leafDoc);
-        cursor.lastLeafDoc = Math.max(spanDoc, filterDoc);
-        if (filterDoc != leafDoc) {
-            return false;
-        }
-
-        walkDoc(cursor.spans, docId);
+        drainDoc(cursor.spans, docId);
         return true;
     }
 
     /**
-     * Walks all accepted documents in increasing global-doc-id order.
+     * Walks all accepted documents in increasing global-doc-id order, draining each into the
+     * configured snippets buffer and dispatching to the consumer after each document is closed.
      *
+     * @param consumer per-document receiver
      * @return {@link DocIdSetIterator#NO_MORE_DOCS}
-     * @throws IOException if Lucene iteration or the consumer fails
+     * @throws IOException          if Lucene iteration or the consumer fails
+     * @throws NullPointerException if {@code consumer} is {@code null}
      */
-    public int walk() throws IOException
+    public int walk(final SnippetsConsumer consumer) throws IOException
     {
-        return walk(0, Integer.MAX_VALUE);
-    }
-
-    /**
-     * Walks all accepted documents in increasing global-doc-id order, starting at {@code docStart}.
-     *
-     * @param docStart first global Lucene document id to consider
-     * @return {@link DocIdSetIterator#NO_MORE_DOCS}
-     * @throws IOException if Lucene iteration or the consumer fails
-     * @throws IllegalArgumentException if {@code docStart < 0}
-     */
-    public int walk(final int docStart) throws IOException
-    {
-        return walk(docStart, Integer.MAX_VALUE);
+        return walk(0, Integer.MAX_VALUE, consumer);
     }
 
     /**
      * Walks accepted documents in increasing global-doc-id order, starting at {@code docStart}.
      *
-     * <p>
-     * The return value can be passed as {@code docStart} to continue a paginated scan. If the scan
-     * reaches index exhaustion, the return value is {@link DocIdSetIterator#NO_MORE_DOCS}. If
-     * {@code maxDocs} is zero, no document is consumed and {@code docStart} is returned unchanged,
-     * unless {@code docStart >= maxDoc}, in which case {@link DocIdSetIterator#NO_MORE_DOCS} is
-     * returned.
-     * </p>
+     * <p>The return value can be passed as {@code docStart} to continue a paginated scan. If the
+     * scan reaches index exhaustion, the return value is {@link DocIdSetIterator#NO_MORE_DOCS}.
+     * If {@code maxDocs} is zero, no document is consumed and {@code docStart} is returned
+     * unchanged, unless {@code docStart >= maxDoc}, in which case
+     * {@link DocIdSetIterator#NO_MORE_DOCS} is returned.</p>
      *
      * @param docStart first global Lucene document id to consider
-     * @param maxDocs maximum number of accepted documents to consume
+     * @param maxDocs  maximum number of accepted documents to consume
+     * @param consumer per-document receiver
      * @return next global document id to use for continuation, or
      *         {@link DocIdSetIterator#NO_MORE_DOCS} when exhausted
-     * @throws IOException if Lucene iteration or the consumer fails
+     * @throws IOException              if Lucene iteration or the consumer fails
+     * @throws NullPointerException     if {@code consumer} is {@code null}
      * @throws IllegalArgumentException if {@code docStart < 0} or {@code maxDocs < 0}
      */
-    public int walk(final int docStart, final int maxDocs) throws IOException
+    public int walk(
+            final int docStart,
+            final int maxDocs,
+            final SnippetsConsumer consumer) throws IOException
     {
+        Objects.requireNonNull(consumer, "consumer");
         if (docStart < 0) {
             throw new IllegalArgumentException("docStart must be >= 0: " + docStart);
         }
@@ -353,45 +317,33 @@ public final class SpanWalker
         final int firstLeafOrd = ReaderUtil.subIndex(docStart, leaves);
         for (int leafOrd = firstLeafOrd; leafOrd < leaves.size(); leafOrd++) {
             final LeafReaderContext leaf = leaves.get(leafOrd);
-            final int leafStart = Math.max(0, docStart - leaf.docBase);
-            final int resume = walkLeaf(leaf, leafStart, maxDocs - consumed);
-            if (resume >= 0) {
-                return resume;
+            final LeafCursor cursor = openLeafCursor(leaf);
+            if (cursor == null) {
+                continue;
             }
-            consumed += -resume - 1;
-            if (consumed >= maxDocs) {
-                throw new IllegalStateException("internal pagination error");
+            final int leafStart = Math.max(0, docStart - leaf.docBase);
+            for (int leafDoc = cursor.spanDocs.advance(leafStart);
+                    leafDoc != DocIdSetIterator.NO_MORE_DOCS;
+                    leafDoc = cursor.spanDocs.nextDoc()) {
+                final int docId = leaf.docBase + leafDoc;
+                if (!acceptedByBitSet(docId)) {
+                    continue;
+                }
+                drainDoc(cursor.spans, docId);
+                consumer.docSnippets(docId, snippets);
+                consumed++;
+                if (consumed >= maxDocs) {
+                    final int nextDocId = docId + 1;
+                    return nextDocId >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : nextDocId;
+                }
             }
         }
         return DocIdSetIterator.NO_MORE_DOCS;
     }
 
-
     /**
-     * Advances an optional filter iterator to a leaf-local document id.
-     *
-     * @param filterDocs optional filter iterator, or {@code null}
-     * @param leafDoc target leaf-local document id
-     * @return {@code leafDoc} when there is no filter, otherwise the filter iterator document
-     *         reached by advancing to {@code leafDoc}
-     * @throws IOException if the filter iterator fails
-     */
-    private static int advanceFilterTo(
-            final DocIdSetIterator filterDocs,
-            final int leafDoc) throws IOException
-    {
-        if (filterDocs == null) {
-            return leafDoc;
-        }
-        int filterDoc = filterDocs.docID();
-        if (filterDoc < leafDoc) {
-            filterDoc = filterDocs.advance(leafDoc);
-        }
-        return filterDoc;
-    }
-
-    /**
-     * Returns whether a global document id is accepted by the optional bit set.
+     * Returns whether a global document id is accepted by the materialized filter, or {@code true}
+     * when no filter was configured.
      */
     private boolean acceptedByBitSet(final int docId)
     {
@@ -399,116 +351,12 @@ public final class SpanWalker
     }
 
     /**
-     * Returns whether a leaf-local document id is accepted by the optional filter iterator.
+     * Drains one positioned document's spans into the snippets buffer. Shared by {@code visit}
+     * and the walk loop.
      */
-    private static boolean acceptedByFilter(
-            final DocIdSetIterator filterDocs,
-            final int leafDoc) throws IOException
-    {
-        return advanceFilterTo(filterDocs, leafDoc) == leafDoc;
-    }
-
-    /**
-     * Checks a global document id range.
-     */
-    private void checkDocId(final int docId)
-    {
-        if (docId < 0 || docId >= maxDoc) {
-            throw new IllegalArgumentException(
-                    "docId " + docId + " outside [0, " + maxDoc + ")");
-        }
-    }
-
-    /**
-     * Creates a document iterator that confirms two-phase matches when necessary.
-     */
-    private static DocIdSetIterator matchingDocs(final Scorer scorer)
-    {
-        final TwoPhaseIterator twoPhase = scorer.twoPhaseIterator();
-        return twoPhase == null ? scorer.iterator() : TwoPhaseIterator.asDocIdSetIterator(twoPhase);
-    }
-
-    /**
-     * Creates a document iterator that confirms two-phase span matches when necessary.
-     */
-    private static DocIdSetIterator matchingDocs(final Spans spans)
-    {
-        final TwoPhaseIterator twoPhase = spans.asTwoPhaseIterator();
-        return twoPhase == null ? spans : TwoPhaseIterator.asDocIdSetIterator(twoPhase);
-    }
-
-    /**
-     * Opens forward-only iterators for one leaf.
-     */
-    private LeafCursor openLeafCursor(final LeafReaderContext leaf) throws IOException
-    {
-        final Spans spans = spanWeight.getSpans(leaf, postings);
-        if (spans == null) {
-            return null;
-        }
-
-        final DocIdSetIterator filterDocs;
-        if (filterWeight == null) {
-            filterDocs = null;
-        }
-        else {
-            final Scorer scorer = filterWeight.scorer(leaf);
-            if (scorer == null) {
-                filterDocs = DocIdSetIterator.empty();
-            }
-            else {
-                filterDocs = matchingDocs(scorer);
-            }
-        }
-
-        return new LeafCursor(spans, matchingDocs(spans), filterDocs);
-    }
-
-    /**
-     * Builds the query used by {@link #hits()}.
-     */
-    private Query queryForHits()
-    {
-        if (filterQuery == null) {
-            return spanQuery;
-        }
-        return new BooleanQuery.Builder()
-                .add(spanQuery, BooleanClause.Occur.MUST)
-                .add(filterQuery, BooleanClause.Occur.FILTER)
-                .build();
-    }
-
-    /**
-     * Rewrites a span query and verifies that it remains a {@link SpanQuery}.
-     */
-    private static SpanQuery rewriteSpanQuery(
-            final IndexSearcher searcher,
-            final SpanQuery spanQuery) throws IOException
-    {
-        final Query rewritten = searcher.rewrite(spanQuery);
-        if (!(rewritten instanceof SpanQuery)) {
-            throw new IllegalArgumentException("rewritten span query is not a SpanQuery: "
-                    + rewritten.getClass().getName() + " " + rewritten);
-        }
-        return (SpanQuery) rewritten;
-    }
-
-    /**
-     * Walks one accepted document.
-     *
-     * <p>
-     * This method is intentionally isolated because the same per-document sequence is reused by
-     * histogram counting, co-occurrence collection, snippet scoring, and rendering.
-     * </p>
-     *
-     * @param spans positioned on the target leaf-local document
-     * @param docId global Lucene document id
-     * @throws IOException if Lucene span collection or the consumer fails
-     */
-    private void walkDoc(final Spans spans, final int docId) throws IOException
+    private void drainDoc(final Spans spans, final int docId) throws IOException
     {
         snippets.openDoc(docId);
-
         for (int start = spans.nextStartPosition();
                 start != Spans.NO_MORE_POSITIONS;
                 start = spans.nextStartPosition()) {
@@ -517,61 +365,31 @@ public final class SpanWalker
                 spans.collect(snippets);
             }
         }
-
         snippets.closeDoc();
-        consumer.docSnippets(docId, snippets);
     }
 
     /**
-     * Walks one leaf from a local start document.
-     *
-     * @param leaf leaf to walk
-     * @param leafStart first leaf-local document id to consider
-     * @param remaining maximum number of accepted documents to consume in this leaf and subsequent
-     *        caller-managed leaves
-     * @return if positive or {@link DocIdSetIterator#NO_MORE_DOCS}, the global continuation doc id;
-     *         otherwise {@code -(consumed + 1)} to report leaf exhaustion and the number of consumed
-     *         documents
-     * @throws IOException if Lucene iteration or the consumer fails
+     * Opens a forward-only spans cursor for one leaf, wrapping two-phase iteration when the
+     * spans iterator requires confirmation.
      */
-    private int walkLeaf(
-            final LeafReaderContext leaf,
-            final int leafStart,
-            final int remaining) throws IOException
+    private LeafCursor openLeafCursor(final LeafReaderContext leaf) throws IOException
     {
-        final LeafCursor cursor = openLeafCursor(leaf);
-        if (cursor == null) {
-            return -1;
+        final Spans spans = spanWeight.getSpans(leaf, postings);
+        if (spans == null) {
+            return null;
         }
-
-        int consumed = 0;
-        for (int leafDoc = cursor.spanDocs.advance(leafStart);
-                leafDoc != DocIdSetIterator.NO_MORE_DOCS;
-                leafDoc = cursor.spanDocs.nextDoc()) {
-            final int docId = leaf.docBase + leafDoc;
-            if (!acceptedByBitSet(docId)) {
-                continue;
-            }
-            if (!acceptedByFilter(cursor.filterDocs, leafDoc)) {
-                continue;
-            }
-
-            walkDoc(cursor.spans, docId);
-            consumed++;
-            if (consumed >= remaining) {
-                final int nextDocId = docId + 1;
-                return nextDocId >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : nextDocId;
-            }
-        }
-        return -consumed - 1;
+        final TwoPhaseIterator twoPhase = spans.asTwoPhaseIterator();
+        final DocIdSetIterator spanDocs = twoPhase == null
+                ? spans
+                : TwoPhaseIterator.asDocIdSetIterator(twoPhase);
+        return new LeafCursor(spans, spanDocs);
     }
 
     /**
-     * Forward-only per-leaf cursor used by random document visits and leaf scans.
+     * Forward-only per-leaf cursor used by both {@link #visit(int)} and the walk loop.
      */
     private static final class LeafCursor
     {
-        private final DocIdSetIterator filterDocs;
         private int lastLeafDoc = -1;
         private final DocIdSetIterator spanDocs;
         private final Spans spans;
@@ -579,19 +397,13 @@ public final class SpanWalker
         /**
          * Creates a cursor.
          *
-         * @param spans spans iterator used for positions inside the current document
+         * @param spans    spans iterator used for positions inside the current document
          * @param spanDocs document iterator over confirmed span matches
-         * @param filterDocs optional document iterator over confirmed filter matches, or
-         *        {@code null}
          */
-        private LeafCursor(
-                final Spans spans,
-                final DocIdSetIterator spanDocs,
-                final DocIdSetIterator filterDocs)
+        private LeafCursor(final Spans spans, final DocIdSetIterator spanDocs)
         {
             this.spans = spans;
             this.spanDocs = spanDocs;
-            this.filterDocs = filterDocs;
         }
     }
 }

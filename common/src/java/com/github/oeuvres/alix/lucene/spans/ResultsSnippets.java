@@ -2,6 +2,7 @@ package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -254,8 +255,16 @@ public class ResultsSnippets implements SnippetsConsumer
             }
             writer.append("</ol>\n");
         }
-        else if (snipLimit == 0) {
+        else if (snipLimit == 0 || snipCount == 0) {
             
+        }
+        else if (snipCount <= snipLimit) {
+            // no sort
+            writer.append("<ol class=\"snippets\">\n");
+            for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
+                print(snippets, snipOrd);
+            }
+            writer.append("</ol>\n");
         }
         else {
             topSnips.clear();
@@ -264,7 +273,21 @@ public class ResultsSnippets implements SnippetsConsumer
                 final int endPos = snippets.snipEndPosition(snipOrd) + ctx;
                 topSnips.push(snipOrd, scoreSnippet(docId, startPos, endPos));
             }
-            writer.append("<p></p>")
+            final String key;
+            if (snipCount == 1) {
+                key = "results.snippets.count.one";
+            }
+            else {
+                key = "results.snippets.count";
+            }
+            String html = MessageFormat.format(messages.getString(key), snipLimit, snipCount);
+            writer.append("<p>")
+            .append(html)
+            .append(" <button")
+            .append("")
+            .append(">")
+            .append(" </button>")
+            .append("</p>");
             writer.append("<ol class=\"snippets\">\n");
             for (final TopArray.IdScore pair : topSnips) {
                 print(snippets, pair.id());

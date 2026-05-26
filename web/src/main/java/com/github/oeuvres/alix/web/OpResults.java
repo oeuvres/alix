@@ -95,6 +95,7 @@ public class OpResults extends Op {
             termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
             snipLimit = snips;
         }
+        // MAYBE, get a locale from lang param
 
         final ResultsSnippets results = new ResultsSnippets(
             writer, 
@@ -102,7 +103,8 @@ public class OpResults extends Op {
             content,
             rail,
             termWeights,
-            snipLimit
+            snipLimit,
+            null
         ).doclineFieldName(docline)
          .ctx(ctx)
          .hrefSearch("?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
@@ -139,9 +141,9 @@ public class OpResults extends Op {
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,
-            filterQuery,
             new Snippets(Snippets.Usage.OFFSETS, slop),
-            results);
+            filterQuery
+        );
         int nextDoc = 0;
 
         final String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
@@ -153,7 +155,7 @@ public class OpResults extends Op {
                 writer.append(String.valueOf(docs)).append("/");
             writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
             writer.flush();
-            nextDoc = walker.walk(from, docs);
+            nextDoc = walker.walk(from, docs, results);
         } else {
             // relevance
             final Query query;
@@ -174,7 +176,7 @@ public class OpResults extends Op {
             writer.flush();
 
             for (ScoreDoc sd : hits) {
-                walker.visitDoc(sd.doc);
+                walker.visit(sd.doc);
             }
         }
 

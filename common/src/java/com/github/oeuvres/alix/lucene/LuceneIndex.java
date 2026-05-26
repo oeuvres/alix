@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -29,14 +30,12 @@ import static com.github.oeuvres.alix.common.Names.*;
 /**
  * Read-only handle on a frozen Lucene index, configured from an XML
  * {@link Properties} file (the same file format used by the ingest side).
- *
  * <p>
  * Opens a {@link DirectoryReader} once at construction and holds it for
  * its lifetime. No {@link org.apache.lucene.search.SearcherManager},
  * no near-real-time refresh — the index is assumed frozen. Callers who
  * want to pick up a new index commit must {@link #close()} and reopen.
  * </p>
- *
  * <h2>Configuration keys</h2>
  * <ul>
  * <li><b>{@code name}</b> — corpus identifier. Defaults to the config filename stem.</li>
@@ -47,8 +46,8 @@ import static com.github.oeuvres.alix.common.Names.*;
  * first alphabetical field with positions is elected.</li>
  * <li><b>{@code docline}</b> — stored field carrying a compact
  * bibliographic line.</li>
+ * <li><b>{@code lang}</b> — a Locale for interface and linguistic resource, default fr.</li>
  * </ul>
- *
  * <h2>Field inventory</h2>
  * <p>
  * At open time, field metadata is inferred by
@@ -58,7 +57,6 @@ import static com.github.oeuvres.alix.common.Names.*;
  * alphabetically by name and do not change for the lifetime of this
  * handle.
  * </p>
- *
  * <h2>Thread safety</h2>
  * <p>
  * All accessors are safe for concurrent use. The field inventory is
@@ -71,41 +69,48 @@ import static com.github.oeuvres.alix.common.Names.*;
 public final class LuceneIndex implements Closeable
 {
     private static final Logger LOG = Logger.getLogger(LuceneIndex.class.getName());
-    
+
     private final String name;
     private final String label;
     private final String content;
     private final String docline;
     private final String year;
+    private final Locale locale;
     private final Path indexDir;
     private final DirectoryReader reader;
     private final IndexSearcher searcher;
     private final Map<String, Fluc> flucs;
     /** mtime of the {@code segments_N} file at open time; a frozen index never moves. */
     private final long lastModified;
-    
+
     private LuceneIndex(
-            final String name, final String label,
-            final String content, final String docline, final String year,
-            final Path indexDir, final DirectoryReader reader,
-            final IndexSearcher searcher, final Map<String, Fluc> flucs,
-            final long lastModified)
-    {
+        final String name,
+        final String label,
+        final String content,
+        final String docline,
+        final String year,
+        final Locale locale,
+        final Path indexDir,
+        final DirectoryReader reader,
+        final IndexSearcher searcher,
+        final Map<String, Fluc> flucs,
+        final long lastModified
+    ) {
         this.name = name;
         this.label = label;
         this.content = content;
         this.docline = docline;
         this.year = year;
+        this.locale = locale;
         this.indexDir = indexDir;
         this.reader = reader;
         this.searcher = searcher;
         this.flucs = flucs;
         this.lastModified = lastModified;
     }
-    
+
     /**
      * Open a frozen index from an XML properties configuration file.
-     *
      * <p>
      * The index directory is resolved as {@code indexroot/name/}, where
      * {@code indexroot} comes from the config file and is interpreted
@@ -113,7 +118,6 @@ public final class LuceneIndex implements Closeable
      * inferred from all segments via
      * {@link Fluc#inferFields(DirectoryReader, Path)}.
      * </p>
-     *
      * <p>
      * The returned handle owns the {@link DirectoryReader} and every
      * {@link Fluc} in its inventory. Close the handle when done to
@@ -122,29 +126,31 @@ public final class LuceneIndex implements Closeable
      *
      * @param configXml path to the XML properties file
      * @return a ready-to-query handle; caller must {@link #close()} when done
-     * @throws IOException              if the config or index cannot be read
+     * @throws IOException if the config or index cannot be read
      * @throws IllegalArgumentException if required keys are missing or paths invalid
      */
-    public static LuceneIndex open(final Path configXml) throws IOException
-    {
+    public static LuceneIndex open(
+        final Path configXml
+    )
+        throws IOException {
         final Path cfg = configXml.toAbsolutePath().normalize();
         if (!Files.isRegularFile(cfg)) {
             throw new IllegalArgumentException("Config file not found: " + cfg);
         }
-        
+
         final Properties props = new Properties();
         try (InputStream in = Files.newInputStream(cfg)) {
             props.loadFromXML(in);
         }
-        
+
         String name = trimOrNull(props.getProperty("name"));
         if (name == null)
             name = Dir.stem(cfg);
-        
+
         String label = trimOrNull(props.getProperty("label"));
         if (label == null)
             label = name;
-        
+
         final String rootStr = trimOrNull(props.getProperty("indexroot"));
         if (rootStr == null) {
             throw new IllegalArgumentException("Missing required key: indexroot — " + cfg);
@@ -153,7 +159,7 @@ public final class LuceneIndex implements Closeable
         if (!Files.isDirectory(indexDir)) {
             throw new IllegalArgumentException("Index directory not found: " + indexDir);
         }
-        
+
         // Open Directory first. If DirectoryReader.open() fails, close
         // the Directory explicitly — otherwise its file descriptors leak.
         final Directory dir = FSDirectory.open(indexDir);
@@ -164,7 +170,7 @@ public final class LuceneIndex implements Closeable
             dir.close();
             throw ex;
         }
-        
+
         // From here the reader owns the Directory. If anything downstream
         // throws (field inference, validation), close the reader so file
         // descriptors are released.
@@ -176,23 +182,24 @@ public final class LuceneIndex implements Closeable
             String docline = trimOrNull(props.getProperty(DOCLINE, DOCLINE));
             if (!fields.containsKey(docline))
                 docline = null;
+            String lang = trimOrNull(props.getProperty(LOCALE, LOCALE_DEFAULT));
+            Locale locale = Locale.forLanguageTag(lang);
             final long lastModified = readSegmentsMtime(indexDir);
-            
+
             // Freeze the map so accessors need no synchronization.
             final Map<String, Fluc> frozen = Collections.unmodifiableMap(fields);
-            
+
             return new LuceneIndex(
-                    name, label, content, docline, year,
-                    indexDir, reader, searcher, frozen, lastModified);
+                    name, label, content, docline, year, locale, indexDir, reader, searcher, frozen, lastModified);
         } catch (IOException | RuntimeException ex) {
             reader.close();
             throw ex;
         }
     }
-    
+
     @Override
-    public void close() throws IOException
-    {
+    public void close()
+        throws IOException {
         for (Map.Entry<String, Fluc> e : flucs.entrySet()) {
             try {
                 e.getValue().close();
@@ -202,19 +209,17 @@ public final class LuceneIndex implements Closeable
         }
         reader.close();
     }
-    
+
     /** Default tokenized field for searches, or {@code null} if none. */
-    public String content()
-    {
+    public String content() {
         return content;
     }
-    
+
     /** Stored field carrying a compact bibliographic line, or {@code null}. */
-    public String docline()
-    {
+    public String docline() {
         return docline;
     }
-    
+
     /**
      * Returns the {@link Fluc} for a named field, or {@code null} if the
      * field does not exist in this index.
@@ -222,12 +227,14 @@ public final class LuceneIndex implements Closeable
      * @param fieldName field name
      * @return field handle, or {@code null}
      */
-    public Fluc fluc(final String fieldName)
-    {
-        if (fieldName == null) return null;
+    public Fluc fluc(
+        final String fieldName
+    ) {
+        if (fieldName == null)
+            return null;
         return flucs.get(fieldName);
     }
-    
+
     /**
      * Unmodifiable field inventory, sorted alphabetically by name.
      * Safe to share with caller code; attempts to modify throw
@@ -235,11 +242,10 @@ public final class LuceneIndex implements Closeable
      *
      * @return field name → {@link Fluc}
      */
-    public Map<String, Fluc> flucs()
-    {
+    public Map<String, Fluc> flucs() {
         return flucs;
     }
-    
+
     /**
      * Returns the {@link FlucCategory} for a named field, or {@code null}
      * if the field does not exist or is not a single-valued category.
@@ -247,13 +253,15 @@ public final class LuceneIndex implements Closeable
      * @param fieldName field name
      * @return category field handle, or {@code null}
      */
-    public FlucCategory flucCategory(final String fieldName)
-    {
-        if (fieldName == null) return null;
+    public FlucCategory flucCategory(
+        final String fieldName
+    ) {
+        if (fieldName == null)
+            return null;
         final Fluc f = flucs.get(fieldName);
         return (f instanceof FlucCategory c) ? c : null;
     }
-    
+
     /**
      * Returns the {@link FlucFacet} for a named field, or {@code null}
      * if the field does not exist or is not a multi-valued facet.
@@ -261,13 +269,15 @@ public final class LuceneIndex implements Closeable
      * @param fieldName field name
      * @return facet field handle, or {@code null}
      */
-    public FlucFacet flucFacet(final String fieldName)
-    {
-        if (fieldName == null) return null;
+    public FlucFacet flucFacet(
+        final String fieldName
+    ) {
+        if (fieldName == null)
+            return null;
         final Fluc f = flucs.get(fieldName);
         return (f instanceof FlucFacet f2) ? f2 : null;
     }
-    
+
     /**
      * Returns the {@link FlucNum} for a named field, or {@code null}
      * if the field does not exist or is not a numeric field. Use
@@ -277,9 +287,11 @@ public final class LuceneIndex implements Closeable
      * @param fieldName field name
      * @return numeric field handle, or {@code null}
      */
-    public FlucNum flucNum(final String fieldName)
-    {
-        if (fieldName == null) return null;
+    public FlucNum flucNum(
+        final String fieldName
+    ) {
+        if (fieldName == null)
+            return null;
         final Fluc f = flucs.get(fieldName);
         return (f instanceof FlucNum n) ? n : null;
     }
@@ -291,34 +303,37 @@ public final class LuceneIndex implements Closeable
      * @param fieldName field name
      * @return text field handle, or {@code null}
      */
-    public FlucText flucText(final String fieldName)
-    {
-        if (fieldName == null) return null;
+    public FlucText flucText(
+        final String fieldName
+    ) {
+        if (fieldName == null)
+            return null;
         final Fluc f = flucs.get(fieldName);
         return (f instanceof FlucText t) ? t : null;
     }
 
     /** Absolute path to the Lucene index directory. */
-    public Path indexDir()
-    {
+    public Path indexDir() {
         return indexDir;
     }
-    
+
     /** Display label; never null. */
-    public String label()
-    {
+    public String label() {
         return label;
     }
     
+    /** Returns the configured locale. */
+    public Locale locale() {
+        return locale;
+    }
+
     /**
      * Last-modification time of the index, in milliseconds since the epoch.
-     *
      * <p>
      * Source: the {@code mtime} of the {@code segments_N} file at open
      * time. Since this handle is a frozen view, the returned value never
      * changes for the lifetime of the instance.
      * </p>
-     *
      * <p>
      * Suitable as input for HTTP {@code Last-Modified} headers. Round
      * down to whole seconds before comparing with
@@ -327,55 +342,43 @@ public final class LuceneIndex implements Closeable
      * </p>
      *
      * @return epoch milliseconds, or {@code 0} if the timestamp could
-     *         not be read at open time
+     * not be read at open time
      */
-    public long lastModified()
-    {
+    public long lastModified() {
         return lastModified;
     }
-    
+
     /** Corpus identifier. */
-    public String name()
-    {
+    public String name() {
         return name;
     }
-    
+
     /** Total number of live documents. */
-    public int numDocs()
-    {
+    public int numDocs() {
         return reader.numDocs();
     }
-    
+
     /** Underlying {@link DirectoryReader}. Safe for concurrent reads. */
-    public DirectoryReader reader()
-    {
+    public DirectoryReader reader() {
         return reader;
     }
-    
+
     /** {@link IndexSearcher}; thread-safe per Lucene contract. */
-    public IndexSearcher searcher()
-    {
+    public IndexSearcher searcher() {
         return searcher;
     }
-    
+
     @Override
-    public String toString()
-    {
-        return "LuceneIndex{name=" + name
-                + ", label=\"" + label + "\""
-                + ", docs=" + numDocs()
-                + ", content=" + content
-                + ", fields=" + flucs.size()
-                + ", dir=" + indexDir
-                + "}";
+    public String toString() {
+        return "LuceneIndex{name=" + name + ", label=\"" + label + "\"" + ", docs=" + numDocs() + ", content=" + content
+                + ", fields=" + flucs.size() + ", dir=" + indexDir + "}";
     }
-    
+
     /** Numeric field for sorting or histograms. */
-    public String year()
-    {
+    public String year() {
         return year;
     }
-    
+
     /**
      * Resolve the content field: explicit config value if set and valid,
      * otherwise the first alphabetical field with positions.
@@ -383,8 +386,8 @@ public final class LuceneIndex implements Closeable
     private static String resolveContent(
         final Properties props,
         final Map<String, Fluc> fields,
-        final Path indexDir)
-    {
+        final Path indexDir
+    ) {
         final String declared = trimOrNull(props.getProperty(CONTENT));
         if (declared != null) {
             if (!fields.containsKey(declared)) {
@@ -413,12 +416,13 @@ public final class LuceneIndex implements Closeable
         }
         return null;
     }
-    
+
     private static String resolveYear(
         final Properties props,
         final Map<String, Fluc> fields,
-        final Path indexDir) throws IOException
-    {
+        final Path indexDir
+    )
+        throws IOException {
         final String declared = trimOrNull(props.getProperty(YEAR));
         if (declared != null) {
             if (!fields.containsKey(declared)) {
@@ -454,7 +458,7 @@ public final class LuceneIndex implements Closeable
         }
         return null;
     }
-    
+
     /**
      * Read the mtime of the current segments file. Uses
      * {@link SegmentInfos#getLastCommitSegmentsFileName(Directory)} to
@@ -462,8 +466,9 @@ public final class LuceneIndex implements Closeable
      *
      * @return epoch milliseconds, or {@code 0} if the file is unavailable
      */
-    private static long readSegmentsMtime(final Path indexDir)
-    {
+    private static long readSegmentsMtime(
+        final Path indexDir
+    ) {
         try (Directory dir = FSDirectory.open(indexDir)) {
             final String seg = SegmentInfos.getLastCommitSegmentsFileName(dir);
             if (seg == null)
@@ -474,9 +479,10 @@ public final class LuceneIndex implements Closeable
             return 0L;
         }
     }
-    
-    private static String trimOrNull(final String s)
-    {
+
+    private static String trimOrNull(
+        final String s
+    ) {
         if (s == null)
             return null;
         final String t = s.trim();

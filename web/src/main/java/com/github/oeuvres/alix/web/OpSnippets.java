@@ -10,6 +10,8 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.queries.spans.SpanQuery;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.spans.Snippets;
+import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,6 +64,10 @@ public class OpSnippets extends Op
             return;
         }
         SpanQuery spanQuery = spanQuery(index, pars);
+        if (spanQuery == null) {
+            // output nothing?
+            return;
+        }
         
     }
 
