@@ -11,6 +11,11 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonWriter;
@@ -23,6 +28,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
+
+import static com.github.oeuvres.alix.common.Names.*;
+import static com.github.oeuvres.alix.web.Pars.DOCID;
 
 /**
  * Front controller servlet for the Alix search web API.
@@ -386,13 +394,38 @@ public class AlixServlet extends HttpServlet
             op.dispatch(index, format, request, response);
             return;
         }
-
-        final Op doc = ops.get("doc");
-        if (doc != null && doc.offer(index, opName, format, request, response)) {
+        // maybe a direct call for a document slug
+        final int docId = docIdByName(index, opName);
+        if (docId >= 0) {
+            final Op doc = ops.get("doc");
+            // transmit docid as request attribute
+            request.setAttribute(DOCID, docId);
+            doc.dispatch(index, format, request, response);
             return;
         }
-
         jsonError(response, 404, "Unknown operation: " + opName);
+    }
+    
+    /**
+     * Resolves a document by its public identifier to its current Lucene docId.
+     *
+     * @param docName public document identifier stored in the {@code ALIX_ID} field
+     * @return the Lucene docId, or {@code -1} if no document matches
+     * @throws IOException if the underlying search fails
+     */
+    static public int docIdByName(final LuceneIndex index, final String docName) throws IOException
+    {
+        if (docName == null || docName.isBlank()) return -1;
+        final TopDocs topDocs = index.searcher().search(
+            new TermQuery(new Term(ALIX_ID, docName)), 2);
+        final ScoreDoc[] docs = topDocs.scoreDocs;
+        if (docs.length < 1) {
+            return -1;
+        }
+        if (docs.length > 1) {
+            LOG.warning(docName + ": more than one document with this id in index " + index.name());
+        }
+        return docs[0].doc;
     }
 
     /**

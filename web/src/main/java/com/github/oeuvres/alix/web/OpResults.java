@@ -105,7 +105,7 @@ public class OpResults extends Op {
             snipLimit
         ).doclineFieldName(docline)
          .ctx(ctx)
-         .hrefSearch("?" + pars.queryString(CTX, FTEXT, Q) + "&amp;slop=" + slop);
+         .hrefSearch("?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
 
         // no query, list docs
         if (spanQuery == null) {

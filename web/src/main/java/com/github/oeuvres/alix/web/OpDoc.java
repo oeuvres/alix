@@ -27,31 +27,6 @@ public class OpDoc extends Op
     protected static final Logger LOG = Logger.getLogger(OpDoc.class.getName());
     
     @Override
-    public boolean offer(
-        LuceneIndex index,
-        String docName,
-        String format,
-        HttpServletRequest request,
-        HttpServletResponse response) throws IOException
-    {
-        final TopDocs topDocs = index.searcher().search(
-                new TermQuery(new Term(ALIX_ID, docName)), 10);
-        ScoreDoc[] docs = topDocs.scoreDocs;
-        if (docs.length < 1) {
-            return false;
-        }
-        // if more than one, log it
-        if (docs.length > 1) {
-            LOG.warning(docName + ", more than 1 doc with this name in index.");
-        }
-        final int docId = docs[0].doc;
-        // attached the docId as a request attribute
-        request.setAttribute(DOCID, docId);
-        dispatch(index, format, request, response);
-        return true;
-    }
-    
-    @Override
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
         throws IOException
     {
