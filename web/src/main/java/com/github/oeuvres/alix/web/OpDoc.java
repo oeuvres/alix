@@ -6,11 +6,8 @@ import java.util.logging.Logger;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
+
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.spans.HiliteSnippets;
@@ -19,7 +16,6 @@ import com.github.oeuvres.alix.web.util.HttpPars;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import static com.github.oeuvres.alix.common.Names.*;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 public class OpDoc extends Op

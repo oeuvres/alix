@@ -102,7 +102,13 @@ public class HttpPars
      * @param value  effective value (typed, may be {@code null} only for fallback)
      * @param source where the value came from
      */
-    public record Resolved(Object value, Source source) {}
+    public record Resolved(Object value, Source source) {
+        public String toString()
+        {
+            return "'" + value + "' (" + source + ")";
+        }
+
+    }
 
     /** Wrapped request, source of parameters and attributes. */
     public final HttpServletRequest request;

@@ -3,6 +3,9 @@ package com.github.oeuvres.alix.lucene.spans;
 import java.io.IOException;
 import java.io.Writer;
 import java.text.MessageFormat;
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -21,17 +24,22 @@ import static com.github.oeuvres.alix.common.Names.*;
 
 /**
  * A {@link SnippetsConsumer} that writes span search results as an HTML fragment.
- *
  * <p>
  * Each accepted document is emitted as one {@code <article>} block: an opening tag
- * carrying the document id, an optional {@code <h2>} heading linking to the full
+ * carrying the document id, an optional {@code 
+ * <h2>} heading linking to the full
  * document, and up to {@link #snipLimit()} concordance lines. Each line is rendered
- * as an {@code <li>} with a left context, one or more {@code <mark>} pivots,
- * inter-term text, and a right context. The {@code <li>} items are emitted directly
+ * as an {@code 
+ * <li>} with a left context, one or more {@code <mark>} pivots,
+ * inter-term text, and a right context. The {@code 
+ * <li>} items are emitted directly
  * inside the {@code <article>}; the caller is responsible for wrapping them in an
- * outer {@code <ol>} or {@code <ul>} if a conforming HTML5 list element is required.
+ * outer {@code 
+ * <ol>
+ * } or {@code 
+ * <ul>
+ * } if a conforming HTML5 list element is required.
  * </p>
- *
  * <p>
  * Snippets selected for rendering are the top {@link #snipLimit()} by accumulated
  * term-weight score over a window of {@link #ctx()} positions on each side of the
@@ -41,7 +49,6 @@ import static com.github.oeuvres.alix.common.Names.*;
  * universe; term ids outside the weight array are silently skipped, and each term
  * contributes at most once per snippet thanks to a per-snippet dedup epoch.
  * </p>
- *
  * <p>
  * {@link #docOpen(int)} and {@link #docClose(int)} are called unconditionally for
  * every {@link #docSnippets(int, Snippets)} invocation, even when the document
@@ -51,7 +58,6 @@ import static com.github.oeuvres.alix.common.Names.*;
  * which will surface as an {@link IndexOutOfBoundsException} from
  * {@link Snippets#matchStartOffset(int)} inside {@code print}.
  * </p>
- *
  * <p>
  * Required {@link Snippets} mode: {@link Snippets.Usage#OFFSETS}. Document-level
  * pagination ({@code docLimit}) is the responsibility of {@link SpanWalker}, not
@@ -60,26 +66,30 @@ import static com.github.oeuvres.alix.common.Names.*;
  */
 public class ResultsSnippets implements SnippetsConsumer
 {
-    private final String contentFieldName;
     private final Detagger detagger = new Detagger(Set.of("i", "em"));
-    private final TermRail rail;
+    // Required at construction
+    private final Writer writer;
+    private final Locale locale;
     private final int snipLimit;
     private final StoredFields storedFields;
-    private final int[] termDedup;
-    private final double[] termWeights;
-    private final TopArray topSnips;
-    private final Writer writer;
+    // Build at construction
     private final ResourceBundle messages;
-
+    private final NumberFormat numForm;
+    // Optional other params
+    private TermRail rail;
+    private double[] termWeights;
+    private int[] termDedup;
+    private final TopArray topSnips;
     private int ctx = 10;
-    private String doclineFieldName = "docline";
-    private String hrefBase = "";
-    private String hrefExt = "";
-    private String hrefSearch = "";
-
-    private String content;
+    private String doclineField = "docline";
+    private String contentField = "content";
+    private String urlFormat = "";
+    // Current document cached
+    private int cachedDocId = -1;
     private Document doc;
-    private String id;
+    private String content;
+    private String docname;
+    /** Snippet counter */
     private int snippetId;
 
     /**
@@ -94,32 +104,27 @@ public class ResultsSnippets implements SnippetsConsumer
      * universe of {@code rail}. Term ids outside this range are silently ignored.
      * @param snipLimit maximum number of snippets per document; {@code 0} disables
      * snippet rendering while still emitting article shells
-     * @throws IllegalArgumentException if {@code snipLimit < 0}
      * @throws NullPointerException if any non-primitive argument is {@code null}
      */
     public ResultsSnippets(
         final Writer writer,
         final StoredFields storedFields,
-        final String contentFieldName,
-        final TermRail rail,
-        final double[] termWeights,
         final int snipLimit,
         final Locale locale
     ) {
         this.writer = Objects.requireNonNull(writer, "writer");
         this.storedFields = Objects.requireNonNull(storedFields, "storedFields");
-        this.contentFieldName = Objects.requireNonNull(contentFieldName, "contentFieldName");
-        this.rail = Objects.requireNonNull(rail, "rail");
-        this.termWeights = Objects.requireNonNull(termWeights, "termWeights");
+        
         this.snipLimit = snipLimit;
-        this.termDedup = new int[termWeights.length];
         if (snipLimit > 0) {
             this.topSnips = new TopArray(snipLimit);
-        }
-        else {
+        } else {
             this.topSnips = null; // should be OK for docSnippets()
         }
-        this.messages = ResourceBundle.getBundle("com.github.oeuvres.alix.common.messages", locale);
+        if (locale == null) this.locale = Locale.getDefault();
+        else this.locale = locale;
+        this.numForm = NumberFormat.getInstance(this.locale);
+        this.messages = ResourceBundle.getBundle("com.github.oeuvres.alix.common.messages", this.locale);
     }
 
     /**
@@ -128,8 +133,7 @@ public class ResultsSnippets implements SnippetsConsumer
      *
      * @return context width in words
      */
-    public int ctx()
-    {
+    public int ctx() {
         return ctx;
     }
 
@@ -139,8 +143,9 @@ public class ResultsSnippets implements SnippetsConsumer
      * @param ctx context width in words
      * @return this instance
      */
-    public ResultsSnippets ctx(final int ctx)
-    {
+    public ResultsSnippets ctx(
+        final int ctx
+    ) {
         this.ctx = ctx;
         return this;
     }
@@ -154,8 +159,10 @@ public class ResultsSnippets implements SnippetsConsumer
      * but kept for symmetry with {@link #docOpen(int)}
      * @throws IOException if the writer fails
      */
-    public void docClose(final int docId) throws IOException
-    {
+    public void docClose(
+        final int docId
+    )
+        throws IOException {
         writer.append("</article>\n\n");
         writer.flush();
     }
@@ -165,56 +172,76 @@ public class ResultsSnippets implements SnippetsConsumer
      *
      * @return stored-field name, or {@code null} when the heading is suppressed
      */
-    public String doclineFieldName()
-    {
-        return doclineFieldName;
+    public String doclineFieldName() {
+        return doclineField;
     }
 
     /**
      * Sets the name of the stored field used as the document heading. When
-     * {@code null}, no {@code <h2>} is emitted.
+     * {@code null}, no {@code 
+     * <h2>} is emitted.
      *
-     * @param doclineFieldName stored-field name, or {@code null}
+     * @param doclineField stored-field name, or {@code null}
      * @return this instance
      */
-    public ResultsSnippets doclineFieldName(final String doclineFieldName)
-    {
-        this.doclineFieldName = doclineFieldName;
+    public ResultsSnippets doclineField(
+        final String doclineField
+    ) {
+        this.doclineField = doclineField;
+        return this;
+    }
+    
+    /**
+
+     */
+    public ResultsSnippets contentField(
+        final String contentField
+    ) {
+        this.contentField = contentField;
         return this;
     }
 
     /**
-     * Emits the opening {@code <article>} tag and the optional {@code <h2>}
+     * Emits the opening {@code <article>} tag and the optional {@code 
+     * <h4>}
      * heading. May be called directly when reusing this renderer to produce
      * query-less document cards.
      *
+     * @param css a special css className
      * @param docId Lucene document id
      * @throws IOException if the writer or stored-fields access fails
      */
-    public void docOpen(final int docId, String css) throws IOException
-    {
-        if (css == null || css.isBlank()) {css=""; }
-        else { css = " " + css;};
+    public void docOpen(
+        final int docId,
+        String css
+    )
+        throws IOException {
+        ensureDoc(docId);
+        if (css == null || css.isBlank()) {
+            css = "";
+        } else {
+            css = " " + css;
+        }
+        ;
         doc = storedFields.document(docId);
-        id = doc.get(ALIX_ID);
-        writer.append("<article")
-        .append(" id=\"").append(id).append("\"")
-        .append(" data-docid=\"").append(String.valueOf(docId)).append("\"")
-        .append(" class=\"result").append(css).append("\"")
-        .append(">\n");
+        docname = doc.get(ALIX_ID);
+        writer.append("<article").append(" id=\"").append(docname).append("\"").append(" data-docid=\"")
+                .append(String.valueOf(docId)).append("\"").append(" class=\"result").append(css).append("\"")
+                .append(">\n");
 
-        String url = hrefBase + id + hrefExt + hrefSearch;
-        if (doclineFieldName != null) {
-            final String docline = doc.get(doclineFieldName);
+        String url = String.format(urlFormat, docname);
+        if (doclineField != null) {
+            final String docline = doc.get(doclineField);
             if (docline != null) {
-                writer.append("<h4")
-                .append(" class=\"result-title\"")
-                .append(">\n")
+                writer
+                .append("<h4")
+                .append(" class=\"result-title\"").append(">\n")
                 .append("<a")
                 .append(" href=\"").append(url).append("\"")
                 .append(" draggable=\"false\"")
                 .append(" class=\"selectable\"")
-                .append(">").append(docline)
+                .append(">")
+                .append(docline)
                 .append("</a>\n")
                 .append("</h4>\n");
             }
@@ -223,7 +250,6 @@ public class ResultsSnippets implements SnippetsConsumer
 
     /**
      * Renders one document's accepted snippets as an {@code <article>} block.
-     *
      * <p>
      * {@link #docOpen(int)} and {@link #docClose(int)} run unconditionally. When the
      * content field is missing or {@link #snipLimit()} is {@code 0}, the scoring
@@ -236,147 +262,145 @@ public class ResultsSnippets implements SnippetsConsumer
      * @throws IOException if the writer or stored-fields access fails
      */
     @Override
-    public void docSnippets(final int docId, final Snippets snippets) throws IOException
-    {
-        final int snipCount = snippets.snips4doc();
+    public void docSnippets(
+        final int docId,
+        final Snippets snippets
+    )
+        throws IOException {
+        ensureDoc(docId);
         docOpen(docId, "hassnippets");
-        content = doc.get(contentFieldName);
+        final int snipCount = snippets.count();
+        if (snipCount == 0) {
+        }
+        else if (snipCount > snipLimit) {
+            // show all snippets as a link
+            writer
+            .append("<p class=\"snippets-count\">")
+            .append(numForm.format(snipLimit))
+            .append(" / ")
+            .append("<a")
+            .append(" class=\"snippets-more\"")
+            .append(" href=\"").append(String.format(urlFormat, docname)).append("&amp;snippets=-1")
+            .append(">")
+            .append(numForm.format(snipLimit))
+            .append("</a> ")
+            .append(messages.getString("results.snippets"))
+            .append("</p>");
+        }
+        snippets(docId, snippets);
+        docClose(docId);
+    }
+    
+    /**
+     * TODO Javadoc
+     * @param docId
+     * @param snippets
+     * @throws IOException
+     */
+    public void snippets(final int docId, Snippets snippets) throws IOException
+    {
+        ensureDoc(docId);
+        final int snipCount = snippets.count();
         if (content == null) {
-            writer.append("<!-- No text stored for field: '" + contentFieldName + "' -->");
-        }
-        else if (snipCount <= 0) {
+            writer.append("<!-- No text stored for field: '" + contentField + "' -->");
+        } else if (snipCount <= 0) {
             writer.append("<!-- No snippets found -->");
-        }
-        else if (snipLimit <  0) {
+        } else if (snipLimit < 0) {
             // list all snippets in document order
             writer.append("<ol class=\"snippets\">\n");
             for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
                 print(snippets, snipOrd);
             }
             writer.append("</ol>\n");
-        }
-        else if (snipLimit == 0 || snipCount == 0) {
-            
-        }
-        else if (snipCount <= snipLimit) {
+        } else if (snipLimit == 0 || snipCount == 0) {
+
+        } else if (snipCount <= snipLimit) {
             // no sort
             writer.append("<ol class=\"snippets\">\n");
             for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
                 print(snippets, snipOrd);
             }
             writer.append("</ol>\n");
-        }
-        else {
+        } else {
             topSnips.clear();
             for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
                 final int startPos = Math.max(0, snippets.snipStartPosition(snipOrd) - ctx);
                 final int endPos = snippets.snipEndPosition(snipOrd) + ctx;
                 topSnips.push(snipOrd, scoreSnippet(docId, startPos, endPos));
             }
-            final String key;
-            if (snipCount == 1) {
-                key = "results.snippets.count.one";
-            }
-            else {
-                key = "results.snippets.count";
-            }
-            String html = MessageFormat.format(messages.getString(key), snipLimit, snipCount);
-            writer.append("<p>")
-            .append(html)
-            .append(" <button")
-            .append("")
-            .append(">")
-            .append(" </button>")
-            .append("</p>");
             writer.append("<ol class=\"snippets\">\n");
             for (final TopArray.IdScore pair : topSnips) {
                 print(snippets, pair.id());
             }
             writer.append("</ol>\n");
         }
-        docClose(docId);
+
     }
 
     /**
-     * Returns the URL prefix prepended to document ids when building href values.
+     * {@link String#format(String, Object...)} where %s is the id 
+     * of the document stored as "alix.id".
      *
-     * @return URL prefix
-     */
-    public String hrefBase()
-    {
-        return hrefBase;
-    }
-
-    /**
-     * Sets the URL prefix prepended to document ids.
-     *
-     * @param hrefBase URL prefix
+     * @param urlFormat URL pattern used for results
      * @return this instance
      */
-    public ResultsSnippets hrefBase(final String hrefBase)
-    {
-        this.hrefBase = hrefBase;
+    public ResultsSnippets urlFormat(
+        final String urlFormat
+    ) {
+        this.urlFormat = urlFormat;
         return this;
     }
 
-    /**
-     * Returns the URL suffix appended to document ids when building href values.
-     *
-     * @return URL suffix
-     */
-    public String hrefExt()
-    {
-        return hrefExt;
-    }
 
-    /**
-     * Sets the URL suffix appended to document ids.
-     *
-     * @param hrefExt URL suffix
-     * @return this instance
-     */
-    public ResultsSnippets hrefExt(final String hrefExt)
-    {
-        this.hrefExt = hrefExt;
-        return this;
-    }
-
-    /**
-     * Returns the query-string fragment appended to all generated hrefs.
-     *
-     * @return query-string fragment
-     */
-    public String hrefSearch()
-    {
-        return hrefSearch;
-    }
-
-    /**
-     * Sets the query-string fragment appended to all generated hrefs.
-     *
-     * @param hrefSearch query-string fragment
-     * @return this instance
-     */
-    public ResultsSnippets hrefSearch(final String hrefSearch)
-    {
-        this.hrefSearch = hrefSearch;
-        return this;
-    }
 
     /**
      * Returns the maximum number of snippets rendered per document.
      *
      * @return snippet cap; {@code 0} means no snippet lines are rendered
      */
-    public int snipLimit()
-    {
+    public int snipLimit() {
         return snipLimit;
     }
 
     /**
-     * Emits one concordance line as an {@code <li>}: left context, pivot
+     * TODO JavaDoc
+     * @param rail
+     */
+    public ResultsSnippets rail(
+        final TermRail rail
+    ) {
+        this.rail = rail;
+        return this;
+    }
+    
+    /**
+     * TODO JavaDoc 
+     * @param termWeights
+     */
+    public ResultsSnippets termWeights(
+        final double[] termWeights
+    ) {
+        this.termWeights = Objects.requireNonNull(termWeights, "termWeights");
+        return this;
+    }
+
+    /**
+     * TODO Javadoc
+     * @param docId
+     * @throws IOException
+     */
+    private void ensureDoc(final int docId) throws IOException {
+        if (cachedDocId == docId) return;
+        this.doc     = storedFields.document(docId);
+        this.docname = doc.get(ALIX_ID);
+        this.content = doc.get(contentField);
+        this.cachedDocId = docId;
+    }
+
+    /**
+     * Emits one concordance line as an {@code 
+     * <li>}: left context, pivot
      * {@code <mark>}s with interleaved text, right context.
-     *
      * <p>
      * Requires the snippet to contain at least one match. A snippet without
      * matches in OFFSETS mode is an upstream invariant violation and will surface
@@ -389,22 +413,20 @@ public class ResultsSnippets implements SnippetsConsumer
      * @param snipOrd snippet ordinal in {@code [0, snippets.snips4doc())}
      * @throws IOException if the writer fails
      */
-    private void print(final Snippets snippets, final int snipOrd) throws IOException
-    {
+    private void print(
+        final Snippets snippets,
+        final int snipOrd
+    )
+        throws IOException {
         final int leftMatchOrd = snippets.snipStartMatch(snipOrd);
         final int rightMatchOrd = snippets.snipEndMatch(snipOrd);
         final int leftMatchStartOffset = snippets.matchStartOffset(leftMatchOrd);
         final int rightMatchEndOffset = snippets.matchEndOffset(rightMatchOrd);
 
         final int snipAnchor = snipOrd + 1;
-        final String url = hrefBase + id + hrefExt + hrefSearch + "#snippet-" + snipAnchor;
-        writer
-            .append("<li")
-            .append(" class=\"snippet\"")
-            .append(" data-href=\"").append(url).append("\"")
-            .append(">")
-            .append("<p>");
-        
+        final String url = urlFormat.formatted(docname) + "#snippet-" + snipAnchor;
+        writer.append("<li").append(" class=\"snippet\"").append(" data-href=\"").append(url).append("\"").append(">")
+                .append("<p>");
 
         final int leftOffset = Markup.leftBoundary(content, leftMatchStartOffset, ctx, -1);
         detagger.detag(writer, content, leftOffset, leftMatchStartOffset);
@@ -412,10 +434,7 @@ public class ResultsSnippets implements SnippetsConsumer
         for (int matchOrd = leftMatchOrd; matchOrd <= rightMatchOrd; matchOrd++) {
             if (matchOrd != leftMatchOrd) {
                 detagger.detag(
-                    writer,
-                    content,
-                    snippets.matchEndOffset(matchOrd - 1),
-                    snippets.matchStartOffset(matchOrd)
+                        writer, content, snippets.matchEndOffset(matchOrd - 1), snippets.matchStartOffset(matchOrd)
                 );
             }
             final int startOffset = snippets.matchStartOffset(matchOrd);
@@ -428,11 +447,8 @@ public class ResultsSnippets implements SnippetsConsumer
         final int rightOffset = Markup.rightBoundary(content, rightMatchEndOffset, ctx, -1);
         detagger.detag(writer, content, rightMatchEndOffset, rightOffset);
         // gutter snippet link
-        writer.append("</p>")
-        .append("\n<a")
-        .append(" href=\"").append(url).append("\"")
-        .append(" class=\"snippet-open\"")
-        .append(">→</a>");
+        writer.append("</p>").append("\n<a").append(" href=\"").append(url).append("\"")
+                .append(" class=\"snippet-open\"").append(">→</a>");
         writer.append("</li>\n");
     }
 
@@ -447,9 +463,24 @@ public class ResultsSnippets implements SnippetsConsumer
      * @param endPosition first position to exclude
      * @return accumulated score
      */
-    private double scoreSnippet(final int docId, final int startPosition, final int endPosition)
-    {
-        final double[] acc = {0d};
+    private double scoreSnippet(
+        final int docId,
+        final int startPosition,
+        final int endPosition
+    ) {
+        
+        if (rail == null || termWeights == null) {
+            final List<String> message = new ArrayList<>(2);
+            if (rail == null)
+                message.add("Score the snippets needs a TermRail to get terms to score, see #rail(TermRail).");
+            if (termWeights == null)
+                message.add("Score the snippets needs a by term score array, see #termWeights(double[]).");
+            throw new IllegalArgumentException(String.join("\n", message));
+        }
+        if (termDedup == null) {
+            termDedup = new int[termWeights.length];
+        }
+        final double[] acc = { 0d };
         snippetId++;
         rail.scanWindow(docId, startPosition, endPosition, termId -> {
             if (termId < termDedup.length && termDedup[termId] != snippetId) {

@@ -183,7 +183,7 @@ public final class HiliteSnippets
      */
     private void emitSnippetEvents()
     {
-        final int snipCount = snippets.snips4doc();
+        final int snipCount = snippets.count();
         for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
             final int snipCharStart = snippets.snipStartOffset(snipOrd);
             final int snipCharEnd = snippets.snipEndOffset(snipOrd);
@@ -211,7 +211,7 @@ public final class HiliteSnippets
         }
         final LeafReaderContext ctx = leaves.get(leafOrd);
         final int localDocId = docId - ctx.docBase;
-        final int snipCount = snippets.snips4doc();
+        final int snipCount = snippets.count();
         for (final Term term : queryTerms) {
             final Terms fieldTerms = ctx.reader().terms(term.field());
             if (fieldTerms == null) {

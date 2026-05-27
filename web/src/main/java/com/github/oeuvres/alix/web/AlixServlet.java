@@ -609,6 +609,7 @@ public class AlixServlet extends HttpServlet
         ops.put("results", new OpResults());
         ops.put("suggest", new OpSuggest());
         ops.put("terms", new OpTerms());
+        ops.put("snippets", new OpSnippets());
     }
 
     /**

@@ -43,16 +43,18 @@ public class OpResults extends Op {
         final Query filterQuery = filterQuery(index, pars);
 
         final Writer writer = response.getWriter();
-        final String content = pars.getString(FTEXT, index.content());
-        final FlucText flucText = index.flucText(content);
+        
+        
+        final String contentFname = pars.getString(FTEXT, index.content());
+        final FlucText contentFluc = index.flucText(contentFname);
 
         // field not found
-        if (flucText == null) {
+        if (contentFluc == null) {
             response.setStatus(404);
             writer.append("<p class=\"error\">Field ");
-            Fluc ofluc = index.fluc(content);
+            Fluc ofluc = index.fluc(contentFname);
             if (ofluc == null)
-                writer.append(content + " doesn’t exist.");
+                writer.append(contentFname + " doesn’t exist.");
             else
                 writer.append(ofluc.toString());
             writer.append("\n<br>Choose among:");
@@ -69,7 +71,7 @@ public class OpResults extends Op {
         final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
         final String docline = pars.getString(DOCLINE, index.docline());
         final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
-        final int snips = pars.getInt(SNIPS, SNIPS_RANGE, SNIPS_DEFAULT, SNIPS);
+        final int snippets = pars.getInt(SNIPPETS, SNIPPETS_RANGE, SNIPPETS_DEFAULT, SNIPPETS);
         // transmit the slop parameter explicitly; cookie may not be transmitted in some contexts
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final int from = pars.getInt(FROM, 0);
@@ -83,36 +85,36 @@ public class OpResults extends Op {
         // Snippet-scoring resources, prepared once.
         // No-query branch only emits article shells: snippet scoring is disabled.
         // Query branches use BM25-weighted term scores for in-document snippet ranking.
-        final TermRail rail = flucText.termRail();
+        final TermRail rail = contentFluc.termRail();
         final double[] termWeights;
         final int snipLimit;
         if (spanQuery == null) {
             termWeights = new double[0];
             snipLimit = 0;
         } else {
-            final TermStats fieldStats = flucText.termStats();
+            final TermStats fieldStats = contentFluc.termStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
-            snipLimit = snips;
+            snipLimit = snippets;
         }
         // MAYBE, get a locale from lang param
 
         final ResultsSnippets results = new ResultsSnippets(
             writer, 
             index.reader().storedFields(), 
-            content,
-            rail,
-            termWeights,
             snipLimit,
-            null
-        ).doclineFieldName(docline)
+            index.locale()
+        ).contentField(contentFname)
+         .doclineField(docline)
          .ctx(ctx)
-         .hrefSearch("?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
+         .rail(rail)
+         .termWeights(termWeights)
+         .urlFormat("%s?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
 
         // no query, list docs
         if (spanQuery == null) {
             final int rows = pars.getInt(ROWS, ROWS_RANGE, ROWS_DEFAULT, ROWS);
-            final TermStats fieldStats = flucText.termStats();
+            final TermStats fieldStats = contentFluc.termStats();
             int docCount = 0;
             boolean more = false;
             int docId = from;

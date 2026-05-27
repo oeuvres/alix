@@ -27,7 +27,7 @@ public class HistoSnippets implements SnippetsConsumer
 	public void docSnippets(int docId, Snippets snippets) throws IOException {
         final int histoIndex = histo.index(docId, -1);
         if (histoIndex < 0) return;
-        final int snippetsCount = snippets.snips4doc();
+        final int snippetsCount = snippets.count();
         if (snippetsCount <= 0) return;
         histo.valueSnippets[histoIndex] += snippetsCount;
         histo.valueDocs[histoIndex]++;

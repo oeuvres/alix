@@ -82,7 +82,7 @@ public final class Snippets implements SpanCollector
     /** Flag informing that a document is opened to merge spans */
     private boolean docIsOpen = false;
     /** Count of snippets for current doc */
-    private int snips4doc;
+    private int count;
     /** A snippet has been opened to consume spans */
     private boolean snipIsOpen;
     /** Current snippet start position */
@@ -151,7 +151,7 @@ public final class Snippets implements SpanCollector
         if (usage == Usage.OFFSETS) {
             sortAndDeduplicateMatches();
         }
-        if (snips4doc > 0) {
+        if (count > 0) {
             docs++;
         }
         docIsOpen = false;
@@ -226,6 +226,18 @@ public final class Snippets implements SpanCollector
         snipStartPos = spanStartPos;
         snipEndPos = spanEndPos;
         snipIsOpen = true;
+    }
+
+    /**
+     * Returns the count of merged snippets in the current document.
+     *
+     * @return snippet count
+     * @throws IllegalStateException if called before {@link #closeDoc()}
+     */
+    public int count()
+    {
+        requireFinished();
+        return count;
     }
 
     /**
@@ -328,7 +340,7 @@ public final class Snippets implements SpanCollector
         this.snipStartPos = 0;
         this.snipIsOpen = false;
         this.matchCount = 0;
-        this.snips4doc = 0;
+        this.count = 0;
     }
 
     /**
@@ -351,7 +363,7 @@ public final class Snippets implements SpanCollector
     {
         requireFinished();
         requireOffsets();
-        checkIndex(snipOrd, snips4doc, "snippet");
+        checkIndex(snipOrd, count, "snippet");
         if (matchCount == 0) {
             return -1;
         }
@@ -405,22 +417,10 @@ public final class Snippets implements SpanCollector
     {
         requireFinished();
         requirePositions();
-        checkIndex(snipOrd, snips4doc, "snippet");
+        checkIndex(snipOrd, count, "snippet");
         return unpackLow(snippets[snipOrd]);
     }
 
-    /**
-     * Returns the count of merged snippets in the current document.
-     *
-     * @return snippet count
-     * @throws IllegalStateException if called before {@link #closeDoc()}
-     */
-    public int snips4doc()
-    {
-        requireFinished();
-        return snips4doc;
-    }
-    
     /**
      * TODO Javadoc
      */
@@ -428,7 +428,7 @@ public final class Snippets implements SpanCollector
     {
         requireFinished();
         requireOffsets();
-        checkIndex(snipOrd, snips4doc, "snippet");
+        checkIndex(snipOrd, count, "snippet");
         if (matchCount == 0) {
             return -1;
         }
@@ -480,7 +480,7 @@ public final class Snippets implements SpanCollector
     {
         requireFinished();
         requirePositions();
-        checkIndex(snipOrd, snips4doc, "snippet");
+        checkIndex(snipOrd, count, "snippet");
         return unpackHigh(snippets[snipOrd]);
     }
 
@@ -521,10 +521,10 @@ public final class Snippets implements SpanCollector
     private void closeSnippet()
     {
         if (usage != Usage.FREQS) {
-            ensureSnippetCapacity(snips4doc + 1);
-            snippets[snips4doc] = pack(snipStartPos, snipEndPos);
+            ensureSnippetCapacity(count + 1);
+            snippets[count] = pack(snipStartPos, snipEndPos);
         }
-        snips4doc++;
+        count++;
         snipIsOpen = false;
     }
 

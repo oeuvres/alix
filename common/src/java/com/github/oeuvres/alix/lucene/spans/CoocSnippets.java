@@ -192,7 +192,7 @@ public final class CoocSnippets implements SnippetsConsumer
         termSeen.clear();
         docContributed = false;
 
-        final int snipCount = snippets.snips4doc();
+        final int snipCount = snippets.count();
         for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
             final int snipStartPosition = snippets.snipStartPosition(snipOrd);
             final int snipEndPosition = snippets.snipEndPosition(snipOrd);
