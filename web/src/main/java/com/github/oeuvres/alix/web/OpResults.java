@@ -71,7 +71,6 @@ public class OpResults extends Op {
         final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
         final String docline = pars.getString(DOCLINE, index.docline());
         final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
-        final int snippets = pars.getInt(SNIPPETS, SNIPPETS_RANGE, SNIPPETS_DEFAULT, SNIPPETS);
         // transmit the slop parameter explicitly; cookie may not be transmitted in some contexts
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final int from = pars.getInt(FROM, 0);
@@ -95,7 +94,7 @@ public class OpResults extends Op {
             final TermStats fieldStats = contentFluc.termStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
-            snipLimit = snippets;
+            snipLimit = pars.getInt(SNIPPETS, SNIPPETS_RANGE, SNIPPETS_DEFAULT, SNIPPETS);
         }
         // MAYBE, get a locale from lang param
 
@@ -104,12 +103,12 @@ public class OpResults extends Op {
             index.reader().storedFields(), 
             snipLimit,
             index.locale()
-        ).contentField(contentFname)
-         .doclineField(docline)
+        ).fieldContent(contentFname)
+         .fieldDocline(docline)
          .ctx(ctx)
          .rail(rail)
          .termWeights(termWeights)
-         .urlFormat("%s?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
+         .urlTemplate("{docname}?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
 
         // no query, list docs
         if (spanQuery == null) {
@@ -140,10 +139,11 @@ public class OpResults extends Op {
             return;
         }
 
+        Snippets snippets = new Snippets(Snippets.Usage.OFFSETS, slop);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,
-            new Snippets(Snippets.Usage.OFFSETS, slop),
+            snippets,
             filterQuery
         );
         int nextDoc = 0;
@@ -153,8 +153,9 @@ public class OpResults extends Op {
             // linear walk in docId order
             writer.append("<p class=\"statshits\">");
             final int hitsCount = walker.hits();
-            if (docs < hitsCount)
+            if (docs < hitsCount) {
                 writer.append(String.valueOf(docs)).append("/");
+            }
             writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
             writer.flush();
             nextDoc = walker.walk(from, docs, results);
@@ -179,6 +180,8 @@ public class OpResults extends Op {
 
             for (ScoreDoc sd : hits) {
                 walker.visit(sd.doc);
+                // list all snippets in document order
+                results.docSnippets(sd.doc, snippets);
             }
         }
 

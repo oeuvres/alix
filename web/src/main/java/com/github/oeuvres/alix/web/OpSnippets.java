@@ -106,7 +106,7 @@ public class OpSnippets extends Op
         ).ctx(ctx)
         .rail(rail)
         .termWeights(termWeights)
-        .urlFormat("%s?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
+        .urlTemplate("%s?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
         Snippets snippets = new Snippets(Snippets.Usage.OFFSETS, slop);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),

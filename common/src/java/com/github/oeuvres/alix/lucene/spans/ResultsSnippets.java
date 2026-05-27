@@ -2,7 +2,6 @@ package com.github.oeuvres.alix.lucene.spans;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,9 +80,9 @@ public class ResultsSnippets implements SnippetsConsumer
     private int[] termDedup;
     private final TopArray topSnips;
     private int ctx = 10;
-    private String doclineField = "docline";
+    private String fieldDocline = "docline";
     private String contentField = "content";
-    private String urlFormat = "";
+    private String urlTemplate = "";
     // Current document cached
     private int cachedDocId = -1;
     private Document doc;
@@ -168,40 +167,6 @@ public class ResultsSnippets implements SnippetsConsumer
     }
 
     /**
-     * Returns the name of the stored field used as the document heading.
-     *
-     * @return stored-field name, or {@code null} when the heading is suppressed
-     */
-    public String doclineFieldName() {
-        return doclineField;
-    }
-
-    /**
-     * Sets the name of the stored field used as the document heading. When
-     * {@code null}, no {@code 
-     * <h2>} is emitted.
-     *
-     * @param doclineField stored-field name, or {@code null}
-     * @return this instance
-     */
-    public ResultsSnippets doclineField(
-        final String doclineField
-    ) {
-        this.doclineField = doclineField;
-        return this;
-    }
-    
-    /**
-
-     */
-    public ResultsSnippets contentField(
-        final String contentField
-    ) {
-        this.contentField = contentField;
-        return this;
-    }
-
-    /**
      * Emits the opening {@code <article>} tag and the optional {@code 
      * <h4>}
      * heading. May be called directly when reusing this renderer to produce
@@ -228,10 +193,10 @@ public class ResultsSnippets implements SnippetsConsumer
         writer.append("<article").append(" id=\"").append(docname).append("\"").append(" data-docid=\"")
                 .append(String.valueOf(docId)).append("\"").append(" class=\"result").append(css).append("\"")
                 .append(">\n");
-
-        String url = String.format(urlFormat, docname);
-        if (doclineField != null) {
-            final String docline = doc.get(doclineField);
+    
+        String url = urlTemplate.replace("{docname}", docname).replace("{docid}", ""+docId);
+        if (fieldDocline != null) {
+            final String docline = doc.get(fieldDocline);
             if (docline != null) {
                 writer
                 .append("<h4")
@@ -270,6 +235,7 @@ public class ResultsSnippets implements SnippetsConsumer
         ensureDoc(docId);
         docOpen(docId, "hassnippets");
         final int snipCount = snippets.count();
+        String url = urlTemplate.replace("{docname}", docname).replace("{docid}", ""+docId);
         if (snipCount == 0) {
         }
         else if (snipCount > snipLimit) {
@@ -280,17 +246,72 @@ public class ResultsSnippets implements SnippetsConsumer
             .append(" / ")
             .append("<a")
             .append(" class=\"snippets-more\"")
-            .append(" href=\"").append(String.format(urlFormat, docname)).append("&amp;snippets=-1")
+            .append(" href=\"").append(url).append("&amp;snippets=-1").append("\"")
             .append(">")
-            .append(numForm.format(snipLimit))
-            .append("</a> ")
+            .append(numForm.format(snipCount))
+            .append(" ")
             .append(messages.getString("results.snippets"))
-            .append("</p>");
+            .append("</a> ")
+            .append("</p>\n");
         }
         snippets(docId, snippets);
         docClose(docId);
     }
+
+    /**
     
+     */
+    public ResultsSnippets fieldContent(
+        final String fieldContent
+    ) {
+        this.contentField = fieldContent;
+        return this;
+    }
+
+    /**
+     * Returns the name of the stored field used as the document heading.
+     *
+     * @return stored-field name, or {@code null} when the heading is suppressed
+     */
+    public String fieldDocline() {
+        return fieldDocline;
+    }
+
+    /**
+     * Sets the name of the stored field used as the document heading. When
+     * {@code null}, no {@code 
+     * <h2>} is emitted.
+     *
+     * @param fieldDocline stored-field name, or {@code null}
+     * @return this instance
+     */
+    public ResultsSnippets fieldDocline(
+        final String fieldDocline
+    ) {
+        this.fieldDocline = fieldDocline;
+        return this;
+    }
+    
+    /**
+     * TODO JavaDoc
+     * @param rail
+     */
+    public ResultsSnippets rail(
+        final TermRail rail
+    ) {
+        this.rail = rail;
+        return this;
+    }
+
+    /**
+     * Returns the maximum number of snippets rendered per document.
+     *
+     * @return snippet cap; {@code 0} means no snippet lines are rendered
+     */
+    public int snipLimit() {
+        return snipLimit;
+    }
+
     /**
      * TODO Javadoc
      * @param docId
@@ -338,42 +359,6 @@ public class ResultsSnippets implements SnippetsConsumer
     }
 
     /**
-     * {@link String#format(String, Object...)} where %s is the id 
-     * of the document stored as "alix.id".
-     *
-     * @param urlFormat URL pattern used for results
-     * @return this instance
-     */
-    public ResultsSnippets urlFormat(
-        final String urlFormat
-    ) {
-        this.urlFormat = urlFormat;
-        return this;
-    }
-
-
-
-    /**
-     * Returns the maximum number of snippets rendered per document.
-     *
-     * @return snippet cap; {@code 0} means no snippet lines are rendered
-     */
-    public int snipLimit() {
-        return snipLimit;
-    }
-
-    /**
-     * TODO JavaDoc
-     * @param rail
-     */
-    public ResultsSnippets rail(
-        final TermRail rail
-    ) {
-        this.rail = rail;
-        return this;
-    }
-    
-    /**
      * TODO JavaDoc 
      * @param termWeights
      */
@@ -381,6 +366,20 @@ public class ResultsSnippets implements SnippetsConsumer
         final double[] termWeights
     ) {
         this.termWeights = Objects.requireNonNull(termWeights, "termWeights");
+        return this;
+    }
+
+    /**
+     * {@link String#format(String, Object...)} where %s is the id 
+     * of the document stored as "alix.id".
+     *
+     * @param urlTemplate URL pattern used for results
+     * @return this instance
+     */
+    public ResultsSnippets urlTemplate(
+        final String urlTemplate
+    ) {
+        this.urlTemplate = urlTemplate;
         return this;
     }
 
@@ -424,9 +423,14 @@ public class ResultsSnippets implements SnippetsConsumer
         final int rightMatchEndOffset = snippets.matchEndOffset(rightMatchOrd);
 
         final int snipAnchor = snipOrd + 1;
-        final String url = urlFormat.formatted(docname) + "#snippet-" + snipAnchor;
-        writer.append("<li").append(" class=\"snippet\"").append(" data-href=\"").append(url).append("\"").append(">")
-                .append("<p>");
+        String url = urlTemplate.replace("{docname}", docname).replace("{docid}", ""+cachedDocId);
+
+        writer
+        .append("<li")
+        .append(" class=\"snippet\"")
+        .append(" data-href=\"").append(url + "#snippet-" + snipAnchor).append("\"")
+        .append(">")
+        .append("<p>");
 
         final int leftOffset = Markup.leftBoundary(content, leftMatchStartOffset, ctx, -1);
         detagger.detag(writer, content, leftOffset, leftMatchStartOffset);
