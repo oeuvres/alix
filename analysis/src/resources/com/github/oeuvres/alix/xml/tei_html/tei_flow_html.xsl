@@ -47,7 +47,7 @@ Sections
         <xsl:value-of select="@ident"/>
         <xsl:text>&gt;</xsl:text>
       </h1>
-      <xsl:apply-templates select="*">
+      <xsl:apply-templates select="node()">
         <xsl:with-param name="from" select="$from"/>
       </xsl:apply-templates>
     </article>
@@ -57,7 +57,7 @@ Sections
     <xsl:param name="level" select="count(ancestor::tei:group)"/>
     <section>
       <xsl:call-template name="atts"/>
-      <xsl:apply-templates select="*">
+      <xsl:apply-templates select="node()">
         <xsl:with-param name="level" select="$level"/>
         <xsl:with-param name="from" select="$from"/>
       </xsl:apply-templates>
@@ -72,7 +72,7 @@ Sections
       <xsl:otherwise>
         <section>
           <xsl:call-template name="atts"/>
-          <xsl:apply-templates select="*">
+          <xsl:apply-templates select="node()">
             <xsl:with-param name="level" select="$level "/>
             <xsl:with-param name="from" select="$from"/>
           </xsl:apply-templates>
@@ -155,7 +155,7 @@ Sections
         <!-- hard page break ? -->
         <xsl:otherwise/>
       </xsl:choose>
-      <xsl:apply-templates select="*">
+      <xsl:apply-templates select="node()">
         <xsl:with-param name="level" select="$level + 1"/>
         <xsl:with-param name="from" select="$from"/>
       </xsl:apply-templates>
@@ -1164,7 +1164,15 @@ Tables
           </xsl:apply-templates>
         </span>
       </xsl:when>
-      <xsl:when test="contains($rend, 'initial') or starts-with($rend, 'over') or starts-with($rend, 'sc') or starts-with($rend, 'under')">
+      <xsl:when test="starts-with($rend, 'sc')">
+        <span>
+          <xsl:call-template name="atts"/>
+          <xsl:apply-templates>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </span>
+      </xsl:when>
+      <xsl:when test="contains($rend, 'initial') or starts-with($rend, 'over') or starts-with($rend, 'under')">
         <span>
           <xsl:call-template name="atts"/>
           <xsl:apply-templates>
