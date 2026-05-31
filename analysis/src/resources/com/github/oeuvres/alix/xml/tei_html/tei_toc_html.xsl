@@ -11,7 +11,6 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
 © 2007 Frederic.Glorieux@fictif.org
 © 2005 ajlsm.com et Cybertheses
 
-
 -->
 <xsl:transform version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns="http://www.w3.org/1999/xhtml" xmlns:tei="http://www.tei-c.org/ns/1.0"
@@ -156,12 +155,12 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     <xsl:variable name="children" select="tei:castList | tei:div | tei:titlePage"/>
     <li>
       <xsl:attribute name="class">
-        <xsl:text>toc__item </xsl:text>
+        <xsl:text>toc-item </xsl:text>
         <xsl:choose>
-          <xsl:when test="$generate-id = $localid">is-current</xsl:when>
-          <xsl:when test="ancestor::*[generate-id() = $localid]">is-descendant</xsl:when>
-          <xsl:when test="descendant::*[generate-id() = $localid]">is-ancestor</xsl:when>
-          <xsl:otherwise>is-sibling</xsl:otherwise>
+          <xsl:when test="$generate-id = $localid">current</xsl:when>
+          <xsl:when test="ancestor::*[generate-id() = $localid]">descendant</xsl:when>
+          <xsl:when test="descendant::*[generate-id() = $localid]">ancestor</xsl:when>
+          <xsl:otherwise>sibling</xsl:otherwise>
         </xsl:choose>
       </xsl:attribute>
       <xsl:choose>
@@ -354,7 +353,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
   <!-- default, stop -->
   <xsl:template match="node()" mode="li"/>
   <xsl:template match="tei:castList" mode="li">
-    <li class="toc__item">
+    <li class="toc-item">
       <xsl:call-template name="a"/>
     </li>
   </xsl:template>
@@ -369,7 +368,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       | tei:div0 | tei:div1 | tei:div2 | tei:div3 | tei:div4 | tei:div5 | tei:div6 | tei:div7 "/>
     <xsl:choose>
       <xsl:when test="count($children) = 1">
-        <li class="toc__item">
+        <li class="toc-item">
           <xsl:variable name="title">
             <xsl:call-template name="title"/>
           </xsl:variable>
@@ -395,12 +394,12 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       <xsl:when test="self::tei:body"/>
       <!-- simple content ? -->
       <xsl:when test="not(tei:castList | tei:div | tei:div1)">
-        <li class="toc__item">
+        <li class="toc-item">
           <xsl:call-template name="a"/>
         </li>
       </xsl:when>
       <xsl:when test="self::tei:front or self::tei:back">
-        <li class="toc__item has-children {local-name()}">
+        <li class="toc-item has-children {local-name()}">
           <span>
             <xsl:call-template name="title"/>
           </span>
@@ -424,7 +423,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     </xsl:choose>
   </xsl:template>
   <xsl:template match="tei:group/tei:text" mode="li">
-    <li class="toc__item has-children">
+    <li class="toc-item has-children">
       <xsl:call-template name="a"/>
       <xsl:choose>
         <!-- simple content -->
@@ -452,19 +451,18 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     <!-- Children? Should head requested for a toc ? -->
     <xsl:variable name="children" select="tei:group | tei:text | tei:div 
       | tei:div0[tei:head] | tei:div1[tei:head] | tei:div2[tei:head] | tei:div3[tei:head] | tei:div4[tei:head] | tei:div5[tei:head] | tei:div6[tei:head] | tei:div7[tei:head] "/>
-    <li class="toc__item">
-      <xsl:choose>
-        <!-- last level -->
-        <xsl:when test="count($children) &lt; 1"/>
-        <!-- let open -->
-        <xsl:when test="number($depth) &lt; 2"/>
-        <xsl:when test="number($less) &gt; 0">
-          <xsl:attribute name="class"> has-children</xsl:attribute>
-        </xsl:when>
-        <xsl:otherwise>
-          <xsl:attribute name="class"> has-children</xsl:attribute>
-        </xsl:otherwise>
-      </xsl:choose>
+    <li>
+      <xsl:attribute name="class">
+        <xsl:text>toc-item</xsl:text>
+        <xsl:choose>
+          <!-- last level -->
+          <xsl:when test="count($children) &lt; 1"/>
+          <!-- let open -->
+          <xsl:when test="number($depth) &lt; 2"/>
+          <xsl:when test="number($less) &gt; 0"> has-children</xsl:when>
+          <xsl:otherwise> has-children</xsl:otherwise>
+        </xsl:choose>
+      </xsl:attribute>
       <xsl:choose>
         <xsl:when test="count($children) &gt; 0">
           <xsl:call-template name="a"/>
