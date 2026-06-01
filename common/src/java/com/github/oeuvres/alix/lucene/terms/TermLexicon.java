@@ -10,49 +10,46 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 
-import com.github.oeuvres.alix.util.IOUtil;
 import com.github.oeuvres.alix.util.IntList;
 
-import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * Immutable lookup table for one indexed field of one frozen Lucene directory.
+ * Immutable in-memory lookup table for one indexed field of one frozen Lucene directory.
  * <p>
- * The lexicon is persisted in two files located directly in the Lucene directory:
+ * The lexicon holds two heap arrays:
  * </p>
  * <ul>
- *   <li><b>{@code <field>.terms.dat}</b> — concatenated UTF-8 bytes of all terms in {@code termId} order</li>
- *   <li><b>{@code <field>.terms.off}</b> — native-endian {@code int} offsets into {@code .dat}</li>
+ *   <li>{@code dat} — concatenated UTF-8 bytes of all terms in {@code termId} order;</li>
+ *   <li>{@code off} — {@code int} offsets into {@code dat}, length {@code vocabSize + 1}.</li>
  * </ul>
  * <p>
  * Term id 0 is reserved and represents the absence of a term (empty position). Real term ids start at 1
- * and are dense and stable for the frozen snapshot from which the lexicon was built. The id assignment
- * follows the lexicographic iteration order returned by Lucene's merged {@link TermsEnum} for the field.
- * The reserved id is stored as a zero-length phantom entry in the {@code .dat}/{@code .off} files so that
- * {@link #form(int) form(0)} returns {@code ""} and both files remain self-consistent.
+ * and are dense. They are assigned in the lexicographic iteration order of the field's merged
+ * {@link TermsEnum}; id 0 is a zero-length phantom entry ({@code off[0] == off[1] == 0}) so that
+ * {@link #form(int) form(0)} returns {@code ""}.
  * </p>
  * <p>
- * Because ids are assigned in lexicographic byte order, the {@code .dat}/{@code .off} pair is itself a
- * sorted table. The forward direction {@code term → id} is therefore an unsigned-byte binary search over
- * that table ({@link #id(BytesRef)}); no separate index (e.g. an FST) is needed. The lookup is performed
- * directly on the stored UTF-8 bytes, with no charset conversion.
+ * Because ids follow lexicographic byte order, {@code dat}/{@code off} is itself a sorted table, so the
+ * forward direction {@code term -> id} is an unsigned-byte binary search over it ({@link #id(BytesRef)}),
+ * performed directly on the stored UTF-8 with no charset conversion and no auxiliary index.
  * </p>
  * <p>
- * Both files are read fully into the Java heap on {@link #open(Path, String)} as a {@code byte[]} and an
- * {@code int[]}. At natural-language vocabulary sizes (order 10<sup>4</sup>–10<sup>5</sup> terms) this is a
- * sub-megabyte footprint. There is no native memory, no memory mapping, and no resource to release: the
- * instance is plain immutable state, safe for concurrent reads without locking, and is not
- * {@link java.io.Closeable}.
+ * The lexicon is <b>not persisted</b>. It is rebuilt from the reader each time it is constructed, in a
+ * single {@link TermsEnum} pass. The reader is used only during construction and is not retained; the
+ * resulting instance is plain immutable heap state, safe for concurrent reads without locking, and holds
+ * no native resources to release.
+ * </p>
+ * <p>
+ * The term ids produced here are meaningful only against the exact term ordering of the reader they were
+ * built from. The same property is what a {@link TermRail} encodes. Keeping lexicon and rail consistent is
+ * therefore a matter of building both against the same index, and of validating the rail against the
+ * index it belongs to — not against the lexicon. This class deliberately stores nothing that would let it
+ * be paired with the wrong index.
  * </p>
  * <p>
  * String lookup assumes that the caller provides the field's canonical indexed form. No analysis,
@@ -62,9 +59,6 @@ import java.util.Objects;
  * @see TermRail
  */
 public final class TermLexicon {
-
-    /** Lucene directory that contains both the index and the {@code <field>.terms.*} files. */
-    private final Path indexDir;
 
     /** Indexed field for which this lexicon was built. */
     private final String field;
@@ -82,87 +76,53 @@ public final class TermLexicon {
     private final int vocabSize;
 
     /**
-     * Creates an opened lexicon backed by heap arrays.
+     * Builds the lexicon for one field by reading the field's merged term dictionary in lexicographic
+     * order. The reader is consulted only here and is not retained.
      *
-     * @param indexDir Lucene directory the lexicon was opened from
-     * @param field    indexed field name
-     * @param dat      concatenated term bytes in id order
-     * @param off      offsets into {@code dat}, length {@code vocabSize + 1}
-     */
-    private TermLexicon(final Path indexDir, final String field, final byte[] dat, final int[] off) {
-        this.indexDir = indexDir;
-        this.field = field;
-        this.dat = dat;
-        this.off = off;
-        this.vocabSize = off.length - 1;
-    }
-
-    /**
-     * Builds the lexicon files for one field from an already opened snapshot reader.
-     * <p>
-     * Files are written to temporary paths first and renamed atomically on success. Stale temporary files
-     * from a previous crashed write are silently removed before writing begins. If a final target file
-     * already exists an exception is thrown — call {@link #exists(Path, String)} and delete manually if
-     * overwrite semantics are needed. On failure both temporary and any already-committed final files are
-     * removed to avoid leaving a partial file set.
-     * </p>
-     *
-     * @param reader  snapshot reader that defines the term universe and its lexicographic order
-     * @param sideDir Lucene directory that will receive the {@code <field>.terms.*} files
-     * @param field   indexed field name
-     * @throws IOException              if a final target file already exists or writing fails
+     * @param reader snapshot reader that defines the term universe and its lexicographic order
+     * @param field  indexed field name
+     * @throws IOException              if reading the term dictionary fails, or 32-bit limits are exceeded
      * @throws IllegalArgumentException if the field has no terms in the reader
-     * @throws NullPointerException     if any argument is null
+     * @throws NullPointerException     if either argument is null
      */
-    public static void build(final IndexReader reader, final Path sideDir, final String field) throws IOException {
+    public TermLexicon(final IndexReader reader, final String field) throws IOException {
         Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
-
-        final Path datFinal = datPath(sideDir, field);
-        final Path offFinal = offPath(sideDir, field);
-        IOUtil.ensureAbsent(datFinal);
-        IOUtil.ensureAbsent(offFinal);
+        this.field = field;
 
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
             throw new IllegalArgumentException("Field not found or without terms: " + field);
         }
 
-        final Path datTmp = IOUtil.tmpPath(datFinal);
-        final Path offTmp = IOUtil.tmpPath(offFinal);
-        IOUtil.deleteIfExists(datTmp);
-        IOUtil.deleteIfExists(offTmp);
+        final IntList offsets = new IntList();
+        offsets.push(0);                       // off[0]: start of phantom empty-term slot
+        offsets.push(0);                       // off[1]: end of phantom — zero length
+        final ByteArrayOutputStream datOut = new ByteArrayOutputStream(1 << 20);
 
-        try {
-            buildFiles(terms, datTmp, offTmp);
-            IOUtil.moveTemp(datTmp, datFinal);
-            IOUtil.moveTemp(offTmp, offFinal);
-        } catch (IOException | RuntimeException e) {
-            IOUtil.deleteIfExists(datTmp);
-            IOUtil.deleteIfExists(offTmp);
-            IOUtil.deleteIfExists(datFinal);
-            IOUtil.deleteIfExists(offFinal);
-            throw e;
+        int termId = 1;
+        int datPos = 0;
+        final TermsEnum te = terms.iterator();
+        BytesRef term;
+        while ((term = te.next()) != null) {
+            if (termId == Integer.MAX_VALUE) {
+                throw new IOException("Too many terms for int term ids");
+            }
+            if (datPos > Integer.MAX_VALUE - term.length) {
+                throw new IOException("Term bytes exceed 2 GiB; 32-bit offsets insufficient");
+            }
+            datOut.write(term.bytes, term.offset, term.length);
+            datPos += term.length;
+            offsets.push(datPos);
+            termId++;
         }
-    }
+        if (termId == 1) {
+            throw new IllegalArgumentException("Field has no terms: " + field);
+        }
 
-    /**
-     * Returns {@code true} if both persisted files for {@code field} exist as regular files.
-     * <p>
-     * Cheap presence test only — does not validate sizes or internal consistency.
-     * </p>
-     *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code true} if both files ({@code .dat}, {@code .off}) are present
-     * @throws NullPointerException if either argument is null
-     */
-    public static boolean exists(final Path indexDir, final String field) {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-        return Files.isRegularFile(datPath(indexDir, field))
-            && Files.isRegularFile(offPath(indexDir, field));
+        this.dat = datOut.toByteArray();
+        this.off = offsets.toArray();
+        this.vocabSize = off.length - 1;
     }
 
     /**
@@ -197,7 +157,7 @@ public final class TermLexicon {
      * Copies the raw UTF-8 bytes of one term into a caller-provided reusable buffer.
      * <p>
      * This avoids allocation when called in a loop. The bytes are copied directly from the in-heap
-     * {@code .dat} array.
+     * {@code dat} array.
      * </p>
      *
      * @param termId dense term id in {@code [0, vocabSize)}
@@ -221,8 +181,9 @@ public final class TermLexicon {
      * Looks up the dense term id for a canonical indexed term given as raw UTF-8 bytes.
      * <p>
      * Binary search over the lexicographically sorted term table, comparing {@code term} against the
-     * stored bytes with unsigned-byte semantics matching {@link BytesRef#compareTo(BytesRef)}. The reserved
-     * id 0 (empty term) is never returned for a non-empty query.
+     * stored bytes with unsigned-byte semantics matching {@link BytesRef#compareTo(BytesRef)} and the
+     * order in which ids were assigned. The reserved id 0 (empty term) is never returned for a non-empty
+     * query.
      * </p>
      *
      * @param term canonical indexed term as UTF-8 bytes
@@ -266,89 +227,6 @@ public final class TermLexicon {
     }
 
     /**
-     * Returns the Lucene directory from which this lexicon was opened.
-     *
-     * @return Lucene directory path, never null
-     */
-    public Path indexDir() {
-        return indexDir;
-    }
-
-    /**
-     * Opens the lexicon for one field from a frozen Lucene directory.
-     * <p>
-     * Both files are read fully into the heap. The returned instance holds no native resources and does
-     * not need to be closed. On open, the following consistency checks are performed:
-     * </p>
-     * <ul>
-     *   <li>Both files must exist as regular files.</li>
-     *   <li>The offsets file size must be a multiple of 4 bytes and contain at least 3 entries
-     *       (the reserved phantom slot plus at least one real term).</li>
-     *   <li>The first offset must be 0 and the last must equal the data file size.</li>
-     *   <li>Offsets must be monotonically non-decreasing.</li>
-     * </ul>
-     *
-     * @param indexDir Lucene directory that contains the index and the lexicon files
-     * @param field    indexed field name
-     * @return opened lexicon
-     * @throws IOException          if a file is missing, sizes are inconsistent, or offsets are corrupt
-     * @throws NullPointerException if either argument is null
-     */
-    public static TermLexicon open(final Path indexDir, final String field) throws IOException {
-        Objects.requireNonNull(indexDir, "indexDir");
-        Objects.requireNonNull(field, "field");
-
-        final Path datPath = datPath(indexDir, field);
-        final Path offPath = offPath(indexDir, field);
-        IOUtil.ensureRegularFile(datPath);
-        IOUtil.ensureRegularFile(offPath);
-
-        final byte[] dat = Files.readAllBytes(datPath);
-        final byte[] offBytes = Files.readAllBytes(offPath);
-
-        if ((offBytes.length & 3) != 0) {
-            throw new IOException("Invalid offsets file (size not a multiple of 4 bytes): " + offPath);
-        }
-        final int n = offBytes.length / Integer.BYTES;
-        if (n < 3) {
-            throw new IOException("Invalid offsets file (need at least 3 offsets: phantom + one real term): " + offPath);
-        }
-        final int[] off = new int[n];
-        ByteBuffer.wrap(offBytes).order(ByteOrder.nativeOrder()).asIntBuffer().get(off);
-
-        if (off[0] != 0) {
-            throw new IOException("Invalid offsets file, off[0] != 0: " + offPath);
-        }
-        if (off[n - 1] != dat.length) {
-            throw new IOException("Offsets/data mismatch for field '" + field
-                + "': last offset=" + off[n - 1] + ", data length=" + dat.length);
-        }
-        validateMonotonic(off, offPath);
-
-        return new TermLexicon(indexDir, field, dat, off);
-    }
-
-    /**
-     * Opens the lexicon, building the files first if they do not exist, using an already opened reader.
-     * <p>
-     * The reader is used only for building (ignored if files exist); it is not closed by this method.
-     * </p>
-     *
-     * @param reader  snapshot reader for building (ignored if files exist)
-     * @param sideDir Lucene directory that will receive the files
-     * @param field   indexed field name
-     * @return opened lexicon
-     * @throws IOException if building or opening fails
-     */
-    public static TermLexicon openOrBuild(final IndexReader reader, final Path sideDir, final String field)
-        throws IOException {
-        if (!exists(sideDir, field)) {
-            build(reader, sideDir, field);
-        }
-        return open(sideDir, field);
-    }
-
-    /**
      * Resolves the terms in a query to their term ids, restricted to this lexicon's field.
      * <p>
      * Terms the lexicon does not know (e.g. never indexed, or belonging to another field) are silently
@@ -387,56 +265,6 @@ public final class TermLexicon {
     }
 
     /**
-     * Writes the two persisted files from the field's merged term dictionary.
-     * <p>
-     * Iterates the {@link TermsEnum} in lexicographic order, assigning a dense id to each term starting
-     * from 1. Id 0 is reserved as an absent-term sentinel: the offset file begins with a zero-length
-     * phantom entry ({@code off[0] == off[1] == 0}) so that downstream consumers can use 0 to mean
-     * "no term at this position".
-     * </p>
-     *
-     * @param terms   merged terms for the field
-     * @param datPath target path for the concatenated term bytes
-     * @param offPath target path for the native-endian offsets
-     * @throws IOException if the field has no terms, writing fails, or 32-bit limits are exceeded
-     */
-    private static void buildFiles(final Terms terms, final Path datPath, final Path offPath) throws IOException {
-        final IntList offsets = new IntList();
-        offsets.push(0);                       // off[0]: start of phantom empty-term slot
-        offsets.push(0);                       // off[1]: end of phantom — zero length
-
-        int termId = 1;
-        int datPos = 0;
-
-        try (OutputStream datOs = new BufferedOutputStream(
-                 Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW))) {
-            final TermsEnum te = terms.iterator();
-            BytesRef term;
-            while ((term = te.next()) != null) {
-                if (termId == Integer.MAX_VALUE) {
-                    throw new IOException("Too many terms for int term ids");
-                }
-                if (datPos > Integer.MAX_VALUE - term.length) {
-                    throw new IOException("Term bytes exceed 2 GiB; 32-bit offsets insufficient");
-                }
-                datOs.write(term.bytes, term.offset, term.length);
-                datPos += term.length;
-                offsets.push(datPos);
-                termId++;
-            }
-        }
-
-        if (termId == 1) {
-            throw new IOException("Field has no terms; cannot build lexicon");
-        }
-
-        final int[] offArr = offsets.toArray();
-        final ByteBuffer bb = ByteBuffer.allocate(offArr.length * Integer.BYTES).order(ByteOrder.nativeOrder());
-        bb.asIntBuffer().put(offArr);
-        Files.write(offPath, bb.array(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-    }
-
-    /**
      * Checks that a term id falls within the valid range {@code [0, vocabSize)}.
      *
      * @param termId dense term id to validate
@@ -464,43 +292,5 @@ public final class TermLexicon {
         return Arrays.compareUnsigned(
             dat, start, end,
             term.bytes, term.offset, term.offset + term.length);
-    }
-
-    /**
-     * Returns the path of the concatenated term-bytes file for one field.
-     *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code <indexDir>/<field>.terms.dat}
-     */
-    private static Path datPath(final Path indexDir, final String field) {
-        return indexDir.resolve(field + ".terms.dat");
-    }
-
-    /**
-     * Returns the path of the offsets file for one field.
-     *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code <indexDir>/<field>.terms.off}
-     */
-    private static Path offPath(final Path indexDir, final String field) {
-        return indexDir.resolve(field + ".terms.off");
-    }
-
-    /**
-     * Verifies that the offsets are monotonically non-decreasing. The full array is scanned; at lexicon
-     * sizes this is negligible.
-     *
-     * @param off     in-heap offsets
-     * @param offPath path to the offsets file, used only in error messages
-     * @throws IOException if any pair of consecutive offsets is non-monotonic
-     */
-    private static void validateMonotonic(final int[] off, final Path offPath) throws IOException {
-        for (int i = 1; i < off.length; i++) {
-            if (off[i] < off[i - 1]) {
-                throw new IOException("Offsets decrease at index " + i + ": " + offPath);
-            }
-        }
     }
 }

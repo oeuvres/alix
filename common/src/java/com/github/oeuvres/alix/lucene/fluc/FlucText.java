@@ -226,10 +226,7 @@ public final class FlucText extends Fluc
         }
 
         try {
-            if (!TermLexicon.exists(sideDir, name())) {
-                TermLexicon.build(reader, sideDir, name());
-            }
-            termLexicon = TermLexicon.open(sideDir, name());
+            termLexicon = new TermLexicon(reader, name());
             return termLexicon;
         }
         catch (IOException e) {

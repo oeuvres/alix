@@ -222,7 +222,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
 
             // Prefix split on apostrophe. prefixLen < len is guaranteed by the
             // (aposFirst == len - 1) return above. Proper nouns (D'Alembert,
-            // L'Oréal, L'Esprit) are split here and must be re-merged by MWEFilter.
+            // L'Oréal) are split here and must be re-merged by MWEFilter.
             if (aposFirst > 0) {
                 final int prefixLen = aposFirst + 1;
                 final char[] value = PREFIX.get(buf, 0, prefixLen);
