@@ -161,73 +161,6 @@ public final class OpTerms extends Op
         }
     }
     
-    @Override
-    protected void page(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
-            throws IOException
-    {
-        final HttpPars pars = new HttpPars(request, response);
-        FlucNum years = index.flucNum(YEAR);
-        int[] period = new int[]{(int) years.min(), (int) years.max()};
-        final int start = pars.getInt(START, period, (int)years.min());
-        final int end = pars.getInt(END, period, (int)years.max());
-        String idfexp = String.format(Locale.US, "%.2f", pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP));
-        
-        
-        
-        
-        Writer writer = response.getWriter();
-        writer.write("""
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Alix, termes</title>
-            <style>
-              body {
-                font-family: system-ui, sans-serif;
-                font-weight: 100;
-              }
-            </style>
-          </head>
-          <body>
-            <form>
-                <input name="start" type="number" value="%d" id="label-start" min="%d" max="%d"/>
-                <input name="end" type="number" value="%d" id="label-start" min="%d" max="%d"/>
-                <label>Idf exponent
-                <input name="idfexp" size="4" value="%s"/>
-                </label>
-                <button type="submit">Voir</button>
-            </form>
-            <table>
-              <tr>
-        """.formatted(start, (int)years.min(), (int)years.max(), end, (int)years.min(), (int)years.max(),idfexp)
-        );
-        writer.append("      <td><b>2x2 LogLikelihood</b><br/>\n");
-        request.setAttribute(SCORER, LOG_LIKELIHOOD);
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td><b>Parts LogLikelihood</b><br/>\n");
-        request.setAttribute(SCORER, "part1");
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td><b>Parts LogLikelihoodTail</b><br/>\n");
-        request.setAttribute(SCORER, "part2");
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td><b>Parts LogLikelihoodResidual</b><br/>\n");
-        request.setAttribute(SCORER, "part3");
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("      <td><b>Parts Pearson</b><br/>\n");
-        request.setAttribute(SCORER, "part4");
-        html(index, request, response);
-        writer.append("      </td>\n");
-        writer.append("""
-              </tr>
-            </table>
-          </body>
-        </html>
-        """);
-    }
     
     @Override
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
@@ -253,7 +186,6 @@ public final class OpTerms extends Op
         else {
             writer.append(meta.toString());
         }
-
     }
 
     @Override
@@ -266,37 +198,6 @@ public final class OpTerms extends Op
         final HttpPars pars = new HttpPars(request, response);
         final OpMeta meta = new OpMeta();
         TopTerms topTerms = topTerms(index, pars, meta);
-
-        // ---- serialize ----
-        try (JsonWriter jw = jsonWriter(response)) {
-            jw.beginObject();
-
-            // meta
-            jw.name("meta");
-            jw.beginObject();
-            meta.toJson(jw, pars);
-            jw.endObject(); // meta
-
-            // data
-            if (topTerms != null) {
-                jw.name("data");
-                jw.beginArray();
-                int rank = 1;
-                for (TermEntry term : topTerms) {
-                    jw.beginObject();
-                    jw.name("rank").value(rank++);
-                    jw.name("form").value(term.form());
-                    jw.name("docs").value(term.docs());
-                    jw.name("fieldDocs").value(term.fieldDocs());
-                    jw.name("freq").value(term.freq());
-                    jw.name("fieldFreq").value(term.fieldFreq());
-                    jw.name("score").value(term.score());
-                    jw.endObject();
-                }
-                jw.endArray();
-            }
-
-            jw.endObject();
-        }
+        TermsUtil.json(response, meta, pars, topTerms);
     }
 }

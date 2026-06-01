@@ -448,6 +448,12 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     {
         return termFreq[termId];
     }
+    
+    public TopTerms termFreq(final long[] termFreq)
+    {
+        this.termFreq = termFreq;
+        return this;
+    }
 
     /**
      * Returns the current population occurrence-count vector.

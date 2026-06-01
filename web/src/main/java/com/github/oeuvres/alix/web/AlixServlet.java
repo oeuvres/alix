@@ -606,10 +606,11 @@ public class AlixServlet extends HttpServlet
     {
         ops.put("chrono", new OpChrono());
         ops.put("doc", new OpDoc());
+        ops.put("freqlist", new OpFreqlist());
         ops.put("results", new OpResults());
+        ops.put("snippets", new OpSnippets());
         ops.put("suggest", new OpSuggest());
         ops.put("terms", new OpTerms());
-        ops.put("snippets", new OpSnippets());
     }
 
     /**

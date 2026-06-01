@@ -113,39 +113,6 @@ public final class OpSuggest extends Op
             // should rank the terms
             textFluc.termSuggest().suggest(topTerms, infix, topK);
         }
-        
-        
-        
-        try (JsonWriter jw = jsonWriter(response)) {
-            jw.beginObject();
-
-            // meta
-            jw.name("meta");
-            jw.beginObject();
-            meta.toJson(jw, pars);
-            jw.endObject(); // meta
-
-            // data
-            if (topTerms != null) {
-                jw.name("data");
-                jw.beginArray();
-                int rank = 1;
-                for (TermEntry term : topTerms) {
-                    jw.beginObject();
-                    jw.name("rank").value(rank++);
-                    jw.name("form").value(term.form());
-                    jw.name("html").value(term.hilite());
-                    jw.name("docs").value(term.docs());
-                    jw.name("fieldDocs").value(term.fieldDocs());
-                    jw.name("freq").value(term.freq());
-                    jw.name("fieldFreq").value(term.fieldFreq());
-                    // score has no sense here
-                    jw.endObject();
-                }
-                jw.endArray();
-            }
-
-            jw.endObject();
-        }
+        TermsUtil.json(response, meta, pars, topTerms);
     }
 }
