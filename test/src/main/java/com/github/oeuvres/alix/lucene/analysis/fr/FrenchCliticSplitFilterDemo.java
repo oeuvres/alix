@@ -151,7 +151,7 @@ public final class FrenchCliticSplitFilterDemo {
                 TokenStream ts = tokenizer;
                 ts = new SentenceStartLowerCaseFilter(ts, lemmaLexicon);
                 ts = new FrenchCliticSplitFilter(ts);
-                ts = new LemmaFilter(ts, lemmaLexicon);
+                // ts = new LemmaFilter(ts, lemmaLexicon);
                 return new TokenStreamComponents(tokenizer, ts);
             }
         };

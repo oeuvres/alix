@@ -358,8 +358,11 @@ public class MarkupTokenizer extends Tokenizer
     
                 if (c == '&') amp = termLen;
     
-                char out = c;
-                if (out == '’') out = '\'';
+                final char out;
+                if (c == '\u2019' || c == '\u2018' || c == '\u02BC') out = '\'';
+                else if (c == '\u2010' || c == '\u2011' || c == '\u00AD') out = '-';
+                else out = c;
+
                 if (out != (char)0xAD) { // ignore soft hyphen
                     if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
                     termBuf[termLen++] = out;

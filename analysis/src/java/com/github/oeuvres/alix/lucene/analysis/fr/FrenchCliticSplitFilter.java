@@ -112,11 +112,11 @@ public class FrenchCliticSplitFilter extends TokenFilter
         // KEEP_AS_IS.add("l'un");
         // KEEP_AS_IS.add("l'une");
         // KEEP_AS_IS.add("l'autre");
-        // KEEP_AS_IS.add("n'est");
         KEEP_AS_IS.add("n'empêche");
         KEEP_AS_IS.add("n'est-ce");
         KEEP_AS_IS.add("n'importe");
         KEEP_AS_IS.add("qu'est-ce");
+        KEEP_AS_IS.add("qu'en-dira-t-on");
         KEEP_AS_IS.add("quelqu'un");
     }
 
@@ -183,8 +183,8 @@ public class FrenchCliticSplitFilter extends TokenFilter
             clearAttributes();
             queue.removeFirst(this);
         }
-        else {
-            if (!input.incrementToken()) return false;
+        else if (!input.incrementToken()) {
+            return false;
         }
 
         // do not try to split in XML tags
@@ -198,7 +198,6 @@ public class FrenchCliticSplitFilter extends TokenFilter
         }
 
         // Fast guard: absurdly hyphenated tokens are almost certainly junk.
-        // Do not attempt to split them (and do not normalize) - just emit as-is.
         if (tooManyHyphens(termAtt.buffer(), termAtt.length(), MAX_SPLITS)) {
             return true;
         }
@@ -206,101 +205,62 @@ public class FrenchCliticSplitFilter extends TokenFilter
         // Capture the token state before any in-place normalization/splitting.
         this.copyTo(original);
 
-        int splits = 0;
-        try {
-            while (true) {
-                final int len = termAtt.length();
-                if (len <= 1) return true;
+        while (true) {
+            final int len = termAtt.length();
+            if (len <= 1) return true;
 
-                final char[] buf = termAtt.buffer();
+            final char[] buf = termAtt.buffer();
 
-                final int hyphLast = lastHyphenIndexAndNormalize(buf, len);
-                final int aposFirst = firstAposIndexAndNormalize(buf, len);
+            final int hyphLast = lastHyphenIndexAndNormalize(buf, len);
+            final int aposFirst = firstAposIndexAndNormalize(buf, len);
 
-                if (aposFirst < 0 && hyphLast < 0) return true;
+            if (aposFirst < 0 && hyphLast < 0) return true;
+            if (aposFirst == len - 1) return true;             // apos is last char (maths A', D')
+            if (hyphLast == 0 || hyphLast == len - 1) return true;
 
-                // apos is last char, let it run (maths A', D', etc.)
-                if (aposFirst == len - 1) return true;
-
-                // hyphen is first or last char, let it run
-                if (hyphLast == 0 || hyphLast == len - 1) return true;
-
-                // Prefix split on apostrophe 
-                if (aposFirst > 0) {
-                    final int prefixLen = aposFirst + 1;
-                    if (prefixLen < len) {
-                        final char next = buf[prefixLen];
-                        // keep D'Alembert, L'Oréal
-                        if (!(isUpperOrTitle(next) && isUpperOrTitle(buf[0]))) {
-                            final char[] value = PREFIX.get(buf, 0, prefixLen);
-                            if (value != null) {
-                                if (++splits > MAX_SPLITS) {
-                                    rollbackToOriginal();
-                                    return true;
-                                }
-
-                                final int startOffset = offsetAtt.startOffset();
-
-                                // keep term after prefix for next call
-                                bufferLastFromCurrent(
-                                    buf,
-                                    prefixLen,
-                                    len - prefixLen,
-                                    startOffset + prefixLen,
-                                    offsetAtt.endOffset()
-                                );
-
-                                // send the prefix
-                                termAtt.copyBuffer(value, 0, value.length);
-                                offsetAtt.setOffset(startOffset, startOffset + prefixLen);
-                                return true;
-                            }
-                        }
+            // Prefix split on apostrophe. prefixLen < len is guaranteed by the
+            // (aposFirst == len - 1) return above. Proper nouns (D'Alembert,
+            // L'Oréal, L'Esprit) are split here and must be re-merged by MWEFilter.
+            if (aposFirst > 0) {
+                final int prefixLen = aposFirst + 1;
+                final char[] value = PREFIX.get(buf, 0, prefixLen);
+                if (value != null) {
+                    if (queue.size() >= MAX_SPLITS) {
+                        rollbackToOriginal();
+                        return true;
                     }
+                    final int startOffset = offsetAtt.startOffset();
+                    bufferLastFromCurrent(buf, prefixLen, len - prefixLen,
+                            startOffset + prefixLen, offsetAtt.endOffset());
+                    termAtt.copyBuffer(value, 0, value.length);
+                    offsetAtt.setOffset(startOffset, startOffset + prefixLen);
+                    return true;
                 }
+            }
 
-                // Suffix split on hyphen
-                if (hyphLast > 0) {
-                    final int suffixLen = len - hyphLast;
-
-                    if (SUFFIX.containsKey(buf, hyphLast, suffixLen)) {
-                        if (++splits > MAX_SPLITS) {
+            // Suffix split on hyphen
+            if (hyphLast > 0) {
+                final int suffixLen = len - hyphLast;
+                if (SUFFIX.containsKey(buf, hyphLast, suffixLen)) {
+                    final char[] value = SUFFIX.get(buf, hyphLast, suffixLen);
+                    if (value != null) {
+                        if (queue.size() >= MAX_SPLITS) {
                             rollbackToOriginal();
                             return true;
                         }
-
-                        final char[] value = SUFFIX.get(buf, hyphLast, suffixLen);
-                        if (value != null) {
-                            bufferFirstFromCurrent(
-                                value,
-                                0,
-                                value.length,
-                                offsetAtt.startOffset() + hyphLast,
-                                offsetAtt.endOffset()
-                            );
-                        }
-
-                        // set term without suffix, loop again (may strip multiple suffixes)
-                        offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphLast);
-                        termAtt.setLength(hyphLast);
-                        continue;
+                        bufferFirstFromCurrent(value, 0, value.length,
+                                offsetAtt.startOffset() + hyphLast, offsetAtt.endOffset());
                     }
+                    offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + hyphLast);
+                    termAtt.setLength(hyphLast);
+                    continue;
                 }
+            }
 
-                return true; // term is OK like that
-            }
-        }
-        catch (IllegalStateException e) {
-            // If queue capacity is exceeded, rollback: no split, emit the original token as-is.
-            final String msg = e.getMessage();
-            if (msg != null && msg.startsWith("TokenStateQueue is full")) {
-                rollbackToOriginal();
-                return true;
-            }
-            throw e;
+            return true; // term is OK like that
         }
     }
-
+    
     private void rollbackToOriginal() {
         if (queue != null) queue.clear();
         original.copyTo(this);
@@ -386,10 +346,6 @@ public class FrenchCliticSplitFilter extends TokenFilter
             if (c == '\'') return i;
         }
         return -1;
-    }
-
-    private static boolean isUpperOrTitle(final char c) {
-        return Character.isUpperCase(c) || Character.isTitleCase(c);
     }
 
     /**
