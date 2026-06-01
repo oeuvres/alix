@@ -56,9 +56,16 @@ import static com.github.oeuvres.alix.common.Upos.*;
  * offsets are precisely kept, so that word counting and stats are not biased by multiple
  * words on same positions.
  *
+ * <p><b>Input contract:</b> apostrophe and hyphen confusables are expected to be canonicalized
+ * upstream (e.g. by a {@code MappingCharFilter}) before this filter runs: every apostrophe is
+ * U+0027 {@code '} and every hyphen is U+002D {@code -}. This filter does no character folding;
+ * curly quotes, non-breaking hyphens, soft hyphens, etc. are treated as ordinary letters and will
+ * not trigger a split. Lexicalized entries in {@link #KEEP_AS_IS} and the {@link #PREFIX} /
+ * {@link #SUFFIX} keys must therefore also use the canonical characters.</p>
+ *
  * https://fr.wikipedia.org/wiki/Emploi_du_trait_d%27union_pour_les_pr%C3%A9fixes_en_fran%C3%A7ais
  *
- * Known side effect: qu’en-dira-t-on, donne-m’en, emmène-m’y.
+ * Known side effect: donne-m'en, emmène-m'y.
  */
 public class FrenchCliticSplitFilter extends TokenFilter
 {
@@ -81,11 +88,8 @@ public class FrenchCliticSplitFilter extends TokenFilter
     /** Ring-buffer of stored token states (lazy init). */
     private TokenStateQueue queue;
 
-    /** Snapshot of the current token before any split/normalization, used for rollback. */
+    /** Snapshot of the current token before any split, used for rollback. */
     private AttributeSource original;
-
-    /** Reusable buffer for case-insensitive keep-as-is lookups. */
-    private char[] normBuf = new char[32];
 
     /** Scratch attribute source used to build buffered tokens without mutating current token. */
     private AttributeSource scratch;
@@ -93,7 +97,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
     private OffsetAttribute scratchOffset;
     private PositionIncrementAttribute scratchPosInc;
 
-    /** Tokens that must never be split (lookup is performed case-insensitively in {@link #keepAsIs()}). */
+    /** Tokens that must never be split (case-insensitive lookup in {@link #keepAsIs()}). */
     private static final CharArraySet KEEP_AS_IS = new CharArraySet(32, true);
     static {
         // Lexicalized form: splitting "quelqu'un" into "quelque" + "un" is usually undesirable.
@@ -128,10 +132,10 @@ public class FrenchCliticSplitFilter extends TokenFilter
         PREFIX.put("d'", "de".toCharArray());
         PREFIX.put("j'", "je".toCharArray());
         PREFIX.put("jusqu'", "jusque".toCharArray());
-        PREFIX.put("l'", "l'".toCharArray()); // je l’aime: le/la ambiguous
+        PREFIX.put("l'", "l'".toCharArray()); // je l'aime: le/la ambiguous
         PREFIX.put("lorsqu'", "lorsque".toCharArray());
         PREFIX.put("m'", "me".toCharArray());
-        PREFIX.put("n'", "ne".toCharArray()); // N’y va pas.
+        PREFIX.put("n'", "ne".toCharArray()); // N'y va pas.
         PREFIX.put("puisqu'", "puisque".toCharArray());
         PREFIX.put("qu'", "que".toCharArray());
         PREFIX.put("quoiqu'", "quoique".toCharArray());
@@ -169,6 +173,9 @@ public class FrenchCliticSplitFilter extends TokenFilter
         SUFFIX.put("-y", "y".toCharArray());         // allons-y.
     }
 
+    /**
+     * @param input upstream token stream, expected to deliver canonical apostrophes/hyphens.
+     */
     public FrenchCliticSplitFilter(TokenStream input) {
         super(input);
     }
@@ -197,12 +204,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
             return true;
         }
 
-        // Fast guard: absurdly hyphenated tokens are almost certainly junk.
-        if (tooManyHyphens(termAtt.buffer(), termAtt.length(), MAX_SPLITS)) {
-            return true;
-        }
-
-        // Capture the token state before any in-place normalization/splitting.
+        // Capture the token state before any splitting.
         this.copyTo(original);
 
         while (true) {
@@ -211,8 +213,8 @@ public class FrenchCliticSplitFilter extends TokenFilter
 
             final char[] buf = termAtt.buffer();
 
-            final int hyphLast = lastHyphenIndexAndNormalize(buf, len);
-            final int aposFirst = firstAposIndexAndNormalize(buf, len);
+            final int hyphLast = lastHyphenIndex(buf, len);
+            final int aposFirst = firstAposIndex(buf, len);
 
             if (aposFirst < 0 && hyphLast < 0) return true;
             if (aposFirst == len - 1) return true;             // apos is last char (maths A', D')
@@ -260,18 +262,35 @@ public class FrenchCliticSplitFilter extends TokenFilter
             return true; // term is OK like that
         }
     }
-    
-    private void rollbackToOriginal() {
+
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
         if (queue != null) queue.clear();
-        original.copyTo(this);
     }
 
     /**
-     * Buffer a token built from the current token state (all attributes copied),
-     * then overriding term and offsets.
+     * Buffer a token at the front of the queue, built from the current token state
+     * (all attributes copied) with term and offsets overridden.
      *
-     * Important: position increment is normalized to 1 so that gaps from the original token
-     * are not duplicated on generated tokens.
+     * <p>Position increment is normalized to 1 so that gaps from the original token are not
+     * duplicated on generated tokens.</p>
+     */
+    private void bufferFirstFromCurrent(final char[] buf, final int off, final int len, final int startOffset, final int endOffset) {
+        this.copyTo(scratch);
+        scratchTerm.copyBuffer(buf, off, len);
+        scratchOffset.setOffset(startOffset, endOffset);
+        scratchPosInc.setPositionIncrement(1);
+        queue.addFirst(scratch);
+    }
+
+    /**
+     * Buffer a token at the end of the queue, built from the current token state
+     * (all attributes copied) with term and offsets overridden.
+     *
+     * <p>Position increment is normalized to 1 so that gaps from the original token are not
+     * duplicated on generated tokens.</p>
      */
     private void bufferLastFromCurrent(final char[] buf, final int off, final int len, final int startOffset, final int endOffset) {
         this.copyTo(scratch);
@@ -281,14 +300,10 @@ public class FrenchCliticSplitFilter extends TokenFilter
         queue.addLast(scratch);
     }
 
-    private void bufferFirstFromCurrent(final char[] buf, final int off, final int len, final int startOffset, final int endOffset) {
-        this.copyTo(scratch);
-        scratchTerm.copyBuffer(buf, off, len);
-        scratchOffset.setOffset(startOffset, endOffset);
-        scratchPosInc.setPositionIncrement(1);
-        queue.addFirst(scratch);
-    }
-
+    /**
+     * Lazily create the token-state queue and the scratch/rollback attribute sources.
+     * Deferred to the first {@link #incrementToken()} so all attributes are registered first.
+     */
     private void ensureQueue() {
         if (queue != null) return;
 
@@ -310,75 +325,45 @@ public class FrenchCliticSplitFilter extends TokenFilter
     }
 
     /**
-     * Case-insensitive lookup for tokens that must not be split.
-     *
-     * <p>Performs a lightweight normalization for apostrophe and hyphen variants
-     * without mutating the current token buffer.</p>
+     * @return index of the first canonical apostrophe ({@code '}) in {@code buf[0, len)},
+     *         or {@code -1} if none.
      */
-    private boolean keepAsIs() {
-        final int len = termAtt.length();
-        if (len <= 0) return false;
-        ensureNormBuf(len);
-        final char[] buf = termAtt.buffer();
+    private static int firstAposIndex(final char[] buf, final int len) {
         for (int i = 0; i < len; i++) {
-            char c = buf[i];
-            if (c == '\u2019' || c == '\u2018' || c == '\u02BC') c = '\'';
-            else if (c == '\u2010' || c == '\u2011' || c == '\u00AD') c = '-';
-            normBuf[i] = Character.toLowerCase(c);
-        }
-        return KEEP_AS_IS.contains(normBuf, 0, len);
-    }
-
-    private void ensureNormBuf(final int len) {
-        if (normBuf.length >= len) return;
-        int newLen = normBuf.length;
-        while (newLen < len) newLen <<= 1;
-        normBuf = new char[newLen];
-    }
-
-    private static int firstAposIndexAndNormalize(final char[] buf, final int len) {
-        for (int i = 0; i < len; i++) {
-            char c = buf[i];
-            if (c == '\u2019' || c == '\u2018' || c == '\u02BC') { // apostrophe variants
-                buf[i] = '\'';
-                c = '\'';
-            }
-            if (c == '\'') return i;
+            if (buf[i] == '\'') return i;
         }
         return -1;
     }
 
     /**
-     * Guard against pathological inputs (e.g., repeated "-le" suffixes).
-     * Counts ASCII hyphen and common hyphen variants without mutating the buffer.
+     * Case-insensitive lookup for tokens that must not be split. The buffer is assumed canonical
+     * (apostrophes/hyphens already folded upstream); {@link #KEEP_AS_IS} handles case on lookup.
+     *
+     * @return {@code true} if the current term is a lexicalized form to keep intact.
      */
-    private static boolean tooManyHyphens(final char[] buf, final int len, final int max) {
-        int count = 0;
-        for (int i = 0; i < len; i++) {
-            final char c = buf[i];
-            if (c == '-' || c == '\u2010' || c == '\u2011' || c == '\u00AD') {
-                if (++count > max) return true;
-            }
-        }
-        return false;
+    private boolean keepAsIs() {
+        final int len = termAtt.length();
+        return len > 0 && KEEP_AS_IS.contains(termAtt.buffer(), 0, len);
     }
 
-    private static int lastHyphenIndexAndNormalize(final char[] buf, final int len) {
+    /**
+     * @return index of the last canonical hyphen ({@code -}) in {@code buf[0, len)},
+     *         or {@code -1} if none.
+     */
+    private static int lastHyphenIndex(final char[] buf, final int len) {
         for (int i = len - 1; i >= 0; i--) {
-            char c = buf[i];
-            if (c == '\u2010' || c == '\u2011' || c == '\u00AD') { // hyphen variants
-                buf[i] = '-';
-                c = '-';
-            }
-            if (c == '-') return i;
+            if (buf[i] == '-') return i;
         }
         return -1;
     }
 
-    @Override
-    public void reset() throws IOException
-    {
-        super.reset();
+    /**
+     * Restore the token captured in {@link #original} and drop any buffered states.
+     * Used as the no-split fallback when the split budget would be exceeded.
+     */
+    private void rollbackToOriginal() {
         if (queue != null) queue.clear();
+        original.copyTo(this);
     }
+
 }
