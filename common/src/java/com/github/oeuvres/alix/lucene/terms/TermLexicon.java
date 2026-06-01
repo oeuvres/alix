@@ -5,71 +5,63 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.FSTCompiler;
-import org.apache.lucene.util.fst.PositiveIntOutputs;
-import org.apache.lucene.util.fst.Util;
 
 import com.github.oeuvres.alix.util.IOUtil;
 import com.github.oeuvres.alix.util.IntList;
 
 import java.io.BufferedOutputStream;
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.IntBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Objects;
-
-
-import static java.lang.Math.toIntExact;
 
 /**
  * Immutable lookup table for one indexed field of one frozen Lucene directory.
  * <p>
- * The lexicon is persisted in three files located directly in the Lucene directory:
+ * The lexicon is persisted in two files located directly in the Lucene directory:
  * </p>
  * <ul>
- *   <li><b>{@code <field>.terms.fst}</b> — exact lookup {@code term → termId}</li>
  *   <li><b>{@code <field>.terms.dat}</b> — concatenated UTF-8 bytes of all terms in {@code termId} order</li>
  *   <li><b>{@code <field>.terms.off}</b> — native-endian {@code int} offsets into {@code .dat}</li>
  * </ul>
  * <p>
- * Term id 0 is reserved and represents the absence of a term (empty position).
- * Real term ids start at 1 and are dense and stable for the frozen snapshot from which the
- * lexicon was built. The id assignment follows the lexicographic iteration order returned by
- * Lucene's merged {@link TermsEnum} for the field. The reserved id is stored as a zero-length
- * phantom entry in the {@code .dat}/{@code .off} files so that {@link #form(int) term(0)}
- * returns {@code ""} and all sidecar files remain self-consistent.
+ * Term id 0 is reserved and represents the absence of a term (empty position). Real term ids start at 1
+ * and are dense and stable for the frozen snapshot from which the lexicon was built. The id assignment
+ * follows the lexicographic iteration order returned by Lucene's merged {@link TermsEnum} for the field.
+ * The reserved id is stored as a zero-length phantom entry in the {@code .dat}/{@code .off} files so that
+ * {@link #form(int) form(0)} returns {@code ""} and both files remain self-consistent.
  * </p>
  * <p>
- * This class implements {@link Closeable}. Closing attempts to release the memory-mapped
- * regions immediately via {@link IOUtil#unmap(MappedByteBuffer)}.
- * If the reflective call fails (e.g. on a future JDK that
- * removes the entry point), the buffers are left for garbage collection — safe on Linux,
- * but may hold file locks on Windows until GC runs.
+ * Because ids are assigned in lexicographic byte order, the {@code .dat}/{@code .off} pair is itself a
+ * sorted table. The forward direction {@code term → id} is therefore an unsigned-byte binary search over
+ * that table ({@link #id(BytesRef)}); no separate index (e.g. an FST) is needed. The lookup is performed
+ * directly on the stored UTF-8 bytes, with no charset conversion.
  * </p>
  * <p>
- * String lookup assumes that the caller provides the field's canonical indexed form.
- * No analysis, normalization, stemming or lower-casing is applied here.
+ * Both files are read fully into the Java heap on {@link #open(Path, String)} as a {@code byte[]} and an
+ * {@code int[]}. At natural-language vocabulary sizes (order 10<sup>4</sup>–10<sup>5</sup> terms) this is a
+ * sub-megabyte footprint. There is no native memory, no memory mapping, and no resource to release: the
+ * instance is plain immutable state, safe for concurrent reads without locking, and is not
+ * {@link java.io.Closeable}.
+ * </p>
+ * <p>
+ * String lookup assumes that the caller provides the field's canonical indexed form. No analysis,
+ * normalization, stemming or lower-casing is applied here.
  * </p>
  *
  * @see TermRail
  */
-public final class TermLexicon implements Closeable {
+public final class TermLexicon {
 
     /** Lucene directory that contains both the index and the {@code <field>.terms.*} files. */
     private final Path indexDir;
@@ -77,134 +69,78 @@ public final class TermLexicon implements Closeable {
     /** Indexed field for which this lexicon was built. */
     private final String field;
 
-    /** Exact immutable mapping from UTF-8 term bytes to dense term ids in {@code [1, vocabSize)}. */
-    private final FST<Long> fst;
-
-    /** Memory-mapped concatenation of all term bytes in term-id order. */
-    private final MappedByteBuffer datBuf;
+    /** Concatenation of all term bytes in term-id order. */
+    private final byte[] dat;
 
     /**
-     * Read-only view of the memory-mapped term bytes, used for slicing in {@link #termBytes}.
+     * Offsets into {@link #dat}; length is {@code vocabSize + 1}. For a term id {@code i}, the term bytes
+     * occupy {@code dat[off[i] .. off[i + 1])}.
      */
-    private final ByteBuffer dat;
-
-    /**
-     * Memory-mapped offsets into {@link #dat}, native-endian int32s viewed as {@link IntBuffer}.
-     * <p>
-     * Capacity is {@code vocabSize + 1}. For a term id {@code i},
-     * the term bytes occupy {@code dat[off.get(i) .. off.get(i+1))}.
-     * </p>
-     */
-    private final MappedByteBuffer offBuf;
-
-    /** IntBuffer view over {@link #offBuf} for direct int access without byte arithmetic. */
-    private final IntBuffer off;
+    private final int[] off;
 
     /** Number of entries including the reserved id 0; valid ids span {@code [0, vocabSize)}. */
     private final int vocabSize;
 
-    /** Number of offsets checked at the head and tail of {@code .off} for a quick monotonicity test. */
-    private static final int MONO_CHECK = 1024;
-
-    /** Per-thread reusable scratch buffer for {@link #id(String)} to avoid allocation per call. */
-    private static final ThreadLocal<BytesRefBuilder> TL_TERM_BYTES =
-        ThreadLocal.withInitial(BytesRefBuilder::new);
-
-    /** Per-thread reusable scratch buffer for {@link #form(int)} to avoid allocation per call. */
-    private static final ThreadLocal<BytesRefBuilder> TL_TERM_STRING =
-        ThreadLocal.withInitial(BytesRefBuilder::new);
-
-    /** Capacity of the write buffer for the offset file, in number of ints (each 4 bytes). */
-    private static final int OFF_BUF_INTS = 4096;
-
     /**
-     * Creates an opened lexicon backed by memory-mapped buffers.
+     * Creates an opened lexicon backed by heap arrays.
      *
-     * @param indexDir Lucene directory containing the lexicon files
+     * @param indexDir Lucene directory the lexicon was opened from
      * @param field    indexed field name
-     * @param fst      compiled FST mapping term bytes to dense ids
-     * @param datBuf   memory-mapped term-bytes buffer (kept for unmapping)
-     * @param offBuf   memory-mapped offsets buffer (kept for unmapping)
-     * @param off      {@link IntBuffer} view over {@code offBuf}
+     * @param dat      concatenated term bytes in id order
+     * @param off      offsets into {@code dat}, length {@code vocabSize + 1}
      */
-    private TermLexicon(
-        final Path indexDir,
-        final String field,
-        final FST<Long> fst,
-        final MappedByteBuffer datBuf,
-        final MappedByteBuffer offBuf,
-        final IntBuffer off
-    ) {
+    private TermLexicon(final Path indexDir, final String field, final byte[] dat, final int[] off) {
         this.indexDir = indexDir;
         this.field = field;
-        this.fst = fst;
-        this.datBuf = datBuf;
-        this.dat = datBuf.asReadOnlyBuffer();
-        this.offBuf = offBuf;
+        this.dat = dat;
         this.off = off;
-        this.vocabSize = off.capacity() - 1;
+        this.vocabSize = off.length - 1;
     }
 
     /**
      * Builds the lexicon files for one field from an already opened snapshot reader.
      * <p>
-     * This overload is useful when the caller controls which Lucene snapshot is being read,
-     * for example via {@code DirectoryReader.open(IndexCommit)}.
-     * </p>
-     * <p>
-     * Stale temporary files from a previous crashed write are silently cleaned up before
-     * writing begins. If a final target file already exists, an exception is thrown —
-     * call {@link #exists(Path, String)} and delete manually if overwrite semantics are needed.
-     * </p>
-     * <p>
-     * On failure, both temporary and any already-committed final files are cleaned up
-     * to avoid leaving a partial file set.
+     * Files are written to temporary paths first and renamed atomically on success. Stale temporary files
+     * from a previous crashed write are silently removed before writing begins. If a final target file
+     * already exists an exception is thrown — call {@link #exists(Path, String)} and delete manually if
+     * overwrite semantics are needed. On failure both temporary and any already-committed final files are
+     * removed to avoid leaving a partial file set.
      * </p>
      *
-     * @param reader   snapshot reader that defines the term universe and its lexicographic order
+     * @param reader  snapshot reader that defines the term universe and its lexicographic order
      * @param sideDir Lucene directory that will receive the {@code <field>.terms.*} files
-     * @param field    indexed field name
-     * @throws IOException              if the field has no terms, a final target file already exists, or writing fails
-     * @throws NullPointerException     if any argument is null
+     * @param field   indexed field name
+     * @throws IOException              if a final target file already exists or writing fails
      * @throws IllegalArgumentException if the field has no terms in the reader
+     * @throws NullPointerException     if any argument is null
      */
     public static void build(final IndexReader reader, final Path sideDir, final String field) throws IOException {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
-    
-        final Path fstFinal = fstPath(sideDir, field);
+
         final Path datFinal = datPath(sideDir, field);
         final Path offFinal = offPath(sideDir, field);
-    
-        IOUtil.ensureAbsent(fstFinal);
         IOUtil.ensureAbsent(datFinal);
         IOUtil.ensureAbsent(offFinal);
-    
+
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
             throw new IllegalArgumentException("Field not found or without terms: " + field);
         }
-    
-        final Path fstTmp = IOUtil.tmpPath(fstFinal);
+
         final Path datTmp = IOUtil.tmpPath(datFinal);
         final Path offTmp = IOUtil.tmpPath(offFinal);
-    
-        // Clean up stale temps from a previous crash
-        IOUtil.deleteIfExists(fstTmp);
         IOUtil.deleteIfExists(datTmp);
         IOUtil.deleteIfExists(offTmp);
-    
+
         try {
-            buildFiles(terms, fstTmp, datTmp, offTmp);
+            buildFiles(terms, datTmp, offTmp);
             IOUtil.moveTemp(datTmp, datFinal);
             IOUtil.moveTemp(offTmp, offFinal);
-            IOUtil.moveTemp(fstTmp, fstFinal);
         } catch (IOException | RuntimeException e) {
-            IOUtil.deleteIfExists(fstTmp);
             IOUtil.deleteIfExists(datTmp);
             IOUtil.deleteIfExists(offTmp);
-            IOUtil.deleteIfExists(fstFinal);
             IOUtil.deleteIfExists(datFinal);
             IOUtil.deleteIfExists(offFinal);
             throw e;
@@ -212,39 +148,20 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Releases the memory-mapped regions.
+     * Returns {@code true} if both persisted files for {@code field} exist as regular files.
      * <p>
-     * Attempts immediate unmap via {@link IOUtil#unmap(MappedByteBuffer)}.
-     * If that reflective path is unavailable, the buffers are abandoned to garbage collection.
-     * </p>
-     * <p>
-     * After close, behaviour of read accessors is undefined (likely {@link java.lang.InternalError}
-     * on access to unmapped memory). The caller must not use the instance after closing.
-     * </p>
-     */
-    @Override
-    public void close() {
-        IOUtil.unmap(datBuf);
-        IOUtil.unmap(offBuf);
-    }
-
-    /**
-     * Returns {@code true} if the three persisted files for {@code field} exist as regular files.
-     * <p>
-     * Cheap presence test only — does not validate file sizes, modification times,
-     * or internal consistency.
+     * Cheap presence test only — does not validate sizes or internal consistency.
      * </p>
      *
      * @param indexDir Lucene directory
      * @param field    indexed field name
-     * @return {@code true} if all three files ({@code .fst}, {@code .dat}, {@code .off}) are present
+     * @return {@code true} if both files ({@code .dat}, {@code .off}) are present
      * @throws NullPointerException if either argument is null
      */
     public static boolean exists(final Path indexDir, final String field) {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(field, "field");
-        return Files.isRegularFile(fstPath(indexDir, field))
-            && Files.isRegularFile(datPath(indexDir, field))
+        return Files.isRegularFile(datPath(indexDir, field))
             && Files.isRegularFile(offPath(indexDir, field));
     }
 
@@ -260,10 +177,9 @@ public final class TermLexicon implements Closeable {
     /**
      * Returns the term string for one dense term id.
      * <p>
-     * {@code term(0)} returns the empty string (reserved absent-term slot).
-     * Uses a per-thread scratch buffer internally. Suitable for moderate use
-     * (e.g. resolving 50 term ids for display). For tight loops over the full
-     * vocabulary, prefer {@link #formBytes(int, BytesRefBuilder)} with a caller-owned buffer.
+     * {@code form(0)} returns the empty string (reserved absent-term slot). For tight loops over the full
+     * vocabulary that can avoid {@link String} allocation, prefer
+     * {@link #formBytes(int, BytesRefBuilder)} with a caller-owned buffer.
      * </p>
      *
      * @param termId dense term id in {@code [0, vocabSize)}
@@ -271,19 +187,21 @@ public final class TermLexicon implements Closeable {
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
     public String form(final int termId) {
-        return formBytes(termId, TL_TERM_STRING.get()).utf8ToString();
+        checkTermId(termId);
+        final int start = off[termId];
+        final int length = off[termId + 1] - start;
+        return new String(dat, start, length, StandardCharsets.UTF_8);
     }
 
     /**
      * Copies the raw UTF-8 bytes of one term into a caller-provided reusable buffer.
      * <p>
-     * This avoids allocation when called in a loop. The bytes are read directly
-     * from the memory-mapped {@code .dat} buffer.
+     * This avoids allocation when called in a loop. The bytes are copied directly from the in-heap
+     * {@code .dat} array.
      * </p>
      *
      * @param termId dense term id in {@code [0, vocabSize)}
-     * @param reuse  destination buffer that will receive the term bytes;
-     *               grown automatically if needed
+     * @param reuse  destination buffer that will receive the term bytes; grown automatically if needed
      * @return {@code reuse.get()} after the copy, valid until the next call on the same buffer
      * @throws IllegalArgumentException if {@code termId} is out of range
      * @throws NullPointerException     if {@code reuse} is null
@@ -291,70 +209,62 @@ public final class TermLexicon implements Closeable {
     public BytesRef formBytes(final int termId, final BytesRefBuilder reuse) {
         checkTermId(termId);
         Objects.requireNonNull(reuse, "reuse");
-    
-        final int start = off.get(termId);
-        final int end = off.get(termId + 1);
-        final int length = end - start;
-    
+        final int start = off[termId];
+        final int length = off[termId + 1] - start;
         reuse.grow(length);
-        final ByteBuffer dup = dat.duplicate();
-        dup.position(start);
-        dup.limit(end);
-        dup.get(reuse.bytes(), 0, length);
+        System.arraycopy(dat, start, reuse.bytes(), 0, length);
         reuse.setLength(length);
         return reuse.get();
     }
 
     /**
-     * Returns the in-memory heap usage of the loaded FST, in bytes.
+     * Looks up the dense term id for a canonical indexed term given as raw UTF-8 bytes.
      * <p>
-     * This does not include the memory-mapped {@code .dat} and {@code .off} buffers,
-     * which live outside the Java heap in OS-managed page cache.
+     * Binary search over the lexicographically sorted term table, comparing {@code term} against the
+     * stored bytes with unsigned-byte semantics matching {@link BytesRef#compareTo(BytesRef)}. The reserved
+     * id 0 (empty term) is never returned for a non-empty query.
      * </p>
      *
-     * @return FST heap footprint in bytes
+     * @param term canonical indexed term as UTF-8 bytes
+     * @return dense term id in {@code [1, vocabSize)}, or {@code -1} if the term is absent
+     * @throws NullPointerException if {@code term} is null
      */
-    public long fstRamBytesUsed() {
-        return fst.ramBytesUsed();
+    public int id(final BytesRef term) {
+        Objects.requireNonNull(term, "term");
+        int lo = 1;
+        int hi = vocabSize - 1;
+        while (lo <= hi) {
+            final int mid = (lo + hi) >>> 1;
+            final int c = compareToTerm(mid, term);
+            if (c < 0) {
+                lo = mid + 1;
+            } else if (c > 0) {
+                hi = mid - 1;
+            } else {
+                return mid;
+            }
+        }
+        return -1;
     }
 
     /**
      * Looks up the dense term id for a canonical indexed term given as a Java string.
      * <p>
-     * The string is encoded to UTF-8 using a per-thread scratch buffer,
-     * then looked up in the FST. No analysis or normalization is applied.
+     * The string is encoded to UTF-8 and delegated to {@link #id(BytesRef)}. No analysis or normalization
+     * is applied.
      * </p>
      *
      * @param term canonical indexed term form, must match the analyzer output exactly
      * @return dense term id in {@code [1, vocabSize)}, or {@code -1} if the term is absent
-     * @throws IOException          if the FST read fails
      * @throws NullPointerException if {@code term} is null
      */
-    public int id(final String term) throws IOException {
+    public int id(final String term) {
         Objects.requireNonNull(term, "term");
-        final BytesRefBuilder bytes = TL_TERM_BYTES.get();
+        final BytesRefBuilder bytes = new BytesRefBuilder();
         bytes.copyChars(term);
         return id(bytes.get());
     }
 
-    /**
-     * Looks up the dense term id for a canonical indexed term given as raw UTF-8 bytes.
-     * <p>
-     * This is the lower-level entry point; prefer {@link #id(String)} unless you already
-     * hold a {@link BytesRef} from Lucene internals.
-     * </p>
-     *
-     * @param term canonical indexed term as UTF-8 bytes
-     * @return dense term id in {@code [1, vocabSize)}, or {@code -1} if the term is absent
-     * @throws IOException          if the FST read fails
-     * @throws NullPointerException if {@code term} is null
-     */
-    public int id(final BytesRef term) throws IOException {
-        Objects.requireNonNull(term, "term");
-        final Long value = Util.get(fst, term);
-        return (value == null) ? -1 : toIntExact(value);
-    }
-    
     /**
      * Returns the Lucene directory from which this lexicon was opened.
      *
@@ -364,100 +274,74 @@ public final class TermLexicon implements Closeable {
         return indexDir;
     }
 
-    
     /**
      * Opens the lexicon for one field from a frozen Lucene directory.
      * <p>
-     * The returned instance holds memory-mapped file handles and <b>should</b> be closed
-     * when no longer needed, typically via try-with-resources. Closing releases the mapped
-     * memory immediately on JDKs that support it; otherwise GC reclaims it.
-     * </p>
-     * <p>
-     * On open, the following consistency checks are performed:
+     * Both files are read fully into the heap. The returned instance holds no native resources and does
+     * not need to be closed. On open, the following consistency checks are performed:
      * </p>
      * <ul>
-     *   <li>All three files must exist as regular files.</li>
-     *   <li>File modification times must be within {@value #MTIME_TOLERANCE_MS} ms of each other.</li>
+     *   <li>Both files must exist as regular files.</li>
      *   <li>The offsets file size must be a multiple of 4 bytes and contain at least 3 entries
      *       (the reserved phantom slot plus at least one real term).</li>
      *   <li>The first offset must be 0 and the last must equal the data file size.</li>
-     *   <li>A bounded monotonicity check is run on the first and last {@value #MONO_CHECK} offsets.</li>
+     *   <li>Offsets must be monotonically non-decreasing.</li>
      * </ul>
      *
      * @param indexDir Lucene directory that contains the index and the lexicon files
      * @param field    indexed field name
-     * @return opened lexicon; caller should close when done
-     * @throws IOException          if a file is missing, sizes are inconsistent, mtimes diverge,
-     *                              offsets are corrupt, or the FST cannot be loaded
+     * @return opened lexicon
+     * @throws IOException          if a file is missing, sizes are inconsistent, or offsets are corrupt
      * @throws NullPointerException if either argument is null
      */
     public static TermLexicon open(final Path indexDir, final String field) throws IOException {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(field, "field");
-    
-        final Path fstPath = fstPath(indexDir, field);
+
         final Path datPath = datPath(indexDir, field);
         final Path offPath = offPath(indexDir, field);
-    
-        IOUtil.ensureRegularFile(fstPath);
         IOUtil.ensureRegularFile(datPath);
         IOUtil.ensureRegularFile(offPath);
-        // do not check mtime, will not work if index is copied in server
-        // IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, fstPath, datPath, offPath);
-    
-        final MappedByteBuffer datBuf = IOUtil.mapReadOnly(datPath);
-        final MappedByteBuffer offByteBuf = IOUtil.mapReadOnly(offPath);
-        offByteBuf.order(ByteOrder.nativeOrder());
-    
-        try {
-            if ((offByteBuf.remaining() & 3) != 0) {
-                throw new IOException("Invalid offsets file (size not a multiple of 4 bytes): " + offPath);
-            }
-            final IntBuffer off = offByteBuf.asIntBuffer();
-            if (off.capacity() < 3) {
-                throw new IOException("Invalid offsets file (need at least 3 offsets: phantom + one real term): " + offPath);
-            }
-    
-            final int first = off.get(0);
-            final int last = off.get(off.capacity() - 1);
-            if (first != 0) {
-                throw new IOException("Invalid offsets file, off[0] != 0: " + offPath);
-            }
-            if (last != datBuf.capacity()) {
-                throw new IOException("Offsets/data mismatch for field '" + field
-                    + "': last offset=" + last + ", data length=" + datBuf.capacity());
-            }
-            monotonicityCheck(off, offPath);
-    
-            final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-            final FST<Long> fst = FST.read(fstPath, outputs);
-    
-            return new TermLexicon(indexDir, field, fst, datBuf, offByteBuf, off);
-    
-        } catch (IOException | RuntimeException e) {
-            IOUtil.unmap(datBuf);
-            IOUtil.unmap(offByteBuf);
-            throw e;
+
+        final byte[] dat = Files.readAllBytes(datPath);
+        final byte[] offBytes = Files.readAllBytes(offPath);
+
+        if ((offBytes.length & 3) != 0) {
+            throw new IOException("Invalid offsets file (size not a multiple of 4 bytes): " + offPath);
         }
+        final int n = offBytes.length / Integer.BYTES;
+        if (n < 3) {
+            throw new IOException("Invalid offsets file (need at least 3 offsets: phantom + one real term): " + offPath);
+        }
+        final int[] off = new int[n];
+        ByteBuffer.wrap(offBytes).order(ByteOrder.nativeOrder()).asIntBuffer().get(off);
+
+        if (off[0] != 0) {
+            throw new IOException("Invalid offsets file, off[0] != 0: " + offPath);
+        }
+        if (off[n - 1] != dat.length) {
+            throw new IOException("Offsets/data mismatch for field '" + field
+                + "': last offset=" + off[n - 1] + ", data length=" + dat.length);
+        }
+        validateMonotonic(off, offPath);
+
+        return new TermLexicon(indexDir, field, dat, off);
     }
-    
 
     /**
-     * Opens the lexicon, building the sidecar files first if they do not exist,
-     * using an already opened reader.
+     * Opens the lexicon, building the files first if they do not exist, using an already opened reader.
      * <p>
-     * The reader is used only for building; it is not closed by this method.
+     * The reader is used only for building (ignored if files exist); it is not closed by this method.
      * </p>
      *
-     * @param reader   snapshot reader for building (ignored if files exist)
-     * @param sideDir Lucene directory that will receive the sidecar files
-     * @param field    indexed field name
-     * @return opened lexicon; caller should close when done
+     * @param reader  snapshot reader for building (ignored if files exist)
+     * @param sideDir Lucene directory that will receive the files
+     * @param field   indexed field name
+     * @return opened lexicon
      * @throws IOException if building or opening fails
      */
     public static TermLexicon openOrBuild(final IndexReader reader, final Path sideDir, final String field)
-        throws IOException
-    {
+        throws IOException {
         if (!exists(sideDir, field)) {
             build(reader, sideDir, field);
         }
@@ -465,29 +349,24 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Resolves the terms in a Query to their termIds in the given lexicon, restricted to a
-     * single field. Terms that the lexicon does not know (e.g. because they were never indexed)
-     * are silently dropped.
+     * Resolves the terms in a query to their term ids, restricted to this lexicon's field.
+     * <p>
+     * Terms the lexicon does not know (e.g. never indexed, or belonging to another field) are silently
+     * dropped. The query must already be rewritten via {@code IndexSearcher.rewrite(Query)}.
+     * </p>
      *
-     * @param query   A {@link Query} already rewrittent with {@link IndexSearcher#rewrite(Query)}
-     * @param field   the field whose terms to keep; foreign-field terms are ignored
-     * @return distinct termIds, sorted
+     * @param query a rewritten {@link Query}
+     * @return distinct term ids in query-visit order; unknown terms omitted
      */
-    public int[] termIds(final Query query)
-    {
+    public int[] termIds(final Query query) {
         final IntList ids = new IntList();
-        query.visit(new QueryVisitor()
-        {
+        query.visit(new QueryVisitor() {
             @Override
-            public void consumeTerms(final Query q, final Term... ts)
-            {
+            public void consumeTerms(final Query q, final Term... ts) {
                 for (final Term t : ts) {
-                    // if (!field.equals(t.field())) continue; // user should know
-                    try {
-                        final int id = id(t.bytes());
-                        if (id >= 0) ids.push(id);
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
+                    final int termId = id(t.bytes());
+                    if (termId >= 0) {
+                        ids.push(termId);
                     }
                 }
             }
@@ -498,8 +377,7 @@ public final class TermLexicon implements Closeable {
     /**
      * Returns the number of entries in the lexicon, including the reserved id 0.
      * <p>
-     * Real terms occupy ids {@code [1, vocabSize)}. The count of real terms
-     * is therefore {@code vocabSize() - 1}.
+     * Real terms occupy ids {@code [1, vocabSize)}; the count of real terms is {@code vocabSize() - 1}.
      * </p>
      *
      * @return vocabulary size (always &gt; 1 for a valid lexicon)
@@ -509,45 +387,29 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Builds the three persisted files from the field's merged term dictionary.
+     * Writes the two persisted files from the field's merged term dictionary.
      * <p>
-     * Iterates the {@link TermsEnum} in lexicographic order, assigning a dense id
-     * to each term starting from 1. Id 0 is reserved as an absent-term sentinel:
-     * the offset file begins with a zero-length phantom entry ({@code off[0] == off[1] == 0})
-     * so that downstream consumers can use 0 to mean "no term at this position".
-     * The FST stores canonical term ids directly — no post-lookup adjustment is needed.
+     * Iterates the {@link TermsEnum} in lexicographic order, assigning a dense id to each term starting
+     * from 1. Id 0 is reserved as an absent-term sentinel: the offset file begins with a zero-length
+     * phantom entry ({@code off[0] == off[1] == 0}) so that downstream consumers can use 0 to mean
+     * "no term at this position".
      * </p>
      *
      * @param terms   merged terms for the field
-     * @param fstPath target path for the compiled FST
      * @param datPath target path for the concatenated term bytes
      * @param offPath target path for the native-endian offsets
-     * @throws IOException if writing or FST compilation fails, or if limits are exceeded
+     * @throws IOException if the field has no terms, writing fails, or 32-bit limits are exceeded
      */
-    private static void buildFiles(
-        final Terms terms,
-        final Path fstPath,
-        final Path datPath,
-        final Path offPath
-    ) throws IOException {
-        final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-        final FSTCompiler<Long> compiler =
-            new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs).build();
-        final IntsRefBuilder ints = new IntsRefBuilder();
-    
+    private static void buildFiles(final Terms terms, final Path datPath, final Path offPath) throws IOException {
+        final IntList offsets = new IntList();
+        offsets.push(0);                       // off[0]: start of phantom empty-term slot
+        offsets.push(0);                       // off[1]: end of phantom — zero length
+
         int termId = 1;
         int datPos = 0;
-    
-        final ByteBuffer offBuf = ByteBuffer.allocate(OFF_BUF_INTS * 4).order(ByteOrder.nativeOrder());
-    
-        try (OutputStream datOs = new BufferedOutputStream(
-                 Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW));
-             FileChannel offCh = FileChannel.open(offPath,
-                 StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-    
-            offBuf.putInt(0);              // off[0]: start of phantom empty-term slot
-            offBuf.putInt(0);              // off[1]: end   of phantom — zero length
 
+        try (OutputStream datOs = new BufferedOutputStream(
+                 Files.newOutputStream(datPath, StandardOpenOption.CREATE_NEW))) {
             final TermsEnum te = terms.iterator();
             BytesRef term;
             while ((term = te.next()) != null) {
@@ -557,33 +419,21 @@ public final class TermLexicon implements Closeable {
                 if (datPos > Integer.MAX_VALUE - term.length) {
                     throw new IOException("Term bytes exceed 2 GiB; 32-bit offsets insufficient");
                 }
-    
-                compiler.add(Util.toIntsRef(term, ints), (long) termId);
-    
                 datOs.write(term.bytes, term.offset, term.length);
                 datPos += term.length;
-    
-                if (!offBuf.hasRemaining()) {
-                    offBuf.flip();
-                    offCh.write(offBuf);
-                    offBuf.clear();
-                }
-                offBuf.putInt(datPos);
+                offsets.push(datPos);
                 termId++;
             }
-    
-            if (offBuf.position() > 0) {
-                offBuf.flip();
-                offCh.write(offBuf);
-            }
         }
-    
-        final FST.FSTMetadata<Long> metadata = compiler.compile();
-        if (metadata == null) {
+
+        if (termId == 1) {
             throw new IOException("Field has no terms; cannot build lexicon");
         }
-        final FST<Long> fst = FST.fromFSTReader(metadata, compiler.getFSTReader());
-        fst.save(fstPath);
+
+        final int[] offArr = offsets.toArray();
+        final ByteBuffer bb = ByteBuffer.allocate(offArr.length * Integer.BYTES).order(ByteOrder.nativeOrder());
+        bb.asIntBuffer().put(offArr);
+        Files.write(offPath, bb.array(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
     }
 
     /**
@@ -600,6 +450,23 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
+     * Compares the stored term at {@code termId} against {@code term} with unsigned-byte lexicographic
+     * order, matching {@link BytesRef#compareTo(BytesRef)} and the order in which ids were assigned.
+     *
+     * @param termId stored term id to compare
+     * @param term   query term as UTF-8 bytes
+     * @return negative, zero, or positive if the stored term is respectively less than, equal to, or
+     *         greater than {@code term}
+     */
+    private int compareToTerm(final int termId, final BytesRef term) {
+        final int start = off[termId];
+        final int end = off[termId + 1];
+        return Arrays.compareUnsigned(
+            dat, start, end,
+            term.bytes, term.offset, term.offset + term.length);
+    }
+
+    /**
      * Returns the path of the concatenated term-bytes file for one field.
      *
      * @param indexDir Lucene directory
@@ -611,53 +478,6 @@ public final class TermLexicon implements Closeable {
     }
 
     /**
-     * Returns the path of the FST file for one field.
-     *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code <indexDir>/<field>.terms.fst}
-     */
-    private static Path fstPath(final Path indexDir, final String field) {
-        return indexDir.resolve(field + ".terms.fst");
-    }
-
-    /**
-     * Performs a bounded monotonicity check on the offsets buffer.
-     * <p>
-     * Only the first and last {@value #MONO_CHECK} entries are tested.
-     * This is intentionally not a full scan — it is a cheap startup guard
-     * against obvious corruption (truncated writes, mixed file versions).
-     * </p>
-     *
-     * @param off     int view of the offsets buffer
-     * @param offPath path to the offsets file, used only in error messages
-     * @throws IOException if any checked pair of consecutive offsets is non-monotonic
-     */
-    private static void monotonicityCheck(final IntBuffer off, final Path offPath) throws IOException {
-        final int n = off.capacity();
-        final int head = Math.min(MONO_CHECK, n);
-        final int tailStart = Math.max(0, n - MONO_CHECK);
-
-        int prev = off.get(0);
-        for (int i = 1; i < head; i++) {
-            final int cur = off.get(i);
-            if (cur < prev) {
-                throw new IOException("Offsets decrease at head index " + i + ": " + offPath);
-            }
-            prev = cur;
-        }
-
-        prev = off.get(tailStart);
-        for (int i = tailStart + 1; i < n; i++) {
-            final int cur = off.get(i);
-            if (cur < prev) {
-                throw new IOException("Offsets decrease at tail index " + i + ": " + offPath);
-            }
-            prev = cur;
-        }
-    }
-
-    /**
      * Returns the path of the offsets file for one field.
      *
      * @param indexDir Lucene directory
@@ -666,5 +486,21 @@ public final class TermLexicon implements Closeable {
      */
     private static Path offPath(final Path indexDir, final String field) {
         return indexDir.resolve(field + ".terms.off");
+    }
+
+    /**
+     * Verifies that the offsets are monotonically non-decreasing. The full array is scanned; at lexicon
+     * sizes this is negligible.
+     *
+     * @param off     in-heap offsets
+     * @param offPath path to the offsets file, used only in error messages
+     * @throws IOException if any pair of consecutive offsets is non-monotonic
+     */
+    private static void validateMonotonic(final int[] off, final Path offPath) throws IOException {
+        for (int i = 1; i < off.length; i++) {
+            if (off[i] < off[i - 1]) {
+                throw new IOException("Offsets decrease at index " + i + ": " + offPath);
+            }
+        }
     }
 }
