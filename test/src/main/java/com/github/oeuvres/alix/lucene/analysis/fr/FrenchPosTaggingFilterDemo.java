@@ -69,7 +69,9 @@ public final class FrenchPosTaggingFilterDemo {
 
     private static final String FIELD = "f";
 
-    private static Analyzer buildAnalyzer(final POSModel model) {
+    private static Analyzer buildAnalyzer(final POSModel model) throws IOException {
+        return new FrenchAnalyzer();
+        /*
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
@@ -85,6 +87,7 @@ public final class FrenchPosTaggingFilterDemo {
                 return new TokenStreamComponents(tokenizer, stream);
             }
         };
+        */
     }
 
 
@@ -101,7 +104,7 @@ public final class FrenchPosTaggingFilterDemo {
     static final List<AnalysisDemoHelper.Case> CASES = List.of(
         new AnalysisDemoHelper.Case(
             "Clitique",
-            "Le sujet, tout d’abord, peut le classer de plusieurs manières :",
+            "La vie est dure",
             null
         ),
 

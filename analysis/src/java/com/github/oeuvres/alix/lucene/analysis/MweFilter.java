@@ -96,6 +96,7 @@ public final class MweFilter extends TokenFilter
     public MweFilter(final TokenStream input, final MweLexicon lexicon)
     {
         super(input);
+        lexicon.freeze(); // pack IntAutomaton
         this.lexicon   = lexicon;
         final int cap  = lexicon.maxLen() + 1;
         this.queue     = new TokenStateQueue(cap, this);

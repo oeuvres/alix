@@ -44,45 +44,74 @@ import java.util.List;
  * Compact automaton over token-id sequences (int[]) for multi-word expression matching.
  *
  * <p>Lifecycle mirrors {@link CharsDic}: the object is created mutable, populated
- * incrementally via {@link #add(int[], int)}, then frozen once via {@link #freeze(boolean)}.
- * Runtime methods ({@link #step}, {@link #accept}, {@link #maxLen}) require the frozen state;
- * {@link #add} requires the mutable state.</p>
+ * incrementally via {@link #add(int[], int, int)}, then frozen once via {@link #freeze(boolean)}.
+ * Runtime methods ({@link #step}, {@link #accept}, {@link #maxLen}, {@link #root}) require the
+ * frozen state; {@link #add} requires the mutable state. The boundary is enforced by checking
+ * whether the trie has been released.</p>
  *
  * <p>Accepting states may still have outgoing arcs (maximal munch: LEAF and BRANCH+LEAF).</p>
+ *
+ * <p><b>Thread-safety.</b> Building (constructor through {@link #freeze}) is not thread-safe and
+ * must be confined to one thread. After freeze the object is logically immutable and safe for
+ * concurrent readers, but the packed arrays are not {@code final}; concurrent readers therefore
+ * require a happens-before edge to the writer (safe publication, e.g. the {@code freeze}-ing
+ * thread storing this instance through a {@code volatile} field, a lock, or a concurrent
+ * collection) before calling any runtime method.</p>
  */
 public final class IntAutomaton
 {
-    // ---- Mutable trie state (null after freeze) ------------------------------
-
+    /**
+     * Mutable trie root. Non-null during the build phase, set to {@code null} by
+     * {@link #freeze(boolean)} to release the node graph for GC. Its nullity is the single
+     * source of truth for the frozen/not-frozen distinction (see {@link #checkFrozen}).
+     */
     private Node trieRoot;
-    private int  buildMaxLen;
 
-    // ---- Frozen packed state (null before freeze) ----------------------------
+    /**
+     * Longest pattern length, in tokens, observed by {@link #add}. Written during the build
+     * phase and read by {@link #maxLen()} after freeze; it is a primitive and so survives the
+     * release of {@link #trieRoot}.
+     */
+    private int maxPatternLen;
 
-    /** Packed state -> outgoing arc range: arcs for state s are label/target[offset[s]..offset[s]+count[s]). */
+    /**
+     * CSR row index: the arcs of state {@code s} occupy {@code [offset[s], offset[s + 1])} in
+     * {@link #label} and {@link #target}. Length is {@code nStates + 1}, with
+     * {@code offset[nStates]} holding the total arc count as the trailing sentinel.
+     * {@code null} before freeze.
+     */
     private int[] offset;
-    private int[] count;
 
-    /** Packed arcs, sorted by label within each state's range. */
+    /** Arc labels (token ids), sorted ascending within each state's CSR range. {@code null} before freeze. */
     private int[] label;
+
+    /** Arc targets (destination state ids), index-parallel to {@link #label}. {@code null} before freeze. */
     private int[] target;
 
-    /** Accept id per state, or -1 for non-accepting. */
-    private int[] accept;
-
-    /** Maximum pattern length seen at build time. */
-    private int maxLen;
-
-    // ---- Constructor ---------------------------------------------------------
+    /** Accept/output id per state, or -1 for a non-accepting state. {@code null} before freeze. */
+    private int[] acceptId;
 
     /** Constructs an empty, mutable automaton ready for {@link #add} calls. */
     public IntAutomaton()
     {
-        trieRoot     = new Node();
-        buildMaxLen  = 0;
+        trieRoot      = new Node();
+        maxPatternLen = 0;
     }
 
-    // ---- Mutable API ---------------------------------------------------------
+    /**
+     * Returns the accept id for {@code state}, or -1 if the state is non-accepting.
+     * For {@link MweLexicon}, the accept id is the {@link CharsDic} ordinal of the canonical form.
+     *
+     * @param state state id, typically the result of a {@link #step} chain
+     * @return accept/output id, or -1
+     * @throws IllegalStateException if the automaton is not frozen
+     */
+    public int accept(final int state)
+    {
+        checkFrozen();
+        if (state < 0) return -1;
+        return acceptId[state];
+    }
 
     /**
      * Adds a pattern (token-id sequence) with its accept/output id.
@@ -102,7 +131,7 @@ public final class IntAutomaton
         for (int i = 0; i < len; i++) n = n.getOrAdd(tokenIds[i]);
         n.acceptId = outputId;
 
-        if (len > buildMaxLen) buildMaxLen = len;
+        if (len > maxPatternLen) maxPatternLen = len;
     }
 
     /**
@@ -116,13 +145,28 @@ public final class IntAutomaton
     {
         if (trieRoot == null) return; // already frozen
         final Node canonRoot = minimize ? minimizeToDAFSA(trieRoot) : prepareTrie(trieRoot);
-        pack(canonRoot, buildMaxLen);
+        pack(canonRoot);
         trieRoot = null; // release trie nodes for GC
     }
 
-    // ---- Runtime API ---------------------------------------------------------
+    /**
+     * Upper bound on pattern length in tokens; use to size the filter's lookahead deque.
+     *
+     * @return the longest pattern length passed to {@link #add}
+     * @throws IllegalStateException if the automaton is not frozen
+     */
+    public int maxLen()
+    {
+        checkFrozen();
+        return maxPatternLen;
+    }
 
-    /** Root state; pass as the initial state to the first {@link #step} call. */
+    /**
+     * Root state; pass as the initial state to the first {@link #step} call.
+     *
+     * @return the root state id (always 0)
+     * @throws IllegalStateException if the automaton is not frozen
+     */
     public int root()
     {
         checkFrozen();
@@ -135,14 +179,15 @@ public final class IntAutomaton
      * @param state   current state
      * @param tokenId arc label (token id from {@link CharsDic})
      * @return next state, or -1 if no transition exists
+     * @throws IllegalStateException if the automaton is not frozen
      */
     public int step(final int state, final int tokenId)
     {
         checkFrozen();
         if (state < 0) return -1;
-        final int n = count[state];
-        if (n == 0) return -1;
         final int base = offset[state];
+        final int n    = offset[state + 1] - base;
+        if (n == 0) return -1;
 
         if (n <= 8) {
             for (int i = 0; i < n; i++) {
@@ -163,25 +208,11 @@ public final class IntAutomaton
     }
 
     /**
-     * Returns the accept id for {@code state}, or -1 if non-accepting.
-     * For {@link MweLexicon}, the accept id is the {@link CharsDic} ordinal of the canonical form.
+     * Mutable trie node. During the build phase a node owns a small growable arc list
+     * ({@link #labels}/{@link #targets}); during preparation the arcs are sorted and, for
+     * minimization, a structural {@link #hash} and {@link #equals} are computed over the
+     * already-canonical children.
      */
-    public int accept(final int state)
-    {
-        checkFrozen();
-        if (state < 0) return -1;
-        return accept[state];
-    }
-
-    /** Upper bound on pattern length in tokens; use to size the filter's lookahead deque. */
-    public int maxLen()
-    {
-        checkFrozen();
-        return maxLen;
-    }
-
-    // ---- Private: trie node --------------------------------------------------
-
     private static final class Node
     {
         int    acceptId = -1;
@@ -190,6 +221,13 @@ public final class IntAutomaton
         int    deg      = 0;
         int    hash     = 0;
 
+        /**
+         * Returns the child reached by {@code lab}, creating it if absent. Arc storage grows
+         * geometrically. Linear scan is intentional: node degree is small for MWE tries.
+         *
+         * @param lab arc label (token id)
+         * @return the existing or newly created child node
+         */
         Node getOrAdd(final int lab)
         {
             for (int i = 0; i < deg; i++) {
@@ -206,11 +244,17 @@ public final class IntAutomaton
             return n;
         }
 
+        /** Sorts the arc arrays in place by ascending label, so that {@link #step}'s binary search is valid. */
         void sortArcsByLabel()
         {
             quicksort(labels, targets, 0, deg - 1);
         }
 
+        /**
+         * Computes the structural hash from this node's accept id, arc labels, and the hashes of
+         * its children. Children must already be hashed (post-order) and canonical (pointer
+         * identity) for the hash to be stable under {@link #minimizeToDAFSA}.
+         */
         void freezeAndHash()
         {
             int h = 1_000_003 ^ acceptId;
@@ -223,6 +267,11 @@ public final class IntAutomaton
 
         @Override public int hashCode() { return hash; }
 
+        /**
+         * Structural equality used only by the minimization register. Children are compared by
+         * pointer identity because, in post-order, they have already been replaced by their
+         * canonical representatives.
+         */
         @Override
         public boolean equals(final Object o)
         {
@@ -237,17 +286,31 @@ public final class IntAutomaton
         }
     }
 
-    // ---- Private: trie preparation and minimization -------------------------
-
+    /**
+     * Prepares a trie for packing without minimization: sorts each node's arcs by label.
+     * No hashing is performed, since {@link Node#equals}/{@link Node#hashCode} are consulted
+     * only by {@link #minimizeToDAFSA}.
+     *
+     * @param root trie root
+     * @return the same root (the trie is sorted in place)
+     */
     private static Node prepareTrie(final Node root)
     {
         for (final Node n : postOrder(root)) {
             if (n.deg > 1) n.sortArcsByLabel();
-            n.freezeAndHash();
         }
         return root;
     }
 
+    /**
+     * Minimizes the trie to a DAFSA by merging structurally equivalent suffix states.
+     * Processing in post-order guarantees that a node's children are canonical before the node
+     * itself is hashed and registered, which is what makes the pointer-identity comparison in
+     * {@link Node#equals} sound.
+     *
+     * @param root trie root
+     * @return the canonical root after merging
+     */
     private static Node minimizeToDAFSA(final Node root)
     {
         final List<Node> post = postOrder(root);
@@ -269,9 +332,15 @@ public final class IntAutomaton
         return canonRoot != null ? canonRoot : root;
     }
 
-    // ---- Private: packing ----------------------------------------------------
-
-    private void pack(final Node root, final int builtMaxLen)
+    /**
+     * Assigns state ids by breadth-first order (root gets 0) and writes the CSR arrays
+     * {@link #offset}, {@link #label}, {@link #target}, and {@link #acceptId}. After this call
+     * the runtime methods are usable. {@link #maxPatternLen} is set during {@link #add} and is
+     * left untouched here.
+     *
+     * @param root canonical root from {@link #prepareTrie} or {@link #minimizeToDAFSA}
+     */
+    private void pack(final Node root)
     {
         final IdentityHashMap<Node, Integer> id = new IdentityHashMap<>();
         final ArrayDeque<Node> q = new ArrayDeque<>();
@@ -297,34 +366,43 @@ public final class IntAutomaton
         }
 
         final int nStates = nodes.size();
-        this.offset = new int[nStates];
-        this.count  = new int[nStates];
-        this.accept = new int[nStates];
-        this.label  = new int[arcTotal];
-        this.target = new int[arcTotal];
-        this.maxLen = builtMaxLen;
+        this.offset   = new int[nStates + 1];
+        this.acceptId = new int[nStates];
+        this.label    = new int[arcTotal];
+        this.target   = new int[arcTotal];
 
         int p = 0;
         for (int s = 0; s < nStates; s++) {
             final Node n = nodes.get(s);
-            accept[s] = n.acceptId;
-            offset[s] = p;
-            count[s]  = n.deg;
+            acceptId[s] = n.acceptId;
+            offset[s]   = p;
             for (int i = 0; i < n.deg; i++) {
                 label[p]  = n.labels[i];
                 target[p] = id.get(n.targets[i]);
                 p++;
             }
         }
+        offset[nStates] = p; // trailing sentinel: == arcTotal, closes the last state's range
     }
 
-    // ---- Private: utilities --------------------------------------------------
-
+    /**
+     * Asserts the automaton is frozen (the trie has been released).
+     *
+     * @throws IllegalStateException if {@link #freeze} has not been called
+     */
     private void checkFrozen()
     {
         if (trieRoot != null) throw new IllegalStateException("not frozen");
     }
 
+    /**
+     * Returns the nodes reachable from {@code root} in post-order (children before parents),
+     * computed iteratively to avoid stack overflow on deep tries. Visitation is by node identity
+     * so a DAG sharing nodes is traversed once per node.
+     *
+     * @param root trie or DAG root
+     * @return nodes in post-order
+     */
     private static List<Node> postOrder(final Node root)
     {
         final IdentityHashMap<Node, Boolean> seen = new IdentityHashMap<>();
@@ -348,6 +426,16 @@ public final class IntAutomaton
         return out;
     }
 
+    /**
+     * Sorts the parallel arrays {@code a} (keys) and {@code b} (values) in place over
+     * {@code [lo, hi]}, ordering by {@code a}. Recurses on the smaller partition and loops on the
+     * larger to bound stack depth at O(log n).
+     *
+     * @param a  key array (arc labels)
+     * @param b  value array (arc targets), permuted in lockstep with {@code a}
+     * @param lo inclusive lower bound
+     * @param hi inclusive upper bound
+     */
     private static void quicksort(final int[] a, final Node[] b, int lo, int hi)
     {
         while (lo < hi) {
