@@ -38,6 +38,7 @@ import static com.github.oeuvres.alix.common.Upos.XML;
 import java.io.IOException;
 import java.util.Objects;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -46,6 +47,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 
 
@@ -126,7 +128,13 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
  */
 public final class LemmaFilter extends TokenFilter
 {
-    private final LemmaLexicon lex;
+    /** The lemma lexicon */
+    private final LemmaLexicon lexicon;
+    /** A set of proper names to protect from lower casing */
+    private final CharArraySet propn;
+    /** Reusable probe for transformed dictionary lookup (no String allocation in hot path). */
+    private final TermProbe probe = new TermProbe();
+
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
@@ -137,13 +145,14 @@ public final class LemmaFilter extends TokenFilter
      * Creates a lemmatization side-channel filter.
      *
      * @param input input token stream
-     * @param lex lemma lexicon used to resolve forms and lemmas
+     * @param lexicon lemma lexicon used to resolve forms and lemmas
      * @throws NullPointerException if {@code input} or {@code lex} is null
      */
-    public LemmaFilter(TokenStream input, LemmaLexicon lex)
+    public LemmaFilter(TokenStream input, LemmaLexicon lexicon, CharArraySet propn)
     {
         super(input);
-        this.lex = Objects.requireNonNull(lex, "lex");
+        this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
+        this.propn = Objects.requireNonNull(propn, "propn");
     }
 
     /**
@@ -174,24 +183,35 @@ public final class LemmaFilter extends TokenFilter
         }
         
         // Surface known ?
-        final int formId = lex.ord(termAtt);
-        if (formId < 0) return true;
+        int termId = lexicon.ord(termAtt);
+        // if not known, try lower case
+        if (termId < 0) {
+            // Protect proper name Paris ≠ parier
+            if (propn.contains(termAtt)) return true;
+            // Protect acronym, USA ≠ user
+            if (termAtt.length() > 1 && Character.isUpperCase(termAtt.charAt(1))) return true;
+            probe.copyFrom(termAtt).toLowerCase();
+            termId = lexicon.ord(probe);
+            if (termId < 0) return true;
+            // copy lower case, in case of no lemma found
+            termAtt.setEmpty().append(probe);
+        }
 
         // Lookup with pos
-        int lemmaId = (posId >= 0) ? lex.lemmaId(formId, posId) : -1;
+        int lemmaId = (posId >= 0) ? lexicon.lemmaId(termId, posId) : -1;
 
         // Default lemma (pos-agnostic)
         if (lemmaId < 0) {
-            lemmaId = lex.lemmaId(formId); // returns -1 if none
+            lemmaId = lexicon.lemmaId(termId); // returns -1 if none
         }
 
         // Nothing usable
-        if (lemmaId < 0 || lemmaId == formId) return true;
+        if (lemmaId < 0 || lemmaId == termId) return true;
 
         // Copy lemma to term for indexation
-        final int len = lex.length(lemmaId);
+        final int len = lexicon.length(lemmaId);
         final char[] dst = termAtt.resizeBuffer(len);
-        lex.copy(lemmaId, dst, 0);
+        lexicon.copy(lemmaId, dst, 0);
         termAtt.setLength(len);
 
         return true;

@@ -78,6 +78,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public final CharArraySet stopwords;
     /** Words with ending dots */
     public final CharArraySet brevidots;
+    /** Proper names to protect from lower casing */
+    public final CharArraySet propn;
     /** Term normalizer */
     public final CharsMap normalizer;
     /** Multi-Word Expressions */
@@ -97,6 +99,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
         brevidots = FrenchLexicons.buildBrevidots();
         expressions = FrenchLexicons.buildMweLexicon();
+        propn = FrenchLexicons.buildPropn();
         
         canonic = new CanonicAnalyzer();
         ascii = new AsciiAnalyzer();
@@ -199,8 +202,6 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     private TokenStream canonicChain(TokenStream ts)
     {
-        // resolve case of common word at start of sentence
-        ts = new SentenceStartLowerCaseFilter(ts, lemmaLexicon);
         // interpret html tags as token events like para or section
         ts = new MarkupBoundaryFilter(ts);
         // fr split on ’ and -
@@ -210,7 +211,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         // pos tagging before lemmatize
         ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
         // provide lemma
-        ts = new LemmaFilter(ts, lemmaLexicon);
+        ts = new LemmaFilter(ts, lemmaLexicon, propn);
         // multi word expression
         ts = new MweFilter(ts, expressions);
         // delete positions of xml tags and punctuation

@@ -65,7 +65,7 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
  */
 public final class SentenceStartLowerCaseFilter extends TokenFilter
 {
-    private final LemmaLexicon lex;
+    private final LemmaLexicon lexicon;
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
@@ -84,7 +84,7 @@ public final class SentenceStartLowerCaseFilter extends TokenFilter
     public SentenceStartLowerCaseFilter(final TokenStream input, final LemmaLexicon lex)
     {
         super(input);
-        this.lex = Objects.requireNonNull(lex, "lex");
+        this.lexicon = Objects.requireNonNull(lex, "lex");
     }
 
     @Override
@@ -132,14 +132,14 @@ public final class SentenceStartLowerCaseFilter extends TokenFilter
 
         // 6) Probe lowercase form in lexicon; if known, rewrite with canonical form.
         probe.copyFrom(termAtt).toLowerCase();
-        final int formId = lex.ord(probe);
+        final int formId = lexicon.ord(probe);
         if (formId < 0) {
             return true;
         }
 
-        final int len = lex.length(formId);
+        final int len = lexicon.length(formId);
         final char[] dst = termAtt.resizeBuffer(len);
-        lex.copy(formId, dst, 0);
+        lexicon.copy(formId, dst, 0);
         termAtt.setLength(len);
 
         return true;

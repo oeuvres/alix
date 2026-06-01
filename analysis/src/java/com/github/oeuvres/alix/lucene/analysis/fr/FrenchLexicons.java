@@ -153,5 +153,13 @@ public class FrenchLexicons
         LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/stop.csv");
         return set;
     }
+    
+    public static CharArraySet buildPropn()
+    {
+        // set ignore case
+        CharArraySet set = new CharArraySet(1100, true);
+        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-word.csv");
+        return set;
+    }
 
 }

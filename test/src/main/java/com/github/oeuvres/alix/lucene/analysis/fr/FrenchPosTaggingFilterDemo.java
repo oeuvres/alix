@@ -34,6 +34,7 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
+import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
@@ -76,8 +77,11 @@ public final class FrenchPosTaggingFilterDemo {
                 TokenStream stream = tokenizer;
                 stream = new MarkupBoundaryFilter(stream);
                 stream = new FrenchCliticSplitFilter(stream);
-                stream = new SentenceStartLowerCaseFilter(stream, FrenchLexicons.buildLemmaLexicon());
                 stream = new PosTaggingFilter(stream, model, PosTaggingFilter.HYPHEN_REWRITER);
+                stream = new LemmaFilter(
+                    stream,
+                    FrenchLexicons.buildLemmaLexicon(),
+                    FrenchLexicons.buildPropn());
                 return new TokenStreamComponents(tokenizer, stream);
             }
         };
