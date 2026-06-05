@@ -38,7 +38,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -174,25 +173,14 @@ public class RewriteFilterBenchmark
                 if (comma < 0) {
                     continue; // or throw, depending on how strict you want parsing
                 }
-                String surface = line.substring(0, comma).trim();
-                String norm = line.substring(comma + 1).trim();
-                CharsRef input = builder.join(surface.split("\\s+"), inputBuf);
-                CharsRef output = builder.join(norm.split("\\s+"), outputBuf);
-                builder.add(input, output, false); // false: emit norm only, drop surface
+                inputBuf.clear();
+                inputBuf.append(line.substring(0, comma).trim());
+                outputBuf.clear();
+                outputBuf.append(line.substring(comma + 1).trim());
+                builder.add(inputBuf.get(), outputBuf.get(), false); // false: emit norm only, drop surface
             }
         }
         return builder.build();
-    }
-
-    private static String keyToString(Object key)
-    {
-        if (key == null)
-            return null;
-        if (key instanceof String s)
-            return s;
-        if (key instanceof char[] c)
-            return new String(c);
-        return key.toString();
     }
 
     public final class TokenArrayBatchStream extends TokenStream {
