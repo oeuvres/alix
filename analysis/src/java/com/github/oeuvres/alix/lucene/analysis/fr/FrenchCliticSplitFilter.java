@@ -113,9 +113,6 @@ public class FrenchCliticSplitFilter extends TokenFilter
         KEEP_AS_IS.add("d'emblée");
         KEEP_AS_IS.add("d'entre");
         KEEP_AS_IS.add("d'ici");
-        // KEEP_AS_IS.add("l'un");
-        // KEEP_AS_IS.add("l'une");
-        // KEEP_AS_IS.add("l'autre");
         KEEP_AS_IS.add("n'empêche");
         KEEP_AS_IS.add("n'est-ce");
         KEEP_AS_IS.add("n'importe");

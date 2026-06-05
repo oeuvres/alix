@@ -39,37 +39,7 @@ import com.github.oeuvres.alix.web.util.HttpPars;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 
-/**
- * {@code /{index}/terms} — ranked term lists.
- *
- * <p>
- * Returns a JSON document with top-level {@code meta} and {@code data} keys.
- * On error, the document contains {@code errors} instead of (or alongside)
- * {@code data}.
- * </p>
- *
- * <h2>Parameters</h2>
- * <table>
- *   <tr><td>{@code field}</td><td>indexed field name; defaults to index content field</td></tr>
- *   <tr><td>{@code top}</td><td>number of results; default 50, max 500</td></tr>
- *   <tr><td>{@code idfExp}</td><td>BM25 IDF exponent; default 1.3 (theme terms only)</td></tr>
- *   <tr><td>{@code q}</td><td>query terms for co-occurrence mode (future)</td></tr>
- * </table>
- *
- * <h2>Response</h2>
- * <pre>
- * {
- *   "meta": {
- *     "QTime": 42,
- *     "params": { "field": "text", "top": 50, "idfExp": 1.3 }
- *   },
- *   "data": [
- *     { "term": "enfant", "count": 8234, "score": 12.47 },
- *     …
- *   ]
- * }
- * </pre>
- */
+
 public final class OpFreqlist extends Op
 {
 
@@ -88,6 +58,8 @@ public final class OpFreqlist extends Op
         // filter query is not yet used
         TermLexicon lexicon = textFluc.termLexicon();
         TermStats stats = textFluc.termStats();
+        meta.put("fieldWidth", stats.fieldWidth());
+        meta.put("fieldTokens", stats.fieldTokens());
         
         final int vocabSize = lexicon.vocabSize();
         final double[] freqs = new double[vocabSize];

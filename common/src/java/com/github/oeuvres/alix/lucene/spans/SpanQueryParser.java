@@ -1,10 +1,14 @@
 package com.github.oeuvres.alix.lucene.spans;
 
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans .SpanTermQuery;
+import org.apache.lucene.search.MultiTermQuery;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.WildcardQuery;
 
 import com.github.oeuvres.alix.util.WordTokenizer;
 
@@ -17,11 +21,12 @@ import java.util.List;
  */
 public class SpanQueryParser {
 
+    private static final String OR_OPEN = "OrOpen";
+    private static final String OR_CLOSE = "OrClose";
+    private static final int MAX_EXPANSIONS = 256;
     private final String field;
     private final int slop;
     private final WordTokenizer tokenizer;
-    private final String OR_OPEN = "OrOpen";
-    private final String OR_CLOSE = "OrClose";
 
     /**
      * Creates a parser for the given field and slop.
@@ -87,7 +92,7 @@ public class SpanQueryParser {
             // TODO concat know multi-word expression for the field
             // TODO first suggest hunspell
             // TODO eliminate unknown word from field
-            final SpanQuery term = new SpanTermQuery(new Term(field, word));
+            final SpanQuery term = spanFor(word);
 
             if (orClauses != null) {
                 orClauses.add(term);
@@ -114,6 +119,48 @@ public class SpanQueryParser {
             return clauses.get(0);
         }
         return new SpanNearQuery(clauses.toArray(new SpanQuery[0]), slop, false);
+    }
+    
+    /**
+     * Builds the span clause for one token, resolving a trailing or embedded
+     * joker into a {@link SpanMultiTermQueryWrapper}.
+     *
+     * <p>The literal part is <em>not</em> run through the field analyzer. The
+     * tokenizer must already have normalized the token (case, etc.) to the
+     * indexed term form, otherwise the pattern silently matches nothing.</p>
+     *
+     * @param word a single token, possibly ending with {@code *} or containing {@code ?}
+     * @return a span query, or {@code null} for a degenerate pattern
+     */
+    private SpanQuery spanFor(final String word) {
+        // multi-word-expression
+        final String text = word.replace('_', ' ');
+        final boolean hasStar = text.indexOf('*') >= 0;
+        final boolean hasQuestion = text.indexOf('?') >= 0;
+        if (!hasStar && !hasQuestion) {
+            return new SpanTermQuery(new Term(field, text));
+        }
+        // pure prefix: single trailing '*', no other metacharacter
+        if (!hasQuestion && text.indexOf('*') == text.length() - 1) {
+            final String stem = text.substring(0, text.length() - 1);
+            if (stem.isBlank()) {
+                return null; // bare '*' would match every term in the field
+            }
+            return wrap(new PrefixQuery(new Term(field, stem)));
+        }
+        return wrap(new WildcardQuery(new Term(field, text)));
+    }
+
+    /**
+     * Wraps a multi-term query as a span query with a bounded term expansion.
+     *
+     * @param mtq the prefix or wildcard query to wrap
+     * @return a span query rewriting to at most {@link #MAX_EXPANSIONS} terms
+     */
+    private SpanQuery wrap(final MultiTermQuery mtq) {
+        final SpanMultiTermQueryWrapper<MultiTermQuery> wrapper = new SpanMultiTermQueryWrapper<>(mtq);
+        wrapper.setRewriteMethod(new SpanMultiTermQueryWrapper.TopTermsSpanBooleanQueryRewrite(MAX_EXPANSIONS));
+        return wrapper;
     }
 
 }

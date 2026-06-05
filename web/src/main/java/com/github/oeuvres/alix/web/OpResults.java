@@ -22,6 +22,7 @@ import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
+import com.github.oeuvres.alix.web.Op.OpMeta;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +42,8 @@ public class OpResults extends Op {
 
         final HttpPars pars = new HttpPars(request, response);
         final Query filterQuery = filterQuery(index, pars);
+        final OpMeta meta = new OpMeta();
+
 
         final Writer writer = response.getWriter();
         
@@ -91,6 +94,7 @@ public class OpResults extends Op {
             termWeights = new double[0];
             snipLimit = 0;
         } else {
+            meta.put("spanQuery", spanQuery.toString(contentFname));
             final TermStats fieldStats = contentFluc.termStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
@@ -185,6 +189,10 @@ public class OpResults extends Op {
             }
         }
 
+        writer.append("<!-- \n");
+        meta.toString(writer, pars);
+        writer.append("\n-->\n");
+        
         if (nextDoc > 0) {
             writer.append("<p class=\"next-results\"><a data-from=\"").append(String.valueOf(nextDoc))
                     .append("\" name=\"next-results\" href=\"").append("?")
