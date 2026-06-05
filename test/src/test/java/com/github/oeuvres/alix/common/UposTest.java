@@ -31,6 +31,7 @@ final class UposTest {
 
         for (final String externalName : externalNames) {
             // must not throw and must return a stable code
+            @SuppressWarnings("unused")
             final Upos upos = assertDoesNotThrow(
                 () -> Upos.get(externalName),
                 () -> "Upos.code failed for external name: " + externalName
@@ -38,6 +39,7 @@ final class UposTest {
 
             // Upos.code applies '+' -> '_' before valueOf()
             final String enumName = externalName.replace('+', '_');
+            @SuppressWarnings("unused")
             final Upos expected = assertDoesNotThrow(
                 () -> Upos.valueOf(enumName),
                 () -> "No enum constant for mapped name: " + enumName + " (from " + externalName + ")"

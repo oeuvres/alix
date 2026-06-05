@@ -298,7 +298,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
      * @return true if the character belongs to a raw token
      */
     private static boolean isTokenChar(final char c) {
-        return Char.isToken(c);
+        return Char.isToken(c) || c == '*';
     }
 
     /**

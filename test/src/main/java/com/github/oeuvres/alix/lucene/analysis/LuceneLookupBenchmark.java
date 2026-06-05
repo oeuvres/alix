@@ -291,29 +291,31 @@ public class LuceneLookupBenchmark {
     }
 
     private static long scan_MapViaCharTermAtt(CharArrayMap<String> map, TokenCorpus corpus) throws IOException {
-        RangeTokenStream ts = new RangeTokenStream(corpus);
-        CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
-        long found = 0;
-        ts.resetRange(0, corpus.size);
-        ts.reset();
-        while (ts.incrementToken()) {
-            if (map.get(termAtt.buffer(), 0, termAtt.length()) != null) found++;
+        try (RangeTokenStream ts = new RangeTokenStream(corpus)) {
+            CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+            long found = 0;
+            ts.resetRange(0, corpus.size);
+            ts.reset();
+            while (ts.incrementToken()) {
+                if (map.get(termAtt.buffer(), 0, termAtt.length()) != null) found++;
+            }
+            ts.end();
+            return found;
         }
-        ts.end();
-        return found;
     }
 
     private static long scan_FstViaBytesRefAtt(FST<BytesRef> fst, TokenCorpus corpus) throws IOException {
-        RangeTokenStream ts = new RangeTokenStream(corpus);
-        TermToBytesRefAttribute bytesAtt = ts.addAttribute(TermToBytesRefAttribute.class);
-        long found = 0;
-        ts.resetRange(0, corpus.size);
-        ts.reset();
-        while (ts.incrementToken()) {
-            if (Util.get(fst, bytesAtt.getBytesRef()) != null) found++;
+        try (RangeTokenStream ts = new RangeTokenStream(corpus)) {
+            TermToBytesRefAttribute bytesAtt = ts.addAttribute(TermToBytesRefAttribute.class);
+            long found = 0;
+            ts.resetRange(0, corpus.size);
+            ts.reset();
+            while (ts.incrementToken()) {
+                if (Util.get(fst, bytesAtt.getBytesRef()) != null) found++;
+            }
+            ts.end();
+            return found;
         }
-        ts.end();
-        return found;
     }
 
     // ---------------------------

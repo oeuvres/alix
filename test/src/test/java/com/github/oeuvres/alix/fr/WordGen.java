@@ -2,7 +2,6 @@ package com.github.oeuvres.alix.fr;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -13,8 +12,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.Random;
-
-import com.github.oeuvres.alix.fr.French;
 
 /**
  * WordGen: runtime sampler for a character 3‑gram (k=3) model with
@@ -434,11 +431,14 @@ public abstract class WordGen
 
             // --- Continuation counts for P_cont(c) ---
             final long[] contCount = new long[S];
-            long bigramTypeTotal = 0;
+            // long bigramTypeTotal = 0;
             for (int b = 0; b < S; b++) {
                 final int base = b * S;
                 for (int c = 0; c < S; c++) {
-                    if (biCounts[base + c] > 0) { contCount[c]++; bigramTypeTotal++; }
+                    if (biCounts[base + c] > 0) { 
+                        contCount[c]++; 
+                        // bigramTypeTotal++;
+                    }
                 }
             }
             // contCount[c] / bigramTypeTotal = P_cont(c)
