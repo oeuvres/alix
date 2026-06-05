@@ -13,7 +13,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Dumps all indexed terms of one Lucene field to a UTF-8 text file.

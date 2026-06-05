@@ -52,6 +52,7 @@ public final class XsltJarResolverDemo {
     // CRITICAL: provide a real systemId so relative imports have a base (jar:file:...!/..)
     main.setSystemId(mainUrl.toExternalForm());
 
+    @SuppressWarnings("unused")
     Templates tpl = tf.newTemplates(main);
     System.out.println("OK: compiled from classpath: " + mainUrl);
   }

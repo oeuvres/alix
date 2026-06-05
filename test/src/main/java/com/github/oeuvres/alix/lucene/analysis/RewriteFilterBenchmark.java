@@ -35,7 +35,6 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -51,7 +50,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.github.oeuvres.alix.util.CharsMap;

@@ -1,10 +1,8 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 
 import com.github.oeuvres.alix.util.CharsMap;

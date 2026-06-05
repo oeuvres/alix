@@ -1,6 +1,5 @@
 package com.github.oeuvres.alix.util;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,12 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class DetaggerTest {
 
-    private StringBuilder out;
 
-    @BeforeEach
-    void setUp() {
-        out = new StringBuilder();
-    }
 
     // -------------------------------------------------------------------------
     // Helpers

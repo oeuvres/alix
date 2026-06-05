@@ -64,7 +64,7 @@ public final class MweLexicon
     private int[] idsBuf;
 
     /** Shared vocabulary: component tokens and canonical forms, identified by ordinal. */
-    private final CharsDic vocab;
+    private final CharsDic charsDic;
 
     /**
      * Constructs an empty mutable lexicon.
@@ -73,7 +73,7 @@ public final class MweLexicon
      */
     public MweLexicon(final int expectedSize)
     {
-        this.vocab = new CharsDic(Math.max(8, expectedSize * 3));
+        this.charsDic = new CharsDic(Math.max(8, expectedSize * 3));
         this.auto = new IntAutomaton();
         this.idsBuf = new int[8];
     }
@@ -123,10 +123,10 @@ public final class MweLexicon
             if (token == null || token.length() == 0) {
                 continue;
             }
-            idsBuf[len++] = vocab.add(token);
+            idsBuf[len++] = charsDic.add(token);
         }
 
-        final int formOrd = vocab.add(canonical);
+        final int formOrd = charsDic.add(canonical);
         auto.add(idsBuf, len, formOrd);
     }
 
@@ -140,7 +140,18 @@ public final class MweLexicon
     public String asString(final int ord)
     {
         checkFrozen();
-        return vocab.asString(ord);
+        return charsDic.asString(ord);
+    }
+
+    /**
+     * Returns the underlying vocabulary. Treat as read-only; mutating it
+     * directly while the lexicon is mutable would corrupt automaton arcs.
+     *
+     * @return the underlying vocabulary
+     */
+    public CharsDic charsDic()
+    {
+        return charsDic;
     }
 
     /**
@@ -166,7 +177,7 @@ public final class MweLexicon
     public void copy(final int ord, final char[] dst, final int off)
     {
         checkFrozen();
-        vocab.copy(ord, dst, off);
+        charsDic.copy(ord, dst, off);
     }
 
     /**
@@ -179,7 +190,7 @@ public final class MweLexicon
     public int formLength(final int ord)
     {
         checkFrozen();
-        return vocab.len(ord);
+        return charsDic.len(ord);
     }
 
     /**
@@ -191,7 +202,7 @@ public final class MweLexicon
         if (idsBuf == null) {
             return;
         }
-        vocab.trimToSize();
+        charsDic.trimToSize();
         auto.freeze(false);
         idsBuf = null;
     }
@@ -250,23 +261,12 @@ public final class MweLexicon
     {
         checkFrozen();
 
-        final int tokOrd = vocab.ord(buf, 0, len);
+        final int tokOrd = charsDic.ord(buf, 0, len);
         if (tokOrd < 0) {
             return -1;
         }
 
         return auto.step(state, tokOrd);
-    }
-
-    /**
-     * Returns the underlying vocabulary. Treat as read-only; mutating it
-     * directly while the lexicon is mutable would corrupt automaton arcs.
-     *
-     * @return the underlying vocabulary
-     */
-    public CharsDic vocab()
-    {
-        return vocab;
     }
 
     /**

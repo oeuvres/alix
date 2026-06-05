@@ -248,20 +248,22 @@ public class CharsDicBenchmark {
     // Your original CSVReader-based loaders (I/O only in @Setup).
     private static List<String> loadTokensAsStrings(Reader reader) throws IOException {
         List<String> out = new ArrayList<>(600_000);
-        CSVReader csvReader = new CSVReader(reader, ',', 1, '"', 16384);
-        if (!csvReader.readRow()) throw new IOException("Empty CSV?");
-        while (csvReader.readRow()) {
-            out.add(csvReader.getCellAsString(0));
+        try (CSVReader csvReader = new CSVReader(reader, ',', 1, '"', 16384)) {
+            if (!csvReader.readRow()) throw new IOException("Empty CSV?");
+            while (csvReader.readRow()) {
+                out.add(csvReader.getCellAsString(0));
+            }
         }
         return out;
     }
 
     private static List<char[]> loadTokensAsChars(Reader reader) throws IOException {
         List<char[]> out = new ArrayList<>(600_000);
-        CSVReader csvReader = new CSVReader(reader, ',', 1, '"', 16384);
-        if (!csvReader.readRow()) throw new IOException("Empty CSV?");
-        while (csvReader.readRow()) {
-            out.add(csvReader.getCellAsString(0).toCharArray());
+        try (CSVReader csvReader = new CSVReader(reader, ',', 1, '"', 16384)) {
+            if (!csvReader.readRow()) throw new IOException("Empty CSV?");
+            while (csvReader.readRow()) {
+                out.add(csvReader.getCellAsString(0).toCharArray());
+            }
         }
         return out;
     }

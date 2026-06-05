@@ -1,5 +1,6 @@
 package com.github.oeuvres.alix.util.fr;
 
+import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.CharsDic;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.WordTokenizer;
@@ -16,16 +17,34 @@ import com.github.oeuvres.alix.util.WordTokenizer;
  * transient {@link CharSequence} values backed by internal {@link StringBuilder}
  * buffers. Callers must copy {@link #word()} if they need to retain it.</p>
  *
- * <p>The hot path is allocation-free: clitic lookups go through
- * {@link CharsMap#valueOrd(CharSequence, int, int)} and
- * {@link CharsMap#copy(int, char[], int)} into a reusable {@link #scratch}
- * buffer rather than {@link CharsMap#get(CharSequence, int, int)}, which
- * allocates a {@link String} per call.</p>
+ * <p>The hot path is allocation-free: clitic replacements are written directly
+ * into reusable {@link StringBuilder} slots via
+ * {@link CharsMap#append(int, StringBuilder)}, keyed by an ordinal obtained from
+ * {@link CharsMap#valueOrd(CharSequence, int, int)}, rather than through
+ * {@link CharsMap#get(CharSequence, int, int)}, which allocates a {@link String}
+ * per call.</p>
+ *
+ * <p><b>Queue sizing.</b> {@link #splitRange(int, int, int)} emits at most one
+ * word per recursion level (its apostrophe and hyphen branches are mutually
+ * exclusive within a call), and the {@code depth > MAX_SPLITS} guard caps the
+ * number of splitting levels at {@link #MAX_SPLITS}. The pending queue therefore
+ * never holds more than {@code MAX_SPLITS + 1} words: that bound and
+ * {@link #pending}{@code .length} are coupled and must change together. The
+ * length guards in {@link #appendLiteral(CharsMap, int)} and
+ * {@link #appendRange(int, int)} are defensive; they are unreachable while the
+ * depth guard holds.</p>
+ *
+ * <p><b>Case-folding policy.</b> The three dictionaries fold case differently,
+ * by design: {@link #KEEP_AS_IS} is case-insensitive; {@link #PREFIX} folds only
+ * the first character for the lookup (to catch sentence-initial capitals such as
+ * {@code Qu'} or {@code D'}) and restores it; {@link #SUFFIX} does no folding, so
+ * an all-caps enclitic ({@code DONNE-MOI}) is left unsplit. Do not "normalize"
+ * these to a single policy without revisiting the proper-name guard below.</p>
  */
 public final class FrenchCliticTokenizer implements WordTokenizer {
     private static final int MAX_SPLITS = 8;
 
-    private static final CharsDic KEEP_AS_IS = new CharsDic(17, true);
+    private static final CharsDic KEEP_AS_IS = new CharsDic(18, true);
     static {
         KEEP_AS_IS.add("c'est-à-dire");
         KEEP_AS_IS.add("d'abord");
@@ -43,10 +62,11 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         KEEP_AS_IS.add("n'est-ce");
         KEEP_AS_IS.add("n'importe");
         KEEP_AS_IS.add("qu'est-ce");
+        KEEP_AS_IS.add("qu'en-dira-t-on");
         KEEP_AS_IS.add("quelqu'un");
     }
 
-    private static final CharsMap PREFIX = new CharsMap(15);
+    private static final CharsMap PREFIX = new CharsMap(13, true);
     static {
         PREFIX.put("c'",      "ce");
         PREFIX.put("d'",      "de");
@@ -63,7 +83,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
         PREFIX.put("t'",      "te");
     }
 
-    private static final CharsMap SUFFIX = new CharsMap(25);
+    private static final CharsMap SUFFIX = new CharsMap(25, true);
     static {
         SUFFIX.put("-ce",    "ce");
         SUFFIX.put("-ci",    "");
@@ -175,8 +195,9 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     /**
      * Appends a dictionary-resident replacement word to the pending queue.
      *
-     * <p>Reads {@code valueOrd} from {@code map} into {@link #scratch} and
-     * copies it into the next pending slot, without allocating a String.</p>
+     * <p>Writes the value identified by {@code valueOrd} directly into the next
+     * pending {@link StringBuilder} via {@link CharsMap#append(int, StringBuilder)},
+     * without allocating a String.</p>
      *
      * @param map the dictionary that owns {@code valueOrd}
      * @param valueOrd the value ord to materialize
@@ -277,7 +298,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
      * @return true if the character belongs to a raw token
      */
     private static boolean isTokenChar(final char c) {
-        return Character.isLetterOrDigit(c) || c == '\'' || c == '-';
+        return Char.isToken(c);
     }
 
     /**
@@ -323,6 +344,14 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     /**
      * Reads the next raw token into the reusable raw buffer.
      *
+     * <p>Characters are normalized before the token test, because some
+     * separators normalize into token characters (e.g. {@code \u2019 -> '},
+     * {@code \u2010 -> -}); the leading-separator scan therefore cannot bypass
+     * {@link #normalizeChar(char)}. The single separator that ends a token is
+     * consumed here, which is harmless: the next call re-skips leading
+     * separators. {@link #raw}{@code .length() > 0} doubles as the
+     * "token started" flag.</p>
+     *
      * @return true if a raw token was read
      */
     private boolean readRawToken() {
@@ -338,18 +367,9 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
             final char c = normalizeChar(text.charAt(offset++));
             if (isTokenChar(c)) {
                 raw.append(c);
+            } else if (raw.length() > 0) {
                 break;
             }
-        }
-
-        while (offset < len) {
-            final char c = normalizeChar(text.charAt(offset));
-            if (!isTokenChar(c)) {
-                offset++;
-                break;
-            }
-            raw.append(c);
-            offset++;
         }
 
         return raw.length() > 0;
@@ -363,6 +383,11 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
      * so the proper-name guard ({@code D'Artagnan}, {@code L'Hôpital}) reads
      * the original case via the saved {@code first} local, and the no-split
      * fall-through emits the original token unchanged.</p>
+     *
+     * <p>The leading guard returns early when {@code apostrophe == end - 1},
+     * so once that branch is passed {@code prefixEnd = apostrophe + 1 < end} is
+     * guaranteed; the {@code raw.charAt(prefixEnd)} read below needs no further
+     * bounds test.</p>
      *
      * @param start the inclusive raw-buffer start offset
      * @param end the exclusive raw-buffer end offset
@@ -398,7 +423,7 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
             final int valueOrd = PREFIX.valueOrd(raw, start, prefixEnd - start);
             raw.setCharAt(start, first);
 
-            if (valueOrd >= 0 && prefixEnd < end) {
+            if (valueOrd >= 0) {
                 final char next = raw.charAt(prefixEnd);
 
                 if (!(isUpperOrTitle(next) && isUpperOrTitle(first))) {

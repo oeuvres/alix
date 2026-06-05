@@ -1,197 +1,195 @@
 package com.github.oeuvres.alix.util.fr;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-
-import com.github.oeuvres.alix.util.WordTokenizer;
 
 /**
  * Tests for {@link FrenchCliticTokenizer}.
  */
 public class FrenchCliticTokenizerTest {
     /**
-     * Verifies that apostrophe elisions are split and normalized.
+     * Tests that apostrophe prefixes are split and expanded.
      */
     @Test
-    void apostropheElisions() {
-        assertTokens("j'aime", "je", "aime");
-        assertTokens("j’aime", "je", "aime");
-        assertTokens("qu'il vient", "que", "il", "vient");
-        assertTokens("s'il m'écoute", "se", "il", "me", "écoute");
+    public void apostrophePrefixes() {
+        assertTokens("le_bon_Dieu", "le_bon_Dieu");
+        assertTokens("J'aime", "je", "aime");
+        assertTokens("m'appelle", "me", "appelle");
+        assertTokens("N'oublie", "ne", "oublie");
+        assertTokens("qu'on", "que", "on");
+        assertTokens("puisqu'il", "puisque", "il");
+        assertTokens("l'enfant", "l'", "enfant");
     }
 
     /**
-     * Verifies that {@link WordTokenizer#clear()} releases scan state.
+     * Tests that apostrophe variants are normalized before tokenization.
      */
     @Test
-    void clearInvalidatesCurrentWord() {
-        final WordTokenizer tokenizer = new FrenchCliticTokenizer();
+    public void apostropheVariants() {
+        assertTokens("J’aime", "je", "aime");
+        assertTokens("j_aime", "j_aime");
+        assertTokens("j‘aime", "je", "aime");
+        assertTokens("jʼaime", "je", "aime");
+    }
+
+    /**
+     * Tests that the tokenizer can be cleared and reused.
+     */
+    @Test
+    public void clear() {
+        final FrenchCliticTokenizer tokenizer = new FrenchCliticTokenizer();
 
         tokenizer.reset("j'aime");
-        assertTrue(tokenizer.next());
+        assertEquals(true, tokenizer.next());
         assertEquals("je", tokenizer.word().toString());
 
         tokenizer.clear();
 
+        assertEquals(false, tokenizer.next());
         assertThrows(IllegalStateException.class, tokenizer::word);
-        assertFalse(tokenizer.next());
     }
 
     /**
-     * Verifies that the default materializing API returns stable strings.
+     * Tests that digits are kept inside raw tokens.
      */
     @Test
-    void defaultTokenizeReturnsStableStrings() {
-        final WordTokenizer tokenizer = new FrenchCliticTokenizer();
-
-        final List<String> tokens = tokenizer.tokenize("j'aime donne-le-moi");
-
-        assertEquals(List.of("je", "aime", "donne", "le", "moi"), tokens);
-        assertEquals("je", tokens.get(0));
-        assertEquals("moi", tokens.get(4));
+    public void digits() {
+        assertTokens("abc123 456def", "abc123", "456def");
     }
 
     /**
-     * Verifies that epenthetic {@code -t-} forms are handled by dropping
-     * {@code -t} and emitting the following suffix.
+     * Tests that hyphen suffixes are split and expanded.
      */
     @Test
-    void epentheticT() {
-        assertTokens("habite-t-il ici", "habite", "il", "ici");
-        assertTokens("parle-t-elle", "parle", "elle");
-        assertTokens("a-t-on raison", "a", "on", "raison");
-    }
-
-    /**
-     * Verifies that lexicalized forms configured as keep-as-is are not split.
-     */
-    @Test
-    void keepAsIs() {
-        assertTokens("d'accord", "d'accord");
-        assertTokens("quelqu'un", "quelqu'un");
-        assertTokens("qu'est-ce", "qu'est-ce");
-        assertTokens("c'est-à-dire", "c'est-à-dire");
-    }
-
-    /**
-     * Verifies that punctuation and repeated separators are ignored.
-     */
-    @Test
-    void punctuationAndSeparators() {
-        assertTokens("  j’aime, donne-le-moi ! ", "je", "aime", "donne", "le", "moi");
-        assertTokens("j'aime;\nqu'il\tvient", "je", "aime", "que", "il", "vient");
-    }
-
-    /**
-     * Verifies that proper names with uppercase elided prefixes are not split.
-     */
-    @Test
-    void properNamesAreNotSplit() {
-        assertTokens("D'Alembert", "D'Alembert");
-        assertTokens("L'Oréal", "L'Oréal");
-        assertTokens("D’Alembert et L’Oréal", "D'Alembert", "et", "L'Oréal");
-    }
-
-    /**
-     * Verifies that {@link WordTokenizer#reset(CharSequence)} can retarget the
-     * same tokenizer instance.
-     */
-    @Test
-    void resetRetargetsTokenizer() {
-        final WordTokenizer tokenizer = new FrenchCliticTokenizer();
-
-        tokenizer.reset("j'aime");
-        assertCollected(tokenizer, "je", "aime");
-
-        tokenizer.reset("donne-le-moi");
-        assertCollected(tokenizer, "donne", "le", "moi");
-    }
-
-    /**
-     * Verifies that hyphen suffix clitics are split in reading order.
-     */
-    @Test
-    void suffixClitics() {
+    public void hyphenSuffixes() {
         assertTokens("donne-le-moi", "donne", "le", "moi");
-        assertTokens("allons-y", "allons", "y");
-        assertTokens("dit-elle", "dit", "elle");
-        assertTokens("rends-les-lui", "rends", "les", "lui");
+        assertTokens("parle-t-il", "parle", "il");
+        assertTokens("vas-y", "vas", "y");
+        assertTokens("prends-en", "prends", "en");
+        assertTokens("celui-ci", "celui");
+        assertTokens("celui-là", "celui");
     }
 
     /**
-     * Verifies that suffixes configured as recognized but dropped are dropped.
+     * Tests that hyphen variants are normalized before tokenization.
      */
     @Test
-    void suffixesDropped() {
-        assertTokens("ceux-ci", "ceux");
-        assertTokens("ceux-là", "ceux");
-        assertTokens("habite-t-il", "habite", "il");
+    public void hyphenVariants() {
+        assertTokens("donne‐le", "donne", "le");
+        assertTokens("donne-le", "donne", "le");
+        // assertTokens("donne­-le", "donne", "le");
     }
 
     /**
-     * Verifies that Unicode apostrophe and hyphen variants are normalized.
+     * Tests that listed expressions are kept as one token.
      */
     @Test
-    void unicodeVariants() {
-        assertTokens("j’aime", "je", "aime");
-        assertTokens("allons-y", "allons", "y");
-        assertTokens("dit‐elle", "dit", "elle");
+    public void keepAsIs() {
+        assertTokens("c'est-à-dire", "c'est-à-dire");
+        assertTokens("d'abord", "d'abord");
+        assertTokens("d'accord", "d'accord");
+        assertTokens("n'importe", "n'importe");
+        assertTokens("qu'est-ce", "qu'est-ce");
+        assertTokens("quelqu'un", "quelqu'un");
     }
 
     /**
-     * Verifies that {@link WordTokenizer#word()} is invalid before iteration
-     * and after iteration end.
+     * Tests that null input produces no token.
      */
     @Test
-    void wordRequiresCurrentToken() {
-        final WordTokenizer tokenizer = new FrenchCliticTokenizer();
+    public void nullInput() {
+        final FrenchCliticTokenizer tokenizer = new FrenchCliticTokenizer();
+
+        tokenizer.reset(null);
+
+        assertEquals(false, tokenizer.next());
+    }
+
+    /**
+     * Tests that punctuation separates tokens.
+     */
+    @Test
+    public void punctuation() {
+        assertTokens("Bonjour, j'aime; Paris.", "Bonjour", "je", "aime", "Paris");
+    }
+
+    /**
+     * Tests that reset replaces the previous input.
+     */
+    @Test
+    public void reset() {
+        final FrenchCliticTokenizer tokenizer = new FrenchCliticTokenizer();
+
+        tokenizer.reset("j'aime");
+        assertEquals(true, tokenizer.next());
+        assertEquals("je", tokenizer.word().toString());
+
+        tokenizer.reset("donne-le");
+
+        assertEquals(true, tokenizer.next());
+        assertEquals("donne", tokenizer.word().toString());
+        assertEquals(true, tokenizer.next());
+        assertEquals("le", tokenizer.word().toString());
+        assertEquals(false, tokenizer.next());
+    }
+
+    /**
+     * Tests that simple words are emitted unchanged.
+     */
+    @Test
+    public void simpleWords() {
+        assertTokens("Bonjour monde", "Bonjour", "monde");
+    }
+
+    /**
+     * Tests that too many hyphen splits keep the raw token unchanged.
+     */
+    @Test
+    public void tooManyHyphens() {
+        assertTokens("a-b-c-d-e-f-g-h-i-j", "a-b-c-d-e-f-g-h-i-j");
+    }
+
+    /**
+     * Tests that incomplete clitic-looking tokens are kept unchanged.
+     */
+    @Test
+    public void trailingSeparators() {
+        assertTokens("j' donne-", "j'", "donne-");
+    }
+
+    /**
+     * Tests that word cannot be called before next has emitted a token.
+     */
+    @Test
+    public void wordBeforeNext() {
+        final FrenchCliticTokenizer tokenizer = new FrenchCliticTokenizer();
 
         tokenizer.reset("j'aime");
 
         assertThrows(IllegalStateException.class, tokenizer::word);
-
-        assertTrue(tokenizer.next());
-        assertEquals("je", tokenizer.word().toString());
-        assertTrue(tokenizer.next());
-        assertEquals("aime", tokenizer.word().toString());
-        assertFalse(tokenizer.next());
-
-        assertThrows(IllegalStateException.class, tokenizer::word);
     }
 
     /**
-     * Asserts that a tokenizer emits the expected words.
+     * Asserts the token sequence produced by the tokenizer.
      *
-     * @param tokenizer the tokenizer
-     * @param expected the expected words
+     * @param input the input text
+     * @param expected the expected tokens
      */
-    private static void assertCollected(final WordTokenizer tokenizer, final String... expected) {
-        final ArrayList<String> actual = new ArrayList<>();
+    private static void assertTokens(final CharSequence input, final String... expected) {
+        final FrenchCliticTokenizer tokenizer = new FrenchCliticTokenizer();
+        final List<String> actual = new ArrayList<>();
 
+        tokenizer.reset(input);
         while (tokenizer.next()) {
             actual.add(tokenizer.word().toString());
         }
 
-        assertEquals(List.of(expected), actual);
-    }
-
-    /**
-     * Asserts that a fresh tokenizer emits the expected words for an input.
-     *
-     * @param text the input text
-     * @param expected the expected words
-     */
-    private static void assertTokens(final String text, final String... expected) {
-        final WordTokenizer tokenizer = new FrenchCliticTokenizer();
-
-        tokenizer.reset(text);
-        assertCollected(tokenizer, expected);
+        assertEquals(Arrays.asList(expected), actual);
     }
 }

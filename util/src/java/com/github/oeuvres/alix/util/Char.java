@@ -38,8 +38,9 @@ import java.util.Objects;
 
 /**
  * <p>
- * Efficient character categorizer, faster than Character.is*(), optimized for
- * tokenizer in latin scripts. Idea is to populate a big array of properties for
+ * Efficient character categorizer, 4 or 5 times faster than Character.is*(),
+ * for UTF-16 characters only, used in lucene tokenizer.
+ * Idea is to populate a static array of properties for
  * the code points.
  * </p>
  */

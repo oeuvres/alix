@@ -62,6 +62,17 @@ public final class CharsMap
      * {@link #HAS_NO_VALUE} or a non-negative ord into {@link #dic}.
      */
     private int[] values;
+    
+    /**
+     * Creates an empty map.
+     *
+     * @param expectedSize estimate of distinct sequences (keys plus values) to
+     *                     insert; values {@code <= 0} are treated as 1
+     */
+    public CharsMap(final int expectedSize)
+    {
+        this(expectedSize, false);
+    }
 
     /**
      * Creates an empty map.
@@ -247,6 +258,31 @@ public final class CharsMap
     public int maxLen()
     {
         return dic.maxTermLength();
+    }
+    
+    /**
+     * Returns the next mapped key ord at or after {@code fromOrd}, or
+     * {@link CharsDic#NOT_IN_DIC} if none remains. Enables an allocation-free
+     * key scan that visits keys only:
+     * <pre>{@code
+     * for (int k = map.nextKeyOrd(0); k >= 0; k = map.nextKeyOrd(k + 1)) {
+     *     int v = map.valueOrd(k);
+     *     // key chars via copy(k, buf, 0); value via copy(v, buf, 0)
+     * }
+     * }</pre>
+     *
+     * @param fromOrd ord to start scanning from; negative values are clamped to 0
+     * @return next key ord, or {@link CharsDic#NOT_IN_DIC} if none
+     */
+    public int nextKeyOrd(final int fromOrd)
+    {
+        final int n = dic.size();
+        for (int ord = Math.max(0, fromOrd); ord < n; ord++) {
+            if (values[ord] >= 0) {
+                return ord;
+            }
+        }
+        return CharsDic.NOT_IN_DIC;
     }
 
     /**

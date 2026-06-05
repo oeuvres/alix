@@ -49,12 +49,12 @@ public class MweLexiconTest {
      */
     @Test
     void canonicalFormsAreInVocab() {
-        final CharsDic vocab = lexicon.vocabRef();
+        final CharsDic charsDic = lexicon.charsDic();
 
-        assertTrue(vocab.ord("machine learning") >= 0);
-        assertTrue(vocab.ord("New York") >= 0);
-        assertTrue(vocab.ord("New York City") >= 0);
-        assertTrue(vocab.ord("state of the art") >= 0);
+        assertTrue(charsDic.ord("machine learning") >= 0);
+        assertTrue(charsDic.ord("New York") >= 0);
+        assertTrue(charsDic.ord("New York City") >= 0);
+        assertTrue(charsDic.ord("state of the art") >= 0);
     }
 
     /**
@@ -62,17 +62,17 @@ public class MweLexiconTest {
      */
     @Test
     void componentTokensAreInVocab() {
-        final CharsDic vocab = lexicon.vocabRef();
+        final CharsDic charsDicb = lexicon.charsDic();
 
-        assertTrue(vocab.ord("machine") >= 0);
-        assertTrue(vocab.ord("learning") >= 0);
-        assertTrue(vocab.ord("New") >= 0);
-        assertTrue(vocab.ord("York") >= 0);
-        assertTrue(vocab.ord("City") >= 0);
-        assertTrue(vocab.ord("state") >= 0);
-        assertTrue(vocab.ord("of") >= 0);
-        assertTrue(vocab.ord("the") >= 0);
-        assertTrue(vocab.ord("art") >= 0);
+        assertTrue(charsDicb.ord("machine") >= 0);
+        assertTrue(charsDicb.ord("learning") >= 0);
+        assertTrue(charsDicb.ord("New") >= 0);
+        assertTrue(charsDicb.ord("York") >= 0);
+        assertTrue(charsDicb.ord("City") >= 0);
+        assertTrue(charsDicb.ord("state") >= 0);
+        assertTrue(charsDicb.ord("of") >= 0);
+        assertTrue(charsDicb.ord("the") >= 0);
+        assertTrue(charsDicb.ord("art") >= 0);
     }
 
     /**
@@ -181,9 +181,9 @@ public class MweLexiconTest {
      */
     @Test
     void sharedComponentHasOneOrdinal() {
-        final CharsDic vocab = lexicon.vocabRef();
-        final int ord1 = vocab.ord("New");
-        final int ord2 = vocab.ord("New");
+        final CharsDic charsDic = lexicon.charsDic();
+        final int ord1 = charsDic.ord("New");
+        final int ord2 = charsDic.ord("New");
         assertEquals(ord1, ord2);
         assertTrue(ord1 >= 0);
     }
@@ -193,7 +193,7 @@ public class MweLexiconTest {
      */
     @Test
     void singleTokenExpressionSkipped() {
-        assertEquals(-1, lexicon.vocabRef().ord("single"));
+        assertEquals(-1, lexicon.charsDic().ord("single"));
     }
 
     /**
@@ -246,7 +246,7 @@ public class MweLexiconTest {
      */
     @Test
     void unknownTokenNotInVocab() {
-        assertEquals(-1, lexicon.vocabRef().ord("philosophy"));
+        assertEquals(-1, lexicon.charsDic().ord("philosophy"));
     }
 
     /**

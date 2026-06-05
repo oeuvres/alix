@@ -34,15 +34,8 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
-import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
-import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
-import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
-import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;

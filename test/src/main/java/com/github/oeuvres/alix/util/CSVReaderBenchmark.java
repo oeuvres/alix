@@ -35,6 +35,7 @@ public class CSVReaderBenchmark
     @Param({ "," })
     public String sep;
 
+    @SuppressWarnings("unused")
     private byte[] csvBytes; // preloaded resource bytes (JAR I/O removed)
 
     @Setup(Level.Trial)
