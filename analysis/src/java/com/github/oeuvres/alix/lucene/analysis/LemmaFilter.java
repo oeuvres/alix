@@ -141,6 +141,10 @@ public final class LemmaFilter extends TokenFilter
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
     // private final LemmaAttribute lemAtt = addAttribute(LemmaAttribute.class);
 
+    public LemmaFilter(TokenStream input, LemmaLexicon lexicon)
+    {
+        this(input, lexicon, null);
+    }
     /**
      * Creates a lemmatization side-channel filter.
      *
@@ -152,7 +156,7 @@ public final class LemmaFilter extends TokenFilter
     {
         super(input);
         this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
-        this.propn = Objects.requireNonNull(propn, "propn");
+        this.propn = propn;
     }
 
     /**
@@ -187,7 +191,7 @@ public final class LemmaFilter extends TokenFilter
         // if not known, try lower case
         if (termId < 0) {
             // Protect proper name Paris ≠ parier
-            if (propn.contains(termAtt)) return true;
+            if (propn != null && propn.contains(termAtt)) return true;
             // Protect acronym, USA ≠ user
             if (termAtt.length() > 1 && Character.isUpperCase(termAtt.charAt(1))) return true;
             probe.copyFrom(termAtt).toLowerCase();

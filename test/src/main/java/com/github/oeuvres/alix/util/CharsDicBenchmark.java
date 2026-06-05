@@ -136,7 +136,7 @@ public class CharsDicBenchmark {
     @Benchmark
     public int lookup_charsdic(Shared s, Cursor c) {
         char[] w = nextProbe(s, c);
-        return s.dic.find(w, 0, w.length);
+        return s.dic.ord(w, 0, w.length);
     }
 
     @Benchmark
@@ -211,7 +211,7 @@ public class CharsDicBenchmark {
     private static int countFound(CharsDic dic, char[][] corpus) {
         int found = 0;
         for (char[] w : corpus) {
-            if (dic.find(w, 0, w.length) >= 0) found++;
+            if (dic.ord(w, 0, w.length) >= 0) found++;
         }
         return found;
     }

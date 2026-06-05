@@ -7,6 +7,8 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 
+import com.github.oeuvres.alix.util.CharsMap;
+
 import java.util.List;
 
 /**
@@ -128,7 +130,7 @@ public final class TermReplaceFilterDemo {
     }
 
     /** Minimal Analyzer for StandardTokenizer ->TermReplaceFilter. */
-    private static Analyzer buildAnalyzer(final CharArrayMap<char[]> map) {
+    private static Analyzer buildAnalyzer(final CharsMap map) {
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
@@ -141,71 +143,69 @@ public final class TermReplaceFilterDemo {
     }
 
 
-    private static CharArrayMap<char[]> buildEnglishMap() {
-        final CharArrayMap<char[]> map = new CharArrayMap<>(64, true);
+    private static CharsMap buildEnglishMap() {
+        final CharsMap map = new CharsMap(64, true);
 
         // UK -> US
-        put(map, "colour", "color");
-        put(map, "centre", "center");
-        put(map, "organise", "organize");
-        put(map, "programme", "program");
+        map.put("colour", "color");
+        map.put("centre", "center");
+        map.put("organise", "organize");
+        map.put("programme", "program");
 
         // Digraphs / learned spellings
-        put(map, "paediatric", "pediatric");
-        put(map, "anaemia", "anemia");
-        put(map, "encyclopaedia", "encyclopedia");
-        put(map, "foetus", "fetus");
+        map.put("paediatric", "pediatric");
+        map.put("anaemia", "anemia");
+        map.put("encyclopaedia", "encyclopedia");
+        map.put("foetus", "fetus");
 
         // Diacritics in common loanwords/editorial spellings
-        put(map, "naïve", "naive");
-        put(map, "coöperate", "cooperate");
-        put(map, "façade", "facade");
-        put(map, "résumé", "resume");
+        map.put("naïve", "naive");
+        map.put("coöperate", "cooperate");
+        map.put("façade", "facade");
+        map.put("résumé", "resume");
 
         return map;
     }
 
-    private static CharArrayMap<char[]> buildFrenchMap() {
-        final CharArrayMap<char[]> map = new CharArrayMap<>(64, true);
+    private static CharsMap buildFrenchMap() {
+        final CharsMap map = new CharsMap(64, true);
 
         // Ligatures (ASCII fallback -> canonical Unicode)
-        put(map, "boeuf", "bœuf");
-        put(map, "coeur", "cœur");
-        put(map, "soeur", "sœur");
-        put(map, "oeuvre", "œuvre");
-        put(map, "oeuf", "œuf");
-        put(map, "foetus", "fœtus");
+        map.put("boeuf", "bœuf");
+        map.put("coeur", "cœur");
+        map.put("soeur", "sœur");
+        map.put("oeuvre", "œuvre");
+        map.put("oeuf", "œuf");
+        map.put("foetus", "fœtus");
 
         // Curated diacritics restoration
-        put(map, "aout", "août");
-        put(map, "noel", "noël");
-        put(map, "etude", "étude");
+        map.put("aout", "août");
+        map.put("noel", "noël");
+        map.put("etude", "étude");
 
         return map;
     }
 
-    private static CharArrayMap<char[]> buildGermanMap() {
-        final CharArrayMap<char[]> map = new CharArrayMap<>(96, true);
+    private static CharsMap buildGermanMap() {
+        final CharsMap map = new CharsMap(96, true);
 
         // Pre-/post-reform and Swiss variants
-        put(map, "daß", "dass");
-        put(map, "muß", "muss");
-        put(map, "strasse", "straße");
-        put(map, "gross", "groß");
-        put(map, "fluß", "fluss");
+        map.put("daß", "dass");
+        map.put("muß", "muss");
+        map.put("strasse", "straße");
+        map.put("gross", "groß");
+        map.put("fluß", "fluss");
 
         // Umlaut transliterations (curated list)
-        put(map, "mueller", "müller");
-        put(map, "goedel", "gödel");
-        put(map, "schroeder", "schröder");
+        map.put("mueller", "müller");
+        map.put("goedel", "gödel");
+        map.put("schroeder", "schröder");
 
         // House style example
-        put(map, "photographie", "fotografie");
+        map.put("photographie", "fotografie");
 
         return map;
     }
 
-    private static void put(final CharArrayMap<char[]> map, final String key, final String value) {
-        map.put(key, value.toCharArray());
-    }
+
 }

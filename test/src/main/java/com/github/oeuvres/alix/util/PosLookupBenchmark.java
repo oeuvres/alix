@@ -320,7 +320,7 @@ public class PosLookupBenchmark
             final int o = s.off[idx];
             final int L = s.len[idx] & 0xFFFF;
 
-            final int ord = s.dic.find(s.buf, o, L); // should hit
+            final int ord = s.dic.ord(s.buf, o, L); // should hit
             final int code = s.codeByOrd[ord];
             bh.consume(code);
         }

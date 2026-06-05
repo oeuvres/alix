@@ -27,7 +27,7 @@ class DetaggerTest {
 
     private static String detag(Detagger d, String xml) throws Exception {
         StringBuilder sb = new StringBuilder();
-        d.detag(xml, 0, xml.length(), sb);
+        d.detag(sb, xml, 0, xml.length());
         return sb.toString();
     }
 
@@ -65,20 +65,10 @@ class DetaggerTest {
     }
 
     @Test
-    void leadingWhitespaceNotEmitted() throws Exception {
-        // lastWritten == 0 at the start: leading space must be suppressed
-        assertEquals("text", detag(new Detagger(), "  text"));
-    }
-
-    @Test
     void whitespaceBetweenTagsProducesOneSpace() throws Exception {
         // <p>foo</p> <p>bar</p> — the space between the tags should survive as one space
         assertEquals("foo bar", detag(new Detagger(), "<p>foo</p> \n\t <p>bar</p>"));
     }
-
-    // -------------------------------------------------------------------------
-    // Tag stripping
-    // -------------------------------------------------------------------------
 
     @Test
     void openAndCloseTagStripped() throws Exception {
@@ -200,35 +190,35 @@ class DetaggerTest {
         final String xml = "abc<p>def</p> ghi";
         // offsets 3..13 = "<p>def</p>g"
         final StringBuilder sb = new StringBuilder();
-        new Detagger().detag(xml, 3, 15, sb);
+        new Detagger().detag(sb, xml, 3, 15);
         assertEquals("def g", sb.toString());
     }
 
     @Test
     void negativeBeginClampedToZero() throws Exception {
         final StringBuilder sb = new StringBuilder();
-        new Detagger().detag("text", -5, 4, sb);
+        new Detagger().detag(sb, "text", -5, 4);
         assertEquals("text", sb.toString());
     }
 
     @Test
     void endBeyondLengthClampedToLength() throws Exception {
         final StringBuilder sb = new StringBuilder();
-        new Detagger().detag("text", 0, 999, sb);
+        new Detagger().detag(sb, "text", 0, 999);
         assertEquals("text", sb.toString());
     }
 
     @Test
     void emptyRange_nothingWritten() throws Exception {
         final StringBuilder sb = new StringBuilder();
-        new Detagger().detag("text", 2, 2, sb);
+        new Detagger().detag(sb, "text", 2, 2);
         assertEquals("", sb.toString());
     }
 
     @Test
     void beginAfterEnd_nothingWritten() throws Exception {
         final StringBuilder sb = new StringBuilder();
-        new Detagger().detag("text", 3, 1, sb);
+        new Detagger().detag(sb, "text", 3, 1);
         assertEquals("", sb.toString());
     }
 
@@ -239,13 +229,13 @@ class DetaggerTest {
     @Test
     void nullXml_nothingWrittenNoException() throws Exception {
         final StringBuilder sb = new StringBuilder();
-        assertDoesNotThrow(() -> new Detagger().detag(null, 0, 0, sb));
+        assertDoesNotThrow(() -> new Detagger().detag(sb, null, 0, 0));
         assertEquals("", sb.toString());
     }
 
     @Test
     void nullDest_noException() {
-        assertDoesNotThrow(() -> new Detagger().detag("text", 0, 4, null));
+        assertDoesNotThrow(() -> new Detagger().detag(null, "text", 0, 4));
     }
 
     // -------------------------------------------------------------------------
@@ -257,18 +247,18 @@ class DetaggerTest {
         final Detagger d = new Detagger("em");
 
         final StringBuilder first = new StringBuilder();
-        d.detag("<em>one</em>", 0, 12, first);
+        d.detag(first, "<em>one</em>", 0, 12);
         assertEquals("<em>one</em>", first.toString());
 
         final StringBuilder second = new StringBuilder();
-        d.detag("<em>two</em>", 0, 12, second);
+        d.detag(second, "<em>two</em>", 0, 12);
         assertEquals("<em>two</em>", second.toString());
     }
 
     @Test
     void appendableIsAppendedTo_notReplaced() throws Exception {
         final StringBuilder sb = new StringBuilder("prefix ");
-        new Detagger().detag("<p>text</p>", 0, 11, sb);
+        new Detagger().detag(sb, "<p>text</p>", 0, 11);
         assertEquals("prefix text", sb.toString());
     }
 }

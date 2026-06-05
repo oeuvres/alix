@@ -137,7 +137,7 @@ public class FrenchLexicons
 
     public static CharsMap buildNormalizer()
     {
-        CharsMap map = new CharsMap(2000);
+        CharsMap map = new CharsMap(2000, true);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv", LexiconHelper.OnDuplicate.REPLACE);

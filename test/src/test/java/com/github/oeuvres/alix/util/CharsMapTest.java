@@ -30,7 +30,7 @@ class CharsMapTest
     @Test
     void contains_seesKeysAndValues()
     {
-        final CharsMap m = new CharsMap(4);
+        final CharsMap m = new CharsMap(4, false);
         m.put("k", "v");
 
         assertTrue(m.contains("k"));

@@ -40,16 +40,22 @@ import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.CharsRef;
+import org.apache.lucene.util.CharsRefBuilder;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import com.github.oeuvres.alix.util.CharsMap;
+
 
 /**
  * Benchmark: TermMappingFilter vs SynonymGraphFilter for single-token
@@ -75,7 +81,7 @@ public class RewriteFilterBenchmark
 
     private static final int BATCH = 5_000_000;
     private char[][] tokens;
-    private CharArrayMap<char[]> termMap; // single-token, 1->1
+    private CharsMap termMap; // single-token, 1->1
     private SynonymMap synMap;
 
     private TokenArrayBatchStream base;
@@ -85,9 +91,10 @@ public class RewriteFilterBenchmark
     @Setup(Level.Trial)
     public void setup() throws Exception
     {
-        termMap = new CharArrayMap<char[]>(1000, false);
-        LexiconHelper.loadMap(termMap, Path.of(mappingCsv), LexiconHelper.OnDuplicate.IGNORE);
-        synMap = buildSynonymMap(termMap);
+        termMap = new CharsMap(1000, true);
+        Path csvPath = Path.of(mappingCsv);
+        LexiconHelper.loadMap(termMap, csvPath, LexiconHelper.OnDuplicate.IGNORE);
+        synMap = synonymMap(csvPath);
 
         // Load tokens once; one token per line.
         List<String> lines = Files.readAllLines(Path.of(tokensFile), StandardCharsets.UTF_8);
@@ -147,18 +154,36 @@ public class RewriteFilterBenchmark
         ts.end();
       }
 
-    private static SynonymMap buildSynonymMap(CharArrayMap<char[]> map) throws IOException
-    {
-        SynonymMap.Builder b = new SynonymMap.Builder(true);
-        for (Map.Entry<Object, char[]> e : map.entrySet()) {
-            String k = keyToString(e.getKey());
-            char[] v = e.getValue();
-            if (k == null || v == null)
-                continue;
-            // Replacement-only: includeOrig=false avoids parallel tokens.
-            b.add(new CharsRef(k), new CharsRef(v, 0, v.length), false);
+    /**
+     * Builds a SynonymMap from a CSV with columns: surface,norm (one mapping per line).
+     * Surface tokens are replaced by their normalized form (includeOrig = false).
+     *
+     * @param csv     path to the 2-column CSV file
+     * @param charset file encoding
+     * @return an immutable SynonymMap ready to wire into a SynonymGraphFilter
+     */
+    public static SynonymMap synonymMap(Path csvPath) throws IOException {
+        SynonymMap.Builder builder = new SynonymMap.Builder(true); // dedup
+        CharsRefBuilder inputBuf = new CharsRefBuilder();
+        CharsRefBuilder outputBuf = new CharsRefBuilder();
+        try (BufferedReader reader = Files.newBufferedReader(csvPath, Charset.forName("UTF-8"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank() || line.charAt(0) == '#') {
+                    continue;
+                }
+                int comma = line.indexOf(',');
+                if (comma < 0) {
+                    continue; // or throw, depending on how strict you want parsing
+                }
+                String surface = line.substring(0, comma).trim();
+                String norm = line.substring(comma + 1).trim();
+                CharsRef input = builder.join(surface.split("\\s+"), inputBuf);
+                CharsRef output = builder.join(norm.split("\\s+"), outputBuf);
+                builder.add(input, output, false); // false: emit norm only, drop surface
+            }
         }
-        return b.build();
+        return builder.build();
     }
 
     private static String keyToString(Object key)

@@ -104,7 +104,14 @@ public final class FrenchPosTaggingFilterDemo {
     static final List<AnalysisDemoHelper.Case> CASES = List.of(
         new AnalysisDemoHelper.Case(
             "Clitique",
-            "La vie est dure",
+            "En logique, en histoire et philosophie des sciences et en théorie"
+            + " de la connaissance (autant de domaines qui sont plus qu’il ne"
+            + " semble en rapport avec le développement de la logique chez l’enfant),"
+            + " nous sommes infiniment redevable à la méthode historico-critique de"
+            + " notre maître M. Arnold Reymond et des œuvres capitales de"
+            + " M. E. Meyerson et de M. Brunschvicg. Parmi ces dernières, Les Etapes"
+            + " de la Philosophie mathématique, et, récemment, L’expérience humaine"
+            + " et la causalité physique ont eu sur nous une influence décisive.",
             null
         ),
 

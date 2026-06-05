@@ -11,7 +11,6 @@
  */
 package com.github.oeuvres.alix.util;
 
-import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -70,9 +69,9 @@ public final class CharsMap
      * @param expectedSize estimate of distinct sequences (keys plus values) to
      *                     insert; values {@code <= 0} are treated as 1
      */
-    public CharsMap(final int expectedSize)
+    public CharsMap(final int expectedSize, boolean ignoreCase)
     {
-        this.dic = new CharsDic(expectedSize);
+        this.dic = new CharsDic(expectedSize, ignoreCase);
         this.values = new int[Math.max(8, expectedSize)];
         Arrays.fill(this.values, HAS_NO_VALUE);
     }
