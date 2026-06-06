@@ -43,9 +43,8 @@ public class OpResults extends Op {
         final HttpPars pars = new HttpPars(request, response);
         final Query filterQuery = filterQuery(index, pars);
         final OpMeta meta = new OpMeta();
-
-
         final Writer writer = response.getWriter();
+
         
         
         final String contentFname = pars.getString(FTEXT, index.content());
@@ -84,6 +83,8 @@ public class OpResults extends Op {
         }
         final SpanQuery spanQuery = spanQuery(index, pars);
 
+
+
         // Snippet-scoring resources, prepared once.
         // No-query branch only emits article shells: snippet scoring is disabled.
         // Query branches use BM25-weighted term scores for in-document snippet ranking.
@@ -100,6 +101,12 @@ public class OpResults extends Op {
             termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
             snipLimit = pars.getInt(SNIPPETS, SNIPPETS_RANGE, SNIPPETS_DEFAULT, SNIPPETS);
         }
+        
+        
+        writer.append("<!-- \n");
+        meta.toString(writer, pars);
+        writer.append("\n-->\n");
+        
         // MAYBE, get a locale from lang param
 
         final ResultsSnippets results = new ResultsSnippets(
@@ -189,9 +196,6 @@ public class OpResults extends Op {
             }
         }
 
-        writer.append("<!-- \n");
-        meta.toString(writer, pars);
-        writer.append("\n-->\n");
         
         if (nextDoc > 0) {
             writer.append("<p class=\"next-results\"><a data-from=\"").append(String.valueOf(nextDoc))

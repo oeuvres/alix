@@ -14,7 +14,6 @@ import com.github.oeuvres.alix.util.IntList;
 /**
  * {@link SnippetsConsumer} accumulating per-term cooccurrence counts in a fixed-width window
  * around each snippet produced by {@link SpanWalker}.
- *
  * <p>
  * For every snippet at positions {@code [snipStart, snipEnd)} the listener marks the contiguous
  * range {@code [max(0, snipStart - left), snipEnd + right)} in a per-document {@link BitSet}.
@@ -22,9 +21,7 @@ import com.github.oeuvres.alix.util.IntList;
  * via {@link TermRail#scanPositions}, and each resolved term id is written into the
  * {@link Buffers} bound via {@link #bindTo(Buffers)}.
  * </p>
- *
  * <h2>Pivot exclusion</h2>
- *
  * <p>
  * Term ids passed to {@link #setPivotIds(int[])} are excluded from the count <em>everywhere</em>
  * in the window, not only inside the matched span. This is by design, and supports an iterative
@@ -34,35 +31,28 @@ import com.github.oeuvres.alix.util.IntList;
  * occurrences of them fall in the slop window before or after the snippet. Position-based
  * exclusion of the matched span alone would surface those extras and is therefore not used here.
  * </p>
- *
  * <p>
  * The pivot set is held sorted and deduplicated and probed with {@link Arrays#binarySearch}.
  * {@link #setPivotIds(int[])} normalises its argument via {@link IntList#uniq(int[])}; callers
  * may pass any int array.
  * </p>
- *
  * <h2>Per-document deduplication for document frequency</h2>
- *
  * <p>
  * A vocabulary-sized bitset tracks which term ids have already been counted in the current
  * document, so {@link Buffers#termDocs()} is incremented at most once per (term, document) pair
  * while {@link Buffers#termFreq()} is incremented per occurrence.
  * </p>
- *
  * <h2>Lifecycle</h2>
- *
  * <p>
  * {@link #bindTo(Buffers)} and {@link #setPivotIds(int[])} must both be called before the walk
  * starts. {@link #reset()} clears {@link #coocTokens()} and {@link #coocDocsTotal()} between
  * walks; the bound {@link Buffers} and pivot ids persist and must be replaced with another
  * {@code bindTo} / {@code setPivotIds} call if they need to change.
  * </p>
- *
  * <p>
  * After the walk, {@link #coocTokens()} and {@link #coocDocsTotal()} are the focus-side totals
  * used as denominators in keyness scoring.
  * </p>
- *
  * <p>
  * This class is not thread-safe.
  * </p>
@@ -111,20 +101,20 @@ public final class CoocSnippets implements SnippetsConsumer
      * Constructs a cooccurrence listener.
      *
      * @param fieldStats field statistics for the pivot field
-     * @param rail       forward positional rail for the same field
-     * @param left       context width on the left of each snippet, in positions; must be
-     *                   {@code >= 0}
-     * @param right      context width on the right of each snippet, in positions; must be
-     *                   {@code >= 0}
+     * @param rail forward positional rail for the same field
+     * @param left context width on the left of each snippet, in positions; must be
+     * {@code >= 0}
+     * @param right context width on the right of each snippet, in positions; must be
+     * {@code >= 0}
      * @throws IllegalArgumentException if {@code left} or {@code right} is negative
-     * @throws NullPointerException     if {@code fieldStats} or {@code rail} is {@code null}
+     * @throws NullPointerException if {@code fieldStats} or {@code rail} is {@code null}
      */
     public CoocSnippets(
-            final TermStats fieldStats,
-            final TermRail rail,
-            final int left,
-            final int right)
-    {
+        final TermStats fieldStats,
+        final TermRail rail,
+        final int left,
+        final int right
+    ) {
         this.fieldStats = Objects.requireNonNull(fieldStats, "fieldStats");
         this.rail = Objects.requireNonNull(rail, "rail");
         if (left < 0 || right < 0) {
@@ -144,19 +134,19 @@ public final class CoocSnippets implements SnippetsConsumer
      * {@link #reset()} explicitly when reusing the listener across walks.
      *
      * @param buffers focus buffers to write into; lengths must equal
-     *                {@code fieldStats.vocabSize()}
-     * @throws NullPointerException     if {@code buffers} is {@code null}
+     * {@code fieldStats.vocabSize()}
+     * @throws NullPointerException if {@code buffers} is {@code null}
      * @throws IllegalArgumentException if buffer lengths do not match
-     *                                  {@code fieldStats.vocabSize()}
+     * {@code fieldStats.vocabSize()}
      */
-    public CoocSnippets bindTo(final Buffers buffers)
-    {
+    public CoocSnippets bindTo(
+        final Buffers buffers
+    ) {
         Objects.requireNonNull(buffers, "buffers");
         final int vocab = fieldStats.vocabSize();
         if (buffers.termFreq().length != vocab || buffers.termDocs().length != vocab) {
             throw new IllegalArgumentException(
-                    "buffer length mismatch: vocabSize=" + vocab
-                            + ", termFreq.length=" + buffers.termFreq().length
+                    "buffer length mismatch: vocabSize=" + vocab + ", termFreq.length=" + buffers.termFreq().length
                             + ", termDocs.length=" + buffers.termDocs().length);
         }
         this.buffers = buffers;
@@ -169,8 +159,7 @@ public final class CoocSnippets implements SnippetsConsumer
      *
      * @return focus document count
      */
-    public int coocDocsTotal()
-    {
+    public int coocDocsTotal() {
         return coocDocsTotal;
     }
 
@@ -180,14 +169,16 @@ public final class CoocSnippets implements SnippetsConsumer
      *
      * @return total cooccurrence token count
      */
-    public long coocTokens()
-    {
+    public long coocTokens() {
         return coocTokens;
     }
 
     @Override
-    public void docSnippets(final int docId, final Snippets snippets) throws IOException
-    {
+    public void docSnippets(
+        final int docId,
+        final Snippets snippets
+    )
+        throws IOException {
         windowMask.clear();
         termSeen.clear();
         docContributed = false;
@@ -222,26 +213,26 @@ public final class CoocSnippets implements SnippetsConsumer
     }
 
     /**
-	 * Sets the term ids to exclude from cooccurrence counting at every position in the window,
-	 * including positions inside the matched span. The argument is normalised via
-	 * {@link IntList#uniq(int[])}; callers may pass any int array (unsorted, with duplicates).
-	 *
-	 * @param pivotIds term ids to exclude; may be empty but not {@code null}
-	 * @throws NullPointerException if {@code pivotIds} is {@code null}
-	 */
-	public CoocSnippets pivotIds(final int[] pivotIds)
-	{
-	    Objects.requireNonNull(pivotIds, "pivotIds");
-	    this.pivotIds = IntList.uniq(pivotIds);
-	    return this;
-	}
+     * Sets the term ids to exclude from cooccurrence counting at every position in the window,
+     * including positions inside the matched span. The argument is normalised via
+     * {@link IntList#uniq(int[])}; callers may pass any int array (unsorted, with duplicates).
+     *
+     * @param pivotIds term ids to exclude; may be empty but not {@code null}
+     * @throws NullPointerException if {@code pivotIds} is {@code null}
+     */
+    public CoocSnippets pivotIds(
+        final int[] pivotIds
+    ) {
+        Objects.requireNonNull(pivotIds, "pivotIds");
+        this.pivotIds = IntList.uniq(pivotIds);
+        return this;
+    }
 
-	/**
+    /**
      * Clears the accumulators {@link #coocTokens()} and {@link #coocDocsTotal()}. The bound
      * {@link Buffers} and pivot ids are preserved.
      */
-    public void reset()
-    {
+    public void reset() {
         coocTokens = 0L;
         coocDocsTotal = 0;
     }

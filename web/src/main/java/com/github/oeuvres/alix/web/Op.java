@@ -392,6 +392,8 @@ public abstract class Op
         final String content = pars.getString(FTEXT, index.content());
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         SpanQuery spanQuery = new SpanQueryParser(content, slop, new FrenchCliticTokenizer()).parse(q);
+        // rewrite to have multiple terms
+        spanQuery = (SpanQuery) index.searcher().rewrite(spanQuery);
         return spanQuery;
     }
 
