@@ -97,10 +97,8 @@ public final class FrenchPosTaggingFilterDemo {
     static final List<AnalysisDemoHelper.Case> CASES = List.of(
         new AnalysisDemoHelper.Case(
             "Clitique",
-            "En logique, en histoire et philosophie des sciences et en théorie"
-            + " de la connaissance (autant de domaines qui sont plus qu’il ne"
-            + " semble en rapport avec le développement de la logique chez l’enfant),"
-            + " nous sommes infiniment redevable à la méthode historico-critique de"
+            "I. Meyerson, I. <span class=\"sc\">Meyerson</span>"
+            + " entièrement d’accord avec les remarques d’I. Meyerson et d'E. Jean."
             + " notre maître M. Arnold Reymond et des œuvres capitales de"
             + " M. E. Meyerson et de M. Brunschvicg. Parmi ces dernières, Les Etapes"
             + " de la Philosophie mathématique, et, récemment, L’expérience humaine"

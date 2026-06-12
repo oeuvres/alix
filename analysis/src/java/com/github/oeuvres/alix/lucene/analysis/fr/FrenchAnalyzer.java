@@ -208,6 +208,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new FrenchCliticSplitFilter(ts);
         // normalizations
         ts = new TermReplaceFilter(ts, normalizer);
+        // merge initial with proper name
+        ts = new PersInitialFilter(ts);
         // pos tagging before lemmatize
         ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
         // provide lemma
