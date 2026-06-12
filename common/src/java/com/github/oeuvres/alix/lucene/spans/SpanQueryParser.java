@@ -122,26 +122,35 @@ public class SpanQueryParser {
     }
     
     /**
-     * Builds the span clause for one token, resolving a trailing or embedded
-     * joker into a {@link SpanMultiTermQueryWrapper}.
+     * Returns the token with its first letter's case inverted.
      *
-     * <p>The literal part is <em>not</em> run through the field analyzer. The
-     * tokenizer must already have normalized the token (case, etc.) to the
-     * indexed term form, otherwise the pattern silently matches nothing.</p>
-     *
-     * @param word a single token, possibly ending with {@code *} or containing {@code ?}
-     * @return a span query, or {@code null} for a degenerate pattern
+     * @param text a token, never empty when called from {@link #spanFor}
+     * @return the case-flipped token, or {@code null} if the first character has
+     *         no distinct other case (digit, joker, punctuation)
      */
-    private SpanQuery spanFor(final String word) {
-        // multi-word-expression
-        final String text = word.replace('_', ' ');
-        final boolean hasStar = text.indexOf('*') >= 0;
-        final boolean hasQuestion = text.indexOf('?') >= 0;
-        if (!hasStar && !hasQuestion) {
-            return new SpanTermQuery(new Term(field, text));
+    private static String flipLeadingCase(final String text) {
+        if (text.isEmpty()) {
+            return null;
         }
+        final char head = text.charAt(0);
+        final char other = Character.isUpperCase(head)
+            ? Character.toLowerCase(head)
+            : Character.toUpperCase(head);
+        if (other == head) {
+            return null;
+        }
+        return other + text.substring(1);
+    }
+    
+    /**
+     * Builds the joker clause for one token, choosing prefix or wildcard.
+     *
+     * @param text a token known to contain a joker
+     * @return a wrapped multi-term span query, or {@code null} for a bare joker
+     */
+    private SpanQuery jokerFor(final String text) {
         // pure prefix: single trailing '*', no other metacharacter
-        if (!hasQuestion && text.indexOf('*') == text.length() - 1) {
+        if (text.indexOf('?') < 0 && text.indexOf('*') == text.length() - 1) {
             final String stem = text.substring(0, text.length() - 1);
             if (stem.isBlank()) {
                 return null; // bare '*' would match every term in the field
@@ -149,6 +158,35 @@ public class SpanQueryParser {
             return wrap(new PrefixQuery(new Term(field, stem)));
         }
         return wrap(new WildcardQuery(new Term(field, text)));
+    }
+
+    /**
+     * Builds the span clause for one token.
+     *
+     * <p>A plain token becomes an exact, case-sensitive {@link SpanTermQuery}.
+     * A token carrying a joker ({@code *} or {@code ?}) is matched
+     * case-insensitively on its leading letter, like the suggestion panel:
+     * {@code lama*} and {@code Lama*} both reach {@code Lamarck} and
+     * {@code lamarckisme}. This is done by ORing the form as typed with the
+     * form whose first letter has the opposite case.</p>
+     *
+     * @param word a single token, possibly carrying a joker
+     * @return a span query, or {@code null} for a degenerate pattern (bare joker)
+     */
+    private SpanQuery spanFor(final String word) {
+        final String text = word.replace('_', ' '); // multi-word expression
+        final boolean hasJoker = text.indexOf('*') >= 0 || text.indexOf('?') >= 0;
+    
+        if (!hasJoker) {
+            return new SpanTermQuery(new Term(field, text));
+        }
+    
+        final SpanQuery asTyped = jokerFor(text);
+        final String flipped = flipLeadingCase(text);
+        if (flipped == null) {
+            return asTyped; // leading char is a joker or has no case: nothing to fold
+        }
+        return new SpanOrQuery(asTyped, jokerFor(flipped));
     }
 
     /**
