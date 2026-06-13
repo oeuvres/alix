@@ -48,6 +48,7 @@ import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
+import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 
 
@@ -193,7 +194,7 @@ public final class LemmaFilter extends TokenFilter
             // Protect proper name Paris ≠ parier
             if (propn != null && propn.contains(termAtt)) return true;
             // Protect acronym, USA ≠ user
-            if (termAtt.length() > 1 && Character.isUpperCase(termAtt.charAt(1))) return true;
+            if (termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) return true;
             probe.copyFrom(termAtt).toLowerCase();
             termId = lexicon.ord(probe);
             if (termId < 0) return true;

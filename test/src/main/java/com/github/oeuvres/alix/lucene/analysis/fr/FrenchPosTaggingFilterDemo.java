@@ -39,7 +39,9 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
+import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.util.CSVReader;
+import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.WordTokenizer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
@@ -81,7 +83,9 @@ public final class FrenchPosTaggingFilterDemo {
             protected TokenStreamComponents createComponents(String fieldName) {
                 MweLexicon expressions = FrenchLexicons.buildMweLexicon();
                 String names = """
+                    Meyerson,Émile Meyerson,NamePers
                     Émile Meyerson,Émile Meyerson,NamePers
+                    Emile Meyerson,Émile Meyerson,NamePers
                     É. Meyerson,Émile Meyerson,NamePers
                     E. Meyerson,Émile Meyerson,NamePers
                     Ignace Meyerson,Ignace Meyerson,NamePers
@@ -99,15 +103,17 @@ public final class FrenchPosTaggingFilterDemo {
                     e.printStackTrace();
                 }
                 
+                CharsMap normalizer = new CharsMap(200, false);
+                normalizer.put("Lev", "Suj");
+                normalizer.put("Mie", "Suj");
+                
                 Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidots());
                 TokenStream ts = tokenizer;
                 ts = new MarkupBoundaryFilter(ts);
                 ts = new FrenchCliticSplitFilter(ts);
-                ts = new PosTaggingFilter(ts, model, PosTaggingFilter.HYPHEN_REWRITER);
-                ts = new LemmaFilter(
-                    ts,
-                    FrenchLexicons.buildLemmaLexicon(),
-                    FrenchLexicons.buildPropn());
+                ts = new ReplaceFilter(ts, normalizer);
+                // ts = new PosTaggingFilter(ts, model, PosTaggingFilter.HYPHEN_REWRITER);
+                // ts = new LemmaFilter(ts, FrenchLexicons.buildLemmaLexicon(), FrenchLexicons.buildPropn());
                 ts = new MweFilter(ts, expressions);
 
                 return new TokenStreamComponents(tokenizer, ts);
@@ -129,12 +135,14 @@ public final class FrenchPosTaggingFilterDemo {
     static final List<AnalysisDemoHelper.Case> CASES = List.of(
         new AnalysisDemoHelper.Case(
             "Clitique",
-            "I. Meyerson, I. <span class=\"sc\">Meyerson</span>"
-            + " entièrement d’accord avec les remarques d’I. Meyerson et d'E. Jean."
-            + " notre maître M. Arnold Reymond et des œuvres capitales de"
-            + " M. E. Meyerson et de M. Brunschvicg. Parmi ces dernières, Les Etapes"
-            + " de la Philosophie mathématique, et, récemment, L’expérience humaine"
-            + " et la causalité physique ont eu sur nous une influence décisive.",
+            """
+            (Lev, 5 ; 10) C’est Mie tu vois.
+            I. Meyerson, I. <span class=\"sc\">Meyerson</span>
+            d’I. Meyerson et d'E. Meyerson, et Émile Meyerson, avec Meyerson.
+            notre maître M. Arnold Reymond et des œuvres capitales de"
+            M. E. Meyerson et de M. Brunschvicg. Parmi ces dernières, Les Etapes
+            de la Philosophie mathématique, et, récemment, L’expérience humaine
+            et la causalité physique ont eu sur nous une influence décisive.""",
             null
         ),
 

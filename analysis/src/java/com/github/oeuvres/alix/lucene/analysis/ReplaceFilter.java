@@ -41,6 +41,8 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
+import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
+import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.CharsMap;
 
 /**
@@ -71,7 +73,7 @@ import com.github.oeuvres.alix.util.CharsMap;
  * @see org.apache.lucene.analysis.charfilter.MappingCharFilter
  * @see org.apache.lucene.analysis.synonym.SynonymGraphFilter
  */
-public final class TermReplaceFilter extends TokenFilter {
+public final class ReplaceFilter extends TokenFilter {
 
     /**
      * Term rewrite table. Keys are matched against the current token term; values are copied
@@ -81,6 +83,8 @@ public final class TermReplaceFilter extends TokenFilter {
 
     /** The current token term. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    /** Reusable probe for transformed dictionary lookup (no String allocation in hot path). */
+    private final TermProbe probe = new TermProbe();
 
     /**
      * Create a new {@code TermMappingFilter}.
@@ -88,7 +92,7 @@ public final class TermReplaceFilter extends TokenFilter {
      * @param input the upstream {@link TokenStream} (tokenizer or previous filter)
      * @param map the rewrite table mapping surface forms to replacement forms
      */
-    public TermReplaceFilter(final TokenStream input, final CharsMap map) {
+    public ReplaceFilter(final TokenStream input, final CharsMap map) {
         super(input);
         this.map = map;
     }
@@ -104,12 +108,20 @@ public final class TermReplaceFilter extends TokenFilter {
         if (!input.incrementToken()) return false;
         
         int valueOrd = map.valueOrd(termAtt.buffer(), 0, termAtt.length());
-        if (valueOrd >= 0) { 
-            int valueLen = map.len(valueOrd); 
-            char[] dst = termAtt.resizeBuffer(valueLen);
-            map.copy(valueOrd, dst, 0);
-            termAtt.setLength(valueLen);
+        // try lower casing
+        if (valueOrd < 0) {
+            final char c0 = termAtt.charAt(0);
+            // nothing to test
+            if (!Char.isUpperCase(c0)) return true;
+            probe.copyFrom(termAtt).toLowerCase();
+            valueOrd = map.valueOrd(probe);
+            if (valueOrd < 0) return true;
         }
+        
+        int valueLen = map.len(valueOrd); 
+        char[] dst = termAtt.resizeBuffer(valueLen);
+        map.copy(valueOrd, dst, 0);
+        termAtt.setLength(valueLen);
         return true;
     }
 }

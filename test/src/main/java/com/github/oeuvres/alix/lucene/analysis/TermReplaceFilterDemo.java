@@ -134,7 +134,7 @@ public final class TermReplaceFilterDemo {
             protected TokenStreamComponents createComponents(String fieldName) {
                 Tokenizer tokenizer = new StandardTokenizer();
                 TokenStream stream = tokenizer;
-                stream = new TermReplaceFilter(stream, map);
+                stream = new ReplaceFilter(stream, map);
                 return new TokenStreamComponents(tokenizer, stream);
             }
         };

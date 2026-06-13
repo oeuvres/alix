@@ -53,7 +53,7 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
-import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
+import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
@@ -207,7 +207,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         // fr split on ’ and -
         ts = new FrenchCliticSplitFilter(ts);
         // normalizations
-        ts = new TermReplaceFilter(ts, normalizer);
+        ts = new ReplaceFilter(ts, normalizer);
         // merge initial with proper name, bad if you want MWE to handle that
         // ts = new PersInitialFilter(ts);
         // pos tagging before lemmatize

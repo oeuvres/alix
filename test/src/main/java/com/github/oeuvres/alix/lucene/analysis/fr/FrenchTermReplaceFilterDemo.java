@@ -12,7 +12,7 @@ import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.TermReplaceFilter;
+import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 
 public class FrenchTermReplaceFilterDemo
 {
@@ -33,7 +33,7 @@ public class FrenchTermReplaceFilterDemo
                 Tokenizer tokenizer = new StandardTokenizer();
                 TokenStream ts = tokenizer;
                 ts = new FrenchCliticSplitFilter(ts);
-                ts = new TermReplaceFilter(ts, FrenchLexicons.buildNormalizer());
+                ts = new ReplaceFilter(ts, FrenchLexicons.buildNormalizer());
                 ts = new LemmaFilter(ts, FrenchLexicons.buildLemmaLexicon());
                 return new TokenStreamComponents(tokenizer, ts);
             }
