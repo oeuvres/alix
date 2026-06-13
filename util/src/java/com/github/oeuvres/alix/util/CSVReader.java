@@ -35,7 +35,9 @@ package com.github.oeuvres.alix.util;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -54,19 +56,21 @@ import java.util.Objects;
  * <li>Optional column limit via {@code cellMax} (skip storing extra columns)</li>
  * </ul>
  *
- * <h3>Input modes</h3>
- * <ul>
- * <li><b>Reader mode</b>: use a {@link Reader} (classic usage)</li>
- * <li><b>UTF-8 byte mode</b>: use an {@link InputStream} opened on UTF-8 data;
- *     the reader decodes bytes directly into its internal char buffer.
- *     This avoids {@link java.io.InputStreamReader} and includes an ASCII fast path.</li>
- * </ul>
+ * <h3>Input</h3>
+ * <p>
+ * Characters are read from a {@link Reader}; byte decoding is delegated to the JDK.
+ * For UTF-8 sources wrap the stream in
+ * {@code new InputStreamReader(stream, StandardCharsets.UTF_8)} — which the
+ * {@link Path}, classpath-resource and {@link InputStream} constructors do for you.
+ * The reader does its own bulk buffering, so there is no need to add a
+ * {@link java.io.BufferedReader} on top.
+ * </p>
  *
  * <h3>Usage patterns</h3>
  *
- * <p><b>Reader mode</b></p>
+ * <p><b>Reader</b></p>
  * <pre>{@code
- * Reader r = ...; // e.g. new InputStreamReader(getResourceAsStream(...), StandardCharsets.UTF_8)
+ * Reader r = new InputStreamReader(getResourceAsStream(...), StandardCharsets.UTF_8);
  * try (CSVReader csv = new CSVReader(r, ',', 2)) {
  *   while (csv.readRow()) {
  *     CharSequence key = csv.getCell(0);
@@ -76,7 +80,7 @@ import java.util.Objects;
  * }
  * }</pre>
  *
- * <p><b>Classpath resource (UTF-8 byte mode)</b></p>
+ * <p><b>Classpath resource</b></p>
  * <pre>{@code
  * // absolute resource path recommended: "/bench/word.csv"
  * try (CSVReader csv = new CSVReader(MyClass.class, "/bench/word.csv", ',', 2)) {
@@ -96,53 +100,19 @@ import java.util.Objects;
  */
 public final class CSVReader implements Closeable
 {
-    private static final int  DEFAULT_CHAR_BUFFER_SIZE = 64 * 1024;
-    private static final int  DEFAULT_BYTE_BUFFER_SIZE = 64 * 1024;
-    /**
-     * Underlying character source (Reader mode).
-     * <p>
-     * This is typically an {@link java.io.InputStreamReader}, possibly wrapped
-     * around a JAR resource or a file input stream.
-     */
+    /** Default size of the character I/O buffer. */
+    private static final int DEFAULT_CHAR_BUFFER_SIZE = 64 * 1024;
+
+    /** Initial capacity of each per-cell {@link StringBuilder}. */
+    private static final int CELL_INITIAL_CAPACITY = 64;
+
+    /** Underlying character source; decoding is the {@link Reader}'s responsibility. */
     private final Reader in;
 
-    /**
-     * Underlying byte source (UTF-8 byte mode).
-     * <p>
-     * When this is non-null, {@link #in} is null and the reader decodes UTF-8 bytes
-     * directly into {@link #buf} via {@link #fillUtf8()}.
-     */
-    private final InputStream bin;
-
-    /**
-     * Byte buffer used in UTF-8 byte mode.
-     * <p>
-     * Data is read from {@link #bin} into this buffer, then decoded into the char buffer.
-     */
-    private final byte[] bbuf;
-
-    /**
-     * Current read position in {@link #bbuf}.
-     */
-    private int bPos = 0;
-
-    /**
-     * Number of valid bytes currently in {@link #bbuf}.
-     */
-    private int bLen = 0;
-
-    // -------------------------------------------------------------------------
-    // CSV configuration
-    // -------------------------------------------------------------------------
-
-    /**
-     * Field separator character (e.g. {@code ','} or {@code ';'}).
-     */
+    /** Field separator character (e.g. {@code ','} or {@code ';'}). */
     private final char separator;
 
-    /**
-     * Quote character used to enclose fields (typically {@code '"'}).
-     */
+    /** Quote character used to enclose fields (typically {@code '"'}). */
     private final char quote;
 
     /**
@@ -154,187 +124,71 @@ public final class CSVReader implements Closeable
      */
     private int cellMax = -1;
 
-    // -------------------------------------------------------------------------
-    // Character buffer (used by both modes)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Internal I/O buffer.
-     * <p>
-     * In Reader mode, characters are read from {@link #in} into this buffer in bulk.
-     * In UTF-8 byte mode, decoded characters are written here by {@link #fillUtf8()}.
-     */
+    /** Internal character I/O buffer, filled in bulk from {@link #in}. */
     private final char[] buf;
 
-    /**
-     * Current position in {@link #buf} (index of next char to consume).
-     */
+    /** Current position in {@link #buf} (index of next char to consume). */
     private int bufPos = 0;
 
-    /**
-     * Number of valid characters currently in {@link #buf}.
-     */
+    /** Number of valid characters currently in {@link #buf}. */
     private int bufLen = 0;
 
-    /**
-     * Flag indicating that end-of-file has been reached and no more data is available.
-     */
+    /** Set once end-of-input has been reached. */
     private boolean eof = false;
 
-    /**
-     * Flag indicating that the next character read is the very first character of the stream.
-     * <p>
-     * Used to skip a UTF-8 BOM ({@code '\uFEFF'}) if present.
-     */
+    /** True until the first character is consumed; used to skip a leading BOM. */
     private boolean atStart = true;
 
-    // -------------------------------------------------------------------------
-    // Per-row cell buffers
-    // -------------------------------------------------------------------------
-
     /**
-     * Per-row cell buffers.
-     * <p>
-     * Each element corresponds to a cell in the current row. The list is grown
-     * lazily and reused across rows. Only the first {@link #cellCount} elements are
-     * valid for the last row read.
+     * Per-row cell buffers, grown lazily and reused across rows. Only the first
+     * {@link #cellCount} elements are valid for the last row read.
      */
     private final ArrayList<StringBuilder> cells;
 
-    /**
-     * Number of cells in the last row successfully read by {@link #readRow()}.
-     */
+    /** Number of cells in the last row successfully read by {@link #readRow()}. */
     private int cellCount = 0;
-    
-    /** Name of the resource, for logging */
+
+    /** Identifying name of the source (path or resource), {@code null} for a raw stream. */
     private String spec;
-    /** Count of lines */
+
+    /** Number of rows returned so far, for logging. */
     private int rowNo;
 
-    // -------------------------------------------------------------------------
-    // Constructors (Reader mode)
-    // -------------------------------------------------------------------------
-
-    public CSVReader(final Path path,
-            final char separator,
-            final int cellMax) throws IOException
-    {
-        this(openFile(path), separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE, DEFAULT_BYTE_BUFFER_SIZE);
-        spec = path.toString();
-    }
-    
-    
     /**
-     * Creates a {@code CSVReader} with default settings:
-     * <ul>
-     * <li>Separator: {@code ','}</li>
-     * <li>Quote: {@code '"'}</li>
-     * <li>I/O buffer size: 8192 characters</li>
-     * <li>Initial cell capacity: 1 cell per row (grown lazily)</li>
-     * <li>Initial capacity per cell: 64 characters</li>
-     * </ul>
+     * Reads UTF-8 bytes from a file, decoding through {@link InputStreamReader}.
      *
-     * @param in the underlying character stream to read from; must not be {@code null}
-     * @throws NullPointerException if {@code in} is {@code null}
-     */
-    public CSVReader(final Reader in)
-    {
-        this(in, ',', -1, '"', 8192);
-    }
-
-    /**
-     * Creates a {@code CSVReader} with default settings:
-     * <ul>
-     * <li>Quote: {@code '"'}</li>
-     * <li>I/O buffer size: 8192 characters</li>
-     * <li>Initial cell capacity: 1 cell per row (grown lazily)</li>
-     * <li>Initial capacity per cell: 64 characters</li>
-     * </ul>
-     *
-     * @param in        the underlying character stream to read from; must not be {@code null}
-     * @param separator field separator character (e.g. {@code ','} or {@code ';'})
-     * @throws NullPointerException if {@code in} is {@code null}
-     */
-    public CSVReader(final Reader in, final char separator)
-    {
-        this(in, separator, -1, '"', DEFAULT_CHAR_BUFFER_SIZE);
-    }
-
-    /**
-     * Creates a {@code CSVReader} with default settings:
-     * <ul>
-     * <li>Quote: {@code '"'}</li>
-     * <li>I/O buffer size: 64 KiB characters</li>
-     * <li>Initial cell capacity: 1 cell per row (grown lazily)</li>
-     * <li>Initial capacity per cell: 64 characters</li>
-     * </ul>
-     *
-     * @param in        the underlying character stream to read from; must not be {@code null}
-     * @param separator field separator character (e.g. {@code ','} or {@code ';'})
+     * @param path      file to read; must not be {@code null}
+     * @param separator field separator character
      * @param cellMax   limit number of columns to explore (and store)
-     * @throws NullPointerException if {@code in} is {@code null}
+     * @throws IOException if the file cannot be opened
      */
-    public CSVReader(final Reader in, final char separator, final int cellMax)
+    public CSVReader(final Path path, final char separator, final int cellMax) throws IOException
     {
-        this(in, separator, cellMax, '"', 64 * 1024);
+        this(openReader(path), separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
+        this.spec = path.toString();
     }
 
     /**
-     * Creates a {@code CSVReader} with fully configurable parameters (Reader mode).
+     * Reads UTF-8 bytes from an {@link InputStream}, decoding through {@link InputStreamReader}.
+     * The stream is owned by this reader and closed by {@link #close()}.
      *
-     * @param in         the underlying character stream to read from; must not be {@code null}
-     * @param separator  field separator character (e.g. {@code ','} or {@code ';'})
+     * @param utf8Stream stream delivering UTF-8 bytes; must not be {@code null}
+     * @param separator  field separator character
      * @param cellMax    limit number of columns to explore (and store)
-     * @param quote      quote character for fields (typically {@code '"'})
-     * @param bufferSize internal char buffer size (characters), must be {@code > 0}
-     *
-     * @throws NullPointerException     if {@code in} is {@code null}
-     * @throws IllegalArgumentException if {@code bufferSize <= 0}
+     * @throws NullPointerException if {@code utf8Stream} is {@code null}
      */
-    public CSVReader(final Reader in,
-                     final char separator,
-                     final int cellMax,
-                     final char quote,
-                     final int bufferSize)
+    public CSVReader(final InputStream utf8Stream, final char separator, final int cellMax)
     {
-        if (in == null) {
-            throw new NullPointerException("Reader is null");
-        }
-        if (bufferSize <= 0) {
-            throw new IllegalArgumentException("bufferSize <= 0");
-        }
-
-        this.in = in;
-        this.bin = null;
-        this.bbuf = null;
-
-        this.separator = separator;
-        this.quote = quote;
-        this.buf = new char[bufferSize];
-
-        if (cellMax > 0) this.cellMax = cellMax;
-
-        // Minimal initial size; grown lazily.
-        final int initialCells = 1;
-        this.cells = new ArrayList<>(initialCells);
-        for (int i = 0; i < initialCells; i++) {
-            cells.add(new StringBuilder(64));
-        }
-        this.spec = "reader";
+        this(new InputStreamReader(Objects.requireNonNull(utf8Stream, "utf8Stream is null"), StandardCharsets.UTF_8),
+                separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
     }
 
-    // -------------------------------------------------------------------------
-    // Constructors (UTF-8 byte mode, resource helpers)
-    // -------------------------------------------------------------------------
-
     /**
-     * Convenience constructor: open a classpath resource using {@code CSVReader.class}
-     * as the anchor and parse it as UTF-8 bytes.
-     *
-     * <p>For absolute classpath resources, pass a leading '/': {@code "/bench/word.csv"}.</p>
+     * Opens a classpath resource (UTF-8) relative to an anchor class, with default
+     * separator {@code ','} and no column limit.
      *
      * @param anchor       anchor class used to resolve the resource
-     * @param resourcePath classpath resource path
+     * @param resourcePath classpath resource path (prefer absolute with leading '/')
      * @throws IOException if the resource cannot be found or opened
      */
     public CSVReader(final Class<?> anchor, final String resourcePath) throws IOException
@@ -343,11 +197,10 @@ public final class CSVReader implements Closeable
     }
 
     /**
-     * Open a classpath resource relative to an anchor class and parse it as UTF-8 bytes.
+     * Opens a classpath resource (UTF-8) relative to an anchor class.
      * <p>
      * Using an anchor class is usually preferable in libraries: it avoids ambiguity
      * between context class loaders.
-     * </p>
      *
      * @param anchor       anchor class used to resolve the resource
      * @param resourcePath classpath resource path (prefer absolute with leading '/')
@@ -355,98 +208,216 @@ public final class CSVReader implements Closeable
      * @param cellMax      limit number of columns to explore (and store)
      * @throws IOException if the resource cannot be found or opened
      */
-    public CSVReader(final Class<?> anchor,
-                     final String resourcePath,
-                     final char separator,
-                     final int cellMax) throws IOException
+    public CSVReader(final Class<?> anchor, final String resourcePath, final char separator, final int cellMax)
+            throws IOException
     {
-        this(IOUtil.openResource(anchor, resourcePath), separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE, DEFAULT_BYTE_BUFFER_SIZE);
-        spec = resourcePath;
+        this(new InputStreamReader(IOUtil.openResource(anchor, resourcePath), StandardCharsets.UTF_8),
+                separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
+        this.spec = resourcePath;
     }
 
     /**
-     * Parse UTF-8 bytes from an already opened {@link InputStream}.
-     * <p>
-     * The stream is owned by this {@code CSVReader} instance and will be closed
-     * by {@link #close()}.
-     * </p>
+     * Creates a reader over a character stream with default separator {@code ','},
+     * quote {@code '"'}, no column limit, and the default buffer size.
      *
-     * @param utf8Stream     an {@link InputStream} delivering UTF-8 bytes; must not be {@code null}
-     * @param separator      field separator character
-     * @param cellMax        limit number of columns to explore (and store)
-     * @param quote          quote character for fields (typically {@code '"'})
-     * @param charBufferSize internal char buffer size (characters), must be {@code > 0}
-     * @param byteBufferSize internal byte buffer size (bytes), must be {@code > 0}
+     * @param in the underlying character stream; must not be {@code null}
+     * @throws NullPointerException if {@code in} is {@code null}
      */
-    public CSVReader(final InputStream utf8Stream,
-                     final char separator,
-                     final int cellMax,
-                     final char quote,
-                     int charBufferSize,
-                     int byteBufferSize)
+    public CSVReader(final Reader in)
     {
-        Objects.requireNonNull(utf8Stream);
-        if (charBufferSize <= 0)  charBufferSize = DEFAULT_CHAR_BUFFER_SIZE;
-        if (byteBufferSize <= 0) byteBufferSize = DEFAULT_BYTE_BUFFER_SIZE;
+        this(in, ',', -1, '"', DEFAULT_CHAR_BUFFER_SIZE);
+    }
 
-        this.spec = "utf8Stream";
-        this.in = null;
-        this.bin = utf8Stream;
-        this.bbuf = new byte[byteBufferSize];
+    /**
+     * Creates a reader over a character stream with quote {@code '"'}, no column limit,
+     * and the default buffer size.
+     *
+     * @param in        the underlying character stream; must not be {@code null}
+     * @param separator field separator character
+     * @throws NullPointerException if {@code in} is {@code null}
+     */
+    public CSVReader(final Reader in, final char separator)
+    {
+        this(in, separator, -1, '"', DEFAULT_CHAR_BUFFER_SIZE);
+    }
 
+    /**
+     * Creates a reader over a character stream with quote {@code '"'} and the default buffer size.
+     *
+     * @param in        the underlying character stream; must not be {@code null}
+     * @param separator field separator character
+     * @param cellMax   limit number of columns to explore (and store)
+     * @throws NullPointerException if {@code in} is {@code null}
+     */
+    public CSVReader(final Reader in, final char separator, final int cellMax)
+    {
+        this(in, separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
+    }
+
+    /**
+     * Creates a reader over a character stream with fully configurable parameters.
+     * This is the constructor every other one delegates to.
+     *
+     * @param in         the underlying character stream; must not be {@code null}
+     * @param separator  field separator character
+     * @param cellMax    limit number of columns to explore (and store)
+     * @param quote      quote character for fields (typically {@code '"'})
+     * @param bufferSize internal char buffer size (characters), must be {@code > 0}
+     * @throws NullPointerException     if {@code in} is {@code null}
+     * @throws IllegalArgumentException if {@code bufferSize <= 0}
+     */
+    public CSVReader(final Reader in, final char separator, final int cellMax, final char quote, final int bufferSize)
+    {
+        Objects.requireNonNull(in, "Reader is null");
+        if (bufferSize <= 0) {
+            throw new IllegalArgumentException("bufferSize <= 0");
+        }
+        this.in = in;
         this.separator = separator;
         this.quote = quote;
-        this.buf = new char[charBufferSize];
-
-        if (cellMax > 0) this.cellMax = cellMax;
-
-        // Minimal initial size; grown lazily.
-        final int initialCells = 1;
+        this.buf = new char[bufferSize];
+        if (cellMax > 0) {
+            this.cellMax = cellMax;
+        }
+        final int initialCells = (cellMax > 0) ? cellMax : 4;
         this.cells = new ArrayList<>(initialCells);
         for (int i = 0; i < initialCells; i++) {
-            cells.add(new StringBuilder(64));
+            cells.add(new StringBuilder(CELL_INITIAL_CAPACITY));
         }
+        this.spec = null;
     }
 
-
-    private static InputStream openFile(final Path path) throws IOException {
-        if (path == null) throw new NullPointerException("path is null");
-        return Files.newInputStream(path); // owned/closed by CSVReader.close()
+    /**
+     * Closes the underlying character stream (and the byte stream it wraps).
+     *
+     * @throws IOException if an I/O error occurs while closing
+     */
+    @Override
+    public void close() throws IOException
+    {
+        in.close();
     }
-    
-    // -------------------------------------------------------------------------
-    // Main CSV parsing API
-    // -------------------------------------------------------------------------
+
+    /**
+     * Returns the content of a cell from the last row as a reusable {@link StringBuilder}.
+     * <p>
+     * The returned object is owned and reused by this reader; its contents are only
+     * valid until the next successful call to {@link #readRow()}.
+     *
+     * @param index the cell index (0-based)
+     * @return the cell content
+     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
+     */
+    public StringBuilder getCell(final int index)
+    {
+        if (index < 0 || index >= cellCount) {
+            throw new IndexOutOfBoundsException("cell index " + index + " out of bounds (count=" + cellCount + ")");
+        }
+        return cells.get(index);
+    }
+
+    /**
+     * Returns the content of a cell from the last row as a new immutable {@link String}.
+     * <p>
+     * Allocates; use {@link #getCell(int)} when the value is only needed before the
+     * next {@link #readRow()}.
+     *
+     * @param index the cell index (0-based)
+     * @return a {@link String} snapshot of the cell content
+     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
+     */
+    public String getCellAsString(final int index)
+    {
+        return getCell(index).toString();
+    }
+
+    /**
+     * Returns the number of cells in the last row successfully read by {@link #readRow()}.
+     *
+     * @return the number of cells; {@code 0} if no row has been read or EOF produced no row
+     */
+    public int getCellCount()
+    {
+        return cellCount;
+    }
+
+    /**
+     * Copies a cell from the last row into a freshly allocated {@code char[]} snapshot
+     * that survives subsequent {@link #readRow()} calls.
+     *
+     * @param index the cell index (0-based)
+     * @return a newly allocated array whose length equals the cell length
+     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
+     */
+    public char[] getCellToCharArray(final int index)
+    {
+        return getCellToCharArray(index, null);
+    }
+
+    /**
+     * Copies a cell from the last row into a caller-provided buffer, allocating a new
+     * array only if {@code dst} is {@code null} or too small.
+     * <p>
+     * If {@code dst} is larger than the cell, only the first {@code getCell(index).length()}
+     * characters are written and the remainder is left unchanged.
+     *
+     * @param index the cell index (0-based)
+     * @param dst   an optional destination buffer to reuse
+     * @return the buffer holding the copied characters (either {@code dst} or a new array)
+     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
+     */
+    public char[] getCellToCharArray(final int index, char[] dst)
+    {
+        final StringBuilder cell = getCell(index);
+        final int len = cell.length();
+        if (dst == null || dst.length < len) {
+            dst = new char[len];
+        }
+        cell.getChars(0, len, dst, 0);
+        return dst;
+    }
+
+    /**
+     * Returns the number of rows returned so far, for logging.
+     *
+     * @return the current row count
+     */
+    public int getRowNo()
+    {
+        return rowNo;
+    }
+
+    /**
+     * Returns an identifying name of the source when opened from a {@link Path} or a
+     * classpath resource, or {@code null} when opened directly from a {@link Reader}
+     * or {@link InputStream}.
+     *
+     * @return the source name, or {@code null}
+     */
+    public String getSpec()
+    {
+        return spec;
+    }
 
     /**
      * Reads the next CSV row from the underlying input.
      * <p>
-     * This method drives the CSV parsing state machine until it reaches:
-     * <ul>
-     * <li>A line terminator (CR, LF, or CRLF), or</li>
-     * <li>End of stream (EOF).</li>
-     * </ul>
-     * When the method returns {@code true}, the contents of the row are available
-     * via {@link #getCell(int)} and {@link #getCellCount()}. Their values remain
-     * valid until the next call to {@code readRow()}.
-     *
+     * Drives the parsing state machine until a line terminator (CR, LF, or CRLF) or
+     * end of input. When {@code true} is returned, the row is available via
+     * {@link #getCell(int)} and {@link #getCellCount()}, valid until the next call.
      * <p>
-     * Behaviour at EOF:
-     * <ul>
-     * <li>If the last row is not terminated by a newline, it is returned as a valid row.</li>
-     * <li>If EOF is reached without reading any characters for a new row, the method returns {@code false}
-     * and no row is produced.</li>
-     * </ul>
+     * At EOF: an unterminated final row is returned as valid; if EOF is reached with
+     * no characters for a new row, {@code false} is returned and no row is produced.
      *
-     * @return {@code true} if a row was successfully read; {@code false} if EOF was reached
-     *         and no further rows are available.
-     * @throws IOException if an I/O error occurs while reading from the underlying input
+     * @return {@code true} if a row was read; {@code false} at end of input
+     * @throws IOException if an I/O error occurs while reading
      */
     public boolean readRow() throws IOException
     {
-        if (eof) return false;
+        if (eof) {
+            return false;
+        }
 
-        // Ensure we have at least one cell buffer
         cellCount = 1;
         ensureCellCapacity(1);
         StringBuilder cell = cells.get(0);
@@ -463,6 +434,7 @@ public final class CSVReader implements Closeable
             if (bufPos >= bufLen && !fill()) {
                 eof = true;
                 cellCount = 0;
+                rowNo--;
                 return false;
             }
             if (bufLen > 0 && buf[bufPos] == '\uFEFF') {
@@ -476,6 +448,7 @@ public final class CSVReader implements Closeable
                     eof = true;
                     if (!sawAny && atCellStart) {
                         cellCount = 0;
+                        rowNo--;
                         return false;
                     }
                     return true; // last unterminated row
@@ -494,20 +467,20 @@ public final class CSVReader implements Closeable
                     if (cell != null && bufPos > start) {
                         cell.append(buf, start, bufPos - start);
                     }
-                    if (bufPos < bufLen) sawAny = true; // we saw something in this buffer
+                    if (bufPos < bufLen) {
+                        sawAny = true;
+                    }
 
                     if (bufPos >= bufLen) {
                         // need more data
                         if (!fill()) {
                             eof = true;
-                            // treat EOF as end-of-field/row
-                            return true;
+                            return true; // EOF treated as end-of-field/row
                         }
                         start = bufPos;
                         continue;
                     }
 
-                    // buf[bufPos] is quote
                     bufPos++; // consume quote
 
                     // Lookahead for escaped quote
@@ -520,7 +493,9 @@ public final class CSVReader implements Closeable
                     }
                     if (bufPos < bufLen && buf[bufPos] == quote) {
                         // escaped quote
-                        if (cell != null) cell.append(quote);
+                        if (cell != null) {
+                            cell.append(quote);
+                        }
                         bufPos++; // consume second quote
                         start = bufPos;
                         continue;
@@ -550,16 +525,22 @@ public final class CSVReader implements Closeable
             int start = bufPos;
             while (bufPos < bufLen) {
                 c = buf[bufPos];
-                if (c == separator || c == '\n' || c == '\r') break;
+                if (c == separator || c == '\n' || c == '\r') {
+                    break;
+                }
                 bufPos++;
             }
             if (cell != null && bufPos > start) {
                 cell.append(buf, start, bufPos - start);
             }
-            if (bufPos > start) sawAny = true;
+            if (bufPos > start) {
+                sawAny = true;
+            }
             atCellStart = false;
 
-            if (bufPos >= bufLen) continue; // refill and continue
+            if (bufPos >= bufLen) {
+                continue; // refill and continue
+            }
 
             // Consume delimiter
             c = buf[bufPos++];
@@ -601,370 +582,49 @@ public final class CSVReader implements Closeable
     }
 
     /**
-     * Returns the number of cells in the last row successfully read by {@link #readRow()}.
-     * <p>
-     * Only indices in the range {@code [0, getCellCount() - 1]} are valid for
-     * {@link #getCell(int)} and {@link #getCellAsString(int)}.
-     *
-     * @return the number of cells in the last row; {@code 0} if no row has been read yet
-     *         or if EOF was reached without any data for a row
-     */
-    public int getCellCount()
-    {
-        return cellCount;
-    }
-
-    /**
-     * Returns the content of a cell from the last row as a {@link StringBuilder}.
-     * <p>
-     * The returned object is a {@link StringBuilder} managed and reused by this reader.
-     * Its contents are only valid until the next successful call to {@link #readRow()}.
-     *
-     * @param index the cell index (0-based)
-     * @return a {@link StringBuilder} representing the cell content
-     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
-     */
-    public StringBuilder getCell(final int index)
-    {
-        if (index < 0 || index >= cellCount) {
-            throw new IndexOutOfBoundsException("cell index " + index + " out of bounds (count=" + cellCount + ")");
-        }
-        return cells.get(index);
-    }
-
-    /**
-     * Returns the content of a cell from the last row as an immutable {@link String}.
-     * <p>
-     * Unlike {@link #getCell(int)}, this method creates a new {@link String} and is
-     * therefore more expensive in terms of memory allocations. Use it only if you
-     * need the cell value beyond the next call to {@link #readRow()}, or if you
-     * need an immutable snapshot.
-     *
-     * @param index the cell index (0-based)
-     * @return a {@link String} representing the cell content
-     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
-     */
-    public String getCellAsString(final int index)
-    {
-        return getCell(index).toString();
-    }
-
-    /**
-     * Copies the content of a cell from the last row into a freshly allocated {@code char[]}.
-     * <p>
-     * This is a snapshot: the returned array is independent of the internal {@link StringBuilder}
-     * instances reused by this reader, so it remains valid after subsequent calls to {@link #readRow()}.
-     * </p>
-     *
-     * <p>For allocation-free reuse across calls, use {@link #getCellToCharArray(int, char[])}.</p>
-     *
-     * @param index the cell index (0-based)
-     * @return a newly allocated {@code char[]} whose length equals the cell length
-     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
-     */
-    public char[] getCellToCharArray(final int index)
-    {
-        return getCellToCharArray(index, null);
-    }
-
-    /**
-     * Copies the content of a cell from the last row into a caller-provided buffer.
-     * <p>
-     * If {@code dst} is {@code null} or smaller than the cell length, a new array is allocated.
-     * Otherwise, {@code dst} is reused and returned.
-     * </p>
-     *
-     * <p><b>Important:</b> if {@code dst.length} is larger than the cell length, only the first
-     * {@code len} characters are written, where {@code len == getCell(index).length()}. The remainder
-     * of the array is left unchanged.</p>
-     *
-     * @param index the cell index (0-based)
-     * @param dst an optional destination buffer to reuse
-     * @return the buffer containing the copied cell characters (either {@code dst} or a newly allocated array)
-     * @throws IndexOutOfBoundsException if {@code index} is negative or not less than {@link #getCellCount()}
-     */
-    public char[] getCellToCharArray(final int index, char[] dst)
-    {
-        final StringBuilder cell = getCell(index);
-        final int len = cell.length();
-        if (dst == null || dst.length < len) dst = new char[len];
-        cell.getChars(0, len, dst, 0);
-        return dst;
-    }
-
-    /**
-     * Returns current row number, for logging.
-     * @return {@link #rowNo}
-     */
-    public int getRowNo()
-    {
-        return rowNo;
-    }
-    
-    /**
-     * Returns an identifying String, especially if the reader was open with a {@link Path} or a classpath resource.
-     * Returns null if the reader was open directly with a {@link Reader} or {@link InputStream}
-     * @return {@link #spec}
-     */
-    public String getSpec()
-    {
-        return spec;
-    }
-
- 
-    /**
-     * Closes the underlying input (Reader mode or InputStream mode).
-     *
-     * @throws IOException if an I/O error occurs while closing
-     */
-    @Override
-    public void close() throws IOException
-    {
-        // Exactly one is non-null by construction.
-        if (in != null) in.close();
-        if (bin != null) bin.close();
-    }
-
-    // -------------------------------------------------------------------------
-    // Internal helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Fills the internal I/O buffer from the underlying input.
-     * <p>
-     * In Reader mode, characters are read from {@link #in} into {@link #buf}.
-     * In UTF-8 byte mode, bytes are read from {@link #bin} and decoded into {@link #buf}.
-     * This method overwrites {@link #buf} with new data and resets {@link #bufPos}
-     * and {@link #bufLen} accordingly.
-     *
-     * @return {@code true} if at least one character was produced; {@code false} if EOF was reached
-     *         and no data was produced
-     * @throws IOException if an I/O error occurs while reading from the underlying input
-     */
-    private boolean fill() throws IOException
-    {
-        if (in != null) {
-            bufLen = in.read(buf, 0, buf.length);
-            bufPos = 0;
-            return bufLen > 0;
-        }
-        return fillUtf8();
-    }
-
-    /**
-     * Decode UTF-8 bytes from {@link #bin} into {@link #buf}.
-     *
-     * <h4>Why this exists</h4>
-     * <p>
-     * For startup dictionary loading, a common pipeline is:
-     * {@code InputStream -> InputStreamReader(UTF-8) -> char[] -> parse}.
-     * This method removes the {@code InputStreamReader} step and decodes directly.
-     * </p>
-     *
-     * <h4>Performance characteristics</h4>
-     * <ul>
-     * <li>Fast path for ASCII runs (0x00..0x7F) which are common in CSV syntax and many dictionaries.</li>
-     * <li>Supports 2/3/4-byte UTF-8 sequences; invalid sequences are replaced with U+FFFD.</li>
-     * <li>Handles UTF-8 BOM by decoding it to U+FEFF, which is then skipped once by {@link #readRow()}.</li>
-     * </ul>
-     *
-     * @return {@code true} if at least one character was decoded; {@code false} if EOF was reached
-     *         and no characters were produced
-     * @throws IOException if an I/O error occurs while reading from {@link #bin}
-     */
-    private boolean fillUtf8() throws IOException
-    {
-        int out = 0;
-        bufPos = 0;
-
-        while (out < buf.length) {
-            if (bPos >= bLen) {
-                final int n = bin.read(bbuf, 0, bbuf.length);
-                if (n < 0) break;
-                bPos = 0;
-                bLen = n;
-            }
-
-            int b0 = bbuf[bPos] & 0xFF;
-
-            // -----------------------------------------------------------------
-            // Fast ASCII run
-            // -----------------------------------------------------------------
-            if (b0 < 0x80) {
-                final int start = bPos;
-                int limit = bLen;
-
-                // Do not exceed output capacity
-                final int max = start + (buf.length - out);
-                if (limit > max) limit = max;
-
-                // Consume contiguous ASCII bytes
-                while (bPos < limit) {
-                    if ((bbuf[bPos] & 0x80) != 0) break;
-                    bPos++;
-                }
-
-                final int n = bPos - start;
-                for (int i = 0; i < n; i++) {
-                    buf[out + i] = (char) (bbuf[start + i] & 0xFF);
-                }
-                out += n;
-                continue;
-            }
-
-            // -----------------------------------------------------------------
-            // 2-byte sequence: 110xxxxx 10xxxxxx
-            // -----------------------------------------------------------------
-            if (b0 >= 0xC2 && b0 <= 0xDF) {
-                if (!ensureBytes(2)) {
-                    buf[out++] = '\uFFFD';
-                    bPos = bLen;
-                    break;
-                }
-                final int b1 = bbuf[bPos + 1] & 0xFF;
-                if ((b1 & 0xC0) != 0x80) {
-                    buf[out++] = '\uFFFD';
-                    bPos++; // resync
-                    continue;
-                }
-                buf[out++] = (char) (((b0 & 0x1F) << 6) | (b1 & 0x3F));
-                bPos += 2;
-                continue;
-            }
-
-            // -----------------------------------------------------------------
-            // 3-byte sequence: 1110xxxx 10xxxxxx 10xxxxxx
-            // Includes overlong and surrogate checks.
-            // -----------------------------------------------------------------
-            if (b0 >= 0xE0 && b0 <= 0xEF) {
-                if (!ensureBytes(3)) {
-                    buf[out++] = '\uFFFD';
-                    bPos = bLen;
-                    break;
-                }
-                final int b1 = bbuf[bPos + 1] & 0xFF;
-                final int b2 = bbuf[bPos + 2] & 0xFF;
-
-                if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) {
-                    buf[out++] = '\uFFFD';
-                    bPos++;
-                    continue;
-                }
-                // Overlong check
-                if (b0 == 0xE0 && b1 < 0xA0) {
-                    buf[out++] = '\uFFFD'; bPos++; continue;
-                }
-                // Surrogate range check (U+D800..U+DFFF)
-                if (b0 == 0xED && b1 > 0x9F) {
-                    buf[out++] = '\uFFFD'; bPos++; continue;
-                }
-
-                final int cp = ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F);
-                buf[out++] = (char) cp;
-                bPos += 3;
-                continue;
-            }
-
-            // -----------------------------------------------------------------
-            // 4-byte sequence: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-            // Produces a surrogate pair in UTF-16.
-            // -----------------------------------------------------------------
-            if (b0 >= 0xF0 && b0 <= 0xF4) {
-                // Need room for 2 chars
-                if (out >= buf.length - 1) {
-                    // Defer: do not consume bytes; next fill will have space.
-                    break;
-                }
-                if (!ensureBytes(4)) {
-                    buf[out++] = '\uFFFD';
-                    bPos = bLen;
-                    break;
-                }
-                final int b1 = bbuf[bPos + 1] & 0xFF;
-                final int b2 = bbuf[bPos + 2] & 0xFF;
-                final int b3 = bbuf[bPos + 3] & 0xFF;
-
-                if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) {
-                    buf[out++] = '\uFFFD';
-                    bPos++;
-                    continue;
-                }
-                // Overlong / range checks
-                if (b0 == 0xF0 && b1 < 0x90) {
-                    buf[out++] = '\uFFFD'; bPos++; continue;
-                }
-                if (b0 == 0xF4 && b1 > 0x8F) {
-                    buf[out++] = '\uFFFD'; bPos++; continue;
-                }
-
-                int cp = ((b0 & 0x07) << 18) | ((b1 & 0x3F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F);
-                cp -= 0x10000;
-                buf[out++] = (char) (0xD800 | (cp >>> 10));
-                buf[out++] = (char) (0xDC00 | (cp & 0x3FF));
-                bPos += 4;
-                continue;
-            }
-
-            // -----------------------------------------------------------------
-            // Illegal leading byte (0x80..0xC1 or 0xF5..0xFF)
-            // -----------------------------------------------------------------
-            buf[out++] = '\uFFFD';
-            bPos++;
-        }
-
-        bufLen = out;
-        return out > 0;
-    }
-
-    /**
-     * Ensure at least {@code needed} bytes are available in {@link #bbuf} from {@link #bPos}.
-     * <p>
-     * If the current remaining byte count is insufficient, this method compacts
-     * any remaining bytes to the start of the buffer and reads more from {@link #bin}.
-     * </p>
-     *
-     * @param needed number of bytes needed
-     * @return {@code true} if {@code needed} bytes are available; {@code false} on EOF before enough bytes could be read
-     * @throws IOException if an I/O error occurs while reading from {@link #bin}
-     */
-    private boolean ensureBytes(final int needed) throws IOException
-    {
-        if (bLen - bPos >= needed) return true;
-
-        final int rem = bLen - bPos;
-        if (rem > 0) {
-            System.arraycopy(bbuf, bPos, bbuf, 0, rem);
-        }
-        bPos = 0;
-        bLen = rem;
-
-        while (bLen < needed) {
-            final int n = bin.read(bbuf, bLen, bbuf.length - bLen);
-            if (n < 0) return false;
-            if (n == 0) continue;
-            bLen += n;
-        }
-        return true;
-    }
-
-    /**
-     * Ensures that the internal list of cell buffers has at least {@code minCapacity} elements,
-     * growing the list and adding new {@link StringBuilder} instances as needed.
-     * <p>
-     * Newly created {@link StringBuilder} instances are initialised with a small
-     * default capacity (64 characters), which is usually sufficient for many CSV files.
-     * Adjust as necessary for your data characteristics.
-     * </p>
+     * Ensures the cell-buffer list holds at least {@code minCapacity} reusable
+     * {@link StringBuilder} instances.
      *
      * @param minCapacity the minimum number of cell buffers required
      */
     private void ensureCellCapacity(final int minCapacity)
     {
-        // Grow the list lazily as needed
         while (cells.size() < minCapacity) {
-            cells.add(new StringBuilder(64));
+            cells.add(new StringBuilder(CELL_INITIAL_CAPACITY));
         }
     }
-    
 
+    /**
+     * Refills {@link #buf} from {@link #in}, tolerating a zero-length read.
+     *
+     * @return {@code true} if at least one character was read; {@code false} at EOF
+     * @throws IOException if an I/O error occurs while reading
+     */
+    private boolean fill() throws IOException
+    {
+        int n;
+        do {
+            n = in.read(buf, 0, buf.length);
+        } while (n == 0);
+        bufPos = 0;
+        if (n < 0) {
+            bufLen = 0;
+            return false;
+        }
+        bufLen = n;
+        return true;
+    }
+
+    /**
+     * Opens a file as a UTF-8 character stream owned by this reader.
+     *
+     * @param path file to open; must not be {@code null}
+     * @return a UTF-8 {@link Reader} over the file
+     * @throws IOException if the file cannot be opened
+     */
+    private static Reader openReader(final Path path) throws IOException
+    {
+        Objects.requireNonNull(path, "path is null");
+        return new InputStreamReader(Files.newInputStream(path), StandardCharsets.UTF_8);
+    }
 }

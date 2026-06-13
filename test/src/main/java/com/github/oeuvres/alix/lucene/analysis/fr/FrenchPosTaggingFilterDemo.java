@@ -34,14 +34,26 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
+import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
+import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MweFilter;
+import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
+import com.github.oeuvres.alix.util.CSVReader;
+import com.github.oeuvres.alix.util.MweLexicon;
+import com.github.oeuvres.alix.util.WordTokenizer;
+import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.TokenStream;
 
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.util.Arrays;
 import java.util.List;
 
@@ -63,24 +75,44 @@ public final class FrenchPosTaggingFilterDemo {
     private static final String FIELD = "f";
 
     private static Analyzer buildAnalyzer(final POSModel model) throws IOException {
-        return new FrenchAnalyzer();
-        /*
+        
         return new Analyzer() {
             @Override
             protected TokenStreamComponents createComponents(String fieldName) {
+                MweLexicon expressions = FrenchLexicons.buildMweLexicon();
+                String names = """
+                    Émile Meyerson,Émile Meyerson,NamePers
+                    É. Meyerson,Émile Meyerson,NamePers
+                    E. Meyerson,Émile Meyerson,NamePers
+                    Ignace Meyerson,Ignace Meyerson,NamePers
+                    I. Meyerson,Ignace Meyerson,NamePers
+                    I Meyerson,Ignace Meyerson,NamePers
+                """;
+                CSVReader csv = new CSVReader(new StringReader(names), ',', 2);
+                WordTokenizer wordTokenizer = new FrenchCliticTokenizer();
+                try {
+                    while (csv.readRow()) {
+                        final List<String> words = wordTokenizer.tokenize(csv.getCell(0));
+                        expressions.addExpression(words, csv.getCell(1));
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                
                 Tokenizer tokenizer = new MarkupTokenizer(FrenchLexicons.buildBrevidots());
-                TokenStream stream = tokenizer;
-                stream = new MarkupBoundaryFilter(stream);
-                stream = new FrenchCliticSplitFilter(stream);
-                stream = new PosTaggingFilter(stream, model, PosTaggingFilter.HYPHEN_REWRITER);
-                stream = new LemmaFilter(
-                    stream,
+                TokenStream ts = tokenizer;
+                ts = new MarkupBoundaryFilter(ts);
+                ts = new FrenchCliticSplitFilter(ts);
+                ts = new PosTaggingFilter(ts, model, PosTaggingFilter.HYPHEN_REWRITER);
+                ts = new LemmaFilter(
+                    ts,
                     FrenchLexicons.buildLemmaLexicon(),
                     FrenchLexicons.buildPropn());
-                return new TokenStreamComponents(tokenizer, stream);
+                ts = new MweFilter(ts, expressions);
+
+                return new TokenStreamComponents(tokenizer, ts);
             }
         };
-        */
     }
 
 

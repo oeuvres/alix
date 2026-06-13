@@ -293,12 +293,13 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
 
     /**
      * Tells whether a character belongs to a raw token.
+     * Allow * and ., for query parsing.
      *
      * @param c the character
      * @return true if the character belongs to a raw token
      */
     private static boolean isTokenChar(final char c) {
-        return Char.isToken(c) || c == '*';
+        return Char.isToken(c) || c == '*' || c == '.';
     }
 
     /**
