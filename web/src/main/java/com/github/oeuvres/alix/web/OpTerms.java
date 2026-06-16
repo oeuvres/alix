@@ -106,31 +106,22 @@ public final class OpTerms extends Op
                 bits = index.searcher().search(typeQuery, new BitsCollectorManager(index.searcher()));
             }
             
-            if (yearQuery != null && (scorerName.startsWith("part") || "".equals(scorerName))) {
+            if (yearQuery != null) {
                 FlucNum fyears = index.flucNum(YEAR);
                 final int start = pars.getInt(START, (int)fyears.min());
                 int end = pars.getInt(END, (int)fyears.max());
                 
                 // TODO filter by tags
                 final Partition partition = Partition.build(fyears, textFluc, start, end, bits);
-                if (bits != null) {System.out.println(bits.cardinality());}
                 
-                final PartScorer partScorer = switch (scorerName) {
-                    case "part2" -> new PartScorer.LogLikelihoodTail();
-                    case "part3" -> new PartScorer.LogLikelihoodResidual();
-                    case "part4" -> new PartScorer.Pearson();
-                    default      -> new PartScorer.LogLikelihoodTail();
-                };
-
+                final PartScorer partScorer = new PartScorer.LogLikelihoodTail();
                 return new PartitionScorer(partition, partScorer)
                     .score(index.reader(), topTerms, topK);
             }
             
             // focus % all rest
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
-            final KeynessScorer scorer = "chi2".equals(scorerName)
-                    ? new KeynessScorer.Chi2()
-                    : new KeynessScorer.LogLikelihood();
+            final KeynessScorer scorer = new KeynessScorer.LogLikelihood();
 
             return topTerms.select(index.reader(), focusDocs).rank(scorer, topK);
         }
