@@ -8,9 +8,9 @@
   xmlns:epub="http://www.idpf.org/2007/ops" xmlns:tei="http://www.tei-c.org/ns/1.0"
   exclude-result-prefixes="tei" xmlns:exslt="http://exslt.org/common"
   xmlns:saxon="http://saxon.sf.net/" extension-element-prefixes="exslt saxon">
-  <xsl:import href="tei_html/tei_flow_html.xsl"/>
-  <xsl:import href="tei_html/tei_notes_html.xsl"/>
-  <xsl:import href="tei_html/tei_toc_html.xsl"/>
+  <xsl:include href="tei_html/tei_flow_html.xsl"/>
+  <xsl:include href="tei_html/tei_toc_html.xsl"/>
+  <xsl:include href="tei_html/tei_notes_html.xsl"/>
   <!-- keep xml indent or toc will be… compact -->
   <xsl:output indent="yes" encoding="UTF-8" method="xml" omit-xml-declaration="yes"/>
   <!-- chapter split policy -->
@@ -25,12 +25,12 @@
     ]
     | tei:group/tei:text
     " use="generate-id(.)"/>
+  <!-- For links in TOC -->
+  <xsl:variable name="split" select=".//tei:div[key('split', generate-id())]"/>
   <xsl:variable name="idHigh"
     select="/*/tei:teiHeader/tei:encodingDesc/tei:refsDecl/tei:citeStructure/@use = '@xml:id'"/>
   <!-- Name of file, provided by caller -->
   <xsl:param name="filename"/>
-  <!-- For links in TOC -->
-  <xsl:variable name="split" select=".//tei:div[key('split', generate-id())]"/>
   <!--  clean url -->
   <xsl:variable name="_ext"/>
 
@@ -49,9 +49,7 @@
     </xsl:for-each>
   </xsl:variable>
 
-  <!-- Get metas as a global var to insert fields in all chapters -->
-  <xsl:variable name="info">
-    <!-- rights, send only if it seems that there are restriction for publication -->
+  <xsl:variable name="rights">
     <xsl:choose>
       <xsl:when
         test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt[not(tei:availability)]"/>
@@ -62,15 +60,27 @@
       <xsl:when
         test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/tei:licence[contains(@target, 'creativecommons.org')]"/>
       <xsl:otherwise>
-        <alix:field name="rights" type="store">
-          <xsl:for-each
-            select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/*">
-            <xsl:apply-templates select="."/>
-          </xsl:for-each>
-        </alix:field>
+        <xsl:for-each
+          select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:publicationStmt/tei:availability/*">
+          <xsl:apply-templates select="."/>
+        </xsl:for-each>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:variable>
+
+  <xsl:variable name="hourglass">
+    <xsl:if test="/*/@cert and /*/@cert = 'low'"> hourglass</xsl:if>
+  </xsl:variable>
+
+  <!-- Get metas as a global var to insert fields in all chapters -->
+  <xsl:variable name="info">
+    <xsl:if test="$rights != ''">
+      <alix:field name="rights" type="store">
+        <xsl:copy-of select="$rights"/>
+      </alix:field>
+    </xsl:if>
+  </xsl:variable>
+
 
   <!-- tags to add at text level (not the book cover) for better stats -->
   <xsl:variable name="tags">
@@ -182,6 +192,14 @@
 
   <xsl:template name="alix:root">
     <xsl:param name="doctype"/>
+    <xsl:variable name="url">
+      <xsl:if
+        test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:*[@target]">
+        <xsl:value-of
+          select="(/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:*[@target])[1]/@target"
+        />
+      </xsl:if>
+    </xsl:variable>
     <xsl:attribute name="xml:id">
       <xsl:choose>
         <xsl:when test="/*/@xml:id and /*/@xml:id != ''">
@@ -233,23 +251,44 @@
         <!-- Do not copy tags for book field cover -->
         <xsl:copy-of select="$tags"/>
         <alix:field name="content" type="text">
-          <article class="{$doctype}">
-            <xsl:choose>
-              <xsl:when test="/*/tei:text/tei:front | /*/tei:text/tei:back">
-                <xsl:call-template name="div-header">
-                  <xsl:with-param name="tei" select="/*/tei:text/tei:front | /*/tei:text/tei:body | /*/tei:text/tei:back"/>
+          <xsl:variable name="head" select="/tei:TEI/tei:text/tei:body/tei:head"/>
+          <xsl:variable name="first-non-header" select="
+            (/tei:TEI/tei:text/tei:body/tei:*[not(self::tei:argument)]
+            [not(self::tei:byline)]
+            [not(self::tei:cb)]
+            [not(self::tei:dateline)]
+            [not(self::tei:docAuthor)]
+            [not(self::tei:docDate)]
+            [not(self::tei:epigraph)]
+            [not(self::tei:head)]
+            [not(self::tei:index)]
+            [not(self::tei:opener)]
+            [not(self::tei:pb)]
+            [not(self::tei:salute)]
+            [not(self::tei:signed)])[1]
+            "/>
+            <div class="{$doctype}-flow{$hourglass}">
+              <header class="{$doctype}-header">
+                <xsl:apply-templates select="$first-non-header/preceding-sibling::node()">
+                  <xsl:with-param name="level" select="1"/>
+                </xsl:apply-templates>
+              </header>
+              <div>
+                <xsl:attribute name="class">
+                  <xsl:text>col2</xsl:text>
+                  <xsl:if test="$rights != ''"> rights</xsl:if>
+                </xsl:attribute>
+                <div class="body">
+                  <xsl:apply-templates
+                    select="$first-non-header | $first-non-header/following-sibling::node()">
+                    <xsl:with-param name="level" select="1"/>
+                  </xsl:apply-templates>
+                </div>
+                <xsl:call-template name="footnotes">
+                  <xsl:with-param name="tei" select="/tei:TEI/tei:text"/>
                 </xsl:call-template>
-              </xsl:when>
-              <xsl:otherwise>
-                <xsl:call-template name="div-header">
-                  <xsl:with-param name="tei" select="/*/tei:text/tei:body/node()"/>
-                </xsl:call-template>
-              </xsl:otherwise>
-            </xsl:choose>
-            <xsl:for-each select="/*/tei:text">
-              <xsl:call-template name="footnotes"/>
-            </xsl:for-each>
-          </article>
+              </div>
+            </div>
         </alix:field>
       </xsl:otherwise>
     </xsl:choose>
@@ -366,7 +405,53 @@
     </xsl:for-each>
   </xsl:template>
 
+
+  <xsl:template name="bibl-booktitle">
+    <xsl:apply-templates select="tei:monogr/tei:title/node()"/>
+    <xsl:for-each select="(tei:monogr/tei:edition)[1]">
+      <xsl:text> ; </xsl:text>
+      <xsl:choose>
+        <!-- NaN -->
+        <xsl:when test="not(number(.) = number(.))">
+          <xsl:value-of select="."/>
+        </xsl:when>
+        <!-- no precision for first edition -->
+        <xsl:when test="number(.) = 1"/>
+        <xsl:otherwise>
+          <xsl:value-of select="."/>
+          <xsl:text>ᵉ ed.</xsl:text>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:for-each>
+  </xsl:template>
+
   <xsl:template name="chapter">
+    <xsl:variable name="url">
+      <xsl:if test="tei:note[@type = 'bibl']/tei:biblStruct/tei:analytic/tei:*[@target]">
+        <xsl:value-of
+          select="(tei:note[@type = 'bibl']/tei:biblStruct/tei:analytic/tei:*[@target])[1]/@target"
+        />
+      </xsl:if>
+    </xsl:variable>
+    <xsl:variable name="booktitle">
+      <xsl:choose>
+        <xsl:when test="tei:note[@type = 'bibl']/tei:biblStruct">
+          <xsl:for-each select="(tei:note[@type = 'bibl']/tei:biblStruct)[1]">
+            <xsl:call-template name="bibl-booktitle"/>
+          </xsl:for-each>
+        </xsl:when>
+        <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblStruct">
+          <xsl:for-each
+            select="(/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblStruct)[1]">
+            <xsl:call-template name="bibl-booktitle"/>
+          </xsl:for-each>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:apply-templates
+            select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt/tei:title/node()"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
     <alix:chapter>
       <!-- id is here supposed to be unique ; maybe dangerous… -->
       <xsl:if test="@xml:id">
@@ -416,14 +501,38 @@
         <xsl:call-template name="toclocal"/>
       </alix:field>
       <alix:field name="content" type="text">
-        <xsl:variable name="hourglass">
-          <xsl:if test="/*/@cert and /*/@cert = 'low'"> hourglass</xsl:if>
-        </xsl:variable>
-        <article class="chapter{$hourglass}">
-          <xsl:choose>
-            <xsl:when test="descendant::*[key('split', generate-id())]">
-              <!-- take content before sections -->
-              <xsl:variable name="first" select="(
+
+          <xsl:variable name="first-non-header" select="
+            (tei:*[not(self::tei:argument)]
+            [not(self::tei:byline)]
+            [not(self::tei:cb)]
+            [not(self::tei:dateline)]
+            [not(self::tei:docAuthor)]
+            [not(self::tei:docDate)]
+            [not(self::tei:epigraph)]
+            [not(self::tei:head)]
+            [not(self::tei:index)]
+            [not(self::tei:opener)]
+            [not(self::tei:pb)]
+            [not(self::tei:salute)]
+            [not(self::tei:signed)])[1]
+            "/>
+        <div class="chapter-flow{$hourglass}">
+            <header class="chapter-header">
+              <xsl:apply-templates select="$first-non-header/preceding-sibling::node()">
+                <xsl:with-param name="level" select="1"/>
+              </xsl:apply-templates>
+            </header>
+          <div>
+            <xsl:attribute name="class">
+              <xsl:text>col2</xsl:text>
+              <xsl:if test="$rights != ''"> rights</xsl:if>
+            </xsl:attribute>
+            <xsl:choose>
+              <!-- it’s a part -->
+              <xsl:when test="descendant::*[key('split', generate-id())]">
+                <!-- take content before sections -->
+                <xsl:variable name="first-div" select="(
                     tei:back
                   | tei:body
                   | tei:front
@@ -437,19 +546,31 @@
                   | tei:div5
                   | tei:div6
                   )[1]"/>
-              <xsl:call-template name="div-header">
-                <xsl:with-param name="tei" select="$first/preceding-sibling::node()"/>
-              </xsl:call-template>
-              <xsl:call-template name="footnotes">
-                <xsl:with-param name="tei" select="$first/preceding-sibling::node()"/>
-              </xsl:call-template>
-            </xsl:when>
-            <xsl:otherwise>
-              <xsl:call-template name="div-header"/>
-              <xsl:call-template name="footnotes"/>
-            </xsl:otherwise>
-          </xsl:choose>
-        </article>
+                  <xsl:variable name="before" select="$first-div/preceding-sibling::node()"/>
+                  <div class="body">
+                    <xsl:value-of select="$lf"/>
+                    <xsl:apply-templates
+                      select="$first-non-header | $first-non-header/following-sibling::node()[count(. | $before) = count($before)]">
+                      <xsl:with-param name="level" select="1"/>
+                    </xsl:apply-templates>
+                  </div>
+                  <xsl:call-template name="footnotes">
+                    <xsl:with-param name="tei" select="$first-div/preceding-sibling::node()"/>
+                  </xsl:call-template>
+              </xsl:when>
+              <xsl:otherwise>
+                <div class="body">
+                  <xsl:value-of select="$lf"/>
+                  <xsl:apply-templates
+                    select="$first-non-header | $first-non-header/following-sibling::node()">
+                    <xsl:with-param name="level" select="1"/>
+                  </xsl:apply-templates>
+                </div>
+                <xsl:call-template name="footnotes"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </div>
+          </div>
       </alix:field>
       <xsl:if test=".//*[@type = 'observation']">
         <alix:field name="observations" type="text" source="content"/>
@@ -556,7 +677,7 @@
     </xsl:for-each>
   </xsl:template>
 
-  <xsl:template match="tei:div/tei:note[@type = 'bibl']">
+  <xsl:template match="tei:div/tei:note[@type = 'bibl']" priority="2">
     <!-- metadata, no output -->
   </xsl:template>
 </xsl:transform>
