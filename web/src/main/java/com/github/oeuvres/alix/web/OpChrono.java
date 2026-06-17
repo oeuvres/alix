@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class OpChrono extends Op
 {
-    private HistoNum histoNum(final LuceneIndex index, final HttpPars pars, final OpMeta meta) throws IOException
+    private HistoNum histoNum(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         String yearName = pars.getString(FYEAR, index.year());
         final FlucNum flucYear = index.flucNum(yearName);
@@ -75,7 +75,7 @@ public class OpChrono extends Op
     ) throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         final HistoNum histo = histoNum(index, pars, meta);
         
         try (JsonWriter json = jsonWriter(response)) {

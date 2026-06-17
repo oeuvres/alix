@@ -28,7 +28,7 @@ public class OpSnippets extends Op
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
         throws IOException
     {
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         Writer writer = response.getWriter();
         final HttpPars pars = new HttpPars(request, response);
         final String docName = pars.getString(DOCNAME, null);

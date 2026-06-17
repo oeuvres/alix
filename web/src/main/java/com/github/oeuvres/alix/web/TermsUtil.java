@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
-import com.github.oeuvres.alix.web.Op.OpMeta;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 
@@ -15,7 +14,7 @@ public class TermsUtil
 
     static void json(
         final HttpServletResponse response,
-        final OpMeta meta,
+        final MetaUtil meta,
         final HttpPars pars,
         TopTerms terms
     ) throws IOException {
@@ -37,6 +36,7 @@ public class TermsUtil
                     jw.beginObject();
                     jw.name("rank").value(rank++);
                     jw.name("form").value(term.form());
+                    jw.name("id").value(term.termId());
                     jw.name("html").value(term.hilite()); // for suggest
                     jw.name("docs").value(term.docs());
                     jw.name("fieldDocs").value(term.fieldDocs());

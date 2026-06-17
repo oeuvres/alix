@@ -22,7 +22,6 @@ import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
-import com.github.oeuvres.alix.web.Op.OpMeta;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,7 +41,7 @@ public class OpResults extends Op {
 
         final HttpPars pars = new HttpPars(request, response);
         final Query filterQuery = filterQuery(index, pars);
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         final Writer writer = response.getWriter();
 
         

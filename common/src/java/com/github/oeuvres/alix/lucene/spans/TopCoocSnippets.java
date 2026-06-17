@@ -57,10 +57,8 @@ import com.github.oeuvres.alix.util.IntList;
  * This class is not thread-safe.
  * </p>
  */
-public final class CoocSnippets implements SnippetsConsumer
+public final class TopCoocSnippets implements SnippetsConsumer
 {
-    private static final int[] EMPTY_INT = new int[0];
-
     /** Bound focus buffers; {@code null} until {@link #bindTo(Buffers)} is called. */
     private Buffers buffers;
 
@@ -78,12 +76,6 @@ public final class CoocSnippets implements SnippetsConsumer
 
     /** Number of context positions to read on the left of each snippet. */
     private final int left;
-
-    /**
-     * Sorted, deduplicated term ids to exclude from cooccurrence counting at any position in the
-     * window. Empty by default; replaced on every {@link #setPivotIds(int[])} call.
-     */
-    private int[] pivotIds = EMPTY_INT;
 
     /** Forward positional rail for the pivot field. */
     private final TermRail rail;
@@ -109,7 +101,7 @@ public final class CoocSnippets implements SnippetsConsumer
      * @throws IllegalArgumentException if {@code left} or {@code right} is negative
      * @throws NullPointerException if {@code fieldStats} or {@code rail} is {@code null}
      */
-    public CoocSnippets(
+    public TopCoocSnippets(
         final TermStats fieldStats,
         final TermRail rail,
         final int left,
@@ -139,7 +131,7 @@ public final class CoocSnippets implements SnippetsConsumer
      * @throws IllegalArgumentException if buffer lengths do not match
      * {@code fieldStats.vocabSize()}
      */
-    public CoocSnippets bindTo(
+    public TopCoocSnippets bindTo(
         final Buffers buffers
     ) {
         Objects.requireNonNull(buffers, "buffers");
@@ -195,9 +187,6 @@ public final class CoocSnippets implements SnippetsConsumer
         final long[] termFreq = buffers.termFreq();
         final int[] termDocs = buffers.termDocs();
         rail.scanPositions(docId, windowMask, termId -> {
-            if (Arrays.binarySearch(pivotIds, termId) >= 0) {
-                return;
-            }
             termFreq[termId]++;
             coocTokens++;
             if (!termSeen.get(termId)) {
@@ -213,19 +202,25 @@ public final class CoocSnippets implements SnippetsConsumer
     }
 
     /**
-     * Sets the term ids to exclude from cooccurrence counting at every position in the window,
-     * including positions inside the matched span. The argument is normalised via
-     * {@link IntList#uniq(int[])}; callers may pass any int array (unsorted, with duplicates).
-     *
-     * @param pivotIds term ids to exclude; may be empty but not {@code null}
-     * @throws NullPointerException if {@code pivotIds} is {@code null}
+     * Removes pivot contributions accumulated during the walk: subtracts pivot
+     * occurrences from {@link #coocTokens()} and clears their per-term buffers so
+     * they cannot surface in the ranking. Call once, after the walk and before the
+     * totals are read.
      */
-    public CoocSnippets pivotIds(
+    public void subtractPivots(
         final int[] pivotIds
     ) {
-        Objects.requireNonNull(pivotIds, "pivotIds");
-        this.pivotIds = IntList.uniq(pivotIds);
-        return this;
+        if (pivotIds == null) return;
+        if (pivotIds.length < 1) return;
+        final long[] termFreq = buffers.termFreq();
+        final int[] termDocs = buffers.termDocs();
+        long pivotTokens = 0L;
+        for (final int p : pivotIds) {
+            pivotTokens += termFreq[p];
+            termFreq[p] = 0L;
+            termDocs[p] = 0;
+        }
+        coocTokens -= pivotTokens;
     }
 
     /**

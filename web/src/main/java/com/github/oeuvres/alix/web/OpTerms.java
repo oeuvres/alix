@@ -2,13 +2,10 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Locale;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.FixedBitSet;
-
-import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,7 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.spans.CoocSnippets;
+import com.github.oeuvres.alix.lucene.spans.TopCoocSnippets;
 import com.github.oeuvres.alix.lucene.spans.Snippets;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
@@ -67,7 +64,7 @@ public final class OpTerms extends Op
 {
 
     
-    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final OpMeta meta) throws IOException
+    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
@@ -96,7 +93,6 @@ public final class OpTerms extends Op
         }
         // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
-            final String scorerName = pars.getString(SCORER, "");
             // partition query on dates
             Query yearQuery = yearQuery(index, pars);
             // TODO tags
@@ -135,15 +131,18 @@ public final class OpTerms extends Op
                 filterQuery
             );
             
-            final CoocSnippets consumer = new CoocSnippets(
+            final TopCoocSnippets consumer = new TopCoocSnippets(
                 textFluc.termStats(),
                 textFluc.termRail(),
                 slop,
                 slop);
-            consumer.bindTo(topTerms.buffers()).pivotIds(textFluc.termLexicon().termIds(spanQuery));
+            consumer.bindTo(topTerms.buffers());
             walker.walk(consumer);
             topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
-            
+            final int[] pivotIds = textFluc.termLexicon().termIds(spanQuery);
+            meta.put("pivotIds", pivotIds);
+            meta.put("fieldWidth", textFluc.termStats().fieldWidth());
+            meta.put("fieldTokens", textFluc.termStats().fieldTokens());
             meta.put("focusTokens", consumer.coocTokens());
             meta.put("focusDocs", consumer.coocDocsTotal());
             meta.put("hits", walker.hits());
@@ -158,7 +157,7 @@ public final class OpTerms extends Op
             throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = topTerms(index, pars, meta);
         Writer writer = response.getWriter();
         if (topTerms != null) {
@@ -187,7 +186,7 @@ public final class OpTerms extends Op
     ) throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = topTerms(index, pars, meta);
         TermsUtil.json(response, meta, pars, topTerms);
     }

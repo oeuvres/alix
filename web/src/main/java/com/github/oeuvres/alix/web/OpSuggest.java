@@ -6,18 +6,15 @@ import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.FixedBitSet;
 
-import com.google.gson.stream.JsonWriter;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.spans.CoocSnippets;
+import com.github.oeuvres.alix.lucene.spans.TopCoocSnippets;
 import com.github.oeuvres.alix.lucene.spans.Snippets;
 import com.github.oeuvres.alix.lucene.spans.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
-import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
@@ -40,7 +37,7 @@ public final class OpSuggest extends Op
      * @return
      * @throws IOException
      */
-    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final OpMeta meta) throws IOException
+    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         String textField = pars.getString(FTEXT, index.content());
         final FlucText textFluc = index.flucText(textField);
@@ -74,12 +71,13 @@ public final class OpSuggest extends Op
                 new Snippets(Snippets.Usage.POSITIONS, slop),
                 filterQuery
             );
-            final CoocSnippets consumer = new CoocSnippets(
+            final TopCoocSnippets consumer = new TopCoocSnippets(
                 textFluc.termStats(),
                 textFluc.termRail(),
                 slop,
                 slop);
-            consumer.bindTo(topTerms.buffers()).pivotIds(textFluc.termLexicon().termIds(spanQuery));
+            // final int[] pivotIds = textFluc.termLexicon().termIds(spanQuery);
+            consumer.bindTo(topTerms.buffers());
             walker.walk(consumer);
             topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
             
@@ -101,7 +99,7 @@ public final class OpSuggest extends Op
     ) throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = topTerms(index, pars, meta);
         if (topTerms != null) {
             String textField = pars.getString(FTEXT, index.content());

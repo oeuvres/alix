@@ -249,7 +249,7 @@ public final class TermLexicon {
                 }
             }
         });
-        return ids.toArray();
+        return ids.toUniq();
     }
 
     /**

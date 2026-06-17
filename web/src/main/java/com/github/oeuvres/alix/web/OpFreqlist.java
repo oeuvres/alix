@@ -2,38 +2,16 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Locale;
-
-import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.util.FixedBitSet;
-
-import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.spans.CoocSnippets;
-import com.github.oeuvres.alix.lucene.spans.Snippets;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
-import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.terms.PartScorer;
-import com.github.oeuvres.alix.lucene.terms.Partition;
-import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
-import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
-import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.web.Pars.*;
@@ -44,7 +22,7 @@ public final class OpFreqlist extends Op
 {
 
     
-    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final OpMeta meta) throws IOException
+    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         String textName = pars.getString(FTEXT, index.content());
@@ -80,7 +58,7 @@ public final class OpFreqlist extends Op
             throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = topTerms(index, pars, meta);
         Writer writer = response.getWriter();
         if (topTerms != null) {
@@ -110,7 +88,7 @@ public final class OpFreqlist extends Op
     ) throws IOException
     {
         final HttpPars pars = new HttpPars(request, response);
-        final OpMeta meta = new OpMeta();
+        final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = topTerms(index, pars, meta);
         TermsUtil.json(response, meta, pars, topTerms);
     }
