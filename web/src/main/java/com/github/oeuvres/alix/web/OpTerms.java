@@ -64,7 +64,7 @@ public final class OpTerms extends Op
 {
 
     
-    private TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
+    protected static TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);

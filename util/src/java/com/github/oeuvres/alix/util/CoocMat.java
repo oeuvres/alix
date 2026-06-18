@@ -158,6 +158,18 @@ public class CoocMat
     {
         return cells[row * length + col];
     }
+    
+    /**
+     * The node id by rank number.
+     *
+     * @return rank → id.
+     */
+    public int id(final int rank)
+    {
+        if (rank < 0) throw new IllegalArgumentException(rank + " < 0, is not a valid rank");
+        if (rank >= length) throw new IllegalArgumentException(rank + " >= length=" + length + ", is not a valid rank");
+        return idByRank[rank];
+    }
 
     /**
      * The node ids in rank order (ascending). Returns the live backing array;

@@ -292,7 +292,7 @@ public abstract class Op
      * @return a filter query, or {@code null} if no parameter narrows the corpus
      * @throws IOException if reading field metadata fails
      */
-    Query filterQuery(LuceneIndex index, HttpPars pars) throws IOException
+    static Query filterQuery(LuceneIndex index, HttpPars pars) throws IOException
     {
         Builder builder = new BooleanQuery.Builder();
         Query q = yearQuery(index, pars);
@@ -322,7 +322,7 @@ public abstract class Op
      * @return the parsed query, or {@code null} when no {@code q} is given
      * @throws IOException if query parsing fails
      */
-    SpanQuery spanQuery(LuceneIndex index, HttpPars pars) throws IOException
+    static SpanQuery spanQuery(LuceneIndex index, HttpPars pars) throws IOException
     {
         final String q = pars.getString(Q, null);
         if (q == null)
@@ -348,7 +348,7 @@ public abstract class Op
      *         or not in the allowed set
      * @throws IOException reserved for symmetry with the other filter helpers
      */
-    Query typeQuery(LuceneIndex index, HttpPars pars) throws IOException
+    static Query typeQuery(LuceneIndex index, HttpPars pars) throws IOException
     {
         final String type = pars.getString(TYPE, null, Set.of(ARTICLE, CHAPTER));
         if (type == null)
@@ -385,7 +385,7 @@ public abstract class Op
      *         if no filter applies
      * @throws IOException if reading field metadata fails
      */
-    Query yearQuery(LuceneIndex index, HttpPars pars) throws IOException
+    static Query yearQuery(LuceneIndex index, HttpPars pars) throws IOException
     {
         String yearName = pars.getString(FYEAR, index.year());
         final FlucNum flucYear = index.flucNum(yearName);

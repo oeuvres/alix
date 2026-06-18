@@ -102,29 +102,28 @@ public class MetaUtil
      * must not put untrusted content into the entries.
      *
      * @return the {@code <li>} fragments concatenated, possibly empty
+     * @throws IOException 
      */
-    public String toHtml(HttpPars pars)
+    public void toHtml(Appendable writer, HttpPars pars) throws IOException
     {
-        StringBuilder sb = new StringBuilder();
         if (!entries.isEmpty()) {
-            sb.append("<ul>\n");
+            writer.append("<ul>\n");
             for (Map.Entry<String, Object> e : entries.entrySet()) {
-                sb.append("<li>" + e.getKey() + ": '" + e.getValue() + "'</li>\n");
+                writer.append("<li>" + e.getKey() + ": '" + e.getValue() + "'</li>\n");
             }
-            sb.append("</ul>\n");
+            writer.append("</ul>\n");
         }
         if (pars != null) {
-            sb.append("<ol>\n");
+            writer.append("<ol>\n");
             for (Map.Entry<String, HttpPars.Resolved> entry : pars.resolvedParams().entrySet()) {
-                sb.append("<li>")
+                writer.append("<li>")
                 .append(entry.getKey())
                 .append(": ")
                 .append(entry.getValue().toString())
                 .append("</li>\n");
             }
-            sb.append("</ol>\n");
+            writer.append("</ol>\n");
         }
-        return sb.toString();
     }
 
     /**

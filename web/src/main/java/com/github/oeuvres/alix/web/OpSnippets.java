@@ -22,6 +22,9 @@ import com.github.oeuvres.alix.web.util.HttpPars;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Returns snippets for one doc
+ */
 public class OpSnippets extends Op
 {
     @Override
@@ -76,8 +79,8 @@ public class OpSnippets extends Op
             writer
             .append("<p class=\"error\">")
             .append("No query to extract snippets")
-            .append(meta.toHtml(pars))
             .append("</p>");
+            meta.toHtml(writer, pars);
             return;
         }
         
