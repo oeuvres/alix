@@ -67,8 +67,10 @@ public class CoocMat
     private final int[] cells;
     /** Side of the square, i.e. the number of nodes. */
     private final int length;
-    /** Rank → id: accepted ids, sorted ascending, without duplicate. */
-    private final int[] nodes;
+    /** rank → id: accepted ids, sorted ascending, without duplicate. */
+    private final int[] idByRank;
+    /** id → rank : sparse array for fast lookup (proved by workbench). */
+    private final int[] rankById;
     /** Number of contexts accumulated, the sample size for association measures. */
     private long total;
 
@@ -80,14 +82,28 @@ public class CoocMat
      */
     public CoocMat(final IntList list)
     {
-        this.nodes = list.toUniq();
-        if (this.nodes.length == 0) {
+        this.idByRank = list.toUniq();
+        if (this.idByRank.length == 0) {
             throw new IllegalArgumentException("empty node set, nothing to record");
         }
-        this.length = this.nodes.length;
+        this.length = this.idByRank.length;
         this.cells = new int[this.length * this.length];
+        // uniq is sorted, max is last element
+        final int max = idByRank[length - 1];
+        this.rankById = new int[max+1];
+        Arrays.fill(this.rankById, -1);
+        for (int rank=0; rank < length; rank++) {
+            final int id = idByRank[rank];
+            this.rankById[id] = rank;
+        }
     }
 
+    public boolean contains(final int id) {
+        if (id < 0) return false;
+        if (id >= rankById.length) return false;
+        return (rankById[id] >= 0);
+    }
+    
     /**
      * Count recorded for an ordered pair of ids.
      *
@@ -121,7 +137,7 @@ public class CoocMat
      */
     public int[] ids()
     {
-        return nodes;
+        return idByRank;
     }
 
     /**
@@ -174,8 +190,10 @@ public class CoocMat
      */
     public int rank(final int id)
     {
-        final int rank = Arrays.binarySearch(nodes, id);
-        return rank < 0 ? -1 : rank;
+        if (id < 0 || id >= rankById.length) {
+            return -1;
+        }
+        return rankById[id];
     }
 
     /**
@@ -195,11 +213,11 @@ public class CoocMat
     {
         final StringBuilder sb = new StringBuilder();
         for (int col = 0; col < length; col++) {
-            sb.append('\t').append(nodes[col]);
+            sb.append('\t').append(idByRank[col]);
         }
         sb.append('\n');
         for (int row = 0; row < length; row++) {
-            sb.append(nodes[row]);
+            sb.append(idByRank[row]);
             for (int col = 0; col < length; col++) {
                 sb.append('\t').append(cells[row * length + col]);
             }
