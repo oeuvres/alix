@@ -28,24 +28,33 @@ import java.util.Arrays;
 
 /**
  * A dense square matrix accumulating co-occurrence counts between a small,
- * fixed set of term ids (typically 20–200) drawn from a sparse and possibly
- * very large id space, such as Lucene term ordinals.
+ * fixed set of non-negative term ids (typically 20–200) drawn from a larger id
+ * space, such as a field or segment vocabulary.
  *
  * <p>The matrix is addressed by <i>rank</i>, a contiguous local index in
- * {@code [0, length())} assigned to each accepted id in ascending id order.
- * The large global id space is never allocated: id → rank is resolved by binary
- * search over the sorted node array, so memory and build cost are O(length),
- * independent of the largest id. This matters when the object is rebuilt per
- * query in an interactive loop, where filling an id-sized lookup array would be
- * pure overhead.</p>
+ * {@code [0, length())} assigned to each node id in ascending id order. Cells
+ * are a {@code length × length} row-major {@code int} array.</p>
  *
- * <p>Public methods come in two flavours. Id-space methods
- * ({@link #inc(int, int)}, {@link #count(int, int)}) translate ids to ranks on
- * each call; rank-space methods ({@link #incByRank(int, int)},
- * {@link #countByRank(int, int)}) skip that translation and perform no bounds
- * check, for the inner accumulation loop. The intended pattern is to resolve the
- * ids present in a context to ranks once via {@link #rank(int)}, then stay in
- * rank space.</p>
+ * <p><b>Lookup.</b> id → rank is resolved by a direct-address table of size
+ * {@code maxNodeId + 1} ({@code -1} marking a non-node): a single array load,
+ * no branch. A microbenchmark over id universes of this size found this
+ * markedly faster than binary search over the node array. The price is memory
+ * proportional to the largest node id, not to the node count: a vocabulary on
+ * the order of {@code 10^4} ids is a table of tens of kilobytes, but a node id
+ * in the millions would allocate a correspondingly large table. This structure
+ * is therefore intended for bounded id universes, trading space for a fast,
+ * branchless lookup; for an unbounded ordinal space a binary-search variant
+ * would be the better trade. Node ids must be non-negative.</p>
+ *
+ * <p><b>Two flavours of accessor.</b> Id-space methods ({@link #inc(int, int)},
+ * {@link #count(int, int)}) translate each id to its rank through the table and
+ * validate membership. Rank-space methods ({@link #incByRank(int, int)},
+ * {@link #countByRank(int, int)}) take ranks directly and skip both the
+ * translation and the check; they serve the inner accumulation loop, where a
+ * context's ids are resolved to ranks once via {@link #rank(int)} and then many
+ * cells are written. Because the table makes the id-space path cheap too (one
+ * load plus a branch), prefer it unless profiling the fill loop shows the
+ * per-write check matters.</p>
  *
  * <p><b>Diagonal as marginals.</b> The diagonal cell {@code (r, r)} is, by
  * construction, the marginal count of the node of rank {@code r}: the number of
@@ -60,25 +69,37 @@ import java.util.Arrays;
  * cells. For a symmetric co-occurrence count, either write both orders, or write
  * only the upper triangle and canonicalise reads on the caller side. This class
  * imposes no choice, so that left/right context can also be recorded if wanted.</p>
+ *
+ * <p>Not thread-safe.</p>
  */
 public class CoocMat
 {
     /** The edges: a {@code length × length} matrix, flattened row-major. */
     private final int[] cells;
+    /** rank → id: node ids, sorted ascending, deduplicated. */
+    private final int[] idByRank;
     /** Side of the square, i.e. the number of nodes. */
     private final int length;
-    /** rank → id: accepted ids, sorted ascending, without duplicate. */
-    private final int[] idByRank;
-    /** id → rank : sparse array for fast lookup (proved by workbench). */
+    /**
+     * id → rank: direct-address table of size {@code maxNodeId + 1}, holding the
+     * rank of each node id and {@code -1} at every other index. Chosen over
+     * binary search for its single-load, branchless lookup at this id range.
+     */
     private final int[] rankById;
     /** Number of contexts accumulated, the sample size for association measures. */
     private long total;
 
     /**
-     * Build a matrix over the ids set in a bitset. Each set bit becomes a node;
-     * the bitset yields them already sorted and deduplicated.
+     * Builds a matrix over a set of node ids. The list is reduced to sorted,
+     * unique values via {@link IntList#toUniq()}, so the input need not be sorted
+     * or deduplicated and its order is irrelevant. Allocates the cell matrix
+     * ({@code length²} ints) and the id → rank table ({@code maxNodeId + 1} ints);
+     * see the class description on the memory implication of large ids.
      *
-     * @param bits accepted ids, at least one set bit.
+     * @param list node ids, all non-negative, at least one distinct value.
+     * @throws NullPointerException if {@code list} is {@code null}.
+     * @throws IllegalArgumentException if the reduced set is empty.
+     * @throws ArrayIndexOutOfBoundsException if any node id is negative.
      */
     public CoocMat(final IntList list)
     {
@@ -88,28 +109,35 @@ public class CoocMat
         }
         this.length = this.idByRank.length;
         this.cells = new int[this.length * this.length];
-        // uniq is sorted, max is last element
+        // toUniq() is sorted ascending, so the largest id is the last element
         final int max = idByRank[length - 1];
-        this.rankById = new int[max+1];
+        this.rankById = new int[max + 1];
         Arrays.fill(this.rankById, -1);
-        for (int rank=0; rank < length; rank++) {
+        for (int rank = 0; rank < length; rank++) {
             final int id = idByRank[rank];
             this.rankById[id] = rank;
         }
     }
 
-    public boolean contains(final int id) {
-        if (id < 0) return false;
-        if (id >= rankById.length) return false;
-        return (rankById[id] >= 0);
+    /**
+     * Whether an id is one of the nodes. Never throws; out-of-range and negative
+     * ids simply return {@code false}.
+     *
+     * @param id any int.
+     * @return {@code true} if {@code id} is a node, {@code false} otherwise.
+     */
+    public boolean contains(final int id)
+    {
+        return rank(id) >= 0;
     }
-    
+
     /**
      * Count recorded for an ordered pair of ids.
      *
-     * @param rowId an accepted id.
-     * @param colId an accepted id.
+     * @param rowId a node id.
+     * @param colId a node id.
      * @return the cell value.
+     * @throws IllegalArgumentException if either id is not a node.
      */
     public int count(final int rowId, final int colId)
     {
@@ -118,7 +146,9 @@ public class CoocMat
 
     /**
      * Count recorded for an ordered pair of ranks, without id translation or
-     * bounds check.
+     * bounds check. Both ranks must come from {@link #rank(int)} or
+     * {@link #ids()}; an out-of-range rank is a caller error and may read the
+     * wrong cell or throw.
      *
      * @param row a rank in {@code [0, length())}.
      * @param col a rank in {@code [0, length())}.
@@ -141,10 +171,11 @@ public class CoocMat
     }
 
     /**
-     * Increment by one the cell for an ordered pair of ids.
+     * Increments by one the cell for an ordered pair of ids.
      *
-     * @param rowId an accepted id.
-     * @param colId an accepted id.
+     * @param rowId a node id.
+     * @param colId a node id.
+     * @throws IllegalArgumentException if either id is not a node.
      */
     public void inc(final int rowId, final int colId)
     {
@@ -152,8 +183,10 @@ public class CoocMat
     }
 
     /**
-     * Increment by one the cell for an ordered pair of ranks, without id
-     * translation or bounds check. Intended for the inner accumulation loop.
+     * Increments by one the cell for an ordered pair of ranks, without id
+     * translation or bounds check. For the inner accumulation loop. Both ranks
+     * must come from {@link #rank(int)} or {@link #ids()}; an out-of-range rank
+     * is a caller error and may corrupt a cell or throw.
      *
      * @param row a rank in {@code [0, length())}.
      * @param col a rank in {@code [0, length())}.
@@ -164,7 +197,7 @@ public class CoocMat
     }
 
     /**
-     * Increment by one the context count returned by {@link #total()}. Call once
+     * Increments by one the context count returned by {@link #total()}. Call once
      * per context (window or document) accumulated.
      */
     public void incTotal()
@@ -183,10 +216,12 @@ public class CoocMat
     }
 
     /**
-     * Rank of an id, or -1 if the id is not a node. Doubles as a membership test.
+     * Rank of an id, or {@code -1} if the id is not a node. Negative ids and ids
+     * larger than the greatest node id return {@code -1} rather than throwing, so
+     * this doubles as a total membership test.
      *
      * @param id any int.
-     * @return rank in {@code [0, length())}, or -1.
+     * @return rank in {@code [0, length())}, or {@code -1}.
      */
     public int rank(final int id)
     {
@@ -197,17 +232,28 @@ public class CoocMat
     }
 
     /**
-     * Set the count for an ordered pair of ids.
+     * Sets the count for an ordered pair of ids. Expert use (tests,
+     * deserialisation): the value is written verbatim with no validation, so a
+     * negative or absurd value will silently corrupt the marginals and totals an
+     * association measure later relies on. Callers are responsible for passing a
+     * sane, non-negative count.
      *
-     * @param rowId an accepted id.
-     * @param colId an accepted id.
-     * @param value new cell value.
+     * @param rowId a node id.
+     * @param colId a node id.
+     * @param value new cell value, expected {@code >= 0}.
+     * @throws IllegalArgumentException if either id is not a node.
      */
     public void set(final int rowId, final int colId, final int value)
     {
         cells[cellIndex(rowId, colId)] = value;
     }
 
+    /**
+     * Tab-separated dump of the whole matrix: a header row of node ids, then one
+     * row per node prefixed by its id. For debugging; not a stable format.
+     *
+     * @return the matrix as text.
+     */
     @Override
     public String toString()
     {
@@ -237,11 +283,14 @@ public class CoocMat
     }
 
     /**
-     * Flat index of a cell, translating both ids to ranks and checking membership.
+     * Flat index of a cell, translating both ids to ranks through the table and
+     * checking membership, so the id-space accessors fail with a legible message
+     * rather than an array fault.
      *
-     * @param rowId an accepted id.
-     * @param colId an accepted id.
+     * @param rowId a node id.
+     * @param colId a node id.
      * @return index into {@link #cells}.
+     * @throws IllegalArgumentException if either id is not a node.
      */
     private int cellIndex(final int rowId, final int colId)
     {
