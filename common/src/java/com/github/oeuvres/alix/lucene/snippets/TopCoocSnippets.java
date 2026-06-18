@@ -1,11 +1,11 @@
-package com.github.oeuvres.alix.lucene.spans;
+package com.github.oeuvres.alix.lucene.snippets;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
 
-import com.github.oeuvres.alix.lucene.spans.SpanWalker.SnippetsConsumer;
+import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;

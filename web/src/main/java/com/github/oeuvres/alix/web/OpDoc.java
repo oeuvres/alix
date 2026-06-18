@@ -10,7 +10,7 @@ import org.apache.lucene.queries.spans.SpanQuery;
 
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.spans.HiliteSnippets;
+import com.github.oeuvres.alix.lucene.snippets.HiliteSnippets;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;

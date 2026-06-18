@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.spans;
+package com.github.oeuvres.alix.lucene.snippets;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -13,7 +13,7 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.StoredFields;
 
-import com.github.oeuvres.alix.lucene.spans.SpanWalker.SnippetsConsumer;
+import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.util.Detagger;
 import com.github.oeuvres.alix.util.Markup;

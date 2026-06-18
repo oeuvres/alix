@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.spans;
+package com.github.oeuvres.alix.lucene.snippets;
 
 import java.io.IOException;
 import java.util.Arrays;

@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.spans;
+package com.github.oeuvres.alix.lucene.snippets;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -16,7 +16,7 @@ import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 
-import com.github.oeuvres.alix.lucene.spans.Snippets.Usage;
+import com.github.oeuvres.alix.lucene.snippets.Snippets.Usage;
 
 /**
  * Injects highlight markup into a stored document for one {@link SpanQuery}, using a

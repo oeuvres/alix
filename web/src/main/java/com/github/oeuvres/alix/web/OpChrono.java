@@ -13,9 +13,9 @@ import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.output.HistoNum;
 import com.github.oeuvres.alix.lucene.output.HistoNum.Col;
-import com.github.oeuvres.alix.lucene.spans.HistoSnippets;
-import com.github.oeuvres.alix.lucene.spans.Snippets;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.snippets.HistoSnippets;
+import com.github.oeuvres.alix.lucene.snippets.Snippets;
+import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 

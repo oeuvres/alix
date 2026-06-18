@@ -11,9 +11,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.spans.TopCoocSnippets;
-import com.github.oeuvres.alix.lucene.spans.Snippets;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker;
+import com.github.oeuvres.alix.lucene.snippets.Snippets;
+import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
+import com.github.oeuvres.alix.lucene.snippets.TopCoocSnippets;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;

@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.spans;
+package com.github.oeuvres.alix.lucene.snippets;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper;

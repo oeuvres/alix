@@ -1,11 +1,11 @@
-package com.github.oeuvres.alix.lucene.spans;
+package com.github.oeuvres.alix.lucene.snippets;
 
 import java.io.IOException;
 import java.util.Objects;
 
 import com.github.oeuvres.alix.lucene.output.HistoNum;
 import com.github.oeuvres.alix.lucene.output.HistoNum.Col;
-import com.github.oeuvres.alix.lucene.spans.SpanWalker.SnippetsConsumer;
+import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 
 public class HistoSnippets implements SnippetsConsumer
 {

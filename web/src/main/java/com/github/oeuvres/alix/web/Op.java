@@ -20,7 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
-import com.github.oeuvres.alix.lucene.spans.SpanQueryParser;
+import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
