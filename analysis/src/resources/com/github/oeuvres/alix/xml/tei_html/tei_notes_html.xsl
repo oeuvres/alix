@@ -76,7 +76,10 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
     <xsl:param name="resp"/>
     <xsl:choose>
       <!-- do not output block notes -->
-      <xsl:when test="parent::tei:app or parent::tei:back or parent::tei:div or parent::tei:div1 or parent::tei:div2 or parent::tei:div3 or parent::tei:front or parent::tei:notesStmt or parent::tei:sp"/>
+      <xsl:when test="parent::tei:app or parent::tei:back or parent::tei:div or parent::tei:div1 or parent::tei:div2 or parent::tei:div3 or parent::tei:front or parent::tei:notesStmt or parent::tei:sp">
+        <!-- We may have foot notes in block notes -->
+        <xsl:apply-templates mode="fn"/>
+      </xsl:when>
       <xsl:otherwise>
         <xsl:call-template name="note"/>
       </xsl:otherwise>
