@@ -23,9 +23,15 @@ public class Pars
     public static final String INFIX            = "infix";
     public static final String IDFEXP           = "idfexp";
     public static final Double IDFEXP_DEFAULT   = 1.0;
+    public static final String LEFT             = "left";
+    public static final int    LEFT_DEFAULT     = 5;
+    public static final int[]  LEFT_RANGE       = {0, 50};
     public static final String LOG_LIKELIHOOD   = "loglikelihood";
     public static final String LOG_RATIO        = "logratio";
     public static final String Q                = "q";
+    public static final String RIGHT             = "right";
+    public static final int    RIGHT_DEFAULT     = 5;
+    public static final int[]  RIGHT_RANGE       = {0, 50};
     public static final String ROWS             = "rows";
     public static final int    ROWS_DEFAULT     = 2000;
     public static final int[]  ROWS_RANGE       = {1, 2000};

@@ -66,7 +66,7 @@ public final class OpTerms extends Op
     
     protected static TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
-        final int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
+        int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
         
         String textField = pars.getString(FTEXT, index.content());
@@ -122,8 +122,15 @@ public final class OpTerms extends Op
             return topTerms.select(index.reader(), focusDocs).rank(scorer, topK);
         }
         else {
+            // pivotsIds
+            final int[] pivotIds = textFluc.termLexicon().termIds(spanQuery);
+            // increment the topK of pivots
+            topK += pivotIds.length;
+
             // same as for the span query parser
             final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+            final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
+            final int right = pars.getInt(RIGHT, RIGHT_RANGE, slop);
             final SpanWalker walker = new SpanWalker(
                 index.searcher(),
                 spanQuery,
@@ -134,12 +141,11 @@ public final class OpTerms extends Op
             final TopCoocSnippets consumer = new TopCoocSnippets(
                 textFluc.termStats(),
                 textFluc.termRail(),
-                slop,
-                slop);
+                left,
+                right);
             consumer.bindTo(topTerms.buffers());
             walker.walk(consumer);
             topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
-            final int[] pivotIds = textFluc.termLexicon().termIds(spanQuery);
             meta.put("pivotIds", pivotIds);
             meta.put("fieldWidth", textFluc.termStats().fieldWidth());
             meta.put("fieldTokens", textFluc.termStats().fieldTokens());

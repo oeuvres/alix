@@ -1,9 +1,6 @@
 package com.github.oeuvres.alix.web;
 
-import static com.github.oeuvres.alix.web.Pars.FTEXT;
-import static com.github.oeuvres.alix.web.Pars.SLOP;
-import static com.github.oeuvres.alix.web.Pars.SLOP_DEFAULT;
-import static com.github.oeuvres.alix.web.Pars.SLOP_RANGE;
+import static com.github.oeuvres.alix.web.Pars.*;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -39,18 +36,21 @@ public class OpCoocs extends Op
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
+        
         final Writer writer = response.getWriter();
         if (topTerms == null) {
             meta.toString(writer, pars);
             return;
         }
         
-        
         final int terms = topTerms.size();
         final IntList termIds= new IntList(terms);
         for (TermEntry term : topTerms) {
             termIds.push(term.termId());
         }
+        final boolean directed = pars.getBoolean("directed", false);
+        System.out.println("directed=" + directed);
+
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         Snippets snippets = new Snippets(Snippets.Usage.POSITIONS, slop);
         final Query filterQuery = filterQuery(index, pars);
@@ -58,9 +58,11 @@ public class OpCoocs extends Op
         final String contentFname = pars.getString(FTEXT, index.content());
         final FlucText contentFluc = index.flucText(contentFname);
 
+        final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
+        final int right = pars.getInt(RIGHT, RIGHT_RANGE, slop);
         final CoocMat coocMat = new CoocMat(termIds);
         final CoocMatSnippets coocRecorder = new CoocMatSnippets(
-            coocMat, contentFluc.termRail(), slop, slop
+            coocMat, contentFluc.termRail(), left, right, directed
         );
         
 
