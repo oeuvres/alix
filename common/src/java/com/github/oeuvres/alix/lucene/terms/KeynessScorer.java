@@ -39,65 +39,6 @@ public interface KeynessScorer {
      */
     double score(long focusCount, long focusTotal, long refCount, long refTotal);
 
-    class Count implements KeynessScorer {
-        @Override
-        public double score(
-            final long focusTermCount,
-            final long focusTokens,
-            final long otherTermCount,
-            final long otherTokens
-        ) {
-            return focusTermCount;
-        }
-    }
-    
-    /** Log Ratio (Hardie): log₂(relFocus / relRef), with Laplace smoothing. */
-    class LogRatio implements KeynessScorer {
-        @Override
-        public double score(
-            final long focusTermCount,
-            final long focusTokens,
-            final long otherTermCount,
-            final long otherTokens
-        ) {
-            if (focusTermCount <= 0L || otherTermCount <= 0L) return 0d;
-            if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
-
-            final double relFocus = (double) focusTermCount / (double) focusTokens;
-            final double relOther = (double) otherTermCount / (double) otherTokens;
-
-            return Math.log(relFocus / relOther) / Math.log(2d) * Math.log(focusTermCount);
-        }
-    }
-
-    /**
-     * Simple Maths (Kilgarriff 2009): smoothed ratio of per-million frequencies.
-     * k prevents inflation of very rare terms. Typical k = 1.
-     */
-    class SimpleMaths implements KeynessScorer {
-        private final double k;
-
-        public SimpleMaths(final double k)
-        {
-            this.k = k;
-        }
-
-        @Override
-        public double score(
-            final long focusTermCount,
-            final long focusTokens,
-            final long otherTermCount,
-            final long otherTokens
-        ) {
-            if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
-
-            final double ppmFocus = (focusTermCount * 1_000_000.0d / (double) focusTokens) + k;
-            final double ppmOther = (otherTermCount * 1_000_000.0d / (double) otherTokens) + k;
-
-            return ppmFocus / ppmOther;
-        }
-    }
-    
     /**
      * Signed Pearson chi-square X² (Pearson 1900), 2×2 contingency.
      *
@@ -179,6 +120,44 @@ public interface KeynessScorer {
         }
     }
 
+    
+    class Count implements KeynessScorer {
+        @Override
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            return focusTermCount;
+        }
+    }
+    
+    /**
+     * logDice (Rychlý 2008) read as an effect-size keyness measure: the Dice
+     * coefficient between the term event and the focus event in the 2×2 table,
+     * shifted by 14 and taken in log₂. Independent of {@code otherTokens} (the
+     * bulk non-term/non-focus cell), so stable across reference sizes; says
+     * nothing about whether the concentration exceeds sampling noise. NOT the
+     * collocational logDice of a node/collocate pair, which needs the node
+     * marginal and does not fit this interface.
+     */
+    class LogDice implements KeynessScorer {
+        @Override
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            if (focusTokens <= 0L) return Double.NaN;
+            if (focusTermCount <= 0L) return Double.NEGATIVE_INFINITY;
+            final long termTotal = focusTermCount + otherTermCount;
+            final double dice = 2d * (double) focusTermCount / (double) (focusTokens + termTotal);
+            return 14d + Math.log(dice) / Math.log(2d);
+        }
+    }
+
     /**
      * Log-Likelihood G² (Dunning 1993), for use as a significance pre-filter,
      * not as a ranker. Positive when over-represented in focus.
@@ -228,4 +207,56 @@ public interface KeynessScorer {
             return ((double) focusTermCount / focusTokens >= (double) otherTermCount / otherTokens) ? g2 : -g2;
         }
     }
+
+    /** Log Ratio (Hardie): log₂(relFocus / relRef), with Laplace smoothing. */
+    class LogRatio implements KeynessScorer {
+        @Override
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            if (focusTermCount <= 0L || otherTermCount <= 0L) return 0d;
+            if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
+
+            final double relFocus = (double) focusTermCount / (double) focusTokens;
+            final double relOther = (double) otherTermCount / (double) otherTokens;
+
+            return Math.log(relFocus / relOther) / Math.log(2d) * Math.log(focusTermCount);
+        }
+    }
+    /**
+     * Simple Maths (Kilgarriff 2009): smoothed ratio of per-million frequencies.
+     * k prevents inflation of very rare terms. Typical k = 1.
+     */
+    class SimpleMaths implements KeynessScorer {
+        private final double k;
+        
+        public SimpleMaths()
+        {
+            this.k = 1;
+        }
+
+        public SimpleMaths(final double k)
+        {
+            this.k = k;
+        }
+
+        @Override
+        public double score(
+            final long focusTermCount,
+            final long focusTokens,
+            final long otherTermCount,
+            final long otherTokens
+        ) {
+            if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
+
+            final double ppmFocus = (focusTermCount * 1_000_000.0d / (double) focusTokens) + k;
+            final double ppmOther = (otherTermCount * 1_000_000.0d / (double) otherTokens) + k;
+
+            return ppmFocus / ppmOther;
+        }
+    }
+
 }

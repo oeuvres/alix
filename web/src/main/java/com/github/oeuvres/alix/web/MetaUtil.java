@@ -28,12 +28,20 @@ public class MetaUtil
     long t0 = System.nanoTime();
 
     /**
+     * Get back an object from meta
+     */
+    public Object get(final String key)
+    {
+        return entries.get(key);
+    }
+    
+    /**
      * Records a {@code double} meta entry.
      *
      * @param key   entry name
      * @param value entry value
      */
-    public void put(String key, double value)
+    public void put(final String key, final double value)
     {
         entries.put(key, Double.valueOf(value));
     }
@@ -46,7 +54,7 @@ public class MetaUtil
      * @param key   entry name
      * @param value entry value
      */
-    public void put(String key, Float value)
+    public void put(final String key, final Float value)
     {
         entries.put(key, Float.valueOf(value));
     }
@@ -57,7 +65,7 @@ public class MetaUtil
      * @param key   entry name
      * @param value entry value
      */
-    public void put(String key, int value)
+    public void put(final String key, final int value)
     {
         entries.put(key, Integer.valueOf(value));
     }
@@ -68,7 +76,7 @@ public class MetaUtil
      * @param key   entry name
      * @param values entry values
      */
-    public void put(String key, int[] values)
+    public void put(final String key, final int[] values)
     {
         entries.put(key, values);
     }
@@ -79,7 +87,7 @@ public class MetaUtil
      * @param key   entry name
      * @param value entry value
      */
-    public void put(String key, long value)
+    public void put(final String key, final long value)
     {
         entries.put(key, Long.valueOf(value));
     }
@@ -90,7 +98,7 @@ public class MetaUtil
      * @param key   entry name
      * @param value entry value
      */
-    public void put(String key, String value)
+    public void put(final String key, final String value)
     {
         entries.put(key, value);
     }
@@ -104,7 +112,7 @@ public class MetaUtil
      * @return the {@code <li>} fragments concatenated, possibly empty
      * @throws IOException 
      */
-    public void toHtml(Appendable writer, HttpPars pars) throws IOException
+    public void toHtml(final Appendable writer, final HttpPars pars) throws IOException
     {
         if (!entries.isEmpty()) {
             writer.append("<ul>\n");
@@ -142,7 +150,7 @@ public class MetaUtil
      *             status and the parameter echo
      * @throws IOException if writing fails
      */
-    public void toJson(JsonWriter jw, HttpPars pars) throws IOException
+    public void toJson(final JsonWriter jw, final HttpPars pars) throws IOException
     {
         jw.name("status").value(pars.response().getStatus());
         jw.name("params").beginObject();
@@ -164,7 +172,7 @@ public class MetaUtil
     }
     
 
-    public void toString(Appendable writer, HttpPars pars) throws IOException
+    public void toString(final Appendable writer, final HttpPars pars) throws IOException
     {
         for (Map.Entry<String, Object> e : entries.entrySet()) {
             writer.append(e.getKey() + ": '" + e.getValue() + "'\n");
@@ -191,7 +199,7 @@ public class MetaUtil
      * @param v  value to emit, or {@code null}
      * @throws IOException if writing fails
      */
-    protected static void jsonObject(JsonWriter jw, Object v) throws IOException
+    protected static void jsonObject(final JsonWriter jw, final Object v) throws IOException
     {
         if (v == null) {
             jw.nullValue();

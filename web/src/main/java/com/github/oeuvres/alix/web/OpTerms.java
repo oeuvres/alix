@@ -152,7 +152,17 @@ public final class OpTerms extends Op
             meta.put("focusTokens", consumer.coocTokens());
             meta.put("focusDocs", consumer.coocDocsTotal());
             meta.put("hits", walker.hits());
-            topTerms.rank(new KeynessScorer.Count(), topK);
+            // choose scorer
+            final KeynessScorer scorer = switch (pars.getString(SCORER, "")) {
+                case "count" -> new KeynessScorer.Count();
+                case "log" -> new KeynessScorer.LogLikelihood();
+                case "logratio" -> new KeynessScorer.LogRatio();
+                case "logdice" -> new KeynessScorer.LogDice();
+                case "chi2" -> new KeynessScorer.Chi2();
+                case "simple" -> new KeynessScorer.SimpleMaths();
+                default -> new KeynessScorer.LogLikelihood();
+            };
+            topTerms.rank(scorer, topK);
             return topTerms;
         }
     }

@@ -4,6 +4,7 @@ import static com.github.oeuvres.alix.web.Pars.*;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Arrays;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -42,12 +43,16 @@ public class OpCoocs extends Op
             meta.toString(writer, pars);
             return;
         }
-        
-        final int terms = topTerms.size();
-        final IntList termIds= new IntList(terms);
+
+        // topTerms may contain pivots
+        int[] pivotIds = (int[])meta.get("pivotIds");
+        final IntList termIds= new IntList(topTerms.size());
         for (TermEntry term : topTerms) {
-            termIds.push(term.termId());
+            final int termId = term.termId();
+            if (Arrays.binarySearch(pivotIds, termId) >= 0) continue;
+            termIds.push(termId);
         }
+        final int terms = termIds.size();
         final boolean directed = pars.getBoolean("directed", false);
         System.out.println("directed=" + directed);
 
@@ -92,7 +97,10 @@ public class OpCoocs extends Op
             final int termId=coocMat.id(row);
             writer.append(lexicon.form(termId));
             for (int col = 0; col < terms; col++) {
-                writer.append(',').append(Integer.toString(coocMat.countByRank(row, col)));
+                final int count;
+                if (row == col) count = 0;
+                else count = coocMat.countByRank(row, col);
+                writer.append(',').append(Integer.toString(count));
             }
             writer.append('\n');
         }
