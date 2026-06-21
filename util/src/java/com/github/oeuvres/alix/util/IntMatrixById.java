@@ -78,7 +78,7 @@ import java.util.Arrays;
  * Not thread-safe.
  * </p>
  */
-public class CoocMat
+public class IntMatrixById
 {
     /** The edges: a {@code length × length} matrix, flattened row-major. */
     private final int[] cells;
@@ -107,7 +107,7 @@ public class CoocMat
      * @throws IllegalArgumentException if the reduced set is empty.
      * @throws ArrayIndexOutOfBoundsException if any node id is negative.
      */
-    public CoocMat(
+    public IntMatrixById(
         final IntList list
     ) {
         this.idByRank = list.toUniq();

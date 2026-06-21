@@ -155,7 +155,8 @@ public final class OpTerms extends Op
             // choose scorer
             final KeynessScorer scorer = switch (pars.getString(SCORER, "")) {
                 case "count" -> new KeynessScorer.Count();
-                case "log" -> new KeynessScorer.LogLikelihood();
+                case "raw" -> new KeynessScorer.Count();
+                case "g2" -> new KeynessScorer.LogLikelihood();
                 case "logratio" -> new KeynessScorer.LogRatio();
                 case "logdice" -> new KeynessScorer.LogDice();
                 case "chi2" -> new KeynessScorer.Chi2();

@@ -30,11 +30,11 @@ import java.util.function.IntConsumer;
 
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
-import com.github.oeuvres.alix.util.CoocMat;
+import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.util.IntList;
 
 /**
- * A {@link SnippetsConsumer} that fills a {@link CoocMat} with per-snippet co-occurrence counts, the
+ * A {@link SnippetsConsumer} that fills a {@link IntMatrixById} with per-snippet co-occurrence counts, the
  * matrix-valued sibling of {@code TopCoocSnippets}.
  *
  * <h2>Counting model: per-snippet window, occurrence counts</h2>
@@ -51,12 +51,12 @@ import com.github.oeuvres.alix.util.IntList;
  * therefore the occurrence marginal f(a) = &#931; n(a);</li>
  * <li>for each unordered pair the off-diagonal cells receive n(a)&#183;n(b), the number of co-occurring
  * occurrence pairs (see <i>Direction</i> for how the two cells are split);</li>
- * <li>{@link CoocMat#incTotal()} is called once — {@link CoocMat#total()} is therefore the number of
+ * <li>{@link IntMatrixById#incTotal()} is called once — {@link IntMatrixById#total()} is therefore the number of
  * snippet windows, the sample size N.</li>
  * </ul>
  * <p>
  * Marginals, joints and N thus come out on one consistent occurrence-and-window basis. log-Dice and
- * PMI (with N from {@link CoocMat#total()}) are well defined on this footing; the G&#178;/log-likelihood
+ * PMI (with N from {@link IntMatrixById#total()}) are well defined on this footing; the G&#178;/log-likelihood
  * contingency interpretation is approximate, since occurrence products are not Bernoulli trial counts.
  * </p>
  *
@@ -74,7 +74,7 @@ import com.github.oeuvres.alix.util.IntList;
  * <h2>Node set and exclusions</h2>
  * <p>
  * The matrix is built over a fixed node set. Any term id outside that set maps to rank {@code -1} via
- * {@link CoocMat#rank(int)} and is ignored. Query pivots appear as rows and columns if and only if
+ * {@link IntMatrixById#rank(int)} and is ignored. Query pivots appear as rows and columns if and only if
  * their ids are in the node set; there is no pivot logic here.
  * </p>
  *
@@ -95,7 +95,7 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
     private final int left;
 
     /** Target matrix, filled in place. */
-    private final CoocMat mat;
+    private final IntMatrixById mat;
 
     /** Forward positional rail for the matrix's field. */
     private final TermRail rail;
@@ -122,7 +122,7 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
      * @throws IllegalArgumentException if {@code left} or {@code right} is negative.
      */
     public CoocMatSnippets(
-        final CoocMat mat,
+        final IntMatrixById mat,
         final TermRail rail,
         final int left,
         final int right,
@@ -178,7 +178,7 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
      * Accumulates one document's snippets into the matrix, treating each snippet window as a separate
      * context. For each snippet the window is scanned in position order, off-diagonal pair cells are
      * filled as occurrences arrive, then each present node's diagonal is incremented by its occurrence
-     * count and the window is counted toward {@link CoocMat#total()}.
+     * count and the window is counted toward {@link IntMatrixById#total()}.
      *
      * @param docId global Lucene document id.
      * @param snippets finished snippets for {@code docId}; read only within this call.
