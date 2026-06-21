@@ -94,12 +94,12 @@ public final class LemmaLexicon
      * Intended for tests, diagnostics, and messages, not hot paths.
      * </p>
      *
-     * @param id form or lemma id
+     * @param ord form or lemma id
      * @return form string
      */
-    public String asString(final int id)
+    public String asString(final int ord)
     {
-        return forms.asString(id);
+        return forms.asString(ord);
     }
 
     /**
@@ -265,7 +265,7 @@ public final class LemmaLexicon
     }
 
     /**
-     * Returns the id of a character-array slice. Never inserts.
+     * Returns the id of a character-array slice.
      *
      * @param form source character array
      * @param off  start offset
@@ -278,7 +278,7 @@ public final class LemmaLexicon
     }
 
     /**
-     * Returns the id of a character sequence. Never inserts.
+     * Returns the id of a character sequence.
      *
      * @param form source form
      * @return form id, or {@link CharsDic#NOT_IN_DIC} if absent
@@ -289,7 +289,7 @@ public final class LemmaLexicon
     }
 
     /**
-     * Returns the id of a character-sequence slice. Never inserts.
+     * Returns the id of a character-sequence slice.
      *
      * @param form source character sequence
      * @param off  start offset

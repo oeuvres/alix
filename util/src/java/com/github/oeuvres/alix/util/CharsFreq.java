@@ -12,6 +12,8 @@
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * Frequency counter over UTF-16 character sequences. Composes a
@@ -26,8 +28,11 @@ import java.util.Arrays;
  *     freq.inc(term, 0, len);
  * }
  * // ... later ...
- * for (TopArray.IdScore p : freq.top(50)) {
- *     System.out.println((int) p.score() + "\t" + freq.asString(p.id()));
+ * for (CharsFreq.Entry entry : freq) {
+ *     out.append(entry)
+ *        .append('\t')
+ *        .append(Integer.toString(entry.count()))
+ *        .append('\n');
  * }
  * }</pre>
  *
@@ -38,7 +43,7 @@ import java.util.Arrays;
  * <p>Thread-safety: not thread-safe under mutation. Concurrent reads are safe
  * only if no thread mutates the instance.</p>
  */
-public final class CharsFreq
+public final class CharsFreq implements Iterable<CharsFreq.Entry>
 {
     /** Backing dictionary; provides ords for every counted sequence. */
     private final CharsDic dic;
@@ -49,6 +54,131 @@ public final class CharsFreq
      * indices beyond are zero.
      */
     private int[] counts;
+
+    /**
+     * Immutable entry returned by the frequency iterator. The entry is a
+     * read-only view over the term characters and therefore implements
+     * {@link CharSequence}; it can be passed directly to an
+     * {@link Appendable} without allocating an intermediate string.
+     */
+    public static final class Entry implements CharSequence
+    {
+        /** Character storage captured when the iterator was created. */
+        private final char[] chars;
+
+        /** Frequency captured when the iterator was created. */
+        private final int count;
+
+        /** Number of UTF-16 code units in the term. */
+        private final int length;
+
+        /** Start offset of the term in {@link #chars}. */
+        private final int offset;
+
+        /** Stable dictionary ord of the term. */
+        private final int ord;
+
+        /**
+         * Creates an immutable entry view.
+         *
+         * @param chars character storage
+         * @param offset term start offset
+         * @param length term length
+         * @param count snapshotted frequency
+         * @param ord stable dictionary ord
+         */
+        private Entry(
+            final char[] chars,
+            final int offset,
+            final int length,
+            final int count,
+            final int ord
+        )
+        {
+            this.chars = chars;
+            this.offset = offset;
+            this.length = length;
+            this.count = count;
+            this.ord = ord;
+        }
+
+        /**
+         * Returns the UTF-16 code unit at {@code index}.
+         *
+         * @param index 0-based index within the term
+         * @return character at {@code index}
+         * @throws IndexOutOfBoundsException if {@code index} is invalid
+         */
+        @Override
+        public char charAt(final int index)
+        {
+            if (index < 0 || index >= length) {
+                throw new IndexOutOfBoundsException("index=" + index + ", length=" + length);
+            }
+            return chars[offset + index];
+        }
+
+        /**
+         * Returns the snapshotted frequency.
+         *
+         * @return frequency
+         */
+        public int count()
+        {
+            return count;
+        }
+
+        /**
+         * Returns the term length in UTF-16 code units.
+         *
+         * @return term length
+         */
+        @Override
+        public int length()
+        {
+            return length;
+        }
+
+        /**
+         * Returns the stable dictionary ord.
+         *
+         * @return dictionary ord
+         */
+        public int ord()
+        {
+            return ord;
+        }
+
+        /**
+         * Returns a string containing the requested term slice.
+         *
+         * @param start start index, inclusive
+         * @param end end index, exclusive
+         * @return requested character sequence
+         * @throws IndexOutOfBoundsException if the range is invalid
+         */
+        @Override
+        public CharSequence subSequence(final int start, final int end)
+        {
+            if (start < 0 || end < start || end > length) {
+                throw new IndexOutOfBoundsException(
+                    "start=" + start + ", end=" + end + ", length=" + length
+                );
+            }
+            return new String(chars, offset + start, end - start);
+        }
+
+        /**
+         * Returns the term as a newly allocated string.
+         *
+         * @return term string
+         */
+        @Override
+        public String toString()
+        {
+            return new String(chars, offset, length);
+        }
+    }
 
     /**
      * Creates an empty frequency counter.
@@ -238,6 +368,64 @@ public final class CharsFreq
     }
 
     /**
+     * Returns a snapshot iterator over all entries, ordered by decreasing
+     * frequency. Equal frequencies are ordered by increasing dictionary ord.
+     *
+     * <p>The iterator snapshots the frequencies and ordering when this method
+     * is called. Each returned {@link Entry} is an immutable
+     * {@link CharSequence} view over its term.</p>
+     *
+     * @return iterator in canonical frequency-list order
+     */
+    @Override
+    public Iterator<Entry> iterator()
+    {
+        final int size = dic.size();
+        final long[] order = new long[size];
+        for (int ord = 0; ord < size; ord++) {
+            order[ord] = ((long) (Integer.MAX_VALUE - counts[ord]) << 32)
+                | (ord & 0xFFFFFFFFL);
+        }
+        Arrays.sort(order);
+
+        final char[] chars = dic.slabRef();
+        return new Iterator<Entry>()
+        {
+            /** Index of the next packed entry. */
+            private int index;
+
+            /**
+             * Tells whether another entry is available.
+             *
+             * @return true if {@link #next()} can return an entry
+             */
+            @Override
+            public boolean hasNext()
+            {
+                return index < order.length;
+            }
+
+            /**
+             * Returns the next entry in decreasing-frequency order.
+             *
+             * @return next entry
+             * @throws NoSuchElementException if iteration is exhausted
+             */
+            @Override
+            public Entry next()
+            {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                final long packed = order[index++];
+                final int ord = (int) packed;
+                final int count = Integer.MAX_VALUE - (int) (packed >>> 32);
+                return new Entry(chars, dic.termOffset(ord), dic.len(ord), count, ord);
+            }
+        };
+    }
+
+    /**
      * Returns the maximum interned sequence length.
      *
      * @return maximum length in UTF-16 code units
@@ -259,6 +447,14 @@ public final class CharsFreq
     {
         return dic.ord(key);
     }
+    
+    public int setCount(final CharSequence key, final int count)
+    {
+        final int ord = dic.add(key);
+        ensureCountsCapacity(ord + 1);
+        return counts[ord] = count;
+    }
+
 
     /**
      * Returns the number of distinct sequences counted.

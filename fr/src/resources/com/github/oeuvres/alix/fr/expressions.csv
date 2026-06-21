@@ -49,28 +49,28 @@ a giorno,,ADV
 à l'improviste,,ADV
 à l'improviste,,ADV
 à l'instant même,,ADV
-à l’adresse de,,PREP
-à l’aide de,,PREP
-à l’appui de,,PREP
-à l’aulne de,,PREP
-à l’aune de,,PREP
-à l’avenant,,PREP
-à l’effet de,,PREP
-à l’égal de,,PREP
-à l’égard de,,PREP
-à l’encontre,,PREP
-à l’endroit de,,PREP
-à l’entour de,,PREP
-à l’épreuve de,,PREP
-à l’exemple de,,PREP
-à l’extérieur de,,PREP
-à l’imitation de,,PREP
-à l’instant,,ADV
-à l’instar de,,PREP
-à l’intérieur de,,PREP
-à l’ombre de,,PREP
-à l’opposé de,,PREP
-à l’unisson,,PREP
+à l'adresse de,,PREP
+à l'aide de,,PREP
+à l'appui de,,PREP
+à l'aulne de,,PREP
+à l'aune de,,PREP
+à l'avenant,,PREP
+à l'effet de,,PREP
+à l'égal de,,PREP
+à l'égard de,,PREP
+à l'encontre,,PREP
+à l'endroit de,,PREP
+à l'entour de,,PREP
+à l'épreuve de,,PREP
+à l'exemple de,,PREP
+à l'extérieur de,,PREP
+à l'imitation de,,PREP
+à l'instant,,ADV
+à l'instar de,,PREP
+à l'intérieur de,,PREP
+à l'ombre de,,PREP
+à l'opposé de,,PREP
+à l'unisson,,PREP
 à la condition de,,PREP
 à la fois,,ADV
 à la longue,,ADV
@@ -304,21 +304,21 @@ bonnes volontés,bonne volonté,NOUN
 bonnes gens,,NOUN
 bordel de merde,,EXCL
 bouche bée,,NOUN
-bouton d’or,,NOUN
+bouton d'or,,NOUN
 bras dessus bras dessous,,ADV
 brown sugar,,NOUN
 bubble gum,,NOUN
 buen retiro,,NOUN
-Bureau international d’Éducation,BIE,
-Bureau international d’Education,BIE,
-Bureau international d’éducation,BIE,
+Bureau international d'Éducation,BIE,
+Bureau international d'Education,BIE,
+Bureau international d'éducation,BIE,
 by night,,ADJ
 c'est-à-dire,c'est-à-dire,ADVconj
 c'est à dire,c'est-à-dire,ADVconj
 cabinet de toilette,,NOUN
 cadre général,,NOUN
 café au lait,,NOUN
-cage d’escalier,,NOUN
+cage d'escalier,,NOUN
 call girl,,NOUN
 call girls,,NOUN
 canadian river,,NOUN
@@ -362,12 +362,12 @@ chaque fois,,ADV
 chaque fois que,,SCONJ
 check up,,NOUN
 chef d'entreprise,,NOUN
-chef d’État,,NOUN
-chef d’état,chef d’État,
-chef de l’État,chef d’État,
-chefs d’État,chef d’État,NOUN
-chefs d’état,chefs d’État,
-chefs de l’État,chefs d’État,
+chef d'État,,NOUN
+chef d'état,chef d'État,
+chef de l'État,chef d'État,
+chefs d'État,chef d'État,NOUN
+chefs d'état,chefs d'État,
+chefs de l'État,chefs d'État,
 chef d'oeuvre,chef-d'œuvre,
 chef d'œuvre,chef-d'œuvre,
 chef-d'oeuvre,chef-d'œuvre,
@@ -388,8 +388,8 @@ citizen band,,NOUN
 clair de lune,,NOUN
 clin d'œil,,NOUN
 coffee shop,,NOUN
-coin de l’oeil,,NOUN
-coin de l’œil,,NOUN
+coin de l'oeil,,NOUN
+coin de l'œil,,NOUN
 comic book,,NOUN
 comic books,,NOUN
 commedia dell'arte,,NOUN
@@ -461,14 +461,14 @@ d'ores et déjà,,ADVconj
 d'un autre côté,,PREP
 d'un seul coup,,ADVconj
 d'une part,,ADVconj
-d’après,,PREP
-d’au milieu de,,PREP
-d’avec,,PREP
-d’entre,,PREP
-d’ici,,PREP
+d'après,,PREP
+d'au milieu de,,PREP
+d'avec,,PREP
+d'entre,,PREP
+d'ici,,PREP
 dame patronnesse,,NOUN
 dames patronnesses,,NOUN
-dans l’optique de,,PREP
+dans l'optique de,,PREP
 dans la crainte de,,PREP
 dans la merde,,ADV
 dans une certaine mesure,,ADV
@@ -478,7 +478,7 @@ dans la plupart des cas,,ADV
 dans le moment où,,PREP
 dans le moment que,,PREP
 dans le viseur de,,PREP
-dans l’état actuel,,ADVconj
+dans l'état actuel,,ADVconj
 dare dare,,ADV
 de amicis,,NOUN
 de auditu,,ADV
@@ -544,12 +544,12 @@ direction générale,,NOUN
 disque dur,,NOUN
 donner lieu,,VERB
 donner l'ordre,,VERB
-donner l’impression,,VERB
+donner l'impression,,VERB
 donner la main,,VERB
 drelin drelin,,EXCL
-droit d’ainesse,,NOUN
-droits de l’homme,,NOUN
-Droits de l’homme,droits de l’homme,
+droit d'ainesse,,NOUN
+droits de l'homme,,NOUN
+Droits de l'homme,droits de l'homme,
 du côté de,,PREP
 du fait même que,,SCONJ
 du fait que,,SCONJ
@@ -573,7 +573,7 @@ ecce homo,,ADV
 École Polytechnique,,NOUN
 école primaire,,NOUN
 écoles primaires,école primaire,NOUN
-États-Unis d’Amérique,États-Unis,
+États-Unis d'Amérique,États-Unis,
 empreinte digitale,,NOUN
 empreintes digitales,empreinte digitale,NOUN
 en amont de,,PREP
@@ -593,7 +593,7 @@ en connaissance de cause,,ADV
 en conséquence de,,PREP
 en considération de,,PREP
 en cours de route,,ADV
-en d’autres termes,,ADVconj
+en d'autres termes,,ADVconj
 en deçà,,ADV
 en deçà de,,PREP
 en définitive,,ADV
@@ -610,7 +610,7 @@ en faveur de,,ADV
 en filigrane,,ADV
 en fin de compte,,ADV
 en fonction de,,PREP
-# en forme, # je m’en forme une idée,ADV
+# en forme, # je m'en forme une idée,ADV
 en forme de,,PREP
 en friche,,ADJ
 en général,,ADV
@@ -684,9 +684,9 @@ et cetera,etc.,
 et seq,,ADV
 étant donné,,PREP
 état civil,,NOUN
-état d’âme,,NOUN
-état d’esprit,,NOUN
-état d’exception,,NOUN
+état d'âme,,NOUN
+état d'esprit,,NOUN
+état d'exception,,NOUN
 état de choses,,NOUN
 état de fait,,NOUN
 état de grâce,,NOUN
@@ -723,7 +723,7 @@ femme de chambre,,NOUN
 femmes de chambre,femme de chambre,NOUN
 five o'clock,,NOUN
 flatus vocis,,NOUN
-fond de l’âme,,NOUN
+fond de l'âme,,NOUN
 foreign office,,NOUN
 fort bien,,ADV
 free jazz,,NOUN
@@ -786,11 +786,11 @@ high life,,NOUN
 high tech,,ADJ
 histoire naturelle,,NOUN
 hold up,,NOUN
-homme d’affaires,,NOUN
-homme d’état,homme d’État,NOUN
-homme d’État,,NOUN
-hommes d’état,homme d’État,hommes d’État,NOUN
-hommes d’État,homme d’État,NOUN
+homme d'affaires,,NOUN
+homme d'état,homme d'État,NOUN
+homme d'État,,NOUN
+hommes d'état,homme d'État,hommes d'État,NOUN
+hommes d'État,homme d'État,NOUN
 homo erectus,,NOUN
 homo habilis,,NOUN
 hong kong,,NOUN
@@ -805,8 +805,8 @@ hôtel de ville,,NOUN
 house music,,NOUN
 il était une fois,,ADV
 il être possible que,,PREP
-il n’empêche que,,PREP
-il n’en reste pas moins que,,PREP
+il n'empêche que,,PREP
+il n'en reste pas moins que,,PREP
 il pourrait bien se faire que,,PREP
 il se pourrait que,,PREP
 il serait possible que,,PREP
@@ -849,13 +849,13 @@ jouer le rôle de,,VERB
 jouer un rôle,,VERB
 jour après jour,,ADV
 jour de l'an,,NOUN
-juge d’instruction,,NOUN
+juge d'instruction,,NOUN
 juge de paix,,NOUN
 jusqu'à ce que,,SCONJ
 jusqu'à la fin,,PREP
 jusqu'à nouvel ordre,,ADV
-jusqu’au bout,,ADV
-jusqu’ici,,ADV
+jusqu'au bout,,ADV
+jusqu'ici,,ADV
 jusques à,,PREP
 jusques et y compris,,PREP
 juste ciel,,NOUN
@@ -867,7 +867,7 @@ kung fu,,NOUN
 kyrie eleison,,NOUN
 l'un,,PROindef
 l'une,,PROindef
-l’autre,,PROindef
+l'autre,,PROindef
 la dernière,,PROindef
 la fois où,,SCONJ
 la mienne,,PROprs
@@ -927,7 +927,7 @@ machine à vapeur,,NOUN
 made in,,ADV
 madre de dios,,NOUN
 maison d'édition,,NOUN
-maison d’arrêt,,NOUN
+maison d'arrêt,,NOUN
 maison de campagne,,NOUN
 maison de passe,,NOUN
 maisons de passe,,NOUN
@@ -938,7 +938,7 @@ maître de poste,,NOUN
 maître des requêtes,,NOUN
 maître queux,,NOUN
 maîtresse de maison,,NOUN
-mal à l’aise,,ADJ
+mal à l'aise,,ADJ
 malade mental,,NOUN
 maladie mentale,,NOUN
 malgré tout,,ADVconj
@@ -1006,8 +1006,8 @@ modus operandi,,NOUN
 modus vivendi,,NOUN
 mon Dieu,,EXCL
 monde entier,,NOUN
-mot d’ordre,,NOUN
-mots d’ordre,mot d’ordre,NOUN
+mot d'ordre,,NOUN
+mots d'ordre,mot d'ordre,NOUN
 motu proprio,,ADV
 Moyen Age,Moyen-Âge,
 moyen age,Moyen-Âge,
@@ -1021,12 +1021,12 @@ mutatis mutandis,,ADV
 nécessité morale,,NOUN
 nécessités morales,nécessité morale,NOUN
 n'est ce pas,n'est-ce pas,
-n’est ce pas,n'est-ce pas,
+n'est ce pas,n'est-ce pas,
 n'est-ce pas,,ADV
-n’est-ce pas,,ADV
+n'est-ce pas,,ADV
 n'importe qui,,PROindef
 n'importe quoi,,PROindef
-n’empêche que,,PREP
+n'empêche que,,PREP
 ne varietur,,ADV
 negro spiritual,,NOUN
 negro spirituals,,NOUN
@@ -1093,7 +1093,7 @@ par excellence,,ADV
 par exemple,,ADV
 par hasard,,ADV
 par là,,ADV
-par l’intermédiaire de,,PREP
+par l'intermédiaire de,,PREP
 par manque de,,PREP
 par mégarde,,ADV
 par opposition à,par opposition à,PREP
@@ -1151,7 +1151,7 @@ pommes de terre,,NOUN
 pompes funèbres,,NOUN
 pon point,,NOUN
 porte cochère,,NOUN
-porte d’entrée,,NOUN
+porte d'entrée,,NOUN
 porte de derrière,,NOUN
 porter à croire,,VERB
 poser question,,VERB
@@ -1189,7 +1189,7 @@ prendre en exemple,,VERB
 prendre en compte,,VERB
 prendre exemple,,VERB
 prendre garde,,VERB
-prendre l’air,,VERB
+prendre l'air,,VERB
 prendre la peine,,VERB
 prendre le soin de,,VERB
 prendre part,,VERB
@@ -1227,7 +1227,7 @@ quelque part,,ADV
 qui aime bien châtie bien,,NOUN
 qui plus est,,ADVconj
 qui que,,SCONJ
-quoi qu’il en fût,,PREP
+quoi qu'il en fût,,PREP
 quoi que,,SCONJ
 raison d'état,,NOUN
 raisons d'état,raison d'état,NOUN
@@ -1265,11 +1265,11 @@ roast beef,,NOUN
 robe de chambre,,NOUN
 rocking chair,,NOUN
 rouge à lèvres,,NOUN
-s’agir,,VERB
-s’en tenir à,s’en tenir à,VERB
-s’en tenir au,s’en tenir à,VERB
-s’en tenir aux,s’en tenir à,VERB
-s’agissant de,,PREP
+s'agir,,VERB
+s'en tenir à,s'en tenir à,VERB
+s'en tenir au,s'en tenir à,VERB
+s'en tenir aux,s'en tenir à,VERB
+s'agissant de,,PREP
 sac à dos,,NOUN
 sainte nitouche,,NOUN
 salle à manger,,NOUN
@@ -1316,7 +1316,7 @@ Son Excellence,,PROPNprs
 sous couleur de,,PREP
 sous couvert de,,PREP
 sous forme de,,PREP
-sous l’ombre de,,PREP
+sous l'ombre de,,PREP
 sous la houlette de,,PREP
 sous la plume de,,PREP
 sous le couvert de,,PREP
@@ -1347,7 +1347,7 @@ sur le point de,,PREP
 sursum corda,,ADV
 sus le sujet de,,PREP
 système nerveux,,NOUN
-table d’écoute,,NOUN
+table d'écoute,,NOUN
 table de chevet,,NOUN
 table des matières,,NOUN
 table ronde,,NOUN
@@ -1359,7 +1359,7 @@ tandis que,,SCONJ
 tant de,,DETindef
 tant et si bien que,,PREP
 tant pis,,ADV
-tant qu’à,,PREP
+tant qu'à,,PREP
 tantôt à droite tantôt à gauche,,ADV
 tarte à la crème,,NOUN
 te deum,,NOUN
@@ -1392,8 +1392,8 @@ triangle isocèle,,NOUN
 triangle rectangle,,NOUN
 triangles isocèles,triangle isocèle,NOUN
 triangles rectangles,triangle rectangle,NOUN
-tribunal d’instance,,NOUN
-tribunal d’instance,,NOUN
+tribunal d'instance,,NOUN
+tribunal d'instance,,NOUN
 Tribunal de Commerce,,NOUN
 tribunal de commerce,Tribunal de Commerce,
 tribunal de Commerce,Tribunal de Commerce,

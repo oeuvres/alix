@@ -28,23 +28,21 @@ public final class TeiIngesterDemo
     
     public static void main(String[] args) throws IOException, TransformerException, SAXException, ParserConfigurationException
     {
-        Report rep = new ReportConsole();
+        Report report = new ReportConsole();
         Path cfgPath = Path.of("../web/conf/alix-piaget.xml");
-        // Path cfgPath = Path.of("D:\\code\\piaget-labo\\install\\alix-test.xml");
-        IngestConfig cfg = IngestConfig.load(cfgPath, rep);
+        IngestConfig cfg = IngestConfig.load(cfgPath, report);
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
         analyzer.addNormalizations(cfg.normfile);
         analyzer.addExpressions(cfg.expressionfile);
         analyzer.addStopWords(cfg.stopfile);
-        rep.info(cfg.toString());
+        report.info(cfg.toString());
         // lucene writer config
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
         iwc.setIndexSort(new Sort(
             new SortField("year", SortField.Type.INT, false, Integer.MAX_VALUE),
             new SortField(Names.ALIX_ID, SortField.Type.STRING, false, SortField.STRING_LAST)
         ));
-        TeiIngester ingester = new TeiIngester(rep);
-        
+        TeiIngester ingester = new TeiIngester(report);
         ingester.ingest(cfg, iwc);
     }
     
