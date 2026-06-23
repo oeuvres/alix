@@ -333,7 +333,7 @@ class TopArrayTest {
         final TopArray top = new TopArray(3);
         top.push(0, 1.0).push(1, 3.0).push(2, 2.0);
         final List<Integer> ids = new ArrayList<>();
-        for (TopArray.IdScore entry : top) ids.add(entry.id());
+        for (TopArray.TopEntry entry : top) ids.add(entry.id());
         assertEquals(List.of(1, 2, 0), ids);
     }
 
@@ -341,7 +341,7 @@ class TopArrayTest {
     void iteratorIdScoreIsRecord() {
         final TopArray top = new TopArray(2);
         top.push(7, 9.5);
-        final TopArray.IdScore entry = top.iterator().next();
+        final TopArray.TopEntry entry = top.iterator().next();
         assertEquals(7,   entry.id());
         assertEquals(9.5, entry.score());
     }
@@ -350,7 +350,7 @@ class TopArrayTest {
     void iteratorNextBeyondEndThrows() {
         final TopArray top = new TopArray(1);
         top.push(0, 1.0);
-        final Iterator<TopArray.IdScore> it = top.iterator();
+        final Iterator<TopArray.TopEntry> it = top.iterator();
         it.next();
         assertThrows(NoSuchElementException.class, it::next);
     }
@@ -365,8 +365,8 @@ class TopArrayTest {
     void consecutiveIteratorsAreIndependent() {
         final TopArray top = new TopArray(3);
         top.push(0, 1.0).push(1, 2.0);
-        final Iterator<TopArray.IdScore> it1 = top.iterator();
-        final Iterator<TopArray.IdScore> it2 = top.iterator();
+        final Iterator<TopArray.TopEntry> it1 = top.iterator();
+        final Iterator<TopArray.TopEntry> it2 = top.iterator();
         assertEquals(it1.next().id(), it2.next().id());
         it1.next();
         // it2 still at rank 1

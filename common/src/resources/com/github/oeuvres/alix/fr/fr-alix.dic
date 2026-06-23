@@ -1,4 +1,4 @@
-78690
+79151
 à po:ADP
 à-côté/S. po:NOUN
 à-coup/S. po:NOUN
@@ -1665,7 +1665,6 @@ agio/S. po:NOUN
 agiotage/S. po:NOUN
 agioter/a0p. po:VERB
 agioteur/Fs po:NOUN
-agir po:VERB
 agir/f0p. po:VERB
 âgisme/S. po:NOUN
 agissant/F. po:NOUN po:ADJ
@@ -8166,6 +8165,7 @@ bi-horaire/S. po:ADJ
 bi-infini/F. po:ADJ
 bi-invariant/F. po:ADJ
 bi-univoque/S. po:ADJ
+bi-univoquement po:ADV
 biacide/S. po:NOUN
 biacuminé/F. po:ADJ
 biais po:NOUN
@@ -11842,6 +11842,7 @@ cardigan/S. po:NOUN
 cardinal/W. po:NOUN po:ADJ
 cardinal/X. po:NOUN po:ADJ
 cardinalat/S. po:NOUN
+cardinalement po:ADV
 cardinalice/S. po:ADJ
 cardinalité/S. po:NOUN
 cardination/S. po:NOUN
@@ -14302,6 +14303,7 @@ cipolin/S. po:NOUN
 cippe/S. po:NOUN
 cirage/S. po:NOUN
 circ po:NOUN
+circa-méditerranéen/F+ po:ADJ
 circadien/F+ po:ADJ
 circaète/S. po:NOUN
 circalittoral/W. po:ADJ
@@ -24067,6 +24069,9 @@ dissonance/S. po:NOUN
 dissonant/F. po:NOUN po:ADJ
 dissoner/a0p. po:VERB
 dissoudre/xN po:VERB
+dissous po:ADJ
+dissoute po:ADJ st:dissous is:feminine
+dissoutes po:ADJ st:dissous is:feminine is:plural
 dissuadé/F. po:ADJ
 dissuader/a0p+ po:VERB
 dissuasif/F. po:ADJ
@@ -31475,6 +31480,7 @@ figuier/S. po:NOUN
 figuline/S. po:NOUN
 figurable/S. po:ADJ
 figural/W. po:ADJ
+figuralement po:ADV
 figuralisme/S. po:NOUN
 figurant/F. po:NOUN
 figuratif/F. po:NOUN po:ADJ
@@ -47232,6 +47238,7 @@ métrer/c0p+ po:VERB
 métreur/Fs po:NOUN
 métricien/F+ po:NOUN
 métrique/S. po:NOUN po:ADJ
+métriquement po:ADV
 métrisable/S. po:ADJ
 métrisation/S. po:NOUN
 métrite/S. po:NOUN
@@ -52182,6 +52189,7 @@ ordi/S. po:NOUN
 ordinaire/S. po:NOUN po:ADJ
 ordinairement po:ADV
 ordinal/W. po:ADJ
+ordinalement po:ADV
 ordinand/S. po:NOUN
 ordinant/S. po:NOUN
 ordinariat/S. po:NOUN
@@ -66228,6 +66236,7 @@ rythmicité/S. po:NOUN
 rythmique/S. po:ADJ
 rythmiquement po:ADV
 s po:NOUN
+s'agir/f0p. po:VERB
 saanen/S. po:NOUN
 sabayon/S. po:NOUN
 sabbat/S. po:NOUN
@@ -71083,7 +71092,7 @@ suivi/S. po:NOUN po:ADJ
 suivisme/S. po:NOUN
 suiviste/S. po:NOUN po:ADJ
 suivre/xQ po:VERB
-sujet/F+ po:NOUN po:ADJ
+sujet/F+ po:NOUN
 sujétion/S. po:NOUN
 sukkeler/d0p. po:VERB
 sukuma/S. po:NOUN po:ADJ

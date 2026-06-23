@@ -203,7 +203,7 @@ public final class TermSuggest
         final String[] hilites = new String[size];
 
         int rank = 0;
-        for (TopArray.IdScore entry : top) {
+        for (TopArray.TopEntry entry : top) {
             final int termId = entry.id();
             final String term = lexicon.form(termId);
             final String termFolded = ascii.substring(

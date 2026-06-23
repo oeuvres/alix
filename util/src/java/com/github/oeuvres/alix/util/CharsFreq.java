@@ -483,7 +483,7 @@ public final class CharsFreq implements Iterable<CharsFreq.Entry>
      * are skipped ({@link TopArray#NO_ZERO}); ties are broken by lower ord.
      *
      * <p>The returned {@link TopArray} is iterable: each iteration yields an
-     * {@link TopArray.IdScore} where {@code id} is the ord and {@code score}
+     * {@link TopArray.TopEntry} where {@code id} is the ord and {@code score}
      * is the count cast to {@code double}. Cast {@code score} back to
      * {@code int} for the integer count.</p>
      *

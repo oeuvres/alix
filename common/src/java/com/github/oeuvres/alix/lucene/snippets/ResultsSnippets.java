@@ -364,7 +364,7 @@ public class ResultsSnippets implements SnippetsConsumer
                 topSnips.push(snipOrd, scoreSnippet(docId, startPos, endPos));
             }
             writer.append("<ol class=\"snippets\">\n");
-            for (final TopArray.IdScore pair : topSnips) {
+            for (final TopArray.TopEntry pair : topSnips) {
                 print(snippets, pair.id());
             }
             writer.append("</ol>\n");

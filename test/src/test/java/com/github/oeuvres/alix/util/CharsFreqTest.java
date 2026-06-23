@@ -147,9 +147,9 @@ class CharsFreqTest
         final TopArray top = f.top(3);
         assertEquals(3, top.size());
 
-        final Iterator<TopArray.IdScore> it = top.iterator();
+        final Iterator<TopArray.TopEntry> it = top.iterator();
         // Best: e (count 4)
-        TopArray.IdScore p = it.next();
+        TopArray.TopEntry p = it.next();
         assertEquals("e", f.asString(p.id()));
         assertEquals(4, (int) p.score());
 

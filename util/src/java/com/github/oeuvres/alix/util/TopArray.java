@@ -31,7 +31,7 @@ import java.util.Objects;
  * Not thread-safe; ids are not deduplicated.
  * </p>
  */
-public final class TopArray implements Iterable<TopArray.IdScore>
+public final class TopArray implements Iterable<TopArray.TopEntry>
 {
     /** Flag: keep the lowest scores instead of the highest scores. */
     public static final int REVERSE = 0x01;
@@ -179,12 +179,12 @@ public final class TopArray implements Iterable<TopArray.IdScore>
     
     /**
      * Returns an iterator over retained pairs in ranking order. Each call to
-     * {@link Iterator#next()} allocates one {@link IdScore} record.
+     * {@link Iterator#next()} allocates one {@link TopEntry} record.
      *
      * @return iterator over retained pairs
      */
     @Override
-    public Iterator<IdScore> iterator()
+    public Iterator<TopEntry> iterator()
     {
         ensureSorted();
         return new Iterator<>()
@@ -198,11 +198,11 @@ public final class TopArray implements Iterable<TopArray.IdScore>
             }
             
             @Override
-            public IdScore next()
+            public TopEntry next()
             {
                 if (cursor >= size)
                     throw new NoSuchElementException();
-                return new IdScore(ids[cursor], scores[cursor++]);
+                return new TopEntry(ids[cursor], scores[cursor++]);
             }
         };
     }
@@ -637,7 +637,7 @@ public final class TopArray implements Iterable<TopArray.IdScore>
      * @param id    retained id
      * @param score retained score
      */
-    public record IdScore(int id, double score)
+    public record TopEntry(int id, double score)
     {
     }
 }
