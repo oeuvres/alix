@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 COLLATION_LOCALE = "fr_FR"
+CSV_HEADER = ("INFLECTED", "POS", "LEMMA")
 
 
 class LexiconError(Exception):
@@ -293,7 +294,7 @@ def insertion_plan(
 
 
 def load_file(path: Path) -> LoadedFile:
-    """Load and validate a three-column UTF-8 CSV file."""
+    """Load and validate a UTF-8 CSV file, excluding its optional header."""
     try:
         data = path.read_bytes()
     except OSError as error:
@@ -303,6 +304,7 @@ def load_file(path: Path) -> LoadedFile:
     content = data[len(bom) :]
     lines = content.splitlines(keepends=True)
     records: list[Record] = []
+    content_row_count = 0
 
     for physical_index, raw_line in enumerate(lines):
         line_number = physical_index + 1
@@ -325,11 +327,24 @@ def load_file(path: Path) -> LoadedFile:
                 f"{path}:{line_number}: invalid CSV: {error}"
             ) from error
 
-        if len(row) != 3:
+        if len(row) < 3:
             raise LexiconError(
-                f"{path}:{line_number}: expected 3 columns, found {len(row)}"
+                f"{path}:{line_number}: expected at least 3 columns, "
+                f"found {len(row)}"
             )
-        if any(value == "" for value in row):
+
+        fields = tuple(row[:3])
+        if fields == CSV_HEADER:
+            if content_row_count != 0:
+                raise LexiconError(
+                    f"{path}:{line_number}: CSV header must be the first "
+                    "non-empty row"
+                )
+            content_row_count += 1
+            continue
+
+        content_row_count += 1
+        if any(value == "" for value in fields):
             raise LexiconError(
                 f"{path}:{line_number}: form, POS and lemma must be non-empty"
             )
@@ -340,9 +355,9 @@ def load_file(path: Path) -> LoadedFile:
                 line_number=line_number,
                 physical_index=physical_index,
                 raw=raw,
-                form=row[0],
-                pos=row[1],
-                lemma=row[2],
+                form=fields[0],
+                pos=fields[1],
+                lemma=fields[2],
             )
         )
 
@@ -361,14 +376,14 @@ def parse_arguments() -> argparse.Namespace:
         "word",
         nargs="?",
         type=Path,
-        default=Path("word.csv"),
+        default=Path("../src/resources/com/github/oeuvres/alix/fr/word.csv"),
         help="lexicon to update in place (default: word.csv)",
     )
     parser.add_argument(
         "additions",
         nargs="?",
         type=Path,
-        default=Path("additions.csv"),
+        default=Path("word-candidates.csv"),
         help="rows to insert (default: additions.csv)",
     )
     return parser.parse_args()
