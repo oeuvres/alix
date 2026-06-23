@@ -1,4 +1,4 @@
-79190
+79163
 à po:ADP
 à-côté/S. po:NOUN
 à-coup/S. po:NOUN
@@ -5806,7 +5806,8 @@ attendrir/f0p+ po:VERB
 attendrissant/F. po:ADJ
 attendrissement/S. po:NOUN
 attendrisseur/S. po:NOUN
-attendu po:ADJ po:ADP
+attendu po:ADP
+attendu/F. po:ADJ
 attendu/S. po:NOUN
 attentat/S. po:NOUN
 attentatoire/S. po:ADJ
@@ -17851,8 +17852,8 @@ courageusement po:ADV
 courageux/W. po:NOUN po:ADJ
 courailler/a0p. po:VERB
 couramment po:ADV
-courant po:ADJ po:ADP po:NOUN
-courant/F. po:ADJ po:ADP po:NOUN
+courant po:ADP
+courant/F. po:ADJ po:NOUN
 courantologie/S. po:NOUN
 courantomètre/S. po:NOUN
 courate/S. po:NOUN
@@ -21879,8 +21880,7 @@ déprotéger/c0p+ po:VERB
 dépucelage/S. po:NOUN
 dépucelé/F. po:ADJ
 dépuceler/d0p+ po:VERB
-depuis po:ADV
-depuis po:ADP
+depuis po:ADV po:ADP
 dépulpé/F. po:ADJ
 dépulper/a0p+ po:VERB
 dépuratif/F. po:ADJ
@@ -22057,8 +22057,7 @@ dérouté/F. po:ADJ
 déroutement/S. po:NOUN
 dérouter/a0p+ po:VERB
 derrick/S. po:NOUN
-derrière po:ADV
-derrière po:ADP
+derrière po:ADV po:ADP
 derrière/S. po:NOUN
 déruralisation/S. po:NOUN
 derviche/S. po:NOUN
@@ -22812,8 +22811,7 @@ dessoufflé/F. po:ADJ
 dessouffler/a0p+ po:VERB
 dessoûlé/F. po:ADJ
 dessoûler/a0p+ po:VERB
-dessous po:ADV
-dessous po:ADP po:NOUN
+dessous po:ADV po:ADP po:NOUN
 dessous-de-bouteille po:NOUN
 dessous-de-bras po:NOUN
 dessous-de-plat po:NOUN
@@ -22821,8 +22819,7 @@ dessous-de-table po:NOUN
 dessuintage/S. po:NOUN
 dessuinté/F. po:ADJ
 dessuinter/a0p+ po:VERB
-dessus po:ADV
-dessus po:ADP po:NOUN
+dessus po:ADV po:ADP po:NOUN
 dessus-de-lit po:NOUN
 dessus-de-plat po:NOUN
 dessus-de-porte po:NOUN
@@ -23096,8 +23093,7 @@ devancé/F. po:ADJ
 devancement/S. po:NOUN
 devancer/a0p+ po:VERB
 devancier/F. po:NOUN
-devant po:ADV
-devant po:ADP
+devant po:ADV po:ADP
 devant/S. po:NOUN
 devant-derrière/S. po:NOUN
 devanture/S. po:NOUN
@@ -29889,7 +29885,8 @@ excentrer/a0p+ po:VERB
 excentricité/S. po:NOUN
 excentrique/S. po:NOUN po:ADJ
 excentriquement po:ADV
-excepté po:ADJ po:ADP
+excepté po:ADP
+excepté/F. po:ADJ
 excepter/a0p+ po:VERB
 exception/S. po:NOUN
 exceptionnalisme/S. po:NOUN
@@ -37395,8 +37392,7 @@ horripilant/F. po:ADJ
 horripilation/S. po:NOUN
 horripilé/F. po:ADJ
 horripiler/a0p+ po:VERB
-hors po:ADV
-hors po:ADP
+hors po:ADV po:ADP
 hors-bilan po:NOUN
 hors-bord po:NOUN
 hors-champ po:NOUN
@@ -38589,7 +38585,6 @@ immanent/F. po:ADJ
 immanentisme/S. po:NOUN
 immanentiste/F. po:ADJ
 immanentiste/S. po:NOUN
-immanentiste/F. po:ADJ
 immangeable/S. po:ADJ
 immanquable/S. po:ADJ
 immanquablement po:ADV
@@ -44434,7 +44429,6 @@ loups-cerviers po:NOUN
 loups-garous po:NOUN
 louquer po:VERB
 lourd/F. po:NOUN po:ADJ
-lourd/F. po:NOUN
 lourdaud/F. po:NOUN
 lourdé/F. po:ADJ
 lourdement po:ADV
@@ -45927,7 +45921,6 @@ marrer/a0p+ po:VERB
 marri/F. po:ADJ
 marron po:NOUN po:ADJ
 marron/F+ po:NOUN po:ADJ
-marron po:NOUN po:ADJ
 marron/S. po:NOUN po:ADJ
 marronnage/S. po:NOUN
 marronner/a0p. po:VERB
@@ -52731,8 +52724,7 @@ outrageux/W. po:ADJ
 outrance/S. po:NOUN
 outrancier/F. po:ADJ
 outrancièrement po:ADV
-outre po:ADV
-outre po:ADP
+outre po:ADV po:ADP
 outre/S. po:NOUN
 outré/F. po:ADJ
 outre-mer po:ADV
@@ -53535,8 +53527,7 @@ par-delà po:ADP
 par-derrière po:ADP
 par-dessous po:ADP
 par-dessus po:ADP
-par-devant po:ADV
-par-devant po:ADP
+par-devant po:ADV po:ADP
 par-devers po:ADP
 par-là po:ADV
 para/S. po:NOUN
@@ -53917,8 +53908,7 @@ parmélie/S. po:NOUN
 parmentier po:ADJ
 parmenture/S. po:NOUN
 parmesan/F. po:NOUN po:ADJ
-parmi po:ADV
-parmi po:ADP
+parmi po:ADV po:ADP
 parnasse/S. po:NOUN
 parnassien/F+ po:NOUN po:ADJ
 parodie/S. po:NOUN
@@ -54094,8 +54084,9 @@ passant/F. po:NOUN po:ADJ
 passation/S. po:NOUN
 passavant/S. po:NOUN
 passe/S. po:NOUN
-passé po:ADJ po:ADP po:NOUN
-passé/F. po:ADJ po:ADP po:NOUN
+passé po:ADP
+passé/F. po:ADJ
+passé/S. po:NOUN
 passe-bande po:ADJ
 passe-coupe po:NOUN
 passe-crassane po:NOUN
@@ -65425,7 +65416,6 @@ rie/S. po:NOUN
 ried/S. po:NOUN
 riel/S. po:NOUN
 riemannien/F+ po:NOUN po:ADJ
-riemannien/F+ po:ADJ
 rien po:PRON
 rien/S. po:NOUN
 riesling/S. po:NOUN
@@ -67744,8 +67734,7 @@ seller/a0p+ po:VERB
 sellerie/S. po:NOUN
 sellette/S. po:NOUN
 sellier/S. po:NOUN
-selon po:ADV
-selon po:ADP
+selon po:ADV po:ADP
 selve/S. po:NOUN
 semailles po:NOUN
 semaine/S. po:NOUN
@@ -71098,8 +71087,8 @@ suisse/S. po:NOUN po:ADJ
 suissesse/S. po:NOUN
 suite/S. po:NOUN
 suitée/S. po:ADJ
-suivant po:ADJ po:ADP po:NOUN
-suivant/F. po:ADJ po:ADP po:NOUN
+suivant po:ADP
+suivant/F. po:ADJ po:NOUN
 suiveur/Fs po:NOUN po:ADJ
 suivi/S. po:NOUN po:ADJ
 suivisme/S. po:NOUN
@@ -78530,8 +78519,9 @@ vrombissant/F. po:ADJ
 vrombissement/S. po:NOUN
 vroum po:INTJ
 vs po:ADP
-vu po:ADJ po:ADP po:NOUN po:VERB
-vu/F. po:ADJ po:ADP po:NOUN po:VERB
+vu po:ADP
+vu/F. po:ADJ
+vu/S. po:NOUN
 vue/S. po:NOUN
 vulcain/S. po:NOUN
 vulcanales po:NOUN
