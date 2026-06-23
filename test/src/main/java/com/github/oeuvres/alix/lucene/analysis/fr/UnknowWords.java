@@ -74,9 +74,8 @@ public class UnknowWords
             if (entries != null) {
                 pos.clear();
                 for (DictEntry entry : entries) {
-                    pos.addAll(entry.getMorphologicalValues("po:"));
+                    System.out.print(" " + entry.getMorphologicalValues("po:") + entry.getFlags());
                 }
-                System.out.print(" " +pos);
             }
             System.out.println();
             rank++;

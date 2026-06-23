@@ -1,4 +1,4 @@
-79163
+79185
 à po:ADP
 à-côté/S. po:NOUN
 à-coup/S. po:NOUN
@@ -1056,7 +1056,8 @@ adextré/F. po:ADJ
 adhérence/S. po:NOUN
 adhérent/F. po:NOUN po:ADJ
 adhérer/c0p. po:VERB
-adhésif/F. po:NOUN po:ADJ
+adhésif/F. po:ADJ
+adhésif/S. po:NOUN
 adhésion/S. po:NOUN
 adhésivité/S. po:NOUN
 adiabaticité/S. po:NOUN
@@ -3599,7 +3600,8 @@ ante/S. po:NOUN
 antébrachial/W. po:ADJ
 antécambrien/F+ po:ADJ
 antécédence/S. po:NOUN
-antécédent/F. po:NOUN po:ADJ
+antécédent/F. po:ADJ
+antécédent/S. po:NOUN
 antéchrist/S. po:NOUN
 antéchronologique/S. po:ADJ
 antédiluvien/F+ po:ADJ
@@ -14484,7 +14486,8 @@ clairance/S. po:NOUN
 claire-voie po:NOUN
 clairement po:ADV
 claires-voies po:NOUN
-clairet/F+ po:NOUN po:ADJ
+clairet/F+ po:ADJ
+clairet/S. po:NOUN
 clairière/S. po:NOUN
 clairon/S. po:NOUN
 claironnant/F. po:ADJ
@@ -16100,7 +16103,8 @@ condisciple/S. po:NOUN
 condition/S. po:NOUN
 conditionnalité/S. po:NOUN
 conditionné/F. po:ADJ
-conditionnel/F+ po:NOUN po:ADJ
+conditionnel/F+ po:ADJ
+conditionnel/S. po:NOUN
 conditionnellement po:ADV
 conditionnement/S. po:NOUN
 conditionner/a0p+ po:VERB
@@ -16628,7 +16632,8 @@ contemporainement po:ADV
 contemporanéité/S. po:NOUN
 contempteur/Fc po:NOUN po:ADJ
 contenance/S. po:NOUN
-contenant/F. po:NOUN po:ADJ
+contenant/F. po:ADJ
+contenant/S. po:NOUN
 conteneur/S. po:NOUN
 conteneurisation/S. po:NOUN
 conteneurisé/F. po:ADJ
@@ -17348,7 +17353,8 @@ cordelier/F. po:NOUN
 corder/a0p+ po:VERB
 corderie/S. po:NOUN
 cordeuse/S. po:NOUN
-cordial/W. po:NOUN po:ADJ
+cordial/W. po:ADJ
+cordial/X. po:NOUN
 cordialement po:ADV
 cordialité/S. po:NOUN
 cordier/F. po:NOUN
@@ -17797,7 +17803,8 @@ coupaillé/F. po:ADJ
 coupailler/a0p+ po:VERB
 coupant/F. po:NOUN po:ADJ
 coupe/S. po:NOUN
-coupé/F. po:NOUN po:ADJ
+coupé/F. po:ADJ
+coupé/S. po:NOUN
 coupe-batterie po:NOUN
 coupe-bordure/S. po:NOUN
 coupe-boulon/S. po:NOUN
@@ -21747,7 +21754,8 @@ déplâtrer/a0p+ po:VERB
 déplétion/S. po:NOUN
 dépliable/S. po:ADJ
 dépliage/S. po:NOUN
-dépliant/F. po:NOUN po:ADJ
+dépliant/F. po:ADJ
+dépliant/S. po:NOUN
 déplié/F. po:ADJ
 dépliement/S. po:NOUN
 déplier/a0p+ po:VERB
@@ -22942,7 +22950,8 @@ détérioré/F. po:ADJ
 détériorer/a0p+ po:VERB
 déterminabilité/S. po:NOUN
 déterminable/S. po:ADJ
-déterminant/F. po:NOUN po:ADJ
+déterminant/F. po:ADJ
+déterminant/S. po:NOUN
 déterminatif/F. po:NOUN po:ADJ
 détermination/S. po:NOUN
 déterminé/F. po:ADJ
@@ -23815,7 +23824,8 @@ diquat/S. po:NOUN
 dircom/S. po:NOUN
 dire/S. po:NOUN
 dire/yC po:VERB
-direct/F. po:NOUN po:ADJ
+direct/F. po:ADJ
+direct/S. po:NOUN
 directement po:ADV
 directeur/Fc po:NOUN po:ADJ
 directif/F. po:NOUN po:ADJ
@@ -27882,7 +27892,8 @@ enthymème/S. po:NOUN
 entiché/F. po:ADJ
 entichement/S. po:NOUN
 enticher/a0p+ po:VERB
-entier/F. po:NOUN po:ADJ
+entier/F. po:ADJ
+entier/S. po:NOUN
 entièrement po:ADV
 entièreté/S. po:NOUN
 entiflé/F. po:ADJ
@@ -39216,7 +39227,8 @@ inchoatif/F. po:ADJ
 inchoation/S. po:NOUN
 incidemment po:ADV
 incidence/S. po:NOUN
-incident/F. po:NOUN po:ADJ
+incident/F. po:ADJ
+incident/S. po:NOUN
 incidenté/F. po:ADJ
 incidentel/F+ po:ADJ
 incidenter/a0p+ po:VERB
@@ -39570,7 +39582,8 @@ indic/S. po:NOUN
 indiçage/S. po:NOUN
 indican/S. po:NOUN
 indicateur/Fc po:NOUN po:ADJ
-indicatif/F. po:NOUN po:ADJ
+indicatif/F. po:ADJ
+indicatif/S. po:NOUN
 indication/S. po:NOUN
 indice/S. po:NOUN
 indicé/F. po:ADJ
@@ -39934,7 +39947,8 @@ infiltré/F. po:NOUN po:ADJ
 infiltrer/a0p+ po:VERB
 infiltrométrie/S. po:NOUN
 infime/S. po:NOUN po:ADJ
-infini/F. po:NOUN po:ADJ
+infini/F. po:ADJ
+infini/S. po:NOUN
 infiniment po:ADV
 infinissable/S. po:ADJ
 infinitaire/S. po:ADJ
@@ -41540,7 +41554,8 @@ isohyète/S. po:NOUN po:ADJ
 isohypse/S. po:NOUN po:ADJ
 isoionique/S. po:ADJ
 isolable/S. po:ADJ
-isolant/F. po:NOUN po:ADJ
+isolant/F. po:ADJ
+isolant/S. po:NOUN
 isolat/S. po:NOUN
 isolateur/Fc po:NOUN po:ADJ
 isolation/S. po:NOUN
@@ -46125,7 +46140,8 @@ matérialisme/S. po:NOUN
 matérialiste/S. po:NOUN po:ADJ
 matérialité/S. po:NOUN
 matériau/X. po:NOUN
-matériel/F+ po:NOUN po:ADJ
+matériel/F+ po:ADJ
+matériel/S. po:NOUN
 matériellement po:ADV
 maternage/S. po:NOUN
 maternalisme/S. po:NOUN
@@ -56782,7 +56798,8 @@ plaisanter/a0p+ po:VERB
 plaisanterie/S. po:NOUN
 plaisantin/S. po:NOUN
 plaisir/S. po:NOUN
-plan/F. po:NOUN po:ADJ
+plan/F. po:ADJ
+plan/S. po:NOUN
 plan-concave/S. po:NOUN
 plan-convexe/S. po:NOUN
 plan-relief po:NOUN
@@ -60713,12 +60730,12 @@ qualif/S. po:NOUN
 qualifiable/S. po:ADJ
 qualifiant/F. po:ADJ
 qualificateur/S. po:NOUN
-qualificatif/F. po:NOUN po:ADJ
+qualificatif/F. po:ADJ
+qualificatif/S. po:NOUN
 qualification/S. po:NOUN
 qualifié/F. po:NOUN po:ADJ
 qualifier/a0p+ po:VERB
-qualitatif/F. po:NOUN po:ADJ
-qualitatif po:NOUN po:ADJ
+qualitatif/F. po:ADJ
 qualitativement po:ADV
 qualité/S. po:NOUN
 qualiticien/F+ po:NOUN
@@ -65550,7 +65567,8 @@ ritualiser/a0p+ po:VERB
 ritualisme/S. po:NOUN
 ritualiste/S. po:NOUN
 ritualité/S. po:NOUN
-rituel/F+ po:NOUN po:ADJ
+rituel/F+ po:ADJ
+rituel/S. po:NOUN
 rituellement po:ADV
 rivage/S. po:NOUN
 rival/W. po:NOUN po:ADJ
@@ -67545,7 +67563,8 @@ secouriste/S. po:NOUN
 secours po:NOUN
 secouru/F. po:ADJ
 secousse/S. po:NOUN
-secret/F. po:NOUN po:ADJ
+secret/F. po:ADJ
+secret/S. po:NOUN
 secrétage/S. po:NOUN
 secrétaire/S. po:NOUN
 secrétairerie/S. po:NOUN
@@ -68892,8 +68911,8 @@ sociabilisé/F. po:ADJ
 sociabiliser/a0p+ po:VERB
 sociabilité/S. po:NOUN
 sociable/S. po:ADJ
-social po:NOUN po:ADJ
-social/W. po:NOUN po:ADJ
+social/X. po:NOUN
+social/W. po:ADJ
 social-chrétien po:NOUN po:ADJ
 social-démocrate po:NOUN po:ADJ
 social-démocratie/S. po:NOUN
@@ -73359,7 +73378,8 @@ teriyaki/S. po:NOUN
 termaillage/S. po:NOUN
 terme/S. po:NOUN
 terminaison/S. po:NOUN
-terminal/W. po:NOUN po:ADJ
+terminal/W. po:ADJ
+terminal/X. po:NOUN
 terminateur/S. po:NOUN
 terminé/F. po:ADJ
 terminer/a0p+ po:VERB
@@ -74519,7 +74539,8 @@ toscan/F. po:NOUN po:ADJ
 tosser/a0p. po:VERB
 tôt po:ADV
 tôt-fait/S. po:NOUN
-total/W. po:NOUN po:ADJ
+total/W. po:ADJ
+total/X. po:NOUN
 totalement po:ADV
 totalisant/F. po:ADJ
 totalisateur/Fc po:ADJ
@@ -78499,8 +78520,8 @@ voyou/S. po:NOUN po:ADJ
 voyoucratie/S. po:NOUN
 voyouterie/S. po:NOUN
 vrac po:NOUN
-vrai/F. po:NOUN po:ADJ
-vrai po:NOUN po:ADJ
+vrai/F. po:ADJ
+vrai/S. po:NOUN
 vraiment po:ADV
 vraisemblable/S. po:ADJ
 vraisemblablement po:ADV
