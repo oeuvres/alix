@@ -7,8 +7,8 @@ Duplicate identity is (form, POS):
 - a different lemma is reported as a conflict and skipped.
 
 Existing word.csv bytes, including line endings and CSV quoting, are preserved.
-Only inserted rows are taken from additions.csv and converted to word.csv's
-predominant line ending.
+Only the first three fields of each accepted additions.csv row are inserted.
+Inserted rows use standard CSV quoting and word.csv's predominant line ending.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import codecs
 import csv
+import io
 import os
 import shutil
 import sys
@@ -52,8 +53,21 @@ class Record:
 
     @property
     def display(self) -> str:
-        """Return the original CSV row without its line ending."""
+        """Return the original source CSV row without its line ending."""
         return self.raw.decode("utf-8")
+
+    @property
+    def output(self) -> bytes:
+        """Return this record serialized as exactly three UTF-8 CSV fields."""
+        buffer = io.StringIO(newline="")
+        writer = csv.writer(buffer, lineterminator="")
+        writer.writerow((self.form, self.pos, self.lemma))
+        return buffer.getvalue().encode("utf-8")
+
+    @property
+    def output_display(self) -> str:
+        """Return the exact three-column row written to word.csv."""
+        return self.output.decode("utf-8")
 
 
 @dataclass(frozen=True)
@@ -105,7 +119,7 @@ def atomic_replace(
                 for record in insertions.get(physical_index, ()):
                     if has_text and not ends_with_newline:
                         output.write(newline)
-                    output.write(record.raw)
+                    output.write(record.output)
                     output.write(newline)
                     has_text = True
                     ends_with_newline = True
@@ -404,7 +418,7 @@ def print_report(
     if inserted:
         print(f"Inserted into {word_path}:")
         for record in inserted:
-            print(f"  {record.display}")
+            print(f"  {record.output_display}")
     else:
         print(f"No rows inserted; {word_path} was not modified.")
 
