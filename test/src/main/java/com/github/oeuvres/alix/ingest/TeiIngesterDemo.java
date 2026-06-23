@@ -34,7 +34,7 @@ public final class TeiIngesterDemo
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
         analyzer.addNormalizations(cfg.normfile);
         analyzer.addExpressions(cfg.expressionfile);
-        analyzer.addStopWords(cfg.stopfile);
+        analyzer.addStopwords(cfg.stopfile);
         report.info(cfg.toString());
         // lucene writer config
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);

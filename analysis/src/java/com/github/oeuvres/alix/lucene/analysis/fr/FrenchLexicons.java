@@ -138,7 +138,7 @@ public class FrenchLexicons
     public static CharsMap buildNormalizer()
     {
         CharsMap map = new CharsMap(2000, false); // KEEP case! problems of caps to normalize
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-1990-classical.csv", LexiconHelper.OnDuplicate.REPLACE);
+        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-variants.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv", LexiconHelper.OnDuplicate.REPLACE);
         LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-forenames.csv", LexiconHelper.OnDuplicate.REPLACE);
