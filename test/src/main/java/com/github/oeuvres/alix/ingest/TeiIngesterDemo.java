@@ -16,6 +16,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.xml.sax.SAXException;
 
+import static com.github.oeuvres.alix.ingest.IngestConfig.FileList.*;
+
 /**
  * Minimal entry point:
  * java ... AlixTeiIndexMain config1.xml config2.xml ...
@@ -32,9 +34,10 @@ public final class TeiIngesterDemo
         Path cfgPath = Path.of("../web/conf/alix-piaget.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, report);
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
-        analyzer.addNormalizations(cfg.normfile);
-        analyzer.addExpressions(cfg.expressionfile);
-        analyzer.addStopwords(cfg.stopfile);
+        analyzer.addNormalizations(cfg.files(NORMALIZATIONS));
+        analyzer.addExpressions(cfg.files(EXPRESSIONS));
+        analyzer.addStopwords(cfg.files(STOPWORDS));
+        analyzer.addBrevidots(cfg.files(BREVIDOTS));
         report.info(cfg.toString());
         // lucene writer config
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);

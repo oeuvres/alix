@@ -1,8 +1,8 @@
 /*
  * Alix, A Lucene Indexer for XML documents.
  * 
- * Copyright 2009 Pierre Dittgen <pierre@dittgen.org> 
- *                Frédéric Glorieux <frederic.glorieux@fictif.org>
+ * Copyright 2009 Pierre Dittgen <pierre@dittgen.org>
+ * Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
  * Alix is a java library to index and search XML text documents
@@ -12,17 +12,17 @@
  * 
  * Alix has been started in 2009 under the javacrim project
  * https://sf.net/projects/javacrim/
- * for a java course at Inalco  http://www.er-tim.fr/
+ * for a java course at Inalco http://www.er-tim.fr/
  * Alix continues the concepts of SDX under another licence
  * «Système de Documentation XML»
- * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
+ * 2000-2010 Ministère de la culture et de la communication (France), AJLSM.
  * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -86,13 +86,13 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public final MweLexicon expressions;
     /** Big dic */
     public final LemmaLexicon lemmaLexicon;
-    
+
     /**
      * Default constructor.
-     * @throws IOException 
+     * 
+     * @throws IOException
      */
-    public FrenchAnalyzer() throws IOException
-    {
+    public FrenchAnalyzer() throws IOException {
         super(PER_FIELD_REUSE_STRATEGY);
         stopwords = FrenchLexicons.buildStopwords();
         normalizer = FrenchLexicons.buildNormalizer();
@@ -100,71 +100,94 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         brevidots = FrenchLexicons.buildBrevidots();
         expressions = FrenchLexicons.buildMweLexicon();
         propn = FrenchLexicons.buildPropn();
-        
+
         canonic = new CanonicAnalyzer();
         ascii = new AsciiAnalyzer();
         observation = new ObservationAnalyzer();
     }
-    
-    public void addStopWords(List<Path> files) throws IOException {
-        for (Path path: files) {
-            LexiconHelper.loadSet(stopwords, path);
+
+    public void addBrevidots(
+        List<Path> files
+    )
+        throws IOException {
+        for (Path path : files) {
+            LexiconHelper.loadSet(brevidots, 
+                    path, 0,
+                    LexiconHelper.CsvHeader.SKIP, ".");
         }
     }
-    public void addNormalizations(List<Path> files) throws IOException {
-        for (Path path: files) {
-            LexiconHelper.loadMap(normalizer, path, LexiconHelper.OnDuplicate.REPLACE);
-        }
-    }
-    public void addExpressions(List<Path> files) throws IOException {
+
+    public void addExpressions(
+        List<Path> files
+    )
+        throws IOException {
         WordTokenizer tokenizer = new FrenchCliticTokenizer();
-        for (Path path: files) {
+        for (Path path : files) {
             LexiconHelper.loadExpressions(expressions, tokenizer, path);
         }
         expressions.freeze();
     }
+
+    public void addNormalizations(
+        List<Path> files
+    )
+        throws IOException {
+        for (Path path : files) {
+            LexiconHelper.loadMap(normalizer, path, LexiconHelper.OnDuplicate.REPLACE);
+        }
+    }
+
+    public void addStopwords(
+        List<Path> files
+    )
+        throws IOException {
+        for (Path path : files) {
+            LexiconHelper.loadSet(stopwords, path);
+        }
+    }
+
     @Override
-    protected Analyzer getWrappedAnalyzer(String fieldName)
-    {
+    protected Analyzer getWrappedAnalyzer(
+        String fieldName
+    ) {
         if (fieldName.startsWith("obs")) {
             return observation;
-        } else 
-        if (fieldName.endsWith("_ascii")) {
+        } else if (fieldName.endsWith("_ascii")) {
             return ascii;
         } else {
             return canonic;
         }
     }
-    
+
     public class CanonicAnalyzer extends Analyzer
     {
-        
-        public CanonicAnalyzer()
-        {
+
+        public CanonicAnalyzer() {
             super();
         }
-        
+
         @Override
-        public TokenStreamComponents createComponents(String field)
-        {
+        public TokenStreamComponents createComponents(
+            String field
+        ) {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = canonicChain(tokenizer);
             return new TokenStreamComponents(tokenizer, ts);
         }
-        
+
     }
-    
+
     public class ObservationAnalyzer extends Analyzer
     {
-        
-        public ObservationAnalyzer()
-        {
+
+        public ObservationAnalyzer() {
             super();
         }
-        
+
         @Override
-        public TokenStreamComponents createComponents(String field)
-        {
+        public TokenStreamComponents createComponents(
+            String field
+        ) {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = tokenizer;
             // keep observations only
@@ -172,7 +195,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
             ts = canonicChain(ts);
             return new TokenStreamComponents(tokenizer, ts);
         }
-        
+
     }
 
     /**
@@ -180,28 +203,29 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public class AsciiAnalyzer extends Analyzer
     {
-        
-        public AsciiAnalyzer()
-        {
+
+        public AsciiAnalyzer() {
             super();
         }
-        
+
         @Override
-        public TokenStreamComponents createComponents(String field)
-        {
+        public TokenStreamComponents createComponents(
+            String field
+        ) {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = canonicChain(tokenizer);
             ts = new ASCIIFoldingFilter(ts); // no accents
             return new TokenStreamComponents(tokenizer, ts);
         }
-        
+
     }
-    
+
     /**
      * Build the shared canonic filter chain starting from an arbitrary upstream.
      */
-    private TokenStream canonicChain(TokenStream ts)
-    {
+    private TokenStream canonicChain(
+        TokenStream ts
+    ) {
         // interpret html tags as token events like para or section
         ts = new MarkupBoundaryFilter(ts);
         // fr split on ’ and -
