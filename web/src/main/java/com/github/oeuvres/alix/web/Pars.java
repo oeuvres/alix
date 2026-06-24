@@ -47,7 +47,7 @@ public class Pars
     public static final int[]  SNIPPETS_RANGE   = {-1, 100};
     public static final String TERMS            = "terms";
     public static final int    TERMS_DEFAULT    = 50;
-    public static final int[]  TERMS_RANGE      = {1, 200};
+    public static final int[]  TERMS_RANGE      = {1, 5000};
     public static final String START            = "start";
     public static final String TYPE             = "type";
     public static final String YEAR             = "year";
