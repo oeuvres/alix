@@ -73,14 +73,14 @@ REP Ô O
 REP U Û
 REP Û U
 REP ^Ca$ Ça
-REP ^l l'
-REP ^d d'
-REP ^n n'
-REP ^s s'
-REP ^j j'
-REP ^m m'
-REP ^t t'
-REP ^c c'
+REP ^l l’
+REP ^d d’
+REP ^n n’
+REP ^s s’
+REP ^j j’
+REP ^m m’
+REP ^t t’
+REP ^c c’
 REP f ph
 REP ph f
 REP c qu
@@ -161,8 +161,8 @@ REP construirent construisirent
 KEY azertyuiop|qsdfghjklmù|wxcvbn|aéz|yèu|iço|oàp|aqz|zse|edr|rft|tgy|yhu|uji|iko|olpm|qws|sxd|dcf|fvg|gbh|hnj
 
 ICONV 42
-ICONV ’ '
-ICONV ʼ '
+ICONV ' ’
+ICONV ʼ ’
 ICONV ﬃ ffi
 ICONV ﬄ ffl
 ICONV ﬀ ff
@@ -203,10 +203,6 @@ ICONV Û Û
 ICONV Ü Ü
 ICONV Ÿ Ÿ
 ICONV Ç Ç
-
-OCONV 1
-OCONV ' ’
-
 
 
 FLAG long

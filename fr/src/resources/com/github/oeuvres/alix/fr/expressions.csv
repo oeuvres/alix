@@ -1,47 +1,47 @@
 GRAPH,NORM,TAG
-à base de,,PREP
+à base de,,ADP
 à bon droit,,ADV
 à bord,,ADV
-à bord de,,PREP
-à bout de,,PREP
+à bord de,,ADP
+à bout de,,ADP
 à bout de force,,ADJ
 à bout portant,,ADV
 à brûle-pourpoint,,ADV
 a capella,,ADV
 a cappella,,ADV
-à cause de,,PREP
-à cet égard,,PREP
+à cause de,,ADP
+à cet égard,,ADP
 à chaque fois,,ADV
 à chaque fois que,,SCONJ
 à cloche-pied,,ADV
-à compter de,,PREP
-à condition de,,PREP
+à compter de,,ADP
+à condition de,,ADP
 a contrario,,ADV
-à côté de,,PREP
-à coup de,,PREP
+à côté de,,ADP
+à coup de,,ADP
 à coup sûr,,ADV
-à défaut de,,PREP
+à défaut de,,ADP
 à des degrés divers,,ADV
-à dessein de,,PREP
-à destination de,,PREP
-à fin de,,PREP
+à dessein de,,ADP
+à destination de,,ADP
+à fin de,,ADP
 à fond,,ADV
 à fond,,ADV
-à force de,,PREP
+à force de,,ADP
 a fortiori,,ADV
 à fortiori,,ADV
 a giorno,,ADV
 à giorno,,ADV
 à glagla,,ADV
-à grand renfort de,,PREP
+à grand renfort de,,ADP
 à haute voix,,ADV
 à jeun,,ADV
 à jeun,,ADV
 à juste titre,,ADV
-à l'autre bout de,,PREP
+à l'autre bout de,,ADP
 à l'aveuglette,,ADV
 à l'aveuglette,,ADV
-à l'égard de,,PREP
+à l'égard de,,ADP
 à l'encan,,ADV
 à l'encan,,ADV
 à l'envi,,ADV
@@ -49,40 +49,40 @@ a giorno,,ADV
 à l'improviste,,ADV
 à l'improviste,,ADV
 à l'instant même,,ADV
-à l'adresse de,,PREP
-à l'aide de,,PREP
-à l'appui de,,PREP
-à l'aulne de,,PREP
-à l'aune de,,PREP
-à l'avenant,,PREP
-à l'effet de,,PREP
-à l'égal de,,PREP
-à l'égard de,,PREP
-à l'encontre,,PREP
-à l'endroit de,,PREP
-à l'entour de,,PREP
-à l'épreuve de,,PREP
-à l'exemple de,,PREP
-à l'extérieur de,,PREP
-à l'imitation de,,PREP
+à l'adresse de,,ADP
+à l'aide de,,ADP
+à l'appui de,,ADP
+à l'aulne de,,ADP
+à l'aune de,,ADP
+à l'avenant,,ADP
+à l'effet de,,ADP
+à l'égal de,,ADP
+à l'égard de,,ADP
+à l'encontre,,ADP
+à l'endroit de,,ADP
+à l'entour de,,ADP
+à l'épreuve de,,ADP
+à l'exemple de,,ADP
+à l'extérieur de,,ADP
+à l'imitation de,,ADP
 à l'instant,,ADV
-à l'instar de,,PREP
-à l'intérieur de,,PREP
-à l'ombre de,,PREP
-à l'opposé de,,PREP
-à l'unisson,,PREP
-à la condition de,,PREP
+à l'instar de,,ADP
+à l'intérieur de,,ADP
+à l'ombre de,,ADP
+à l'opposé de,,ADP
+à l'unisson,,ADP
+à la condition de,,ADP
 à la fois,,ADV
 à la longue,,ADV
-à la lumière de,,PREP
-à la mémoire de,,PREP
-à la place de,,PREP
-à la réserve de,,PREP
+à la lumière de,,ADP
+à la mémoire de,,ADP
+à la place de,,ADP
+à la réserve de,,ADP
 à la saint-glinglin,,ADV
-à la sortie de,,PREP
-à la suite de,,PREP
-à la vue de,,PREP
-à la zeub,,PREP
+à la sortie de,,ADP
+à la suite de,,ADP
+à la vue de,,ADP
+à la zeub,,ADP
 à leur encontre,,ADV
 à long terme,,ADV
 à lurelure,,ADV
@@ -92,12 +92,12 @@ angle obtus,,NOUN
 à notre encontre,,ADV
 à nouveau,,ADV
 à NUM fois,,ADV
-à part,,PREP
-à part ça,,PREP
-à partir de,,PREP
-à partir de là,,PREP
+à part,,ADP
+à part ça,,ADP
+à partir de,,ADP
+à partir de là,,ADP
 à peine,,ADV
-à peine de,,PREP
+à peine de,,ADP
 à perte de vue,,ADV
 à peu près,,ADV
 a posteriori,,ADV
@@ -106,27 +106,27 @@ a posteriori,,ADV
 a priori,apriori,ADV
 a priori,apriori,NOUN
 à priori,apriori,ADV
-à propos de,,PREP
+à propos de,,ADP
 à proprement parler,,ADV
 à quoi bon,,ADVquest
-à raison de,,PREP
+à raison de,,ADP
 à ras,,ADJ
 à ras bord,,ADV
 à rebours,,ADV
-à rebours de,,PREP
+à rebours de,,ADP
 à rebrousse-poil,,ADV
 à sens unique,,ADV
 à son encontre,,ADV
 à tâtons,,ADV
-à terme,,PREP
+à terme,,ADP
 à tire-larigot,,ADV
-à titre de,,PREP
+à titre de,,ADP
 à ton encontre,,ADV
 à touche-touche,,ADV
-à travers,,PREP
+à travers,,ADP
 à tue-tête,,ADV
-à valeurs dans,,PREP
-à voir,,PREP
+à valeurs dans,,ADP
+à voir,,ADP
 à voix basse,,ADV
 à voix haute,,ADV
 à votre encontre,,ADV
@@ -134,57 +134,57 @@ a priori,apriori,NOUN
 au premier chef,,ADV
 au premier abord,,ADV
 au bas,,ADV
-au bas de,,PREP
-au beau milieu de,,PREP
-au bord de,,PREP
-au bout de,,PREP
+au bas de,,ADP
+au beau milieu de,,ADP
+au bord de,,ADP
+au bout de,,ADP
 au cas où,,SCONJ
 au contraire,,ADV
-au contraire de,,PREP
-au cours de,,PREP
+au contraire de,,ADP
+au cours de,,ADP
 au delà,au-delà,
 au-delà,,ADV
 au dépourvu,,ADV
-au détriment de,,PREP
-au droit de,,PREP
-au lieu de,,PREP
-au lieu et place de,,PREP
-au milieu de,,PREP
+au détriment de,,ADP
+au droit de,,ADP
+au lieu de,,ADP
+au lieu et place de,,ADP
+au milieu de,,ADP
 au moins,,ADV
-au moment de,,PREP
-au moment où,,PREP
-au moyen de,,PREP
-au niveau de,,PREP
-au nom de,,PREP
-au préjudice de,,PREP
-au prétexte de,,PREP
-au prix de,,PREP
-au ras de,,PREP
-au rebours de,,PREP
-au regard de,,PREP
-au risque de,,PREP
-au sein de,,PREP
+au moment de,,ADP
+au moment où,,ADP
+au moyen de,,ADP
+au niveau de,,ADP
+au nom de,,ADP
+au préjudice de,,ADP
+au prétexte de,,ADP
+au prix de,,ADP
+au ras de,,ADP
+au rebours de,,ADP
+au regard de,,ADP
+au risque de,,ADP
+au sein de,,ADP
 au sens étroit,,ADV
 au sens figuré,,ADV
 au sens large,,ADV
 au sens propre,,ADV
-au sortir de,,PREP
-au spectacle de,,PREP
-au sujet de,,PREP
-au temps de,,PREP
-au travers,à travers,PREP
-au travers de,,PREP
-au vu de,,PREP
-au vu et au su de,,PREP
-au vu et su de,,PREP
+au sortir de,,ADP
+au spectacle de,,ADP
+au sujet de,,ADP
+au temps de,,ADP
+au travers,à travers,ADP
+au travers de,,ADP
+au vu de,,ADP
+au vu et au su de,,ADP
+au vu et su de,,ADP
 autrement dit,,ADVconj
 autrement dire,autrement dit,
 aux aguets,,ADV
-aux dépens de,,PREP
-aux fins de,,PREP
-aux lieu et place de,,PREP
-aux portes de,,PREP
-aux yeux de,,PREP
+aux dépens de,,ADP
+aux fins de,,ADP
+aux lieu et place de,,ADP
+aux portes de,,ADP
+aux yeux de,,ADP
 académie des sciences,Académie des Sciences,
 Académie des Sciences,,NOUN
 académie des sciences morales,Académie des Sciences morales et politiques,
@@ -199,7 +199,7 @@ ad hoc,,ADJ
 administrateur général,,NOUN
 affaires étrangères,Affaires étrangères,
 Affaires étrangères,,NOUN
-afin de,,PREP
+afin de,,ADP
 afin que,,SCONJ
 after shave,,NOUN
 agent de change,,NOUN
@@ -212,7 +212,7 @@ aller droit,,VERB
 aller de soi,,VERB
 allez allez,,EXCL
 allons allons,,EXCL
-alors que,,CONJcoord
+alors que,,CCONJ
 alter ego,,NOUN
 Altesse,,PROPNprs
 Altesse Royale,,PROPNprs
@@ -223,25 +223,25 @@ argent de poche,,NOUN
 arrêt maladie,,NOUN
 arrière-train,,NOUN
 assemblée générale,,NOUN
-au-dedans de,,PREP
-au-dessous de,,PREP
+au-dedans de,,ADP
+au-dessous de,,ADP
 aujourd'hui,,ADVconj
 au premier abord,,ADV
-auprès de,,PREP
-auquel cas,,CONJcoord
+auprès de,,ADP
+auquel cas,,CCONJ
 au point de vue,,ADV
 au sens strict,,ADV
-aussi peu que,,PREP
-autour de,,PREP
+aussi peu que,,ADP
+autour de,,ADP
 autre chose,,NOUN
 autre part,,ADV
 autrement dit,,ADVconj
 av. J.-C.,,NUM
 avant J.-C.,av. J.-C.,
-avant de,,PREP
+avant de,,ADP
 avant même que,,SCONJ
 avant que,,SCONJ
-avant que de,,PREP
+avant que de,,ADP
 avocat général,,NOUN
 avoir l'air,,VERB
 avoir lieu,,VERB
@@ -270,7 +270,7 @@ belle mère,belle-mère,
 belle sœur,belle-sœur,
 best of,,NOUN
 bien entendu,,ADV
-bien loin de,,PREP
+bien loin de,,ADP
 bien que,,SCONJ
 bien sûr,,ADV
 big band,,NOUN
@@ -332,25 +332,25 @@ cas particuliers,cas particulier,NOUN
 casus belli,,NOUN
 cause finale,,NOUN
 causes finales,cause finale,NOUN
-ce dernier,,PROindef
-cela supposé,,PREP
+ce dernier,,PRONindef
+cela supposé,,ADP
 celle ci,celle-ci,
 celle là,celle-là,
-celle-ci,,PROdem
-celle-là,,PROdem
+celle-ci,,PRONdem
+celle-là,,PRONdem
 celui ci,celui-ci,
 celui là,celui-là,
-celui-ci,,PROdem
-celui-là,,PROdem
+celui-ci,,PRONdem
+celui-là,,PRONdem
 centrale nucléaire,,NOUN
 centrales nucléaires,centrale nucléaire,NOUN
 cependant que,,SCONJ
-ces derniers,,PROindef
+ces derniers,,PRONindef
 c'est-à-dire,,NOUN
-cette dernière,,PROindef
+cette dernière,,PRONindef
 cette fois ci,,ADVconj
 cette fois là,,ADVconj
-cette fois où,,CONJcoord
+cette fois où,,CCONJ
 cette fois-ci,cette fois ci,
 cette fois-là,cette fois ci,
 ceux ci,ceux-ci,
@@ -394,11 +394,11 @@ coin de l'œil,,NOUN
 comic book,,NOUN
 comic books,,NOUN
 commedia dell'arte,,NOUN
-compte tenu de,,PREP
+compte tenu de,,ADP
 conférence de presse,,NOUN
 Conférence internationale,,NOUN
 conférence nternationale,Conférence internationale,
-conformément à,,PREP
+conformément à,,ADP
 connaissance de cause,,NOUN
 conscience morale,,NOUN
 conseil d'administration,,NOUN
@@ -408,8 +408,8 @@ conseil d'etat,Conseil d'État,
 conseil d'état,Conseil d'État,
 conseil général,,NOUN
 conseiller général,,NOUN
-conséquemment à,,PREP
-contrairement à,,PREP
+conséquemment à,,ADP
+contrairement à,,ADP
 corn flakes,,NOUN
 corps de garde,,NOUN
 côte à côte,,ADV
@@ -453,66 +453,66 @@ curriculum vitae,,NOUN
 d'abord,,ADVconj
 d'accord,,ADVconj
 d'ailleurs,,ADV
-d'autant que,,CONJcoord
+d'autant que,,CCONJ
 d'autre part,,ADVconj
-d'autres,,PROindef
+d'autres,,PRONindef
 d'emblée,,ADV
 d'ordre général,,ADJ
 d'ores et déjà,,ADVconj
-d'un autre côté,,PREP
+d'un autre côté,,ADP
 d'un seul coup,,ADVconj
 d'une part,,ADVconj
-d'après,,PREP
-d'au milieu de,,PREP
-d'avec,,PREP
-d'entre,,PREP
-d'ici,,PREP
+d'après,,ADP
+d'au milieu de,,ADP
+d'avec,,ADP
+d'entre,,ADP
+d'ici,,ADP
 dame patronnesse,,NOUN
 dames patronnesses,,NOUN
-dans l'optique de,,PREP
-dans la crainte de,,PREP
+dans l'optique de,,ADP
+dans la crainte de,,ADP
 dans la merde,,ADV
 dans une certaine mesure,,ADV
 dans une large mesure,,ADV
 dans la mesure où,,ADVconj
 dans la plupart des cas,,ADV
-dans le moment où,,PREP
-dans le moment que,,PREP
-dans le viseur de,,PREP
+dans le moment où,,ADP
+dans le moment que,,ADP
+dans le viseur de,,ADP
 dans l'état actuel,,ADVconj
 dare dare,,ADV
 de amicis,,NOUN
 de auditu,,ADV
 de bon cœur,,ADV
 de bonne heure,,ADVasp
-de crainte de,,PREP
-de façon à,,PREP
+de crainte de,,ADP
+de façon à,,ADP
 de façon générale,,ADV
 de facto,,ADV
 de guingois,,ADV
 de haut en bas,,ADV
-de la part de,,PREP
+de la part de,,ADP
 de la manière suivante,,ADV
 de long en large,,ADV
-de manière à,,PREP
+de manière à,,ADP
 de manière générale,,ADV
 de même,,ADV
-de même que,,CONJcoord
+de même que,,CCONJ
 demi-siècle,,NOUN
 demi siècle,demi-siècle,
 demi-siècles,demi-siècle,NOUN
 demi siècles,demi-siècles,
-de mon côté,,PREP
-de niveau avec,,PREP
+de mon côté,,ADP
+de niveau avec,,ADP
 de nouveau,,ADV
-de par,,PREP
-de parmi,,PREP
-de peur de,,PREP
+de par,,ADP
+de parmi,,ADP
+de peur de,,ADP
 de plano,,ADV
 de plein gré,,ADV
 de plus,,ADVconj
 de plus en plus,,ADV
-de préférence à,,PREP
+de préférence à,,ADP
 de prime abord,,ADV
 de profundis,,NOUN
 de santis,,NOUN
@@ -521,8 +521,8 @@ de temps en temps,,ADVasp
 de toutes parts,,ADV
 de traviole,,ADV
 de visu,,ADV
-défense de,,PREP
-défini sur,,PREP
+défense de,,ADP
+défini sur,,ADP
 delirium tremens,,NOUN
 demander pardon,,VERB
 dernier soupir,,NOUN
@@ -535,10 +535,10 @@ deux fois,,ADVconj
 deux fois par an,,ADV
 deux fois par mois,,ADV
 deux fois par semaine,,ADV
-devant notaire,,PREP
+devant notaire,,ADP
 devoir dire,,VERB
 dies irae,,NOUN
-Dieu sait,,PREP
+Dieu sait,,ADP
 dîner en ville,,NOUN
 directeur général,,NOUN
 direction générale,,NOUN
@@ -551,20 +551,20 @@ drelin drelin,,EXCL
 droit d'ainesse,,NOUN
 droits de l'homme,,NOUN
 Droits de l'homme,droits de l'homme,
-du côté de,,PREP
+du côté de,,ADP
 du fait même que,,SCONJ
 du fait que,,SCONJ
 du fond du cœur,,ADV
 du haut en bas,,ADV
-du même coup,,PREP
-du milieu de,,PREP
+du même coup,,ADP
+du milieu de,,ADP
 d'une manière générale,,ADV
 du point de vue,,ADV
 du reste,,ADVconj
 du seul fait que,,SCONJ
 du tac au tac,,ADV
-du temps que,,PREP
-du vivant de,,PREP
+du temps que,,ADP
+du vivant de,,ADP
 eau minérale,,NOUN
 ecce homo,,ADV
 éclat de rire,,NOUN
@@ -577,61 +577,61 @@ ecce homo,,ADV
 États-Unis d'Amérique,États-Unis,
 empreinte digitale,,NOUN
 empreintes digitales,empreinte digitale,NOUN
-en amont de,,PREP
+en amont de,,ADP
 en apparence,,ADVconj
 en arrière,,ADV
-en arrière de,,PREP
-en aval de,,PREP
-en avant de,,PREP
+en arrière de,,ADP
+en aval de,,ADP
+en avant de,,ADP
 en bas,,ADV
 en bonne voie,,ADV
 en catimini,,ADV
-en ce qui concerne,,PREP
-en compagnie de,,PREP
-en comparaison de,,PREP
-en conformité de,,PREP
+en ce qui concerne,,ADP
+en compagnie de,,ADP
+en comparaison de,,ADP
+en conformité de,,ADP
 en connaissance de cause,,ADV
-en conséquence de,,PREP
-en considération de,,PREP
+en conséquence de,,ADP
+en considération de,,ADP
 en cours de route,,ADV
 en d'autres termes,,ADVconj
 en deçà,,ADV
-en deçà de,,PREP
+en deçà de,,ADP
 en définitive,,ADV
 en dehors de,,ADVconj
 en dernier lieu,,ADVconj
-en dépit de,,PREP
-en dessous,,PREP
+en dépit de,,ADP
+en dessous,,ADP
 en effet,,ADVconj
-en exécution de,,PREP
+en exécution de,,ADP
 en face,,ADV
-en face de,,PREP
-en fait de,,PREP
+en face de,,ADP
+en fait de,,ADP
 en faveur de,,ADV
 en filigrane,,ADV
 en fin de compte,,ADV
-en fonction de,,PREP
+en fonction de,,ADP
 # en forme, # je m'en forme une idée,ADV
-en forme de,,PREP
+en forme de,,ADP
 en friche,,ADJ
 en général,,ADV
 en grande partie,,ADV
-en guise de,,PREP
+en guise de,,ADP
 en haut,,ADV
-en lieu et place de,,PREP
+en lieu et place de,,ADP
 en loucedé,,ADV
 en marge,,ADV
-en marge de,,PREP
-en matière de,,PREP
+en marge de,,ADP
+en matière de,,ADP
 en même temps,,ADV
-en même temps que,,PREP
-en mémoire de,,PREP
+en même temps que,,ADP
+en mémoire de,,ADP
 en ordre inverse,,ADV
 en outre,,ADVconj
 en partant,,ADV
 en particulier,,ADV
 en passant,,ADV
-en passe de,,PREP
+en passe de,,ADP
 en permanence,,ADV
 en plein,,ADV
 en pleine,en plein,ADV
@@ -640,12 +640,12 @@ en plein jour,,ADV
 en pleine connaissance de cause,,ADV
 en premier lieu,,ADVconj
 en présence,,ADV
-en présence de,,PREP
-en proie à,,PREP
+en présence de,,ADP
+en proie à,,ADP
 en quelque sorte,,ADV
-en raison de,,PREP
+en raison de,,ADP
 en réalité,,ADVconj
-en regard de,,PREP
+en regard de,,ADP
 en retour,,ADV
 en revanche,,ADVconj
 en second lieu,,ADVconj
@@ -654,18 +654,18 @@ en sorte que,,SCONJ
 en soi,,ADV
 en somme,,ADVconj
 en sus,,ADV
-en sus de,,PREP
+en sus de,,ADP
 en tapinois,,ADV
-en tant que,,CONJcoord
-en terme de,,PREP
+en tant que,,CCONJ
+en terme de,,ADP
 en tous cas,,ADVconj
 en train de,,ADV
 en troisième lieu,,ADVconj
 en vain,,ADV
 en vérité,,ADV
-en vertu de,,PREP
+en vertu de,,ADP
 en vigueur,,ADV
-en vue de,,PREP
+en vue de,,ADP
 encore une fois,,ADVconj
 enfant de choeur,enfant de chœur,
 enfant de chœur,,NOUN
@@ -674,7 +674,7 @@ enfants de chœur,enfant de chœur,NOUN
 en règle générale,,ADV
 enseignement primaire,,NOUN
 enseignement secondaire,,NOUN
-entenant de,,PREP
+entenant de,,ADP
 entendre parler,,VERB
 entrer en ligne de compte,,VERB
 espèce humaine,,NOUN
@@ -683,7 +683,7 @@ et caetera,etc.,
 et cætera,etc.,
 et cetera,etc.,
 et seq,,ADV
-étant donné,,PREP
+étant donné,,ADP
 état civil,,NOUN
 état d'âme,,NOUN
 état d'esprit,,NOUN
@@ -703,11 +703,11 @@ et seq,,ADV
 être tenues,être tenu,VERB
 être vivant,être vivant,NOUN
 êtres vivants,être vivant,NOUN
-eu égard à,,PREP
+eu égard à,,ADP
 ex abrupto,,ADV
 ex nihilo,,ADV
 expérience intérieure,,NOUN
-face à,,PREP
+face à,,ADP
 face à face,,NOUN
 faire abstraction,,VERB
 faire face,,VERB
@@ -717,7 +717,7 @@ faire place,,VERB
 faire partie,,VERB
 faire semblant,,VERB
 fast food,,NOUN
-faute de,,PREP
+faute de,,ADP
 fauteuil roulant,,NOUN
 faux monnayeurs,,NOUN
 femme de chambre,,NOUN
@@ -746,8 +746,8 @@ géométrie projective,,NOUN
 girl friend,,NOUN
 goutte à goutte,,ADV
 gouverneur général,,NOUN
-grâce à,,PREP
-grâces à,,PREP
+grâce à,,ADP
+grâces à,,ADP
 grain de beauté,,NOUN
 grand chose,grand-chose,
 grand dieu,,NOUN
@@ -798,19 +798,19 @@ hong kong,,NOUN
 honnête homme,,NOUN
 honnêtes gens,,NOUN
 honoris causa,,ADV
-hors de,,PREP
+hors de,,ADP
 hot dog,,NOUN
 hot dogs,,NOUN
 hôtel de police,,NOUN
 hôtel de ville,,NOUN
 house music,,NOUN
 il était une fois,,ADV
-il être possible que,,PREP
-il n'empêche que,,PREP
-il n'en reste pas moins que,,PREP
-il pourrait bien se faire que,,PREP
-il se pourrait que,,PREP
-il serait possible que,,PREP
+il être possible que,,ADP
+il n'empêche que,,ADP
+il n'en reste pas moins que,,ADP
+il pourrait bien se faire que,,ADP
+il se pourrait que,,ADP
+il serait possible que,,ADP
 il y a,il y a,VERBaux
 il y avoir,il y a,VERBaux
 il y avait,il y a,VERBaux
@@ -822,7 +822,7 @@ in anima vili,,ADV
 in cauda venenum,,ADV
 in extenso,,ADV
 in extremis,,ADV
-in illo tempore,,PREP
+in illo tempore,,ADP
 in memoriam,,ADV
 in pace,,NOUN
 in petto,,ADV
@@ -853,12 +853,12 @@ jour de l'an,,NOUN
 juge d'instruction,,NOUN
 juge de paix,,NOUN
 jusqu'à ce que,,SCONJ
-jusqu'à la fin,,PREP
+jusqu'à la fin,,ADP
 jusqu'à nouvel ordre,,ADV
 jusqu'au bout,,ADV
 jusqu'ici,,ADV
-jusques à,,PREP
-jusques et y compris,,PREP
+jusques à,,ADP
+jusques et y compris,,ADP
 juste ciel,,NOUN
 juste ciel,,EXCL
 Juste ciel,,EXCL
@@ -866,44 +866,44 @@ justice distributive,,NOUN
 justice rétributive,,NOUN
 kung fu,,NOUN
 kyrie eleison,,NOUN
-l'un,,PROindef
-l'une,,PROindef
-l'autre,,PROindef
-la dernière,,PROindef
+l'un,,PRONindef
+l'une,,PRONindef
+l'autre,,PRONindef
+la dernière,,PRONindef
 la fois où,,SCONJ
-la mienne,,PROprs
+la mienne,,PRONprs
 langue française,,NOUN
 la plata,,NOUN
-la plupart,,PROindef
+la plupart,,PRONindef
 la plupart de,,DETindef
 la première fois,,ADV
-la sienne,,PROprs
-la tienne,,PROprs
+la sienne,,PRONprs
+la tienne,,PRONprs
 lacryma christi,,NOUN
 laisser passer,,VERB
 laisser tomber,,VERB
 langue vivante,,NOUN
 le bon Dieu,Dieu,PROPNgod
-le dernier,,PROindef
-le diable soit de,,PREP
-le long de,,PREP
-le mien,,PROprs
+le dernier,,PRONindef
+le diable soit de,,ADP
+le long de,,ADP
+le mien,,PRONprs
 le moment venu,,ADVconj
-le nôtre,,PROprs
-le sien,,PROprs
-le tien,,PROprs
-le vôtre,,PROprs
+le nôtre,,PRONprs
+le sien,,PRONprs
+le tien,,PRONprs
+le vôtre,,PRONprs
 légion d'honneur,,NOUN
 les fois où,,SCONJ
 les fois que,,SCONJ
-les miennes,,PROprs
-les miens,,PROprs
-les nôtres,,PROprs
-les siennes,,PROprs
-les siens,,PROprs
-les tiennes,,PROprs
-les tiens,,PROprs
-les vôtres,,PROprs
+les miennes,,PRONprs
+les miens,,PRONprs
+les nôtres,,PRONprs
+les siennes,,PRONprs
+les siens,,PRONprs
+les tiennes,,PRONprs
+les tiens,,PRONprs
+les vôtres,,PRONprs
 libre arbitre,,NOUN
 lieutenant de police,,NOUN
 ligne de compte,,NOUN
@@ -916,13 +916,13 @@ livre sterling,,NOUN
 livres de rente,,NOUN
 livres sterling,livre sterling,NOUN
 loc. cit.,,NOUN
-loin de,,PREP
+loin de,,ADP
 loi naturelle,,NOUN
 loi physique,,NOUN
 lois physiques,loi physique,NOUN
 lois naturelles,,NOUN
 long terme,,NOUN
-lors de,,PREP
+lors de,,ADP
 lutte des classes,,NOUN
 machine à vapeur,,NOUN
 made in,,ADV
@@ -943,7 +943,7 @@ mal à l'aise,,ADJ
 malade mental,,NOUN
 maladie mentale,,NOUN
 malgré tout,,ADVconj
-manque de,,PREP
+manque de,,ADP
 manu militari,,ADV
 marchand de vin,,NOUN
 marchands de vin,,NOUN
@@ -1025,9 +1025,9 @@ n'est ce pas,n'est-ce pas,
 n'est ce pas,n'est-ce pas,
 n'est-ce pas,,ADV
 n'est-ce pas,,ADV
-n'importe qui,,PROindef
-n'importe quoi,,PROindef
-n'empêche que,,PREP
+n'importe qui,,PRONindef
+n'importe quoi,,PRONindef
+n'empêche que,,ADP
 ne varietur,,ADV
 negro spiritual,,NOUN
 negro spirituals,,NOUN
@@ -1038,9 +1038,9 @@ nihil obstat,,ADV
 niveau de vie,,NOUN
 no man's land,,NOUN
 no man's land,,NOUN
-non content de,,PREP
-non plus que,,PREP
-non sans,,PREP
+non content de,,ADP
+non plus que,,ADP
+non sans,,ADP
 non seulement,,ADV
 non troppo,,ADV
 nota bene,,ADV
@@ -1067,24 +1067,24 @@ Organisation des Nations Unies,ONU,
 Nations Unies,ONU,
 nature humaine,,NOUN
 osso buco,,NOUN
-ou bien,,CONJcoord
+ou bien,,CCONJ
 ouvr. cit.,,NOUN
 p. NUM,,PUN
 pan bagnat,,NOUN
 par accident,,ADV
 par ailleurs,,ADV
-par certains côtés,,PREP
+par certains côtés,,ADP
 par comparaison,,ADV
-par comparaison à,par comparaison à,PREP
-par comparaison au,par comparaison à,PREP
-par comparaison aux,par comparaison à,PREP
-par conséquent,,CONJcoord
-par crainte de,,PREP
-par delà,,PREP
+par comparaison à,par comparaison à,ADP
+par comparaison au,par comparaison à,ADP
+par comparaison aux,par comparaison à,ADP
+par conséquent,,CCONJ
+par crainte de,,ADP
+par delà,,ADP
 par derrière,par-derrière,
 par devant,par-devant,
-par-devant notaire,,PREP
-par devers,,PREP
+par-devant notaire,,ADP
+par devers,,ADP
 par dessous,par-dessous,
 par dessus,par-dessus,
 par définition,,ADV
@@ -1094,27 +1094,27 @@ par excellence,,ADV
 par exemple,,ADV
 par hasard,,ADV
 par là,,ADV
-par l'intermédiaire de,,PREP
-par manque de,,PREP
+par l'intermédiaire de,,ADP
+par manque de,,ADP
 par mégarde,,ADV
-par opposition à,par opposition à,PREP
-par opposition au,par opposition à,PREP
-par opposition aux,par opposition à,PREP
-par préférence à,par préférence à,PREP
-par préférence au,par préférence à,PREP
-par préférence aux,par préférence à,PREP
-par rapport à,par rapport à,PREP
-par rapport au,par rapport à,PREP
-par rapport aux,par rapport à,PREP
+par opposition à,par opposition à,ADP
+par opposition au,par opposition à,ADP
+par opposition aux,par opposition à,ADP
+par préférence à,par préférence à,ADP
+par préférence au,par préférence à,ADP
+par préférence aux,par préférence à,ADP
+par rapport à,par rapport à,ADP
+par rapport au,par rapport à,ADP
+par rapport aux,par rapport à,ADP
 par suite,,ADVconj
-par suite de,,PREP
+par suite de,,ADP
 par surcroît,,ADVdeg
 parce que,,SCONJ
 parole d'honneur,,NOUN
 part time,,NOUN
 parti pris,parti-pris,
-pas plus que,,PREP
-pas plus tard que,,PREP
+pas plus que,,ADP
+pas plus tard que,,ADP
 paso doble,,NOUN
 pater familias,,NOUN
 pater noster,,NOUN
@@ -1161,16 +1161,16 @@ poser la question,poser question,VERB
 poser une question,poser question,VERB
 post it,,NOUN
 post mortem,,ADV
-pour autant que,,PREP
-pour ce qui est de,,PREP
+pour autant que,,ADP
+pour ce qui est de,,ADP
 pour cette fois,,ADV
-pour des prunes,,PREP
-pour ma part,,PREP
-pour sa part,,PREP
-pour ta part,,PREP
+pour des prunes,,ADP
+pour ma part,,ADP
+pour sa part,,ADP
+pour ta part,,ADP
 pour que,,SCONJ
-pour tout,,PREP
-pour un peu,,PREP
+pour tout,,ADP
+pour un peu,,ADP
 pour une bonne part,,ADV
 pour une fois,,ADVconj
 pour une fois que,,SCONJ
@@ -1199,13 +1199,13 @@ prendre place,,VERB
 prendre position,,VERB
 prendre ses jambes à son cou,,VERB
 prendre soin,,VERB
-près de,,PREP
+près de,,ADP
 presse écrite,,NOUN
-prêt à,,PREP
+prêt à,,ADP
 prime time,,NOUN
 prise de conscience,,NOUN
 prix Nobel,,NOUN
-proche de,,PREP
+proche de,,ADP
 procureur du roi,,NOUN
 proprement dit,,ADV
 proprement dite,,ADV
@@ -1214,21 +1214,21 @@ proprement dits,,ADV
 public schools,,NOUN
 punching ball,,NOUN
 qu'est-ce que,,ADV
-quand et quand,,PREP
+quand et quand,,ADP
 quand même,,ADV
-quant à,quant à,PREP
-quant au,quant à,PREP
-quant aux,quant à,PREP
+quant à,quant à,ADP
+quant au,quant à,ADP
+quant aux,quant à,ADP
 quart d'heure,,NOUN
 quartier général,,NOUN
 que le diable l'emporte,,EXCL
-quel que soit,,PREP
-quelque chose,,PROindef
+quel que soit,,ADP
+quelque chose,,PRONindef
 quelque part,,ADV
 qui aime bien châtie bien,,NOUN
 qui plus est,,ADVconj
 qui que,,SCONJ
-quoi qu'il en fût,,PREP
+quoi qu'il en fût,,ADP
 quoi que,,SCONJ
 raison d'état,,NOUN
 raisons d'état,raison d'état,NOUN
@@ -1270,21 +1270,21 @@ s'agir,,VERB
 s'en tenir à,s'en tenir à,VERB
 s'en tenir au,s'en tenir à,VERB
 s'en tenir aux,s'en tenir à,VERB
-s'agissant de,,PREP
+s'agissant de,,ADP
 sac à dos,,NOUN
 sainte nitouche,,NOUN
 salle à manger,,NOUN
 salle de bains,,NOUN
-sans cela,,CONJcoord
+sans cela,,CCONJ
 sans cesse,,ADV
-sans compter,,PREP
+sans compter,,ADP
 sans doute,,ADVconj
 sans perdre de temps,,ADV
-sans plus de,,PREP
-sans pour autant,,PREP
-sans préjudice de,,PREP
+sans plus de,,ADP
+sans pour autant,,ADP
+sans préjudice de,,ADP
 sans que,,SCONJ
-sauf à,,PREP
+sauf à,,ADP
 savoir bien,,VERB
 scenic railway,,NOUN
 sciences de l'homme,,NOUN
@@ -1305,7 +1305,7 @@ se trouver,,VERB
 serrer la main,,VERB
 services sociaux,,NOUN
 si bien que,,SCONJ
-si peu que,,PREP
+si peu que,,ADP
 signe de croix,,NOUN
 signe de la croix,,NOUN
 signe de tête,,NOUN
@@ -1314,20 +1314,20 @@ sine qua non,,ADV
 Société des Nations,SDN,PROPNorg
 Société des nations,SDN,
 Son Excellence,,PROPNprs
-sous couleur de,,PREP
-sous couvert de,,PREP
-sous forme de,,PREP
-sous l'ombre de,,PREP
-sous la houlette de,,PREP
-sous la plume de,,PREP
-sous le couvert de,,PREP
-sous le prétexte de,,PREP
-sous le rapport de,,PREP
-sous les yeux de,,PREP
-sous peine de,,PREP
-sous prétexte de,,PREP
-sous réserve de,,PREP
-sous un nouveau jour,,PREP
+sous couleur de,,ADP
+sous couvert de,,ADP
+sous forme de,,ADP
+sous l'ombre de,,ADP
+sous la houlette de,,ADP
+sous la plume de,,ADP
+sous le couvert de,,ADP
+sous le prétexte de,,ADP
+sous le rapport de,,ADP
+sous les yeux de,,ADP
+sous peine de,,ADP
+sous prétexte de,,ADP
+sous réserve de,,ADP
+sous un nouveau jour,,ADP
 soutien gorge,soutien-gorge,
 soutien-gorge,,NOUN
 souventes fois,,ADV
@@ -1339,14 +1339,14 @@ story board,,NOUN
 stricto sensu,,ADV
 struggle for life,,NOUN
 sui generis,,ADJ
-suite à,suite à,PREP
-suite au,suite à,PREP
-suite aux,suite à,PREP
-supposé que,,PREP
-sur le plan,,PREP
-sur le point de,,PREP
+suite à,suite à,ADP
+suite au,suite à,ADP
+suite aux,suite à,ADP
+supposé que,,ADP
+sur le plan,,ADP
+sur le point de,,ADP
 sursum corda,,ADV
-sus le sujet de,,PREP
+sus le sujet de,,ADP
 système nerveux,,NOUN
 table d'écoute,,NOUN
 table de chevet,,NOUN
@@ -1358,9 +1358,9 @@ taï chi,,NOUN
 talavera de la reina,,NOUN
 tandis que,,SCONJ
 tant de,,DETindef
-tant et si bien que,,PREP
+tant et si bien que,,ADP
 tant pis,,ADV
-tant qu'à,,PREP
+tant qu'à,,ADP
 tantôt à droite tantôt à gauche,,ADV
 tarte à la crème,,NOUN
 te deum,,NOUN
@@ -1379,9 +1379,9 @@ top models,,NOUN
 tôt ou tard,,ADV
 total général,,NOUN
 tour à tour,,ADV
-tous deux,,PROindef
-tous les deux,,PROindef
-tous les trois,,PROindef
+tous deux,,PRONindef
+tous les deux,,PRONindef
+tous les trois,,PRONindef
 tout de même,,ADV
 tout de suite,,ADV
 tout le monde,,NOUN
@@ -1411,7 +1411,7 @@ une autre fois,,ADV
 une bonne fois,,ADV
 une bonne fois pour toutes,,ADVconj
 une bonne partie,,DET
-une fois,,PREP
+une fois,,ADP
 une fois,,ADV
 une fois par an,,ADV
 une fois par mois,,ADV
@@ -1419,7 +1419,7 @@ une fois par semaine,,ADV
 une fois pour toutes,,ADV
 une fois que,,SCONJ
 urbi et orbi,,ADV
-va pour,,PREP
+va pour,,ADP
 vade retro,,ADV
 vae soli,,ADV
 vae victis,,ADV
@@ -1429,7 +1429,7 @@ valet de chambre,,NOUN
 valet de pied,,NOUN
 venir à bout,,VERB
 venir de,,VERB
-vent debout contre,,PREP
+vent debout contre,,ADP
 verre à vin,,NOUN
 vice-président général,,NOUN
 vie privée,,NOUN
@@ -1437,7 +1437,7 @@ vie quotidienne,,NOUN
 vieille dame,,NOUN
 vis à vis,vis-à-vis,
 vis-à-vis,,ADV
-vis-à-vis de,,PREP
+vis-à-vis de,,ADP
 Votre Excellence,,PROPNprs
 vouloir dire,,VERB
 vox populi,,NOUN
@@ -1447,6 +1447,6 @@ wall street,,NOUN
 way of life,,NOUN
 week end,,NOUN
 world music,,NOUN
-y compris,,PREP
+y compris,,ADP
 yom kippour,,NOUN
 yom kippur,,NOUN

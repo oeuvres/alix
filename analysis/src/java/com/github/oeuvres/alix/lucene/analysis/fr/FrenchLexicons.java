@@ -151,7 +151,7 @@ public class FrenchLexicons
     {
         // set ignore case
         CharArraySet set = new CharArraySet(1500, true);
-        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/stop.csv");
+        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/stopwords.csv");
         return set;
     }
     
