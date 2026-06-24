@@ -191,7 +191,7 @@ au sortir de po:ADP
 au spectacle de po:ADP
 au sujet de po:ADP
 au temps de po:ADP
-au travers po:ADP st:à travers
+au travers po:ADP st:à_travers
 au travers de po:ADP
 au vu de po:ADP
 au vu et au su de po:ADP
@@ -269,7 +269,7 @@ bonne manière po:NOUN
 bonne part po:NOUN
 bonne volonté po:NOUN
 bonnes gens po:NOUN
-bonnes volontés po:NOUN st:bonne volonté
+bonnes volontés po:NOUN st:bonne_volonté
 bordel de merde po:EXCL
 bouche bée po:NOUN
 bouton d’or po:NOUN
@@ -288,18 +288,18 @@ call girls po:NOUN
 canadian river po:NOUN
 caput mortuum po:NOUN
 carte postale po:NOUN
-cartes postales po:NOUN st:carte postale
+cartes postales po:NOUN st:carte_postale
 cas général po:NOUN
 cas limite po:NOUN
 cas particulier po:NOUN
-cas particuliers po:NOUN st:cas particulier
+cas particuliers po:NOUN st:cas_particulier
 casus belli po:NOUN
 cause finale po:NOUN
-causes finales po:NOUN st:cause finale
+causes finales po:NOUN st:cause_finale
 ce dernier po:PRON
 cela supposé po:ADP
 centrale nucléaire po:NOUN
-centrales nucléaires po:NOUN st:centrale nucléaire
+centrales nucléaires po:NOUN st:centrale_nucléaire
 cependant que po:SCONJ
 ces derniers po:PRON
 cette dernière po:PRON
@@ -316,11 +316,11 @@ check up po:NOUN
 chef d’entreprise po:NOUN
 chef d’État po:NOUN
 chef-d’œuvre po:NOUN
-chefs d’État po:NOUN st:chef d’État
+chefs d’État po:NOUN st:chef_d’État
 chefs-d’œuvres po:NOUN st:chef-d’œuvre
 chemin de fer po:NOUN
 chemin de fer d’intérêt local po:NOUN
-chemins de fer po:NOUN st:chemin de fer
+chemins de fer po:NOUN st:chemin_de fer
 chemise de nuit po:NOUN
 chewing gum po:NOUN
 chien de fusil po:NOUN
@@ -368,10 +368,10 @@ coup sur coup po:ADV
 coups d’épée po:NOUN
 coups d’oeil po:NOUN
 coups d’œil po:NOUN
-coups de balai po:NOUN st:coup de balai
-coups de bâton po:NOUN st:coup de bâton
+coups de balai po:NOUN st:coup_de balai
+coups de bâton po:NOUN st:coup_de bâton
 coups de feu po:NOUN
-coups de fusil po:NOUN st:coup de fusil
+coups de fusil po:NOUN st:coup_de fusil
 coups de main po:NOUN
 coups de pied po:NOUN
 coups de pistolet po:NOUN
@@ -500,12 +500,12 @@ eau minérale po:NOUN
 ecce homo po:ADV
 éclat de rire po:NOUN
 éclater de rire po:VERB
-éclats de rire po:NOUN st:éclat de rire
+éclats de rire po:NOUN st:éclat_de rire
 École Polytechnique po:NOUN
 école primaire po:NOUN
-écoles primaires po:NOUN st:école primaire
+écoles primaires po:NOUN st:école_primaire
 empreinte digitale po:NOUN
-empreintes digitales po:NOUN st:empreinte digitale
+empreintes digitales po:NOUN st:empreinte_digitale
 en amont de po:ADP
 en apparence po:ADVconj
 en arrière po:ADV
@@ -564,7 +564,7 @@ en permanence po:ADV
 en plein po:ADV
 en plein essor po:ADV
 en plein jour po:ADV
-en pleine po:ADV st:en plein
+en pleine po:ADV st:en_plein
 en pleine connaissance de cause po:ADV
 en premier lieu po:ADVconj
 en présence po:ADV
@@ -597,7 +597,7 @@ en vigueur po:ADV
 en vue de po:ADP
 encore une fois po:ADVconj
 enfant de chœur po:NOUN
-enfants de chœur po:NOUN st:enfant de chœur
+enfants de chœur po:NOUN st:enfant_de chœur
 enseignement primaire po:NOUN
 enseignement secondaire po:NOUN
 entenant de po:ADP
@@ -620,12 +620,12 @@ et seq po:ADV
 être partie po:VERB st:partir
 être parties po:VERB st:partir
 être partis po:VERB st:partir
-être tenu po:VERB st:être tenu
-être tenue po:VERB st:être tenu
-être tenues po:VERB st:être tenu
-être tenus po:VERB st:être tenu
-être vivant po:NOUN st:être vivant
-êtres vivants po:NOUN st:être vivant
+être tenu po:VERB st:être_tenu
+être tenue po:VERB st:être_tenu
+être tenues po:VERB st:être_tenu
+être tenus po:VERB st:être_tenu
+être vivant po:NOUN st:être_vivant
+êtres vivants po:NOUN st:être_vivant
 eu égard à po:ADP
 ex abrupto po:ADV
 ex nihilo po:ADV
@@ -644,7 +644,7 @@ faute de po:ADP
 fauteuil roulant po:NOUN
 faux monnayeurs po:NOUN
 femme de chambre po:NOUN
-femmes de chambre po:NOUN st:femme de chambre
+femmes de chambre po:NOUN st:femme_de chambre
 five o’clock po:NOUN
 flatus vocis po:NOUN
 fond de l’âme po:NOUN
@@ -657,8 +657,8 @@ garde du corps po:NOUN
 garde du roi po:NOUN
 garde national po:NOUN
 garde nationale po:NOUN
-gardes du corps po:NOUN st:garde du corps
-gardes du roi po:NOUN st:garde du roi
+gardes du corps po:NOUN st:garde_du corps
+gardes du roi po:NOUN st:garde_du roi
 gardes nationaux po:NOUN
 gare centrale po:NOUN
 général en chef po:NOUN
@@ -676,13 +676,13 @@ grand dieu po:NOUN
 grand seigneur po:NOUN
 grand’tante po:NOUN
 grands dieux po:NOUN
-grands seigneurs po:NOUN st:grand seigneur
+grands seigneurs po:NOUN st:grand_seigneur
 gratis pro deo po:ADV
 grève générale po:NOUN
 grosso modo po:ADV
 guerre civile po:NOUN
 guerre mondiale po:NOUN
-guerres mondiales po:NOUN st:guerre mondiale
+guerres mondiales po:NOUN st:guerre_mondiale
 happy end po:NOUN
 happy ends po:NOUN
 happy few po:NOUN
@@ -692,7 +692,7 @@ haut fait po:NOUN
 haut rang po:NOUN
 haut-de-forme po:NOUN
 haute vertu po:NOUN
-hauts faits po:NOUN st:haut fait
+hauts faits po:NOUN st:haut_fait
 hay hay po:EXCL
 hi hi po:EXCL
 hi hi hi po:EXCL
@@ -704,7 +704,7 @@ histoire naturelle po:NOUN
 hold up po:NOUN
 homme d’affaires po:NOUN
 homme d’État po:NOUN
-hommes d’État po:NOUN st:homme d’État
+hommes d’État po:NOUN st:homme_d’État
 homo erectus po:NOUN
 homo habilis po:NOUN
 hong kong po:NOUN
@@ -725,10 +725,10 @@ il pourrait bien se faire que po:ADP
 il se pourrait que po:ADP
 il serait possible que po:ADP
 il y a po:VERBaux
-il y a eut po:VERBaux st:il y a
-il y aura po:VERBaux st:il y a
-il y avait po:VERBaux st:il y a
-il y avoir po:VERBaux st:il y a
+il y a eut po:VERBaux st:il_y a
+il y aura po:VERBaux st:il_y a
+il y avait po:VERBaux st:il_y a
+il y avoir po:VERBaux st:il_y a
 in absentia po:ADV
 in abstracto po:ADV
 in anima vili po:ADV
@@ -756,9 +756,9 @@ ite missa est po:NOUN
 jet society po:NOUN
 jeune fille po:NOUN
 jeune homme po:NOUN
-jeunes filles po:NOUN st:jeune fille
+jeunes filles po:NOUN st:jeune_fille
 jeunes gens po:NOUN
-jeunes hommes po:NOUN st:jeune homme
+jeunes hommes po:NOUN st:jeune_homme
 jouer le rôle de po:VERB
 jouer un rôle po:VERB
 jour après jour po:ADV
@@ -820,18 +820,18 @@ les vôtres po:PRON
 libre arbitre po:NOUN
 lieu commun po:NOUN
 lieutenant de police po:NOUN
-lieux communs po:NOUN st:lieu commun
+lieux communs po:NOUN st:lieu_commun
 ligne de compte po:NOUN
 lit de sangle po:NOUN
 livre sterling po:NOUN
 livres de rente po:NOUN
-livres sterling po:NOUN st:livre sterling
+livres sterling po:NOUN st:livre_sterling
 loc. cit. po:NOUN
 loi naturelle po:NOUN
 loi physique po:NOUN
 loin de po:ADP
 lois naturelles po:NOUN
-lois physiques po:NOUN st:loi physique
+lois physiques po:NOUN st:loi_physique
 long terme po:NOUN
 lors de po:ADP
 lutte des classes po:NOUN
@@ -904,13 +904,13 @@ mise en question po:NOUN
 mode de vie po:NOUN
 modern style po:NOUN
 modern style po:ADJ
-modes de vie po:NOUN st:mode de vie
+modes de vie po:NOUN st:mode_de vie
 modus operandi po:NOUN
 modus vivendi po:NOUN
 mon Dieu po:EXCL
 monde entier po:NOUN
 mot d’ordre po:NOUN
-mots d’ordre po:NOUN st:mot d’ordre
+mots d’ordre po:NOUN st:mot_d’ordre
 motu proprio po:ADV
 moyen terme po:NOUN
 Moyen-Âge po:NOUN
@@ -923,7 +923,7 @@ n’importe quoi po:PRON
 nature humaine po:NOUN
 ne varietur po:ADV
 nécessité morale po:NOUN
-nécessités morales po:NOUN st:nécessité morale
+nécessités morales po:NOUN st:nécessité_morale
 negro spiritual po:NOUN
 negro spirituals po:NOUN
 nerf de bœuf po:NOUN
@@ -965,9 +965,9 @@ par accident po:ADV
 par ailleurs po:ADV
 par certains côtés po:ADP
 par comparaison po:ADV
-par comparaison à po:ADP st:par comparaison à
-par comparaison au po:ADP st:par comparaison à
-par comparaison aux po:ADP st:par comparaison à
+par comparaison à po:ADP st:par_comparaison à
+par comparaison au po:ADP st:par_comparaison à
+par comparaison aux po:ADP st:par_comparaison à
 par conséquent po:CCONJ
 par crainte de po:ADP
 par définition po:ADV
@@ -982,15 +982,15 @@ par l’intermédiaire de po:ADP
 par là po:ADV
 par manque de po:ADP
 par mégarde po:ADV
-par opposition à po:ADP st:par opposition à
-par opposition au po:ADP st:par opposition à
-par opposition aux po:ADP st:par opposition à
-par préférence à po:ADP st:par préférence à
-par préférence au po:ADP st:par préférence à
-par préférence aux po:ADP st:par préférence à
-par rapport à po:ADP st:par rapport à
-par rapport au po:ADP st:par rapport à
-par rapport aux po:ADP st:par rapport à
+par opposition à po:ADP st:par_opposition à
+par opposition au po:ADP st:par_opposition à
+par opposition aux po:ADP st:par_opposition à
+par préférence à po:ADP st:par_préférence à
+par préférence au po:ADP st:par_préférence à
+par préférence aux po:ADP st:par_préférence à
+par rapport à po:ADP st:par_rapport à
+par rapport au po:ADP st:par_rapport à
+par rapport aux po:ADP st:par_rapport à
 par suite po:ADVconj
 par suite de po:ADP
 par surcroît po:ADVdeg
@@ -1013,7 +1013,7 @@ peu de po:DETindef
 peu de chose po:NOUN
 peu ou prou po:ADV
 phénomène physique po:NOUN
-phénomènes physiques po:NOUN st:phénomène physique
+phénomènes physiques po:NOUN st:phénomène_physique
 photo d’identité po:NOUN
 physique théorique po:NOUN
 pied de grue po:NOUN
@@ -1029,7 +1029,7 @@ plutôt deux fois que une po:ADV
 poignée de main po:NOUN
 poignées de main po:NOUN
 point de vue po:NOUN
-points de vue po:NOUN st:point de vue
+points de vue po:NOUN st:point_de vue
 pom-pom girl po:NOUN
 pom-pom girls po:NOUN
 pomme de terre po:NOUN
@@ -1040,10 +1040,10 @@ porte cochère po:NOUN
 porte d’entrée po:NOUN
 porte de derrière po:NOUN
 porter à croire po:VERB
-poser des questions po:VERB st:poser question
-poser la question po:VERB st:poser question
+poser des questions po:VERB st:poser_question
+poser la question po:VERB st:poser_question
 poser question po:VERB
-poser une question po:VERB st:poser question
+poser une question po:VERB st:poser_question
 post it po:NOUN
 post mortem po:ADV
 pour autant que po:ADP
@@ -1100,8 +1100,8 @@ qu’est-ce que po:ADV
 quand et quand po:ADP
 quand même po:ADV
 quant à po:ADP
-quant au po:ADP st:quant à
-quant aux po:ADP st:quant à
+quant au po:ADP st:quant_à
+quant aux po:ADP st:quant_à
 quart d’heure po:NOUN
 quartier général po:NOUN
 que le diable l’emporte po:EXCL
@@ -1116,16 +1116,16 @@ quoi que po:SCONJ
 raison d’état po:NOUN
 raison nécessaire po:NOUN
 raison suffisante po:NOUN
-raisons d’état po:NOUN st:raison d’état
-raisons nécessaires po:NOUN st:raison nécessaire
-raisons suffisantes po:NOUN st:raison suffisante
+raisons d’état po:NOUN st:raison_d’état
+raisons nécessaires po:NOUN st:raison_nécessaire
+raisons suffisantes po:NOUN st:raison_suffisante
 rapport sexuel po:NOUN
 rapports sexuels po:NOUN
 recherche scientifique po:NOUN
-recherches scientifiques po:NOUN st:recherche scientifique
+recherches scientifiques po:NOUN st:recherche_scientifique
 recto tono po:ADV
 rédacteur en chef po:NOUN
-rédactrice en chef po:NOUN st:rédacteur en chef
+rédactrice en chef po:NOUN st:rédacteur_en chef
 règle morale po:NOUN
 règles morales po:NOUN
 reine mère po:NOUN
@@ -1151,8 +1151,8 @@ rouge à lèvres po:NOUN
 s’agir po:VERB
 s’agissant de po:ADP
 s’en tenir à po:VERB
-s’en tenir au po:VERB st:s’en tenir à
-s’en tenir aux po:VERB st:s’en tenir à
+s’en tenir au po:VERB st:s’en_tenir à
+s’en tenir aux po:VERB st:s’en_tenir à
 sac à dos po:NOUN
 sainte nitouche po:NOUN
 salle à manger po:NOUN
@@ -1172,7 +1172,7 @@ scenic railway po:NOUN
 science expérimentale po:NOUN
 sciences de l’homme po:NOUN
 sciences exactes po:NOUN
-sciences expérimentales po:NOUN st:science expérimentale
+sciences expérimentales po:NOUN st:science_expérimentale
 sciences humaines po:NOUN
 sciences naturelles po:NOUN
 se trouver po:VERB
@@ -1218,8 +1218,8 @@ stricto sensu po:ADV
 struggle for life po:NOUN
 sui generis po:ADJ
 suite à po:ADP
-suite au po:ADP st:suite à
-suite aux po:ADP st:suite à
+suite au po:ADP st:suite_à
+suite aux po:ADP st:suite_à
 supposé que po:ADP
 sur le plan po:ADP
 sur le point de po:ADP
@@ -1264,8 +1264,8 @@ traveller’s chèques po:NOUN
 trésorier général po:NOUN
 triangle isocèle po:NOUN
 triangle rectangle po:NOUN
-triangles isocèles po:NOUN st:triangle isocèle
-triangles rectangles po:NOUN st:triangle rectangle
+triangles isocèles po:NOUN st:triangle_isocèle
+triangles rectangles po:NOUN st:triangle_rectangle
 tribunal d’instance po:NOUN
 Tribunal de Commerce po:NOUN
 trois fois po:ADV
@@ -1296,7 +1296,7 @@ vae victis po:ADV
 valet de chambre po:NOUN
 valet de pied po:NOUN
 valeur morale po:NOUN
-valeurs morales po:NOUN st:valeur morale
+valeurs morales po:NOUN st:valeur_morale
 venir à bout po:VERB
 venir de po:VERB
 vent debout contre po:ADP
