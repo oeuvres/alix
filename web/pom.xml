@@ -39,6 +39,12 @@
             <artifactId>gson</artifactId>
             <version>2.12.1</version>
         </dependency>
+        <!-- Pearson SVD -->
+        <dependency>
+            <groupId>org.hipparchus</groupId>
+            <artifactId>hipparchus-core</artifactId>
+            <version>2.3</version>
+        </dependency>
         <!-- target debian stable Tomcat 10.1 -->
         <dependency>
             <groupId>jakarta.servlet</groupId>

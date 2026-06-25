@@ -200,6 +200,35 @@ public interface AssociationMeasure {
             return pmiBits(coocCount, rowMargin, colMargin, total) / -log2(pCooc);
         }
     }
+    
+    /**
+     * Signed Pearson residual (O − E)/√E on the 2×2 independence model, with
+     * E = f(a)·f(b)/N. Its square is the cell's contribution to Pearson χ², and
+     * the whole matrix of these residuals, divided by √N, is what Correspondence
+     * Analysis decomposes: total CA inertia = χ²/N = Σ score². Signed like
+     * {@link LogLikelihood}: positive above the expected rate, negative below.
+     *
+     * <p>
+     * Returns {@code 0} on degenerate marginals and {@link Double#NaN} on negative
+     * counts. Over-rewards rare cells exactly as Pearson χ² does (a low-frequency
+     * pair with a large relative departure yields a large residual); {@link
+     * LogLikelihood} tempers that.
+     * </p>
+     */
+    class Pearson implements AssociationMeasure {
+        @Override
+        public double score(
+            final long coocCount,
+            final long rowMargin,
+            final long colMargin,
+            final long total
+        ) {
+            if (coocCount < 0L || rowMargin < 0L || colMargin < 0L) return Double.NaN;
+            if (rowMargin <= 0L || colMargin <= 0L || total <= 0L) return 0d;
+            final double e = (double) rowMargin * colMargin / total;
+            return (coocCount - e) / Math.sqrt(e);
+        }
+    }
 
     /**
      * Positive pointwise mutual information: {@code max(0, PMI)} in bits, the
