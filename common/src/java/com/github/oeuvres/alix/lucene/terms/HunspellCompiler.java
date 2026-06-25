@@ -34,11 +34,16 @@ import java.util.Set;
  * {@code <field>.dic} / {@code <field>.aff} inside the Lucene index {@link Directory}, plus a reviewer's
  * listing of the field terms no dictionary covers.
  * <p>
- * For {@link #compile}, each input {@code dic} is streamed and a line is kept iff its headword (the text before
- * the first {@code '/'} or ASCII space or tab) is an indexed term of {@code field}. Kept lines from every input
- * dic are concatenated unchanged — {@code po:} tags included — under a single recomputed count header. The
- * {@code aff} is copied verbatim, since affix classes are global to the field and must stay intact for the kept
- * entries to expand. The result is a Hunspell resource whose word list is exactly the field's vocabulary.
+ * For {@link #compile}, each input {@code dic} is streamed and a line is kept iff its headword is an indexed
+ * term of {@code field}. The headword runs to the first affix-flag delimiter {@code '/'} or the first
+ * whitespace that begins a Hunspell morphological field (a two-letter lowercase tag and a colon, such as
+ * {@code po:}), so multi-word entries like {@code par rapport à} survive intact rather than being cut at their
+ * first space. Apostrophe variants are folded to the ASCII apostrophe the analyzer indexes, which absorbs both
+ * an index/dictionary mismatch and an internally inconsistent dictionary. Kept lines from every input dic are
+ * concatenated — {@code po:} tags included — under a single recomputed count header, and the {@code aff} is
+ * copied verbatim, since affix classes are global to the field. The result is a Hunspell resource whose word
+ * list is exactly the field's vocabulary, written in the index's apostrophe form so the consumer's harvest and
+ * lookups need no apostrophe logic.
  * </p>
  * <p>
  * For {@link #listOutOfVocabulary}, the same streaming join is read the other way: the field terms that match no
@@ -66,6 +71,9 @@ import java.util.Set;
  * @see TermLexicon
  */
 public final class HunspellCompiler {
+
+    /** ASCII apostrophe the analyzer indexes; the fold target for apostrophe variants. */
+    private static final char APOS = '\'';
 
     private HunspellCompiler() {
     }
@@ -112,11 +120,12 @@ public final class HunspellCompiler {
             }
             final BufferedReader in = new BufferedReader(new InputStreamReader(dic, StandardCharsets.UTF_8));
             in.readLine();                     // discard the per-dic approximate count header (line 1)
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (line.isEmpty()) {
+            String raw;
+            while ((raw = in.readLine()) != null) {
+                if (raw.isEmpty()) {
                     continue;
                 }
+                final String line = canonApos(raw);
                 final int cut = headwordEnd(line);
                 if (cut == 0) {
                     continue;
@@ -145,9 +154,10 @@ public final class HunspellCompiler {
     /**
      * Writes the field terms that no input dictionary covers, most frequent first, as {@code term\tfrequency}
      * lines. The listing is the complement of {@link #compile}: a term is out of vocabulary when its exact
-     * indexed form is the headword of no entry in any {@code dic}. It is a review aid — the high-frequency head
-     * of the list is where adding entries to a local dictionary buys the most coverage — and writes no files.
-     * The reader and streams are read once and not closed.
+     * indexed form is the headword of no entry in any {@code dic}, headwords being extracted and apostrophe-
+     * folded exactly as in {@link #compile} so the two agree on coverage. It is a review aid — the high-
+     * frequency head of the list is where adding entries to a local dictionary buys the most coverage — and
+     * writes no files. The reader and streams are read once and not closed.
      *
      * @param reader snapshot reader defining the field's term universe
      * @param field  indexed field name
@@ -179,11 +189,12 @@ public final class HunspellCompiler {
             }
             final BufferedReader in = new BufferedReader(new InputStreamReader(dic, StandardCharsets.UTF_8));
             in.readLine();
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (line.isEmpty()) {
+            String raw;
+            while ((raw = in.readLine()) != null) {
+                if (raw.isEmpty()) {
                     continue;
                 }
+                final String line = canonApos(raw);
                 final int cut = headwordEnd(line);
                 if (cut == 0) {
                     continue;
@@ -240,6 +251,22 @@ public final class HunspellCompiler {
     }
 
     /**
+     * Folds apostrophe variants to the ASCII apostrophe {@link #APOS} the analyzer indexes. French dictionaries
+     * commonly use the typographic right single quotation mark and may be internally inconsistent; folding every
+     * variant lets a headword match its indexed form and keeps the written dictionary consistent with the index.
+     * Assumes the field's analyzer normalizes apostrophes to ASCII {@code '}; change {@link #APOS} otherwise.
+     *
+     * @param line raw dictionary line
+     * @return the line with apostrophe variants folded to {@link #APOS}
+     */
+    private static String canonApos(final String line) {
+        return line
+            .replace('\u2019', APOS)   // RIGHT SINGLE QUOTATION MARK
+            .replace('\u02BC', APOS)   // MODIFIER LETTER APOSTROPHE
+            .replace('\u2018', APOS);  // LEFT SINGLE QUOTATION MARK
+    }
+
+    /**
      * Rejects a field name whose sidecars would collide with Lucene's own file-name patterns, where
      * {@code IndexFileDeleter} or codec tooling could silently remove or shadow them.
      *
@@ -274,22 +301,55 @@ public final class HunspellCompiler {
     }
 
     /**
-     * Returns the index just past a dictionary line's headword: the first {@code '/'} or ASCII space or tab, or
-     * the line length when none occurs.
+     * Returns the index just past a dictionary line's headword. A headword runs to the first affix-flag
+     * delimiter {@code '/'} or the first whitespace that begins a morphological field — whitespace followed by a
+     * two-letter lowercase tag and a colon, as in {@code po:} — whichever comes first, or the line length when
+     * neither occurs. Whitespace inside a multi-word headword (a space not followed by such a tag) is retained,
+     * so entries like {@code par rapport à\tpo:ADP} yield the whole expression rather than its first token.
      *
      * @param line raw dictionary line
      * @return headword length in chars
      */
     private static int headwordEnd(final String line) {
-        for (int i = 0, n = line.length(); i < n; i++) {
+        final int n = line.length();
+        for (int i = 0; i < n; i++) {
             final char c = line.charAt(i);
-            if (c == '/' || c == ' ' || c == '\t') {
+            if (c == '/') {
+                return i;
+            }
+            if ((c == ' ' || c == '\t') && morphFieldAt(line, i + 1)) {
                 return i;
             }
         }
-        return line.length();
+        return n;
     }
-    
+
+    /**
+     * Tells whether a character is an ASCII lowercase letter.
+     *
+     * @param c character to test
+     * @return true iff {@code c} is in {@code [a-z]}
+     */
+    private static boolean isAsciiLower(final char c) {
+        return c >= 'a' && c <= 'z';
+    }
+
+    /**
+     * Tells whether a Hunspell morphological field begins at an index: two lowercase ASCII letters followed by a
+     * colon, as in {@code po:} or {@code st:}. The colon is what separates such a tag from an ordinary token of
+     * a multi-word headword.
+     *
+     * @param line line to inspect
+     * @param j    index where the field marker would start
+     * @return true iff {@code line} has {@code [a-z][a-z]:} at {@code j}
+     */
+    private static boolean morphFieldAt(final String line, final int j) {
+        return j + 2 < line.length()
+            && isAsciiLower(line.charAt(j))
+            && isAsciiLower(line.charAt(j + 1))
+            && line.charAt(j + 2) == ':';
+    }
+
     /**
      * Opens a {@code .aff} or {@code .dic} location, accepting either a {@code classpath:} resource or a file
      * system path. A location beginning with {@code classpath:} is resolved against the class loader — the
