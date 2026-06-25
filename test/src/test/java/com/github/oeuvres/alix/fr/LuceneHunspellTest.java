@@ -172,7 +172,7 @@ class LuceneHunspellTest {
     void multiwordEntryIsAcceptedByDirectHunspellApi() throws Exception {
         Dictionary dictionary = loadDictionary(
                 BASIC_AFFIX,
-                "en fait de po:ADP"
+                "en fait de\tpo:ADP"
         );
         Hunspell hunspell = new Hunspell(dictionary);
 

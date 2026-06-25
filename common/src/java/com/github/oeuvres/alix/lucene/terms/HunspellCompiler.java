@@ -9,52 +9,58 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Build-time producer of a field-restricted Hunspell dictionary, written as the sidecar pair
- * {@code <field>.dic} / {@code <field>.aff} inside the Lucene index {@link Directory}.
+ * {@code <field>.dic} / {@code <field>.aff} inside the Lucene index {@link Directory}, plus a reviewer's
+ * listing of the field terms no dictionary covers.
  * <p>
- * Each input {@code dic} is streamed and a line is kept iff its headword (the text before the first
- * {@code '/'} or ASCII space or tab) is an indexed term of {@code field}. Kept lines from every input dic
- * are concatenated unchanged — {@code po:} tags included — under a single recomputed count header. The
- * {@code aff} is copied verbatim, since affix classes are global to the field and must stay intact for the
- * kept entries to expand. The result is a Hunspell resource whose word list is exactly the field's
- * vocabulary: a speller built from it can only ever suggest forms that, once lemmatised, retrieve in this
- * field, with no query-time post-filter.
+ * For {@link #compile}, each input {@code dic} is streamed and a line is kept iff its headword (the text before
+ * the first {@code '/'} or ASCII space or tab) is an indexed term of {@code field}. Kept lines from every input
+ * dic are concatenated unchanged — {@code po:} tags included — under a single recomputed count header. The
+ * {@code aff} is copied verbatim, since affix classes are global to the field and must stay intact for the kept
+ * entries to expand. The result is a Hunspell resource whose word list is exactly the field's vocabulary.
  * </p>
  * <p>
- * This is a post-commit pass over a frozen reader, not a read-path operation. The canonical dictionaries and
- * the corpus configuration that names them are ingest concerns; they must not reach the query layer. The
- * consumer ({@link TermLexicon}) only ever sees the small {@code <field>.dic} this class emits, from which it
- * harvests part-of-speech flags and builds its runtime {@code Dictionary}. Flag harvesting and BitSet
- * construction are the consumer's job; this class produces text and nothing else — it builds no
- * {@code Dictionary} and resolves no term ids beyond a membership test.
+ * For {@link #listOutOfVocabulary}, the same streaming join is read the other way: the field terms that match no
+ * dictionary headword are written, most frequent first, as a review aid for deciding what to add to a local
+ * dictionary. That method writes no files.
  * </p>
  * <p>
- * The membership test is {@link TermsEnum#seekExact}, a raw unsigned-byte match against the field's terms.
- * This is the same comparison {@link TermLexicon#id(org.apache.lucene.util.BytesRef)} performs, so the lines
- * this compiler keeps are exactly the lines the consumer would resolve. If the two ever used different byte
- * forms (re-normalisation on one side only), the pruned dic and the term table would disagree silently; using
- * {@code seekExact} on the same field forecloses that.
+ * This is a post-commit tool over a frozen reader, not a read-path operation. The canonical dictionaries and the
+ * corpus configuration that names them are ingest concerns; they must not reach the query layer. The consumer
+ * ({@link TermLexicon}) only ever sees the small {@code <field>.dic} this class emits, from which it harvests
+ * part-of-speech flags and builds its runtime {@code Dictionary}; this class produces text and resolves no term
+ * ids beyond a membership test.
  * </p>
  * <p>
- * Duplicate headwords across input dics are not removed: that is a Hunspell-semantics decision (a repeated
- * headword merges or layers affix classes), left to the {@code Dictionary} parser the consumer runs.
+ * The membership test is {@link TermsEnum#seekExact}, a raw unsigned-byte match against the field's terms, the
+ * same comparison {@link TermLexicon#id(org.apache.lucene.util.BytesRef)} performs, so producer and consumer
+ * agree on which lines survive. Duplicate headwords across input dics are not removed: that is a Hunspell
+ * decision, left to the {@code Dictionary} parser the consumer runs. Input streams are read once and not closed.
  * </p>
  * <p>
- * Input streams are read once and not closed; the caller retains ownership. Output semantics are idempotent:
- * any prior sidecar of the same name is overwritten, and a field with zero coverage removes the pair and
- * writes nothing, so the on-disk state always reflects the latest run.
+ * As a command-line tool it has two modes: {@code compile} writes the sidecars, {@code oov} writes the
+ * out-of-vocabulary listing to standard output.
  * </p>
  *
  * @see TermLexicon
@@ -137,39 +143,99 @@ public final class HunspellCompiler {
     }
 
     /**
-     * Command-line entry point for recompiling a field's Hunspell sidecars against an already-committed index,
-     * without reindexing — the recompile path for an edited dictionary. The index directory receives the new
-     * {@code <field>.dic} / {@code <field>.aff}.
+     * Writes the field terms that no input dictionary covers, most frequent first, as {@code term\tfrequency}
+     * lines. The listing is the complement of {@link #compile}: a term is out of vocabulary when its exact
+     * indexed form is the headword of no entry in any {@code dic}. It is a review aid — the high-frequency head
+     * of the list is where adding entries to a local dictionary buys the most coverage — and writes no files.
+     * The reader and streams are read once and not closed.
      *
-     * @param args {@code <indexDir> <field> <aff> <dic> [<dic>...]}
+     * @param reader snapshot reader defining the field's term universe
+     * @param field  indexed field name
+     * @param out    sink for the {@code term\tfrequency} lines, newline-separated
+     * @param dics   one or more canonical {@code .dic} streams; null elements are skipped
+     * @return the number of out-of-vocabulary terms written
+     * @throws IOException              on read or append failure
+     * @throws IllegalArgumentException if the field has no terms
+     * @throws NullPointerException     if {@code reader}, {@code field}, {@code out} or {@code dics} is null
+     */
+    public static int listOutOfVocabulary(final IndexReader reader, final String field,
+            final Appendable out, final InputStream... dics) throws IOException {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(field, "field");
+        Objects.requireNonNull(out, "out");
+        Objects.requireNonNull(dics, "dics");
+
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null) {
+            throw new IllegalArgumentException("Field not found or without terms: " + field);
+        }
+
+        final TermsEnum te = terms.iterator();
+        final BytesRefBuilder probe = new BytesRefBuilder();
+        final Set<String> matched = new HashSet<>();
+        for (final InputStream dic : dics) {
+            if (dic == null) {
+                continue;
+            }
+            final BufferedReader in = new BufferedReader(new InputStreamReader(dic, StandardCharsets.UTF_8));
+            in.readLine();
+            String line;
+            while ((line = in.readLine()) != null) {
+                if (line.isEmpty()) {
+                    continue;
+                }
+                final int cut = headwordEnd(line);
+                if (cut == 0) {
+                    continue;
+                }
+                probe.copyChars(line, 0, cut);
+                if (te.seekExact(probe.get())) {
+                    matched.add(line.substring(0, cut));
+                }
+            }
+        }
+
+        final TermsEnum scan = terms.iterator();
+        final List<Oov> oov = new ArrayList<>();
+        BytesRef term;
+        while ((term = scan.next()) != null) {
+            final String form = term.utf8ToString();
+            if (matched.contains(form)) {
+                continue;
+            }
+            long freq = scan.totalTermFreq();
+            if (freq < 0) {
+                freq = scan.docFreq();
+            }
+            oov.add(new Oov(form, freq));
+        }
+        oov.sort(Comparator.comparingLong(Oov::freq).reversed().thenComparing(Oov::term));
+        for (final Oov o : oov) {
+            out.append(o.term()).append('\t').append(Long.toString(o.freq())).append('\n');
+        }
+        return oov.size();
+    }
+
+    /**
+     * Command-line entry point with two modes over an already-committed index. {@code compile} writes the field
+     * Hunspell sidecars; {@code oov} writes the out-of-vocabulary listing to standard output. Status lines go to
+     * standard error so the {@code oov} data stream stays clean for redirection.
+     *
+     * @param args {@code compile <indexDir> <field> <aff> <dic> [<dic>...]} or
+     *             {@code oov <indexDir> <field> <dic> [<dic>...]}
      * @throws IOException on directory, read, or write failure
      */
     public static void main(final String[] args) throws IOException {
-        if (args.length < 4) {
-            System.err.println("usage: HunspellCompiler <indexDir> <field> <aff> <dic> [<dic>...]");
+        final String mode = (args.length > 0) ? args[0] : "";
+        if (mode.equals("compile") && args.length >= 5) {
+            runCompile(args);
+        } else if (mode.equals("oov") && args.length >= 4) {
+            runOov(args);
+        } else {
+            System.err.println("usage:");
+            System.err.println("  HunspellCompiler compile <indexDir> <field> <aff> <dic> [<dic>...]");
+            System.err.println("  HunspellCompiler oov <indexDir> <field> <dic> [<dic>...]");
             System.exit(2);
-        }
-        final Path indexDir = Path.of(args[0]);
-        final String field = args[1];
-        final Path affPath = Path.of(args[2]);
-        final int dicCount = args.length - 3;
-        final InputStream[] dics = new InputStream[dicCount];
-        try (Directory dir = FSDirectory.open(indexDir);
-                IndexReader reader = DirectoryReader.open(dir);
-                InputStream aff = Files.newInputStream(affPath)) {
-            try {
-                for (int i = 0; i < dicCount; i++) {
-                    dics[i] = Files.newInputStream(Path.of(args[3 + i]));
-                }
-                final int kept = compile(reader, field, aff, dir, dics);
-                System.out.println(field + ": " + kept + " entries kept");
-            } finally {
-                for (final InputStream dic : dics) {
-                    if (dic != null) {
-                        dic.close();
-                    }
-                }
-            }
         }
     }
 
@@ -223,6 +289,96 @@ public final class HunspellCompiler {
         }
         return line.length();
     }
+    
+    /**
+     * Opens a {@code .aff} or {@code .dic} location, accepting either a {@code classpath:} resource or a file
+     * system path. A location beginning with {@code classpath:} is resolved against the class loader — the
+     * remainder is a root-relative resource name, a leading slash tolerated — and anything else is a file path.
+     * The returned stream is the caller's to close.
+     *
+     * @param location {@code classpath:<resource-name>} or a file system path
+     * @return an open input stream over the resource
+     * @throws IOException if a classpath resource is named but absent, or a file cannot be opened
+     */
+    private static InputStream open(final String location) throws IOException {
+        final String prefix = "classpath:";
+        if (location.startsWith(prefix)) {
+            String name = location.substring(prefix.length());
+            if (name.startsWith("/")) {
+                name = name.substring(1);
+            }
+            final InputStream in = HunspellCompiler.class.getClassLoader().getResourceAsStream(name);
+            if (in == null) {
+                throw new IOException("Classpath resource not found: " + name);
+            }
+            return in;
+        }
+        return Files.newInputStream(Path.of(location));
+    }
+
+    /**
+     * Runs the {@code compile} CLI mode: opens the index and streams, writes the field sidecars, and reports the
+     * kept count on standard error. Opened streams are closed here.
+     *
+     * @param args full argument vector, {@code args[0]} being the mode token
+     * @throws IOException on directory, read, or write failure
+     */
+    private static void runCompile(final String[] args) throws IOException {
+        final Path indexDir = Path.of(args[1]);
+        final String field = args[2];
+        final int dicCount = args.length - 4;
+        final InputStream[] dics = new InputStream[dicCount];
+        try (Directory dir = FSDirectory.open(indexDir);
+                IndexReader reader = DirectoryReader.open(dir);
+                InputStream aff = open(args[3])) {
+            try {
+                for (int i = 0; i < dicCount; i++) {
+                    dics[i] = open(args[4 + i]);
+                }
+                final int kept = compile(reader, field, aff, dir, dics);
+                System.err.println(field + ": " + kept + " entries kept");
+            } finally {
+                for (final InputStream dic : dics) {
+                    if (dic != null) {
+                        dic.close();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Runs the {@code oov} CLI mode: opens the index and streams, writes the out-of-vocabulary listing to
+     * standard output as UTF-8, and reports the count on standard error. Opened streams are closed here;
+     * standard output is flushed but not closed.
+     *
+     * @param args full argument vector, {@code args[0]} being the mode token
+     * @throws IOException on directory, read, or write failure
+     */
+    private static void runOov(final String[] args) throws IOException {
+        final Path indexDir = Path.of(args[1]);
+        final String field = args[2];
+        final int dicCount = args.length - 3;
+        final InputStream[] dics = new InputStream[dicCount];
+        try (Directory dir = FSDirectory.open(indexDir);
+                IndexReader reader = DirectoryReader.open(dir)) {
+            final Writer w = new BufferedWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8));
+            try {
+                for (int i = 0; i < dicCount; i++) {
+                    dics[i] = open(args[3 + i]);
+                }
+                final int oov = listOutOfVocabulary(reader, field, w, dics);
+                w.flush();
+                System.err.println(field + ": " + oov + " terms out of vocabulary");
+            } finally {
+                for (final InputStream dic : dics) {
+                    if (dic != null) {
+                        dic.close();
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * Writes a byte payload to a named file in a directory, overwriting any prior file of that name.
@@ -237,5 +393,14 @@ public final class HunspellCompiler {
         try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
             out.writeBytes(bytes, bytes.length);
         }
+    }
+
+    /**
+     * One out-of-vocabulary field term and its corpus frequency, the unit of the review listing.
+     *
+     * @param term indexed term form absent from every input dictionary
+     * @param freq total corpus frequency, or document frequency when term frequencies are unavailable
+     */
+    private record Oov(String term, long freq) {
     }
 }
