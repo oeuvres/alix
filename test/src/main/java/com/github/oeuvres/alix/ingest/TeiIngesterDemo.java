@@ -39,7 +39,6 @@ public final class TeiIngesterDemo
         analyzer.addStopwords(cfg.files(STOPWORDS));
         analyzer.addBrevidots(cfg.files(BREVIDOTS));
         report.info(cfg.toString());
-        // lucene writer config
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
         iwc.setIndexSort(new Sort(
             new SortField("year", SortField.Type.INT, false, Integer.MAX_VALUE),

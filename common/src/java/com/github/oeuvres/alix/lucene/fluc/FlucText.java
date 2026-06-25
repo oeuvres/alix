@@ -211,11 +211,6 @@ public final class FlucText extends Fluc
     /**
      * Returns the dense term lexicon for this field.
      *
-     * <p>
-     * If the lexicon sidecar does not exist, it is built from the frozen reader
-     * before opening.
-     * </p>
-     *
      * @return dense term lexicon
      * @throws UncheckedIOException if building or opening the lexicon fails
      */

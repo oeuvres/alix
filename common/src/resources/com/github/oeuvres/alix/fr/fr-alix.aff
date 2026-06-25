@@ -204,6 +204,10 @@ ICONV Ü Ü
 ICONV Ÿ Ÿ
 ICONV Ç Ç
 
+OCONV 1
+OCONV ' ’
+
+
 
 FLAG long
 
