@@ -161,7 +161,69 @@ Sections
       </xsl:apply-templates>
     </section>
   </xsl:template>
-
+  <!-- 
+  Sections, group opening infos in a <header> element
+  -->
+  <xsl:template name="div-header">
+    <xsl:param name="level" select="1"/>
+    <xsl:param name="from"/>
+    <xsl:param name="tei" select="node()"/>
+    <xsl:variable name="first" select="
+      ($tei
+      [not(self::text())]
+      [not(self::tei:argument)]
+      [not(self::tei:byline)]
+      [not(self::tei:cb)]
+      [not(self::tei:dateline)]
+      [not(self::tei:div)]
+      [not(self::tei:docAuthor)]
+      [not(self::tei:docDate)]
+      [not(self::tei:epigraph)]
+      [not(self::tei:head)]
+      [not(self::tei:index)]
+      [not(self::tei:opener)]
+      [not(self::tei:pb)]
+      [not(self::tei:salute)]
+      [not(self::tei:signed)])[1]
+      "/>
+    <xsl:choose>
+      <!-- opener play the role of header -->
+      <xsl:when test="$tei[self::tei:opener]">
+        <xsl:apply-templates select="$tei/tei:opener">
+          <xsl:with-param name="level" select="$level"/>
+          <xsl:with-param name="from" select="$from"/>
+        </xsl:apply-templates>
+        <div class="body">
+          <xsl:apply-templates select="$tei">
+            <xsl:with-param name="level" select="$level"/>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </div>
+      </xsl:when>
+      <xsl:when test="not($first)">
+        <div class="body">
+          <xsl:apply-templates select="$tei">
+            <xsl:with-param name="level" select="$level"/>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </div>
+      </xsl:when>
+      <xsl:otherwise>
+        <header>
+          <xsl:apply-templates select="$first/preceding-sibling::node()">
+            <xsl:with-param name="level" select="$level"/>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </header>
+        <div class="body">
+          <xsl:apply-templates select="$first | $first/following-sibling::node()[count(. | $tei) = count($tei)]">
+            <xsl:with-param name="level" select="$level"/>
+            <xsl:with-param name="from" select="$from"/>
+          </xsl:apply-templates>
+        </div>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
   <!-- Floating division -->
   <xsl:template match="tei:floatingText">
     <xsl:param name="from"/>
@@ -2537,6 +2599,14 @@ Centralize some html attribute policy, especially for id, and class
     </xsl:choose>
     <!-- Process other know attributes -->
     <xsl:apply-templates select="@*"/>
+  </xsl:template>
+  
+  <xsl:template match="@ana">
+    <xsl:choose>
+      <xsl:when test="contains(., 'nosnippet')">
+        <xsl:attribute name="data-nosnippet"/>
+      </xsl:when>
+    </xsl:choose>
   </xsl:template>
   <!-- Provide automatic classes from TEI names -->
   <xsl:template name="class">
