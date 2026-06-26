@@ -124,7 +124,8 @@ public final class LexiconHelper
         final Path file)
     {
         Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file).cellMax(2)) {
+        try (CSVReader csv = new CSVReader(file)) {
+            csv.cellMax(2);
             loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -149,7 +150,8 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(2)) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
+            csv.cellMax(2);
             loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -200,7 +202,7 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, csvHeader, handler);
+        forEachDataRow(csv, csvHeader, maxRequiredCol(colExpression, colCanonical), Report.ReportNull.INSTANCE, handler);
     }
     
     /**
@@ -224,12 +226,14 @@ public final class LexiconHelper
         final CsvHeader csvHeader,
         final int keyCol,
         final int valueCol,
-        Report report)
+        final Report report)
         throws UncheckedIOException
     {
         Objects.requireNonNull(map, "map");
         Objects.requireNonNull(csv, "csv");
-        
+        final Report rep = orSilent(report);
+        csv.report(rep);
+
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
@@ -237,30 +241,28 @@ public final class LexiconHelper
             {
                 final StringBuilder key = row.getCell(keyCol);
                 if (map.containsKey(key)) {
-                    if (policy == OnDuplicate.IGNORE) {
-                        return false;
-                    }
-                    if (policy == OnDuplicate.REPLACE) {
-                        map.put(key, row.getCellToCharArray(valueCol));
-                        return true;
-                    }
-                    String msg = "LexiconHelper.loadMap " + row.getSpec() + "#l" + row.getRowNo()
-                            + " duplicate key=" + key + " oldValue=" + new String(map.get(key)) + " newValue="
-                            + row.getCell(valueCol);
-                    if (policy == OnDuplicate.ERROR) {
-                        throw new RuntimeException(msg);
-                    }
-                    if (report != null && policy == OnDuplicate.REPORT) {
-                        report.warn(msg);
-                        return false;
+                    switch (policy) {
+                        case IGNORE:
+                            return false;
+                        case REPLACE:
+                            map.put(key, row.getCellToCharArray(valueCol));
+                            return true;
+                        case ERROR:
+                            throw new RuntimeException("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                    + " duplicate key=" + key);
+                        case REPORT:
+                            rep.warn("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                    + " duplicate key=" + key + " oldValue=" + new String(map.get(key))
+                                    + " newValue=" + row.getCell(valueCol));
+                            return false;
                     }
                 }
                 map.put(key, row.getCellToCharArray(valueCol));
                 return true;
             }
         };
-        
-        forEachDataRow(csv, csvHeader, handler);
+
+        forEachDataRow(csv, csvHeader, maxRequiredCol(keyCol, valueCol), rep, handler);
     }
     
     /**
@@ -284,13 +286,7 @@ public final class LexiconHelper
         final OnDuplicate policy)
         throws UncheckedIOException
     {
-        Objects.requireNonNull(anchor, "anchor");
-        Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(2)) {
-            loadMap(map, anchor, resourcePath, policy, CsvHeader.SKIP, 0, 1, null);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        loadMap(map, anchor, resourcePath, policy, CsvHeader.SKIP, 0, 1, null);
     }
     
     public static void loadMap(
@@ -306,7 +302,8 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(2)) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
+            csv.cellMax(maxRequiredCol(keyCol, valueCol));
             loadMap(map, csv, policy, csvHeader, keyCol, valueCol, report);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -345,8 +342,8 @@ public final class LexiconHelper
         throws UncheckedIOException
     {
         Objects.requireNonNull(file, "file");
-        final int minCols = Math.max(keyCol, valueCol) + 1;
-        try (CSVReader csv = new CSVReader(file).cellMax(minCols)) {
+        try (CSVReader csv = new CSVReader(file)) {
+            csv.cellMax(maxRequiredCol(keyCol, valueCol));
             loadMap(map, csv, policy, csvHeader, keyCol, valueCol, report);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -374,45 +371,44 @@ public final class LexiconHelper
         final CsvHeader csvHeader,
         final int keyCol,
         final int valueCol,
-        Report report)
+        final Report report)
         throws UncheckedIOException
     {
         Objects.requireNonNull(map, "map");
         Objects.requireNonNull(csv, "csv");
-        
+        final Report rep = orSilent(report);
+        csv.report(rep);
+
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
             protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
                 final StringBuilder key = row.getCell(keyCol);
-                final int keyOrd = map.keyOrd(row.getCell(keyCol));
-                // here it is possible to avoid hash lookup with 
+                final int keyOrd = map.keyOrd(key);
                 if (keyOrd >= 0) {
-                    if (policy == OnDuplicate.IGNORE) {
-                        return false;
-                    }
-                    if (policy == OnDuplicate.REPLACE) {
-                        map.put(keyOrd, row.getCell(valueCol));
-                        return true;
-                    }
-                    String msg = "LexiconHelper.loadMap " + row.getSpec() + "#l" + row.getRowNo()
-                            + " duplicate key=" + key + " oldValue=" + new String(map.get(key)) + " newValue="
-                            + row.getCell(valueCol);
-                    if (policy == OnDuplicate.ERROR) {
-                        throw new RuntimeException(msg);
-                    }
-                    if (report != null && policy == OnDuplicate.REPORT) {
-                        report.warn(msg);
-                        return false;
+                    switch (policy) {
+                        case IGNORE:
+                            return false;
+                        case REPLACE:
+                            map.put(keyOrd, row.getCell(valueCol));
+                            return true;
+                        case ERROR:
+                            throw new RuntimeException("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                    + " duplicate key=" + key);
+                        case REPORT:
+                            rep.warn("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                    + " duplicate key=" + key + " oldValue=" + new String(map.get(key))
+                                    + " newValue=" + row.getCell(valueCol));
+                            return false;
                     }
                 }
                 map.put(key, row.getCell(valueCol));
                 return true;
             }
         };
-        
-        forEachDataRow(csv, csvHeader, handler);
+
+        forEachDataRow(csv, csvHeader, maxRequiredCol(keyCol, valueCol), rep, handler);
     }
     
     /**
@@ -465,7 +461,8 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(Math.max(2, col + 1))) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
+            csv.cellMax(col + 1);
             loadSet(set, csv, col, csvHeader, rtrimChars);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -511,8 +508,9 @@ public final class LexiconHelper
         throws UncheckedIOException
     {
         Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file).cellMax(Math.max(2, col + 1))) {
-            loadSet(set, csv, col, CsvHeader.SKIP, rtrimChars);
+        try (CSVReader csv = new CSVReader(file)) {
+            csv.cellMax(col + 1);
+            loadSet(set, csv, col, header, rtrimChars);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -557,7 +555,7 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, csvHeader, handler);
+        forEachDataRow(csv, csvHeader, col + 1, Report.ReportNull.INSTANCE, handler);
     }
     
     /**
@@ -596,9 +594,10 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        
+
         final int maxCol = maxRequiredCol(formCol, posCol, lemmaCol);
-        try (CSVReader csv = new CSVReader(anchor, resourcePath).separator(sep).cellMax(maxCol)) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
+            csv.separator(sep).cellMax(maxCol);
             loadLemma(lex, csv, csvHeader, formCol, posCol, lemmaCol, posResolver);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -690,7 +689,7 @@ public final class LexiconHelper
             }
         };
         
-        forEachDataRow(csv, csvHeader, handler);
+        forEachDataRow(csv, csvHeader, maxRequiredCol(formCol, posCol, lemmaCol), Report.ReportNull.INSTANCE, handler);
         pr.endFile(null);
     }
     
@@ -720,47 +719,71 @@ public final class LexiconHelper
     }
     
     /**
-     * Iterate over CSV rows with shared boilerplate checks.
-     * <p>
-     * The method optionally skips the first row (header), then for each
-     * subsequent row:
-     * </p>
-     * <ul>
-     * <li>requires at least {@code minCols} cells</li>
-     * <li>applies blank/comment filtering on {@code keyCol}</li>
-     * <li>delegates to {@code handler}</li>
-     * </ul>
+     * Returns {@code report} if non-null, otherwise the silent sink, so callers never have
+     * to null-check before reporting.
      *
-     * @param csv        CSV reader
-     * @param minCols    minimum required cell count
-     * @param keyCol     column used to detect blank/comment rows
-     * @param skipHeader if {@code true}, skip the first row
-     * @param handler    row consumer called for accepted rows
-     * @throws UncheckedIOException     on read error
-     * @throws NullPointerException     if {@code csv} or {@code handler} is null
-     * @throws IllegalArgumentException if {@code minCols < 1} or {@code keyCol < 0}
+     * @param report a report sink, possibly {@code null}
+     * @return a non-null report sink
+     */
+    private static Report orSilent(final Report report)
+    {
+        return (report == null) ? Report.ReportNull.INSTANCE : report;
+    }
+
+    /**
+     * Iterates over the data rows of {@code csv}, applying shared filtering before handing
+     * each surviving row to {@code handler}.
+     * <p>
+     * With {@link CsvHeader#SKIP} the first row is consumed as a header. For every subsequent
+     * row, in order: a blank line ({@code getCellCount() == 0}) is skipped; a row whose first
+     * cell starts with {@code '#'} is treated as a comment and skipped; a row with fewer than
+     * {@code minCols} cells is reported through {@code report} and skipped (this is what keeps
+     * a short row from reaching {@code handler} and throwing on a missing column); any
+     * remaining row is passed to {@code handler}.
+     *
+     * @param csv       CSV reader
+     * @param csvHeader whether to consume the first row as a header
+     * @param minCols   minimum number of cells a row must have to reach the handler
+     * @param report    non-null sink for short-row warnings
+     * @param handler   row consumer for accepted rows
+     * @throws UncheckedIOException on read error
+     * @throws NullPointerException if any argument is null
      */
     private static void forEachDataRow(
         final CSVReader csv,
         final CsvHeader csvHeader,
+        final int minCols,
+        final Report report,
         final CsvRowHandler handler)
-    
     {
         Objects.requireNonNull(csv, "csv");
+        Objects.requireNonNull(report, "report");
         Objects.requireNonNull(handler, "handler");
-        
         try {
             if (csvHeader == CsvHeader.SKIP && !csv.readRow()) {
                 return; // empty file
             }
-            
             while (csv.readRow()) {
-                if (csv.getCellCount() < 1) continue;
+                final int count = csv.getCellCount();
+                if (count == 0) {
+                    continue; // blank line
+                }
+                final StringBuilder first = csv.getCell(0);
+                if (first.length() > 0 && first.charAt(0) == '#') {
+                    continue; // comment
+                }
                 handler.read++;
-                // check if first col is not a comment
-                if (csv.getCell(0).length() > 0 && csv.getCell(0).charAt(0) == '#')
+                if (count < minCols) {
+                    report.warn(csv.getSpec() + ":" + csv.getLineNo()
+                            + " expected at least " + minCols + " columns, got " + count);
+                    handler.skipped++;
                     continue;
-                handler.accept(csv);
+                }
+                if (handler.accept(csv)) {
+                    handler.accepted++;
+                } else {
+                    handler.skipped++;
+                }
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);

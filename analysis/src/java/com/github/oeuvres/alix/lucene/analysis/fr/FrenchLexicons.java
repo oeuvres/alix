@@ -53,8 +53,8 @@ public class FrenchLexicons
 
     public static CharArraySet buildBrevidots()
     {
-        // set ignore case
-        CharArraySet set = new CharArraySet(100, true);
+        // keep case. Mm. != mm.
+        CharArraySet set = new CharArraySet(100, false);
         LexiconHelper.loadSet(set, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidots.csv", 0, LexiconHelper.CsvHeader.SKIP, ".");
         return set;
     }
