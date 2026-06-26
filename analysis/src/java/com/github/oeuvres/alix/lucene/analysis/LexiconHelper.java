@@ -124,7 +124,7 @@ public final class LexiconHelper
         final Path file)
     {
         Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file, ',', 2)) {
+        try (CSVReader csv = new CSVReader(file).cellMax(2)) {
             loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -149,7 +149,7 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(2)) {
             loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -286,7 +286,7 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(2)) {
             loadMap(map, anchor, resourcePath, policy, CsvHeader.SKIP, 0, 1, null);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -306,7 +306,7 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', 2)) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(2)) {
             loadMap(map, csv, policy, csvHeader, keyCol, valueCol, report);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -346,7 +346,7 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(file, "file");
         final int minCols = Math.max(keyCol, valueCol) + 1;
-        try (CSVReader csv = new CSVReader(file, ',', minCols)) {
+        try (CSVReader csv = new CSVReader(file).cellMax(minCols)) {
             loadMap(map, csv, policy, csvHeader, keyCol, valueCol, report);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -465,7 +465,7 @@ public final class LexiconHelper
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath, ',', Math.max(2, col + 1))) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath).cellMax(Math.max(2, col + 1))) {
             loadSet(set, csv, col, csvHeader, rtrimChars);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -511,7 +511,7 @@ public final class LexiconHelper
         throws UncheckedIOException
     {
         Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file, ',', Math.max(2, col + 1))) {
+        try (CSVReader csv = new CSVReader(file).cellMax(Math.max(2, col + 1))) {
             loadSet(set, csv, col, CsvHeader.SKIP, rtrimChars);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -598,7 +598,7 @@ public final class LexiconHelper
         Objects.requireNonNull(resourcePath, "resourcePath");
         
         final int maxCol = maxRequiredCol(formCol, posCol, lemmaCol);
-        try (CSVReader csv = new CSVReader(anchor, resourcePath, sep, maxCol)) {
+        try (CSVReader csv = new CSVReader(anchor, resourcePath).separator(sep).cellMax(maxCol)) {
             loadLemma(lex, csv, csvHeader, formCol, posCol, lemmaCol, posResolver);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -755,6 +755,7 @@ public final class LexiconHelper
             }
             
             while (csv.readRow()) {
+                if (csv.getCellCount() < 1) continue;
                 handler.read++;
                 // check if first col is not a comment
                 if (csv.getCell(0).length() > 0 && csv.getCell(0).charAt(0) == '#')

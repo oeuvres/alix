@@ -15,7 +15,7 @@ class CSVReaderTest {
         long rows = 0;
         long chars = 0;
 
-        try (CSVReader csv = new CSVReader(French.class, "word.csv", ',', 3)) {
+        try (CSVReader csv = new CSVReader(French.class, "word.csv").cellMax(3)) {
             while (csv.readRow()) {
                 rows++;
                 // consume some data to prevent dead-code elimination
@@ -145,7 +145,7 @@ class CSVReaderTest {
     @Test
     void cellMaxLimitsReturnedCells() throws Exception {
         try (// Intended semantics: return only first 2 cells, ignore the rest of the row.
-        CSVReader csv = new CSVReader(new StringReader("a,b,c\n"), ',', 2)) {
+        CSVReader csv = new CSVReader(new StringReader("a,b,c\n")).cellMax(2)) {
             assertTrue(csv.readRow());
             assertEquals(2, csv.getCellCount());
             assertEquals("a", csv.getCellAsString(0));

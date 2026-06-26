@@ -109,11 +109,11 @@ public final class CSVReader implements Closeable
     /** Underlying character source; decoding is the {@link Reader}'s responsibility. */
     private final Reader in;
 
-    /** Field separator character (e.g. {@code ','} or {@code ';'}). */
-    private final char separator;
+    /** Field separator character (e.g. {@code ','} or {@code ';'}); see {@link #separator(char)}. */
+    private char separator = ',';
 
-    /** Quote character used to enclose fields (typically {@code '"'}). */
-    private final char quote;
+    /** Quote character used to enclose fields (typically {@code '"'}); see {@link #quote(char)}. */
+    private char quote = '"';
 
     /**
      * If positive, limit number of columns to explore (and store).
@@ -124,8 +124,14 @@ public final class CSVReader implements Closeable
      */
     private int cellMax = -1;
 
-    /** Internal character I/O buffer, filled in bulk from {@link #in}. */
-    private final char[] buf;
+    /** Internal character I/O buffer, filled in bulk from {@link #in}; allocated on first read. */
+    private char[] buf;
+
+    /** Size of {@link #buf}; see {@link #bufferSize(int)}. */
+    private int bufferSize = DEFAULT_CHAR_BUFFER_SIZE;
+
+    /** Diagnostic sink for recoverable anomalies; silent by default. See {@link #report(Report)}. */
+    private Report report = Report.ReportNull.INSTANCE;
 
     /** Current position in {@link #buf} (index of next char to consume). */
     private int bufPos = 0;
@@ -143,9 +149,12 @@ public final class CSVReader implements Closeable
      * Per-row cell buffers, grown lazily and reused across rows. Only the first
      * {@link #cellCount} elements are valid for the last row read.
      */
-    private final ArrayList<StringBuilder> cells;
+    private ArrayList<StringBuilder> cells;
 
-    /** Number of cells in the last row successfully read by {@link #readRow()}. */
+    /**
+     * Number of cells in the last row successfully read by {@link #readRow()}.
+     * A blank line (no characters between terminators) is a valid row with {@code 0} cells.
+     */
     private int cellCount = 0;
 
     /** Identifying name of the source (path or resource), {@code null} for a raw stream. */
@@ -154,17 +163,26 @@ public final class CSVReader implements Closeable
     /** Number of rows returned so far, for logging. */
     private int rowNo;
 
+    /** 1-based physical line where the current row begins; see {@link #getLineNo()}. */
+    private int lineNo = 0;
+
+    /** Running count of physical line breaks consumed so far, used to compute {@link #lineNo}. */
+    private int lineBreaks = 0;
+
+    /** Set once the first {@link #readRow()} runs; parsing options are frozen afterwards. */
+    private boolean started = false;
+
     /**
      * Reads UTF-8 bytes from a file, decoding through {@link InputStreamReader}.
+     * Parsing options are set with the fluent methods, e.g.
+     * {@code new CSVReader(path).separator(';').cellMax(2)}.
      *
-     * @param path      file to read; must not be {@code null}
-     * @param separator field separator character
-     * @param cellMax   limit number of columns to explore (and store)
+     * @param path file to read; must not be {@code null}
      * @throws IOException if the file cannot be opened
      */
-    public CSVReader(final Path path, final char separator, final int cellMax) throws IOException
+    public CSVReader(final Path path) throws IOException
     {
-        this(openReader(path), separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
+        this(openReader(path));
         this.spec = path.toString();
     }
 
@@ -173,27 +191,11 @@ public final class CSVReader implements Closeable
      * The stream is owned by this reader and closed by {@link #close()}.
      *
      * @param utf8Stream stream delivering UTF-8 bytes; must not be {@code null}
-     * @param separator  field separator character
-     * @param cellMax    limit number of columns to explore (and store)
      * @throws NullPointerException if {@code utf8Stream} is {@code null}
      */
-    public CSVReader(final InputStream utf8Stream, final char separator, final int cellMax)
+    public CSVReader(final InputStream utf8Stream)
     {
-        this(new InputStreamReader(Objects.requireNonNull(utf8Stream, "utf8Stream is null"), StandardCharsets.UTF_8),
-                separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
-    }
-
-    /**
-     * Opens a classpath resource (UTF-8) relative to an anchor class, with default
-     * separator {@code ','} and no column limit.
-     *
-     * @param anchor       anchor class used to resolve the resource
-     * @param resourcePath classpath resource path (prefer absolute with leading '/')
-     * @throws IOException if the resource cannot be found or opened
-     */
-    public CSVReader(final Class<?> anchor, final String resourcePath) throws IOException
-    {
-        this(anchor, resourcePath, ',', -1);
+        this(new InputStreamReader(Objects.requireNonNull(utf8Stream, "utf8Stream is null"), StandardCharsets.UTF_8));
     }
 
     /**
@@ -204,87 +206,60 @@ public final class CSVReader implements Closeable
      *
      * @param anchor       anchor class used to resolve the resource
      * @param resourcePath classpath resource path (prefer absolute with leading '/')
-     * @param separator    field separator character
-     * @param cellMax      limit number of columns to explore (and store)
      * @throws IOException if the resource cannot be found or opened
      */
-    public CSVReader(final Class<?> anchor, final String resourcePath, final char separator, final int cellMax)
-            throws IOException
+    public CSVReader(final Class<?> anchor, final String resourcePath) throws IOException
     {
-        this(new InputStreamReader(IOUtil.openResource(anchor, resourcePath), StandardCharsets.UTF_8),
-                separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
+        this(new InputStreamReader(IOUtil.openResource(anchor, resourcePath), StandardCharsets.UTF_8));
         this.spec = resourcePath;
     }
 
     /**
-     * Creates a reader over a character stream with default separator {@code ','},
-     * quote {@code '"'}, no column limit, and the default buffer size.
+     * Creates a reader over a character stream. This is the constructor every other one
+     * delegates to; decoding is the {@link Reader}'s responsibility. Parsing options are
+     * set afterwards with the fluent configuration methods.
      *
      * @param in the underlying character stream; must not be {@code null}
      * @throws NullPointerException if {@code in} is {@code null}
      */
     public CSVReader(final Reader in)
     {
-        this(in, ',', -1, '"', DEFAULT_CHAR_BUFFER_SIZE);
+        this.in = Objects.requireNonNull(in, "Reader is null");
+        this.spec = null;
     }
 
     /**
-     * Creates a reader over a character stream with quote {@code '"'}, no column limit,
-     * and the default buffer size.
+     * Sets the internal character buffer size, in characters. Call before the first
+     * {@link #readRow()}.
      *
-     * @param in        the underlying character stream; must not be {@code null}
-     * @param separator field separator character
-     * @throws NullPointerException if {@code in} is {@code null}
+     * @param size buffer size, must be {@code > 0}
+     * @return this reader, for chaining
+     * @throws IllegalArgumentException if {@code size <= 0}
+     * @throws IllegalStateException    if reading has already started
      */
-    public CSVReader(final Reader in, final char separator)
+    public CSVReader bufferSize(final int size)
     {
-        this(in, separator, -1, '"', DEFAULT_CHAR_BUFFER_SIZE);
-    }
-
-    /**
-     * Creates a reader over a character stream with quote {@code '"'} and the default buffer size.
-     *
-     * @param in        the underlying character stream; must not be {@code null}
-     * @param separator field separator character
-     * @param cellMax   limit number of columns to explore (and store)
-     * @throws NullPointerException if {@code in} is {@code null}
-     */
-    public CSVReader(final Reader in, final char separator, final int cellMax)
-    {
-        this(in, separator, cellMax, '"', DEFAULT_CHAR_BUFFER_SIZE);
-    }
-
-    /**
-     * Creates a reader over a character stream with fully configurable parameters.
-     * This is the constructor every other one delegates to.
-     *
-     * @param in         the underlying character stream; must not be {@code null}
-     * @param separator  field separator character
-     * @param cellMax    limit number of columns to explore (and store)
-     * @param quote      quote character for fields (typically {@code '"'})
-     * @param bufferSize internal char buffer size (characters), must be {@code > 0}
-     * @throws NullPointerException     if {@code in} is {@code null}
-     * @throws IllegalArgumentException if {@code bufferSize <= 0}
-     */
-    public CSVReader(final Reader in, final char separator, final int cellMax, final char quote, final int bufferSize)
-    {
-        Objects.requireNonNull(in, "Reader is null");
-        if (bufferSize <= 0) {
+        ensureNotStarted();
+        if (size <= 0) {
             throw new IllegalArgumentException("bufferSize <= 0");
         }
-        this.in = in;
-        this.separator = separator;
-        this.quote = quote;
-        this.buf = new char[bufferSize];
-        if (cellMax > 0) {
-            this.cellMax = cellMax;
-        }
-        final int initialCells = (cellMax > 0) ? cellMax : 4;
-        this.cells = new ArrayList<>(initialCells);
-        for (int i = 0; i < initialCells; i++) {
-            cells.add(new StringBuilder(CELL_INITIAL_CAPACITY));
-        }
-        this.spec = null;
+        this.bufferSize = size;
+        return this;
+    }
+
+    /**
+     * Limits the number of columns explored (and stored). Columns beyond the limit are
+     * still consumed syntactically but not retained. Call before the first {@link #readRow()}.
+     *
+     * @param max maximum number of columns, or {@code <= 0} for no limit
+     * @return this reader, for chaining
+     * @throws IllegalStateException if reading has already started
+     */
+    public CSVReader cellMax(final int max)
+    {
+        ensureNotStarted();
+        this.cellMax = (max > 0) ? max : -1;
+        return this;
     }
 
     /**
@@ -311,7 +286,8 @@ public final class CSVReader implements Closeable
     public StringBuilder getCell(final int index)
     {
         if (index < 0 || index >= cellCount) {
-            throw new IndexOutOfBoundsException("cell index " + index + " out of bounds (count=" + cellCount + ")");
+            throw new IndexOutOfBoundsException("cell index " + index + " out of bounds (count=" + cellCount + ")"
+                    + ", line " + lineNo + (spec != null ? " in " + spec : ""));
         }
         return cells.get(index);
     }
@@ -333,8 +309,13 @@ public final class CSVReader implements Closeable
 
     /**
      * Returns the number of cells in the last row successfully read by {@link #readRow()}.
+     * <p>
+     * A blank line yields {@code 0}. Note this differs from end of input only by the
+     * return value of {@link #readRow()}: a blank line is a row ({@code readRow()} returned
+     * {@code true}) that happens to have no cells, whereas at EOF {@code readRow()} returns
+     * {@code false}.
      *
-     * @return the number of cells; {@code 0} if no row has been read or EOF produced no row
+     * @return the number of cells; {@code 0} for a blank line, or if no row has been read
      */
     public int getCellCount()
     {
@@ -378,6 +359,24 @@ public final class CSVReader implements Closeable
     }
 
     /**
+     * Returns the 1-based physical line at which the last row read by {@link #readRow()}
+     * begins. Unlike {@link #getRowNo()}, which counts logical CSV records, this counts
+     * physical lines in the source and therefore accounts for newlines embedded inside
+     * quoted fields.
+     * <p>
+     * Recognised line breaks are LF ({@code '\n'}), CRLF ({@code "\r\n"}), and a lone CR
+     * ({@code '\r'}) acting as a record terminator. LF and CRLF embedded inside a quoted
+     * field are counted; a lone CR embedded inside a quoted field (an old-style Mac line
+     * ending within a value) is not.
+     *
+     * @return the 1-based starting line of the last row, or {@code 0} if no row has been read
+     */
+    public int getLineNo()
+    {
+        return lineNo;
+    }
+
+    /**
      * Returns the number of rows returned so far, for logging.
      *
      * @return the current row count
@@ -400,6 +399,21 @@ public final class CSVReader implements Closeable
     }
 
     /**
+     * Sets the quote character used to enclose fields. Call before the first
+     * {@link #readRow()}.
+     *
+     * @param quote quote character
+     * @return this reader, for chaining
+     * @throws IllegalStateException if reading has already started
+     */
+    public CSVReader quote(final char quote)
+    {
+        ensureNotStarted();
+        this.quote = quote;
+        return this;
+    }
+
+    /**
      * Reads the next CSV row from the underlying input.
      * <p>
      * Drives the parsing state machine until a line terminator (CR, LF, or CRLF) or
@@ -408,12 +422,19 @@ public final class CSVReader implements Closeable
      * <p>
      * At EOF: an unterminated final row is returned as valid; if EOF is reached with
      * no characters for a new row, {@code false} is returned and no row is produced.
+     * <p>
+     * A blank line is a valid row carrying no cells: {@code true} is returned and
+     * {@link #getCellCount()} is {@code 0}. A trailing line terminator at end of input does
+     * not by itself create such a row. To skip blank lines, test {@code getCellCount() == 0}.
      *
      * @return {@code true} if a row was read; {@code false} at end of input
      * @throws IOException if an I/O error occurs while reading
      */
     public boolean readRow() throws IOException
     {
+        if (!started) {
+            start();
+        }
         if (eof) {
             return false;
         }
@@ -426,7 +447,9 @@ public final class CSVReader implements Closeable
         boolean inQuotes = false;
         boolean atCellStart = true;
         boolean sawAny = false;
+        boolean content = false;
         rowNo++;
+        lineNo = lineBreaks + 1;
 
         // Handle BOM once at stream start (faster than checking per char)
         if (atStart) {
@@ -463,9 +486,16 @@ public final class CSVReader implements Closeable
                         bufPos++;
                     }
 
-                    // append chunk before quote
-                    if (cell != null && bufPos > start) {
-                        cell.append(buf, start, bufPos - start);
+                    // count embedded LF in the consumed chunk, then append it
+                    if (bufPos > start) {
+                        for (int i = start; i < bufPos; i++) {
+                            if (buf[i] == '\n') {
+                                lineBreaks++;
+                            }
+                        }
+                        if (cell != null) {
+                            cell.append(buf, start, bufPos - start);
+                        }
                     }
                     if (bufPos < bufLen) {
                         sawAny = true;
@@ -475,6 +505,8 @@ public final class CSVReader implements Closeable
                         // need more data
                         if (!fill()) {
                             eof = true;
+                            report.warn("line " + lineNo + (spec != null ? " in " + spec : "")
+                                    + ": unterminated quoted field at end of input");
                             return true; // EOF treated as end-of-field/row
                         }
                         start = bufPos;
@@ -517,6 +549,7 @@ public final class CSVReader implements Closeable
                 inQuotes = true;
                 bufPos++;
                 sawAny = true;
+                content = true;
                 atCellStart = false;
                 continue;
             }
@@ -535,6 +568,7 @@ public final class CSVReader implements Closeable
             }
             if (bufPos > start) {
                 sawAny = true;
+                content = true;
             }
             atCellStart = false;
 
@@ -548,6 +582,7 @@ public final class CSVReader implements Closeable
 
             if (c == separator) {
                 atCellStart = true;
+                content = true;
 
                 // Enforce "return at most cellMax cells"
                 if (cellMax > 0 && cellCount >= cellMax) {
@@ -564,10 +599,18 @@ public final class CSVReader implements Closeable
             }
 
             if (c == '\n') {
+                lineBreaks++;
+                if (!content) {
+                    cellCount = 0;
+                }
                 return true;
             }
 
-            // c == '\r': handle CRLF
+            // c == '\r': handle CRLF (a lone CR or a CRLF pair is one physical line break)
+            lineBreaks++;
+            if (!content) {
+                cellCount = 0;
+            }
             if (bufPos >= bufLen) {
                 if (!fill()) {
                     eof = true;
@@ -582,6 +625,34 @@ public final class CSVReader implements Closeable
     }
 
     /**
+     * Sets the diagnostic sink used to report recoverable anomalies (for instance an
+     * unterminated quoted field at end of input). The default is silent. May be set at
+     * any time.
+     *
+     * @param report diagnostic sink; must not be {@code null}
+     * @return this reader, for chaining
+     */
+    public CSVReader report(final Report report)
+    {
+        this.report = Objects.requireNonNull(report, "report is null");
+        return this;
+    }
+
+    /**
+     * Sets the field separator character. Call before the first {@link #readRow()}.
+     *
+     * @param separator separator character
+     * @return this reader, for chaining
+     * @throws IllegalStateException if reading has already started
+     */
+    public CSVReader separator(final char separator)
+    {
+        ensureNotStarted();
+        this.separator = separator;
+        return this;
+    }
+
+    /**
      * Ensures the cell-buffer list holds at least {@code minCapacity} reusable
      * {@link StringBuilder} instances.
      *
@@ -590,6 +661,33 @@ public final class CSVReader implements Closeable
     private void ensureCellCapacity(final int minCapacity)
     {
         while (cells.size() < minCapacity) {
+            cells.add(new StringBuilder(CELL_INITIAL_CAPACITY));
+        }
+    }
+
+    /**
+     * Guards configuration methods: parsing options must be fixed before reading begins.
+     *
+     * @throws IllegalStateException if {@link #readRow()} has already been called
+     */
+    private void ensureNotStarted()
+    {
+        if (started) {
+            throw new IllegalStateException("configuration must be set before the first readRow()");
+        }
+    }
+
+    /**
+     * Allocates the I/O buffer and per-cell builders from the configured options, on the
+     * first {@link #readRow()} call.
+     */
+    private void start()
+    {
+        started = true;
+        this.buf = new char[bufferSize];
+        final int initialCells = (cellMax > 0) ? cellMax : 4;
+        this.cells = new ArrayList<>(initialCells);
+        for (int i = 0; i < initialCells; i++) {
             cells.add(new StringBuilder(CELL_INITIAL_CAPACITY));
         }
     }
