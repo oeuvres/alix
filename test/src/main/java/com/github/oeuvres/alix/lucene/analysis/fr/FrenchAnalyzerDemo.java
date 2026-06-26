@@ -32,6 +32,23 @@ public class FrenchAnalyzerDemo
     
     static final List<Case> CASES = List.of(
         new Case(
+            "éq. 1",
+            "d’une éq. à l’éq. 1, d’où le renversement des signes",
+            null
+        ),
+        new Case(
+            "Name reso",
+            """
+            (Lev, 5 ; 10) C’est Mie tu vois.
+            I. Meyerson, I. <span class=\"sc\">Meyerson</span>
+            d’I. Meyerson et d'E. Meyerson, et Émile Meyerson, avec Meyerson.
+            notre maître M. Arnold Reymond et des œuvres capitales de"
+            M. E. Meyerson et de M. Brunschvicg. Parmi ces dernières, Les Etapes
+            de la Philosophie mathématique, et, récemment, L’expérience humaine
+            et la causalité physique ont eu sur nous une influence décisive.""",
+            null
+        ),
+        new Case(
                 "Name",
                 "<p class=\"p\"><i>D. a</i>. — Cette forme n’est signalée en Suisse qu’aux Brenêts et dans les laisses de l’Aar à Altenbourg. Bollinger (<i>loc. cit</i>.) en donne la distribution générale.</p>",
                 "explanation"),

@@ -38,6 +38,7 @@ public final class TeiIngesterDemo
         analyzer.addExpressions(cfg.files(EXPRESSIONS));
         analyzer.addStopwords(cfg.files(STOPWORDS));
         analyzer.addBrevidots(cfg.files(BREVIDOTS));
+        analyzer.addUcwords(cfg.files(UCWORDS));
         report.info(cfg.toString());
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
         iwc.setIndexSort(new Sort(

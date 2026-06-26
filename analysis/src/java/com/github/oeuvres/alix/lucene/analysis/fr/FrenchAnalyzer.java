@@ -53,6 +53,7 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
+import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
@@ -76,6 +77,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     final Analyzer observation;
     /** Stopwords list */
     public final CharArraySet stopwords;
+    /** Uppercase words list */
+    public final CharArraySet ucwords;
     /** Words with ending dots */
     public final CharArraySet brevidots;
     /** Proper names to protect from lower casing */
@@ -100,6 +103,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         brevidots = FrenchLexicons.buildBrevidots();
         expressions = FrenchLexicons.buildMweLexicon();
         propn = FrenchLexicons.buildPropn();
+        ucwords = FrenchLexicons.buildUcwords();
 
         canonic = new CanonicAnalyzer();
         ascii = new AsciiAnalyzer();
@@ -111,9 +115,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     )
         throws IOException {
         for (Path path : files) {
-            LexiconHelper.loadSet(brevidots, 
-                    path, 0,
-                    LexiconHelper.CsvHeader.SKIP, ".");
+            LexiconHelper.loadSet(brevidots, path, 0, LexiconHelper.CsvHeader.SKIP, ".");
         }
     }
 
@@ -143,6 +145,15 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         throws IOException {
         for (Path path : files) {
             LexiconHelper.loadSet(stopwords, path);
+        }
+    }
+
+    public void addUcwords(
+        List<Path> files
+    )
+        throws IOException {
+        for (Path path : files) {
+            LexiconHelper.loadSet(ucwords, path);
         }
     }
 
@@ -232,8 +243,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new FrenchCliticSplitFilter(ts);
         // normalizations
         ts = new ReplaceFilter(ts, normalizer);
-        // merge initial with proper name, bad if you want MWE to handle that
-        // ts = new PersInitialFilter(ts);
+        // Suppress things like A-B, CDE, but protect USA or BIE
+        ts = new UppercaseFilter(ts, ucwords, 4);
         // pos tagging before lemmatize
         ts = new PosTaggingFilter(ts, POS_MODEL, PosTaggingFilter.HYPHEN_REWRITER);
         // provide lemma

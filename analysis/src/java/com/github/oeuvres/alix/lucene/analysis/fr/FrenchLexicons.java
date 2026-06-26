@@ -155,11 +155,19 @@ public class FrenchLexicons
         return set;
     }
     
+    public static CharArraySet buildUcwords()
+    {
+        // set ignore case
+        CharArraySet set = new CharArraySet(200, true);
+        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/ucwords.csv");
+        return set;
+    }
+    
     public static CharArraySet buildPropn()
     {
         // set ignore case
         CharArraySet set = new CharArraySet(1100, true);
-        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-word.csv");
+        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-words.csv");
         return set;
     }
 

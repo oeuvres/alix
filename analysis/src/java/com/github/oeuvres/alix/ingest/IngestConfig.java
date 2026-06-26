@@ -57,7 +57,8 @@ public final class IngestConfig
         BREVIDOTS,
         EXPRESSIONS,
         NORMALIZATIONS,
-        STOPWORDS;
+        STOPWORDS,
+        UCWORDS;
 
         /** XML property key for this list (the constant name, lowercased). */
         public String key()

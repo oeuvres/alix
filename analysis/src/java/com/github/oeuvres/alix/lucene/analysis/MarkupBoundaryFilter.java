@@ -46,55 +46,63 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /**
- * Converts selected closing XML/HTML tags into synthetic structural boundary tokens
- * and drops all other markup tokens.
+ * Lucene {@link TokenFilter} that converts selected closing XML/HTML tags into synthetic structural
+ * boundary tokens and drops every other markup token.
  *
  * <h2>Input contract</h2>
  * <ul>
- *   <li>The upstream tokenizer emits tags as tokens whose {@link CharTermAttribute} contains the literal tag
- *       (including {@code <} and {@code >}).</li>
- *   <li>Tag tokens are identified by {@link PosAttribute#getPos()} == {@code XML.code}.</li>
- *   <li>Non-tag tokens (visible text, punctuation, etc.) carry their usual offsets/positions.</li>
+ *   <li>The upstream tokenizer emits each tag as a token whose {@link CharTermAttribute} holds the
+ *       literal tag, delimiters included ({@code <} … {@code >}).</li>
+ *   <li>Tag tokens are recognised by {@link PosAttribute#getPos()} {@code == XML.code}.</li>
+ *   <li>Every other token (text, punctuation, …) is treated as visible and passes through unchanged
+ *       with the offsets/positions the tokenizer assigned.</li>
  * </ul>
  *
- * <h2>Behavior</h2>
+ * <h2>Behaviour</h2>
  * <ul>
- *   <li><b>All markup tokens are dropped</b>, except those mapped to boundaries.</li>
- *   <li>On configured <b>closing tags</b> (e.g. {@code </p>}), emit a synthetic boundary token:
+ *   <li>All markup tokens are dropped, except closing tags mapped to a boundary.</li>
+ *   <li>A configured closing tag emits a synthetic boundary token:
  *     <ul>
- *       <li>paragraph boundary: term {@value #PARA_MARK}, {@code PosAttribute = PUNCTpara.code}</li>
- *       <li>section boundary: term {@value #SECTION_MARK}, {@code PosAttribute = PUNCTsection.code}</li>
+ *       <li>paragraph: term {@value #PARA_MARK}, {@code PosAttribute = PUNCTpara.code};</li>
+ *       <li>section: term {@value #SECTION_MARK}, {@code PosAttribute = PUNCTsection.code}.</li>
  *     </ul>
  *   </li>
- *   <li><b>Only closing tags</b> are considered for boundaries (no mapping on open/self-closing tags).</li>
- *   <li><b>Local-name matching</b>: prefixes are ignored (e.g. {@code </tei:p>} matches {@code p}).</li>
- *   <li><b>Coalescing</b>: consecutive boundary requests before any visible token are merged into one;
- *       section wins over paragraph.</li>
+ *   <li>Only closing tags trigger boundaries; open and self-closing tags never do.</li>
+ *   <li>Matching is on the local-name only — prefixes are ignored on both sides
+ *       (e.g. {@code </tei:p>} matches the configured name {@code p}) — and is case-insensitive.</li>
+ *   <li>Consecutive boundary requests with no intervening visible token are coalesced into one;
+ *       a section boundary wins over a paragraph boundary.</li>
  * </ul>
  *
  * <h2>Configuration</h2>
- * <p>
- * The constructor accepts two {@code |}-separated lists of element names:
- * </p>
+ * <p>Each constructor list is {@code |}-separated local-names:</p>
  * <ul>
- *   <li>{@code paraElements}: names whose closing tag triggers a paragraph boundary</li>
- *   <li>{@code sectionElements}: names whose closing tag triggers a section boundary</li>
+ *   <li>{@code paraElements}: closing tags mapped to a paragraph boundary;</li>
+ *   <li>{@code sectionElements}: closing tags mapped to a section boundary.</li>
  * </ul>
  *
  * <pre>{@code
- * // Map </p>, </li>, </td>, </h1>.. to ¶, and </article>, </section> to §
- * TokenStream ts = new MarkupFilter(tokenizer, "p|li|td|h1|h2|h3", "article|section");
+ * // Map </p>, </li>, </td>, </h1>… to ¶, and </article>, </section> to §
+ * TokenStream ts = new MarkupBoundaryFilter(tokenizer, "p|li|td|h1|h2|h3", "article|section");
  * }</pre>
  *
  * <h2>Offsets and positions</h2>
- * <p>
- * Boundary tokens reuse the attribute state of the triggering close-tag token, and overwrite only:
- * {@link CharTermAttribute} and {@link PosAttribute}. This preserves offsets/position-increment coherence
- * according to what the tokenizer provided for the markup token.
- * </p>
+ * <p>A boundary token reuses the captured state of the triggering closing tag and overwrites only its
+ * {@link CharTermAttribute} and {@link PosAttribute}. It therefore inherits the offsets and the
+ * position increment that the tokenizer assigned to that markup token. In particular, a boundary
+ * occupies a token position — and thus blocks cross-boundary phrase/span matches — only if the
+ * tokenizer gives tag tokens a non-zero position increment.</p>
  */
 public final class MarkupBoundaryFilter extends TokenFilter
 {
+    /** Default {@code |}-separated local-names whose closing tag triggers a paragraph boundary. */
+    public static final String DEFAULT_PARA_ELEMENTS =
+            "ab|address|blockquote|cell|dd|div|dt|h1|h2|h3|h4|h5|h6|head|item|l|label|li|p|pre|row|td|th|tr";
+
+    /** Default {@code |}-separated local-names whose closing tag triggers a section boundary. */
+    public static final String DEFAULT_SECTION_ELEMENTS =
+            "article|back|body|chapter|div0|div1|div2|div3|div4|div5|div6|div7|front|group|main|section|text";
+
     /** Synthetic term emitted for paragraph-like boundaries. */
     public static final String PARA_MARK = "¶";
 
@@ -109,37 +117,31 @@ public final class MarkupBoundaryFilter extends TokenFilter
 
     /**
      * Pending structural boundary to emit before the next visible token (or at EOF).
-     * Stores a POS code ({@code PUNCTpara.code} or {@code PUNCTsection.code}), or 0 for none.
+     * Holds a POS code ({@code PUNCTpara.code} or {@code PUNCTsection.code}), or 0 for none.
      */
     private int pendingBoundaryPos = 0;
 
     /**
-     * State captured from the triggering close-tag token so the synthetic boundary keeps coherent
+     * State captured from the triggering close-tag token, so the synthetic boundary keeps coherent
      * offsets/positions from the source markup token.
      */
     private State pendingBoundaryState = null;
 
     /**
-     * Buffered visible token that was read while a pending boundary still had to be emitted first.
+     * Visible token read while a boundary still had to be emitted first; returned on the next call.
      */
     private State deferredVisibleToken = null;
-    
- // Defaults as readable strings (local-names, case-sensitive, alphabetic order)
-    public static final String DEFAULT_PARA_ELEMENTS =
-            "ab|address|blockquote|cell|dd|div|dt|h1|h2|h3|h4|h5|h6|head|item|l|label|li|p|pre|row|td|th|tr";
 
-    public static final String DEFAULT_SECTION_ELEMENTS =
-            "article|back|body|chapter|div0|div1|div2|div3|div4|div5|div6|div7|front|group|main|section|text";
-
-    /** Default policy constructor: uses {@link #DEFAULT_PARA_ELEMENTS} and {@link #DEFAULT_SECTION_ELEMENTS}. */
-    public MarkupBoundaryFilter(final TokenStream input) {
+    /** Default-policy constructor: uses {@link #DEFAULT_PARA_ELEMENTS} and {@link #DEFAULT_SECTION_ELEMENTS}. */
+    public MarkupBoundaryFilter(final TokenStream input)
+    {
         this(input, DEFAULT_PARA_ELEMENTS, DEFAULT_SECTION_ELEMENTS);
     }
 
     /**
      * @param input token stream (typically tokenizer output)
-     * @param paraElements {@code |}-separated local-names mapped from close-tags to paragraph boundary (e.g. {@code "p|li|td|h1"})
-     * @param sectionElements {@code |}-separated local-names mapped from close-tags to section boundary (e.g. {@code "article|section"})
+     * @param paraElements {@code |}-separated local-names mapped from close-tags to a paragraph boundary (e.g. {@code "p|li|td|h1"})
+     * @param sectionElements {@code |}-separated local-names mapped from close-tags to a section boundary (e.g. {@code "article|section"})
      */
     public MarkupBoundaryFilter(final TokenStream input, final String paraElements, final String sectionElements)
     {
@@ -148,103 +150,11 @@ public final class MarkupBoundaryFilter extends TokenFilter
         this.sectionOnClose = compileTagSet(sectionElements);
     }
 
-    @Override
-    public boolean incrementToken() throws IOException
-    {
-        // 0) Drain deferred visible token first (if we emitted a boundary before it).
-        if (deferredVisibleToken != null) {
-            restoreState(deferredVisibleToken);
-            deferredVisibleToken = null;
-            return true;
-        }
-
-        // 1) If a structural boundary is pending, emit it now.
-        if (pendingBoundaryPos != 0) {
-            emitPendingBoundary();
-            return true;
-        }
-
-        while (input.incrementToken()) {
-
-            final int pos = posAtt.getPos();
-            final boolean isXml = (pos == XML.code);
-
-            // Visible token: emit unless we must emit a pending boundary first.
-            if (!isXml) {
-                if (pendingBoundaryPos != 0) {
-                    deferredVisibleToken = captureState();
-                    emitPendingBoundary();
-                    return true;
-                }
-                return true;
-            }
-
-            // Tag token: classify and (maybe) map to boundary; otherwise drop.
-            final char[] buf = termAtt.buffer();
-            final int len = termAtt.length();
-
-            final TagKind kind = classifyTag(buf, len);
-            if (kind != TagKind.CLOSE) {
-                // Drop OPEN, DECL/COMMENT/PI, INVALID
-                continue;
-            }
-
-            final long span = readLocalTagNameSpan(buf, len, /*from*/2); // after "</"
-            final int start = (int)(span >>> 32);
-            final int end = (int)span;
-            if (end <= start) continue;
-
-            final int nameLen = end - start;
-
-            // Section boundary wins over paragraph if both configured.
-            if (sectionOnClose.contains(buf, start, nameLen)) {
-                requestBoundary(PUNCTsection.code);
-                continue;
-            }
-            if (paraOnClose.contains(buf, start, nameLen)) {
-                requestBoundary(PUNCTpara.code);
-                continue;
-            }
-
-            // Default: drop tag token
-        }
-
-        // EOF: still emit a pending boundary if one remains.
-        if (pendingBoundaryPos != 0) {
-            emitPendingBoundary();
-            return true;
-        }
-
-        return false;
-    }
-
-    @Override
-    public void reset() throws IOException
-    {
-        super.reset();
-        pendingBoundaryPos = 0;
-        pendingBoundaryState = null;
-        deferredVisibleToken = null;
-    }
-
-    @Override
-    public void end() throws IOException
-    {
-        super.end();
-        pendingBoundaryPos = 0;
-        pendingBoundaryState = null;
-        deferredVisibleToken = null;
-    }
-
-    // -----------------------------------------------------------------------
-    // Public helper (requested): compile tag-name lists
-    // -----------------------------------------------------------------------
-
     /**
      * Compile a {@code |}-separated list of tag local-names into a case-insensitive {@link CharArraySet}.
-     * Empty/null input yields an empty set.
-     *
-     * <p>Accepted separators: {@code |} plus optional surrounding whitespace.</p>
+     * A {@code null} or empty input yields an empty set. Any prefix in a name is stripped (only the part
+     * after the last {@code ':'} is stored). Accepted separators: {@code |} plus optional surrounding
+     * whitespace.
      */
     public static CharArraySet compileTagSet(final String names)
     {
@@ -254,26 +164,19 @@ public final class MarkupBoundaryFilter extends TokenFilter
         int i = 0;
         final int n = names.length();
         while (i < n) {
-            // skip spaces and separators
             while (i < n) {
                 final char c = names.charAt(i);
-                if (c == '|' || isWs(c)) { i++; continue; }
+                if (c == '|' || isSpace(c)) { i++; continue; }
                 break;
             }
             if (i >= n) break;
 
             final int start = i;
-            while (i < n) {
-                final char c = names.charAt(i);
-                if (c == '|') break;
-                i++;
-            }
+            while (i < n && names.charAt(i) != '|') i++;
             int end = i;
-            // trim right
-            while (end > start && isWs(names.charAt(end - 1))) end--;
+            while (end > start && isSpace(names.charAt(end - 1))) end--;
 
             if (end > start) {
-                // store local-name only (strip any prefix the user might include)
                 final int p = names.lastIndexOf(':', end - 1);
                 final int ls = (p >= start) ? (p + 1) : start;
                 if (end > ls) set.add(names.substring(ls, end));
@@ -282,17 +185,91 @@ public final class MarkupBoundaryFilter extends TokenFilter
         return set;
     }
 
-    private static boolean isWs(char c) {
-        return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+    /** Clears any pending boundary and buffered token at end of stream. */
+    @Override
+    public void end() throws IOException
+    {
+        super.end();
+        pendingBoundaryPos = 0;
+        pendingBoundaryState = null;
+        deferredVisibleToken = null;
     }
 
-    // -----------------------------------------------------------------------
-    // Boundary handling (unchanged semantics)
-    // -----------------------------------------------------------------------
+    /**
+     * Returns the next token. Markup tokens are dropped, except configured closing tags, which are
+     * converted to a single coalesced {@value #PARA_MARK}/{@value #SECTION_MARK} boundary emitted just
+     * before the next visible token (or at end of stream). When a boundary must precede a visible token,
+     * that visible token is buffered and returned on the following call.
+     */
+    @Override
+    public boolean incrementToken() throws IOException
+    {
+        if (deferredVisibleToken != null) {
+            restoreState(deferredVisibleToken);
+            deferredVisibleToken = null;
+            return true;
+        }
+
+        while (input.incrementToken()) {
+            if (posAtt.getPos() != XML.code) {
+                if (pendingBoundaryPos != 0) {
+                    deferredVisibleToken = captureState();
+                    emitPendingBoundary();
+                }
+                return true;
+            }
+
+            final int boundaryPos = closeTagBoundaryPos();
+            if (boundaryPos != 0) {
+                requestBoundary(boundaryPos);
+            }
+            // markup token consumed (boundary requested, or dropped); keep scanning
+        }
+
+        if (pendingBoundaryPos != 0) {
+            emitPendingBoundary();
+            return true;
+        }
+        return false;
+    }
+
+    /** Clears any pending boundary and buffered token so the filter can be reused. */
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
+        pendingBoundaryPos = 0;
+        pendingBoundaryState = null;
+        deferredVisibleToken = null;
+    }
 
     /**
-     * Registers a structural boundary to emit later.
-     * Coalesces consecutive boundaries; section wins over paragraph.
+     * Classifies the current term as a markup token and, if it is a configured closing tag, returns the
+     * matching boundary POS code. Section wins over paragraph when both sets would match.
+     *
+     * @return {@code PUNCTsection.code}, {@code PUNCTpara.code}, or 0 when the tag maps to no boundary.
+     */
+    private int closeTagBoundaryPos()
+    {
+        final char[] buf = termAtt.buffer();
+        final int len = termAtt.length();
+
+        if (classifyTag(buf, len) != TagKind.CLOSE) return 0;
+
+        final long span = readLocalTagNameSpan(buf, len, /* from */ 2); // after "</"
+        final int start = (int) (span >>> 32);
+        final int end = (int) span;
+        if (end <= start) return 0;
+
+        final int nameLen = end - start;
+        if (sectionOnClose.contains(buf, start, nameLen)) return PUNCTsection.code;
+        if (paraOnClose.contains(buf, start, nameLen)) return PUNCTpara.code;
+        return 0;
+    }
+
+    /**
+     * Registers a structural boundary to emit later. Consecutive requests are coalesced;
+     * a section boundary overrides a pending paragraph boundary.
      */
     private void requestBoundary(final int posCode)
     {
@@ -304,7 +281,6 @@ public final class MarkupBoundaryFilter extends TokenFilter
             return;
         }
 
-        // Coalesce: keep strongest boundary (section > paragraph).
         if (pendingBoundaryPos == PUNCTpara.code && posCode == PUNCTsection.code) {
             pendingBoundaryPos = posCode;
             pendingBoundaryState = captureState();
@@ -312,8 +288,8 @@ public final class MarkupBoundaryFilter extends TokenFilter
     }
 
     /**
-     * Emits the currently pending structural boundary by restoring the state of the triggering
-     * tag token and overwriting its term/POS with a synthetic boundary marker.
+     * Emits the pending structural boundary by restoring the triggering tag's captured state and
+     * overwriting its term/POS with the synthetic boundary marker. Resets the pending state.
      */
     private void emitPendingBoundary()
     {
@@ -332,10 +308,6 @@ public final class MarkupBoundaryFilter extends TokenFilter
         pendingBoundaryPos = 0;
     }
 
-    // -----------------------------------------------------------------------
-    // Tag parsing helpers (allocation-free)
-    // -----------------------------------------------------------------------
-
     private enum TagKind { OPEN, CLOSE, DECL_OR_COMMENT, INVALID }
 
     private static TagKind classifyTag(final char[] buf, final int len)
@@ -350,34 +322,36 @@ public final class MarkupBoundaryFilter extends TokenFilter
     }
 
     /**
-     * Reads local-name span from a tag token.
-     * @param from index right after '&lt;' (1) or '&lt;/' (2)
-     * @return packed long: (start&lt;&lt;32) | end, end exclusive; or (0,0) on failure.
+     * Reads the local-name span from a tag token.
+     *
+     * @param tag tag buffer
+     * @param n tag length
+     * @param from index right after {@code <} (1) or {@code </} (2)
+     * @return packed long {@code (start << 32) | end} (end exclusive), or {@code 0L} on failure.
      */
     private static long readLocalTagNameSpan(final char[] tag, final int n, final int from)
     {
         int i = from;
-        while (i < n && isHtmlSpace(tag[i])) i++;
+        while (i < n && isSpace(tag[i])) i++;
         if (i >= n) return 0L;
 
         final int nameStart = i;
         while (i < n) {
             final char ch = tag[i];
-            if (ch == '>' || ch == '/' || isHtmlSpace(ch)) break;
+            if (ch == '>' || ch == '/' || isSpace(ch)) break;
             i++;
         }
         final int nameEnd = i;
         if (nameEnd <= nameStart) return 0L;
 
-        // local-name after last ':'
         int localStart = nameStart;
         for (int k = nameStart; k < nameEnd; k++) {
             if (tag[k] == ':') localStart = k + 1;
         }
-        return (((long)localStart) << 32) | (nameEnd & 0xFFFFFFFFL);
+        return (((long) localStart) << 32) | (nameEnd & 0xFFFFFFFFL);
     }
 
-    private static boolean isHtmlSpace(final char c)
+    private static boolean isSpace(final char c)
     {
         return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
     }

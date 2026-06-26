@@ -143,7 +143,7 @@ public class FrenchLemmaRun
     
     private static POSModel loadModel() throws IOException {
         final String spec = "/com/github/oeuvres/alix/fr/opennlp-fr-ud-gsd-pos-1.3-2.5.4.bin";
-        InputStream in = FrenchPosTaggingFilterDemo.class.getResourceAsStream(spec);
+        InputStream in = FrenchMweFilterDemo.class.getResourceAsStream(spec);
         try (InputStream autoClose = in) {
             return new POSModel(autoClose);
         }

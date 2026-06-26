@@ -522,13 +522,13 @@ public class MarkupTokenizer extends Tokenizer
         // dotted-abbrev check starts after the last apostrophe, if any
         int from = 0;
         for (int i = len - 2; i > 0; i--) {
-            if (buf[i - 1] == '\'') {
+            if (buf[i - 1] == '\'' || buf[i - 1] == '’') {
                 from = i;
                 break;
             }
         }
         if (looksLikeDottedAbbrev(buf, from, len)) return true;
-        return keepTrailingDot.contains(buf, 0, len - 1);
+        return keepTrailingDot.contains(buf, from, len - 1);
     }
 
     /**
