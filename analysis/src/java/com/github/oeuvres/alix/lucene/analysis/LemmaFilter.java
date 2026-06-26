@@ -140,7 +140,7 @@ public final class LemmaFilter extends TokenFilter
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-    // private final LemmaAttribute lemAtt = addAttribute(LemmaAttribute.class);
+    private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
 
     public LemmaFilter(TokenStream input, LemmaLexicon lexicon)
     {
@@ -173,6 +173,7 @@ public final class LemmaFilter extends TokenFilter
     @Override
     public boolean incrementToken() throws IOException
     {
+        lemmaAtt.setEmpty();
         if (!input.incrementToken()) return false;
         
         if (keywordAtt.isKeyword()) return true;
@@ -183,7 +184,6 @@ public final class LemmaFilter extends TokenFilter
         }
         // unify numbers
         if (Upos.isNum(posId)) {
-            termAtt.setLength(0).append("#");
             return true;
         }
         
@@ -198,7 +198,7 @@ public final class LemmaFilter extends TokenFilter
             probe.copyFrom(termAtt).toLowerCase();
             termId = lexicon.ord(probe);
             if (termId < 0) return true;
-            // copy lower case, in case of no lemma found
+            // surface is known as common word, normalize case
             termAtt.setEmpty().append(probe);
         }
 
@@ -213,11 +213,11 @@ public final class LemmaFilter extends TokenFilter
         // Nothing usable
         if (lemmaId < 0 || lemmaId == termId) return true;
 
-        // Copy lemma to term for indexation
+        // Copy lemma proposition in lemmaAtt
         final int len = lexicon.length(lemmaId);
-        final char[] dst = termAtt.resizeBuffer(len);
+        final char[] dst = lemmaAtt.resizeBuffer(len);
         lexicon.copy(lemmaId, dst, 0);
-        termAtt.setLength(len);
+        lemmaAtt.setLength(len);
 
         return true;
     }

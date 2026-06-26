@@ -11,7 +11,7 @@ import org.apache.lucene.util.Attribute;
  *
  * For non-XML tokens, producers should set event to {@link #NONE} and clear the buffer.
  */
-public interface ElementAttribute extends Attribute, CharSlot
+public interface ElementAttribute extends Attribute, CharAtt
 {
     /** Not an element tag token (or unknown). */
     byte NONE  = 0;

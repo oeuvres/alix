@@ -8,7 +8,7 @@ import org.apache.lucene.util.AttributeReflector;
  *
  * Copies both the char buffer (local-name) and the event byte.
  */
-public final class ElementAttributeImpl extends AbstractCharSlotAttributeImpl implements ElementAttribute
+public final class ElementAttributeImpl extends CharAttImpl implements ElementAttribute
 {
     private byte event = NONE;
 

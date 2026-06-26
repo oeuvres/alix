@@ -43,6 +43,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.util.MweLexicon;
 
 
@@ -86,6 +87,8 @@ public final class MweFilter extends TokenFilter
     private final CharTermAttribute          termAtt     = addAttribute(CharTermAttribute.class);
     private final OffsetAttribute            offsetAtt   = addAttribute(OffsetAttribute.class);
     private final TypeAttribute              typeAtt     = addAttribute(TypeAttribute.class);
+    /** term before lemmatization */
+    private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
 
     private boolean inputExhausted = false;
 
