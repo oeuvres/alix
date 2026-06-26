@@ -35,4 +35,15 @@ package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 
 import org.apache.lucene.util.Attribute;
 
+
+/**
+ * Carries an optional canonical lemma alongside a token's normalized form.
+ *
+ * <p>{@link CharTermAttribute} remains the authoritative normalized form.
+ * This attribute is sparse: an empty value means that no distinct lemma
+ * override is available and downstream filters must use
+ * {@code CharTermAttribute}.</p>
+ *
+ * <p>The implementation is {@link LemmaAttributeImpl}.</p>
+ */
 public interface LemmaAttribute extends Attribute, CharAtt {}

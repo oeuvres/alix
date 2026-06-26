@@ -43,6 +43,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import static com.github.oeuvres.alix.common.Upos.*;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
 
@@ -107,6 +108,10 @@ public class CleanupFilter extends TokenFilter
     
     /** Linguistic category (short code), see {@link Upos}. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+    
+    /** Optional lemma override populated by the upstream lemmatizer. */
+    private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
+
     
     /**
      * Pending positional gaps to be applied to the next emitted token.
@@ -331,6 +336,11 @@ public class CleanupFilter extends TokenFilter
         */
         
         // final char last = termAtt.charAt(len - 1);
+        
+        // copy lemma
+        if (!lemmaAtt.isEmpty()) {
+            termAtt.copyBuffer(lemmaAtt.buffer(), 0, lemmaAtt.length());
+        }
         
         // Default: keep token as-is (or rewritten by upstream filters).
         return true;

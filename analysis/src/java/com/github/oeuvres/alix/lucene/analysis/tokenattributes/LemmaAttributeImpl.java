@@ -10,14 +10,6 @@
  * with Lucene https://lucene.apache.org/core/
  * including linguistic expertness for French,
  * available under Apache license.
- * 
- * Alix has been started in 2009 under the javacrim project
- * https://sf.net/projects/javacrim/
- * for a java course at Inalco  http://www.er-tim.fr/
- * Alix continues the concepts of SDX under another licence
- * «Système de Documentation XML»
- * 2000-2010  Ministère de la culture et de la communication (France), AJLSM.
- * http://savannah.nongnu.org/projects/sdx/
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,9 +27,25 @@ package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 
 import org.apache.lucene.util.AttributeReflector;
 
-public final class LemmaAttributeImpl extends CharAttImpl implements LemmaAttribute {
-  @Override
-  public void reflectWith(AttributeReflector reflector) {
-    reflector.reflect(LemmaAttribute.class, "inflected", value());
-  }
+/**
+ * Default mutable implementation of {@link LemmaAttribute}.
+ *
+ * <p>The class follows Lucene's attribute naming convention, allowing the
+ * default attribute factory to resolve {@link LemmaAttribute} to
+ * {@code LemmaAttributeImpl}. Character storage and state-copy semantics are
+ * inherited from {@link CharAttImpl}.</p>
+ */
+public final class LemmaAttributeImpl extends CharAttImpl implements LemmaAttribute
+{
+    @Override
+    public void reflectWith(AttributeReflector reflector) {
+        reflector.reflect(LemmaAttribute.class, "inflected", value());
+    }
+    /**
+     * Constructs an empty lemma attribute.
+     */
+    public LemmaAttributeImpl()
+    {
+        super();
+    }
 }

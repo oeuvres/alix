@@ -48,119 +48,187 @@ import com.github.oeuvres.alix.util.MweLexicon;
 
 
 /**
- * A {@link TokenFilter} that merges multi-word expressions (MWEs) into single tokens,
- * using a {@link MweLexicon} for detection.
+ * Merges multi-word expressions (MWEs) into single tokens using a
+ * {@link MweLexicon}.
  *
- * <p>Matching strategy: maximal munch (longest match). When "New York" and "New York City"
- * are both registered, "New York City" wins if all three tokens are present.</p>
+ * <p>The filter evaluates two deterministic paths over the same lexicon:</p>
  *
- * <p>Output semantics: replace-only. The N component tokens are replaced by one merged
- * token carrying the canonical form. {@link PositionIncrementAttribute} is taken from the
- * first component; {@link OffsetAttribute} spans from first to last component;
- * {@link TypeAttribute} is set to {@link #TYPE_MWE}. Unigram positions for component
- * words are not preserved (no graph output).</p>
+ * <ul>
+ *   <li>the normalized-form path reads {@link CharTermAttribute};</li>
+ *   <li>the lemma path reads {@link LemmaAttribute} when non-empty and otherwise
+ *       falls back to {@link CharTermAttribute}.</li>
+ * </ul>
  *
- * <p>The {@link MweLexicon} must be frozen before being passed to this filter.
- * The analyzer used to build the lexicon must match the filters upstream of this one
- * in the analysis chain — normalization (lowercasing, folding) must already have been
- * applied to tokens before they reach this filter.</p>
+ * <p>This permits the same lexicon to recognize both fixed-form expressions,
+ * such as {@code a priori}, and inflection-independent expressions, such as
+ * {@code avoir lieu}. For a token whose normalized form is {@code a} and whose
+ * lemma is {@code avoir}, the form path consumes {@code a}, while the lemma path
+ * consumes {@code avoir}.</p>
  *
- * <p>Chain position: after normalization (lowercase, diacritics), before stop-word
- * removal and stemming. MWEs frequently contain stop words ("state of the art",
- * "fin de siècle"); removing stops first destroys the pattern.</p>
+ * <p>Matching uses maximal munch: the longest accepted expression wins. If the
+ * two paths accept expressions of equal length, the normalized-form match wins
+ * because it is the more specific analysis.</p>
+ *
+ * <p>The filter has replace-only output semantics. The component tokens are
+ * replaced by one token carrying the canonical form stored in the lexicon.
+ * {@link PositionIncrementAttribute} is inherited from the first component,
+ * {@link OffsetAttribute} spans the complete expression, and
+ * {@link TypeAttribute} is set to {@link #TYPE_MWE}. The merged token has an
+ * empty {@link LemmaAttribute}, because its term is already canonical.</p>
+ *
+ * <p>The filter must run after normalization and lemmatization annotation, but
+ * before destructive lemma projection, stop-word removal, or stemming.</p>
  */
 public final class MweFilter extends TokenFilter
 {
+    /** Token type assigned to compounded multi-word expressions. */
     public static final String TYPE_MWE = "MWE";
 
-    private final MweLexicon lexicon;
+    /** Whether the upstream input has been exhausted. */
+    private boolean inputExhausted;
 
-    /** Ring-buffer of captured token states; capacity = lexicon.maxLen() + 1. */
-    private final TokenStateQueue queue;
-
-    /**
-     * Automaton state recorded after consuming each buffered slot.
-     * Parallel to the queue's logical indices; sized to queue capacity.
-     */
-    private final int[] autoState;
-
-    private final CharTermAttribute          termAtt     = addAttribute(CharTermAttribute.class);
-    private final OffsetAttribute            offsetAtt   = addAttribute(OffsetAttribute.class);
-    private final TypeAttribute              typeAtt     = addAttribute(TypeAttribute.class);
-    /** term before lemmatization */
+    /** Optional lemma override populated by the upstream lemmatizer. */
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
 
-    private boolean inputExhausted = false;
+    /** Frozen lexicon and automaton used for both matching paths. */
+    private final MweLexicon lexicon;
+
+    /** Output offsets. */
+    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+
+    /** Buffered token states, including one look-ahead token. */
+    private final TokenStateQueue queue;
+
+    /** Normalized token text. */
+    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+
+    /** Output token type. */
+    private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
 
     /**
-     * @param input   upstream token stream; normalization must already be applied
-     * @param lexicon frozen MWE lexicon matching the upstream normalization
+     * Constructs an MWE filter.
+     *
+     * @param input upstream token stream containing normalized forms and optional
+     *              lemma annotations
+     * @param lexicon MWE lexicon; it is frozen by this constructor
      */
     public MweFilter(final TokenStream input, final MweLexicon lexicon)
     {
         super(input);
-        lexicon.freeze(); // pack IntAutomaton
-        this.lexicon   = lexicon;
-        final int cap  = lexicon.maxLen() + 1;
-        this.queue     = new TokenStateQueue(cap, this);
-        this.autoState = new int[cap];
+        lexicon.freeze();
+        this.lexicon = lexicon;
+        this.queue = new TokenStateQueue(lexicon.maxLen() + 1, this);
     }
 
+    /**
+     * Emits the next ordinary or compounded token.
+     *
+     * @return {@code true} when a token was emitted, otherwise {@code false}
+     * @throws IOException if the upstream stream cannot be read
+     */
     @Override
     public boolean incrementToken() throws IOException
     {
-        // Re-walk any tokens left in the queue from the previous cycle, then
-        // continue reading from input. This unified loop handles both the tail
-        // of a previous match and fresh input without a separate drain phase,
-        // and allows a new MWE to start on buffered tail tokens.
-
-        int state    = lexicon.root();
+        int formState = lexicon.root();
+        int lemmaState = lexicon.root();
         int matchPos = -1;
         int matchOrd = -1;
+        boolean dead = false;
 
-        // Phase 1: re-walk tokens already buffered (tail from previous cycle).
+        /*
+         * Re-walk buffered tail tokens. A previous call may have consumed
+         * look-ahead beyond the emitted token.
+         */
         for (int i = 0; i < queue.size(); i++) {
-            final AttributeSource slot     = queue.get(i);
-            final CharTermAttribute slotTerm = slot.getAttribute(CharTermAttribute.class);
-            state = lexicon.step(state, slotTerm.buffer(), slotTerm.length());
-            autoState[i] = state;
-            if (state < 0) {
-                // Automaton dead inside buffered tail: emit head as-is, leave rest
-                // for the next call's re-walk.
-                queue.removeFirst(this);
-                return true;
+            final AttributeSource slot = queue.get(i);
+
+            formState = stepForm(formState, slot);
+            lemmaState = stepLemma(lemmaState, slot);
+
+            if (formState < 0 && lemmaState < 0) {
+                dead = true;
+                break;
             }
-            final int acc = lexicon.accept(state);
-            if (acc >= 0) { matchPos = i; matchOrd = acc; }
+
+            /*
+             * Record lemma first and form second: when both accept at this
+             * position, the exact normalized-form match takes precedence.
+             */
+            if (lemmaState >= 0) {
+                final int accepted = lexicon.accept(lemmaState);
+                if (accepted >= 0) {
+                    matchPos = i;
+                    matchOrd = accepted;
+                }
+            }
+            if (formState >= 0) {
+                final int accepted = lexicon.accept(formState);
+                if (accepted >= 0) {
+                    matchPos = i;
+                    matchOrd = accepted;
+                }
+            }
         }
 
-        // Phase 2: read new tokens from input.
-        while (!inputExhausted) {
+        /*
+         * Continue with fresh input until both paths die or input ends.
+         */
+        while (!dead && !inputExhausted) {
             if (!input.incrementToken()) {
                 inputExhausted = true;
                 break;
             }
+
             queue.addLast(this);
-            final int slot = queue.size() - 1;
-            state = lexicon.step(state, termAtt.buffer(), termAtt.length());
-            autoState[slot] = state;
-            if (state < 0) break;   // automaton dead; record what we have
-            final int acc = lexicon.accept(state);
-            if (acc >= 0) { matchPos = slot; matchOrd = acc; }
+            final int pos = queue.size() - 1;
+            final AttributeSource slot = queue.get(pos);
+
+            formState = stepForm(formState, slot);
+            lemmaState = stepLemma(lemmaState, slot);
+
+            if (formState < 0 && lemmaState < 0) {
+                dead = true;
+                break;
+            }
+
+            if (lemmaState >= 0) {
+                final int accepted = lexicon.accept(lemmaState);
+                if (accepted >= 0) {
+                    matchPos = pos;
+                    matchOrd = accepted;
+                }
+            }
+            if (formState >= 0) {
+                final int accepted = lexicon.accept(formState);
+                if (accepted >= 0) {
+                    matchPos = pos;
+                    matchOrd = accepted;
+                }
+            }
         }
 
-        if (queue.isEmpty()) return false;  // input exhausted and nothing buffered
+        if (queue.isEmpty()) {
+            return false;
+        }
 
         if (matchPos >= 0) {
             emitMerged(matchPos, matchOrd);
             return true;
         }
 
-        // No match: emit head as-is; tail stays for the next call.
+        /*
+         * No expression begins at the queue head. Emit that token unchanged;
+         * later buffered tokens remain available as possible MWE starts.
+         */
         queue.removeFirst(this);
         return true;
     }
 
+    /**
+     * Resets this filter and discards all buffered states.
+     *
+     * @throws IOException if the upstream stream cannot be reset
+     */
     @Override
     public void reset() throws IOException
     {
@@ -170,30 +238,87 @@ public final class MweFilter extends TokenFilter
     }
 
     /**
-     * Emits the merged token for the match spanning queue slots {@code [0..matchPos]}.
-     * Restores all attributes from slot 0 (preserving posIncr, startOffset, etc.),
-     * then overrides term with the canonical form and endOffset with that of slot matchPos.
+     * Emits one canonical token for an accepted expression.
+     *
+     * @param matchPos zero-based position of the final matched queue slot
+     * @param matchOrd ordinal of the canonical expression in the lexicon
      */
     private void emitMerged(final int matchPos, final int matchOrd)
     {
-        // Capture endOffset before restoreTo overwrites all attributes.
         final int endOffset = queue.get(matchPos)
-                                   .getAttribute(OffsetAttribute.class)
-                                   .endOffset();
+            .getAttribute(OffsetAttribute.class)
+            .endOffset();
 
-        // Restore all attributes from first component (posIncr, startOffset, flags, ...).
+        /*
+         * Preserve the first component's position increment, start offset,
+         * flags, and other attributes.
+         */
         queue.restoreTo(this, 0);
 
-        final int len = lexicon.formLength(matchOrd);
-        final char[] buf = termAtt.resizeBuffer(len);
-        lexicon.copy(matchOrd, buf, 0);
-        termAtt.setLength(len);
+        /*
+         * The canonical MWE is stored directly in termAtt. Do not leak the
+         * first component's lemma into the compounded token.
+         */
+        lemmaAtt.setEmpty();
 
-        // Fix endOffset and type.
+        final int length = lexicon.formLength(matchOrd);
+        final char[] buffer = termAtt.resizeBuffer(length);
+        lexicon.copy(matchOrd, buffer, 0);
+        termAtt.setLength(length);
+
         offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
         typeAtt.setType(TYPE_MWE);
 
-        // Discard matched slots; tail (if any) stays in queue for next call.
-        for (int i = 0; i <= matchPos; i++) queue.removeFirst();
+        for (int i = 0; i <= matchPos; i++) {
+            queue.removeFirst();
+        }
+    }
+
+    /**
+     * Advances the normalized-form automaton path with a buffered token.
+     *
+     * @param state current automaton state
+     * @param slot buffered token attributes
+     * @return next automaton state, or a negative value if the path is dead
+     */
+    private int stepForm(final int state, final AttributeSource slot)
+    {
+        if (state < 0) {
+            return state;
+        }
+
+        final CharTermAttribute form =
+            slot.getAttribute(CharTermAttribute.class);
+
+        return lexicon.step(state, form.buffer(), form.length());
+    }
+
+    /**
+     * Advances the canonical lemma path with a buffered token.
+     *
+     * <p>An empty lemma channel means that the normalized form is already the
+     * canonical representation or that no lemma is available.</p>
+     *
+     * @param state current automaton state
+     * @param slot buffered token attributes
+     * @return next automaton state, or a negative value if the path is dead
+     */
+    private int stepLemma(final int state, final AttributeSource slot)
+    {
+        if (state < 0) {
+            return state;
+        }
+
+        final LemmaAttribute lemma =
+            slot.getAttribute(LemmaAttribute.class);
+
+        if (lemma.length() > 0) {
+            return lexicon.step(state, lemma.buffer(), lemma.length());
+        }
+
+        final CharTermAttribute form =
+            slot.getAttribute(CharTermAttribute.class);
+
+        return lexicon.step(state, form.buffer(), form.length());
     }
 }
