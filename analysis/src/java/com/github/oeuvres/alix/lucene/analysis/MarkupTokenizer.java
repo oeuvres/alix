@@ -528,7 +528,7 @@ public class MarkupTokenizer extends Tokenizer
             }
         }
         if (looksLikeDottedAbbrev(buf, from, len)) return true;
-        return keepTrailingDot.contains(buf, from, len - 1);
+        return keepTrailingDot.contains(buf, from, len - from - 1);
     }
 
     /**
