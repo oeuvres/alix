@@ -1139,6 +1139,7 @@ admonesté/F.	po:ADJ
 admonester/a0p+	po:VERB
 admoniteur/Fc	po:NOUN po:ADJ
 admonition/S.	po:NOUN
+ADN	po:NOUN
 adné/F.	po:NOUN po:ADJ
 ado/S.	po:NOUN
 adobe/S.	po:NOUN
@@ -4973,6 +4974,7 @@ armure/S.	po:NOUN
 armuré/F.	po:ADJ
 armurerie/S.	po:NOUN
 armurier/F.	po:NOUN po:ADJ
+ARN	po:NOUN
 arnaché/F.	po:ADJ
 arnacher/a0p+	po:VERB
 arnaque/S.	po:NOUN
@@ -60333,6 +60335,7 @@ qat/S.	po:NOUN
 qatari/F.	po:NOUN po:ADJ
 qatarien/F+	po:NOUN po:ADJ
 qbit/S.	po:NOUN
+qu’est-ce	po:PRON
 qua	po:ADV
 quad/S.	po:NOUN
 quadra	po:ADJ is:inv

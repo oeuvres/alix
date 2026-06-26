@@ -92,7 +92,7 @@ public final class FrenchPosTaggingFilterDemo {
                     I. Meyerson,Ignace Meyerson,NamePers
                     I Meyerson,Ignace Meyerson,NamePers
                 """;
-                CSVReader csv = new CSVReader(new StringReader(names), ',', 2);
+                CSVReader csv = new CSVReader(new StringReader(names));
                 WordTokenizer wordTokenizer = new FrenchCliticTokenizer();
                 try {
                     while (csv.readRow()) {

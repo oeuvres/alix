@@ -57,6 +57,8 @@ dec.,décembre
 Déc.,décembre
 déc.,décembre
 déja,déjà
+dist.,distance
+Dist.,distance
 dix-huitième,18e
 dix-neuvième,19e
 dix-septième,17e
@@ -81,7 +83,6 @@ EXP,exp.
 Exp.,exp.
 EXP.,exp.
 Expér.,exp.
-fasc.,REF
 Fasc.,fasc.
 fev,février
 fév,février
@@ -181,6 +182,8 @@ mme,madame
 Mmes,mesdames
 mmes,mesdames
 Moyen-Age,Moyen Âge
+Moy.,moyenne
+moy.,moyenne
 Mr,monsieur
 Mʳ,monsieur
 mr,monsieur
@@ -242,7 +245,6 @@ sizième,sixième
 St,Saint
 Ste,Sainte
 techn.,technique
-tel.,tél
 tél.,tél
 télép.,tél
 teleph.,tél

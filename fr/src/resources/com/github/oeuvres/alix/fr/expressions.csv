@@ -101,11 +101,10 @@ angle obtus,,NOUN
 à perte de vue,,ADV
 à peu près,,ADV
 a posteriori,,ADV
-à posteriori,,ADV
+à posteriori,a posteriori,ADV
 à présent,,ADV
-a priori,apriori,ADV
-a priori,apriori,NOUN
-à priori,apriori,ADV
+a priori,,ADV
+à priori,a priori,ADV
 à propos de,,ADP
 à proprement parler,,ADV
 à quoi bon,,ADVquest
@@ -466,7 +465,6 @@ d'après,,ADP
 d'au milieu de,,ADP
 d'avec,,ADP
 d'entre,,ADP
-d'ici,,ADP
 dame patronnesse,,NOUN
 dames patronnesses,,NOUN
 dans l'optique de,,ADP
@@ -864,6 +862,7 @@ juste ciel,,EXCL
 Juste ciel,,EXCL
 justice distributive,,NOUN
 justice rétributive,,NOUN
+Karl Marx,Marx,PROPN
 kung fu,,NOUN
 kyrie eleison,,NOUN
 l'un,,PRONindef
@@ -916,6 +915,8 @@ livre sterling,,NOUN
 livres de rente,,NOUN
 livres sterling,livre sterling,NOUN
 loc. cit.,,NOUN
+loc. cit,loc. cit.,NOUN
+loc cit,loc. cit.,NOUN
 loin de,,ADP
 loi naturelle,,NOUN
 loi physique,,NOUN
@@ -1033,6 +1034,7 @@ negro spiritual,,NOUN
 negro spirituals,,NOUN
 nerf de bœuf,,NOUN
 new wave,,NOUN
+New York,,PROPN
 night club,,NOUN
 nihil obstat,,ADV
 niveau de vie,,NOUN

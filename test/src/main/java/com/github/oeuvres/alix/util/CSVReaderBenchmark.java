@@ -65,7 +65,7 @@ public class CSVReaderBenchmark
         long rows = 0;
         long chars = 0;
 
-        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv", ',', 3)) {
+        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv")) {
             while (csv.readRow()) {
                 rows++;
                 // consume some data to prevent dead-code elimination
@@ -92,7 +92,7 @@ public class CSVReaderBenchmark
                 throw new IllegalStateException("Missing resource: " + resourcePath);
             }
             try (Reader r = new InputStreamReader(is, StandardCharsets.UTF_8)) {
-                CSVReader csv = new CSVReader(r, separator);
+                CSVReader csv = new CSVReader(r).separator(separator);
                 long rows = 0;
                 long chars = 0;
 
@@ -123,7 +123,7 @@ public class CSVReaderBenchmark
         // 1<<19 =
         CharArraySet set = new CharArraySet(1 << 19, false);
 
-        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv", ',', 3)) {
+        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv")) {
             while (csv.readRow()) {
                 if (csv.getCellCount() < 3)
                     continue;
@@ -149,7 +149,7 @@ public class CSVReaderBenchmark
         // 1<<19 =
         HashMap<String, String> map = new HashMap<>(1 << 19);
 
-        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv", ',', 3)) {
+        try (CSVReader csv = new CSVReader(CSVReaderBenchmark.class, "/bench/word.csv")) {
             while (csv.readRow()) {
                 if (csv.getCellCount() < 3)
                     continue;
