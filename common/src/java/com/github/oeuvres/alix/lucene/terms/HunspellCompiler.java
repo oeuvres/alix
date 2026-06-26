@@ -64,7 +64,7 @@ import java.util.Set;
  * decision, left to the {@code Dictionary} parser the consumer runs. Input streams are read once and not closed.
  * </p>
  * <p>
- * As a command-line tool it has two modes: {@code compile} writes the sidecars, {@code oov} writes the
+ * As a command-line tool it has two modes: {@code compile} writes the sidecars, {@code unknowns} writes the
  * out-of-vocabulary listing to standard output.
  * </p>
  *
@@ -207,7 +207,7 @@ public final class HunspellCompiler {
         }
 
         final TermsEnum scan = terms.iterator();
-        final List<Oov> oov = new ArrayList<>();
+        final List<Unknown> unknowns = new ArrayList<>();
         BytesRef term;
         while ((term = scan.next()) != null) {
             final String form = term.utf8ToString();
@@ -218,34 +218,34 @@ public final class HunspellCompiler {
             if (freq < 0) {
                 freq = scan.docFreq();
             }
-            oov.add(new Oov(form, freq));
+            unknowns.add(new Unknown(form, freq));
         }
-        oov.sort(Comparator.comparingLong(Oov::freq).reversed().thenComparing(Oov::term));
-        for (final Oov o : oov) {
+        unknowns.sort(Comparator.comparingLong(Unknown::freq).reversed().thenComparing(Unknown::term));
+        for (final Unknown o : unknowns) {
             out.append(o.term()).append('\t').append(Long.toString(o.freq())).append('\n');
         }
-        return oov.size();
+        return unknowns.size();
     }
 
     /**
      * Command-line entry point with two modes over an already-committed index. {@code compile} writes the field
-     * Hunspell sidecars; {@code oov} writes the out-of-vocabulary listing to standard output. Status lines go to
-     * standard error so the {@code oov} data stream stays clean for redirection.
+     * Hunspell sidecars; {@code unknowns} writes the out-of-vocabulary listing to standard output. Status lines go to
+     * standard error so the {@code unknowns} data stream stays clean for redirection.
      *
      * @param args {@code compile <indexDir> <field> <aff> <dic> [<dic>...]} or
-     *             {@code oov <indexDir> <field> <dic> [<dic>...]}
+     *             {@code unknowns <indexDir> <field> <dic> [<dic>...]}
      * @throws IOException on directory, read, or write failure
      */
     public static void main(final String[] args) throws IOException {
         final String mode = (args.length > 0) ? args[0] : "";
         if (mode.equals("compile") && args.length >= 5) {
             runCompile(args);
-        } else if (mode.equals("oov") && args.length >= 4) {
-            runOov(args);
+        } else if (mode.equals("unknowns") && args.length >= 4) {
+            runUnknowns(args);
         } else {
             System.err.println("usage:");
             System.err.println("  HunspellCompiler compile <indexDir> <field> <aff> <dic> [<dic>...]");
-            System.err.println("  HunspellCompiler oov <indexDir> <field> <dic> [<dic>...]");
+            System.err.println("  HunspellCompiler unknowns <indexDir> <field> <dic> [<dic>...]");
             System.exit(2);
         }
     }
@@ -408,14 +408,14 @@ public final class HunspellCompiler {
     }
 
     /**
-     * Runs the {@code oov} CLI mode: opens the index and streams, writes the out-of-vocabulary listing to
+     * Runs the {@code unknowns} CLI mode: opens the index and streams, writes the out-of-vocabulary listing to
      * standard output as UTF-8, and reports the count on standard error. Opened streams are closed here;
      * standard output is flushed but not closed.
      *
      * @param args full argument vector, {@code args[0]} being the mode token
      * @throws IOException on directory, read, or write failure
      */
-    private static void runOov(final String[] args) throws IOException {
+    private static void runUnknowns(final String[] args) throws IOException {
         final Path indexDir = Path.of(args[1]);
         final String field = args[2];
         final int dicCount = args.length - 3;
@@ -461,6 +461,6 @@ public final class HunspellCompiler {
      * @param term indexed term form absent from every input dictionary
      * @param freq total corpus frequency, or document frequency when term frequencies are unavailable
      */
-    private record Oov(String term, long freq) {
+    private record Unknown(String term, long freq) {
     }
 }
