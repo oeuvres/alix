@@ -2,6 +2,7 @@ package com.github.oeuvres.alix.lucene.terms;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -169,6 +170,121 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                     "No ranking: call rank(...), ranking(...), or setRanking(...) first");
         }
         return new TermIter();
+    }
+
+    /**
+     * Moves selected terms to the start of the current ranking.
+     *
+     * <p>
+     * Selected terms are sorted with {@code comparator}; the remaining terms
+     * retain their previous relative order. A selected term is inserted even
+     * when it was outside the retained ranking, provided that it occurs in the
+     * current population. Duplicate ids are ignored.
+     * </p>
+     *
+     * <p>
+     * This method does not alter term counts or scores. If highlights are
+     * attached to ranks, they are moved with their terms.
+     * </p>
+     *
+     * @param termIds selected dense term ids to promote
+     * @param comparator ordering applied to the promoted terms
+     * @return this instance
+     * @throws IllegalArgumentException if a term id is outside the vocabulary
+     * @throws IllegalStateException if no ranking has been produced or the
+     *         ranking is shorter than the number of promoted terms
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    public TopTerms promote(
+        final int[] termIds,
+        final Comparator<TermValue> comparator)
+    {
+        final int[] ids = Objects.requireNonNull(termIds, "termIds");
+        final Comparator<TermValue> order =
+            Objects.requireNonNull(comparator, "comparator");
+
+        if (rank2termId == null) {
+            throw new IllegalStateException(
+                "No ranking: call rank(...), ranking(...), or setRanking(...) first");
+        }
+        if (ids.length == 0) {
+            return this;
+        }
+
+        final int vocabSize = fieldStats.vocabSize();
+        final boolean[] promoted = new boolean[vocabSize];
+        final TermValue[] values = new TermValue[ids.length];
+        int valueCount = 0;
+
+        for (int index = 0; index < ids.length; index++) {
+            final int termId = ids[index];
+            checkTermId(termId, "termIds[" + index + "]");
+
+            if (promoted[termId] || termFreq[termId] == 0L) {
+                continue;
+            }
+
+            promoted[termId] = true;
+            values[valueCount++] = termValue(termId);
+        }
+
+        if (valueCount == 0) {
+            return this;
+        }
+
+        Arrays.sort(values, 0, valueCount, order);
+
+        final int oldSize = rank2termId.length;
+        if (valueCount > oldSize) {
+            throw new IllegalStateException(
+                "Ranking size " + oldSize + " is smaller than promoted term count "
+                    + valueCount);
+        }
+
+        final int[] newRanking = new int[oldSize];
+        final String[] newHilites = hilites == null ? null : new String[oldSize];
+        final String[] hiliteByTermId;
+
+        if (hilites == null) {
+            hiliteByTermId = null;
+        }
+        else {
+            hiliteByTermId = new String[vocabSize];
+            for (int rank = 0; rank < oldSize; rank++) {
+                hiliteByTermId[rank2termId[rank]] = hilites[rank];
+            }
+        }
+
+        int rank = 0;
+        for (int index = 0; index < valueCount; index++) {
+            final int termId = values[index].termId();
+            newRanking[rank] = termId;
+            if (newHilites != null) {
+                newHilites[rank] = hiliteByTermId[termId];
+            }
+            rank++;
+        }
+
+        for (int oldRank = 0; oldRank < oldSize && rank < oldSize; oldRank++) {
+            final int termId = rank2termId[oldRank];
+            if (promoted[termId]) {
+                continue;
+            }
+
+            newRanking[rank] = termId;
+            if (newHilites != null) {
+                newHilites[rank] = hiliteByTermId[termId];
+            }
+            rank++;
+        }
+
+        rank2termId = rank == oldSize
+            ? newRanking
+            : Arrays.copyOf(newRanking, rank);
+        hilites = newHilites == null || rank == oldSize
+            ? newHilites
+            : Arrays.copyOf(newHilites, rank);
+        return this;
     }
 
     /**
@@ -449,9 +565,23 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         return termFreq[termId];
     }
     
+    /**
+     * Replaces the current population occurrence-count vector.
+     *
+     * <p>
+     * The supplied array is aliased, not copied.
+     * </p>
+     *
+     * @param termFreq occurrence-count vector indexed by dense term id
+     * @return this instance
+     * @throws IllegalArgumentException if the vector length differs from the vocabulary size
+     * @throws NullPointerException if {@code termFreq} is {@code null}
+     */
     public TopTerms termFreq(final long[] termFreq)
     {
-        this.termFreq = termFreq;
+        final long[] frequencies = Objects.requireNonNull(termFreq, "termFreq");
+        checkVectorLength(frequencies.length, "termFreq.length");
+        this.termFreq = frequencies;
         return this;
     }
 
@@ -531,15 +661,24 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private void checkRankIds(final int[] rank2termId)
     {
-        final int vocabSize = fieldStats.vocabSize();
-
         for (int rank = 0; rank < rank2termId.length; rank++) {
-            final int termId = rank2termId[rank];
-            if (termId <= 0 || termId >= vocabSize) {
-                throw new IllegalArgumentException(
-                        "rank2termId[" + rank + "]=" + termId
-                                + ", expected 1.." + (vocabSize - 1));
-            }
+            checkTermId(rank2termId[rank], "rank2termId[" + rank + "]");
+        }
+    }
+
+    /**
+     * Checks one dense term id.
+     *
+     * @param termId dense term id
+     * @param name parameter name for error messages
+     * @throws IllegalArgumentException if the term id is outside the vocabulary
+     */
+    private void checkTermId(final int termId, final String name)
+    {
+        final int vocabSize = fieldStats.vocabSize();
+        if (termId <= 0 || termId >= vocabSize) {
+            throw new IllegalArgumentException(
+                name + "=" + termId + ", expected 1.." + (vocabSize - 1));
         }
     }
 
@@ -607,6 +746,24 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Returns a stable value snapshot for one term.
+     *
+     * @param termId dense term id
+     * @return term values used by promotion comparators
+     */
+    private TermValue termValue(final int termId)
+    {
+        return new TermValue(
+            termDocs[termId],
+            fieldStats.termDocs(termId),
+            fieldStats.termFreq(termId),
+            lexicon.form(termId),
+            termFreq[termId],
+            scores == null ? (double) termFreq[termId] : scores[termId],
+            termId);
+    }
+
+    /**
      * Switches this instance to local mutable buffers and clears them.
      */
     private void useLocal()
@@ -643,6 +800,72 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Stable term values available to promotion comparators.
+     *
+     * <p>
+     * Numeric comparators sort in descending order. {@link #FORM} and
+     * {@link #TERM_ID} sort in ascending order. All comparators use the dense
+     * term id as their final deterministic tie-breaker.
+     * </p>
+     *
+     * @param docs current population document count
+     * @param fieldDocs full-field document count
+     * @param fieldFreq full-field occurrence count
+     * @param form display term
+     * @param freq current population occurrence count
+     * @param score ranking score
+     * @param termId dense term id
+     */
+    public record TermValue(
+        long docs,
+        long fieldDocs,
+        long fieldFreq,
+        String form,
+        long freq,
+        double score,
+        int termId)
+    {
+        /** Orders terms by descending current population document count. */
+        public static final Comparator<TermValue> DOCS = Comparator
+            .comparingLong(TermValue::docs)
+            .reversed()
+            .thenComparingInt(TermValue::termId);
+
+        /** Orders terms by descending full-field document count. */
+        public static final Comparator<TermValue> FIELD_DOCS = Comparator
+            .comparingLong(TermValue::fieldDocs)
+            .reversed()
+            .thenComparingInt(TermValue::termId);
+
+        /** Orders terms by descending full-field occurrence count. */
+        public static final Comparator<TermValue> FIELD_FREQ = Comparator
+            .comparingLong(TermValue::fieldFreq)
+            .reversed()
+            .thenComparingInt(TermValue::termId);
+
+        /** Orders terms lexically by display form. */
+        public static final Comparator<TermValue> FORM = Comparator
+            .comparing(TermValue::form)
+            .thenComparingInt(TermValue::termId);
+
+        /** Orders terms by descending current population occurrence count. */
+        public static final Comparator<TermValue> FREQ = Comparator
+            .comparingLong(TermValue::freq)
+            .reversed()
+            .thenComparingInt(TermValue::termId);
+
+        /** Orders terms by descending ranking score. */
+        public static final Comparator<TermValue> SCORE = Comparator
+            .comparingDouble(TermValue::score)
+            .reversed()
+            .thenComparingInt(TermValue::termId);
+
+        /** Orders terms by ascending dense term id. */
+        public static final Comparator<TermValue> TERM_ID = Comparator
+            .comparingInt(TermValue::termId);
+    }
+
+    /**
      * Read-only view of one ranked term.
      */
     public final class TermEntry
@@ -656,7 +879,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         /**
          * Creates one ranked term entry.
          *
-         * @param rank   zero-based rank
+         * @param rank zero-based rank
          * @param termId dense term id
          */
         TermEntry(final int rank, final int termId)
@@ -696,6 +919,16 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         /**
+         * Returns the display term.
+         *
+         * @return display term
+         */
+        public String form()
+        {
+            return lexicon.form(termId);
+        }
+
+        /**
          * Returns the current population occurrence count.
          *
          * @return current population occurrence count
@@ -731,16 +964,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         /**
-         * Returns the display term.
-         *
-         * @return display term
-         */
-        public String form()
-        {
-            return lexicon.form(termId);
-        }
-
-        /**
          * Returns the dense term id.
          *
          * @return dense term id
@@ -748,6 +971,16 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         public int termId()
         {
             return termId;
+        }
+
+        /**
+         * Returns all stable values exposed by this entry.
+         *
+         * @return immutable term-value snapshot
+         */
+        public TermValue value()
+        {
+            return termValue(termId);
         }
     }
 

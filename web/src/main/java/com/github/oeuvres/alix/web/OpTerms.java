@@ -26,6 +26,7 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
+import static com.github.oeuvres.alix.lucene.terms.TopTerms.TermValue.FREQ;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 
@@ -163,8 +164,7 @@ public final class OpTerms extends Op
                 case "simple" -> new KeynessScorer.SimpleMaths();
                 default -> new KeynessScorer.LogLikelihood();
             };
-            topTerms.rank(scorer, topK);
-            return topTerms;
+            return topTerms.rank(scorer, topK).promote(pivotIds, FREQ);
         }
     }
     
