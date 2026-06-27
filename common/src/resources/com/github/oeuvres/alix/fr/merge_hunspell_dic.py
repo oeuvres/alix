@@ -347,7 +347,7 @@ def main() -> int:
 
             entries = read_entries(
                 input_path,
-                allow_starred=arguments.allow_starred,
+                allow_starred=True,
                 normalize=not arguments.no_normalize,
             )
             all_entries.extend(entries)
