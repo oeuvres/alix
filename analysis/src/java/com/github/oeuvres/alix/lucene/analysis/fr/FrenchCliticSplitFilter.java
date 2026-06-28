@@ -65,7 +65,7 @@ import static com.github.oeuvres.alix.common.Upos.*;
  *
  * https://fr.wikipedia.org/wiki/Emploi_du_trait_d%27union_pour_les_pr%C3%A9fixes_en_fran%C3%A7ais
  *
- * Known side effect: donne-m'en, emmène-m'y.
+ * Known bugs: donne-m'en, emmène-m'y, dessine-m'en.
  */
 public class FrenchCliticSplitFilter extends TokenFilter
 {
@@ -133,6 +133,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
         PREFIX.put("lorsqu'", "lorsque".toCharArray());
         PREFIX.put("m'", "me".toCharArray());
         PREFIX.put("n'", "ne".toCharArray()); // N'y va pas.
+        PREFIX.put("presqu'", "presque".toCharArray());
         PREFIX.put("puisqu'", "puisque".toCharArray());
         PREFIX.put("qu'", "que".toCharArray());
         PREFIX.put("quoiqu'", "quoique".toCharArray());

@@ -51,6 +51,7 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
+import com.github.oeuvres.alix.lucene.analysis.OCRHyphenFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
@@ -253,6 +254,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new MweFilter(ts, expressions);
         // delete positions of xml tags and punctuation
         ts = new CleanupFilter(ts);
+        // Remove some bad hyphenations
+        ts = new OCRHyphenFilter(ts);
         // clean stop words but keep positions
         ts = new StopFilter(ts, stopwords);
         return ts;

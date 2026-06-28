@@ -40,6 +40,7 @@ import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
 import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
 import com.github.oeuvres.alix.util.Char;
@@ -85,6 +86,8 @@ public final class ReplaceFilter extends TokenFilter {
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     /** Reusable probe for transformed dictionary lookup (no String allocation in hot path). */
     private final TermProbe probe = new TermProbe();
+    private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
+
 
     /**
      * Create a new {@code TermMappingFilter}.
@@ -106,6 +109,7 @@ public final class ReplaceFilter extends TokenFilter {
     @Override
     public boolean incrementToken() throws IOException {
         if (!input.incrementToken()) return false;
+        if (keywordAtt.isKeyword()) return true;
         
         int valueOrd = map.valueOrd(termAtt.buffer(), 0, termAtt.length());
         // try lower casing

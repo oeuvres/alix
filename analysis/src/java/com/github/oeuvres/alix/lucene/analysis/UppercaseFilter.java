@@ -51,15 +51,16 @@ public final class UppercaseFilter extends TokenFilter
         }
         final int len = termAtt.length();
         int letters = 0;
-        int nonletters = 0; // '-
+        int dots = 0;
         final char[] chars = termAtt.buffer();
         for (int i=0; i < len; i++) {
             final char c = chars[i];
             if (Char.isLetter(c)) {
                 letters++;
                 if (Char.isLowerCase(c)) return true;
-            } else {
-                nonletters++;
+            }
+            else if (c == '.') {
+                dots++;
             }
         }
         if (ucWords.contains(termAtt.buffer(), 0, termAtt.length())) {
@@ -67,6 +68,10 @@ public final class UppercaseFilter extends TokenFilter
         }
         // Initial, keep it, fore name resolution
         if (letters == 1) {
+            return true;
+        }
+        // keep U.R.S.S
+        if (dots >= (letters - 1)) {
             return true;
         }
         // Suppress short words
