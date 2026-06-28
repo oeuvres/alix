@@ -398,7 +398,7 @@ def parse_arguments() -> argparse.Namespace:
         nargs="?",
         type=Path,
         default=Path("word-candidates.csv"),
-        help="rows to insert (default: additions.csv)",
+        help="rows to insert (default: word-candidates.csv)",
     )
     return parser.parse_args()
 

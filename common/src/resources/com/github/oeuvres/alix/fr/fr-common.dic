@@ -1990,7 +1990,6 @@ akinésie/S.	po:NOUN
 akinétique/S.	po:ADJ
 akkadien/F+	po:NOUN po:ADJ
 akvavit/S.	po:NOUN
-al	po:ADV
 alabandine/S.	po:NOUN
 alabandite/S.	po:NOUN
 alabastre/S.	po:NOUN
@@ -2128,7 +2127,6 @@ aléatoirement	po:ADV
 alécithe/S.	po:ADJ
 alémanique/S.	po:NOUN po:ADJ
 alêne/S.	po:NOUN
-alénois/F.	po:ADJ
 alenti/F.	po:ADJ
 alentir/f0p+	po:VERB
 alentour	po:ADV
@@ -2696,7 +2694,6 @@ amentifère/S.	po:NOUN po:ADJ
 amenuisé/F.	po:ADJ
 amenuisement/S.	po:NOUN
 amenuiser/a0p+	po:VERB
-aménuiser/a0p+	po:VERB
 amer/F.	po:ADJ
 amer/S.	po:NOUN
 amèrement	po:ADV
@@ -4511,7 +4508,7 @@ approximé/F.	po:ADJ
 approximer/a0p+	po:VERB
 appui/S.	po:NOUN
 appuie-bras	po:NOUN
-appuie-livre\S.	po:NOUN
+appuie-livre/S.	po:NOUN
 appuie-main	po:NOUN
 appuie-nuque/S.	po:NOUN
 appuie-tête	po:NOUN
@@ -15698,7 +15695,6 @@ complémenter/a0p+	po:VERB
 complet/F.	po:ADJ
 complet/S.	po:NOUN
 complété/F.	po:ADJ
-complétement	po:ADV
 complètement	po:ADV
 complètement/S.	po:NOUN
 compléter/c0p+	po:VERB
@@ -29032,7 +29028,7 @@ estancia/S.	po:NOUN
 estarie/S.	po:NOUN
 este/S.	po:NOUN
 ester/S.	po:NOUN
-ester/a0p+	po:VERB
+ester	po:VERB
 estérase/S.	po:NOUN
 estérification/S.	po:NOUN
 estérifié/F.	po:ADJ
@@ -33070,7 +33066,7 @@ funin/S.	po:NOUN
 funk/S.	po:ADJ po:NOUN
 funky	po:ADJ
 funky/S.	po:NOUN
-fur/S.	po:NOUN
+fur	po:NOUN
 furane/S.	po:NOUN
 furanne/S.	po:NOUN
 furax	po:ADJ
@@ -41465,7 +41461,6 @@ isotypique/S.	po:ADJ
 isozyme/S.	po:NOUN
 israélien/F+	po:NOUN po:ADJ
 israélite/S.	po:NOUN po:ADJ
-israélo	po:NUM
 israélo-américain/F.	po:NOUN po:ADJ
 israélo-arabe/S.	po:NOUN po:ADJ
 israélo-palestinien/F+	po:NOUN po:ADJ
@@ -41484,7 +41479,6 @@ italianité/S.	po:NOUN
 italien/F+	po:NOUN po:ADJ
 italiote/S.	po:NOUN po:ADJ
 italique/S.	po:NOUN po:ADJ
-italo	po:NUM
 italo-africain/F.	po:NOUN po:ADJ
 italo-albanais/F.	po:NOUN po:ADJ
 italo-américain/F.	po:NOUN po:ADJ
@@ -46261,7 +46255,6 @@ méditation/S.	po:NOUN
 méditativement	po:ADV
 médité/F.	po:ADJ
 méditer/a0p+	po:VERB
-méditerrané/F.	po:ADJ
 méditerranéen/F+	po:NOUN po:ADJ
 medium/I.	po:NOUN
 médium/S.	po:NOUN
@@ -47811,7 +47804,6 @@ mixtionné/F.	po:ADJ
 mixtionner/a0p+	po:VERB
 mixture/S.	po:NOUN
 mloukhiya/S.	po:NOUN
-mmm	po:INTJ
 mnème/S.	po:NOUN
 mnémonique/S.	po:NOUN po:ADJ
 mnémoniquement	po:ADV
@@ -48805,7 +48797,7 @@ mozarabe/S.	po:NOUN po:ADJ
 mozette/S.	po:NOUN
 mozzarella/S.	po:NOUN
 mozzarelle/S.	po:NOUN
-mu\F.	po:ADJ
+mu/F.	po:ADJ
 muance/S.	po:NOUN
 muché/F.	po:ADJ
 mucher/a0p+	po:VERB
@@ -54084,7 +54076,6 @@ patriarcalement	po:ADV
 patriarcat/S.	po:NOUN
 patriarche/S.	po:NOUN
 patriarchie/S.	po:NOUN
-patrice/S.	po:NOUN
 patricial/W.	po:ADJ
 patriciat/S.	po:NOUN
 patricien/F+	po:NOUN po:ADJ
@@ -60206,7 +60197,6 @@ puvathérapie/S.	po:NOUN
 puy/S.	po:NOUN
 puydomois/F.	po:NOUN po:ADJ
 puzzle/S.	po:NOUN
-px	po:NOUN is:inv
 pycnogonide/S.	po:NOUN
 pycnomètre/S.	po:NOUN
 pycnose/S.	po:NOUN
@@ -60959,7 +60949,6 @@ racornir/f0p+	po:VERB
 racornissement/S.	po:NOUN
 racrapoté/F.	po:ADJ
 racrapoter/a0p+	po:VERB
-rad/S.	po:NOUN
 radar/S.	po:NOUN
 radariste/S.	po:NOUN
 rade/S.	po:NOUN
@@ -68232,7 +68221,6 @@ silicule/S.	po:NOUN
 silionne/S.	po:NOUN
 silique/S.	po:NOUN
 siliqueux/W.	po:ADJ
-sill/S.	po:NOUN
 sillage/S.	po:NOUN
 sillet/S.	po:NOUN
 sillimanite/S.	po:NOUN
@@ -68797,7 +68785,6 @@ solénoglyphe/S.	po:ADJ
 solénoïdal/W.	po:ADJ
 solénoïde/S.	po:NOUN
 soleret/S.	po:NOUN
-soleurois/F.	po:ADJ
 solex	po:NOUN
 solfatare/S.	po:NOUN
 solfatarien/F+	po:ADJ
@@ -69086,7 +69073,6 @@ soudain/F.	po:ADJ
 soudain	po:ADV
 soudainement	po:ADV
 soudaineté/S.	po:NOUN
-soudan/S.	po:NOUN
 soudanais/F.	po:NOUN po:ADJ
 soudanien/F+	po:NOUN po:ADJ
 soudant/F.	po:ADJ
@@ -71867,7 +71853,7 @@ systématisé/F.	po:ADJ
 systématiser/a0p+	po:VERB
 systématisme/S.	po:NOUN
 système/S.	po:NOUN
-systèmes-expert\S.	po:NOUN
+systèmes-expert/S.	po:NOUN
 systémicien/F+	po:NOUN
 systémique/S.	po:ADJ
 systole/S.	po:NOUN
