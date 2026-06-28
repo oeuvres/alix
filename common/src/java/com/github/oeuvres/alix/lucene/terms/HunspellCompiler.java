@@ -168,7 +168,7 @@ public final class HunspellCompiler {
      * @throws IllegalArgumentException if the field has no terms
      * @throws NullPointerException     if {@code reader}, {@code field}, {@code out} or {@code dics} is null
      */
-    public static int listOutOfVocabulary(final IndexReader reader, final String field,
+    public static int unknowns(final IndexReader reader, final String field,
             final Appendable out, final InputStream... dics) throws IOException {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
@@ -427,9 +427,9 @@ public final class HunspellCompiler {
                 for (int i = 0; i < dicCount; i++) {
                     dics[i] = open(args[3 + i]);
                 }
-                final int oov = listOutOfVocabulary(reader, field, w, dics);
+                final int unknowns = unknowns(reader, field, w, dics);
                 w.flush();
-                System.err.println(field + ": " + oov + " terms out of vocabulary");
+                System.err.println(field + ": " + unknowns + " terms out of vocabulary");
             } finally {
                 for (final InputStream dic : dics) {
                     if (dic != null) {
