@@ -39,14 +39,16 @@ import java.util.Set;
  * whitespace that begins a Hunspell morphological field (a two-letter lowercase tag and a colon, such as
  * {@code po:}), so multi-word entries like {@code par rapport à} survive intact rather than being cut at their
  * first space. Apostrophe variants are folded to the ASCII apostrophe the analyzer indexes, which absorbs both
- * an index/dictionary mismatch and an internally inconsistent dictionary. Kept lines from every input dic are
- * concatenated — {@code po:} tags included — under a single recomputed count header, and the {@code aff} is
- * copied verbatim, since affix classes are global to the field. The result is a Hunspell resource whose word
- * list is exactly the field's vocabulary, written in the index's apostrophe form so the consumer's harvest and
- * lookups need no apostrophe logic.
+ * an index/dictionary mismatch and an internally inconsistent dictionary. Each written line carries the term's
+ * field frequency in a {@code fr:} field, replacing any {@code fr:} the source dictionary held, so the compiled
+ * resource is annotated with this corpus's counts. Kept lines from every input dic are concatenated — {@code
+ * po:} tags included — under a single recomputed count header, and the {@code aff} is copied verbatim, since
+ * affix classes are global to the field. The result is a Hunspell resource whose word list is exactly the
+ * field's vocabulary, written in the index's apostrophe form so the consumer's harvest and lookups need no
+ * apostrophe logic.
  * </p>
  * <p>
- * For {@link #listOutOfVocabulary}, the same streaming join is read the other way: the field terms that match no
+ * For {@link #unknowns}, the same streaming join is read the other way: the field terms that match no
  * dictionary headword are written, most frequent first, as a review aid for deciding what to add to a local
  * dictionary. That method writes no files.
  * </p>
@@ -81,8 +83,9 @@ public final class HunspellCompiler {
     /**
      * Prunes one or more canonical Hunspell dictionaries to the indexed terms of {@code field} and writes the
      * field sidecars {@code <field>.dic} and {@code <field>.aff} into {@code out}, overwriting any prior pair.
-     * If no headword from any input dic is indexed in the field, both sidecars are removed and none written.
-     * The reader and all streams are consulted only here; the streams are read once and not closed.
+     * Each written line carries the term's field frequency in a {@code fr:} field, replacing any {@code fr:} the
+     * source held. If no headword from any input dic is indexed in the field, both sidecars are removed and none
+     * written. The reader and all streams are consulted only here; the streams are read once and not closed.
      *
      * @param reader snapshot reader defining the field's term universe
      * @param field  indexed field name; also the sidecar base name
@@ -134,7 +137,11 @@ public final class HunspellCompiler {
                 if (!te.seekExact(probe.get())) {
                     continue;                  // headword not indexed in this field
                 }
-                body.append(line).append('\n');
+                long freq = te.totalTermFreq();
+                if (freq < 0) {
+                    freq = te.docFreq();
+                }
+                body.append(stripFreq(line)).append(" fr:").append(freq).append('\n');
                 kept++;
             }
         }
@@ -301,6 +308,40 @@ public final class HunspellCompiler {
     }
 
     /**
+     * Tells whether a named morphological field begins at an index: the tag followed by a colon, as in
+     * {@code fr:}.
+     *
+     * @param line line to inspect
+     * @param j    index where the tag would start
+     * @param tag  field name without the colon
+     * @return true iff {@code line} has {@code tag:} at {@code j}
+     */
+    private static boolean fieldAt(final String line, final int j, final String tag) {
+        final int end = j + tag.length();
+        return end < line.length()
+            && line.regionMatches(j, tag, 0, tag.length())
+            && line.charAt(end) == ':';
+    }
+
+    /**
+     * Returns the index of the whitespace that introduces the {@code fr:} field, or {@code -1} when the line has
+     * none.
+     *
+     * @param line dictionary line to scan
+     * @return index of the whitespace before {@code fr:}, or {@code -1}
+     */
+    private static int freqStart(final String line) {
+        final int n = line.length();
+        for (int i = 0; i < n; i++) {
+            final char c = line.charAt(i);
+            if ((c == ' ' || c == '\t') && fieldAt(line, i + 1, "fr")) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * Returns the index just past a dictionary line's headword. A headword runs to the first affix-flag
      * delimiter {@code '/'} or the first whitespace that begins a morphological field — whitespace followed by a
      * two-letter lowercase tag and a colon, as in {@code po:} — whichever comes first, or the line length when
@@ -438,6 +479,26 @@ public final class HunspellCompiler {
                 }
             }
         }
+    }
+
+    /**
+     * Removes the {@code fr:} field, and the single whitespace that introduces it, from a dictionary line,
+     * leaving the line unchanged when it carries none. Only the first {@code fr:} field is removed.
+     *
+     * @param line apostrophe-folded dictionary line
+     * @return the line without its {@code fr:} field
+     */
+    private static String stripFreq(final String line) {
+        final int start = freqStart(line);
+        if (start < 0) {
+            return line;
+        }
+        final int n = line.length();
+        int end = start + 1;
+        while (end < n && line.charAt(end) != ' ' && line.charAt(end) != '\t') {
+            end++;
+        }
+        return line.substring(0, start) + line.substring(end);
     }
 
     /**
