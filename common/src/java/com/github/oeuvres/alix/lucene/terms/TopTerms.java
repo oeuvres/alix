@@ -2,6 +2,7 @@ package com.github.oeuvres.alix.lucene.terms;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -15,6 +16,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.util.TopArray;
 
 /**
@@ -65,6 +67,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
     /** Ranked term ids; {@code null} means no ranking has been produced. */
     private int[] rank2termId;
+
+    /** Eligible term ids for the current ranking, or {@code null} for all terms. */
+    private BitSet rankFilter;
 
     /** Score vector indexed by dense term id; {@code null} means score == frequency. */
     private double[] scores;
@@ -179,7 +184,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Selected terms are sorted with {@code comparator}; the remaining terms
      * retain their previous relative order. A selected term is inserted even
      * when it was outside the retained ranking, provided that it occurs in the
-     * current population. Duplicate ids are ignored.
+     * current population and is eligible for the current ranking. Duplicate and
+     * filter-excluded ids are ignored.
      * </p>
      *
      * <p>
@@ -220,7 +226,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             final int termId = ids[index];
             checkTermId(termId, "termIds[" + index + "]");
 
-            if (promoted[termId] || termFreq[termId] == 0L) {
+            if (promoted[termId]
+                    || termFreq[termId] == 0L
+                    || (rankFilter != null && !rankFilter.get(termId))) {
                 continue;
             }
 
@@ -304,6 +312,25 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Ranks flag-matching terms by raw occurrence count.
+     *
+     * <p>
+     * The flag restricts ranking candidates only. Population counts and token
+     * totals remain unchanged. {@link TermFlag#NULL} selects all terms.
+     * </p>
+     *
+     * @param topK maximum number of ranked terms to retain
+     * @param flag required term flag, or {@link TermFlag#NULL} for all terms
+     * @return this instance
+     * @throws IllegalArgumentException if {@code topK < 1}
+     * @throws NullPointerException     if {@code flag == null}
+     */
+    public TopTerms rank(final int topK, final TermFlag flag)
+    {
+        return rank(new KeynessScorer.Count(), topK, flag);
+    }
+
+    /**
      * Ranks the current population with a keyness scorer.
      *
      * <p>
@@ -330,7 +357,34 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     public TopTerms rank(final KeynessScorer scorer, final int topK)
     {
+        return rank(scorer, topK, TermFlag.NULL);
+    }
+
+    /**
+     * Ranks flag-matching terms with a keyness scorer.
+     *
+     * <p>
+     * The flag restricts ranking candidates only. The scorer still receives the
+     * complete current-population and field token totals, so filtering does not
+     * change a term's score. It only changes eligibility and rank.
+     * {@link TermFlag#NULL} selects all terms.
+     * </p>
+     *
+     * @param scorer scorer used to rank terms
+     * @param topK   maximum number of ranked terms to retain
+     * @param flag   required term flag, or {@link TermFlag#NULL} for all terms
+     * @return this instance
+     * @throws IllegalArgumentException if {@code topK < 1}
+     * @throws NullPointerException     if {@code scorer == null} or
+     *                                  {@code flag == null}
+     */
+    public TopTerms rank(
+        final KeynessScorer scorer,
+        final int topK,
+        final TermFlag flag)
+    {
         final KeynessScorer ks = Objects.requireNonNull(scorer, "scorer");
+        final BitSet filter = rankingFilter(flag);
         checkTopK(topK);
 
         final int vocabSize = fieldStats.vocabSize();
@@ -339,7 +393,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         final double[] scoreVec = new double[vocabSize];
         final TopArray top = new TopArray(topK);
 
-        for (int termId = 1; termId < vocabSize; termId++) {
+        for (int termId = firstCandidate(filter);
+                termId >= 0 && termId < vocabSize;
+                termId = nextCandidate(filter, termId)) {
             final long localTermCount = termFreq[termId];
             if (localTermCount == 0L) {
                 continue;
@@ -358,7 +414,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             top.push(termId, score);
         }
 
-        buildRanking(top, scoreVec, null);
+        buildRanking(top, scoreVec, null, filter);
         return this;
     }
 
@@ -379,13 +435,41 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     public TopTerms ranking(final double[] weights, final int topK)
     {
+        return ranking(weights, topK, TermFlag.NULL);
+    }
+
+    /**
+     * Ranks flag-matching terms by a caller-supplied score vector.
+     *
+     * <p>
+     * The flag restricts ranking candidates only. The supplied vector is not
+     * modified. {@link TermFlag#NULL} selects all terms.
+     * </p>
+     *
+     * @param weights score vector indexed by dense term id
+     * @param topK    maximum number of ranked terms to retain
+     * @param flag    required term flag, or {@link TermFlag#NULL} for all terms
+     * @return this instance
+     * @throws IllegalArgumentException if {@code weights.length != vocabSize()}
+     *                                  or if {@code topK < 1}
+     * @throws NullPointerException     if {@code weights == null} or
+     *                                  {@code flag == null}
+     */
+    public TopTerms ranking(
+        final double[] weights,
+        final int topK,
+        final TermFlag flag)
+    {
         final double[] w = Objects.requireNonNull(weights, "weights");
+        final BitSet filter = rankingFilter(flag);
         checkTopK(topK);
         checkVectorLength(w.length, "weights.length");
 
         final TopArray top = new TopArray(topK);
 
-        for (int termId = 1; termId < w.length; termId++) {
+        for (int termId = firstCandidate(filter);
+                termId >= 0 && termId < w.length;
+                termId = nextCandidate(filter, termId)) {
             final double score = w[termId];
             if (Double.isNaN(score) || score <= 0d) {
                 continue;
@@ -393,7 +477,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             top.push(termId, score);
         }
 
-        buildRanking(top, w, null);
+        buildRanking(top, w, null, filter);
         return this;
     }
 
@@ -492,8 +576,37 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         final double[] scores,
         final String[] hilites)
     {
+        return setRanking(rank2termId, scores, hilites, TermFlag.NULL);
+    }
+
+    /**
+     * Sets a flag-filtered ranking produced by an external component.
+     *
+     * <p>
+     * Every ranked term must carry {@code flag}. The filter is retained as
+     * ranking state and is also enforced by {@link #promote(int[], Comparator)}.
+     * {@link TermFlag#NULL} accepts all terms.
+     * </p>
+     *
+     * @param rank2termId ranked dense term ids
+     * @param scores      score vector indexed by dense term id, or {@code null}
+     * @param hilites     optional per-rank highlight strings, or {@code null}
+     * @param flag        required term flag, or {@link TermFlag#NULL} for all terms
+     * @return this instance
+     * @throws IllegalArgumentException if arrays are not aligned with this field
+     *                                  or a ranked term does not carry the flag
+     * @throws NullPointerException     if {@code rank2termId == null} or
+     *                                  {@code flag == null}
+     */
+    public TopTerms setRanking(
+        final int[] rank2termId,
+        final double[] scores,
+        final String[] hilites,
+        final TermFlag flag)
+    {
         final int[] ranks = Objects.requireNonNull(rank2termId, "rank2termId");
-        checkRankIds(ranks);
+        final BitSet filter = rankingFilter(flag);
+        checkRankIds(ranks, filter);
 
         if (scores != null) {
             checkVectorLength(scores.length, "scores.length");
@@ -505,6 +618,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         this.rank2termId = ranks;
+        this.rankFilter = filter;
         this.scores = scores;
         this.hilites = hilites;
         return this;
@@ -615,11 +729,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param top     retained top list
      * @param scores  score vector indexed by dense term id, or {@code null}
      * @param hilites optional per-rank highlight strings, or {@code null}
+     * @param filter  eligible term ids, or {@code null} for all terms
      */
     private void buildRanking(
         final TopArray top,
         final double[] scores,
-        final String[] hilites)
+        final String[] hilites,
+        final BitSet filter)
     {
         final int size = top.size();
         final int[] ranks = new int[size];
@@ -629,6 +745,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         this.rank2termId = ranks;
+        this.rankFilter = filter;
         this.scores = scores;
         this.hilites = hilites;
     }
@@ -659,10 +776,16 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param rank2termId ranked dense term ids
      * @throws IllegalArgumentException if a term id is outside the vocabulary
      */
-    private void checkRankIds(final int[] rank2termId)
+    private void checkRankIds(final int[] rank2termId, final BitSet filter)
     {
         for (int rank = 0; rank < rank2termId.length; rank++) {
-            checkTermId(rank2termId[rank], "rank2termId[" + rank + "]");
+            final int termId = rank2termId[rank];
+            final String name = "rank2termId[" + rank + "]";
+            checkTermId(termId, name);
+            if (filter != null && !filter.get(termId)) {
+                throw new IllegalArgumentException(
+                    name + "=" + termId + " is excluded by the ranking flag");
+            }
         }
     }
 
@@ -717,8 +840,44 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     private void clearRanking()
     {
         rank2termId = null;
+        rankFilter = null;
         scores = null;
         hilites = null;
+    }
+
+    /**
+     * Returns the first term id eligible for a ranking.
+     *
+     * @param filter eligible term ids, or {@code null} for all terms
+     * @return first eligible term id, or {@code -1} when the filter is empty
+     */
+    private static int firstCandidate(final BitSet filter)
+    {
+        return filter == null ? 1 : filter.nextSetBit(1);
+    }
+
+    /**
+     * Returns the next term id eligible for a ranking.
+     *
+     * @param filter eligible term ids, or {@code null} for all terms
+     * @param termId current term id
+     * @return next eligible term id, or {@code -1} when none remains
+     */
+    private static int nextCandidate(final BitSet filter, final int termId)
+    {
+        return filter == null ? termId + 1 : filter.nextSetBit(termId + 1);
+    }
+
+    /**
+     * Resolves a term flag to a private ranking filter.
+     *
+     * @param flag required term flag, or {@link TermFlag#NULL} for all terms
+     * @return eligible term ids, or {@code null} for all terms
+     * @throws NullPointerException if {@code flag == null}
+     */
+    private BitSet rankingFilter(final TermFlag flag)
+    {
+        return lexicon.bits(Objects.requireNonNull(flag, "flag"));
     }
 
     /**
