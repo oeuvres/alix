@@ -2,7 +2,9 @@ package com.github.oeuvres.alix.lucene.fluc;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.apache.lucene.index.FieldInfo;
@@ -211,6 +213,14 @@ public final class FlucText extends Fluc
     /**
      * Returns the dense term lexicon for this field.
      *
+     * <p>
+     * When {@code <field>.dic} exists in the sidecar directory, it is supplied
+     * to the lexicon so that {@link TermLexicon.TermFlag} membership can be
+     * harvested. A matching {@code <field>.aff} is supplied when present; it is
+     * optional for term flags and only required to build the Hunspell
+     * dictionary exposed by {@link TermLexicon#hunspell()}.
+     * </p>
+     *
      * @return dense term lexicon
      * @throws UncheckedIOException if building or opening the lexicon fails
      */
@@ -220,12 +230,30 @@ public final class FlucText extends Fluc
             return termLexicon;
         }
 
+        final Path dicPath = sideDir.resolve(name() + ".dic");
+
         try {
-            termLexicon = new TermLexicon(reader, name());
+            if (!Files.exists(dicPath)) {
+                termLexicon = new TermLexicon(reader, name());
+                return termLexicon;
+            }
+
+            final Path affPath = sideDir.resolve(name() + ".aff");
+            try (
+                InputStream dic = Files.newInputStream(dicPath);
+                InputStream aff = Files.exists(affPath)
+                    ? Files.newInputStream(affPath)
+                    : null
+            ) {
+                termLexicon = new TermLexicon(reader, name(), dic, aff);
+            }
             return termLexicon;
         }
         catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException(
+                "Cannot load term lexicon for field '" + name() + "'",
+                e
+            );
         }
     }
 
