@@ -2,6 +2,7 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.BitSet;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -20,6 +21,8 @@ import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
 import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -69,6 +72,7 @@ public final class OpTerms extends Op
     {
         int topK = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
+        final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
         
         String textField = pars.getString(FTEXT, index.content());
         final FlucText textFluc = index.flucText(textField);
@@ -78,11 +82,23 @@ public final class OpTerms extends Op
             return null;
         }
         meta.put("textField", textField);
+        TermLexicon textLexicon = textFluc.termLexicon();
+        final BitSet flagBits = textLexicon.bits(tflag);
+        meta.put(
+            "flagTerms",
+            flagBits == null
+                ? textLexicon.vocabSize() - 1
+                : flagBits.cardinality()
+        );
+
+        
+        TopTerms topTerms = textFluc.topTerms();
+        
+        
         // Build a filter query from years and tags
         final Query filterQuery = filterQuery(index, pars);
         final SpanQuery spanQuery = spanQuery(index, pars);
         
-        TopTerms topTerms = textFluc.topTerms();
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
             // an http param may change idfExp
@@ -90,7 +106,7 @@ public final class OpTerms extends Op
             // The weights for full field are cached if same idfExp is requested
             final double[] weights = textFluc.termStats().termWeights(index.reader(), scorer);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
-            return topTerms.ranking(weights, topK);
+            return topTerms.ranking(weights, topK, tflag);
         }
         // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
@@ -120,7 +136,7 @@ public final class OpTerms extends Op
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
             final KeynessScorer scorer = new KeynessScorer.LogLikelihood();
 
-            return topTerms.select(index.reader(), focusDocs).rank(scorer, topK);
+            return topTerms.select(index.reader(), focusDocs).rank(scorer, topK, tflag);
         }
         else {
             // pivotsIds
@@ -154,7 +170,7 @@ public final class OpTerms extends Op
             meta.put("focusDocs", consumer.coocDocsTotal());
             meta.put("hits", walker.hits());
             // choose scorer
-            final KeynessScorer scorer = switch (pars.getString(SCORER, "")) {
+            final KeynessScorer scorer = switch (pars.getString(TSORT, "")) {
                 case "count" -> new KeynessScorer.Count();
                 case "raw" -> new KeynessScorer.Count();
                 case "g2" -> new KeynessScorer.LogLikelihood();
@@ -164,7 +180,7 @@ public final class OpTerms extends Op
                 case "simple" -> new KeynessScorer.SimpleMaths();
                 default -> new KeynessScorer.LogLikelihood();
             };
-            return topTerms.rank(scorer, topK).promote(pivotIds, FREQ);
+            return topTerms.rank(scorer, topK, tflag).promote(pivotIds, FREQ);
         }
     }
     

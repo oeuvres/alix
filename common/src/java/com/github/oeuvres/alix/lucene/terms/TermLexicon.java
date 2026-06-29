@@ -108,10 +108,20 @@ public final class TermLexicon {
      * scan in {@link TermLexicon} sets a term's bit whenever one of its morphological tokens matches a declared
      * trigger, so the model extends by a local edit: add a constant with its trigger tokens, or add a token to
      * an existing constant. Tokens present in the dictionary but declared by no constant (for example
-     * {@code po:ADV}, {@code ne:org}, {@code ne:taxon}) are ignored.
+     * {@code po:ADV}, {@code ne:org}, {@code ne:taxon}) are ignored. {@link #NULL} is a special no-flag
+     * sentinel: it has no triggers, is never set, and is the value for which
+     * {@link TermLexicon#bits(TermFlag)} returns {@code null}.
      * </p>
      */
     public static enum TermFlag {
+        /**
+         * No-flag sentinel. It declares no trigger tokens, so it is never set on any term, and it is the one
+         * value for which {@link TermLexicon#bits(TermFlag)} returns {@code null} rather than a BitSet. It is a
+         * usable "no axis selected" marker that, unlike a {@code null} reference, passes
+         * {@code Objects.requireNonNull} and compares with {@code ==}. Placed first, ordinal 0, paralleling the
+         * reserved term id 0 of {@link TermLexicon}.
+         */
+        NULL,
         /** Adjective; set by {@code po:ADJ}. */
         ADJ("po:ADJ"),
         /** Common noun; set by {@code po:NOUN}. */
@@ -127,9 +137,7 @@ public final class TermLexicon {
         /** Proper noun; set by {@code po:PROPN}. */
         PROPN("po:PROPN"),
         /** Verb; set by {@code po:VERB}. */
-        VERB("po:VERB"),
-        /** A possible null value */
-        NULL();
+        VERB("po:VERB");
 
         /** Hunspell morphological tokens that set this flag; harvested by {@link TermLexicon}. */
         private final String[] triggers;
@@ -309,16 +317,22 @@ public final class TermLexicon {
      * Returns the term ids carrying one flag.
      * <p>
      * The result is a defensive copy: the caller may read, iterate or mutate it without affecting the
-     * lexicon. An empty BitSet is returned when the flag was never set. For pivot queries, intersect this
-     * with a co-occurrence candidate set (e.g. {@code bits(TermFlag.PERS)} AND the cooc terms of a pivot).
+     * lexicon. An empty BitSet is returned when a real flag was never set. {@link TermFlag#NULL} alone returns
+     * {@code null} — the "no axis selected" marker, distinct from the empty BitSet an unset real flag yields.
+     * For pivot queries, intersect this with a co-occurrence candidate set (e.g. {@code bits(TermFlag.PERS)}
+     * AND the cooc terms of a pivot).
      * </p>
      *
      * @param flag membership flag
-     * @return a fresh {@link BitSet} of term ids, never null
+     * @return a fresh {@link BitSet} of term ids; {@code null} for {@link TermFlag#NULL}, otherwise never null
+     *         and empty when the flag was never set
      * @throws NullPointerException if {@code flag} is null
      */
     public BitSet bits(final TermFlag flag) {
         Objects.requireNonNull(flag, "flag");
+        if (flag == TermFlag.NULL) {
+            return null;
+        }
         final BitSet bs = flagBits.get(flag);
         return (bs == null) ? new BitSet(0) : (BitSet) bs.clone();
     }

@@ -363,18 +363,19 @@ public class HttpPars
      * Uses {@link Enum#valueOf(Class, String)} to match; returns
      * the fallback on mismatch or absence.
      *
+     * @param <E>      enum type, inferred from {@code fallback}.
      * @param name     parameter name.
      * @param fallback default value (must not be null — its declaring class is used for lookup).
-     * @return the matched enum constant, or fallback.
+     * @return the matched enum constant, or fallback; same type as {@code fallback}.
      * @throws IllegalArgumentException if fallback is null.
      */
-    public Enum<?> getEnum(final String name, final Enum<?> fallback)
+    public <E extends Enum<E>> E getEnum(final String name, final E fallback)
     {
         if (fallback == null) {
             throw new IllegalArgumentException(
                     "fallback can't be null, a value is needed to get the declaring class of the Enum");
         }
-        String value = request.getParameter(name);
+        final String value = request.getParameter(name);
         if (!hasValue(value)) {
             return record(name, fallback, Source.FALLBACK);
         }
@@ -390,13 +391,14 @@ public class HttpPars
      * Priority: request parameter → cookie → fallback.
      * An empty (non-null) parameter resets the cookie.
      *
+     * @param <E>      enum type, inferred from {@code fallback}.
      * @param name     parameter name.
      * @param fallback default value (must not be null).
      * @param cookie   cookie name for persistence.
-     * @return the matched enum constant, or fallback.
+     * @return the matched enum constant, or fallback; same type as {@code fallback}.
      * @throws IllegalArgumentException if fallback is null.
      */
-    public Enum<?> getEnum(final String name, final Enum<?> fallback, final String cookie)
+    public <E extends Enum<E>> E getEnum(final String name, final E fallback, final String cookie)
     {
         if (fallback == null) {
             throw new IllegalArgumentException(
@@ -405,7 +407,7 @@ public class HttpPars
         String value = request.getParameter(name);
         if (hasValue(value)) {
             try {
-                Enum<?> ret = Enum.valueOf(fallback.getDeclaringClass(), value);
+                final E ret = Enum.valueOf(fallback.getDeclaringClass(), value);
                 cookie(cookie, ret.name());
                 return record(name, ret, Source.HTTP);
             } catch (IllegalArgumentException e) {
