@@ -13,25 +13,29 @@ import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 /**
  * Unit tests for {@link MweLexicon}.
  *
- * <p>The lexicon is tokenizer-agnostic. These tests therefore do not assume
- * lowercasing, lemmatization, or analyzer-side normalization. Expressions are
- * tokenized with {@link FrenchCliticTokenizer}, then inserted exactly as emitted
- * by that tokenizer.</p>
+ * <p>
+ * Expressions are tokenized with {@link FrenchCliticTokenizer}. Component
+ * tokens are looked up case-insensitively, while canonical forms preserve the
+ * case supplied when the expression is registered.
+ * </p>
  */
-public class MweLexiconTest {
+public class MweLexiconTest
+{
     private MweLexicon lexicon;
 
     /**
      * Builds a frozen lexicon for each test.
      */
     @BeforeEach
-    void build() {
+    void build()
+    {
         lexicon = new MweLexicon(8);
 
         final WordTokenizer tokenizer = new FrenchCliticTokenizer();
 
         for (String expression : List.of(
                 "machine learning",
+                "La Fontaine",
                 "New York",
                 "New York City",
                 "state of the art",
@@ -45,51 +49,88 @@ public class MweLexiconTest {
     }
 
     /**
-     * Verifies that canonical forms are stored in the shared vocabulary.
+     * Verifies that canonical-form lookup remains case-sensitive.
      */
     @Test
-    void canonicalFormsAreInVocab() {
-        final CharsDic charsDic = lexicon.charsDic();
-
-        assertTrue(charsDic.ord("machine learning") >= 0);
-        assertTrue(charsDic.ord("New York") >= 0);
-        assertTrue(charsDic.ord("New York City") >= 0);
-        assertTrue(charsDic.ord("state of the art") >= 0);
+    void canonicalFormsAreCaseSensitive()
+    {
+        assertTrue(lexicon.formDic().ord("New York") >= 0);
+        assertEquals(-1, lexicon.formDic().ord("new york"));
     }
 
     /**
-     * Verifies that component tokens are stored exactly as supplied by the tokenizer.
+     * Verifies that canonical forms are stored in the canonical-form dictionary.
      */
     @Test
-    void componentTokensAreInVocab() {
-        final CharsDic charsDicb = lexicon.charsDic();
+    void canonicalFormsAreInFormDic()
+    {
+        final CharsDic formDic = lexicon.formDic();
 
-        assertTrue(charsDicb.ord("machine") >= 0);
-        assertTrue(charsDicb.ord("learning") >= 0);
-        assertTrue(charsDicb.ord("New") >= 0);
-        assertTrue(charsDicb.ord("York") >= 0);
-        assertTrue(charsDicb.ord("City") >= 0);
-        assertTrue(charsDicb.ord("state") >= 0);
-        assertTrue(charsDicb.ord("of") >= 0);
-        assertTrue(charsDicb.ord("the") >= 0);
-        assertTrue(charsDicb.ord("art") >= 0);
+        assertTrue(formDic.ord("machine learning") >= 0);
+        assertTrue(formDic.ord("La Fontaine") >= 0);
+        assertTrue(formDic.ord("New York") >= 0);
+        assertTrue(formDic.ord("New York City") >= 0);
+        assertTrue(formDic.ord("state of the art") >= 0);
     }
 
     /**
-     * Verifies that case is significant because {@link MweLexicon} does not normalize.
+     * Verifies that canonical forms are not stored in the component-token dictionary.
      */
     @Test
-    void differentlyCasedTokensDoNotMatch() {
+    void canonicalFormsAreNotInTokenDic()
+    {
+        assertEquals(-1, lexicon.tokenDic().ord("La Fontaine"));
+        assertEquals(-1, lexicon.tokenDic().ord("New York"));
+    }
+
+    /**
+     * Verifies that component tokens are stored in the component-token dictionary.
+     */
+    @Test
+    void componentTokensAreInTokenDic()
+    {
+        final CharsDic tokenDic = lexicon.tokenDic();
+
+        assertTrue(tokenDic.ord("machine") >= 0);
+        assertTrue(tokenDic.ord("learning") >= 0);
+        assertTrue(tokenDic.ord("La") >= 0);
+        assertTrue(tokenDic.ord("Fontaine") >= 0);
+        assertTrue(tokenDic.ord("New") >= 0);
+        assertTrue(tokenDic.ord("York") >= 0);
+        assertTrue(tokenDic.ord("City") >= 0);
+        assertTrue(tokenDic.ord("state") >= 0);
+        assertTrue(tokenDic.ord("of") >= 0);
+        assertTrue(tokenDic.ord("the") >= 0);
+        assertTrue(tokenDic.ord("art") >= 0);
+    }
+
+    /**
+     * Verifies that component tokens are not stored in the canonical-form dictionary.
+     */
+    @Test
+    void componentTokensAreNotInFormDic()
+    {
+        assertEquals(-1, lexicon.formDic().ord("Fontaine"));
+        assertEquals(-1, lexicon.formDic().ord("York"));
+    }
+
+    /**
+     * Verifies that component-token lookup is case-insensitive.
+     */
+    @Test
+    void differentlyCasedTokensMatch()
+    {
         final int state = lexicon.step(lexicon.root(), chars("new"), 3);
 
-        assertEquals(-1, state, "lowercase new must not match stored token New");
+        assertTrue(state >= 0, "lowercase new must match stored token New");
     }
 
     /**
      * Verifies matching for a four-token expression.
      */
     @Test
-    void fourTokenMatch() {
+    void fourTokenMatch()
+    {
         final int acceptOrd = walkAndAccept("state", "of", "the", "art");
 
         assertTrue(acceptOrd >= 0);
@@ -100,7 +141,8 @@ public class MweLexiconTest {
      * Verifies that a known first token followed by a wrong known token fails.
      */
     @Test
-    void knownTokenButNoSequenceMatch() {
+    void knownTokenButNoSequenceMatch()
+    {
         final int state1 = lexicon.step(lexicon.root(), chars("machine"), 7);
 
         assertTrue(state1 >= 0, "first token should advance state");
@@ -112,37 +154,36 @@ public class MweLexiconTest {
     }
 
     /**
-     * Verifies that the longest registered expression length is reported.
+     * Verifies the motivating case: lowercased analyzer tokens match while the
+     * canonical form retains its original case.
      */
     @Test
-    void maxLenIsLongestExpression() {
-        assertEquals(4, lexicon.maxLen());
+    void lowercasedTokensReturnCasePreservingCanonicalForm()
+    {
+        final int acceptOrd = walkAndAccept("la", "fontaine");
+
+        assertTrue(acceptOrd >= 0);
+        assertEquals("La Fontaine", lexicon.asString(acceptOrd));
     }
 
     /**
-     * Verifies that a branch/leaf state accepts the shorter expression.
+     * Verifies that the longest registered expression length is reported.
      */
     @Test
-    void maximalMunchShortMatchAtStep2() {
-        final int state1 = lexicon.step(lexicon.root(), chars("New"), 3);
-        final int state2 = lexicon.step(state1, chars("York"), 4);
-
-        assertTrue(state2 >= 0);
-
-        final int acceptOrd = lexicon.accept(state2);
-
-        assertTrue(acceptOrd >= 0, "should accept at New York");
-        assertEquals("New York", lexicon.asString(acceptOrd));
+    void maxLenIsLongestExpression()
+    {
+        assertEquals(4, lexicon.maxLen());
     }
 
     /**
      * Verifies that the longer expression sharing a prefix also accepts.
      */
     @Test
-    void maximalMunchLongMatchAtStep3() {
-        final int state1 = lexicon.step(lexicon.root(), chars("New"), 3);
-        final int state2 = lexicon.step(state1, chars("York"), 4);
-        final int state3 = lexicon.step(state2, chars("City"), 4);
+    void maximalMunchLongMatchAtStep3()
+    {
+        final int state1 = lexicon.step(lexicon.root(), chars("new"), 3);
+        final int state2 = lexicon.step(state1, chars("york"), 4);
+        final int state3 = lexicon.step(state2, chars("city"), 4);
 
         assertTrue(state3 >= 0);
 
@@ -156,51 +197,75 @@ public class MweLexiconTest {
      * Verifies that a branch/leaf state still has an outgoing arc.
      */
     @Test
-    void maximalMunchShortMatchBranchLeafHasOutgoingArc() {
-        final int state1 = lexicon.step(lexicon.root(), chars("New"), 3);
-        final int state2 = lexicon.step(state1, chars("York"), 4);
-        final int state3 = lexicon.step(state2, chars("City"), 4);
+    void maximalMunchShortMatchBranchLeafHasOutgoingArc()
+    {
+        final int state1 = lexicon.step(lexicon.root(), chars("new"), 3);
+        final int state2 = lexicon.step(state1, chars("york"), 4);
+        final int state3 = lexicon.step(state2, chars("city"), 4);
 
         assertTrue(state2 >= 0, "New York state must exist");
         assertTrue(state3 >= 0, "New York state must still have a City arc");
     }
 
     /**
+     * Verifies that a branch/leaf state accepts the shorter expression.
+     */
+    @Test
+    void maximalMunchShortMatchAtStep2()
+    {
+        final int state1 = lexicon.step(lexicon.root(), chars("new"), 3);
+        final int state2 = lexicon.step(state1, chars("york"), 4);
+
+        assertTrue(state2 >= 0);
+
+        final int acceptOrd = lexicon.accept(state2);
+
+        assertTrue(acceptOrd >= 0, "should accept at New York");
+        assertEquals("New York", lexicon.asString(acceptOrd));
+    }
+
+    /**
      * Verifies that a prefix state is not accepting when no expression ends there.
      */
     @Test
-    void prefixOnlyNotAccepting() {
-        final int state = lexicon.step(lexicon.root(), chars("New"), 3);
+    void prefixOnlyNotAccepting()
+    {
+        final int state = lexicon.step(lexicon.root(), chars("new"), 3);
 
         assertTrue(state >= 0);
         assertEquals(-1, lexicon.accept(state), "prefix state must not accept");
     }
 
     /**
-     * Verifies that repeated component tokens share the same ordinal.
+     * Verifies that case variants of a component token share one ordinal.
      */
     @Test
-    void sharedComponentHasOneOrdinal() {
-        final CharsDic charsDic = lexicon.charsDic();
-        final int ord1 = charsDic.ord("New");
-        final int ord2 = charsDic.ord("New");
-        assertEquals(ord1, ord2);
-        assertTrue(ord1 >= 0);
+    void sharedComponentHasOneOrdinal()
+    {
+        final CharsDic tokenDic = lexicon.tokenDic();
+        final int upperOrd = tokenDic.ord("New");
+        final int lowerOrd = tokenDic.ord("new");
+
+        assertEquals(upperOrd, lowerOrd);
+        assertTrue(upperOrd >= 0);
     }
 
     /**
      * Verifies that a single-token expression is skipped entirely.
      */
     @Test
-    void singleTokenExpressionSkipped() {
-        assertEquals(-1, lexicon.charsDic().ord("single"));
+    void singleTokenExpressionSkipped()
+    {
+        assertEquals(-1, lexicon.tokenDic().ord("single"));
+        assertEquals(-1, lexicon.formDic().ord("single"));
     }
 
     /**
      * Verifies that a failed walk does not affect later walks from root.
      */
     @Test
-    void stateResetBetweenAttempts() {
+    void stateResetBetweenAttempts()
+    {
         lexicon.step(lexicon.root(), chars("philosophy"), 10);
 
         final int acceptOrd = walkAndAccept("machine", "learning");
@@ -213,7 +278,8 @@ public class MweLexiconTest {
      * Verifies matching for a two-token lowercase expression.
      */
     @Test
-    void twoTokenMatch() {
+    void twoTokenMatch()
+    {
         final int acceptOrd = walkAndAccept("machine", "learning");
 
         assertTrue(acceptOrd >= 0, "expected accepting state");
@@ -221,11 +287,12 @@ public class MweLexiconTest {
     }
 
     /**
-     * Verifies matching for a two-token mixed-case expression.
+     * Verifies that mixed-case registered tokens also match lowercase input.
      */
     @Test
-    void twoTokenMatchPreservesCase() {
-        final int acceptOrd = walkAndAccept("New", "York");
+    void twoTokenMatchIgnoresTokenCase()
+    {
+        final int acceptOrd = walkAndAccept("new", "york");
 
         assertTrue(acceptOrd >= 0);
         assertEquals("New York", lexicon.asString(acceptOrd));
@@ -235,18 +302,20 @@ public class MweLexiconTest {
      * Verifies that an unknown token fast-fails.
      */
     @Test
-    void unknownTokenFastFail() {
+    void unknownTokenFastFail()
+    {
         final int state = lexicon.step(lexicon.root(), chars("philosophy"), 10);
 
         assertEquals(-1, state);
     }
 
     /**
-     * Verifies that unknown tokens are absent from the vocabulary.
+     * Verifies that unknown tokens are absent from the component-token dictionary.
      */
     @Test
-    void unknownTokenNotInVocab() {
-        assertEquals(-1, lexicon.charsDic().ord("philosophy"));
+    void unknownTokenNotInTokenDic()
+    {
+        assertEquals(-1, lexicon.tokenDic().ord("philosophy"));
     }
 
     /**
@@ -255,7 +324,8 @@ public class MweLexiconTest {
      * @param token the token
      * @return the character array
      */
-    private static char[] chars(final String token) {
+    private static char[] chars(final String token)
+    {
         return token.toCharArray();
     }
 
@@ -266,7 +336,8 @@ public class MweLexiconTest {
      * @param tokens the token sequence
      * @return the accept ordinal, or -1 if the walk dies or is not accepting
      */
-    private int walkAndAccept(final String... tokens) {
+    private int walkAndAccept(final String... tokens)
+    {
         int state = lexicon.root();
 
         for (String token : tokens) {

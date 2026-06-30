@@ -19,19 +19,20 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Incremental lexicon of multi-word expressions backed by a {@link CharsDic}
- * and an {@link IntAutomaton}.
+ * Incremental lexicon of multi-word expressions backed by two {@link CharsDic}
+ * instances and an {@link IntAutomaton}.
  *
  * <p>
  * The lexicon is tokenizer-agnostic. Callers must tokenize expressions before
  * adding them. The lexicon copies each token immediately into its internal
- * vocabulary and stores only integer ordinals in the automaton.
+ * token vocabulary and stores only integer ordinals in the automaton.
  * </p>
  *
  * <p>
- * The {@link CharsDic} holds both component tokens and canonical multi-word
- * expression forms. Component-token ordinals are used as automaton arc labels.
- * Canonical-form ordinals are used as automaton accept values.
+ * Component tokens are stored in a case-insensitive dictionary. Their ordinals
+ * are used as automaton arc labels. Canonical multi-word expression forms are
+ * stored separately in a case-sensitive dictionary. Their ordinals are used as
+ * automaton accept values.
  * </p>
  *
  * <p>
@@ -57,14 +58,17 @@ public final class MweLexicon
     /** Automaton over component-token ordinal sequences; accept value is canonical form ordinal. */
     private final IntAutomaton auto;
 
+    /** Case-sensitive dictionary of canonical multi-word expression forms. */
+    private final CharsDic formDic;
+
     /**
      * Reusable buffer accumulating token ids during {@link #addExpression(List, CharSequence)}.
      * Nulled by {@link #freeze()} and also used as the frozen-state sentinel.
      */
     private int[] idsBuf;
 
-    /** Shared vocabulary: component tokens and canonical forms, identified by ordinal. */
-    private final CharsDic charsDic;
+    /** Case-insensitive dictionary of component tokens used as automaton arc labels. */
+    private final CharsDic tokenDic;
 
     /**
      * Constructs an empty mutable lexicon.
@@ -73,9 +77,10 @@ public final class MweLexicon
      */
     public MweLexicon(final int expectedSize)
     {
-        this.charsDic = new CharsDic(Math.max(8, expectedSize * 3));
         this.auto = new IntAutomaton();
+        this.formDic = new CharsDic(Math.max(8, expectedSize), false);
         this.idsBuf = new int[8];
+        this.tokenDic = new CharsDic(Math.max(8, expectedSize * 3), true);
     }
 
     /**
@@ -96,12 +101,12 @@ public final class MweLexicon
      *
      * <p>
      * Expressions yielding fewer than two non-empty tokens are silently skipped.
-     * If the same token sequence is added more than once, the last canonical form
-     * wins.
+     * If the same case-insensitive token sequence is added more than once, the
+     * last canonical form wins.
      * </p>
      *
      * @param expression the already-tokenized multi-word expression
-     * @param canonical  the canonical form to emit when the expression is matched
+     * @param canonical  the case-preserving canonical form to emit when the expression is matched
      * @throws IllegalStateException if the lexicon has already been frozen
      */
     public void addExpression(final List<? extends CharSequence> expression, final CharSequence canonical)
@@ -123,10 +128,10 @@ public final class MweLexicon
             if (token == null || token.length() == 0) {
                 continue;
             }
-            idsBuf[len++] = charsDic.add(token);
+            idsBuf[len++] = tokenDic.add(token);
         }
 
-        final int formOrd = charsDic.add(canonical);
+        final int formOrd = formDic.add(canonical);
         auto.add(idsBuf, len, formOrd);
     }
 
@@ -134,24 +139,13 @@ public final class MweLexicon
      * Returns the canonical form identified by an accept ordinal.
      *
      * @param ord the ordinal returned by {@link #accept(int)}
-     * @return the canonical form
+     * @return the case-preserving canonical form
      * @throws IllegalStateException if the lexicon has not been frozen
      */
     public String asString(final int ord)
     {
         checkFrozen();
-        return charsDic.asString(ord);
-    }
-
-    /**
-     * Returns the underlying vocabulary. Treat as read-only; mutating it
-     * directly while the lexicon is mutable would corrupt automaton arcs.
-     *
-     * @return the underlying vocabulary
-     */
-    public CharsDic charsDic()
-    {
-        return charsDic;
+        return formDic.asString(ord);
     }
 
     /**
@@ -177,7 +171,19 @@ public final class MweLexicon
     public void copy(final int ord, final char[] dst, final int off)
     {
         checkFrozen();
-        charsDic.copy(ord, dst, off);
+        formDic.copy(ord, dst, off);
+    }
+
+    /**
+     * Returns the dictionary containing case-preserving canonical forms.
+     * Treat it as read-only; mutating it directly would invalidate automaton
+     * accept values.
+     *
+     * @return the canonical-form dictionary
+     */
+    public CharsDic formDic()
+    {
+        return formDic;
     }
 
     /**
@@ -190,11 +196,11 @@ public final class MweLexicon
     public int formLength(final int ord)
     {
         checkFrozen();
-        return charsDic.len(ord);
+        return formDic.len(ord);
     }
 
     /**
-     * Freezes the vocabulary and packs the automaton into primitive arrays.
+     * Freezes both dictionaries and packs the automaton into primitive arrays.
      * Idempotent. Must be called before runtime matching.
      */
     public void freeze()
@@ -202,7 +208,8 @@ public final class MweLexicon
         if (idsBuf == null) {
             return;
         }
-        charsDic.trimToSize();
+        formDic.trimToSize();
+        tokenDic.trimToSize();
         auto.freeze(false);
         idsBuf = null;
     }
@@ -247,8 +254,8 @@ public final class MweLexicon
      * <p>
      * The token must occupy {@code buf[0..len)}, matching the convention of
      * {@link org.apache.lucene.analysis.tokenattributes.CharTermAttribute#buffer()}.
-     * Tokens absent from the vocabulary return -1 immediately without touching
-     * the automaton.
+     * Lookup is case-insensitive. Tokens absent from the token dictionary return
+     * -1 immediately without touching the automaton.
      * </p>
      *
      * @param state the current automaton state
@@ -261,12 +268,23 @@ public final class MweLexicon
     {
         checkFrozen();
 
-        final int tokOrd = charsDic.ord(buf, 0, len);
+        final int tokOrd = tokenDic.ord(buf, 0, len);
         if (tokOrd < 0) {
             return -1;
         }
 
         return auto.step(state, tokOrd);
+    }
+
+    /**
+     * Returns the case-insensitive dictionary containing component tokens.
+     * Treat it as read-only; mutating it directly would corrupt automaton arcs.
+     *
+     * @return the component-token dictionary
+     */
+    public CharsDic tokenDic()
+    {
+        return tokenDic;
     }
 
     /**
