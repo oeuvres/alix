@@ -4,16 +4,12 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.StopFilter;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
-
-
+import com.github.oeuvres.alix.util.WordTokenizer;
+import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
-import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
-import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+
 
 public class FrenchAnalyzerDemo
 {
@@ -27,10 +23,28 @@ public class FrenchAnalyzerDemo
      * @throws IOException */
     private static Analyzer buildAnalyzer() throws IOException
     {
-        return new FrenchAnalyzer();
+        WordTokenizer tokfr = new FrenchCliticTokenizer();
+        FrenchAnalyzer analyzer = new FrenchAnalyzer();
+        """
+            Le Châtelier,Le Châtelier
+            Vinh Bang,Vinh-Bang
+        """.lines().forEach(line -> {
+            int comma = line.indexOf(',');
+            final String key = line.substring(0, comma);
+            if (key.isBlank()) return;
+            final String value = line.substring(comma + 1);
+            analyzer.expressions.addExpression(tokfr.tokenize(key), value);
+        });
+        return analyzer;
     }
     
     static final List<Case> CASES = List.of(
+        new Case(
+            "Vinh-Bang",
+            "processus de « modération » comme dans le principe de Le Châtelier."
+            + " L’une des épreuves de Vinh Bang consiste à présenter à l’entrée une règle horizontale",
+            null
+        ),
         new Case(
             "éq. 1",
             "d’une éq. à l’éq. 1, d’où le renversement des signes",

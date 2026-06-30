@@ -255,7 +255,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         // delete positions of xml tags and punctuation
         ts = new CleanupFilter(ts);
         // Remove some bad hyphenations
-        ts = new OCRHyphenFilter(ts);
+        // ts = new OCRHyphenFilter(ts);
         // clean stop words but keep positions
         ts = new StopFilter(ts, stopwords);
         return ts;

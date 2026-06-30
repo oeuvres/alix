@@ -80,8 +80,18 @@ public final class UppercaseFilter extends TokenFilter
             return true;
         }
         // capitalize
+        boolean toLower=true;
         for (int i=1; i < len; i++) {
-            chars[i] = Char.toLower(chars[i]);
+            final char c = chars[i];
+            if (c == '-') {
+                toLower = false;
+                continue;
+            }
+            if (!toLower) {
+                toLower = true;
+                continue;
+            }
+            chars[i] = Char.toLower(c);
         }
         return true;
     }
