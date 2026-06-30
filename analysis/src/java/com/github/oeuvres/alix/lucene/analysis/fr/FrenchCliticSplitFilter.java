@@ -169,6 +169,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
         SUFFIX.put("-tu", "tu".toCharArray());       // viendras-tu ?
         SUFFIX.put("-vous", "vous".toCharArray());   // voulez-vous ?
         SUFFIX.put("-y", "y".toCharArray());         // allons-y.
+        SUFFIX.put("'s", "".toCharArray());         // Piaget’s
     }
 
     /**

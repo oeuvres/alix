@@ -53,8 +53,8 @@ public class DevServer
 
         ServletHolder holder = new ServletHolder(new AlixServlet());
         holder.setInitParameter(
-            "alix.conf.dir",
-            System.getProperty("alix.conf.dir", "conf")
+            "alix.lucene.root",
+            System.getProperty("alix.lucene.root", "lucene")
         );
         ctx.addServlet(holder, "/*");
 

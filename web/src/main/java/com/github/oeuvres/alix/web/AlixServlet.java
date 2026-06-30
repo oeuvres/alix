@@ -2,13 +2,11 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.lucene.index.Term;
@@ -28,6 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
+import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.common.Names.*;
 import static com.github.oeuvres.alix.web.Pars.DOCID;
@@ -71,41 +70,34 @@ public class AlixServlet extends HttpServlet
     private static final String CONTENT_HTML = "text/html";
     private static final String CONTENT_JSON = "application/json";
     private static final String CONTENT_JSONL = "application/x-ndjson";
-    private static final String CONF_DIR_PARAM = "alix.conf.dir";
+    private static final String ALIX_LUCENE_ROOT = "alix.lucene.root";
+    private static final long POLL_MILLIS = 10_000L;
+    private static final long GRACE_MILLIS = 120_000L;
     private static final Gson GSON = new Gson();
     private static final Logger LOG = Logger.getLogger(AlixServlet.class.getName());
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>(){}.getType();
     private static final long serialVersionUID = 1L;
 
-    /** Resolved configuration directory. */
-    private Path configDir;
-    /** Loaded indices, replaced atomically after startup or reload. */
-    private volatile Map<String, LuceneIndex> indices = Map.of();
+    /** Resolved root directory holding one subdirectory per corpus. */
+    private Path dataDir;
+    /** Live index registry; owns loading, reload-on-swap, and unloading. */
+    private IndexRegistry registry;
     /** Registered operations, keyed by URL operation name. */
     private final Map<String, Op> ops = new LinkedHashMap<>();
     /** Time at which this servlet instance was initialized, in epoch milliseconds. */
     private volatile long servletStartedMillis;
 
     /**
-     * Closes all loaded indices and clears the registry.
-     *
-     * <p>
-     * Closing errors are logged and do not stop destruction of later indices.
-     * </p>
+     * Stops the index registry, which stops scanning and closes every
+     * loaded index.
      */
     @Override
     public void destroy()
     {
-        for (Map.Entry<String, LuceneIndex> entry : indices.entrySet()) {
-            try {
-                entry.getValue().close();
-            }
-            catch (IOException e) {
-                LOG.log(Level.WARNING, "Error closing index: " + entry.getKey(), e);
-            }
+        if (registry != null) {
+            registry.stop();
+            registry = null;
         }
-
-        indices = Map.of();
     }
 
     /**
@@ -145,7 +137,7 @@ public class AlixServlet extends HttpServlet
         }
 
         final String indexName = segments[1];
-        final LuceneIndex index = indices.get(indexName);
+        final LuceneIndex index = registry.get(indexName);
 
         if (index == null) {
             jsonError(response, 404, "Unknown index: " + indexName);
@@ -168,8 +160,9 @@ public class AlixServlet extends HttpServlet
      * Initializes the servlet.
      *
      * <p>
-     * The method resolves the configuration directory, opens all configured
-     * indices, registers operations, and logs the resulting index inventory.
+     * The method resolves the index root directory, starts the polling
+     * {@link IndexRegistry} (which performs the initial synchronous scan),
+     * registers operations, and logs the resulting index inventory.
      * </p>
      *
      * @param config servlet configuration
@@ -181,13 +174,18 @@ public class AlixServlet extends HttpServlet
         super.init(config);
 
         servletStartedMillis = System.currentTimeMillis();
-        configDir = resolveConfigDir(config);
-        indices = loadIndices(configDir);
+        String dir = HttpPars.requiresInitParameter(config, ALIX_LUCENE_ROOT);
+        dataDir = Path.of(dir);
+        if (!Files.isDirectory(dataDir)) {
+            throw new ServletException(ALIX_LUCENE_ROOT + " is not a directory: " + dataDir);
+        }
+        registry = new IndexRegistry(dataDir, POLL_MILLIS, GRACE_MILLIS);
+        registry.start();
 
         registerOps();
 
-        LOG.info("Alix started: " + indices.size() + " index(es) from " + configDir);
-        for (LuceneIndex index : indices.values()) {
+        LOG.info("Alix started: " + registry.all().size() + " index(es) from " + dataDir);
+        for (LuceneIndex index : registry.all()) {
             LOG.info("  " + index);
         }
     }
@@ -294,26 +292,7 @@ public class AlixServlet extends HttpServlet
         return new String[] { segment, null };
     }
 
-    /**
-     * Returns the configured directory parameter value, if present.
-     *
-     * @param config servlet configuration
-     * @return trimmed directory value, or {@code null}
-     */
-    private static String configuredDirectory(final ServletConfig config)
-    {
-        String dir = config.getInitParameter(CONF_DIR_PARAM);
-    
-        if (dir == null || dir.isBlank()) {
-            dir = config.getServletContext().getInitParameter(CONF_DIR_PARAM);
-        }
-    
-        if (dir == null || dir.isBlank()) {
-            return null;
-        }
-    
-        return dir.trim();
-    }
+
 
     /**
      * Describes one index as JSON.
@@ -461,7 +440,7 @@ public class AlixServlet extends HttpServlet
             jw.setIndent("  ");
             jw.beginObject();
 
-            for (LuceneIndex index : indices.values()) {
+            for (LuceneIndex index : registry.all()) {
                 jw.name(index.name());
                 jw.beginObject();
 
@@ -480,63 +459,6 @@ public class AlixServlet extends HttpServlet
             }
 
             jw.endObject();
-        }
-    }
-
-    /**
-     * Loads all index configurations from a directory.
-     *
-     * <p>
-     * Invalid configuration files are skipped and logged. Duplicate index names
-     * replace the previous index instance.
-     * </p>
-     *
-     * @param configDir directory containing {@code *.xml} index configurations
-     * @return loaded indices keyed by index name
-     */
-    private static Map<String, LuceneIndex> loadIndices(final Path configDir)
-    {
-        final Map<String, LuceneIndex> loaded = new LinkedHashMap<>();
-
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(configDir, "*.xml")) {
-            for (Path xml : stream) {
-                if (!Files.isRegularFile(xml)) {
-                    continue;
-                }
-
-                loadIndex(xml, loaded);
-            }
-        }
-        catch (IOException e) {
-            LOG.log(Level.SEVERE, "Cannot scan config directory: " + configDir, e);
-        }
-
-        return loaded;
-    }
-
-    /**
-     * Loads one index configuration into the supplied map.
-     *
-     * @param xml XML index configuration file
-     * @param loaded mutable index map
-     */
-    private static void loadIndex(
-        final Path xml,
-        final Map<String, LuceneIndex> loaded
-    ) {
-        try {
-            final LuceneIndex index = LuceneIndex.open(xml);
-            final LuceneIndex previous = loaded.put(index.name(), index);
-
-            if (previous != null) {
-                previous.close();
-                LOG.warning(
-                    "Duplicate index name '" + index.name() + "', replaced by: " + xml
-                );
-            }
-        }
-        catch (Exception e) {
-            LOG.log(Level.WARNING, "Skipping " + xml + ": " + e.getMessage(), e);
         }
     }
 
@@ -614,46 +536,5 @@ public class AlixServlet extends HttpServlet
         ops.put("terms", new OpTerms());
     }
 
-    /**
-     * Resolves the directory containing index configuration files.
-     *
-     * <p>
-     * Resolution order:
-     * </p>
-     *
-     * <ol>
-     *   <li>servlet init parameter {@value #CONF_DIR_PARAM};</li>
-     *   <li>servlet-context parameter {@value #CONF_DIR_PARAM};</li>
-     *   <li>real path of {@code /WEB-INF}.</li>
-     * </ol>
-     *
-     * @param config servlet configuration
-     * @return resolved configuration directory
-     * @throws ServletException if no valid directory can be resolved
-     */
-    private Path resolveConfigDir(final ServletConfig config) throws ServletException
-    {
-        final String configured = configuredDirectory(config);
 
-        if (configured != null) {
-            final Path path = Path.of(configured).toAbsolutePath().normalize();
-
-            if (!Files.isDirectory(path)) {
-                throw new ServletException(CONF_DIR_PARAM + " is not a directory: " + path);
-            }
-
-            return path;
-        }
-
-        final String webInf = config.getServletContext().getRealPath("/WEB-INF");
-
-        if (webInf == null) {
-            throw new ServletException(
-                "No " + CONF_DIR_PARAM + " specified and WEB-INF real path unavailable"
-                    + " (exploded war required)"
-            );
-        }
-
-        return Path.of(webInf);
-    }
 }

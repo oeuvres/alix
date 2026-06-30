@@ -16,7 +16,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.xml.sax.SAXException;
 
-import static com.github.oeuvres.alix.ingest.IngestConfig.FileList.*;
+import static com.github.oeuvres.alix.ingest.IngestConfig.KeyGlob.*;
 
 /**
  * Minimal entry point:
@@ -31,7 +31,7 @@ public final class TeiIngesterDemo
     public static void main(String[] args) throws IOException, TransformerException, SAXException, ParserConfigurationException
     {
         Report report = new ReportConsole();
-        Path cfgPath = Path.of("../web/conf/alix-piaget.xml");
+        Path cfgPath = Path.of("../../piaget-tools/alix/alix-piaget.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, report);
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
         analyzer.addNormalizations(cfg.files(NORMALIZATIONS));

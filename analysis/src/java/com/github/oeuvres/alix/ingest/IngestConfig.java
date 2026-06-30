@@ -15,14 +15,14 @@ import java.util.*;
  * <h2>Keys</h2>
  * <ul>
  * <li><b>tei</b> (required): multi-line list of glob patterns selecting TEI/XML input files.</li>
- * <li><b>indexroot</b> (required): directory containing multiple Lucene index directories.</li>
+ * <li><b>luceneRoot</b> (required): directory containing multiple Lucene index directories.</li>
  * <li><b>exclude</b> (optional): multi-line list of glob patterns removing files from the expanded inputs.</li>
  * <li><b>prexslt</b> (optional): path to an XSLT stylesheet, resolved relative to the config file directory.</li>
  * <li><b>name</b> (optional): corpus id; if absent, defaults to the config filename stem.</li>
  * <li><b>label</b> (optional): display label.</li>
  * <li><b>brevidots</b>, <b>expressions</b>, <b>normalizations</b>, <b>stopwords</b> (optional): multi-line
  * lists of dictionary file paths, resolved relative to the config file directory. One key per
- * {@link FileList} constant (its lowercased name); exposed via {@link #files(FileList)}.</li>
+ * {@link KeyGlob} constant (its lowercased name); exposed via {@link #files(KeyGlob)}.</li>
  * </ul>
  *
  * <h2>Resolution model</h2>
@@ -46,13 +46,14 @@ import java.util.*;
  */
 public final class IngestConfig
 {
+    
     /**
      * Resolve-relative dictionary file lists. Each constant's lowercased name is the XML property key,
      * whose multi-line value is a list of dictionary paths resolved against the config file directory.
      * Add a new dictionary list by adding a constant here; load, accessor, and {@code toString} pick it
      * up automatically.
      */
-    public enum FileList
+    public enum KeyGlob
     {
         BREVIDOTS,
         EXPRESSIONS,
@@ -67,14 +68,11 @@ public final class IngestConfig
         }
     }
 
-    /** Corpus id (defaults to config filename stem if missing). */
+    /** Required, name of the lucene index */
     public final String name;
 
-    /** Optional display label. */
-    public final String label;
-
     /** Required. Directory containing multiple indices. Absolute normalized. */
-    public final Path indexroot;
+    public final Path luceneRoot;
 
     /** Optional. Absolute normalized path. */
     public final Path prexslt;
@@ -85,25 +83,28 @@ public final class IngestConfig
     /** Required. Expanded TEI files after applying excludes. Absolute normalized, order preserved. */
     public final List<Path> teiFiles;
 
-    /** Resolve-relative dictionary lists keyed by {@link FileList}; values unmodifiable, possibly empty. */
-    private final EnumMap<FileList, List<Path>> fileLists;
+    /** Resolve-relative dictionary lists keyed by {@link KeyGlob}; values unmodifiable, possibly empty. */
+    private final EnumMap<KeyGlob, List<Path>> fileLists;
+    
+    /** All the properties read from the ingest config that are transmitted to the generated index folder */
+    public final Properties props;
 
     private IngestConfig(
-            String name,
-            String label,
-            Path indexroot,
-            Path prexslt,
-            List<String> teiGlobs,
-            List<Path> teiFiles,
-            EnumMap<FileList, List<Path>> fileLists)
-    {
+        final Path luceneRoot,
+        final String name,
+        final List<String> teiGlobs,
+        final List<Path> teiFiles,
+        final Path prexslt,
+        final EnumMap<KeyGlob, List<Path>> fileLists,
+        final Properties props
+    ){
+        this.luceneRoot = luceneRoot;
         this.name = name;
-        this.label = label;
-        this.indexroot = indexroot;
-        this.prexslt = prexslt;
         this.teiGlobs = Collections.unmodifiableList(teiGlobs);
         this.teiFiles = Collections.unmodifiableList(teiFiles);
+        this.prexslt = prexslt;
         this.fileLists = fileLists;
+        this.props = props;
     }
 
     /**
@@ -112,7 +113,7 @@ public final class IngestConfig
      * @param list which dictionary list
      * @return unmodifiable list, never null, possibly empty
      */
-    public List<Path> files(FileList list)
+    public List<Path> files(KeyGlob list)
     {
         List<Path> v = fileLists.get(list);
         return (v == null) ? Collections.emptyList() : v;
@@ -142,41 +143,40 @@ public final class IngestConfig
         if (baseDir == null)
             throw new IllegalArgumentException("Config file has no parent dir: " + cfg);
 
-        Properties properties = new Properties();
+        Properties props = new Properties();
         try (InputStream in = Files.newInputStream(cfg)) {
-            properties.loadFromXML(in);
+            props.loadFromXML(in);
         }
+        String name = trimOrNull(props.getProperty("name"));
+        if (name == null) name = Dir.stem(cfg);
+        props.setProperty("name", name);
 
-        String name = trimOrNull(properties.getProperty("name"));
-        if (name == null)
-            name = Dir.stem(cfg);
-
-        String label = trimOrNull(properties.getProperty("label"));
-
-        String indexrootStr = trimOrNull(properties.getProperty("indexroot"));
-        if (indexrootStr == null)
-            throw new IllegalArgumentException("Missing required key: indexroot in " + cfg);
-        Path indexroot = Dir.resolve(baseDir, indexrootStr);
+        String luceneRootStr = trimOrNull(props.getProperty("luceneroot"));
+        if (luceneRootStr == null)
+            throw new IllegalArgumentException("Missing required key: luceneroot in " + cfg);
+        Path luceneRoot = Dir.resolve(baseDir, luceneRootStr);
+        props.remove("luceneroot");
 
         Path prexslt = null;
-        String prexsltStr = trimOrNull(properties.getProperty("prexslt"));
+        String prexsltStr = trimOrNull(props.getProperty("prexslt"));
         if (prexsltStr != null)
             prexslt = Dir.resolve(baseDir, prexsltStr);
+        props.remove("prexslt");
 
-        EnumMap<FileList, List<Path>> fileLists = new EnumMap<>(FileList.class);
-        for (FileList fl : FileList.values()) {
+        EnumMap<KeyGlob, List<Path>> fileLists = new EnumMap<>(KeyGlob.class);
+        for (KeyGlob fl : KeyGlob.values()) {
             report.setAttribute("key", fl.key());
-            List<Path> resolved = resolveFiles(baseDir, lines(properties, fl.key()), report);
+            List<Path> resolved = resolveFiles(baseDir, lines(props, fl.key()), report);
             fileLists.put(fl, Collections.unmodifiableList(resolved));
         }
 
-        List<String> teiLines = lines(properties, "tei");
+        List<String> teiLines = lines(props, "tei");
         if (teiLines.isEmpty())
             throw new IllegalArgumentException("Missing/empty required key: tei in " + cfg);
 
         List<String> teiGlobs = normalizeGlobs(cfg, teiLines);
 
-        List<String> excludeGlobs = normalizeGlobs(cfg, lines(properties, "exclude"));
+        List<String> excludeGlobs = normalizeGlobs(cfg, lines(props, "exclude"));
 
         List<Path> teiFiles = expandTeiFiles(teiGlobs, report);
 
@@ -189,7 +189,7 @@ public final class IngestConfig
             + "\nexclude: " + String.join("\n", excludeGlobs) + "\n" + cfg);
         }
 
-        return new IngestConfig(name, label, indexroot, prexslt, teiGlobs, teiFiles, fileLists);
+        return new IngestConfig(luceneRoot, name, teiGlobs, teiFiles, prexslt, fileLists, props);
     }
 
     @Override
@@ -197,19 +197,17 @@ public final class IngestConfig
     {
         StringBuilder sb = new StringBuilder(512);
         sb.append("IngestConfig{\n");
-        sb.append("  name=").append(name).append('\n');
-        if (label != null)
-            sb.append("  label=").append(label).append('\n');
-        sb.append("  indexroot=").append(indexroot).append('\n');
+        sb.append("  luceneroot=").append(luceneRoot).append('\n');
         sb.append("  tei files (").append(teiFiles.size()).append(")\n");
         for (String glob : teiGlobs) {
             sb.append("    - ").append(glob).append('\n');
         }
         if (prexslt != null)
             sb.append("  prexslt=").append(prexslt).append('\n');
-        for (FileList fl : FileList.values()) {
+        for (KeyGlob fl : KeyGlob.values()) {
             appendList(sb, fl.key(), files(fl), 10);
         }
+        sb.append(props);
         sb.append('}');
         return sb.toString();
     }

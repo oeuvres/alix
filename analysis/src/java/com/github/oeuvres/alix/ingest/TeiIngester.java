@@ -24,8 +24,11 @@ import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamSource;
 import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -79,26 +82,26 @@ public final class TeiIngester
      * @throws SAXException 
      * @throws TransformerConfigurationException 
      */
-    public void ingest(IngestConfig cfg, IndexWriterConfig iwc) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException 
+    public void ingest(IngestConfig config, IndexWriterConfig iwc) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException 
     {
-        if (cfg == null)
-            throw new IllegalArgumentException("cfg == null");
+        Objects.requireNonNull(config, "IngestConfig");
+        Objects.requireNonNull(iwc, "IndexWriterConfig");
+
         
-        Path current = cfg.indexroot.resolve(cfg.name).toAbsolutePath().normalize();
-        Path tmp = cfg.indexroot.resolve(cfg.name + "_tmp").toAbsolutePath().normalize();
-        Path old = cfg.indexroot.resolve(cfg.name + "_old").toAbsolutePath().normalize();
+        Path current = config.luceneRoot.resolve(config.name).toAbsolutePath().normalize();
+        Path tmp = config.luceneRoot.resolve(config.name + ".tmp").toAbsolutePath().normalize();
+        Path old = config.luceneRoot.resolve(config.name + ".old").toAbsolutePath().normalize();
         
-        Files.createDirectories(cfg.indexroot);
+        Files.createDirectories(config.luceneRoot);
         
         // Prepare tmp directory
         Dir.rm(tmp);
         Files.createDirectories(tmp);
         
         // Optional preprocess templates (per config)
-        Templates preTpl = compilePre(cfg.prexslt);
+        Templates preTpl = compilePre(config.prexslt);
         
         // Analyzer choice: keep consistent with your demo; change here if needed.
-        Objects.requireNonNull(iwc, "IndexWriterConfig");
         iwc.setOpenMode(CREATE);
         
         try (FSDirectory dir = FSDirectory.open(tmp);
@@ -107,7 +110,7 @@ public final class TeiIngester
             
             AlixLuceneConsumer indexer = new AlixLuceneConsumer(writer, rep);
             
-            for (Path tei : cfg.teiFiles) {
+            for (Path tei : config.teiFiles) {
                 try {
                     ingestOneFile(tei, preTpl, indexer);
                 }
@@ -123,7 +126,13 @@ public final class TeiIngester
         }
         
         swapIndexDirs(current, tmp, old);
-        rep.info("Indexed and merged: " + cfg.name + " -> " + current);
+        final Path propsFile = current.resolve("alix.xml");
+        
+        try (OutputStream output = Files.newOutputStream(propsFile)) {
+            config.props.storeToXML(output, null, StandardCharsets.UTF_8);
+        }
+        
+        rep.info("Indexed and merged: " + config.name + " -> " + current);
     }
     
     private Templates compilePre(Path prexslt) throws TransformerConfigurationException

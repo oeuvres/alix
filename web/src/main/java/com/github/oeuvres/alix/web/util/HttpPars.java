@@ -40,8 +40,11 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -988,5 +991,46 @@ public class HttpPars
             sb.append(encodeQueryComponent(value));
         }
         return sb.toString();
+    }
+    
+    /**
+     * Returns a configuration parameter using the following precedence:
+     * system property, servlet initialization parameter, then context
+     * initialization parameter.
+     *
+     * <p>An existing empty value is returned as-is and does not cause lookup
+     * to continue to the next configuration source.</p>
+     *
+     * @param config servlet configuration
+     * @param name parameter name
+     * @return the parameter value, or {@code null} if it is not defined
+     * @throws ServletException 
+     * @throws NullPointerException if {@code config} or {@code name} is
+     *         {@code null}
+     */
+    public static String requiresInitParameter(
+        final ServletConfig config,
+        final String name
+    ) throws ServletException
+    {
+        Objects.requireNonNull(config, "config");
+        Objects.requireNonNull(name, "name");
+
+        String value = System.getProperty(name);
+        if (value != null && !value.isBlank()) {
+            return value.trim();
+        }
+
+        value = config.getInitParameter(name);
+        if (value != null && !value.isBlank()) {
+            return value.trim();
+        }
+        
+        value = config.getServletContext().getInitParameter(name);
+        if (value != null && !value.isBlank()) {
+            return value.trim();
+        }
+        throw new ServletException(name + " parameter is requires, first override next, choose between: "
+                + "System.getProperty, ServletContext.getInitParameter, ServletConfig.getInitParameter");
     }
 }

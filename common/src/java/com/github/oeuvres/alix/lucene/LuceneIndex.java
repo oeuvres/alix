@@ -23,25 +23,33 @@ import com.github.oeuvres.alix.lucene.fluc.FlucCategory;
 import com.github.oeuvres.alix.lucene.fluc.FlucFacet;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.util.Dir;
 
 import static com.github.oeuvres.alix.common.Names.*;
 
 /**
- * Read-only handle on a frozen Lucene index, configured from an XML
- * {@link Properties} file (the same file format used by the ingest side).
+ * Read-only handle on a frozen Lucene index. The index directory is
+ * self-describing: an optional {@value #CONFIG_NAME} XML
+ * {@link Properties} file inside the directory supplies search-time
+ * configuration. When the file is absent, every key falls back to a
+ * default and the content and year fields are auto-elected.
  * <p>
  * Opens a {@link DirectoryReader} once at construction and holds it for
  * its lifetime. No {@link org.apache.lucene.search.SearcherManager},
- * no near-real-time refresh — the index is assumed frozen. Callers who
- * want to pick up a new index commit must {@link #close()} and reopen.
+ * no near-real-time refresh — the index is assumed frozen. To pick up a
+ * rebuilt index (a new directory swapped into the same path), open a new
+ * {@code LuceneIndex} on that directory and {@link #close()} the old
+ * handle once in-flight queries have drained; the sidecar resources held
+ * by the old handle are released with it.
  * </p>
  * <h2>Configuration keys</h2>
+ * <p>
+ * All keys are optional and read from {@value #CONFIG_NAME} inside the
+ * index directory. The corpus identifier is <em>not</em> a key: it is the
+ * index directory's own name, so renaming the directory renames the
+ * corpus (the mechanism used to publish a rebuilt index).
+ * </p>
  * <ul>
- * <li><b>{@code name}</b> — corpus identifier. Defaults to the config filename stem.</li>
- * <li><b>{@code label}</b> — display label. Defaults to {@code name}.</li>
- * <li><b>{@code indexroot}</b> (required) — parent directory; the index
- * is opened at {@code indexroot/name/}.</li>
+ * <li><b>{@code label}</b> — display label. Defaults to the directory name.</li>
  * <li><b>{@code content}</b> — default tokenized field. If absent, the
  * first alphabetical field with positions is elected.</li>
  * <li><b>{@code docline}</b> — stored field carrying a compact
@@ -69,6 +77,9 @@ import static com.github.oeuvres.alix.common.Names.*;
 public final class LuceneIndex implements Closeable
 {
     private static final Logger LOG = Logger.getLogger(LuceneIndex.class.getName());
+
+    /** Reserved name of the optional search-time config file inside the index directory. */
+    public static final String CONFIG_NAME = "alix.xml";
 
     private final String name;
     private final String label;
@@ -110,11 +121,12 @@ public final class LuceneIndex implements Closeable
     }
 
     /**
-     * Open a frozen index from an XML properties configuration file.
+     * Open a frozen index from a self-describing index directory.
      * <p>
-     * The index directory is resolved as {@code indexroot/name/}, where
-     * {@code indexroot} comes from the config file and is interpreted
-     * relative to the config file's directory. Field metadata is
+     * The directory <em>is</em> the Lucene store. Its name is the corpus
+     * identifier. Search-time configuration is read from an optional
+     * {@value #CONFIG_NAME} file inside the directory; when that file is
+     * absent every key falls back to a default. Field metadata is
      * inferred from all segments via
      * {@link Fluc#inferFields(DirectoryReader, Path)}.
      * </p>
@@ -124,50 +136,45 @@ public final class LuceneIndex implements Closeable
      * release file descriptors and mapped buffers.
      * </p>
      *
-     * @param configXml path to the XML properties file
+     * @param indexDir path to the Lucene index directory
      * @return a ready-to-query handle; caller must {@link #close()} when done
-     * @throws IOException if the config or index cannot be read
-     * @throws IllegalArgumentException if required keys are missing or paths invalid
+     * @throws IOException if the index cannot be read
+     * @throws IllegalArgumentException if the directory or a declared field is invalid
      */
     public static LuceneIndex open(
-        final Path configXml
+        final Path indexDir
     )
         throws IOException {
-        final Path cfg = configXml.toAbsolutePath().normalize();
-        if (!Files.isRegularFile(cfg)) {
-            throw new IllegalArgumentException("Config file not found: " + cfg);
+        final Path dir = indexDir.toAbsolutePath().normalize();
+        if (!Files.isDirectory(dir)) {
+            throw new IllegalArgumentException("Index directory not found: " + dir);
         }
 
+        // The corpus identifier is the directory name; a renamed directory
+        // is a different corpus. Any "name" key in the config is ignored.
+        final String name = dir.getFileName().toString();
+
+        // Config is optional and lives inside the index directory.
         final Properties props = new Properties();
-        try (InputStream in = Files.newInputStream(cfg)) {
-            props.loadFromXML(in);
+        final Path cfg = dir.resolve(CONFIG_NAME);
+        if (Files.isRegularFile(cfg)) {
+            try (InputStream in = Files.newInputStream(cfg)) {
+                props.loadFromXML(in);
+            }
         }
-
-        String name = trimOrNull(props.getProperty("name"));
-        if (name == null)
-            name = Dir.stem(cfg);
 
         String label = trimOrNull(props.getProperty("label"));
         if (label == null)
             label = name;
 
-        final String rootStr = trimOrNull(props.getProperty("indexroot"));
-        if (rootStr == null) {
-            throw new IllegalArgumentException("Missing required key: indexroot — " + cfg);
-        }
-        final Path indexDir = Dir.resolve(cfg.getParent(), rootStr).resolve(name);
-        if (!Files.isDirectory(indexDir)) {
-            throw new IllegalArgumentException("Index directory not found: " + indexDir);
-        }
-
         // Open Directory first. If DirectoryReader.open() fails, close
         // the Directory explicitly — otherwise its file descriptors leak.
-        final Directory dir = FSDirectory.open(indexDir);
+        final Directory directory = FSDirectory.open(dir);
         final DirectoryReader reader;
         try {
-            reader = DirectoryReader.open(dir);
+            reader = DirectoryReader.open(directory);
         } catch (IOException | RuntimeException ex) {
-            dir.close();
+            directory.close();
             throw ex;
         }
 
@@ -176,21 +183,21 @@ public final class LuceneIndex implements Closeable
         // descriptors are released.
         try {
             final IndexSearcher searcher = new IndexSearcher(reader);
-            final Map<String, Fluc> fields = Fluc.inferFields(reader, indexDir);
-            final String content = resolveContent(props, fields, indexDir);
-            final String year = resolveYear(props, fields, indexDir);
+            final Map<String, Fluc> fields = Fluc.inferFields(reader, dir);
+            final String content = resolveContent(props, fields, dir);
+            final String year = resolveYear(props, fields, dir);
             String docline = trimOrNull(props.getProperty(DOCLINE, DOCLINE));
             if (!fields.containsKey(docline))
                 docline = null;
             String lang = trimOrNull(props.getProperty(LOCALE, LOCALE_DEFAULT));
             Locale locale = Locale.forLanguageTag(lang);
-            final long lastModified = readSegmentsMtime(indexDir);
+            final long lastModified = readSegmentsMtime(dir);
 
             // Freeze the map so accessors need no synchronization.
             final Map<String, Fluc> frozen = Collections.unmodifiableMap(fields);
 
             return new LuceneIndex(
-                    name, label, content, docline, year, locale, indexDir, reader, searcher, frozen, lastModified);
+                    name, label, content, docline, year, locale, dir, reader, searcher, frozen, lastModified);
         } catch (IOException | RuntimeException ex) {
             reader.close();
             throw ex;
