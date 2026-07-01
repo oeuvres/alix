@@ -141,6 +141,17 @@ public class FrenchCliticSplitFilter extends TokenFilter
         PREFIX.put("t'", "te".toCharArray());
     }
 
+    /**
+     * Apostrophe suffixes anchored on the last apostrophe (case-insensitive), distinct from
+     * {@link #PREFIX} which is anchored on the first. Currently a single entry: the English/Latin
+     * genitive marker on a foreign proper noun (Piaget's), dropped with no residual token, same
+     * convention as the euphonic {@code -t} in {@link #SUFFIX}.
+     */
+    private static final CharArrayMap<char[]> APOS_SUFFIX = new CharArrayMap<>(4, true);
+    static {
+        APOS_SUFFIX.put("'s", null); // Piaget's -> Piaget
+    }
+
     /** Hyphen suffixes (case-insensitive: "dit-Il" should behave like "dit-il"). */
     private static final CharArrayMap<char[]> SUFFIX = new CharArrayMap<>(30, true);
     static {
@@ -169,7 +180,6 @@ public class FrenchCliticSplitFilter extends TokenFilter
         SUFFIX.put("-tu", "tu".toCharArray());       // viendras-tu ?
         SUFFIX.put("-vous", "vous".toCharArray());   // voulez-vous ?
         SUFFIX.put("-y", "y".toCharArray());         // allons-y.
-        SUFFIX.put("'s", "".toCharArray());         // Piaget’s
     }
 
     /**
@@ -240,6 +250,31 @@ public class FrenchCliticSplitFilter extends TokenFilter
                     termAtt.copyBuffer(value, 0, value.length);
                     offsetAtt.setOffset(startOffset, startOffset + prefixLen);
                     return true;
+                }
+            }
+
+            // Suffix split on apostrophe, anchored on the LAST apostrophe (distinct from
+            // aposFirst above, which anchors the prefix-elision check). aposLast is only
+            // computed when an apostrophe exists at all; for the common single-apostrophe
+            // token aposLast == aposFirst, so the prefix check above already ran and failed
+            // to match before this is tried. aposLast > 0 mirrors hyphLast > 0 below: it
+            // guarantees a non-empty remainder before the apostrophe.
+            final int aposLast = (aposFirst < 0) ? -1 : lastAposIndex(buf, len);
+            if (aposLast > 0) {
+                final int suffixLen = len - aposLast;
+                if (APOS_SUFFIX.containsKey(buf, aposLast, suffixLen)) {
+                    final char[] value = APOS_SUFFIX.get(buf, aposLast, suffixLen);
+                    if (value != null) {
+                        if (queue.size() >= MAX_SPLITS) {
+                            rollbackToOriginal();
+                            return true;
+                        }
+                        bufferFirstFromCurrent(value, 0, value.length,
+                                offsetAtt.startOffset() + aposLast, offsetAtt.endOffset());
+                    }
+                    offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.startOffset() + aposLast);
+                    termAtt.setLength(aposLast);
+                    continue;
                 }
             }
 
@@ -347,6 +382,17 @@ public class FrenchCliticSplitFilter extends TokenFilter
     private boolean keepAsIs() {
         final int len = termAtt.length();
         return len > 0 && KEEP_AS_IS.contains(termAtt.buffer(), 0, len);
+    }
+
+    /**
+     * @return index of the last canonical apostrophe ({@code '}) in {@code buf[0, len)},
+     *         or {@code -1} if none.
+     */
+    private static int lastAposIndex(final char[] buf, final int len) {
+        for (int i = len - 1; i >= 0; i--) {
+            if (buf[i] == '\'') return i;
+        }
+        return -1;
     }
 
     /**
