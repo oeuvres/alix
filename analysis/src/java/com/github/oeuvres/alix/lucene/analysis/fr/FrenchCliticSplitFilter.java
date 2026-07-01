@@ -217,7 +217,11 @@ public class FrenchCliticSplitFilter extends TokenFilter
 
             if (aposFirst < 0 && hyphLast < 0) return true;
             if (aposFirst == len - 1) return true;             // apos is last char (maths A', D')
-            if (hyphLast == 0 || hyphLast == len - 1) return true;
+            // No separate guard for hyphLast == 0 / len - 1: the suffix block below already
+            // requires hyphLast > 0, and a 1-char suffix lookup never matches SUFFIX (min key
+            // length 2), so both boundary cases fall through correctly on their own. A combined
+            // early return here previously skipped the apostrophe-prefix split whenever a
+            // boundary hyphen coexisted with a splittable apostrophe, e.g. "l'intelli-".
 
             // Prefix split on apostrophe. prefixLen < len is guaranteed by the
             // (aposFirst == len - 1) return above. Proper nouns (D'Alembert,

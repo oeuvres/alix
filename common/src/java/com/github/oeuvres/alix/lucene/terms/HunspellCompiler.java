@@ -470,7 +470,7 @@ public final class HunspellCompiler {
                 }
                 final int unknowns = unknowns(reader, field, w, dics);
                 w.flush();
-                System.err.println(field + ": " + unknowns + " terms out of vocabulary");
+                // System.err.println(field + ": " + unknowns + " terms out of vocabulary");
             } finally {
                 for (final InputStream dic : dics) {
                     if (dic != null) {

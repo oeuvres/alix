@@ -40,6 +40,14 @@ public class FrenchAnalyzerDemo
     
     static final List<Case> CASES = List.of(
         new Case(
+            "l’intelli-",
+            """
+<p class="p">C’est pour souligner cette sorte de « motivation » que Piaget a consacré une bonne partie de sa carrière à formuler en des termes plus spécifiques les structures mentales qui caractérisent le développement  l’intelli- des Children’s </p>
+              <p class="p"> </p>
+""",
+            null
+        ),
+        new Case(
             "Vinh-Bang",
             "processus de « modération » comme dans le principe de Le Châtelier."
             + " L’une des épreuves de Vinh Bang consiste à présenter à l’entrée une règle horizontale",
