@@ -44,10 +44,6 @@ public final class AnalysisDemoHelper {
      */
     public record Tok(String term, Integer pos, int start, int end) { }
 
-    // -------------------------------------------------------------------------
-    // Public API: printing
-    // -------------------------------------------------------------------------
-
     public static void printTokens(final Tokenizer tokenizer, final String input) throws IOException {
         Objects.requireNonNull(tokenizer, "tokenizer");
         tokenizer.setReader(new StringReader(nz(input)));
@@ -106,10 +102,6 @@ public final class AnalysisDemoHelper {
             // caller closes
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Public API: snapshot + diff
-    // -------------------------------------------------------------------------
 
     public static ArrayList<Tok> collect(final Tokenizer tokenizer, final String input) throws IOException {
         Objects.requireNonNull(tokenizer, "tokenizer");
@@ -244,10 +236,6 @@ public final class AnalysisDemoHelper {
         sb.append('^');
         return sb.toString();
     }
-
-    // -------------------------------------------------------------------------
-    // Optional convenience: run cases
-    // -------------------------------------------------------------------------
 
     /**
      * Convenience runner for a list of cases using an Analyzer.

@@ -25,6 +25,11 @@ public class MarkupTokenizerDemo
 
     // --- curated cases (edit freely) ---
     static final List<Case> CASES = List.of(
+            
+            new Case(
+                "Rousseau",
+                    "J.-J. Rousseau is alive, J.C. also, not J.-C. mais publié à la N.R.F.",
+                    ""),
 
             new Case(
                 "Abbreviation dot",

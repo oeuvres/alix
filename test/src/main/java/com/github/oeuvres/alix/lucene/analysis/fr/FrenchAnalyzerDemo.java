@@ -40,6 +40,17 @@ public class FrenchAnalyzerDemo
     
     static final List<Case> CASES = List.of(
         new Case(
+            "",
+            """
+                var. <i>parva</i> Moq. qu’on
+                in Bull. Ps.,
+                in Bull. Soc. neuch. sc. nat.,
+                La Sauge et Cornaux. Var. ventricosa.
+                Confer. Macy Foundat.,
+            """,
+            ""
+        ),
+        new Case(
             "l’intelli-",
             """
 <p class="p">D’Alembert souligne cette sorte de « motivation » d’Alembert que Piaget a consacré une bonne partie de sa carrière à formuler en des termes plus spécifiques les structures mentales qui caractérisent le développement  l’intelli- des Children’s </p>

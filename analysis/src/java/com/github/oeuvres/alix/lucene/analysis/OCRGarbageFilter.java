@@ -7,14 +7,14 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
-public class OCRHyphenFilter extends TokenFilter
+public class OCRGarbageFilter extends TokenFilter
 {
     /** The current token term. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
     
-    public OCRHyphenFilter(TokenStream input)
+    public OCRGarbageFilter(TokenStream input)
     {
         super(input);
     }
