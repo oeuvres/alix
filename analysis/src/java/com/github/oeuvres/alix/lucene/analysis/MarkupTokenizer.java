@@ -35,6 +35,7 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.CharacterUtils;
@@ -64,8 +65,11 @@ import com.github.oeuvres.alix.util.Char;
  *   <li>a lowercase word, comma, semicolon, or colon keeps all pending dots attached;</li>
  *   <li>an uppercase/titlecase word, a number, sentence punctuation, or end of input detaches
  *       only the last pending dot and emits it as sentence punctuation;</li>
- *   <li>XML tokens and wrapper punctuation are transparent to the decision;</li>
- *   <li>another unresolved dotted token extends the pending sequence.</li>
+ *   <li>XML tokens are transparent to the decision;</li>
+ *   <li>wrapper punctuation is transparent but separates abbreviation-like dotted sequences:
+ *       the following lexical token is still tested as sentence-start evidence;</li>
+ *   <li>another unresolved dotted token extends the pending sequence only when no transparent
+ *       punctuation intervenes.</li>
  * </ul>
  *
  * <p>A brevidot never emits a sentence-boundary event. This deliberately favours common forms
@@ -79,6 +83,38 @@ import com.github.oeuvres.alix.util.Char;
  */
 public class MarkupTokenizer extends Tokenizer
 {
+    /**
+     * Synthetic sentence-dot event scheduled after a given number of queued tokens.
+     */
+    private static final class SentenceDot
+    {
+        /** Number of queued tokens that must be emitted before this dot. */
+        private final int afterTokenCount;
+
+        /** Corrected end offset of the source dot. */
+        private final int endOffset;
+
+        /** Corrected start offset of the source dot. */
+        private final int startOffset;
+
+        /**
+         * Create a scheduled sentence-dot event.
+         *
+         * @param afterTokenCount number of queued tokens preceding the event
+         * @param startOffset corrected start offset of the source dot
+         * @param endOffset corrected end offset of the source dot
+         */
+        private SentenceDot(
+            final int afterTokenCount,
+            final int startOffset,
+            final int endOffset
+        ) {
+            this.afterTokenCount = afterTokenCount;
+            this.startOffset = startOffset;
+            this.endOffset = endOffset;
+        }
+    }
+
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
 
@@ -115,17 +151,11 @@ public class MarkupTokenizer extends Tokenizer
     /** Complete token states waiting for a trailing-dot decision or ordered replay. */
     private TokenStateQueue lookahead;
 
-    /** Whether a synthetic sentence dot must be emitted while draining {@link #lookahead}. */
-    private boolean pendingSentenceDot;
+    /** Sentence-dot events waiting to be emitted among queued token states. */
+    private final ArrayDeque<SentenceDot> pendingSentenceDots = new ArrayDeque<>();
 
-    /** Corrected end offset of the synthetic sentence dot. */
-    private int pendingSentenceDotEnd;
-
-    /** Corrected start offset of the synthetic sentence dot. */
-    private int pendingSentenceDotStart;
-
-    /** Number of queued tokens to emit before {@link #pendingSentenceDot}. */
-    private int tokensBeforeSentenceDot;
+    /** Number of token states already emitted from the current lookahead queue. */
+    private int emittedLookaheadTokens;
 
     /**
      * Build a tokenizer with no configured abbreviation list.
@@ -490,47 +520,51 @@ public class MarkupTokenizer extends Tokenizer
      */
     private boolean emitQueuedOutput()
     {
-        if (pendingSentenceDot && tokensBeforeSentenceDot == 0) {
+        final SentenceDot sentenceDot = pendingSentenceDots.peekFirst();
+        if (sentenceDot != null && sentenceDot.afterTokenCount == emittedLookaheadTokens) {
             return emitSentenceDot();
         }
 
         clearAttributes();
         lookahead.removeFirst(this);
-        if (pendingSentenceDot) {
-            tokensBeforeSentenceDot--;
+        emittedLookaheadTokens++;
+
+        if (lookahead.isEmpty() && pendingSentenceDots.isEmpty()) {
+            emittedLookaheadTokens = 0;
         }
         return true;
     }
 
     /**
-     * Emit the sentence dot detached from an unresolved dotted token.
+     * Emit the next sentence dot detached from an unresolved dotted token.
      *
      * @return {@code true}
      */
     private boolean emitSentenceDot()
     {
+        final SentenceDot sentenceDot = pendingSentenceDots.removeFirst();
+
         clearAttributes();
         termAtt.append('.');
         posAtt.setPos(PUNCTsent.code);
         posIncAtt.setPositionIncrement(1);
         posLenAtt.setPositionLength(1);
-        offsetAtt.setOffset(pendingSentenceDotStart, pendingSentenceDotEnd);
+        offsetAtt.setOffset(sentenceDot.startOffset, sentenceDot.endOffset);
 
-        pendingSentenceDot = false;
-        pendingSentenceDotStart = 0;
-        pendingSentenceDotEnd = 0;
-        tokensBeforeSentenceDot = 0;
+        if (lookahead.isEmpty() && pendingSentenceDots.isEmpty()) {
+            emittedLookaheadTokens = 0;
+        }
         return true;
     }
 
     /**
-     * Test whether resolved token states or a synthetic dot remain to be emitted.
+     * Test whether resolved token states or synthetic dots remain to be emitted.
      *
      * @return {@code true} when {@link #emitQueuedOutput()} may be called
      */
     private boolean hasQueuedOutput()
     {
-        return pendingSentenceDot || (lookahead != null && !lookahead.isEmpty());
+        return !pendingSentenceDots.isEmpty() || (lookahead != null && !lookahead.isEmpty());
     }
 
     /**
@@ -692,13 +726,19 @@ public class MarkupTokenizer extends Tokenizer
         int lastCandidateIndex = 0;
         int lastDotStart = correctOffset(offset - 1);
         int lastDotEnd = correctOffset(offset);
+        boolean crossedTransparentPunctuation = false;
 
         while (readToken()) {
             final boolean unknownDotted = isUnknownDottedToken(this);
             lookahead.addLast(this);
             final int currentIndex = lookahead.size() - 1;
 
-            if (isXmlToken(this) || isTransparentForDotDecision(this)) {
+            if (isXmlToken(this)) {
+                continue;
+            }
+
+            if (isTransparentForDotDecision(this)) {
+                crossedTransparentPunctuation = true;
                 continue;
             }
 
@@ -707,9 +747,15 @@ public class MarkupTokenizer extends Tokenizer
             }
 
             if (unknownDotted) {
+                if (crossedTransparentPunctuation && startsSentence(this)) {
+                    removeTrailingDot(lookahead.get(lastCandidateIndex), lastDotStart);
+                    scheduleSentenceDot(lastCandidateIndex, lastDotStart, lastDotEnd);
+                }
+
                 lastCandidateIndex = currentIndex;
                 lastDotStart = correctOffset(offset - 1);
                 lastDotEnd = correctOffset(offset);
+                crossedTransparentPunctuation = false;
                 continue;
             }
 
@@ -749,10 +795,7 @@ public class MarkupTokenizer extends Tokenizer
         final int dotStart,
         final int dotEnd
     ) {
-        pendingSentenceDot = true;
-        pendingSentenceDotStart = dotStart;
-        pendingSentenceDotEnd = dotEnd;
-        tokensBeforeSentenceDot = candidateIndex + 1;
+        pendingSentenceDots.addLast(new SentenceDot(candidateIndex + 1, dotStart, dotEnd));
     }
 
     /**
@@ -788,10 +831,8 @@ public class MarkupTokenizer extends Tokenizer
         pendingChar = -1;
         pendingCharOffset = -1;
         pendingCharEndOffset = -1;
-        pendingSentenceDot = false;
-        pendingSentenceDotStart = 0;
-        pendingSentenceDotEnd = 0;
-        tokensBeforeSentenceDot = 0;
+        pendingSentenceDots.clear();
+        emittedLookaheadTokens = 0;
         if (lookahead != null) lookahead.clear();
         buffer.reset();
     }
