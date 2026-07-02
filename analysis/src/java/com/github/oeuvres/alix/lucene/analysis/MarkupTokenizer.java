@@ -566,18 +566,42 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Test whether a punctuation token may be crossed while looking for a resolving word.
-     * Comma, semicolon, and colon are excluded because they resolve pending dots directly.
+     * Test whether a punctuation token is transparent while resolving an ambiguous trailing dot.
+     * Transparent punctuation is preserved in the output queue but does not itself decide whether
+     * the preceding dot is lexical or sentential. The next significant token remains decisive.
+     *
+     * <p>Comma, semicolon, and colon are intentionally excluded: they resolve pending dots as
+     * non-sentential. Sentence punctuation is handled separately.</p>
      *
      * @param source token state to inspect
-     * @return {@code true} for wrapper punctuation such as quotes, parentheses, and dashes
+     * @return {@code true} for quotes, parentheses, en dash, or em dash
      */
-    private static boolean isTransparentPunctuation(final AttributeSource source)
+    private static boolean isTransparentForDotDecision(final AttributeSource source)
     {
         final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
-        return term.length() == 1
-            && isClausePunct(term.charAt(0))
-            && !isNonSentenceResolver(source);
+        return term.length() == 1 && isTransparentForDotDecision(term.charAt(0));
+    }
+
+    /**
+     * Test whether a punctuation character is transparent for trailing-dot resolution.
+     *
+     * @param c punctuation character to inspect
+     * @return {@code true} when lookahead must continue beyond this character
+     */
+    private static boolean isTransparentForDotDecision(final char c)
+    {
+        switch (c) {
+            case '(':
+            case ')':
+            case '—':
+            case '–':
+            case '"':
+            case '«':
+            case '»':
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -674,7 +698,7 @@ public class MarkupTokenizer extends Tokenizer
             lookahead.addLast(this);
             final int currentIndex = lookahead.size() - 1;
 
-            if (isXmlToken(this) || isTransparentPunctuation(this)) {
+            if (isXmlToken(this) || isTransparentForDotDecision(this)) {
                 continue;
             }
 
