@@ -71,6 +71,11 @@ import com.github.oeuvres.alix.util.Char;
  * <p>A brevidot never emits a sentence-boundary event. This deliberately favours common forms
  * such as {@code Dr. Martin} and {@code J.-J. Rousseau} over detecting the uncommon case where
  * an abbreviation also ends a sentence.</p>
+ *
+ * <p>The five predefined XML entities ({@code &amp;amp;}, {@code &amp;apos;},
+ * {@code &amp;gt;}, {@code &amp;lt;}, and {@code &amp;quot;}) are decoded as character data.
+ * The decoded character is then classified normally instead of being appended blindly to the
+ * current term. For example, {@code B’&amp;gt;} produces {@code B'} rather than {@code B'>}.</p>
  */
 public class MarkupTokenizer extends Tokenizer
 {
@@ -102,9 +107,10 @@ public class MarkupTokenizer extends Tokenizer
     /** Current char offset (UTF-16 code units). Points to next char to read. */
     private int offset = 0;
 
-    /** One-char pushback used to re-emit punctuation stripped from numbers. */
+    /** Decoded or literal punctuation already consumed from the source. */
     private int pendingChar = -1;          // 0..65535, or -1
-    private int pendingCharOffset = -1;    // offset where pendingChar occurs
+    private int pendingCharOffset = -1;    // source start offset
+    private int pendingCharEndOffset = -1; // source end offset
 
     /** Complete token states waiting for a trailing-dot decision or ordered replay. */
     private TokenStateQueue lookahead;
@@ -200,7 +206,7 @@ public class MarkupTokenizer extends Tokenizer
         boolean inSentPunct = false;
 
         boolean trailingDot = false; // last appended char is '.' after a letter
-        int amp = -1;              // position of '&' in termBuf (for &gt;/&lt;/&amp;)
+        int amp = -1;              // position of a possible XML entity in termBuf
 
         int startOffset = -1;
         int tokenEndOff = -1; // if set, overrides "off" for offsetAtt end
@@ -297,6 +303,7 @@ public class MarkupTokenizer extends Tokenizer
                         termLen--;
                         pendingChar = last;
                         pendingCharOffset = off - 1; // punctuation position
+                        pendingCharEndOffset = off;
                         tokenEndOff = off - 1;       // number ends BEFORE punctuation
                     }
                 }
@@ -321,36 +328,65 @@ public class MarkupTokenizer extends Tokenizer
                 continue;
             }
 
-            // XML entities: handle &gt; &lt; &amp; (keeps unknown entities verbatim).
+            // Decode the five predefined XML entities. Unknown entities remain verbatim.
             if (c == ';' && amp >= 0 && termLen >= amp + 2) {
                 if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
                 termBuf[termLen++] = ';';
                 bi++; off++; lastChar = c;
 
-                // name length between '&' and ';'
-                final int nameLen = termLen - amp - 2;
-                if (nameLen == 2) {
-                    final char a = termBuf[amp + 1], b = termBuf[amp + 2];
-                    if (a == 'g' && b == 't') {
-                        termLen = amp;
-                        if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                        termBuf[termLen++] = '>';
-                    }
-                    else if (a == 'l' && b == 't') {
-                        termLen = amp;
-                        if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                        termBuf[termLen++] = '<';
-                    }
-                }
-                else if (nameLen == 3) {
-                    final char a = termBuf[amp + 1], b = termBuf[amp + 2], d = termBuf[amp + 3];
-                    if (a == 'a' && b == 'm' && d == 'p') {
-                        termLen = amp;
-                        if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                        termBuf[termLen++] = '&';
-                    }
-                }
+                final int entityTermStart = amp;
+                final int entityStartOffset = off - (termLen - entityTermStart);
+                final char decoded = decodeXmlEntity(termBuf, entityTermStart, termLen);
                 amp = -1;
+
+                if (decoded == 0) {
+                    continue;
+                }
+
+                // Remove the source spelling (&name;) before classifying the decoded character.
+                termLen = entityTermStart;
+
+                // Escaped angle brackets are character data. They must not enter the XML-tag
+                // branch and are discarded just like ordinary non-token delimiters.
+                if (decoded == '<' || decoded == '>') {
+                    if (termLen > 0) {
+                        tokenEndOff = entityStartOffset;
+                        break;
+                    }
+                    lastChar = decoded;
+                    continue;
+                }
+
+                if (isClausePunct(decoded) || isSentencePunct(decoded)) {
+                    pendingChar = decoded;
+                    pendingCharOffset = entityStartOffset;
+                    pendingCharEndOffset = off;
+
+                    if (termLen > 0) {
+                        tokenEndOff = entityStartOffset;
+                        break;
+                    }
+
+                    bufferIndex = bi;
+                    bufferLen = bl;
+                    offset = off;
+                    return emitPendingPunct();
+                }
+
+                if (Char.isToken(decoded)) {
+                    if (termLen == 0) startOffset = entityStartOffset;
+                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
+                    termBuf[termLen++] = normalizeTokenChar(decoded);
+                    lastChar = decoded;
+                    continue;
+                }
+
+                // Any other decoded character behaves as an ordinary delimiter.
+                if (termLen > 0) {
+                    tokenEndOff = entityStartOffset;
+                    break;
+                }
+                lastChar = decoded;
                 continue;
             }
 
@@ -412,10 +448,7 @@ public class MarkupTokenizer extends Tokenizer
 
                 if (c == '&') amp = termLen;
 
-                final char out;
-                if (c == '\u2019' || c == '\u2018' || c == '\u02BC') out = '\'';
-                else if (c == '\u2010' || c == '\u2011' || c == '\u00AD') out = '-';
-                else out = c;
+                final char out = normalizeTokenChar(c);
 
                 if (out != (char)0xAD) { // ignore soft hyphen
                     if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
@@ -730,6 +763,7 @@ public class MarkupTokenizer extends Tokenizer
         offset = 0;
         pendingChar = -1;
         pendingCharOffset = -1;
+        pendingCharEndOffset = -1;
         pendingSentenceDot = false;
         pendingSentenceDotStart = 0;
         pendingSentenceDotEnd = 0;
@@ -739,8 +773,9 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Emit the one-char pushback as a punctuation token; sentence punctuation
-     * merges with a following .?!… run in the buffer.
+     * Emit already consumed punctuation as a token. Its source span may be one literal character
+     * or a complete entity such as {@code &amp;quot;}. Sentence punctuation merges with a following
+     * {@code .?!…} run in the buffer.
      *
      * @return {@code true}
      * @throws IOException if the input cannot be read
@@ -749,8 +784,10 @@ public class MarkupTokenizer extends Tokenizer
     {
         // pendingChar already consumed earlier; current (offset, bufferIndex) point after it.
         final int pOff = pendingCharOffset;
+        final int pEnd = pendingCharEndOffset;
         final char pc = (char) pendingChar;
         pendingCharOffset = -1;
+        pendingCharEndOffset = -1;
         pendingChar = -1;
 
         char[] termBuf = termAtt.buffer();
@@ -769,7 +806,7 @@ public class MarkupTokenizer extends Tokenizer
             termAtt.setLength(termLen);
             posIncAtt.setPositionIncrement(1);
             posLenAtt.setPositionLength(1);
-            offsetAtt.setOffset(correctOffset(pOff), correctOffset(pOff + 1));
+            offsetAtt.setOffset(correctOffset(pOff), correctOffset(pEnd));
             return true;
         }
 
@@ -805,8 +842,50 @@ public class MarkupTokenizer extends Tokenizer
         termAtt.setLength(termLen);
         posIncAtt.setPositionIncrement(1);
         posLenAtt.setPositionLength(1);
-        offsetAtt.setOffset(correctOffset(pOff), correctOffset(pOff + 1));
+        offsetAtt.setOffset(correctOffset(pOff), correctOffset(pEnd));
         return true;
+    }
+
+    /**
+     * Decode one of the five predefined XML entities stored in a term buffer.
+     *
+     * @param buf token buffer containing the entity source spelling
+     * @param from index of {@code '&'}
+     * @param to index immediately after {@code ';'}
+     * @return decoded character, or {@code 0} when the entity is unknown
+     */
+    private static char decodeXmlEntity(final char[] buf, final int from, final int to)
+    {
+        final int length = to - from;
+        if (length == 4) {
+            if (buf[from + 1] == 'g' && buf[from + 2] == 't') return '>';
+            if (buf[from + 1] == 'l' && buf[from + 2] == 't') return '<';
+            return 0;
+        }
+        if (length == 5) {
+            if (buf[from + 1] == 'a' && buf[from + 2] == 'm' && buf[from + 3] == 'p') return '&';
+            return 0;
+        }
+        if (length == 6) {
+            if (buf[from + 1] == 'a' && buf[from + 2] == 'p'
+                    && buf[from + 3] == 'o' && buf[from + 4] == 's') return '\'';
+            if (buf[from + 1] == 'q' && buf[from + 2] == 'u'
+                    && buf[from + 3] == 'o' && buf[from + 4] == 't') return '"';
+        }
+        return 0;
+    }
+
+    /**
+     * Normalize a character accepted in a word-like token.
+     *
+     * @param c source or entity-decoded character
+     * @return normalized token character
+     */
+    private static char normalizeTokenChar(final char c)
+    {
+        if (c == '\u2019' || c == '\u2018' || c == '\u02BC') return '\'';
+        if (c == '\u2010' || c == '\u2011' || c == '\u00AD') return '-';
+        return c;
     }
 
     /**

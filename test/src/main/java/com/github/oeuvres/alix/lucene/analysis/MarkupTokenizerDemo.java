@@ -67,6 +67,11 @@ public final class MarkupTokenizerDemo
     {
         return List.of(
             new Case(
+                "ça.",
+                "Parce que ça fait plus long que ça. — D’accord. Et si je le faisais encore bien plus long",
+                ""
+            ),
+            new Case(
                 "Unknown dotted sequence resolved by a number",
                 "BAD. abrév. 1914 — ex: larg. 12 cm",
                 "Expected: BAD. | abrév | . | 1914 | — | ex | : | larg. | 12 | cm"

@@ -6,6 +6,7 @@ import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
+import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.WordTokenizer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
@@ -42,7 +43,7 @@ public class FrenchAnalyzerDemo
         new Case(
             "",
             """
-                var. <i>parva</i> Moq. qu’on
+                var. <i>parva</i> z>p Moq. qu’on
                 in Bull. Ps.,
                 in Bull. Soc. neuch. sc. nat.,
                 La Sauge et Cornaux. Var. ventricosa.
@@ -95,7 +96,6 @@ public class FrenchAnalyzerDemo
             
     public static void main(String[] args) throws Exception
     {
-        
         try (Analyzer analyzer = buildAnalyzer()) {
             System.out.println("\n==== PosTaggingFilterDemo ====\n");
             AnalysisDemoHelper.runAll(analyzer, FIELD, CASES);
