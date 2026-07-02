@@ -58,10 +58,12 @@ import static com.github.oeuvres.alix.common.Upos.*;
  *
  * <p><b>Input contract:</b> apostrophe and hyphen confusables are expected to be canonicalized
  * upstream (e.g. by a {@code MappingCharFilter}) before this filter runs: every apostrophe is
- * U+0027 {@code '} and every hyphen is U+002D {@code -}. This filter does no character folding;
- * curly quotes, non-breaking hyphens, soft hyphens, etc. are treated as ordinary letters and will
- * not trigger a split. Lexicalized entries in {@link #KEEP_AS_IS} and the {@link #PREFIX} /
- * {@link #SUFFIX} keys must therefore also use the canonical characters.</p>
+ * U+0027 {@code '} and every hyphen is U+002D {@code -}. This filter does no general character
+ * folding. As a narrow defensive cleanup, one trailing U+0027 {@code '} or U+2019 {@code ’}
+ * apostrophe is removed before splitting. Other curly quotes, non-breaking hyphens, soft hyphens,
+ * etc. are treated as ordinary letters and will not trigger a split. Lexicalized entries in
+ * {@link #KEEP_AS_IS} and the {@link #PREFIX} / {@link #SUFFIX} keys must therefore use the
+ * canonical characters.</p>
  *
  * https://fr.wikipedia.org/wiki/Emploi_du_trait_d%27union_pour_les_pr%C3%A9fixes_en_fran%C3%A7ais
  *
@@ -208,6 +210,16 @@ public class FrenchCliticSplitFilter extends TokenFilter
             return true;
         }
 
+        // Strip one trailing apostrophe before lexicalized-form lookup and rollback capture.
+        final int termLength = termAtt.length();
+        if (termLength > 1) {
+            final char last = termAtt.buffer()[termLength - 1];
+            if (last == '\'' || last == '\u2019') {
+                termAtt.setLength(termLength - 1);
+                offsetAtt.setOffset(offsetAtt.startOffset(), offsetAtt.endOffset() - 1);
+            }
+        }
+
         // Some lexicalized forms should never be split.
         if (keepAsIs()) {
             return true;
@@ -226,7 +238,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
             final int aposFirst = firstAposIndex(buf, len);
 
             if (aposFirst < 0 && hyphLast < 0) return true;
-            if (aposFirst == len - 1) return true;             // apos is last char (maths A', D')
+            if (aposFirst == len - 1) return true;             // repeated trailing apostrophe
             // No separate guard for hyphLast == 0 / len - 1: the suffix block below already
             // requires hyphLast > 0, and a 1-char suffix lookup never matches SUFFIX (min key
             // length 2), so both boundary cases fall through correctly on their own. A combined
@@ -315,7 +327,13 @@ public class FrenchCliticSplitFilter extends TokenFilter
      * <p>Position increment is normalized to 1 so that gaps from the original token are not
      * duplicated on generated tokens.</p>
      */
-    private void bufferFirstFromCurrent(final char[] buf, final int off, final int len, final int startOffset, final int endOffset) {
+    private void bufferFirstFromCurrent(
+        final char[] buf,
+        final int off,
+        final int len,
+        final int startOffset,
+        final int endOffset
+    ) {
         this.copyTo(scratch);
         scratchTerm.copyBuffer(buf, off, len);
         scratchOffset.setOffset(startOffset, endOffset);
@@ -330,7 +348,13 @@ public class FrenchCliticSplitFilter extends TokenFilter
      * <p>Position increment is normalized to 1 so that gaps from the original token are not
      * duplicated on generated tokens.</p>
      */
-    private void bufferLastFromCurrent(final char[] buf, final int off, final int len, final int startOffset, final int endOffset) {
+    private void bufferLastFromCurrent(
+        final char[] buf,
+        final int off,
+        final int len,
+        final int startOffset,
+        final int endOffset
+    ) {
         this.copyTo(scratch);
         scratchTerm.copyBuffer(buf, off, len);
         scratchOffset.setOffset(startOffset, endOffset);
