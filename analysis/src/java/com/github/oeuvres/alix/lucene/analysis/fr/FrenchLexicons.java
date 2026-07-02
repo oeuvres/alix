@@ -130,7 +130,8 @@ public class FrenchLexicons
     {
         MweLexicon lexicon = new MweLexicon(2000);
         WordTokenizer tokenizer = new FrenchCliticTokenizer();
-        LexiconHelper.loadExpressions(lexicon, tokenizer, LexiconHelper.class, "/com/github/oeuvres/alix/fr/expressions.csv");
+        LexiconHelper.loadExpressions(lexicon, tokenizer, LexiconHelper.class, "/com/github/oeuvres/alix/fr/mwe-words.csv");
+        LexiconHelper.loadExpressions(lexicon, tokenizer, LexiconHelper.class, "/com/github/oeuvres/alix/fr/mwe-propn.csv");
         return lexicon;
     }
 
@@ -157,8 +158,8 @@ public class FrenchLexicons
     
     public static CharArraySet buildUcwords()
     {
-        // set ignore case
-        CharArraySet set = new CharArraySet(200, true);
+        // keep case
+        CharArraySet set = new CharArraySet(200, false);
         LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/ucwords.csv");
         return set;
     }
@@ -166,7 +167,7 @@ public class FrenchLexicons
     public static CharArraySet buildPropn()
     {
         // set ignore case
-        CharArraySet set = new CharArraySet(1100, true);
+        CharArraySet set = new CharArraySet(2000, true);
         LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-words.csv");
         return set;
     }

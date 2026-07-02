@@ -335,13 +335,15 @@ public class MarkupTokenizer extends Tokenizer
                 continue;
             }
 
-            // Joker '*' only appended if token already started (original behavior).
+            // No more joker '*' support, this tokenizer is too heavy for query parser
+            /*
             if (c == '*' && termLen > 0) {
                 if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
                 termBuf[termLen++] = '*';
                 bi++; off++; lastChar = c;
                 continue;
             }
+            */
 
             // Word-like token char
             if (Char.isToken(c)) {

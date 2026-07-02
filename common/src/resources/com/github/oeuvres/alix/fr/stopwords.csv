@@ -13,7 +13,6 @@ _
 ..
 ...
 …
-…
 '
 ‘
 ''
@@ -27,8 +26,6 @@ _
 ’étais
 'y
 ’y
-"
-"
 “
 ”
 „
@@ -54,7 +51,6 @@ _
 &gt;
 &lt
 &lt;
-#
 #
 ##
 ###
@@ -122,10 +118,7 @@ Aâ
 AA'
 ab
 AB
-AB
 àb
-àb
-âb
 âb
 abb
 abba
@@ -135,6 +128,7 @@ Abcdef
 AC
 act
 ad
+Æ
 AE
 Af
 afin
@@ -266,8 +260,6 @@ c'
 C'
 c’
 c'est
-c'est
-c’est
 c’est
 c'est-
 c'est-à-
@@ -383,7 +375,6 @@ des
 Des
 dès
 dès lors
-dès lors
 desdictes
 desdiz
 desja
@@ -466,12 +457,10 @@ Eq
 Éq
 er
 ᵉʳ
-ᵉʳ
 ere
 ère
 err
 es
-és
 és
 ès
 esp
@@ -488,23 +477,15 @@ estre
 et
 Et
 ét
-ét
-ét
 Ét
 èt
-èt
-èt
 êt
-êt
-êt
-éta
 éta
 étaient
 étais
 était
 étant
 etc
-etç
 etç
 etc.
 été
@@ -546,7 +527,6 @@ F.
 f'
 F'
 f1
-F1
 F1
 f2
 F2
@@ -617,7 +597,6 @@ hab
 hab.
 HB
 Hd
-Hd
 he
 hé
 hélas
@@ -626,7 +605,6 @@ heure
 heures
 hg
 HH
-Hî
 Hî
 hin
 hl
@@ -715,7 +693,6 @@ Ins
 Int
 Ir
 is
-is
 item
 iv
 IV
@@ -733,7 +710,6 @@ j.
 J.
 j'
 J'
-j’
 j’
 j'ai
 j’ai
@@ -769,7 +745,6 @@ ka
 kb
 kc
 Kç
-kg
 kg
 kl
 Kl
@@ -840,6 +815,8 @@ lm
 Lmax
 ln
 lo
+Loc.
+loc.
 loc cit
 loc. cit
 loc. cit.
@@ -933,6 +910,7 @@ N°
 na
 nat
 Nd
+NDLR
 ne
 nè
 néanmoins
@@ -962,7 +940,6 @@ NUM
 ny
 o
 O
-º
 º
 ô
 Ô
@@ -1050,7 +1027,6 @@ PI
 pl
 Pl
 pl.
-pl.
 Pl.
 PLC
 plus
@@ -1058,7 +1034,6 @@ pluseurs
 plusieurs
 plutost
 plutôt
-pm
 pm
 Pm
 point
@@ -1116,6 +1091,7 @@ Qt
 qu
 qu'
 qu’
+qu'est-ce
 qu'est-ce que
 qu'il
 qu’il
@@ -1205,7 +1181,6 @@ sd
 se
 sect
 sect.
-sect.
 selon
 sem
 sem.
@@ -1235,7 +1210,6 @@ seule
 seules
 seuls
 Sf
-Sh
 Sh
 si
 sien
@@ -1339,7 +1313,6 @@ Tp
 tr
 trad
 trad.
-trad.
 trente
 très
 trois
@@ -1368,7 +1341,6 @@ une
 uri
 Uri
 v
-V
 V
 v.
 V.
@@ -1460,6 +1432,16 @@ xix
 XIX
 xixe
 XIXe
+XL
+XLI
+XLII
+XLIII
+XLIV
+XLIX
+XLV
+XLVI
+XLVII
+XLVIII
 xu
 Xu
 xv
@@ -1656,7 +1638,6 @@ Z'
 Φ.
 φ'
 Φ'
-χ
 χ
 Χ
 χ.

@@ -42,7 +42,7 @@ public class FrenchAnalyzerDemo
         new Case(
             "l’intelli-",
             """
-<p class="p">C’est pour souligner cette sorte de « motivation » que Piaget a consacré une bonne partie de sa carrière à formuler en des termes plus spécifiques les structures mentales qui caractérisent le développement  l’intelli- des Children’s </p>
+<p class="p">D’Alembert souligne cette sorte de « motivation » d’Alembert que Piaget a consacré une bonne partie de sa carrière à formuler en des termes plus spécifiques les structures mentales qui caractérisent le développement  l’intelli- des Children’s </p>
               <p class="p"> </p>
 """,
             null

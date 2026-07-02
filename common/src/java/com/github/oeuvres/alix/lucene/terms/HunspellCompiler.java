@@ -76,6 +76,8 @@ public final class HunspellCompiler {
 
     /** ASCII apostrophe the analyzer indexes; the fold target for apostrophe variants. */
     private static final char APOS = '\'';
+    /** CSV outputs */
+    private static final char SEP = ';';
 
     private HunspellCompiler() {
     }
@@ -159,7 +161,7 @@ public final class HunspellCompiler {
     }
 
     /**
-     * Writes the field terms that no input dictionary covers, most frequent first, as {@code term\tfrequency}
+     * Writes the field terms that no input dictionary covers, most frequent first, as {@code term;frequency}
      * lines. The listing is the complement of {@link #compile}: a term is out of vocabulary when its exact
      * indexed form is the headword of no entry in any {@code dic}, headwords being extracted and apostrophe-
      * folded exactly as in {@link #compile} so the two agree on coverage. It is a review aid — the high-
@@ -168,7 +170,7 @@ public final class HunspellCompiler {
      *
      * @param reader snapshot reader defining the field's term universe
      * @param field  indexed field name
-     * @param out    sink for the {@code term\tfrequency} lines, newline-separated
+     * @param out    sink for the {@code term;frequency} lines, newline-separated
      * @param dics   one or more canonical {@code .dic} streams; null elements are skipped
      * @return the number of out-of-vocabulary terms written
      * @throws IOException              on read or append failure
@@ -229,7 +231,7 @@ public final class HunspellCompiler {
         }
         unknowns.sort(Comparator.comparingLong(Unknown::freq).reversed().thenComparing(Unknown::term));
         for (final Unknown o : unknowns) {
-            out.append(o.term()).append('\t').append(Long.toString(o.freq())).append('\n');
+            out.append(o.term()).append(SEP).append(Long.toString(o.freq())).append('\n');
         }
         return unknowns.size();
     }
