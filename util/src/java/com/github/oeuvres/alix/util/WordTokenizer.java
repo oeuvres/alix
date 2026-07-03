@@ -31,6 +31,20 @@ public interface WordTokenizer {
      * @return true if a word is available, false otherwise
      */
     boolean next();
+    
+    /**
+     * Normalize char, default is apostrophe and hyphen variants.
+     *
+     * @param c the source character
+     * @return the normalized character
+     */
+    default char normalizeChar(char c) {
+        return switch (c) {
+            case '\u2019', '\u2018', '\u02BC' -> '\'';
+            case '\u2010', '\u2011', '\u00AD' -> '-';
+            default -> c;
+        };
+    }
 
     /**
      * Binds this tokenizer to a new input.

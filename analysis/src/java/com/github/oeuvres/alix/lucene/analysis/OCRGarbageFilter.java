@@ -65,8 +65,8 @@ public final class OCRGarbageFilter extends FilteringTokenFilter
                 if (!Char.isLatin(c)) return false;
 
                 letterCount++;
-                hasLowercase |= Character.isLowerCase(c);
-                hasUppercase |= Character.isUpperCase(c);
+                hasLowercase |= Char.isLowerCase(c);
+                hasUppercase |= Char.isUpperCase(c);
                 hasVowel |= isVowel(c);
 
                 final char folded = Character.toLowerCase(c);
@@ -81,8 +81,6 @@ public final class OCRGarbageFilter extends FilteringTokenFilter
             }
 
             if (c != '-' && c != '\'' && c != '’') return false;
-            if (pos == 0 || pos == length - 1) return false;
-            if (!Char.isLetter(term[pos - 1]) || !Char.isLetter(term[pos + 1])) return false;
 
             previousLetter = 0;
             repeatedLetters = 0;
@@ -90,97 +88,9 @@ public final class OCRGarbageFilter extends FilteringTokenFilter
 
         if (letterCount < MIN_UNKNOWN_LETTERS) return false;
         if (!hasVowel) return false;
-        if (hasUppercase && !hasLowercase) return false;
-        if (isRomanNumeral(term, length)) return false;
 
         return true;
     }
-
-    /**
-     * Consumes one decimal rank of a canonical Roman numeral.
-     *
-     * @param term token characters
-     * @param pos first character of the rank
-     * @param end exclusive end of the numeral component
-     * @param one symbol representing one unit of the rank
-     * @param five symbol representing five units of the rank
-     * @param ten symbol representing ten units of the rank
-     * @return the first unconsumed position, or {@code -1} for an invalid rank
-     */
-    private static int consumeRomanRank(
-        final char[] term,
-        int pos,
-        final int end,
-        final char one,
-        final char five,
-        final char ten
-    )
-    {
-        if (pos + 1 < end && upperAscii(term[pos]) == one) {
-            final char next = upperAscii(term[pos + 1]);
-            if (next == five || next == ten) return pos + 2;
-        }
-
-        if (pos < end && upperAscii(term[pos]) == five) pos++;
-
-        int count = 0;
-        while (pos < end && upperAscii(term[pos]) == one) {
-            if (++count > 3) return -1;
-            pos++;
-        }
-        return pos;
-    }
-
-    /**
-     * Tests whether a token consists of one or more canonical Roman numerals
-     * separated by hyphens.
-     *
-     * @param term token characters
-     * @param length token length
-     * @return {@code true} if the complete token is Roman-numeral notation
-     */
-    private static boolean isRomanNumeral(final char[] term, final int length)
-    {
-        int start = 0;
-        for (int pos = 0; pos <= length; pos++) {
-            if (pos < length && term[pos] != '-') continue;
-            if (!isRomanNumeralPart(term, start, pos)) return false;
-            start = pos + 1;
-        }
-        return true;
-    }
-
-    /**
-     * Tests one canonical Roman numeral component.
-     *
-     * @param term token characters
-     * @param start inclusive component start
-     * @param end exclusive component end
-     * @return {@code true} if the component is a canonical Roman numeral
-     */
-    private static boolean isRomanNumeralPart(
-        final char[] term,
-        final int start,
-        final int end
-    )
-    {
-        if (start >= end) return false;
-
-        int pos = start;
-        int thousands = 0;
-        while (pos < end && upperAscii(term[pos]) == 'M') {
-            if (++thousands > 4) return false;
-            pos++;
-        }
-
-        pos = consumeRomanRank(term, pos, end, 'C', 'D', 'M');
-        if (pos < 0) return false;
-        pos = consumeRomanRank(term, pos, end, 'X', 'L', 'C');
-        if (pos < 0) return false;
-        pos = consumeRomanRank(term, pos, end, 'I', 'V', 'X');
-        return pos == end;
-    }
-
     /**
      * Tests whether a character is treated as a vowel by this French-oriented heuristic.
      *

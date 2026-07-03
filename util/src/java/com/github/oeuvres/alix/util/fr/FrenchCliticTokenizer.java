@@ -329,20 +329,6 @@ public final class FrenchCliticTokenizer implements WordTokenizer {
     }
 
     /**
-     * Normalizes apostrophe and hyphen variants.
-     *
-     * @param c the source character
-     * @return the normalized character
-     */
-    private static char normalizeChar(final char c) {
-        return switch (c) {
-            case '\u2019', '\u2018', '\u02BC' -> '\'';
-            case '\u2010', '\u2011', '\u00AD' -> '-';
-            default -> c;
-        };
-    }
-
-    /**
      * Reads the next raw token into the reusable raw buffer.
      *
      * <p>Characters are normalized before the token test, because some
