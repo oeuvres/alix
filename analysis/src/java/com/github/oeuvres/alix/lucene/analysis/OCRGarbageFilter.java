@@ -2,17 +2,18 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
 
+import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
-public class OCRGarbageFilter extends TokenFilter
+import com.github.oeuvres.alix.util.Char;
+
+public class OCRGarbageFilter extends FilteringTokenFilter 
 {
     /** The current token term. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    
-    private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
     
     public OCRGarbageFilter(TokenStream input)
     {
@@ -20,19 +21,27 @@ public class OCRGarbageFilter extends TokenFilter
     }
 
     @Override
-    public boolean incrementToken() throws IOException
+    protected boolean accept() throws IOException
     {
-        if (!input.incrementToken()) return false;
-        if (keywordAtt.isKeyword()) return true;
-        if (termAtt.isEmpty()) return true;
-        
-        char lastChar = termAtt.charAt(termAtt.length() - 1);
-        if (lastChar == '-' || lastChar == '\'') {
-            termAtt.setEmpty();
+        final int len = termAtt.length();
+        if (len == 0) return false;
+        char lastChar = termAtt.charAt(len -1);
+        if (lastChar == '-' || lastChar == '.') return false;
+        int vowels = 0;
+        for (int pos = 0; pos < len; pos++) {
+            final char c = termAtt.charAt(pos);
+            if (c == '.') return false;
+            // P1AGET
+            if (Char.isDigit(c) || Char.isMath(c)) return false;
+            // πjimage-souvenir
+            if (Char.isLetter(c) && !Char.isLatin(c)) return false;
+            // count vowels
+            // if (??) vowels++;
         }
-        
+        // if (vowels < 1) return false;
         return true;
     }
+
 
     
 }
