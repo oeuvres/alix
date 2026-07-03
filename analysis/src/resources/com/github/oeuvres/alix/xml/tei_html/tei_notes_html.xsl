@@ -36,6 +36,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
           <section class="footnotes">
             <xsl:for-each select="exslt:node-set($notes)/*">
               <xsl:sort select="substring-before(concat(@class, ' '), ' ')"/>
+              <xsl:value-of select="$lf"/>
               <xsl:copy-of select="."/>
             </xsl:for-each>
           </section>
@@ -447,7 +448,7 @@ BSD-3-Clause https://opensource.org/licenses/BSD-3-Clause
       </xsl:attribute>
       <xsl:value-of select="$n"/>
     </a>
-    <xsl:text> </xsl:text>
+    <xsl:value-of select="$lf"/>
   </xsl:template>
   <!--Default behavior for note-->
   <xsl:template match="tei:note | tei:*[@rend='note']">

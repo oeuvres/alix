@@ -63,9 +63,9 @@ public class Char
     /** Binary flag, upper case letter. */
     public static final short UPPERCASE =    0b000000000100000;
     /** Binary flag, not used. */
-    public static final short VOWEL =        0b000000001000000;
+    public static final short LATIN =        0b000000001000000;
     /** Binary flag, not used. */
-    public static final short CONSONNANT =   0b000000010000000;
+    // public static final short ??? =   0b000000010000000;
     /** Binary flag, a digit. */
     public static final short DIGIT =        0b000000100000000;
     /** Binary flag, punctuation char for sentence. */
@@ -109,6 +109,9 @@ public class Char
                 }
                 if (Character.isLowerCase(c)) {
                     properties |= LOWERCASE;
+                }
+                if (Character.UnicodeScript.of(c) == Character.UnicodeScript.LATIN) {
+                    properties |= LATIN;
                 }
             } else if (Character.isDigit(c)) {
                 properties |= DIGIT | TOKEN;
@@ -183,6 +186,16 @@ public class Char
     public static boolean isHighSurrogate(final char c)
     {
         return (CHARS[c] & HIGHSUR) != 0;
+    }
+    
+    /**
+     * Is Latin script {@link Character.UnicodeScript#of(int)}.
+     * @param c char to test.
+     * @return true if c is Latin script, false otherwise.
+     */
+    public static boolean isLatin(final char c)
+    {
+        return (CHARS[c] & LATIN) != 0;
     }
 
     /**
