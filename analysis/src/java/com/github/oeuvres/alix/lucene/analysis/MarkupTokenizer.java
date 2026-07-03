@@ -64,12 +64,13 @@ import com.github.oeuvres.alix.util.Char;
  * <ul>
  *   <li>a lowercase word, comma, semicolon, or colon keeps all pending dots attached;</li>
  *   <li>an uppercase/titlecase word, a number, sentence punctuation, or end of input detaches
- *       only the last pending dot and emits it as sentence punctuation;</li>
- *   <li>XML tokens are transparent to the decision;</li>
- *   <li>wrapper punctuation is transparent but separates abbreviation-like dotted sequences:
- *       the following lexical token is still tested as sentence-start evidence;</li>
- *   <li>another unresolved dotted token extends the pending sequence only when no transparent
- *       punctuation intervenes.</li>
+ *       the rightmost pending dot and emits it as sentence punctuation;</li>
+ *   <li>after a dot is detached, its bare token becomes evidence for the preceding candidate;
+ *       resolution therefore cascades right-to-left while that token begins with uppercase,
+ *       titlecase, or a digit;</li>
+ *   <li>XML tokens, quotes, parentheses, en dashes, and em dashes are transparent to the
+ *       decision and remain in their original output order;</li>
+ *   <li>another unresolved dotted token extends the pending sequence.</li>
  * </ul>
  *
  * <p>A brevidot never emits a sentence-boundary event. This deliberately favours common forms
@@ -153,6 +154,18 @@ public class MarkupTokenizer extends Tokenizer
 
     /** Sentence-dot events waiting to be emitted among queued token states. */
     private final ArrayDeque<SentenceDot> pendingSentenceDots = new ArrayDeque<>();
+
+    /** Queue indices of unresolved dotted tokens in the current lookahead sequence. */
+    private int[] candidateIndices = new int[LOOKAHEAD_INITIAL_CAPACITY];
+
+    /** Corrected end offsets of unresolved final dots. */
+    private int[] candidateDotEnds = new int[LOOKAHEAD_INITIAL_CAPACITY];
+
+    /** Corrected start offsets of unresolved final dots. */
+    private int[] candidateDotStarts = new int[LOOKAHEAD_INITIAL_CAPACITY];
+
+    /** Number of unresolved dotted tokens stored in the candidate arrays. */
+    private int candidateCount;
 
     /** Number of token states already emitted from the current lookahead queue. */
     private int emittedLookaheadTokens;
@@ -706,8 +719,81 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Buffer an unresolved dotted-token sequence and read ordinary raw tokens until its last dot
-     * can be classified. The current token is the first unresolved dotted token.
+     * Detach pending dots from right to left. The rightmost candidate is always detached. Each
+     * detached candidate then becomes lexical evidence for the candidate on its left; cascading
+     * continues only while that bare token begins with uppercase, titlecase, or a digit.
+     *
+     * <p>The rightmost detached dot may be merged into an immediately adjacent sentence-
+     * punctuation token. Earlier detached dots are emitted as synthetic punctuation events.</p>
+     *
+     * @param punctuation adjacent or following sentence-punctuation state; null otherwise
+     */
+    private void detachSentenceCascade(final AttributeSource punctuation)
+    {
+        boolean continueCascade = true;
+
+        for (int i = candidateCount - 1; i >= 0 && continueCascade; i--) {
+            final int candidateIndex = candidateIndices[i];
+            final int dotStart = candidateDotStarts[i];
+            final int dotEnd = candidateDotEnds[i];
+            final AttributeSource candidate = lookahead.get(candidateIndex);
+
+            removeTrailingDot(candidate, dotStart);
+
+            if (i == candidateCount - 1 && punctuation != null) {
+                final OffsetAttribute offsets = punctuation.getAttribute(OffsetAttribute.class);
+                if (offsets.startOffset() == dotEnd) {
+                    mergeDotIntoSentencePunctuation(punctuation, dotStart);
+                }
+                else {
+                    scheduleSentenceDotFirst(candidateIndex, dotStart, dotEnd);
+                }
+            }
+            else {
+                scheduleSentenceDotFirst(candidateIndex, dotStart, dotEnd);
+            }
+
+            continueCascade = startsSentence(candidate);
+        }
+    }
+
+    /**
+     * Grow the reusable dotted-candidate arrays when needed.
+     */
+    private void growCandidateArrays()
+    {
+        final int oldCapacity = candidateIndices.length;
+        if (oldCapacity >= LOOKAHEAD_MAX_CAPACITY) {
+            throw new IllegalStateException(
+                "Trailing-dot lookahead reached max capacity=" + LOOKAHEAD_MAX_CAPACITY
+            );
+        }
+
+        final int newCapacity = Math.min(oldCapacity << 1, LOOKAHEAD_MAX_CAPACITY);
+        candidateIndices = java.util.Arrays.copyOf(candidateIndices, newCapacity);
+        candidateDotStarts = java.util.Arrays.copyOf(candidateDotStarts, newCapacity);
+        candidateDotEnds = java.util.Arrays.copyOf(candidateDotEnds, newCapacity);
+    }
+
+    /**
+     * Remember an unresolved dotted token in the current lookahead sequence.
+     *
+     * @param queueIndex logical index of the token in {@link #lookahead}
+     */
+    private void rememberDottedCandidate(final int queueIndex)
+    {
+        if (candidateCount == candidateIndices.length) {
+            growCandidateArrays();
+        }
+        candidateIndices[candidateCount] = queueIndex;
+        candidateDotStarts[candidateCount] = correctOffset(offset - 1);
+        candidateDotEnds[candidateCount] = correctOffset(offset);
+        candidateCount++;
+    }
+
+    /**
+     * Buffer an unresolved dotted-token sequence and read ordinary raw tokens until its dots can
+     * be classified. The current token is the first unresolved dotted token.
      *
      * @throws IOException if the input cannot be read
      */
@@ -722,23 +808,16 @@ public class MarkupTokenizer extends Tokenizer
             );
         }
 
+        candidateCount = 0;
         lookahead.addLast(this);
-        int lastCandidateIndex = 0;
-        int lastDotStart = correctOffset(offset - 1);
-        int lastDotEnd = correctOffset(offset);
-        boolean crossedTransparentPunctuation = false;
+        rememberDottedCandidate(0);
 
         while (readToken()) {
             final boolean unknownDotted = isUnknownDottedToken(this);
             lookahead.addLast(this);
             final int currentIndex = lookahead.size() - 1;
 
-            if (isXmlToken(this)) {
-                continue;
-            }
-
-            if (isTransparentForDotDecision(this)) {
-                crossedTransparentPunctuation = true;
+            if (isXmlToken(this) || isTransparentForDotDecision(this)) {
                 continue;
             }
 
@@ -747,55 +826,38 @@ public class MarkupTokenizer extends Tokenizer
             }
 
             if (unknownDotted) {
-                if (crossedTransparentPunctuation && startsSentence(this)) {
-                    removeTrailingDot(lookahead.get(lastCandidateIndex), lastDotStart);
-                    scheduleSentenceDot(lastCandidateIndex, lastDotStart, lastDotEnd);
-                }
-
-                lastCandidateIndex = currentIndex;
-                lastDotStart = correctOffset(offset - 1);
-                lastDotEnd = correctOffset(offset);
-                crossedTransparentPunctuation = false;
+                rememberDottedCandidate(currentIndex);
                 continue;
             }
 
             if (isSentencePunctuationToken(this)) {
-                final AttributeSource punctuation = lookahead.get(currentIndex);
-                final OffsetAttribute offsets = punctuation.getAttribute(OffsetAttribute.class);
-                removeTrailingDot(lookahead.get(lastCandidateIndex), lastDotStart);
-                if (offsets.startOffset() == lastDotEnd) {
-                    mergeDotIntoSentencePunctuation(punctuation, lastDotStart);
-                }
-                else {
-                    scheduleSentenceDot(lastCandidateIndex, lastDotStart, lastDotEnd);
-                }
+                detachSentenceCascade(lookahead.get(currentIndex));
                 return;
             }
 
             if (startsSentence(this)) {
-                removeTrailingDot(lookahead.get(lastCandidateIndex), lastDotStart);
-                scheduleSentenceDot(lastCandidateIndex, lastDotStart, lastDotEnd);
+                detachSentenceCascade(null);
             }
             return;
         }
 
-        removeTrailingDot(lookahead.get(lastCandidateIndex), lastDotStart);
-        scheduleSentenceDot(lastCandidateIndex, lastDotStart, lastDotEnd);
+        detachSentenceCascade(null);
     }
 
     /**
-     * Schedule a detached dot after its queued lexical token.
+     * Schedule a detached dot after its queued lexical token while resolving candidates from
+     * right to left. Inserting at the front preserves ascending output positions.
      *
      * @param candidateIndex logical queue index of the token losing its dot
      * @param dotStart corrected start offset of the dot
      * @param dotEnd corrected end offset of the dot
      */
-    private void scheduleSentenceDot(
+    private void scheduleSentenceDotFirst(
         final int candidateIndex,
         final int dotStart,
         final int dotEnd
     ) {
-        pendingSentenceDots.addLast(new SentenceDot(candidateIndex + 1, dotStart, dotEnd));
+        pendingSentenceDots.addFirst(new SentenceDot(candidateIndex + 1, dotStart, dotEnd));
     }
 
     /**
@@ -832,6 +894,7 @@ public class MarkupTokenizer extends Tokenizer
         pendingCharOffset = -1;
         pendingCharEndOffset = -1;
         pendingSentenceDots.clear();
+        candidateCount = 0;
         emittedLookaheadTokens = 0;
         if (lookahead != null) lookahead.clear();
         buffer.reset();
