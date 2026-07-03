@@ -67,6 +67,62 @@ public final class MarkupTokenizerDemo
     {
         return List.of(
             new Case(
+                "enfant. a Source",
+                """
+                (Voir Piaget, Zool. Anzeig., 1913, vol. 42). Ensuite, je dois dire que, conformément.
+                sans indice sonore chez l’enfant. Ex. l’enfant ne reproduira le baillement
+                """,
+                ""
+            ),
+            new Case(
+                "enfant. a Source",
+                """
+qu’est la psychologie de l’enfant.</p>
+          </div>
+          <section class="footnotes">
+            <aside role="doc-footnote" class="a note source note" data-tei-type="source" id="fna"><a class="noteback" role="doc-backlink" href="#fnrefa">a</a> <p class="bibl source">Source : <span class="sc" style="font-variant:small-caps;">Piaget</span>, J. (1946). 
+                """,
+                ""
+            ),
+            new Case(
+                "Block tag ends a sentence before a lowercase block",
+                "de l'enfant.</p>\n<aside id=\"fna\"><a href=\"#fnrefa\">a</a> <p>Source :",
+                "Expected: de | l'enfant | . | </p> | <aside…> | <a…> | a | </a>… ; p is a block tag"
+            ),
+            new Case(
+                "Opening block tag in mixed content",
+                "<div>intro enfant.<p>suite en bas de casse",
+                "Expected: <div> | intro | enfant | . | <p> | suite | …; opening tags also match"
+            ),
+            new Case(
+                "Unknown abbreviations at block end detach like end of input",
+                "in Bull. Soc.</p>",
+                "Expected: in | Bull | . | Soc | . | </p>; protection is the brevidot list's job"
+            ),
+            new Case(
+                "différent. — IV. Le",
+                """
+remercier bien sincèrement M. le Prof. Th. Studer, de Berne, pour l’intérêt qu’il a témoigné
+                """,
+                ""
+            ),
+            new Case(
+                "différent. — IV. Le",
+                """
+le sujet ne saurait être différent.</p>
+            </section>
+            <section class="level2 div">
+              <h2 class="head" id="iv-le-constructivisme-et-la-creation-des-nouveautes" tabindex="-1">IV. — Le constructivisme et la création des nouveautés<a class="bookmark" aria-hidden="true" href="#iv-le-constructivisme-et-la-creation-des-nouveautes">🔗</a></h2>
+              <p class="noindent p">En conclusion de ce petit ouvrage,
+                """,
+                ""
+            ),
+            new Case(
+                "ibid.",
+                "Le Continu et le discontinu, p. 35-36.6 Ibid., p. 36.7 Ibid., p. 37.8 Ibid., p. 35.9 Ibid., p. 40.10 Ibid., p. 73.11 Ibid.,",
+                ""
+            ),
+            new Case(
                 "ça.",
                 "Parce que ça fait plus long que ça. — D’accord. Et si je le faisais encore bien plus long",
                 ""

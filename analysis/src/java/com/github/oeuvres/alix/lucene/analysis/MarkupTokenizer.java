@@ -35,7 +35,7 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
+import java.util.Arrays;
 
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.CharacterUtils;
@@ -54,9 +54,9 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
 
 /**
- * Micro-optimized tokenizer for Latin-script languages and XML-like tags.
- * Keeps tags as tokens (flags XML), clause punctuation as tokens (flags PUNCTclause),
- * sentence punctuation runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT).
+ * Tokenizer for Latin-script languages and XML-like tags. Keeps tags as tokens (flags XML),
+ * clause punctuation as tokens (flags PUNCTclause), sentence punctuation runs as tokens
+ * (flags PUNCTsent), numbers as tokens (flags DIGIT).
  *
  * <p>An attached trailing dot is always retained by the raw character pass. Configured or
  * structurally recognized brevidots keep it unconditionally. Other dotted tokens are buffered
@@ -68,8 +68,11 @@ import com.github.oeuvres.alix.util.Char;
  *   <li>after a dot is detached, its bare token becomes evidence for the preceding candidate;
  *       resolution therefore cascades right-to-left while that token begins with uppercase,
  *       titlecase, or a digit;</li>
- *   <li>XML tokens, quotes, parentheses, en dashes, and em dashes are transparent to the
- *       decision and remain in their original output order;</li>
+ *   <li>a configured block tag (opening or closing, for example {@code </p>}) marks a
+ *       boundary the sentence cannot cross, and detaches pending dots exactly like end of
+ *       input;</li>
+ *   <li>other XML tokens, quotes, parentheses, en dashes, and em dashes are transparent to
+ *       the decision and remain in their original output order;</li>
  *   <li>another unresolved dotted token extends the pending sequence.</li>
  * </ul>
  *
@@ -81,41 +84,15 @@ import com.github.oeuvres.alix.util.Char;
  * {@code &amp;gt;}, {@code &amp;lt;}, and {@code &amp;quot;}) are decoded as character data.
  * The decoded character is then classified normally instead of being appended blindly to the
  * current term. For example, {@code B’&amp;gt;} produces {@code B'} rather than {@code B'>}.</p>
+ *
+ * <p>Implementation: {@link #readToken()} is a dispatcher over the first significant character;
+ * one small method per token kind reads the rest through the {@link #peek()}/{@link #skip()}
+ * cursor. Trailing-dot resolution buffers whole token states in a {@link TokenStateQueue};
+ * detached dots are spliced into that same queue by {@link #insertDetachedDots(int, boolean)},
+ * so emission is a plain {@code removeFirst}.</p>
  */
 public class MarkupTokenizer extends Tokenizer
 {
-    /**
-     * Synthetic sentence-dot event scheduled after a given number of queued tokens.
-     */
-    private static final class SentenceDot
-    {
-        /** Number of queued tokens that must be emitted before this dot. */
-        private final int afterTokenCount;
-
-        /** Corrected end offset of the source dot. */
-        private final int endOffset;
-
-        /** Corrected start offset of the source dot. */
-        private final int startOffset;
-
-        /**
-         * Create a scheduled sentence-dot event.
-         *
-         * @param afterTokenCount number of queued tokens preceding the event
-         * @param startOffset corrected start offset of the source dot
-         * @param endOffset corrected end offset of the source dot
-         */
-        private SentenceDot(
-            final int afterTokenCount,
-            final int startOffset,
-            final int endOffset
-        ) {
-            this.afterTokenCount = afterTokenCount;
-            this.startOffset = startOffset;
-            this.endOffset = endOffset;
-        }
-    }
-
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
 
@@ -125,853 +102,127 @@ public class MarkupTokenizer extends Tokenizer
     /** Initial number of token states reserved for trailing-dot lookahead. */
     private static final int LOOKAHEAD_INITIAL_CAPACITY = 8;
 
-    /** Hard guard against malformed input with no resolving token. */
+    /**
+     * Hard guard against malformed input with no resolving token, counted in lookahead
+     * tokens. The queue itself is sized at twice this value because each buffered token
+     * may additionally receive one detached sentence dot.
+     */
     private static final int LOOKAHEAD_MAX_CAPACITY = 4096;
+
+    /**
+     * Default block-level element local-names, comma-separated. A tag with one of these
+     * names ends any sentence pending a dot decision. Callers may extend the default, for
+     * example {@code MarkupTokenizer.BLOCK_TAGS + ", head, item"} for TEI sources.
+     */
+    public static final String BLOCK_TAGS =
+        "aside, blockquote, div, figcaption, h1, h2, h3, h4, h5, h6, li, p, section, td, th";
 
     /** Configured brevidots, stored without their final dot. */
     private final CharArraySet brevidots;
 
+    /** Local-names of block tags, compiled case-insensitive. */
+    private final CharArraySet blockTags;
+
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-    private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
 
     private final CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(IO_BUFFER_SIZE);
 
-    private int bufferIndex = 0;
-    private int bufferLen = 0;
-    /** Current char offset (UTF-16 code units). Points to next char to read. */
-    private int offset = 0;
+    /** Read position in {@link #buffer}. */
+    private int bufferIndex;
 
-    /** Decoded or literal punctuation already consumed from the source. */
-    private int pendingChar = -1;          // 0..65535, or -1
-    private int pendingCharOffset = -1;    // source start offset
-    private int pendingCharEndOffset = -1; // source end offset
+    /** Number of valid chars in {@link #buffer}. */
+    private int bufferLength;
 
-    /** Complete token states waiting for a trailing-dot decision or ordered replay. */
+    /** Source offset (UTF-16 code units) of the next char to read. */
+    private int offset;
+
+    /** Punctuation already consumed from the source ({@code -1} when none). */
+    private int pendingChar = -1;
+
+    /** Raw source start offset of {@link #pendingChar}; may span an entity such as {@code &quot;}. */
+    private int pendingStart;
+
+    /** Raw source end offset of {@link #pendingChar}. */
+    private int pendingEnd;
+
+    /** Buffered token states during trailing-dot resolution, then replayed in order. */
     private TokenStateQueue lookahead;
-
-    /** Sentence-dot events waiting to be emitted among queued token states. */
-    private final ArrayDeque<SentenceDot> pendingSentenceDots = new ArrayDeque<>();
 
     /** Queue indices of unresolved dotted tokens in the current lookahead sequence. */
     private int[] candidateIndices = new int[LOOKAHEAD_INITIAL_CAPACITY];
 
-    /** Corrected end offsets of unresolved final dots. */
-    private int[] candidateDotEnds = new int[LOOKAHEAD_INITIAL_CAPACITY];
-
     /** Corrected start offsets of unresolved final dots. */
     private int[] candidateDotStarts = new int[LOOKAHEAD_INITIAL_CAPACITY];
+
+    /** Corrected end offsets of unresolved final dots. */
+    private int[] candidateDotEnds = new int[LOOKAHEAD_INITIAL_CAPACITY];
 
     /** Number of unresolved dotted tokens stored in the candidate arrays. */
     private int candidateCount;
 
-    /** Number of token states already emitted from the current lookahead queue. */
-    private int emittedLookaheadTokens;
-
     /**
-     * Build a tokenizer with no configured abbreviation list.
+     * Build a tokenizer with no configured abbreviation list and the default
+     * {@link #BLOCK_TAGS}.
      */
-    public MarkupTokenizer() { 
-        this(CharArraySet.EMPTY_SET);
+    public MarkupTokenizer()
+    {
+        this(CharArraySet.EMPTY_SET, BLOCK_TAGS);
     }
 
     /**
-     * Build a tokenizer with configured brevidots. Entries omit the trailing dot, for example
-     * {@code "Dr"}, {@code "etc"}, or {@code "Var"}.
+     * Build a tokenizer with configured brevidots and the default {@link #BLOCK_TAGS}.
+     * Brevidot entries omit the trailing dot, for example {@code "Dr"}, {@code "etc"},
+     * or {@code "Var"}.
      *
      * @param brevidots forms whose final dot always remains inside the token; null means none
      */
-    public MarkupTokenizer(final CharArraySet brevidots) { 
+    public MarkupTokenizer(final CharArraySet brevidots)
+    {
+        this(brevidots, BLOCK_TAGS);
+    }
+
+    /**
+     * Build a tokenizer with configured brevidots and block tags.
+     *
+     * <p>Position increment and position length are registered so that they exist in the
+     * stream, but never set: {@code clearAttributes()} resets both to their default of 1,
+     * which is the only value this tokenizer emits.</p>
+     *
+     * @param brevidots forms whose final dot always remains inside the token; null means none
+     * @param blockTags comma-separated element local-names ending any sentence pending a dot
+     *        decision, matched case-insensitive on opening and closing tags; null or blank
+     *        means no block boundary, the legacy behavior
+     */
+    public MarkupTokenizer(final CharArraySet brevidots, final String blockTags)
+    {
         super();
         this.brevidots = (brevidots == null) ? CharArraySet.EMPTY_SET : brevidots;
+        this.blockTags = compileBlockTags(blockTags);
+        addAttribute(PositionIncrementAttribute.class);
+        addAttribute(PositionLengthAttribute.class);
     }
 
     /**
-     * Set final offset at end of stream.
+     * Compile a comma-separated list of element local-names into a case-insensitive set.
+     * Whitespace around names is ignored and a namespace prefix up to {@code ':'} is
+     * stripped, so {@code "tei:p"} and {@code " p "} both compile to {@code p}.
      *
-     * @throws IOException if the input stream cannot be finalized
+     * @param names comma-separated local-names; null or blank yields an empty set
+     * @return case-insensitive set of local-names
      */
-    @Override
-    public final void end() throws IOException
+    private static CharArraySet compileBlockTags(final String names)
     {
-        super.end();
-        offsetAtt.setOffset(correctOffset(offset), correctOffset(offset));
-    }
-
-    /**
-     * Produce the next contextually resolved token.
-     *
-     * @return {@code true} if a token was emitted
-     * @throws IOException if the input cannot be read
-     */
-    @Override
-    public final boolean incrementToken() throws IOException
-    {
-        if (hasQueuedOutput()) {
-            return emitQueuedOutput();
+        final CharArraySet set = new CharArraySet(16, true);
+        if (names == null) return set;
+        for (String name : names.split(",")) {
+            name = name.trim();
+            final int colon = name.lastIndexOf(':');
+            if (colon >= 0) name = name.substring(colon + 1);
+            if (!name.isEmpty()) set.add(name);
         }
-
-        if (!readToken()) {
-            return false;
-        }
-
-        if (!isUnknownDottedToken(this)) {
-            return true;
-        }
-
-        resolveDottedSequence();
-        return emitQueuedOutput();
-    }
-
-    /**
-     * Read one raw token from the character stream. Attached final dots remain in word tokens;
-     * contextual resolution is performed by {@link #incrementToken()}.
-     *
-     * @return {@code true} if a token was read
-     * @throws IOException if the input cannot be read
-     */
-    private boolean readToken() throws IOException
-    {
-        clearAttributes();
-
-        // Fast path: emit pending punctuation first (no buffer rewinds).
-        if (pendingCharOffset >= 0) {
-            return emitPendingPunct();
-        }
-
-        char[] termBuf = termAtt.buffer();
-        int termLen = 0;
-
-        boolean inTag = false;
-        boolean inNumber = false;
-        boolean inSentPunct = false;
-
-        boolean trailingDot = false; // last appended char is '.' after a letter
-        int amp = -1;              // position of a possible XML entity in termBuf
-
-        int startOffset = -1;
-        int tokenEndOff = -1; // if set, overrides "off" for offsetAtt end
-
-        int bi = bufferIndex;
-        int bl = bufferLen;
-        int off = offset;
-        char[] io = buffer.getBuffer();
-
-        char lastChar = 0;
-
-        while (true) {
-            // refill
-            if (bi >= bl) {
-                CharacterUtils.fill(buffer, input);
-                bl = buffer.getLength();
-                bi = 0;
-                io = buffer.getBuffer();
-                if (bl == 0) {
-                    if (termLen > 0) break; // emit last token
-                    // store back cursor
-                    bufferIndex = bi; bufferLen = bl; offset = off;
-                    return false;
-                }
-            }
-
-            final char c = io[bi];
-
-            // If currently emitting sentence punctuation, stop as soon as next char is not .?!…
-            if (inSentPunct) {
-                if (isSentencePunct(c)) {
-                    // append and consume
-                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                    termBuf[termLen++] = c;
-                    bi++; off++; lastChar = c;
-                    continue;
-                }
-                break; // do not consume delimiter
-            }
-
-            // Inside a tag: append until '>' inclusive
-            if (inTag) {
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                termBuf[termLen++] = c;
-                bi++; off++; lastChar = c;
-                if (c == '>') {
-                    posAtt.setPos(XML.code);
-                    break;
-                }
-                continue;
-            }
-
-            // A following letter continues an internal dotted form. A recognized brevidot may
-            // also continue with a hyphen, as in "J.-J.". Otherwise the dotted token ends here.
-            if (trailingDot) {
-                if (!Char.isLetter(c) && !isBrevidot(termBuf, termLen)) {
-                    break;
-                }
-                trailingDot = false;
-            }
-
-            // Start of tag '<'
-            if (c == '<') {
-                if (termLen > 0) break; // emit pending token; tag will be processed next call
-                inTag = true;
-                startOffset = off;
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                termBuf[termLen++] = c;
-                bi++; off++; lastChar = c;
-                continue;
-            }
-
-            // Number mode
-            if (inNumber) {
-                if (Char.isDigit(c)) {
-                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                    termBuf[termLen++] = c;
-                    bi++; off++; lastChar = c;
-                    continue;
-                }
-                // Decimal separator candidate (original behavior: accept, then remove if it ends number)
-                if ((c == '.' || c == ',') && lastChar != '.' && lastChar != ',') {
-                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                    termBuf[termLen++] = c;
-                    bi++; off++; lastChar = c;
-                    continue;
-                }
-
-                // End of number: do not consume current c; strip trailing '.'/',' if present and push back.
-                inNumber = false;
-                if (termLen > 0) {
-                    final char last = termBuf[termLen - 1];
-                    if (last == '.' || last == ',') {
-                        termLen--;
-                        pendingChar = last;
-                        pendingCharOffset = off - 1; // punctuation position
-                        pendingCharEndOffset = off;
-                        tokenEndOff = off - 1;       // number ends BEFORE punctuation
-                    }
-                }
-                break;
-            }
-
-            // Digits (start number if token empty; or negative number if "-" already in token)
-            if (Char.isDigit(c)) {
-                if (termLen == 0) {
-                    inNumber = true;
-                    posAtt.setPos(DIGIT.code);
-                    startOffset = off;
-                }
-                else if (termLen == 1 && lastChar == '-') {
-                    inNumber = true;
-                    posAtt.setPos(DIGIT.code);
-                }
-
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                termBuf[termLen++] = c;
-                bi++; off++; lastChar = c;
-                continue;
-            }
-
-            // Decode the five predefined XML entities. Unknown entities remain verbatim.
-            if (c == ';' && amp >= 0 && termLen >= amp + 2) {
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                termBuf[termLen++] = ';';
-                bi++; off++; lastChar = c;
-
-                final int entityTermStart = amp;
-                final int entityStartOffset = off - (termLen - entityTermStart);
-                final char decoded = decodeXmlEntity(termBuf, entityTermStart, termLen);
-                amp = -1;
-
-                if (decoded == 0) {
-                    continue;
-                }
-
-                // Remove the source spelling (&name;) before classifying the decoded character.
-                termLen = entityTermStart;
-
-                // Escaped angle brackets are character data. They must not enter the XML-tag
-                // branch and are discarded just like ordinary non-token delimiters.
-                if (decoded == '<' || decoded == '>') {
-                    if (termLen > 0) {
-                        tokenEndOff = entityStartOffset;
-                        break;
-                    }
-                    lastChar = decoded;
-                    continue;
-                }
-
-                if (isClausePunct(decoded) || isSentencePunct(decoded)) {
-                    pendingChar = decoded;
-                    pendingCharOffset = entityStartOffset;
-                    pendingCharEndOffset = off;
-
-                    if (termLen > 0) {
-                        tokenEndOff = entityStartOffset;
-                        break;
-                    }
-
-                    bufferIndex = bi;
-                    bufferLen = bl;
-                    offset = off;
-                    return emitPendingPunct();
-                }
-
-                if (Char.isToken(decoded)) {
-                    if (termLen == 0) startOffset = entityStartOffset;
-                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                    termBuf[termLen++] = normalizeTokenChar(decoded);
-                    lastChar = decoded;
-                    continue;
-                }
-
-                // Any other decoded character behaves as an ordinary delimiter.
-                if (termLen > 0) {
-                    tokenEndOff = entityStartOffset;
-                    break;
-                }
-                lastChar = decoded;
-                continue;
-            }
-
-            // Clause punctuation: standalone token
-            if (isClausePunct(c)) {
-                if (termLen > 0) break; // emit pending token; punctuation next call
-                startOffset = off;
-                posAtt.setPos(PUNCTclause.code);
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(1);
-                termBuf[0] = c;
-                termLen = 1;
-                bi++; off++; lastChar = c;
-
-                // finalize and return immediately
-                termAtt.setLength(termLen);
-                posIncAtt.setPositionIncrement(1);
-                posLenAtt.setPositionLength(1);
-                final int endOffset = (tokenEndOff >= 0) ? tokenEndOff : off;
-                offsetAtt.setOffset(correctOffset(startOffset), correctOffset(endOffset));
-                bufferIndex = bi; bufferLen = bl; offset = off;
-                return true;
-            }
-
-            // Dot after a letter: may be abbrev/internal dot. Append now; decide on next char.
-            if (c == '.' && termLen > 0 && Char.isLetter(termBuf[termLen - 1])) {
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                termBuf[termLen++] = '.';
-                bi++; off++; lastChar = '.';
-                trailingDot = true;
-                continue;
-            }
-
-            // Sentence punctuation: standalone run token
-            if (isSentencePunct(c)) {
-                if (termLen > 0) break; // emit pending token; punctuation next call
-                inSentPunct = true;
-                posAtt.setPos(PUNCTsent.code);
-                startOffset = off;
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(1);
-                termBuf[0] = c;
-                termLen = 1;
-                bi++; off++; lastChar = c;
-                continue;
-            }
-
-            // No more joker '*' support, this tokenizer is too heavy for query parser
-            /*
-            if (c == '*' && termLen > 0) {
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                termBuf[termLen++] = '*';
-                bi++; off++; lastChar = c;
-                continue;
-            }
-            */
-
-            // Word-like token char
-            if (Char.isToken(c)) {
-                if (termLen == 0) startOffset = off;
-
-                if (c == '&') amp = termLen;
-
-                final char out = normalizeTokenChar(c);
-
-                if (out != (char)0xAD) { // ignore soft hyphen
-                    if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                    termBuf[termLen++] = out;
-                }
-
-                bi++; off++; lastChar = c;
-
-                if (termLen >= TOKEN_MAX_SIZE) {
-                    // original behavior: cut overly long tokens
-                    break;
-                }
-                continue;
-            }
-
-            // Delimiter / whitespace / control / etc.
-            if (termLen > 0) break;   // emit current token; do not consume delimiter
-            bi++; off++; lastChar = c; // skip delimiter and continue
-        }
-
-        // Finalize token built in this call
-        termAtt.setLength(termLen);
-        posIncAtt.setPositionIncrement(1);
-        posLenAtt.setPositionLength(1);
-        final int endOffset = (tokenEndOff >= 0) ? tokenEndOff : off;
-        offsetAtt.setOffset(correctOffset(startOffset), correctOffset(endOffset));
-
-        bufferIndex = bi;
-        bufferLen = bl;
-        offset = off;
-
-        return true;
-    }
-
-    /**
-     * Emit the next queued token or the synthetic sentence dot scheduled between queued tokens.
-     *
-     * @return {@code true}; this method is called only when queued output exists
-     */
-    private boolean emitQueuedOutput()
-    {
-        final SentenceDot sentenceDot = pendingSentenceDots.peekFirst();
-        if (sentenceDot != null && sentenceDot.afterTokenCount == emittedLookaheadTokens) {
-            return emitSentenceDot();
-        }
-
-        clearAttributes();
-        lookahead.removeFirst(this);
-        emittedLookaheadTokens++;
-
-        if (lookahead.isEmpty() && pendingSentenceDots.isEmpty()) {
-            emittedLookaheadTokens = 0;
-        }
-        return true;
-    }
-
-    /**
-     * Emit the next sentence dot detached from an unresolved dotted token.
-     *
-     * @return {@code true}
-     */
-    private boolean emitSentenceDot()
-    {
-        final SentenceDot sentenceDot = pendingSentenceDots.removeFirst();
-
-        clearAttributes();
-        termAtt.append('.');
-        posAtt.setPos(PUNCTsent.code);
-        posIncAtt.setPositionIncrement(1);
-        posLenAtt.setPositionLength(1);
-        offsetAtt.setOffset(sentenceDot.startOffset, sentenceDot.endOffset);
-
-        if (lookahead.isEmpty() && pendingSentenceDots.isEmpty()) {
-            emittedLookaheadTokens = 0;
-        }
-        return true;
-    }
-
-    /**
-     * Test whether resolved token states or synthetic dots remain to be emitted.
-     *
-     * @return {@code true} when {@link #emitQueuedOutput()} may be called
-     */
-    private boolean hasQueuedOutput()
-    {
-        return !pendingSentenceDots.isEmpty() || (lookahead != null && !lookahead.isEmpty());
-    }
-
-    /**
-     * Test whether a token is a comma, semicolon, or colon. These marks resolve all pending dots
-     * as non-sentential.
-     *
-     * @param source token state to inspect
-     * @return {@code true} for comma, semicolon, or colon
-     */
-    private static boolean isNonSentenceResolver(final AttributeSource source)
-    {
-        final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
-        if (term.length() != 1) return false;
-        final char c = term.charAt(0);
-        return c == ',' || c == ';' || c == ':';
-    }
-
-    /**
-     * Test whether a token consists only of sentence punctuation.
-     *
-     * @param source token state to inspect
-     * @return {@code true} for a non-empty {@code .?!…} run
-     */
-    private static boolean isSentencePunctuationToken(final AttributeSource source)
-    {
-        final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
-        final int length = term.length();
-        if (length == 0) return false;
-        for (int i = 0; i < length; i++) {
-            if (!isSentencePunct(term.charAt(i))) return false;
-        }
-        return true;
-    }
-
-    /**
-     * Test whether a punctuation token is transparent while resolving an ambiguous trailing dot.
-     * Transparent punctuation is preserved in the output queue but does not itself decide whether
-     * the preceding dot is lexical or sentential. The next significant token remains decisive.
-     *
-     * <p>Comma, semicolon, and colon are intentionally excluded: they resolve pending dots as
-     * non-sentential. Sentence punctuation is handled separately.</p>
-     *
-     * @param source token state to inspect
-     * @return {@code true} for quotes, parentheses, en dash, or em dash
-     */
-    private static boolean isTransparentForDotDecision(final AttributeSource source)
-    {
-        final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
-        return term.length() == 1 && isTransparentForDotDecision(term.charAt(0));
-    }
-
-    /**
-     * Test whether a punctuation character is transparent for trailing-dot resolution.
-     *
-     * @param c punctuation character to inspect
-     * @return {@code true} when lookahead must continue beyond this character
-     */
-    private static boolean isTransparentForDotDecision(final char c)
-    {
-        switch (c) {
-            case '(':
-            case ')':
-            case '—':
-            case '–':
-            case '"':
-            case '«':
-            case '»':
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * Test whether a token is an unresolved word with an immediately attached final dot.
-     *
-     * @param source token state to inspect
-     * @return {@code true} when contextual lookahead is required
-     */
-    private boolean isUnknownDottedToken(final AttributeSource source)
-    {
-        final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
-        final int length = term.length();
-        return length > 1
-            && term.charAt(length - 1) == '.'
-            && Char.isLetter(term.charAt(length - 2))
-            && !isBrevidot(term.buffer(), length);
-    }
-
-    /**
-     * Test whether a token is an XML-like tag emitted by this tokenizer.
-     *
-     * @param source token state to inspect
-     * @return {@code true} for a token delimited by {@code <} and {@code >}
-     */
-    private static boolean isXmlToken(final AttributeSource source)
-    {
-        final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
-        final int length = term.length();
-        return length >= 2 && term.charAt(0) == '<' && term.charAt(length - 1) == '>';
-    }
-
-    /**
-     * Prefix an adjacent sentence-punctuation token with the dot detached from the preceding word.
-     *
-     * @param punctuation queued sentence-punctuation state
-     * @param dotStart corrected start offset of the detached dot
-     */
-    private static void mergeDotIntoSentencePunctuation(
-        final AttributeSource punctuation,
-        final int dotStart
-    ) {
-        final CharTermAttribute term = punctuation.getAttribute(CharTermAttribute.class);
-        final int length = term.length();
-        final char[] buffer = term.resizeBuffer(length + 1);
-        System.arraycopy(buffer, 0, buffer, 1, length);
-        buffer[0] = '.';
-        term.setLength(length + 1);
-
-        final OffsetAttribute offsets = punctuation.getAttribute(OffsetAttribute.class);
-        offsets.setOffset(dotStart, offsets.endOffset());
-    }
-
-    /**
-     * Remove the final dot from a queued word token and shorten its end offset accordingly.
-     *
-     * @param candidate queued dotted-token state
-     * @param dotStart corrected start offset of the final dot
-     */
-    private static void removeTrailingDot(
-        final AttributeSource candidate,
-        final int dotStart
-    ) {
-        final CharTermAttribute term = candidate.getAttribute(CharTermAttribute.class);
-        term.setLength(term.length() - 1);
-
-        final OffsetAttribute offsets = candidate.getAttribute(OffsetAttribute.class);
-        offsets.setOffset(offsets.startOffset(), dotStart);
-    }
-
-    /**
-     * Detach pending dots from right to left. The rightmost candidate is always detached. Each
-     * detached candidate then becomes lexical evidence for the candidate on its left; cascading
-     * continues only while that bare token begins with uppercase, titlecase, or a digit.
-     *
-     * <p>The rightmost detached dot may be merged into an immediately adjacent sentence-
-     * punctuation token. Earlier detached dots are emitted as synthetic punctuation events.</p>
-     *
-     * @param punctuation adjacent or following sentence-punctuation state; null otherwise
-     */
-    private void detachSentenceCascade(final AttributeSource punctuation)
-    {
-        boolean continueCascade = true;
-
-        for (int i = candidateCount - 1; i >= 0 && continueCascade; i--) {
-            final int candidateIndex = candidateIndices[i];
-            final int dotStart = candidateDotStarts[i];
-            final int dotEnd = candidateDotEnds[i];
-            final AttributeSource candidate = lookahead.get(candidateIndex);
-
-            removeTrailingDot(candidate, dotStart);
-
-            if (i == candidateCount - 1 && punctuation != null) {
-                final OffsetAttribute offsets = punctuation.getAttribute(OffsetAttribute.class);
-                if (offsets.startOffset() == dotEnd) {
-                    mergeDotIntoSentencePunctuation(punctuation, dotStart);
-                }
-                else {
-                    scheduleSentenceDotFirst(candidateIndex, dotStart, dotEnd);
-                }
-            }
-            else {
-                scheduleSentenceDotFirst(candidateIndex, dotStart, dotEnd);
-            }
-
-            continueCascade = startsSentence(candidate);
-        }
-    }
-
-    /**
-     * Grow the reusable dotted-candidate arrays when needed.
-     */
-    private void growCandidateArrays()
-    {
-        final int oldCapacity = candidateIndices.length;
-        if (oldCapacity >= LOOKAHEAD_MAX_CAPACITY) {
-            throw new IllegalStateException(
-                "Trailing-dot lookahead reached max capacity=" + LOOKAHEAD_MAX_CAPACITY
-            );
-        }
-
-        final int newCapacity = Math.min(oldCapacity << 1, LOOKAHEAD_MAX_CAPACITY);
-        candidateIndices = java.util.Arrays.copyOf(candidateIndices, newCapacity);
-        candidateDotStarts = java.util.Arrays.copyOf(candidateDotStarts, newCapacity);
-        candidateDotEnds = java.util.Arrays.copyOf(candidateDotEnds, newCapacity);
-    }
-
-    /**
-     * Remember an unresolved dotted token in the current lookahead sequence.
-     *
-     * @param queueIndex logical index of the token in {@link #lookahead}
-     */
-    private void rememberDottedCandidate(final int queueIndex)
-    {
-        if (candidateCount == candidateIndices.length) {
-            growCandidateArrays();
-        }
-        candidateIndices[candidateCount] = queueIndex;
-        candidateDotStarts[candidateCount] = correctOffset(offset - 1);
-        candidateDotEnds[candidateCount] = correctOffset(offset);
-        candidateCount++;
-    }
-
-    /**
-     * Buffer an unresolved dotted-token sequence and read ordinary raw tokens until its dots can
-     * be classified. The current token is the first unresolved dotted token.
-     *
-     * @throws IOException if the input cannot be read
-     */
-    private void resolveDottedSequence() throws IOException
-    {
-        if (lookahead == null) {
-            lookahead = new TokenStateQueue(
-                LOOKAHEAD_INITIAL_CAPACITY,
-                LOOKAHEAD_MAX_CAPACITY,
-                OverflowPolicy.GROW,
-                this
-            );
-        }
-
-        candidateCount = 0;
-        lookahead.addLast(this);
-        rememberDottedCandidate(0);
-
-        while (readToken()) {
-            final boolean unknownDotted = isUnknownDottedToken(this);
-            lookahead.addLast(this);
-            final int currentIndex = lookahead.size() - 1;
-
-            if (isXmlToken(this) || isTransparentForDotDecision(this)) {
-                continue;
-            }
-
-            if (isNonSentenceResolver(this)) {
-                return;
-            }
-
-            if (unknownDotted) {
-                rememberDottedCandidate(currentIndex);
-                continue;
-            }
-
-            if (isSentencePunctuationToken(this)) {
-                detachSentenceCascade(lookahead.get(currentIndex));
-                return;
-            }
-
-            if (startsSentence(this)) {
-                detachSentenceCascade(null);
-            }
-            return;
-        }
-
-        detachSentenceCascade(null);
-    }
-
-    /**
-     * Schedule a detached dot after its queued lexical token while resolving candidates from
-     * right to left. Inserting at the front preserves ascending output positions.
-     *
-     * @param candidateIndex logical queue index of the token losing its dot
-     * @param dotStart corrected start offset of the dot
-     * @param dotEnd corrected end offset of the dot
-     */
-    private void scheduleSentenceDotFirst(
-        final int candidateIndex,
-        final int dotStart,
-        final int dotEnd
-    ) {
-        pendingSentenceDots.addFirst(new SentenceDot(candidateIndex + 1, dotStart, dotEnd));
-    }
-
-    /**
-     * Test whether a token provides sentence-start evidence for a pending dot.
-     *
-     * @param source token state to inspect
-     * @return {@code true} for a number or a token beginning with uppercase/titlecase
-     */
-    private static boolean startsSentence(final AttributeSource source)
-    {
-        final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
-        final int length = term.length();
-        if (length == 0) return false;
-
-        final char first = term.charAt(0);
-        if (Char.isDigit(first)) return true;
-        if (first == '-' && length > 1 && Char.isDigit(term.charAt(1))) return true;
-        return Character.isUpperCase(first) || Character.isTitleCase(first);
-    }
-
-    /**
-     * Reset internal state for a new input.
-     *
-     * @throws IOException if the input stream cannot be reset
-     */
-    @Override
-    public void reset() throws IOException
-    {
-        super.reset();
-        bufferIndex = 0;
-        bufferLen = 0;
-        offset = 0;
-        pendingChar = -1;
-        pendingCharOffset = -1;
-        pendingCharEndOffset = -1;
-        pendingSentenceDots.clear();
-        candidateCount = 0;
-        emittedLookaheadTokens = 0;
-        if (lookahead != null) lookahead.clear();
-        buffer.reset();
-    }
-
-    /**
-     * Emit already consumed punctuation as a token. Its source span may be one literal character
-     * or a complete entity such as {@code &amp;quot;}. Sentence punctuation merges with a following
-     * {@code .?!…} run in the buffer.
-     *
-     * @return {@code true}
-     * @throws IOException if the input cannot be read
-     */
-    private boolean emitPendingPunct() throws IOException
-    {
-        // pendingChar already consumed earlier; current (offset, bufferIndex) point after it.
-        final int pOff = pendingCharOffset;
-        final int pEnd = pendingCharEndOffset;
-        final char pc = (char) pendingChar;
-        pendingCharOffset = -1;
-        pendingCharEndOffset = -1;
-        pendingChar = -1;
-
-        char[] termBuf = termAtt.buffer();
-        if (termBuf.length == 0) termBuf = termAtt.resizeBuffer(1);
-        termBuf[0] = pc;
-        int termLen = 1;
-
-        int bi = bufferIndex;
-        int bl = bufferLen;
-        int off = offset;
-        char[] io = buffer.getBuffer();
-
-        // Clause punctuation: standalone
-        if (isClausePunct(pc)) {
-            posAtt.setPos(PUNCTclause.code);
-            termAtt.setLength(termLen);
-            posIncAtt.setPositionIncrement(1);
-            posLenAtt.setPositionLength(1);
-            offsetAtt.setOffset(correctOffset(pOff), correctOffset(pEnd));
-            return true;
-        }
-
-        // Sentence punctuation: merge with following .?!… in buffer
-        if (isSentencePunct(pc)) {
-            posAtt.setPos(PUNCTsent.code);
-
-            while (true) {
-                if (bi >= bl) {
-                    CharacterUtils.fill(buffer, input);
-                    bl = buffer.getLength();
-                    bi = 0;
-                    io = buffer.getBuffer();
-                    if (bl == 0) break;
-                }
-                final char c = io[bi];
-                if (!isSentencePunct(c)) break;
-
-                if (termLen == termBuf.length) termBuf = termAtt.resizeBuffer(termLen + 1);
-                termBuf[termLen++] = c;
-                bi++; off++;
-            }
-
-            termAtt.setLength(termLen);
-            posIncAtt.setPositionIncrement(1);
-            posLenAtt.setPositionLength(1);
-            offsetAtt.setOffset(correctOffset(pOff), correctOffset(off));
-            bufferIndex = bi; bufferLen = bl; offset = off;
-            return true;
-        }
-
-        // Fallback: emit as a single-char token with no flags (should not happen with current uses).
-        termAtt.setLength(termLen);
-        posIncAtt.setPositionIncrement(1);
-        posLenAtt.setPositionLength(1);
-        offsetAtt.setOffset(correctOffset(pOff), correctOffset(pEnd));
-        return true;
+        return set;
     }
 
     /**
@@ -1004,16 +255,179 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Normalize a character accepted in a word-like token.
+     * Detach pending dots from right to left, then splice them into the lookahead queue. The
+     * rightmost candidate is always detached. Each detached candidate then becomes lexical
+     * evidence for the candidate on its left; cascading continues only while that bare token
+     * begins with uppercase, titlecase, or a digit.
      *
-     * @param c source or entity-decoded character
-     * @return normalized token character
+     * <p>When the resolver is a sentence-punctuation token immediately adjacent to the
+     * rightmost detached dot, the dot is merged into that token instead of being inserted.</p>
+     *
+     * @param punctuation queued sentence-punctuation resolver; null for any other resolver
      */
-    private static char normalizeTokenChar(final char c)
+    private void detachDots(final AttributeSource punctuation)
     {
-        if (c == '\u2019' || c == '\u2018' || c == '\u02BC') return '\'';
-        if (c == '\u2010' || c == '\u2011' || c == '\u00AD') return '-';
-        return c;
+        final int last = candidateCount - 1;
+        int first = last;
+        removeTrailingDot(lookahead.get(candidateIndices[first]), candidateDotStarts[first]);
+        while (first > 0 && startsSentence(lookahead.get(candidateIndices[first]))) {
+            first--;
+            removeTrailingDot(lookahead.get(candidateIndices[first]), candidateDotStarts[first]);
+        }
+
+        boolean mergeLast = false;
+        if (punctuation != null
+                && punctuation.getAttribute(OffsetAttribute.class).startOffset() == candidateDotEnds[last]) {
+            mergeDotIntoPunctuation(punctuation, candidateDotStarts[last]);
+            mergeLast = true;
+        }
+        insertDetachedDots(first, mergeLast);
+    }
+
+    /**
+     * Emit punctuation already consumed from the source, for example the dot stripped from the
+     * end of a number or a decoded {@code &amp;quot;}. Sentence punctuation merges with an
+     * immediately following {@code .?!…} run.
+     *
+     * @return {@code true}
+     * @throws IOException if the input cannot be read
+     */
+    private boolean emitPendingChar() throws IOException
+    {
+        final char pc = (char) pendingChar;
+        pendingChar = -1;
+        termAtt.append(pc);
+        if (isClausePunct(pc)) {
+            posAtt.setPos(PUNCTclause.code);
+            offsetAtt.setOffset(correctOffset(pendingStart), correctOffset(pendingEnd));
+            return true;
+        }
+        return readSentencePunctRun(pendingStart);
+    }
+
+    /**
+     * Set final offset at end of stream.
+     *
+     * @throws IOException if the input stream cannot be finalized
+     */
+    @Override
+    public final void end() throws IOException
+    {
+        super.end();
+        offsetAtt.setOffset(correctOffset(offset), correctOffset(offset));
+    }
+
+    /**
+     * Produce the next contextually resolved token.
+     *
+     * @return {@code true} if a token was emitted
+     * @throws IOException if the input cannot be read
+     */
+    @Override
+    public final boolean incrementToken() throws IOException
+    {
+        if (lookahead != null && !lookahead.isEmpty()) {
+            clearAttributes();
+            lookahead.removeFirst(this);
+            return true;
+        }
+        if (!readToken()) {
+            return false;
+        }
+        if (!isUnknownDotted()) {
+            return true;
+        }
+        resolveDottedSequence();
+        clearAttributes();
+        lookahead.removeFirst(this);
+        return true;
+    }
+
+    /**
+     * Rebuild the lookahead queue in place, inserting a sentence-dot token after each detached
+     * candidate. One full rotation of the queue preserves the original token order.
+     *
+     * @param first index in the candidate arrays of the leftmost detached candidate
+     * @param mergeLast {@code true} when the rightmost dot was merged into an adjacent
+     *        punctuation token and must not be inserted
+     */
+    private void insertDetachedDots(final int first, final boolean mergeLast)
+    {
+        final int last = candidateCount - 1;
+        final int size = lookahead.size();
+        int cand = first;
+        for (int i = 0; i < size; i++) {
+            lookahead.removeFirst(this);
+            lookahead.addLast(this);
+            if (cand > last || candidateIndices[cand] != i) {
+                continue;
+            }
+            if (cand < last || !mergeLast) {
+                clearAttributes();
+                termAtt.append('.');
+                posAtt.setPos(PUNCTsent.code);
+                offsetAtt.setOffset(candidateDotStarts[cand], candidateDotEnds[cand]);
+                lookahead.addLast(this);
+            }
+            cand++;
+        }
+    }
+
+    /**
+     * Test whether the current token is a tag whose local element name is a configured
+     * block tag. The name is read after {@code '<'} and an optional {@code '/'}, skipping
+     * whitespace and a namespace prefix up to {@code ':'}, ending at whitespace,
+     * {@code '/'}, or {@code '>'}. Opening and closing forms both match. Processing
+     * instructions, comments, and doctypes extract names such as {@code "?xml"} that no
+     * configured set contains, so they need no special case.
+     *
+     * @return {@code true} when the tag ends any sentence pending a dot decision
+     */
+    private boolean isBlockTag()
+    {
+        final char[] buf = termAtt.buffer();
+        final int len = termAtt.length();
+        int from = 1;
+        if (from < len && buf[from] == '/') from++;
+        while (from < len && Char.isSpace(buf[from])) from++;
+        int to = from;
+        while (to < len && buf[to] != '>' && buf[to] != '/' && !Char.isSpace(buf[to])) {
+            if (buf[to] == ':') from = to + 1;
+            to++;
+        }
+        return to > from && blockTags.contains(buf, from, to - from);
+    }
+
+    /**
+     * Test whether a dotted token is a brevidot whose final dot must remain attached.
+     * Recognized forms are configured entries, single-letter initials, dotted short-segment
+     * abbreviations, and hyphenated initial chains. An elision prefix such as {@code l'} is
+     * skipped; the term buffer is already normalized, so only the ASCII apostrophe occurs.
+     *
+     * @param buf token buffer ending with a dot
+     * @param len token length
+     * @return {@code true} when the final dot must remain attached
+     */
+    private boolean isBrevidot(final char[] buf, final int len)
+    {
+        if (len < 2 || buf[len - 1] != '.') return false;
+
+        final int letter = len - 2;
+        if (Char.isLetter(buf[letter]) && (letter == 0 || buf[letter - 1] == '\'')) {
+            return true;
+        }
+
+        int from = 0;
+        for (int i = len - 2; i > 0; i--) {
+            if (buf[i - 1] == '\'') {
+                from = i;
+                break;
+            }
+        }
+
+        if (looksLikeDottedAbbrev(buf, from, len)) return true;
+        if (looksLikeHyphenatedInitials(buf, from, len)) return true;
+        return brevidots.contains(buf, from, len - from - 1);
     }
 
     /**
@@ -1022,7 +436,8 @@ public class MarkupTokenizer extends Tokenizer
      * @param c character to test
      * @return {@code true} for clause punctuation
      */
-    private static boolean isClausePunct(final char c) {
+    private static boolean isClausePunct(final char c)
+    {
         switch (c) {
             case ',':
             case ';':
@@ -1046,39 +461,24 @@ public class MarkupTokenizer extends Tokenizer
      * @param c character to test
      * @return {@code true} for sentence punctuation
      */
-    private static boolean isSentencePunct(final char c) {
+    private static boolean isSentencePunct(final char c)
+    {
         return c == '.' || c == '…' || c == '?' || c == '!';
     }
 
     /**
-     * Test whether a dotted token is a brevidot whose final dot must remain attached.
-     * Recognized forms are configured entries, single-letter initials, dotted short-segment
-     * abbreviations, and hyphenated initial chains.
+     * Test whether the current token is an unresolved word with an immediately attached
+     * final dot.
      *
-     * @param buf token buffer ending with a dot
-     * @param len token length
-     * @return {@code true} when the final dot must remain attached
+     * @return {@code true} when contextual lookahead is required
      */
-    private boolean isBrevidot(final char[] buf, final int len)
+    private boolean isUnknownDotted()
     {
-        if (len < 2 || buf[len - 1] != '.') return false;
-
-        final int letter = len - 2;
-        if (Char.isLetter(buf[letter]) && (letter == 0 || buf[letter - 1] == '\'')) {
-            return true;
-        }
-
-        int from = 0;
-        for (int i = len - 2; i > 0; i--) {
-            if (buf[i - 1] == '\'' || buf[i - 1] == '’') {
-                from = i;
-                break;
-            }
-        }
-
-        if (looksLikeDottedAbbrev(buf, from, len)) return true;
-        if (looksLikeHyphenatedInitials(buf, from, len)) return true;
-        return brevidots.contains(buf, from, len - from - 1);
+        final int length = termAtt.length();
+        return length > 1
+            && termAtt.charAt(length - 1) == '.'
+            && Char.isLetter(termAtt.charAt(length - 2))
+            && !isBrevidot(termAtt.buffer(), length);
     }
 
     /**
@@ -1142,4 +542,413 @@ public class MarkupTokenizer extends Tokenizer
         return false;
     }
 
+    /**
+     * Prefix an adjacent sentence-punctuation token with the dot detached from the preceding word.
+     *
+     * @param punctuation queued sentence-punctuation state
+     * @param dotStart corrected start offset of the detached dot
+     */
+    private static void mergeDotIntoPunctuation(
+        final AttributeSource punctuation,
+        final int dotStart
+    ) {
+        final CharTermAttribute term = punctuation.getAttribute(CharTermAttribute.class);
+        final int length = term.length();
+        final char[] buffer = term.resizeBuffer(length + 1);
+        System.arraycopy(buffer, 0, buffer, 1, length);
+        buffer[0] = '.';
+        term.setLength(length + 1);
+
+        final OffsetAttribute offsets = punctuation.getAttribute(OffsetAttribute.class);
+        offsets.setOffset(dotStart, offsets.endOffset());
+    }
+
+    /**
+     * Normalize a character accepted in a word-like token. Note that the soft hyphen
+     * (U+00AD) is a token character and becomes a plain hyphen.
+     *
+     * @param c source or entity-decoded character
+     * @return normalized token character
+     */
+    private static char normalizeTokenChar(final char c)
+    {
+        if (c == '\u2019' || c == '\u2018' || c == '\u02BC') return '\'';
+        if (c == '\u2010' || c == '\u2011' || c == '\u00AD') return '-';
+        return c;
+    }
+
+    /**
+     * Return the char at the read cursor without consuming it, refilling the IO buffer
+     * when exhausted.
+     *
+     * @return current char, or {@code -1} at end of input
+     * @throws IOException if the input cannot be read
+     */
+    private int peek() throws IOException
+    {
+        if (bufferIndex >= bufferLength) {
+            CharacterUtils.fill(buffer, input);
+            bufferLength = buffer.getLength();
+            bufferIndex = 0;
+            if (bufferLength == 0) return -1;
+        }
+        return buffer.getBuffer()[bufferIndex];
+    }
+
+    /**
+     * Read a number: digits with at most one {@code '.'} or {@code ','} between digit runs.
+     * A separator left dangling at the end of the number is stripped and re-emitted as
+     * punctuation by the next call, except at end of input where it stays attached.
+     *
+     * <p>Entered with the cursor on a digit, either from {@link #readToken()} or from
+     * {@link #readWord()} when the term is a single minus sign.</p>
+     *
+     * @param start source start offset of the token
+     * @return {@code true}
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readNumber(final int start) throws IOException
+    {
+        posAtt.setPos(DIGIT.code);
+        int c;
+        while ((c = peek()) >= 0) {
+            final char ch = (char) c;
+            if (!Char.isDigit(ch)) {
+                final char last = termAtt.charAt(termAtt.length() - 1);
+                if ((ch != '.' && ch != ',') || last == '.' || last == ',') break;
+            }
+            termAtt.append(ch);
+            skip();
+        }
+
+        // Historical quirk kept for output stability: before a tag ('<'), as at end of
+        // input, a dangling separator stays inside the number ("p. 12.</p>" gives "12.").
+        final int length = termAtt.length();
+        final char last = termAtt.charAt(length - 1);
+        if (c >= 0 && c != '<' && (last == '.' || last == ',')) {
+            termAtt.setLength(length - 1);
+            pendingChar = last;
+            pendingStart = offset - 1;
+            pendingEnd = offset;
+            offsetAtt.setOffset(correctOffset(start), correctOffset(offset - 1));
+            return true;
+        }
+        offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+        return true;
+    }
+
+    /**
+     * Read a run of sentence punctuation ({@code .?!…}) from the cursor, appended to whatever
+     * the caller already placed in the term (nothing, or one pending char).
+     *
+     * @param start source start offset of the token
+     * @return {@code true}
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readSentencePunctRun(final int start) throws IOException
+    {
+        posAtt.setPos(PUNCTsent.code);
+        int c;
+        while ((c = peek()) >= 0 && isSentencePunct((char) c)) {
+            termAtt.append((char) c);
+            skip();
+        }
+        offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+        return true;
+    }
+
+    /**
+     * Read an XML-like tag from {@code '<'} through {@code '>'} inclusive. A tag truncated by
+     * end of input is emitted as-is, without the XML flag.
+     *
+     * @return {@code true}
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readTag() throws IOException
+    {
+        final int start = offset;
+        int c;
+        while ((c = peek()) >= 0) {
+            termAtt.append((char) c);
+            skip();
+            if (c == '>') {
+                posAtt.setPos(XML.code);
+                break;
+            }
+        }
+        offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+        return true;
+    }
+
+    /**
+     * Read one raw token from the character stream, dispatching on the first significant
+     * character. Attached final dots remain in word tokens; contextual resolution is performed
+     * by {@link #incrementToken()}.
+     *
+     * @return {@code true} if a token was read
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readToken() throws IOException
+    {
+        clearAttributes();
+        if (pendingChar >= 0) {
+            return emitPendingChar();
+        }
+        int c;
+        while ((c = peek()) >= 0) {
+            final char ch = (char) c;
+            if (ch == '<') {
+                return readTag();
+            }
+            if (isClausePunct(ch)) {
+                final int start = offset;
+                termAtt.append(ch);
+                skip();
+                posAtt.setPos(PUNCTclause.code);
+                offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+                return true;
+            }
+            if (isSentencePunct(ch)) {
+                return readSentencePunctRun(offset);
+            }
+            if (Char.isDigit(ch)) {
+                return readNumber(offset);
+            }
+            if (Char.isToken(ch)) {
+                if (readWord()) return true;
+                continue; // an entity decoded to a delimiter and the term evaporated
+            }
+            skip();
+        }
+        return false;
+    }
+
+    /**
+     * Read a word-like token: letters, digits, apostrophes, hyphens, decoded XML entities,
+     * and internal or trailing dots after letters. Hands over to {@link #readNumber(int)}
+     * when the term is a single literal minus sign followed by a digit.
+     *
+     * @return {@code true} if a token was produced, {@code false} when a decoded entity acted
+     *         as a delimiter before any term content accumulated
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readWord() throws IOException
+    {
+        int start = offset;
+        int amp = -1;         // term index of a possible XML entity
+        char lastRaw = 0;     // last consumed source or entity-decoded char
+        boolean trailingDot = false;
+        int c;
+
+        while ((c = peek()) >= 0) {
+            final char ch = (char) c;
+
+            // A following letter continues an internal dotted form. A recognized brevidot may
+            // also continue with any token char, as the hyphen in "J.-J.".
+            if (trailingDot) {
+                if (!Char.isLetter(ch) && !isBrevidot(termAtt.buffer(), termAtt.length())) break;
+                trailingDot = false;
+            }
+
+            // Decode the five predefined XML entities. Unknown entities remain verbatim.
+            if (ch == ';' && amp >= 0 && termAtt.length() >= amp + 2) {
+                termAtt.append(';');
+                skip();
+                final int spellingStart = amp;
+                amp = -1;
+                final int entityStart = offset - (termAtt.length() - spellingStart);
+                final char decoded = decodeXmlEntity(termAtt.buffer(), spellingStart, termAtt.length());
+                if (decoded == 0) {
+                    lastRaw = ';';
+                    continue;
+                }
+                termAtt.setLength(spellingStart);
+                lastRaw = decoded;
+                if (isClausePunct(decoded) || isSentencePunct(decoded)) {
+                    pendingChar = decoded;
+                    pendingStart = entityStart;
+                    pendingEnd = offset;
+                    if (termAtt.length() > 0) {
+                        offsetAtt.setOffset(correctOffset(start), correctOffset(entityStart));
+                        return true;
+                    }
+                    return emitPendingChar();
+                }
+                if (Char.isToken(decoded)) {
+                    if (termAtt.length() == 0) start = entityStart;
+                    termAtt.append(normalizeTokenChar(decoded));
+                    continue;
+                }
+                // '<', '>' or any other decoded character acts as a plain delimiter.
+                if (termAtt.length() > 0) {
+                    offsetAtt.setOffset(correctOffset(start), correctOffset(entityStart));
+                    return true;
+                }
+                return false;
+            }
+
+            // Dot after a letter: may be abbrev/internal dot. Append now; decide on next char.
+            if (ch == '.' && termAtt.length() > 0 && Char.isLetter(termAtt.charAt(termAtt.length() - 1))) {
+                termAtt.append('.');
+                skip();
+                lastRaw = '.';
+                trailingDot = true;
+                continue;
+            }
+
+            // "-42": a literal minus sign then a digit is a negative number.
+            if (Char.isDigit(ch) && termAtt.length() == 1 && lastRaw == '-') {
+                return readNumber(start);
+            }
+
+            // Clause punctuation, sentence punctuation, '<', whitespace: end of word.
+            if (!Char.isToken(ch)) break;
+
+            if (ch == '&') amp = termAtt.length();
+            termAtt.append(normalizeTokenChar(ch));
+            skip();
+            lastRaw = ch;
+            if (termAtt.length() >= TOKEN_MAX_SIZE) break; // cut overly long tokens
+        }
+
+        offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+        return true;
+    }
+
+    /**
+     * Remember an unresolved dotted token in the current lookahead sequence. The read cursor
+     * sits just after the final dot of the token.
+     *
+     * @param queueIndex logical index of the token in {@link #lookahead}
+     */
+    private void rememberCandidate(final int queueIndex)
+    {
+        if (candidateCount == candidateIndices.length) {
+            final int capacity = candidateCount * 2;
+            candidateIndices = Arrays.copyOf(candidateIndices, capacity);
+            candidateDotStarts = Arrays.copyOf(candidateDotStarts, capacity);
+            candidateDotEnds = Arrays.copyOf(candidateDotEnds, capacity);
+        }
+        candidateIndices[candidateCount] = queueIndex;
+        candidateDotStarts[candidateCount] = correctOffset(offset - 1);
+        candidateDotEnds[candidateCount] = correctOffset(offset);
+        candidateCount++;
+    }
+
+    /**
+     * Remove the final dot from a queued word token and shorten its end offset accordingly.
+     *
+     * @param candidate queued dotted-token state
+     * @param dotStart corrected start offset of the final dot
+     */
+    private static void removeTrailingDot(
+        final AttributeSource candidate,
+        final int dotStart
+    ) {
+        final CharTermAttribute term = candidate.getAttribute(CharTermAttribute.class);
+        term.setLength(term.length() - 1);
+
+        final OffsetAttribute offsets = candidate.getAttribute(OffsetAttribute.class);
+        offsets.setOffset(offsets.startOffset(), dotStart);
+    }
+
+    /**
+     * Reset internal state for a new input.
+     *
+     * @throws IOException if the input stream cannot be reset
+     */
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
+        bufferIndex = 0;
+        bufferLength = 0;
+        offset = 0;
+        pendingChar = -1;
+        candidateCount = 0;
+        if (lookahead != null) lookahead.clear();
+        buffer.reset();
+    }
+
+    /**
+     * Buffer an unresolved dotted-token sequence and read raw tokens until its dots can be
+     * classified. The current token is the first unresolved dotted token. On return the
+     * lookahead queue holds the whole sequence in output order, detached dots included.
+     *
+     * @throws IOException if the input cannot be read
+     */
+    private void resolveDottedSequence() throws IOException
+    {
+        if (lookahead == null) {
+            lookahead = new TokenStateQueue(
+                LOOKAHEAD_INITIAL_CAPACITY,
+                2 * LOOKAHEAD_MAX_CAPACITY,
+                OverflowPolicy.GROW,
+                this
+            );
+        }
+
+        candidateCount = 0;
+        lookahead.addLast(this);
+        rememberCandidate(0);
+
+        while (readToken()) {
+            lookahead.addLast(this);
+            final int pos = posAtt.getPos();
+
+            if (pos == XML.code) {
+                if (isBlockTag()) {
+                    detachDots(null); // the sentence cannot cross a block boundary
+                    return;
+                }
+                continue;
+            }
+            if (pos == PUNCTclause.code) {
+                final char c = termAtt.charAt(0);
+                if (c == ',' || c == ';' || c == ':') return; // keeps all pending dots
+                continue; // quotes, parentheses, dashes: transparent
+            }
+            if (isUnknownDotted()) {
+                rememberCandidate(lookahead.size() - 1);
+                continue;
+            }
+            if (pos == PUNCTsent.code) {
+                detachDots(lookahead.peekLast());
+                return;
+            }
+            if (startsSentence(this)) {
+                detachDots(null);
+            }
+            return;
+        }
+
+        detachDots(null); // end of input
+    }
+
+    /**
+     * Consume the char at the read cursor.
+     */
+    private void skip()
+    {
+        bufferIndex++;
+        offset++;
+    }
+
+    /**
+     * Test whether a token provides sentence-start evidence for a pending dot.
+     *
+     * @param source token state to inspect
+     * @return {@code true} for a number or a token beginning with uppercase/titlecase
+     */
+    private static boolean startsSentence(final AttributeSource source)
+    {
+        final CharTermAttribute term = source.getAttribute(CharTermAttribute.class);
+        final int length = term.length();
+        if (length == 0) return false;
+
+        final char first = term.charAt(0);
+        if (Char.isDigit(first)) return true;
+        if (first == '-' && length > 1 && Char.isDigit(term.charAt(1))) return true;
+        return Character.isUpperCase(first) || Character.isTitleCase(first);
+    }
 }
