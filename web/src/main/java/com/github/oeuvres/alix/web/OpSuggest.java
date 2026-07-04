@@ -1,13 +1,6 @@
 package com.github.oeuvres.alix.web;
 
-import static com.github.oeuvres.alix.web.Pars.FTEXT;
-import static com.github.oeuvres.alix.web.Pars.INFIX;
-import static com.github.oeuvres.alix.web.Pars.SLOP;
-import static com.github.oeuvres.alix.web.Pars.SLOP_DEFAULT;
-import static com.github.oeuvres.alix.web.Pars.SLOP_RANGE;
-import static com.github.oeuvres.alix.web.Pars.TERMS;
-import static com.github.oeuvres.alix.web.Pars.TERMS_DEFAULT;
-import static com.github.oeuvres.alix.web.Pars.TERMS_RANGE;
+import static com.github.oeuvres.alix.web.Pars.*;
 
 import java.io.IOException;
 import java.util.regex.Pattern;

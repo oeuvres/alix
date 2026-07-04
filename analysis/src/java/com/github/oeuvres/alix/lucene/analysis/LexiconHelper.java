@@ -190,17 +190,12 @@ public final class LexiconHelper
                 final StringBuilder expression = row.getCell(colExpression);
                 if (expression.length() == 0)
                     return false;
-                final StringBuilder canonical = row.getCell(colCanonical) != null?
+                List<String> words = tokenizer.tokenize(expression);
+                final StringBuilder canonical = row.getCell(colCanonical).length() > 0?
                     row.getCell(colCanonical):
                     expression;
                 for (int i = 0; i < canonical.length(); i++) canonical.setCharAt(i, tokenizer.normalizeChar(canonical.charAt(i)));
-                List<String> words = tokenizer.tokenize(expression);
-                
-                if (canonical.length() > 0) {
-                    lexicon.addExpression(words, canonical);
-                } else {
-                    lexicon.addExpression(words, expression);
-                }
+                lexicon.addExpression(words, canonical);
                 return true;
             }
         };
