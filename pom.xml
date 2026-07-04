@@ -28,8 +28,6 @@
         <module>fr</module>
         <!-- tools for lucene analysis, French token filters rely on fr -->
         <module>analysis</module>
-        <!-- tools for lucene search -->
-        <module>search</module>
         <!-- tools for lucene, used by analysis and search -->
         <module>common</module>
         <!-- tests of all modules -->
