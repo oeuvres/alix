@@ -11,6 +11,7 @@ import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.QueryTokenTypeAttribute;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -76,6 +77,7 @@ public final class AnalysisDemoHelper {
         final PosAttribute posAtt = ts.hasAttribute(PosAttribute.class) ? ts.getAttribute(PosAttribute.class) : null;
         final ProbAttribute probAtt = ts.hasAttribute(ProbAttribute.class) ? ts.getAttribute(ProbAttribute.class) : null;;
         final LemmaAttribute lemAtt = ts.hasAttribute(LemmaAttribute.class) ? ts.getAttribute(LemmaAttribute.class) : null;;
+        final QueryTokenTypeAttribute qtokTypeAtt = ts.hasAttribute(QueryTokenTypeAttribute.class) ? ts.getAttribute(QueryTokenTypeAttribute.class) : null;
 
         ts.reset();
         try {
@@ -87,14 +89,15 @@ public final class AnalysisDemoHelper {
                 final String prob = (probAtt != null)?String.format(java.util.Locale.ROOT, "%.5f",probAtt.getProb()):"";
                 position += posIncrAtt.getPositionIncrement();
                 System.out.printf(
-                    "%5d\t[%d,%d)\t|%s|\t%s\t%s\t%s\t%s%n",
+                    "%5d\t[%d,%d)\t|%s|\t%s\t%s\t%s\t%s%s%n",
                     position,
                     start, end,
                     safeSlice(input, start, end),
                     escape(termAtt.toString()),
                     Upos.get(pos).name(),
                     (lemAtt != null)?lemAtt:"",
-                    prob
+                    prob,
+                    (qtokTypeAtt != null)?"\t"+qtokTypeAtt:""
                 );
             }
             ts.end();
