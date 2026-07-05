@@ -55,7 +55,7 @@ public class FrenchLexicons
     {
         // ignore case, so Mm. == mm.
         CharArraySet set = new CharArraySet(300, true);
-        LexiconHelper.loadSet(set, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidots.csv", 0, LexiconHelper.CsvHeader.SKIP, ".");
+        LexiconHelper.loadSet(set, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidots.csv", 0, LexiconHelper.CsvHeader.SKIP);
         return set;
     }
 

@@ -168,6 +168,7 @@ public final class IngestConfig
             report.setAttribute("key", fl.key());
             List<Path> resolved = resolveFiles(baseDir, lines(props, fl.key()), report);
             fileLists.put(fl, Collections.unmodifiableList(resolved));
+            props.remove(fl.key());
         }
 
         List<String> teiLines = lines(props, "tei");

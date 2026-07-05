@@ -117,7 +117,7 @@ public class MarkupTokenizer extends Tokenizer
     public static final String BLOCK_TAGS =
         "aside, blockquote, div, figcaption, h1, h2, h3, h4, h5, h6, li, p, section, td, th";
 
-    /** Configured brevidots, stored without their final dot. */
+    /** Configured brevidots, stored with their final dot, for example {@code "etc."}. */
     private final CharArraySet brevidots;
 
     /** Local-names of block tags, compiled case-insensitive. */
@@ -173,8 +173,8 @@ public class MarkupTokenizer extends Tokenizer
 
     /**
      * Build a tokenizer with configured brevidots and the default {@link #BLOCK_TAGS}.
-     * Brevidot entries omit the trailing dot, for example {@code "Dr"}, {@code "etc"},
-     * or {@code "Var"}.
+     * Brevidot entries include their final dot, for example {@code "Dr."}, {@code "etc."},
+     * or {@code "Var."}.
      *
      * @param brevidots forms whose final dot always remains inside the token; null means none
      */
@@ -190,7 +190,10 @@ public class MarkupTokenizer extends Tokenizer
      * stream, but never set: {@code clearAttributes()} resets both to their default of 1,
      * which is the only value this tokenizer emits.</p>
      *
-     * @param brevidots forms whose final dot always remains inside the token; null means none
+     * @param brevidots forms whose final dot always remains inside the token, spelled with
+     *        that dot ({@code "etc."}, {@code "Stud."}); matched with the set's own case
+     *        policy, so {@code Var.} and {@code var.} differ under a case-sensitive set;
+     *        null means none
      * @param blockTags comma-separated element local-names ending any sentence pending a dot
      *        decision, matched case-insensitive on opening and closing tags; null or blank
      *        means no block boundary, the legacy behavior
@@ -427,7 +430,7 @@ public class MarkupTokenizer extends Tokenizer
 
         if (looksLikeDottedAbbrev(buf, from, len)) return true;
         if (looksLikeHyphenatedInitials(buf, from, len)) return true;
-        return brevidots.contains(buf, from, len - from - 1);
+        return brevidots.contains(buf, from, len - from);
     }
 
     /**

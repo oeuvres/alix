@@ -45,16 +45,28 @@ public final class MarkupTokenizerDemo
     private MarkupTokenizerDemo()
     {
     }
-
+    
     /**
-     * Run the curated tokenizer demonstrations.
-     *
-     * @param args ignored command-line arguments
+     * Analyzer used only by this demonstration.
      */
-    public static void main(final String[] args)
+    private static final class DemoAnalyzer extends Analyzer
     {
-        try (Analyzer analyzer = new DemoAnalyzer()) {
-            AnalysisDemoHelper.runAll(analyzer, FIELD, cases());
+        /** Configured brevidots, without their final dot. */
+        private static final CharArraySet BREVIDOTS = new CharArraySet(
+            List.of("Confer.", "Dr.", "etc.", "larg.", "Var.", "Stud."),
+            false
+        );
+
+        /**
+         * Build tokenizer components for one analyzed field.
+         *
+         * @param fieldName analyzed field name
+         * @return analyzer components containing a configured {@link MarkupTokenizer}
+         */
+        @Override
+        protected TokenStreamComponents createComponents(final String fieldName)
+        {
+            return new TokenStreamComponents(new MarkupTokenizer(BREVIDOTS));
         }
     }
 
@@ -66,6 +78,13 @@ public final class MarkupTokenizerDemo
     private static List<Case> cases()
     {
         return List.of(
+            new Case(
+                "enfant. a Source",
+                """
+            Orcula dolium Drap., et Pupilla triplicata Stud. — Assez rares, vivant sous les pierres de quelques rocailles.
+                """,
+                ""
+            ),
             new Case(
                 "enfant. a Source",
                 """
@@ -191,26 +210,16 @@ le sujet ne saurait être différent.</p>
     }
 
     /**
-     * Analyzer used only by this demonstration.
+     * Run the curated tokenizer demonstrations.
+     *
+     * @param args ignored command-line arguments
      */
-    private static final class DemoAnalyzer extends Analyzer
+    public static void main(final String[] args)
     {
-        /** Configured brevidots, without their final dot. */
-        private static final CharArraySet BREVIDOTS = new CharArraySet(
-            List.of("Confer", "Dr", "etc", "larg", "Var"),
-            false
-        );
-
-        /**
-         * Build tokenizer components for one analyzed field.
-         *
-         * @param fieldName analyzed field name
-         * @return analyzer components containing a configured {@link MarkupTokenizer}
-         */
-        @Override
-        protected TokenStreamComponents createComponents(final String fieldName)
-        {
-            return new TokenStreamComponents(new MarkupTokenizer(BREVIDOTS));
+        try (Analyzer analyzer = new DemoAnalyzer()) {
+            AnalysisDemoHelper.runAll(analyzer, FIELD, cases());
         }
     }
+
+
 }

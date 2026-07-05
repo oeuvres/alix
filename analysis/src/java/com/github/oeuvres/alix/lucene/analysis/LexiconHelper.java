@@ -416,21 +416,13 @@ public final class LexiconHelper
      * @param set          target set
      * @param anchor       class used to resolve the resource path
      * @param resourcePath classpath resource path
-     * @param col          column index containing the form to add
-     * @param rtrimChars   characters to trim on the right of the selected cell
-     *                     before insertion (may be {@code null} for no
-     *                     trimming)
-     * @throws UncheckedIOException     on read error
-     * @throws NullPointerException     if {@code set}, {@code anchor}, or
-     *                                  {@code resourcePath} is null
-     * @throws IllegalArgumentException if {@code col < 0}
      */
     public static void loadSet(
         final CharArraySet set,
         final Class<?> anchor,
         final String resourcePath)
     {
-        loadSet(set, anchor, resourcePath, 0, CsvHeader.SKIP, null);
+        loadSet(set, anchor, resourcePath, 0, CsvHeader.SKIP);
     }
     
     /**
@@ -441,9 +433,6 @@ public final class LexiconHelper
      * @param anchor       class used to resolve the resource path
      * @param resourcePath classpath resource path
      * @param col          column index containing the form to add
-     * @param rtrimChars   characters to trim on the right of the selected cell
-     *                     before insertion (may be {@code null} for no
-     *                     trimming)
      * @throws UncheckedIOException     on read error
      * @throws NullPointerException     if {@code set}, {@code anchor}, or
      *                                  {@code resourcePath} is null
@@ -454,14 +443,13 @@ public final class LexiconHelper
         final Class<?> anchor,
         final String resourcePath,
         final int col,
-        final CsvHeader csvHeader,
-        final String rtrimChars)
+        final CsvHeader csvHeader)
     {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
         try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
             csv.cellMax(col + 1);
-            loadSet(set, csv, col, csvHeader, rtrimChars);
+            loadSet(set, csv, col, csvHeader);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -473,16 +461,10 @@ public final class LexiconHelper
      * @param set        target set
      * @param file       CSV file path
      * @param col        column index containing the form to add
-     * @param rtrimChars characters to trim on the right of the selected cell
-     *                   before insertion (may be {@code null} for no trimming)
-     * @throws UncheckedIOException     on read error
-     * @throws NullPointerException     if {@code set} or {@code file} is null
-     * @throws IllegalArgumentException if {@code col < 0}
      */
     public static void loadSet(final CharArraySet set, final Path file)
-        throws UncheckedIOException
     {
-        loadSet(set, file, 0, CsvHeader.SKIP, null);
+        loadSet(set, file, 0, CsvHeader.SKIP);
     }
     
     /**
@@ -491,24 +473,17 @@ public final class LexiconHelper
      * @param set        target set
      * @param file       CSV file path
      * @param col        column index containing the form to add
-     * @param rtrimChars characters to trim on the right of the selected cell
-     *                   before insertion (may be {@code null} for no trimming)
-     * @throws UncheckedIOException     on read error
-     * @throws NullPointerException     if {@code set} or {@code file} is null
-     * @throws IllegalArgumentException if {@code col < 0}
      */
     public static void loadSet(
         final CharArraySet set,
         final Path file,
         final int col,
-        final CsvHeader header,
-        final String rtrimChars)
-        throws UncheckedIOException
+        final CsvHeader header)
     {
         Objects.requireNonNull(file, "file");
         try (CSVReader csv = new CSVReader(file)) {
             csv.cellMax(col + 1);
-            loadSet(set, csv, col, header, rtrimChars);
+            loadSet(set, csv, col, header);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -520,19 +495,12 @@ public final class LexiconHelper
      * @param set        target set
      * @param csv        CSV reader
      * @param col        column index containing the form to add
-     * @param rtrimChars characters to trim on the right of the selected cell
-     *                   before insertion (may be {@code null} for no trimming)
-     * @param skipHeader if {@code true}, the first row is skipped
-     * @throws UncheckedIOException     on read error
-     * @throws NullPointerException     if {@code set} or {@code csv} is null
-     * @throws IllegalArgumentException if {@code col < 0}
      */
     public static void loadSet(
         final CharArraySet set,
         final CSVReader csv,
         final int col,
-        final CsvHeader csvHeader,
-        final String rtrimChars)
+        final CsvHeader csvHeader)
         throws UncheckedIOException
     {
         Objects.requireNonNull(set, "set");
@@ -545,7 +513,7 @@ public final class LexiconHelper
             protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
                 final StringBuilder form = row.getCell(col);
-                Char.rtrim(form, rtrimChars);
+                Char.trim(form);
                 if (form.length() == 0)
                     return false; // rtrim may empty the cell
                 final boolean added = set.add(form);

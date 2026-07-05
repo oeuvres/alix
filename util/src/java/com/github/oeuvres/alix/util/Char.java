@@ -512,6 +512,46 @@ public class Char
         return w - off;
     }
     
+    /**
+     * Trim a default set of whitespace characters from both edges.
+     *
+     * @param sb mutable text to trim (modified in place)
+     * @throws NullPointerException if {@code sb} is null
+     */
+    public static void trim(final StringBuilder sb)
+    {
+        trim(sb, "  \n\r\t");
+    }
+
+    /**
+     * Trim characters from left and right of a mutable string.
+     *
+     * @param sb         mutable text to trim (modified in place)
+     * @param stripChars characters to remove from left and right edge; if null or
+     *                   empty, nothing is done
+     * @throws NullPointerException if {@code sb} is null
+     */
+    public static void trim(final StringBuilder sb, final String stripChars)
+    {
+        Objects.requireNonNull(sb, "sb");
+        if (stripChars == null || stripChars.isEmpty()) {
+            return;
+        }
+        int end = sb.length();
+        while (end > 0 && stripChars.indexOf(sb.charAt(end - 1)) >= 0) {
+            end--;
+        }
+        int start = 0;
+        while (start < end && stripChars.indexOf(sb.charAt(start)) >= 0) {
+            start++;
+        }
+        if (end < sb.length()) {
+            sb.setLength(end);
+        }
+        if (start > 0) {
+            sb.delete(0, start);
+        }
+    }
     // Shared mapping logic
     private static int mapChar(char c, String from, String to) {
         int k = firstIndexOf(from, c);   // first occurrence wins

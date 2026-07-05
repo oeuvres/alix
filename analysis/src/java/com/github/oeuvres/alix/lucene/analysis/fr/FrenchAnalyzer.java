@@ -53,7 +53,6 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.OCRGarbageFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
-import com.github.oeuvres.alix.lucene.analysis.SentenceStartLowerCaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.util.CharsMap;
@@ -116,7 +115,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     )
         throws IOException {
         for (Path path : files) {
-            LexiconHelper.loadSet(brevidots, path, 0, LexiconHelper.CsvHeader.SKIP, ".");
+            System.out.println(path);
+            LexiconHelper.loadSet(brevidots, path, 0, LexiconHelper.CsvHeader.SKIP);
         }
     }
 
@@ -255,7 +255,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         // delete positions of xml tags and punctuation
         ts = new CleanupFilter(ts);
         // Remove some bad hyphenations
-        ts = new OCRGarbageFilter(ts);
+        // ts = new OCRGarbageFilter(ts);
         // clean stop words but keep positions
         ts = new StopFilter(ts, stopwords);
         return ts;

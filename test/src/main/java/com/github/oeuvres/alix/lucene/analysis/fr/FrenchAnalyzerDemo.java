@@ -36,10 +36,27 @@ public class FrenchAnalyzerDemo
             final String value = line.substring(comma + 1);
             analyzer.expressions.addExpression(tokfr.tokenize(key), value);
         });
+        """
+            Stud.
+        """.lines().forEach(line -> {
+            line = line.trim();
+            if (line.isBlank()) return;
+            analyzer.brevidots.add(line);
+        });
+        System.out.println(analyzer.brevidots.contains("Stud."));
         return analyzer;
     }
     
+    
+    
     static final List<Case> CASES = List.of(
+        new Case(
+            "",
+            """
+            Orcula dolium Drap, et Pupilla triplicata Stud. — Assez rares, vivant sous les pierres de quelques rocailles.
+            """,
+            ""
+        ),
         new Case(
             "",
             """
