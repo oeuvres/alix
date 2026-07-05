@@ -4,15 +4,13 @@ import java.io.IOException;
 
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
-import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.QueryTokenTypeAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.QueryTokenizerAttribute;
 import com.github.oeuvres.alix.util.Char;
 
-import static com.github.oeuvres.alix.lucene.analysis.tokenattributes.QueryTokenTypeAttribute.Type.*;
+import static com.github.oeuvres.alix.lucene.analysis.tokenattributes.QueryTokenizerAttribute.Type.*;
 
 /**
  * Lucene tokenizer for user query text.
@@ -29,7 +27,7 @@ public final class QueryTokenizer extends Tokenizer {
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     private final PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-    private final QueryTokenTypeAttribute typeAtt = addAttribute(QueryTokenTypeAttribute.class);
+    private final QueryTokenizerAttribute typeAtt = addAttribute(QueryTokenizerAttribute.class);
 
     private int finalOffset;
     private int offset;

@@ -11,7 +11,7 @@ import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.QueryTokenTypeAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.QueryTokenizerAttribute;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -77,7 +77,7 @@ public final class AnalysisDemoHelper {
         final PosAttribute posAtt = ts.hasAttribute(PosAttribute.class) ? ts.getAttribute(PosAttribute.class) : null;
         final ProbAttribute probAtt = ts.hasAttribute(ProbAttribute.class) ? ts.getAttribute(ProbAttribute.class) : null;;
         final LemmaAttribute lemAtt = ts.hasAttribute(LemmaAttribute.class) ? ts.getAttribute(LemmaAttribute.class) : null;;
-        final QueryTokenTypeAttribute qtokTypeAtt = ts.hasAttribute(QueryTokenTypeAttribute.class) ? ts.getAttribute(QueryTokenTypeAttribute.class) : null;
+        final QueryTokenizerAttribute qtokTypeAtt = ts.hasAttribute(QueryTokenizerAttribute.class) ? ts.getAttribute(QueryTokenizerAttribute.class) : null;
 
         ts.reset();
         try {

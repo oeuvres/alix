@@ -1,6 +1,6 @@
 package com.github.oeuvres.alix.lucene.analysis.tokenattributes;
 
-public interface QueryTokenTypeAttribute extends EnumAtt<QueryTokenTypeAttribute.Type>
+public interface QueryTokenizerAttribute extends EnumAtt<QueryTokenizerAttribute.Type>
 {
     /**
      * Query-tokenizer token type.
@@ -37,9 +37,4 @@ public interface QueryTokenTypeAttribute extends EnumAtt<QueryTokenTypeAttribute
         WORD
     }
     
-    /**
-     * Attribute carrying the {@link QueryTokenizerType} of the current token.
-     */
-    public interface QueryTokenizerTypeAtt extends EnumAtt<Type> {
-    }
 }
