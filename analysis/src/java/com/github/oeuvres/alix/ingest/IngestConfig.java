@@ -20,7 +20,8 @@ import java.util.*;
  * <li><b>prexslt</b> (optional): path to an XSLT stylesheet, resolved relative to the config file directory.</li>
  * <li><b>name</b> (optional): corpus id; if absent, defaults to the config filename stem.</li>
  * <li><b>label</b> (optional): display label.</li>
- * <li><b>brevidots</b>, <b>expressions</b>, <b>normalizations</b>, <b>stopwords</b> (optional): multi-line
+ * <li><b>brevidots</b>, <b>expressions</b>, <b>hunspell</b>, <b>normalizations</b>, <b>stopwords</b>,
+ * <b>ucwords</b> (optional): multi-line
  * lists of dictionary file paths, resolved relative to the config file directory. One key per
  * {@link KeyGlob} constant (its lowercased name); exposed via {@link #files(KeyGlob)}.</li>
  * </ul>
@@ -57,6 +58,7 @@ public final class IngestConfig
     {
         BREVIDOTS,
         EXPRESSIONS,
+        HUNSPELL,
         NORMALIZATIONS,
         STOPWORDS,
         UCWORDS;

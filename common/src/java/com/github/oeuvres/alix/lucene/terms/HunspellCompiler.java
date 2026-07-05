@@ -35,7 +35,9 @@ import java.util.Set;
  * listing of the field terms no dictionary covers.
  * <p>
  * For {@link #compile}, each input {@code dic} is streamed and a line is kept iff its headword is an indexed
- * term of {@code field}. The headword runs to the first affix-flag delimiter {@code '/'} or the first
+ * term of {@code field}. The line-1 count header is discarded when present, but a plain one-word-per-line list
+ * without it — the usual shape of a local addition — is accepted whole, line 1 being read as a headword unless
+ * it is purely numeric. The headword runs to the first affix-flag delimiter {@code '/'} or the first
  * whitespace that begins a Hunspell morphological field (a two-letter lowercase tag and a colon, such as
  * {@code po:}), so multi-word entries like {@code par rapport à} survive intact rather than being cut at their
  * first space. Apostrophe variants are folded to the ASCII apostrophe the analyzer indexes, which absorbs both
@@ -124,9 +126,8 @@ public final class HunspellCompiler {
                 continue;
             }
             final BufferedReader in = new BufferedReader(new InputStreamReader(dic, StandardCharsets.UTF_8));
-            in.readLine();                     // discard the per-dic approximate count header (line 1)
-            String raw;
-            while ((raw = in.readLine()) != null) {
+            String raw = firstEntryLine(in);   // past the count header when line 1 carries one
+            for (; raw != null; raw = in.readLine()) {
                 if (raw.isEmpty()) {
                     continue;
                 }
@@ -197,9 +198,8 @@ public final class HunspellCompiler {
                 continue;
             }
             final BufferedReader in = new BufferedReader(new InputStreamReader(dic, StandardCharsets.UTF_8));
-            in.readLine();
-            String raw;
-            while ((raw = in.readLine()) != null) {
+            String raw = firstEntryLine(in);
+            for (; raw != null; raw = in.readLine()) {
                 if (raw.isEmpty()) {
                     continue;
                 }
@@ -326,6 +326,30 @@ public final class HunspellCompiler {
     }
 
     /**
+     * Positions a dictionary stream past its optional count header and returns the first entry line, or
+     * {@code null} on an empty stream. A Hunspell {@code .dic} formally opens with an approximate entry count on
+     * line 1, but plain one-word-per-line lists without that header are common as local additions; line 1 is
+     * therefore discarded only when it is purely numeric, so a headerless list loses no entry. A leading UTF-8
+     * byte order mark is removed first, since it would otherwise defeat both the header test and the first
+     * headword's index lookup. The residual ambiguity — a headerless list whose first word is all digits — is
+     * inherent to the format and resolved in favor of the header reading, as every conforming dic starts so.
+     *
+     * @param in dictionary reader positioned at line 1
+     * @return the first entry line, or {@code null} when the stream holds none
+     * @throws IOException on read failure
+     */
+    private static String firstEntryLine(final BufferedReader in) throws IOException {
+        String line = in.readLine();
+        if (line == null) {
+            return null;
+        }
+        if (!line.isEmpty() && line.charAt(0) == '\uFEFF') {
+            line = line.substring(1);
+        }
+        return isCount(line) ? in.readLine() : line;
+    }
+
+    /**
      * Returns the index of the whitespace that introduces the {@code fr:} field, or {@code -1} when the line has
      * none.
      *
@@ -375,6 +399,27 @@ public final class HunspellCompiler {
      */
     private static boolean isAsciiLower(final char c) {
         return c >= 'a' && c <= 'z';
+    }
+
+    /**
+     * Tells whether a line is a {@code .dic} count header: one or more ASCII digits and nothing else, surrounding
+     * whitespace tolerated since real dictionaries carry trailing blanks on line 1.
+     *
+     * @param line line 1 of a dictionary stream, byte order mark already removed
+     * @return true iff the line is a bare integer
+     */
+    private static boolean isCount(final String line) {
+        final String s = line.trim();
+        if (s.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < s.length(); i++) {
+            final char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

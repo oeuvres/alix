@@ -87,7 +87,7 @@ public final class OCRGarbageFilter extends FilteringTokenFilter
         }
 
         if (letterCount < MIN_UNKNOWN_LETTERS) return false;
-        if (!hasVowel) return false;
+        // if (!hasVowel) return false;
 
         return true;
     }

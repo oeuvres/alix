@@ -131,7 +131,7 @@ public final class TermLexicon {
          * {@code ne:persf}. {@code ne:amb} is deliberately excluded: in this dictionary it co-occurs with
          * {@code ne:place} and marks place/other ambiguity rather than a person.
          */
-        PERS("ne:pers", "ne:persm", "ne:persf"),
+        AUCTOR("ne:auctor"),
         /** Named entity, place; set by {@code ne:place}. */
         PLACE("ne:place"),
         /** Proper noun; set by {@code po:PROPN}. */
