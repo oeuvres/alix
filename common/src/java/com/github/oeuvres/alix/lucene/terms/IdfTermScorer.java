@@ -1,5 +1,7 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import com.github.oeuvres.alix.lucene.terms.IdfTermScorer.BM25.Mode;
+
 /**
  * Local scorer for one term across documents, optionally contrastive
  * between a focus subset and the rest of the corpus.
@@ -187,54 +189,6 @@ public abstract class IdfTermScorer
     }
     
     /**
-     * Signed G-test contribution against the corpus expectation.
-     * {@code 2 × docTermFreq × ln(docTermFreq / expected)}.
-     * Positive when over-represented, negative when under-represented.
-     */
-    public static class G extends IdfTermScorer
-    {
-        @Override
-        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
-        {
-            super.termDocAdd(docTermFreq, docTokens, inFocus);
-            if (docTokens <= 0L || corpusTermRate <= 0d || docTermFreq <= 0L)
-                return 0d;
-            final double expected = corpusTermRate * (double) docTokens;
-            if (expected <= 0d)
-                return 0d;
-            final double local = 2d * (double) docTermFreq * Math.log((double) docTermFreq / expected);
-            if (inFocus)
-                acc += local;
-            else
-                otherAcc += local;
-            return local;
-        }
-    }
-    
-    /**
-     * Count-form Jaccard: {@code docTermFreq / (docTokens + corpusTermFreq - docTermFreq)}.
-     */
-    public static class Jaccard extends IdfTermScorer
-    {
-        @Override
-        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
-        {
-            super.termDocAdd(docTermFreq, docTokens, inFocus);
-            if (docTermFreq <= 0L || docTokens <= 0L || corpusTermFreq <= 0L)
-                return 0d;
-            final long union = docTokens + corpusTermFreq - docTermFreq;
-            if (union <= 0L)
-                return 0d;
-            final double local = docTermFreq / (double) union;
-            if (inFocus)
-                acc += local;
-            else
-                otherAcc += local;
-            return local;
-        }
-    }
-    
-    /**
      * BM25-style scorer with contrastive support.
      *
      * <p>
@@ -279,7 +233,7 @@ public abstract class IdfTermScorer
         {
             this(idfExp, Mode.IRDF);
         }
-
+    
         
         public BM25(final double idfExp, Mode mode)
         {
@@ -305,16 +259,16 @@ public abstract class IdfTermScorer
         {
             if (docTermFreq <= 0L || docTokens <= 0L || docTokensAvg <= 0d)
                 return 0d;
-
+    
             super.termDocAdd(docTermFreq, docTokens, inFocus);
-
+    
             final double tf = (double) docTermFreq;
             final double norm = k1 * (1d - b + b * ((double) docTokens / docTokensAvg));
             final double local = (tf * (k1 + 1d)) / (tf + norm);
-
+    
             if (inFocus) acc += local;
             else otherAcc += local;
-
+    
             return local;
         }
         
@@ -371,7 +325,7 @@ public abstract class IdfTermScorer
                         // should throw exception here, no?
                         return 0d;
                     }
-
+    
                     final double rsj = Math.log(
                         ((focusTermDocs + 0.5d) * (otherNonTermDocs + 0.5d)) /
                         ((otherTermDocs + 0.5d) * (focusNonTermDocs + 0.5d))
@@ -428,29 +382,29 @@ public abstract class IdfTermScorer
             return h;
         }
     }
-    
+
     public static class DklContrast extends IdfTermScorer
     {
         /** Σ tf_i on focus side for current term. */
         protected long focusTermFreqAcc;
         /** Σ tf_i on rest side for current term. */
         protected long restTermFreqAcc;
-
+    
         /** Σ tf_i * ln(tf_i) on focus side. */
         protected double focusTfLogTfAcc;
         /** Σ tf_i * ln(tf_i) on rest side. */
         protected double restTfLogTfAcc;
-
+    
         /** Σ tf_i * ln(docTokens_i) on focus side. */
         protected double focusTfLogDocTokensAcc;
         /** Σ tf_i * ln(docTokens_i) on rest side. */
         protected double restTfLogDocTokensAcc;
-
+    
         /** Number of focus docs containing the current term. Diagnostic only. */
         protected int focusTermDocsCount;
         /** Number of rest docs containing the current term. Diagnostic only. */
         protected int restTermDocsCount;
-
+    
         @Override
         public void termStart(final long corpusTermFreq, final int corpusTermDocs)
         {
@@ -464,19 +418,19 @@ public abstract class IdfTermScorer
             this.focusTermDocsCount = 0;
             this.restTermDocsCount = 0;
         }
-
+    
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
         {
             if (docTermFreq <= 0L || docTokens <= 0L) return 0d;
-
+    
             final double tf = (double) docTermFreq;
             final double logTf = Math.log(tf);
             final double logDocTokens = Math.log((double) docTokens);
-
+    
             // Partial per-doc contribution; the part-total normalisation is added in termScore().
             final double local = tf * (logTf - logDocTokens);
-
+    
             if (inFocus) {
                 focusTermFreqAcc += docTermFreq;
                 focusTfLogTfAcc += tf * logTf;
@@ -488,11 +442,11 @@ public abstract class IdfTermScorer
                 restTfLogDocTokensAcc += tf * logDocTokens;
                 restTermDocsCount++;
             }
-
+    
             termDocs++;
             return local;
         }
-
+    
         /**
          * Exact DKL for one side:
          *
@@ -509,7 +463,7 @@ public abstract class IdfTermScorer
             final long partTokens
         ) {
             if (termFreqTotal <= 0L || partTokens <= 0L) return Double.NaN;
-
+    
             final double tfTotal = (double) termFreqTotal;
             return (
                 tfLogTfAcc
@@ -518,7 +472,7 @@ public abstract class IdfTermScorer
                 + tfTotal * Math.log((double) partTokens)
             ) / tfTotal;
         }
-
+    
         /**
          * Contrastive dispersion score:
          *
@@ -542,14 +496,14 @@ public abstract class IdfTermScorer
         public double termScore()
         {
             final long restTokens = corpusTokens - focusTokens;
-
+    
             if (focusTokens <= 0L || restTokens <= 0L) {
                 return Double.NaN;
             }
             if (focusTermFreqAcc <= 0L || restTermFreqAcc <= 0L) {
                 return Double.NaN;
             }
-
+    
             final double dFocus = dkl(
                 focusTermFreqAcc,
                 focusTfLogTfAcc,
@@ -562,18 +516,124 @@ public abstract class IdfTermScorer
                 restTfLogDocTokensAcc,
                 restTokens
             );
-
+    
             // Keep parent slots readable for debugging / inspection.
             this.acc = dFocus;
             this.otherAcc = dRest;
-
+    
             return dRest - dFocus;
         }
-
+    
         @Override
         public String toString()
         {
             return "DKL(rest) - DKL(focus)";
+        }
+    }
+
+    /**
+     * Signed G-test contribution against the corpus expectation.
+     * {@code 2 × docTermFreq × ln(docTermFreq / expected)}.
+     * Positive when over-represented, negative when under-represented.
+     */
+    public static class G extends IdfTermScorer
+    {
+        @Override
+        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
+        {
+            super.termDocAdd(docTermFreq, docTokens, inFocus);
+            if (docTokens <= 0L || corpusTermRate <= 0d || docTermFreq <= 0L)
+                return 0d;
+            final double expected = corpusTermRate * (double) docTokens;
+            if (expected <= 0d)
+                return 0d;
+            final double local = 2d * (double) docTermFreq * Math.log((double) docTermFreq / expected);
+            if (inFocus)
+                acc += local;
+            else
+                otherAcc += local;
+            return local;
+        }
+    }
+    
+    /**
+     * Count-form Jaccard: {@code docTermFreq / (docTokens + corpusTermFreq - docTermFreq)}.
+     */
+    public static class Jaccard extends IdfTermScorer
+    {
+        @Override
+        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
+        {
+            super.termDocAdd(docTermFreq, docTokens, inFocus);
+            if (docTermFreq <= 0L || docTokens <= 0L || corpusTermFreq <= 0L)
+                return 0d;
+            final long union = docTokens + corpusTermFreq - docTermFreq;
+            if (union <= 0L)
+                return 0d;
+            final double local = docTermFreq / (double) union;
+            if (inFocus)
+                acc += local;
+            else
+                otherAcc += local;
+            return local;
+        }
+    }
+    
+    /**
+     * Raw term-frequency scorer.
+     *
+     * <p>
+     * The local score is the document term frequency, and the final score is
+     * the sum of document term frequencies on the focus/current side. The
+     * rest-side accumulator is still maintained for inspection, but it is not
+     * subtracted from the final score.
+     * </p>
+     */
+    public static class Raw extends IdfTermScorer
+    {
+        /**
+         * Compute the raw local score for one document and fold it into the
+         * focus/current-side or rest-side accumulator.
+         *
+         * @param docTermFreq occurrences of the term in the document
+         * @param docTokens   total token count of the document, ignored here
+         * @param inFocus     {@code true} if the document belongs to the focus subset
+         * @return raw document term frequency as a score
+         */
+        @Override
+        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
+        {
+            if (docTermFreq <= 0L)
+                return 0d;
+            super.termDocAdd(docTermFreq, docTokens, inFocus);
+            final double local = (double) docTermFreq;
+            if (inFocus)
+                acc += local;
+            else
+                otherAcc += local;
+            return local;
+        }
+
+        /**
+         * Return the raw term frequency accumulated on the focus/current side.
+         *
+         * @return sum of document term frequencies on the focus/current side
+         */
+        @Override
+        public double termScore()
+        {
+            return acc;
+        }
+
+        /**
+         * Return the scorer label.
+         *
+         * @return scorer label
+         */
+        @Override
+        public String toString()
+        {
+            return "raw";
         }
     }
 }
