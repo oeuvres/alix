@@ -1,4 +1,4 @@
-128571
+128569
 à	po:ADP
 à-côté/S.	po:NOUN
 à-coup/S.	po:NOUN
@@ -1991,7 +1991,6 @@ akinésie/S.	po:NOUN
 akinétique/S.	po:ADJ
 akkadien/F+	po:NOUN po:ADJ
 akvavit/S.	po:NOUN
-al	po:ADV
 alabandine/S.	po:NOUN
 alabandite/S.	po:NOUN
 alabastre/S.	po:NOUN
@@ -2129,7 +2128,6 @@ aléatoirement	po:ADV
 alécithe/S.	po:ADJ
 alémanique/S.	po:NOUN po:ADJ
 alêne/S.	po:NOUN
-alénois/F.	po:ADJ
 alenti/F.	po:ADJ
 alentir/f0p+	po:VERB
 alentour	po:ADV
@@ -2697,7 +2695,6 @@ amentifère/S.	po:NOUN po:ADJ
 amenuisé/F.	po:ADJ
 amenuisement/S.	po:NOUN
 amenuiser/a0p+	po:VERB
-aménuiser/a0p+	po:VERB
 amer/F.	po:ADJ
 amer/S.	po:NOUN
 amèrement	po:ADV
@@ -4512,7 +4509,7 @@ approximé/F.	po:ADJ
 approximer/a0p+	po:VERB
 appui/S.	po:NOUN
 appuie-bras	po:NOUN
-appuie-livre\S.	po:NOUN
+appuie-livre/S.	po:NOUN
 appuie-main	po:NOUN
 appuie-nuque/S.	po:NOUN
 appuie-tête	po:NOUN
@@ -8306,7 +8303,6 @@ bifton/S.	po:NOUN
 bifurcation/S.	po:NOUN
 bifurqué/F.	po:ADJ
 bifurquer/a0p.	po:VERB
-big/S.	po:ADJ
 big-bang/S.	po:NOUN
 bigaille/S.	po:NOUN
 bigame/S.	po:NOUN po:ADJ
@@ -15699,7 +15695,6 @@ complémenter/a0p+	po:VERB
 complet/F.	po:ADJ
 complet/S.	po:NOUN
 complété/F.	po:ADJ
-complétement	po:ADV
 complètement	po:ADV
 complètement/S.	po:NOUN
 compléter/c0p+	po:VERB
@@ -25623,6 +25618,7 @@ edelweiss	po:NOUN
 éduquer/a0p+	po:VERB
 éfaufilé/F.	po:ADJ
 éfaufiler/a0p+	po:VERB
+EEG	po:NOUN
 effaçable/S.	po:ADJ
 effaçage/S.	po:NOUN
 effacé/F.	po:ADJ
@@ -29033,7 +29029,7 @@ estancia/S.	po:NOUN
 estarie/S.	po:NOUN
 este/S.	po:NOUN
 ester/S.	po:NOUN
-ester/a0p+	po:VERB
+ester	po:VERB
 estérase/S.	po:NOUN
 estérification/S.	po:NOUN
 estérifié/F.	po:ADJ
@@ -33071,7 +33067,7 @@ funin/S.	po:NOUN
 funk/S.	po:ADJ po:NOUN
 funky	po:ADJ
 funky/S.	po:NOUN
-fur/S.	po:NOUN
+fur	po:NOUN
 furane/S.	po:NOUN
 furanne/S.	po:NOUN
 furax	po:ADJ
@@ -41466,7 +41462,6 @@ isotypique/S.	po:ADJ
 isozyme/S.	po:NOUN
 israélien/F+	po:NOUN po:ADJ
 israélite/S.	po:NOUN po:ADJ
-israélo	po:NUM
 israélo-américain/F.	po:NOUN po:ADJ
 israélo-arabe/S.	po:NOUN po:ADJ
 israélo-palestinien/F+	po:NOUN po:ADJ
@@ -41485,7 +41480,6 @@ italianité/S.	po:NOUN
 italien/F+	po:NOUN po:ADJ
 italiote/S.	po:NOUN po:ADJ
 italique/S.	po:NOUN po:ADJ
-italo	po:NUM
 italo-africain/F.	po:NOUN po:ADJ
 italo-albanais/F.	po:NOUN po:ADJ
 italo-américain/F.	po:NOUN po:ADJ
@@ -46262,7 +46256,6 @@ méditation/S.	po:NOUN
 méditativement	po:ADV
 médité/F.	po:ADJ
 méditer/a0p+	po:VERB
-méditerrané/F.	po:ADJ
 méditerranéen/F+	po:NOUN po:ADJ
 medium/I.	po:NOUN
 médium/S.	po:NOUN
@@ -47812,7 +47805,6 @@ mixtionné/F.	po:ADJ
 mixtionner/a0p+	po:VERB
 mixture/S.	po:NOUN
 mloukhiya/S.	po:NOUN
-mmm	po:INTJ
 mnème/S.	po:NOUN
 mnémonique/S.	po:NOUN po:ADJ
 mnémoniquement	po:ADV
@@ -48806,7 +48798,7 @@ mozarabe/S.	po:NOUN po:ADJ
 mozette/S.	po:NOUN
 mozzarella/S.	po:NOUN
 mozzarelle/S.	po:NOUN
-mu\F.	po:ADJ
+mu/F.	po:ADJ
 muance/S.	po:NOUN
 muché/F.	po:ADJ
 mucher/a0p+	po:VERB
@@ -53771,6 +53763,7 @@ parthénocarpie/S.	po:NOUN
 parthénogenèse/S.	po:NOUN
 parthénogénétique/S.	po:ADJ
 parti/S.	po:NOUN po:ADJ
+parti-pris	po:NOUN
 partiaire/S.	po:ADJ
 partial/W.	po:ADJ
 partialement	po:ADV
@@ -54084,7 +54077,6 @@ patriarcalement	po:ADV
 patriarcat/S.	po:NOUN
 patriarche/S.	po:NOUN
 patriarchie/S.	po:NOUN
-patrice/S.	po:NOUN
 patricial/W.	po:ADJ
 patriciat/S.	po:NOUN
 patricien/F+	po:NOUN po:ADJ
@@ -60206,7 +60198,6 @@ puvathérapie/S.	po:NOUN
 puy/S.	po:NOUN
 puydomois/F.	po:NOUN po:ADJ
 puzzle/S.	po:NOUN
-px	po:NOUN is:inv
 pycnogonide/S.	po:NOUN
 pycnomètre/S.	po:NOUN
 pycnose/S.	po:NOUN
@@ -60959,7 +60950,6 @@ racornir/f0p+	po:VERB
 racornissement/S.	po:NOUN
 racrapoté/F.	po:ADJ
 racrapoter/a0p+	po:VERB
-rad/S.	po:NOUN
 radar/S.	po:NOUN
 radariste/S.	po:NOUN
 rade/S.	po:NOUN
@@ -68232,7 +68222,6 @@ silicule/S.	po:NOUN
 silionne/S.	po:NOUN
 silique/S.	po:NOUN
 siliqueux/W.	po:ADJ
-sill/S.	po:NOUN
 sillage/S.	po:NOUN
 sillet/S.	po:NOUN
 sillimanite/S.	po:NOUN
@@ -68797,7 +68786,6 @@ solénoglyphe/S.	po:ADJ
 solénoïdal/W.	po:ADJ
 solénoïde/S.	po:NOUN
 soleret/S.	po:NOUN
-soleurois/F.	po:ADJ
 solex	po:NOUN
 solfatare/S.	po:NOUN
 solfatarien/F+	po:ADJ
@@ -69086,7 +69074,6 @@ soudain/F.	po:ADJ
 soudain	po:ADV
 soudainement	po:ADV
 soudaineté/S.	po:NOUN
-soudan/S.	po:NOUN
 soudanais/F.	po:NOUN po:ADJ
 soudanien/F+	po:NOUN po:ADJ
 soudant/F.	po:ADJ
@@ -71867,7 +71854,7 @@ systématisé/F.	po:ADJ
 systématiser/a0p+	po:VERB
 systématisme/S.	po:NOUN
 système/S.	po:NOUN
-systèmes-expert\S.	po:NOUN
+systèmes-expert/S.	po:NOUN
 systémicien/F+	po:NOUN
 systémique/S.	po:ADJ
 systole/S.	po:NOUN
@@ -80136,6 +80123,9 @@ yom kippur	po:NOUN
 *Aras	po:PROPN ne:persm
 *Argentine	po:PROPN ne:persf
 *Argus	po:PROPN ne:persm
+*Aristophanes	po:PROPN ne:persm
+*Aristote	po:PROPN ne:persm
+*Aristotle	po:PROPN ne:persm
 *Art	po:PROPN ne:persm
 *Aune	po:PROPN ne:persf
 *Aura	po:PROPN ne:persf
@@ -81069,6 +81059,7 @@ Andrina	po:PROPN ne:persf
 Andris	po:PROPN ne:persm
 Andriy	po:PROPN ne:persm
 Andro	po:PROPN ne:persm
+Androula	po:PROPN ne:persm
 Androcles	po:PROPN ne:persm
 Andromache	po:PROPN ne:persf
 Andromaque	po:PROPN ne:persf
@@ -81407,9 +81398,6 @@ Aristocles	po:PROPN ne:persm
 Aristodemos	po:PROPN ne:persm
 Aristomache	po:PROPN ne:persf
 Ariston	po:PROPN ne:persm
-Aristophanes	po:PROPN ne:persm
-Aristote	po:PROPN ne:persm
-Aristotle	po:PROPN ne:persm
 Arisu	po:PROPN ne:persf
 Arisztid	po:PROPN ne:persm
 Arjan	po:PROPN ne:persm
@@ -81757,6 +81745,7 @@ Barb	po:PROPN ne:persf
 Barban	po:PROPN ne:persm
 Barbara	po:PROPN ne:persf
 Bárbara	po:PROPN ne:persf
+Bärbel	po:PROPN ne:persf
 Barbe	po:PROPN ne:persf
 Barberine	po:PROPN ne:persf
 Barbie	po:PROPN ne:persf
@@ -86501,6 +86490,7 @@ Jean-Bastien	po:PROPN ne:persm
 Jean-Benoît	po:PROPN ne:persm
 Jean-Bernard	po:PROPN ne:persm
 Jean-Bertrand	po:PROPN ne:persm
+Jean-Blaise	po:PROPN ne:persm
 Jean-Brice	po:PROPN ne:persm
 Jean-Bruno	po:PROPN ne:persm
 Jean-Camille	po:PROPN ne:persm
@@ -88359,6 +88349,7 @@ Madelaine	po:PROPN ne:persf
 Madeleine	po:PROPN ne:persf
 Madelina	po:PROPN ne:persf
 Madeline	po:PROPN ne:persf
+Madelon	po:PROPN ne:persf
 Madelyn	po:PROPN ne:persf
 Madge	po:PROPN ne:persf
 Madhav	po:PROPN ne:persm
@@ -89750,6 +89741,7 @@ Nicomedo	po:PROPN ne:persm
 Nicostrato	po:PROPN ne:persm
 Nicu	po:PROPN ne:persm
 Nicusor	po:PROPN ne:persm
+Nieto	po:PROPN ne:persm
 Niels	po:PROPN ne:persm
 Nieve	po:PROPN ne:persf
 Nieves	po:PROPN ne:persf
@@ -90721,10 +90713,12 @@ Rafaela	po:PROPN ne:persf
 Rafaelle	po:PROPN ne:persf
 Rafal	po:PROPN ne:persm
 Rafe	po:PROPN ne:persm
+Rafel	po:PROPN ne:persm
 Raffaele	po:PROPN ne:persm
 Raffaella	po:PROPN ne:persf
 Raffaello	po:PROPN ne:persm
 Rafi	po:PROPN ne:persm
+Rafia	po:PROPN ne:persm
 Rafiq	po:PROPN ne:persm
 Rafiqa	po:PROPN ne:persf
 Raghnaid	po:PROPN ne:persf
@@ -92186,6 +92180,7 @@ Suzanna	po:PROPN ne:persf
 Suzanne	po:PROPN ne:persf
 Suzel	po:PROPN ne:persf
 Suzette	po:PROPN ne:persf
+Suzi	po:PROPN ne:persf
 Suzie	po:PROPN ne:persf
 Suzon	po:PROPN ne:persf
 Suzu	po:PROPN ne:persf
@@ -92723,6 +92718,7 @@ Tristram	po:PROPN ne:persm
 Trix	po:PROPN ne:persf
 Trixie	po:PROPN ne:persf
 Troy	po:PROPN ne:persm
+Trude	po:PROPN ne:persf
 Trudi	po:PROPN ne:persf
 Trudie	po:PROPN ne:persf
 Trudy	po:PROPN ne:persf
@@ -93091,6 +93087,7 @@ Viveka	po:PROPN ne:persf
 Vivian	po:PROPN ne:pers
 Viviana	po:PROPN ne:persf
 Viviane	po:PROPN ne:persf
+Vivianne	po:PROPN ne:persf
 Vivien	po:PROPN ne:pers
 Vivienne	po:PROPN ne:persf
 Viviette	po:PROPN ne:persf
@@ -93473,6 +93470,7 @@ Zachery	po:PROPN ne:persm
 Zack	po:PROPN ne:persm
 Zackary	po:PROPN ne:persm
 Zackery	po:PROPN ne:persm
+Zahara	po:PROPN ne:persf
 Zahia	po:PROPN ne:persf
 Zahir	po:PROPN ne:persm
 Zahira	po:PROPN ne:persf

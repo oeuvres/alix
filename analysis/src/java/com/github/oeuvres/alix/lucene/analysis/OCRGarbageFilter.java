@@ -51,6 +51,9 @@ public final class OCRGarbageFilter extends FilteringTokenFilter
         if (length == 0) return false;
 
         final char[] term = termAtt.buffer();
+        final char lastChar = term[length -1];
+        if (lastChar == '.' || lastChar == '-') return false;
+        
         boolean hasLowercase = false;
         boolean hasUppercase = false;
         boolean hasVowel = false;
@@ -79,8 +82,8 @@ public final class OCRGarbageFilter extends FilteringTokenFilter
                 }
                 continue;
             }
-
-            if (c != '-' && c != '\'' && c != '’') return false;
+            // keep R. Laffont
+            if (c != '-' && c != '\'' && c != '’' && c != ' ' && c != '.') return false;
 
             previousLetter = 0;
             repeatedLetters = 0;

@@ -124,14 +124,10 @@ public final class TermLexicon {
         NULL,
         /** Adjective; set by {@code po:ADJ}. */
         ADJ("po:ADJ"),
+        /** Dictionary of auctors */
+        AUCTOR("ne:auctor"),
         /** Common noun; set by {@code po:NOUN}. */
         NOUN("po:NOUN"),
-        /**
-         * Named entity, person; set by {@code ne:pers} and its gendered variants {@code ne:persm} and
-         * {@code ne:persf}. {@code ne:amb} is deliberately excluded: in this dictionary it co-occurs with
-         * {@code ne:place} and marks place/other ambiguity rather than a person.
-         */
-        AUCTOR("ne:auctor"),
         /** Named entity, place; set by {@code ne:place}. */
         PLACE("ne:place"),
         /** Proper noun; set by {@code po:PROPN}. */

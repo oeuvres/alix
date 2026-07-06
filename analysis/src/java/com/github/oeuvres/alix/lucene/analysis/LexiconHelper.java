@@ -190,10 +190,12 @@ public final class LexiconHelper
                 final StringBuilder expression = row.getCell(colExpression);
                 if (expression.length() == 0)
                     return false;
+                Char.trim(expression);
                 List<String> words = tokenizer.tokenize(expression);
                 final StringBuilder canonical = row.getCell(colCanonical).length() > 0?
                     row.getCell(colCanonical):
                     expression;
+                Char.trim(canonical);
                 for (int i = 0; i < canonical.length(); i++) canonical.setCharAt(i, tokenizer.normalizeChar(canonical.charAt(i)));
                 lexicon.addExpression(words, canonical);
                 return true;
@@ -654,8 +656,10 @@ public final class LexiconHelper
                 // normalize some chars before input entries
                 StringBuilder form = row.getCell(formCol);
                 Char.translate(form, "’", "'");
+                Char.trim(form);
                 StringBuilder lemma = row.getCell(lemmaCol);
                 Char.translate(lemma, "’", "'");
+                Char.trim(lemma);
                 if (form.isEmpty() || lemma.isEmpty())
                     return false;
                 lex.put(form, lemma);

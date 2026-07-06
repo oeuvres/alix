@@ -27,8 +27,9 @@ public class FrenchAnalyzerDemo
         WordTokenizer tokfr = new FrenchCliticTokenizer();
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
         """
-            Le Châtelier,Le Châtelier
-            Vinh Bang,Vinh-Bang
+            Larguier des Bancels,Larguier des Bancels
+            R. Laffont,R. Laffont
+            les Creusaz,les Creusaz
         """.lines().forEach(line -> {
             int comma = line.indexOf(',');
             final String key = line.substring(0, comma);
@@ -50,6 +51,15 @@ public class FrenchAnalyzerDemo
     
     
     static final List<Case> CASES = List.of(
+        new Case(
+            "",
+            """
+            Les Creusaz et le Crêtet de la Perche (2000-2150 m). Entremont : partie supérieure
+            Bringuier, Conversations libres avec Jean Piaget (p. 35-42). R. Laffont.
+            Voir Larguier des Bancels, Introduction à la psychologie, 2e éd., p. 149. 15 
+            """,
+            ""
+        ),
         new Case(
             "",
             """

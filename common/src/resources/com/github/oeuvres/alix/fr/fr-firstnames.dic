@@ -19,6 +19,9 @@
 *Aras	po:PROPN ne:persm
 *Argentine	po:PROPN ne:persf
 *Argus	po:PROPN ne:persm
+*Aristophanes	po:PROPN ne:persm
+*Aristote	po:PROPN ne:persm
+*Aristotle	po:PROPN ne:persm
 *Art	po:PROPN ne:persm
 *Aune	po:PROPN ne:persf
 *Aura	po:PROPN ne:persf
@@ -1296,9 +1299,6 @@ Aristocles	po:PROPN ne:persm
 Aristodemos	po:PROPN ne:persm
 Aristomache	po:PROPN ne:persf
 Ariston	po:PROPN ne:persm
-Aristophanes	po:PROPN ne:persm
-Aristote	po:PROPN ne:persm
-Aristotle	po:PROPN ne:persm
 Arisu	po:PROPN ne:persf
 Arisztid	po:PROPN ne:persm
 Arjan	po:PROPN ne:persm
