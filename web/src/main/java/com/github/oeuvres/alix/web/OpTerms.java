@@ -201,9 +201,10 @@ public final class OpTerms extends Op
             int rank = 1;
             for (TermEntry term : topTerms) {
                 writer.append("  <tr>\n")
-                  .append("    <th class=\"term\">%d</th>\n".formatted(rank++))
+                  .append("    <th class=\"no\">%d</th>\n".formatted(rank++))
                   .append("    <td class=\"term\">%s</td>\n".formatted(term.form()))
                   .append("    <td class=\"count\" align=\"right\">%d</td>\n".formatted(term.freq()))
+                  .append("    <td class=\"docs\" align=\"right\">%d</td>\n".formatted(term.docs()))
                   .append("    <td class=\"score\" align=\"right\">%f</td>\n".formatted(term.score()))
                   .append("  </tr>\n");
             }

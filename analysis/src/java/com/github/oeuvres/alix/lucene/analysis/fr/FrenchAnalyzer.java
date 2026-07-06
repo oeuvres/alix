@@ -115,7 +115,6 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     )
         throws IOException {
         for (Path path : files) {
-            System.out.println(path);
             LexiconHelper.loadSet(brevidots, path, 0, LexiconHelper.CsvHeader.SKIP);
         }
     }
@@ -254,8 +253,6 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new MweFilter(ts, expressions);
         // delete positions of xml tags and punctuation
         ts = new CleanupFilter(ts);
-        // Remove some bad hyphenations
-        ts = new OCRGarbageFilter(ts);
         // clean stop words but keep positions
         ts = new StopFilter(ts, stopwords);
         return ts;

@@ -39,6 +39,7 @@ public class FrenchAnalyzerDemo
         });
         """
             Stud.
+            
         """.lines().forEach(line -> {
             line = line.trim();
             if (line.isBlank()) return;

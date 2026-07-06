@@ -18,7 +18,7 @@ import com.github.oeuvres.alix.util.Char;
 public final class OCRGarbageFilter extends FilteringTokenFilter
 {
     /** Minimum number of letters required for an unresolved token. */
-    private static final int MIN_UNKNOWN_LETTERS = 3;
+    private static final int MIN_UNKNOWN_LETTERS = 2;
 
     /** The current token keyword flag. */
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);

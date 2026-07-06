@@ -312,18 +312,23 @@ public class CleanupFilter extends TokenFilter
      */
     protected boolean accept()
     {
+        final int len = termAtt.length();
+        if (len < 1) return false;
         final int pos = posAtt.getPos();
-        // final int len = termAtt.length();
         
         // Punctuation: drop, but preserve a positional gap (handled by pendingHoles).
         if (Upos.isPunct(pos)) {
             return false;
         }
         
-        char first = termAtt.charAt(0);
         
+        char first = termAtt.charAt(0);
         // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
         if (Char.isMath(first) || Char.isDigit(first) || first == '-' || first == '\'') {
+            return false;
+        }
+        char last = termAtt.charAt(len -1);
+        if (Char.isMath(last) || Char.isDigit(last) || last == '-' || last == '\'' || last == '.' ) {
             return false;
         }
         
@@ -340,6 +345,16 @@ public class CleanupFilter extends TokenFilter
         // copy lemma
         if (!lemmaAtt.isEmpty()) {
             termAtt.copyBuffer(lemmaAtt.buffer(), 0, lemmaAtt.length());
+            return true;
+        }
+        
+        final char[] term = termAtt.buffer();
+        for (int i = 0; i < len; i++) {
+            final char c = term[i];
+            if (Char.isLetter(c)) {
+                // remove greek and OCR garbage
+                if (!Char.isLatin(c)) return false;
+            }
         }
         
         // Default: keep token as-is (or rewritten by upstream filters).

@@ -33,6 +33,11 @@
             <artifactId>alix-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>alix-analysis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- JSON serialization -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
