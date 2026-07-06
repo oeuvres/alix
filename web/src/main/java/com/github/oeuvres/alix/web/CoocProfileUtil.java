@@ -15,8 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * {@link TermsUtil}.
  * <p>
  * The JSON {@code data} is tidy-long: one object per {@code (term, tick)} pair carrying
- * {@code form}, {@code id}, {@code pivot}, {@code distance}, {@code count}, {@code docs} and
- * {@code score}. That row shape feeds an Observable Plot line mark directly
+ * {@code form}, {@code id}, {@code distance}, {@code count}, {@code docs} and {@code score}. That row shape feeds an Observable Plot line mark directly
  * ({@code Plot.line(rows, {x: "distance", y: "count", z: "form"})}). Non-finite scores (a scorer
  * undefined at zero focus count) are written as JSON {@code null}.
  * </p>
@@ -42,8 +41,7 @@ class CoocProfileUtil
         }
         writer.append("</tr>\n");
         for (int r = 0; r < profile.rows(); r++) {
-            writer.append("  <tr><td class=\"term%s\">%s</td>".formatted(
-                profile.pivot(r) ? " pivot" : "", profile.form(r)));
+            writer.append("  <tr><td class=\"term\">%s</td>".formatted(profile.form(r)));
             for (int i = 0; i < ticks.length; i++) {
                 writer.append("<td class=\"count\" align=\"right\">%d</td>".formatted(profile.count(r, i)));
             }
@@ -102,7 +100,6 @@ class CoocProfileUtil
                         jw.beginObject();
                         jw.name("form").value(profile.form(r));
                         jw.name("id").value(profile.id(r));
-                        jw.name("pivot").value(profile.pivot(r));
                         jw.name("distance").value(ticks[i]);
                         jw.name("count").value(profile.count(r, i));
                         jw.name("docs").value(profile.docCount(r, i));

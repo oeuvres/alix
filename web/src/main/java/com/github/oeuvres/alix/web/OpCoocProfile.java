@@ -33,7 +33,9 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * walk at the widest radius fills the whole {@code term × distance} grid via
  * {@link CoocProfileSnippets} into a {@link CoocProfile}; each tick's column is ranked independently
  * and the union of the per-tick top-K is kept, every term carrying its full vector across all ticks
- * so the curves are continuous on the client. Pivots are kept and placed first in every column.
+ * so the curves are continuous on the client. Pivots are excluded — a pivot's count is flat across
+ * ticks (its occurrences sit at distance 0) and would distort the plot scale. Rows are sorted by
+ * descending score at the widest tick, matching the vertical order of end-of-curve labels.
  * </p>
  *
  * <h2>Parameters</h2>
@@ -166,7 +168,7 @@ public final class OpCoocProfile extends Op
     ) {
         final TreeSet<Integer> set = new TreeSet<>();
         for (final int t : ticks) {
-            set.add(Math.max(1, Math.min(CTX_RANGE[1], t)));
+            set.add(Math.max(1, Math.min(XTICKS_RANGE[1], t)));
         }
         final int[] out = new int[set.size()];
         int k = 0;

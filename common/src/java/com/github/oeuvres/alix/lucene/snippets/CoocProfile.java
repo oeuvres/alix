@@ -3,11 +3,9 @@ package com.github.oeuvres.alix.lucene.snippets;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.PriorityQueue;
-import java.util.Set;
 
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
@@ -22,10 +20,10 @@ import com.github.oeuvres.alix.lucene.terms.TermStats;
  * count column per distance tick via the package-private {@link #freqColumn}, {@link #docsColumn},
  * {@link #addTokens} and {@link #addDoc}. {@link #cumulate()} turns the per-band columns into
  * cumulative-by-distance columns with an in-place prefix sum. {@link #select} then narrows the
- * profile to the union of the per-tick top-K terms (pivots always included), keeps only those rows,
- * and releases the wide arrays; from that point the profile is <em>read-only</em> and exposes the
- * compact grid through {@link #count}, {@link #docCount}, {@link #form}, {@link #score} and their
- * siblings.
+ * profile to the union of the per-tick top-K terms (pivots excluded), sorts the rows by descending
+ * score at the widest tick, and releases the wide arrays; from that point the profile is
+ * <em>read-only</em> and exposes the compact grid through {@link #count}, {@link #docCount},
+ * {@link #form}, {@link #score} and their siblings.
  * </p>
  * <p>
  * Scoring and display are answered by the field's own sources — {@link TermStats} supplies the
@@ -62,11 +60,8 @@ public final class CoocProfile
     /** Selected per-row, per-tick occurrence counts. */
     private long[][] rowFreq;
 
-    /** Selected term ids, in onset order (pivots first). */
+    /** Selected term ids, in descending order of score at the widest tick. */
     private int[] rowIds;
-
-    /** Whether each selected row is a pivot term. */
-    private boolean[] rowPivot;
 
     /** {@code true} once {@link #select} has narrowed the profile. */
     private boolean selected;
@@ -213,19 +208,6 @@ public final class CoocProfile
     }
 
     /**
-     * Reports whether a selected row is a pivot term.
-     *
-     * @param row row index in {@code [0, rows())}
-     * @return {@code true} for a pivot row
-     * @throws IllegalStateException if called before {@link #select}
-     */
-    public boolean pivot(final int row)
-    {
-        requireSelected();
-        return rowPivot[row];
-    }
-
-    /**
      * Returns the number of selected rows.
      *
      * @return row count
@@ -257,13 +239,15 @@ public final class CoocProfile
     }
 
     /**
-     * Narrows the profile to the union of the per-tick top-K terms, with pivots always included and
-     * placed first, then releases the wide arrays. Rows are ordered by onset: a term appears at the
-     * index of the first tick that selected it.
+     * Narrows the profile to the union of the per-tick top-K terms, then releases the wide arrays.
+     * Pivot terms are excluded: for a single-term pivot every occurrence sits at distance 0, so its
+     * row is constant across ticks and uninformative. Rows are sorted by descending score at the
+     * widest tick, so a renderer labelling curves at their right end lists them in display order;
+     * ties keep the order the terms entered the union (widest tick's winners last).
      *
-     * @param scorer   measure ranking each tick's column
+     * @param scorer   measure ranking each tick's column and the final row order
      * @param topK     terms kept per tick — a floor on the row count, not a cap on the union
-     * @param pivotIds pivot term ids, always kept; may be {@code null}
+     * @param pivotIds pivot term ids, excluded from the rows; may be {@code null}
      * @param flag     candidate flag filter; {@link TermFlag#NULL} keeps all terms
      * @throws IllegalStateException if called before {@link #cumulate()} or more than once
      */
@@ -281,18 +265,16 @@ public final class CoocProfile
         final int vocab = stats.vocabSize();
         final long fieldTokens = stats.fieldTokens();
         final BitSet flagBits = lexicon.bits(flag);
-
-        final LinkedHashSet<Integer> union = new LinkedHashSet<>();
-        final Set<Integer> pivotSet = new HashSet<>();
+        final BitSet pivotBits = new BitSet(vocab);
         if (pivotIds != null) {
             for (final int p : pivotIds) {
-                pivotSet.add(p);
-                if (p > 0 && p < vocab) {
-                    union.add(p);
+                if (p >= 0 && p < vocab) {
+                    pivotBits.set(p);
                 }
             }
         }
 
+        final LinkedHashSet<Integer> union = new LinkedHashSet<>();
         for (int i = 0; i < n; i++) {
             final long[] col = freqWide[i];
             final long focusTokens = tokensByTick[i];
@@ -300,6 +282,9 @@ public final class CoocProfile
             for (int termId = 1; termId < vocab; termId++) {
                 final long c = col[termId];
                 if (c <= 0L) {
+                    continue;
+                }
+                if (pivotBits.get(termId)) {
                     continue;
                 }
                 if (flagBits != null && !flagBits.get(termId)) {
@@ -317,27 +302,35 @@ public final class CoocProfile
                     heap.add(new Cand(termId, s));
                 }
             }
-            final Cand[] picks = heap.toArray(new Cand[0]);
-            Arrays.sort(picks, (a, b) -> Double.compare(b.score(), a.score()));
-            for (final Cand cand : picks) {
+            for (final Cand cand : heap) {
                 union.add(cand.termId());
             }
         }
 
         final int rows = union.size();
+        final int last = n - 1;
+        final long lastTokens = tokensByTick[last];
+        final Cand[] order = new Cand[rows];
+        int k = 0;
+        for (final int id : union) {
+            double s = applyScore(scorer, freqWide[last][id], lastTokens, stats.termFreq(id), fieldTokens);
+            if (Double.isNaN(s)) {
+                s = Double.NEGATIVE_INFINITY;
+            }
+            order[k++] = new Cand(id, s);
+        }
+        Arrays.sort(order, (a, b) -> Double.compare(b.score(), a.score()));
+
         rowIds = new int[rows];
         rowFreq = new long[rows][n];
         rowDocs = new int[rows][n];
-        rowPivot = new boolean[rows];
-        int r = 0;
-        for (final int id : union) {
+        for (int r = 0; r < rows; r++) {
+            final int id = order[r].termId();
             rowIds[r] = id;
-            rowPivot[r] = pivotSet.contains(id);
             for (int i = 0; i < n; i++) {
                 rowFreq[r][i] = freqWide[i][id];
                 rowDocs[r][i] = docsWide[i][id];
             }
-            r++;
         }
         freqWide = null;
         docsWide = null;

@@ -54,5 +54,6 @@ public class Pars
     public static final String TYPE             = "type";
     public static final String XTICKS           = "xticks";
     public static final int[]  XTICKS_DEFAULT   = {5, 10, 20, 50, 100, 200, 500};
+    public static final int[]  XTICKS_RANGE     = {0, 1000};
     public static final String YEAR             = "year";
 }
