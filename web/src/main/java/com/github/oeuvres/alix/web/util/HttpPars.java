@@ -53,8 +53,11 @@ import jakarta.servlet.http.HttpServletResponse;
  * Stateful helper for HTTP request parameter resolution, wrapping an
  * {@link HttpServletRequest} and an optional {@link HttpServletResponse}.
  *
- * <p>Each typed getter resolves a parameter value through a priority chain:
- * <b>request parameter → request attribute → cookie → fallback</b>.
+ * <p>Typed getters resolve a parameter value through a priority chain, at most
+ * <b>request parameter → request attribute → cookie → fallback</b>;
+ * only {@link #getInt} and {@link #getString} consult request attributes,
+ * the other getters skip that step. A parameter that is present but blank
+ * or invalid suppresses the lower-priority sources and yields the fallback.
  * When a cookie name is supplied, the resolved value is persisted as a cookie;
  * an empty (non-null) parameter resets that cookie.
  * Cookie persistence requires a non-null response; instances constructed
@@ -106,6 +109,7 @@ public class HttpPars
      * @param source where the value came from
      */
     public record Resolved(Object value, Source source) {
+        @Override
         public String toString()
         {
             return "'" + value + "' (" + source + ")";
@@ -134,6 +138,17 @@ public class HttpPars
     {
         this.request = request;
         this.response = response;
+    }
+
+    /**
+     * Construct a read-only parameter helper, without cookie persistence.
+     * All cookie writes are silently skipped.
+     *
+     * @param request the current HTTP request.
+     */
+    public HttpPars(final HttpServletRequest request)
+    {
+        this(request, null);
     }
 
     /**
@@ -168,7 +183,7 @@ public class HttpPars
             Cookie[] cooks = request.getCookies();
             if (cooks == null)
                 return null;
-            cookies = new HashMap<String, String>();
+            cookies = new HashMap<>();
             for (Cookie cook : cooks) {
                 cookies.put(cook.getName(), cook.getValue());
             }
@@ -265,6 +280,9 @@ public class HttpPars
             char c = s.charAt(i);
             String esc;
             switch (c) {
+            case '%':
+                esc = "%25";
+                break;
             case '&':
                 esc = "%26";
                 break;
@@ -362,6 +380,64 @@ public class HttpPars
     }
 
     /**
+     * Resolve a request parameter as a double.
+     *
+     * @param name     parameter name.
+     * @param fallback value returned when absent or unparseable.
+     * @return resolved double.
+     */
+    public double getDouble(final String name, final double fallback)
+    {
+        String value = request.getParameter(name);
+        if (hasValue(value)) {
+            try {
+                return record(name, Double.parseDouble(value), Source.HTTP);
+            } catch (NumberFormatException e) {
+                // fall through
+            }
+        }
+        return record(name, fallback, Source.FALLBACK);
+    }
+
+    /**
+     * Resolve a request parameter as a double with cookie persistence.
+     * Priority: request parameter → cookie → fallback.
+     * An empty (non-null) parameter resets the cookie.
+     *
+     * @param name     parameter name.
+     * @param fallback value returned when neither parameter nor cookie yield a valid double.
+     * @param cookie   cookie name for persistence.
+     * @return resolved double.
+     */
+    public double getDouble(final String name, final double fallback, final String cookie)
+    {
+        String value = request.getParameter(name);
+        if (hasValue(value)) {
+            try {
+                double ret = Double.parseDouble(value);
+                cookie(cookie, "" + ret);
+                return record(name, ret, Source.HTTP);
+            } catch (NumberFormatException e) {
+                // fall through
+            }
+        }
+        // present but blank or unparseable: suppress the cookie, like getString()
+        if (value != null) {
+            cookie(cookie, null);
+            return record(name, fallback, Source.FALLBACK);
+        }
+        value = cookie(cookie);
+        if (value == null)
+            return record(name, fallback, Source.FALLBACK);
+        try {
+            return record(name, Double.parseDouble(value), Source.COOKIE);
+        } catch (NumberFormatException e) {
+            cookie(cookie, null);
+            return record(name, fallback, Source.FALLBACK);
+        }
+    }
+
+    /**
      * Resolve a request parameter as an {@link Enum} constant.
      * Uses {@link Enum#valueOf(Class, String)} to match; returns
      * the fallback on mismatch or absence.
@@ -422,66 +498,12 @@ public class HttpPars
             return record(name, fallback, Source.FALLBACK);
         }
         value = cookie(cookie);
+        if (value == null) {
+            return record(name, fallback, Source.FALLBACK);
+        }
         try {
             return record(name, Enum.valueOf(fallback.getDeclaringClass(), value), Source.COOKIE);
-        } catch (Exception e) {
-            cookie(cookie, null);
-            return record(name, fallback, Source.FALLBACK);
-        }
-    }
-
-    /**
-     * Resolve a request parameter as a double.
-     *
-     * @param name     parameter name.
-     * @param fallback value returned when absent or unparseable.
-     * @return resolved double.
-     */
-    public double getDouble(final String name, final double fallback)
-    {
-        String value = request.getParameter(name);
-        if (hasValue(value)) {
-            try {
-                return record(name, Double.parseDouble(value), Source.HTTP);
-            } catch (NumberFormatException e) {
-                // fall through
-            }
-        }
-        return record(name, fallback, Source.FALLBACK);
-    }
-
-    /**
-     * Resolve a request parameter as a double with cookie persistence.
-     * Priority: request parameter → cookie → fallback.
-     * An empty (non-null) parameter resets the cookie.
-     *
-     * @param name     parameter name.
-     * @param fallback value returned when neither parameter nor cookie yield a valid double.
-     * @param cookie   cookie name for persistence.
-     * @return resolved double.
-     */
-    public double getDouble(final String name, final double fallback, final String cookie)
-    {
-        String value = request.getParameter(name);
-        if (hasValue(value)) {
-            try {
-                double ret = Double.parseDouble(value);
-                cookie(cookie, "" + ret);
-                return record(name, ret, Source.HTTP);
-            } catch (NumberFormatException e) {
-                // fall through
-            }
-        }
-        if (value != null && !hasValue(value)) {
-            cookie(cookie, null);
-            return record(name, fallback, Source.FALLBACK);
-        }
-        value = cookie(cookie);
-        if (value == null)
-            return record(name, fallback, Source.FALLBACK);
-        try {
-            return record(name, Double.parseDouble(value), Source.COOKIE);
-        } catch (NumberFormatException e) {
+        } catch (IllegalArgumentException e) {
             cookie(cookie, null);
             return record(name, fallback, Source.FALLBACK);
         }
@@ -565,14 +587,17 @@ public class HttpPars
             final int clamped = fromPar < min ? min : fromPar > max ? max : fromPar;
             return record(name, clamped, Source.HTTP);
         }
+        // present but unparseable: suppress lower-priority sources, like getString()
+        if (parString != null) {
+            cookie(cookie, null);
+            return record(name, fallback, Source.FALLBACK);
+        }
 
-        if (parString == null) {
-            final Object att = request.getAttribute(name);
-            if (att instanceof Integer) {
-                final int fromAtt = (Integer) att;
-                final int clamped = fromAtt < min ? min : fromAtt > max ? max : fromAtt;
-                return record(name, clamped, Source.ATTRIBUTE);
-            }
+        final Object att = request.getAttribute(name);
+        if (att instanceof Integer) {
+            final int fromAtt = (Integer) att;
+            final int clamped = fromAtt < min ? min : fromAtt > max ? max : fromAtt;
+            return record(name, clamped, Source.ATTRIBUTE);
         }
 
         final Integer fromCookie = parseInt(cookie(cookie));
@@ -585,6 +610,42 @@ public class HttpPars
         }
 
         return record(name, fallback, Source.FALLBACK);
+    }
+
+    /**
+     * Collect an int parameter given as comma-separated values and/or
+     * repeated parameters, deduplicated, preserving first-seen order.
+     * {@code xticks=5,10,20} and {@code xticks=5&amp;xticks=10&amp;xticks=20}
+     * resolve identically. Blank and unparseable tokens are skipped.
+     *
+     * @param name parameter name.
+     * @return array of unique int values (empty if none valid).
+     */
+    public int[] getIntList(final String name)
+    {
+        final String[] values = request.getParameterValues(name);
+        if (values == null || values.length < 1) {
+            return record(name, new int[0], Source.FALLBACK);
+        }
+        final List<Integer> list = new ArrayList<>();
+        final Set<Integer> seen = new HashSet<>();
+        for (final String value : values) {
+            if (value == null)
+                continue;
+            for (final String token : value.split(",")) {
+                final Integer parsed = parseInt(token);
+                if (parsed == null)
+                    continue;
+                if (!seen.add(parsed))
+                    continue;
+                list.add(parsed);
+            }
+        }
+        final int[] out = new int[list.size()];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = list.get(i);
+        }
+        return record(name, out, out.length == 0 ? Source.FALLBACK : Source.HTTP);
     }
 
     /**
@@ -610,12 +671,7 @@ public class HttpPars
         if (values == null || values.length == 0) {
             return record(name, new int[0], Source.FALLBACK);
         }
-        Integer value0 = null;
-        try {
-            value0 = Integer.valueOf(values[0]);
-        } catch (NumberFormatException e) {
-            // leave null
-        }
+        Integer value0 = parseInt(values[0]);
         if (values.length == 1) {
             if (value0 == null) {
                 return record(name, new int[0], Source.FALLBACK);
@@ -625,12 +681,7 @@ public class HttpPars
                 return record(name, new int[0], Source.FALLBACK);
             }
         }
-        Integer value1 = null;
-        try {
-            value1 = Integer.parseInt(values[1]);
-        } catch (NumberFormatException e) {
-            // leave null
-        }
+        Integer value1 = parseInt(values[1]);
         if (value0 == null && value1 == null) {
             return record(name, new int[0], Source.FALLBACK);
         }
@@ -959,7 +1010,7 @@ public class HttpPars
     {
         if (!hasValue(value)) return null;
         try {
-            return Integer.parseInt(value);
+            return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
             return null;
         }
@@ -998,13 +1049,13 @@ public class HttpPars
      * system property, servlet initialization parameter, then context
      * initialization parameter.
      *
-     * <p>An existing empty value is returned as-is and does not cause lookup
-     * to continue to the next configuration source.</p>
+     * <p>Blank values are treated as absent: lookup continues to the next
+     * configuration source.</p>
      *
      * @param config servlet configuration
      * @param name parameter name
-     * @return the parameter value, or {@code null} if it is not defined
-     * @throws ServletException 
+     * @return the trimmed parameter value, never {@code null}
+     * @throws ServletException if no configuration source defines the parameter
      * @throws NullPointerException if {@code config} or {@code name} is
      *         {@code null}
      */
@@ -1030,7 +1081,7 @@ public class HttpPars
         if (value != null && !value.isBlank()) {
             return value.trim();
         }
-        throw new ServletException(name + " parameter is requires, first override next, choose between: "
-                + "System.getProperty, ServletContext.getInitParameter, ServletConfig.getInitParameter");
+        throw new ServletException("Required parameter '" + name + "' is not defined; checked in order: "
+                + "System.getProperty, ServletConfig.getInitParameter, ServletContext.getInitParameter");
     }
 }
