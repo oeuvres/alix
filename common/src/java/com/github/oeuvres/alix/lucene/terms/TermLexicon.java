@@ -74,12 +74,12 @@ import java.util.Objects;
  *       with the unchanged {@code aff}. Retrieve it with {@link #hunspell()}; this class never spells or
  *       suggests on its own. The {@link Dictionary} is immutable and concurrent-safe; the non-thread-safe
  *       {@code Hunspell} runtime is the caller's to create per thread.</li>
- *   <li>term-flag membership: one {@link BitSet} of term ids per {@link TermFlag} actually set. Every flag is
- *       harvested from the dictionary's Hunspell morphological fields. Each {@link TermFlag} declares the
- *       {@code key:value} tokens that set it (for example {@code po:ADJ} or {@code ne:pers}); the single
- *       dictionary scan reads every morphological token of a kept line and sets the term's bit for each flag a
- *       token declares. A term may carry several flags. Query with {@link #flags(int)}, {@link #bits(TermFlag)}
- *       or {@link #has(int, TermFlag)}.</li>
+ *   <li>term-flag membership: one {@link BitSet} of term ids per {@link TermFlag} actually set. Each
+ *       {@link TermFlag} declares the {@code key:value} tokens that set it (for example {@code po:ADJ} or
+ *       {@code ne:pers}); the dictionary scan gives {@code po:} tokens primary-POS semantics: only the first
+ *       {@code po:} token of a kept line may set a POS flag. Other morphological tags remain cumulative. A term
+ *       may therefore carry one modelled POS flag and several non-POS flags. Query with {@link #flags(int)},
+ *       {@link #bits(TermFlag)} or {@link #has(int, TermFlag)}.</li>
  * </ul>
  * <p>
  * The enrichment preserves every guarantee above: the cached {@link Dictionary} is heap state (its
@@ -101,15 +101,14 @@ public final class TermLexicon {
      * Membership flags attachable to the term ids of a {@link TermLexicon}, each harvested from the Hunspell
      * morphological fields of the field's dictionary.
      * <p>
-     * These are independent membership bits, not the values of one axis: a term may carry several at once (a
-     * proper noun that is also a person), and each constant backs one orthogonal {@link BitSet} of term ids.
-     * Each constant declares the {@code key:value} tokens that set it — part of speech through {@code po:}
-     * (e.g. {@code po:ADJ}), named-entity type through {@code ne:} (e.g. {@code ne:pers}). The single dictionary
-     * scan in {@link TermLexicon} sets a term's bit whenever one of its morphological tokens matches a declared
-     * trigger, so the model extends by a local edit: add a constant with its trigger tokens, or add a token to
-     * an existing constant. Tokens present in the dictionary but declared by no constant (for example
-     * {@code po:ADV}, {@code ne:org}, {@code ne:taxon}) are ignored. {@link #NULL} is a special no-flag
-     * sentinel: it has no triggers, is never set, and is the value for which
+     * These are independent membership bits, but {@code po:} triggers are treated as one ordered POS axis: only
+     * the first {@code po:} token of a dictionary line may set a POS flag. A term may still carry several flags
+     * at once, for example one POS flag and one named-entity flag. Each constant declares the {@code key:value}
+     * tokens that set it — part of speech through {@code po:} (e.g. {@code po:ADJ}), named-entity type through
+     * {@code ne:} (e.g. {@code ne:pers}). The model extends by a local edit: add a constant with its trigger
+     * tokens, or add a token to an existing constant. Tokens present in the dictionary but declared by no
+     * constant (for example {@code po:ADV}, {@code ne:org}, {@code ne:taxon}) are ignored. {@link #NULL} is a
+     * special no-flag sentinel: it has no triggers, is never set, and is the value for which
      * {@link TermLexicon#bits(TermFlag)} returns {@code null}.
      * </p>
      */
@@ -557,9 +556,9 @@ public final class TermLexicon {
 
     /**
      * Sets every flag triggered by one kept dictionary line, scanning its Hunspell morphological tokens from
-     * the end of the headword. Each whitespace-delimited token is matched against {@link #FLAG_TRIGGERS}; a
-     * match sets the term's bit for each flag the token declares. Tokens that match no flag (affix codes,
-     * {@code fr:}, unmodelled tags) are ignored.
+     * the end of the headword. Whitespace-delimited non-POS tokens are cumulative. POS tokens are ordered: only
+     * the first {@code po:} token is allowed to set a flag, even when later {@code po:} tokens also match
+     * {@link #FLAG_TRIGGERS}. Tokens that match no flag (affix codes, {@code fr:}, unmodelled tags) are ignored.
      *
      * @param line   raw dictionary line
      * @param from   index where the morphological fields begin (the headword end)
@@ -569,6 +568,7 @@ public final class TermLexicon {
     private void harvestFlags(final String line, final int from, final int termId,
             final EnumMap<TermFlag, BitSet> bits) {
         final int n = line.length();
+        boolean posSeen = false;
         int i = from;
         while (i < n) {
             while (i < n && (line.charAt(i) == ' ' || line.charAt(i) == '\t')) {
@@ -579,7 +579,14 @@ public final class TermLexicon {
                 i++;
             }
             if (i > start) {
-                final List<TermFlag> flags = FLAG_TRIGGERS.get(line.substring(start, i));
+                final String token = line.substring(start, i);
+                if (token.startsWith("po:")) {
+                    if (posSeen) {
+                        continue;
+                    }
+                    posSeen = true;
+                }
+                final List<TermFlag> flags = FLAG_TRIGGERS.get(token);
                 if (flags != null) {
                     for (final TermFlag flag : flags) {
                         bits.computeIfAbsent(flag, k -> new BitSet(vocabSize)).set(termId);

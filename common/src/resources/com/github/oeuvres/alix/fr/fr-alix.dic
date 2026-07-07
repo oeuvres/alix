@@ -1,4 +1,4 @@
-128569
+128568
 à	po:ADP
 à-côté/S.	po:NOUN
 à-coup/S.	po:NOUN
@@ -39467,7 +39467,7 @@ indiscutable/S.	po:ADJ
 indiscutablement	po:ADV
 indiscuté/F.	po:ADJ
 indispensabilité/S.	po:NOUN
-indispensable/S.	po:NOUN po:ADJ
+indispensable/S.	po:ADJ po:NOUN
 indispensablement	po:ADV
 indisponibilité/S.	po:NOUN
 indisponible/S.	po:ADJ
@@ -40425,7 +40425,7 @@ intellectualiser/a0p+	po:VERB
 intellectualisme/S.	po:NOUN
 intellectualiste/S.	po:NOUN
 intellectualité/S.	po:NOUN
-intellectuel/F+	po:NOUN po:ADJ
+intellectuel/F+	po:ADJ po:NOUN
 intellectuellement	po:ADV
 intelligemment	po:ADV
 intelligence/S.	po:NOUN
@@ -50767,8 +50767,7 @@ nourriture/S.	po:NOUN
 nous	po:PRON
 nous-même	po:PRON
 nous-mêmes	po:PRON
-nouure/S.	po:NOUN
-nouveau/Wx	po:NOUN po:ADJ
+nouveau/Wx	po:ADJ po:NOUN
 nouveau-né/F.	po:NOUN po:ADJ
 nouveauté/S.	po:NOUN
 nouvel	po:ADJ st:nouveau
@@ -67514,7 +67513,7 @@ sémiologiquement	po:ADV
 sémiologue/S.	po:NOUN
 sémiométrie/S.	po:NOUN
 sémioticien/F+	po:NOUN
-sémiotique/S.	po:NOUN po:ADJ
+sémiotique/S.	po:ADJ po:NOUN
 sémiotiquement	po:ADV
 sémiotisation/S.	po:NOUN
 sémique/S.	po:ADJ
@@ -68567,8 +68566,8 @@ sociabilisé/F.	po:ADJ
 sociabiliser/a0p+	po:VERB
 sociabilité/S.	po:NOUN
 sociable/S.	po:ADJ
-social/X.	po:NOUN
 social/W.	po:ADJ
+social/X.	po:NOUN
 social-chrétien	po:NOUN po:ADJ is:*
 social-démocrate	po:NOUN
 social-démocrate/S.	po:ADJ
@@ -71652,7 +71651,7 @@ symbiose/S.	po:NOUN
 symbiote/S.	po:NOUN
 symbiotique/S.	po:ADJ
 symbole/S.	po:NOUN
-symbolique/S.	po:NOUN po:ADJ
+symbolique/S.	po:ADJ po:NOUN
 symboliquement	po:ADV
 symbolisant/F.	po:ADJ
 symbolisation/S.	po:NOUN

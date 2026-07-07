@@ -30,6 +30,7 @@ public class FrenchAnalyzerDemo
             Larguier des Bancels,Larguier des Bancels
             R. Laffont,R. Laffont
             les Creusaz,les Creusaz
+            mise en forme,mise en forme
         """.lines().forEach(line -> {
             int comma = line.indexOf(',');
             final String key = line.substring(0, comma);
@@ -55,6 +56,7 @@ public class FrenchAnalyzerDemo
         new Case(
             "",
             """
+            une mise en forme des instruments mêmes de la démonstration
             Les Creusaz et le Crêtet de la Perche (2000-2150 m). Entremont : partie supérieure
             Bringuier, Conversations libres avec Jean Piaget (p. 35-42). R. Laffont.
             Voir Larguier des Bancels, Introduction à la psychologie, 2e éd., p. 149. 15 

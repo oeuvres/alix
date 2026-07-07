@@ -23,89 +23,48 @@ import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
-import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.util.AssociationMeasure;
 import com.github.oeuvres.alix.util.IntList;
+import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.web.util.HttpPars;
+import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public class OpCoocMatrix extends Op
+/**
+ * {@code /{index}/coocmatrix} — a two-dimensional map of the terms co-occurring
+ * with a pivot query, by SVD of a residual matrix (the spectral-map reading of
+ * the co-occurrence table). {@link #compute} runs the pipeline and returns a
+ * {@link CoocMap}; {@link CoocMatUtil} serialises it as CSV or JSON.
+ *
+ * <p>
+ * The map is always symmetric, so {@code directed} does not reach the geometry:
+ * folding the directed matrix onto its transpose is exactly what symmetrisation
+ * does, and the undirected factor of two washes out under the scale invariance
+ * of correspondence-style analysis. It is not mass-rescaled Correspondence
+ * Analysis: the {@code 1/√mass} step is omitted, which is what stops
+ * low-frequency terms being flung to the rim and yields the more even spread.
+ * </p>
+ */
+public final class OpCoocMatrix extends Op
 {
-    /**
-     * Two-dimensional layout of the node set by SVD of a residual matrix — the
-     * spectral-map reading of the co-occurrence table. The matrix is symmetrized
-     * as O(a,b) = countByRank(a,b) + countByRank(b,a) with a zeroed diagonal
-     * (counts stay int; the analysis is scale-invariant, so the missing ÷2 is
-     * irrelevant), each off-diagonal cell is turned into a residual by
-     * {@code measure}, and the first {@code dims} left singular vectors scaled by
-     * their singular values give the coordinates, indexed by rank.
-     *
-     * <p>
-     * This is not mass-rescaled Correspondence Analysis: it omits the 1/√mass step,
-     * which is exactly what stops low-frequency nodes being flung to the rim and
-     * yields the more even spread. Pass {@link AssociationMeasure.Pearson} for the
-     * χ²-residual map or {@link AssociationMeasure.LogLikelihood} for the G² one.
-     * The seam is meaningful only for residuals centred on independence (these
-     * two): a non-centred measure such as {@link AssociationMeasure.Raw} leaves
-     * overall magnitude in the first axis. Non-finite cell scores are read as zero
-     * so a stray −∞ cannot poison the decomposition.
-     * </p>
-     *
-     * <p>
-     * Each axis is fixed only up to sign, so the map may mirror between calls;
-     * anchor it caller-side by flipping a column if a chosen term must fall on a
-     * chosen side. Singular values come back descending, so axes 0 and 1 are the
-     * two largest; the inertia caption of axis k is 100·σ_k²/Σσ².
-     * </p>
-     *
-     * @param mat     co-occurrence counts over the node set
-     * @param measure per-cell residual, centred on independence
-     * @param dims    number of axes, {@code >= 1}
-     * @return        coord[rank][axis], length() × dims
-     */
-    private static double[][] svd(
-        final IntMatrixById mat,
-        final AssociationMeasure measure,
-        final int dims
-    ) {
-        final int n = mat.length();
-        final long[][] o = new long[n][n];
-        final long[] f = new long[n];
-        long total = 0L;
-        for (int a = 0; a < n; a++) {
-            for (int b = 0; b < n; b++) {
-                if (a == b) continue;
-                final long v = (long) mat.countByRank(a, b) + mat.countByRank(b, a);
-                o[a][b] = v;
-                f[a] += v;
-                total += v;
-            }
-        }
-
-        final double[][] s = new double[n][n];
-        for (int a = 0; a < n; a++) {
-            for (int b = 0; b < n; b++) {
-                if (a == b) continue;
-                final double v = measure.score(o[a][b], f[a], f[b], total);
-                s[a][b] = Double.isFinite(v) ? v : 0d;
-            }
-        }
-
-        final SingularValueDecomposition svd =
-            new SingularValueDecomposition(new Array2DRowRealMatrix(s, false));
-        final double[] sv = svd.getSingularValues();
-        final RealMatrix u = svd.getU();
-        final double[][] coord = new double[n][dims];
-        for (int a = 0; a < n; a++) {
-            for (int k = 0; k < dims; k++) {
-                coord[a][k] = u.getEntry(a, k) * sv[k];
-            }
-        }
-        return coord;
-    }
     
+    /**
+     * Immutable result of a co-occurrence map: parallel arrays indexed by rank, plus
+     * the inertia share of each axis. Produced by {@link OpCoocMatrix#compute} and
+     * consumed by {@link CoocMatUtil}. Holds no Lucene or servlet state, so it is
+     * trivially serialisable to any format.
+     *
+     * @param form    term form, by rank
+     * @param freq    occurrence marginal f(a), by rank — the matrix diagonal filled
+     *                by {@code CoocMatSnippets}, direction-independent
+     * @param xy      coordinates, {@code xy[rank][axis]}
+     * @param inertia percentage of total inertia carried by each axis
+     */
+    record CoocMap(String[] form, long[] freq, double[][] xy, double[] inertia) {}
+     
+
     @Override
     protected void csv(
         final LuceneIndex index,
@@ -115,97 +74,211 @@ public class OpCoocMatrix extends Op
         throws IOException {
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
-        TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
-
+        final CoocMap map = compute(index, pars, meta);
         final Writer writer = response.getWriter();
-        if (topTerms == null) {
+        if (map == null) {
             meta.toString(writer, pars);
             return;
         }
+        final DecimalFormat fmt = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance(Locale.US));
+        writer.append("form,freq,x,y\n");
+        for (int i = 0; i < map.form().length; i++) {
+            writer.append(csvCell(map.form()[i])).append(',')
+                  .append(Long.toString(map.freq()[i])).append(',')
+                  .append(fmt.format(map.xy()[i][0])).append(',')
+                  .append(fmt.format(map.xy()[i][1])).append('\n');
+        }
 
-        // topTerms may contain pivots
-        int[] pivotIds = (int[]) meta.get("pivotIds");
+    }
+    
+    /**
+     * CSV-escapes a field per RFC 4180: quoted only when it contains a comma,
+     * double quote, CR or LF, with internal quotes doubled.
+     *
+     * @param s field value
+     * @return the field, quoted if it needs to be
+     */
+    private static String csvCell(final String s) {
+        if (s.indexOf(',') < 0 && s.indexOf('"') < 0 && s.indexOf('\n') < 0 && s.indexOf('\r') < 0) return s;
+        return '"' + s.replace("\"", "\"\"") + '"';
+    }
+
+
+    @Override
+    protected void json(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    )
+        throws IOException {
+        final HttpPars pars = new HttpPars(request, response);
+        final MetaUtil meta = new MetaUtil();
+        final CoocMap map = compute(index, pars, meta);
+        try (JsonWriter jw = Op.jsonWriter(response)) {
+            jw.beginObject();
+ 
+            jw.name("meta");
+            jw.beginObject();
+            meta.toJson(jw, pars);
+            jw.endObject();
+ 
+            if (map != null) {
+                jw.name("data");
+                jw.beginObject();
+                jw.name("axes");
+                jw.beginObject();
+                jw.name("dim1_pct").value(round(map.inertia()[0], 1));
+                jw.name("dim2_pct").value(round(map.inertia()[1], 1));
+                jw.endObject();
+                jw.name("nodes");
+                jw.beginArray();
+                for (int i = 0; i < map.form().length; i++) {
+                    jw.beginObject();
+                    jw.name("id").value(map.form()[i]);
+                    jw.name("freq").value(map.freq()[i]);
+                    jw.name("x").value(round(map.xy()[i][0], 4));
+                    jw.name("y").value(round(map.xy()[i][1], 4));
+                    jw.endObject();
+                }
+                jw.endArray();
+                jw.endObject();
+            }
+ 
+            jw.endObject();
+        }
+
+    }
+    
+    /**
+     * Rounds to {@code decimals} fractional digits, to keep serialised
+     * coordinates short.
+     *
+     * @param v        value
+     * @param decimals number of fractional digits
+     * @return the rounded value
+     */
+    private static double round(final double v, final int decimals) {
+        final double f = Math.pow(10, decimals);
+        return Math.round(v * f) / f;
+    }
+
+
+    /**
+     * Runs the whole pipeline — term selection, span walk, residual matrix, SVD —
+     * and returns the layout, or {@code null} when there is nothing to draw (no
+     * top terms, or no span query). Format-independent; callers serialise the
+     * result. The SVD math is the version verified against a numpy reference; it
+     * additionally keeps the diagonal occurrence marginal as {@code freq} for
+     * display and the first two inertia shares for the axis captions.
+     *
+     * <p>
+     * Margins for the residual are the off-diagonal row sums of the symmetrised
+     * matrix (the table's own margins, a zeroed diagonal); {@code freq} is the
+     * separate occurrence marginal read from the diagonal, which
+     * {@code CoocMatSnippets} fills. {@code pivotIds} is present in {@code meta}
+     * only in co-occurrence mode, so its use is guarded.
+     * </p>
+     *
+     * @param index the index to read
+     * @param pars  request parameters
+     * @param meta  filled by {@link OpTerms#topTerms}; carries {@code pivotIds} in co-occurrence mode
+     * @return      the layout, or {@code null}
+     * @throws IOException if the index read fails
+     */
+    private static CoocMap compute(
+        final LuceneIndex index,
+        final HttpPars pars,
+        final MetaUtil meta
+    )
+        throws IOException {
+        final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
+        if (topTerms == null) return null;
+        final SpanQuery spanQuery = spanQuery(index, pars);
+        if (spanQuery == null) return null;
+
+        final int[] pivotIds = (int[]) meta.get("pivotIds");
         final IntList termIds = new IntList(topTerms.size());
-        for (TermEntry term : topTerms) {
+        for (final TermEntry term : topTerms) {
             final int termId = term.termId();
-            if (Arrays.binarySearch(pivotIds, termId) >= 0)
-                continue;
+            if (pivotIds != null && Arrays.binarySearch(pivotIds, termId) >= 0) continue;
             termIds.push(termId);
         }
-        final int terms = termIds.size();
-        final boolean directed = pars.getBoolean("directed", false);
 
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
-        Snippets snippets = new Snippets(Snippets.Usage.POSITIONS, slop);
         final Query filterQuery = filterQuery(index, pars);
-        final SpanQuery spanQuery = spanQuery(index, pars);
         final String contentFname = pars.getString(FTEXT, index.content());
         final FlucText contentFluc = index.flucText(contentFname);
-
         final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
         final int right = pars.getInt(RIGHT, RIGHT_RANGE, slop);
-        final IntMatrixById coocMat = new IntMatrixById(termIds);
-        final CoocMatSnippets coocRecorder = new CoocMatSnippets(
-                coocMat, contentFluc.termRail(), left, right, directed
-        );
+        final boolean directed = pars.getBoolean("directed", false);
 
-        if (spanQuery == null) {
-            writer.append("TODO\n");
-            meta.toString(writer, pars);
-            return;
+        final IntMatrixById coocMat = new IntMatrixById(termIds);
+        final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
+        new SpanWalker(index.searcher(), spanQuery, new Snippets(Snippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
+
+        final int n = coocMat.length();
+        final int dims = 2;
+        final long[] freq = new long[n];
+        final long[] rowSum = new long[n];
+        final long[][] o = new long[n][n];
+        long total = 0L;
+        for (int a = 0; a < n; a++) {
+            freq[a] = coocMat.countByRank(a, a);
+            for (int b = 0; b < n; b++) {
+                if (a == b) continue;
+                final long v = (long) coocMat.countByRank(a, b) + coocMat.countByRank(b, a);
+                o[a][b] = v;
+                rowSum[a] += v;
+                total += v;
+            }
         }
 
-        final SpanWalker walker = new SpanWalker(
-                index.searcher(), spanQuery, snippets, filterQuery
-        );
-        walker.walk(coocRecorder);
+        final AssociationMeasure residual = residual(pars);
+        final double[][] s = new double[n][n];
+        for (int a = 0; a < n; a++) {
+            for (int b = 0; b < n; b++) {
+                if (a == b) continue;
+                final double v = residual.score(o[a][b], rowSum[a], rowSum[b], total);
+                s[a][b] = Double.isFinite(v) ? v : 0d;
+            }
+        }
 
-        final AssociationMeasure scorer = switch (pars.getString("assoc", "raw"))
-            {
+        final SingularValueDecomposition svd =
+            new SingularValueDecomposition(new Array2DRowRealMatrix(s, false));
+        final double[] sv = svd.getSingularValues();
+        final RealMatrix u = svd.getU();
+        double sumSq = 0d;
+        for (final double x : sv) sumSq += x * x;
+        final double[] inertia = new double[dims];
+        for (int k = 0; k < dims; k++) inertia[k] = 100d * sv[k] * sv[k] / sumSq;
+        final double[][] xy = new double[n][dims];
+        for (int a = 0; a < n; a++)
+            for (int k = 0; k < dims; k++)
+                xy[a][k] = u.getEntry(a, k) * sv[k];
+
+        final TermLexicon lexicon = contentFluc.termLexicon();
+        final String[] form = new String[n];
+        for (int a = 0; a < n; a++) form[a] = lexicon.form(coocMat.id(a));
+
+        return new CoocMap(form, freq, xy, inertia);
+    }
+
+    /**
+     * Residual measure for the map, from {@code assoc}. Only measures centred on
+     * independence give a meaningful spectral map, so the choice is Pearson (χ²,
+     * the default) or log-likelihood (G²); any other value falls back to Pearson.
+     *
+     * @param pars request parameters
+     * @return the residual measure
+     */
+    private static AssociationMeasure residual(final HttpPars pars) {
+        return switch (pars.getString("assoc", "pearson")) {
             case "g2" -> new AssociationMeasure.LogLikelihood();
             case "ppmi" -> new AssociationMeasure.Ppmi();
             case "npmi" -> new AssociationMeasure.Npmi();
             case "logdice" -> new AssociationMeasure.LogDice();
             case "raw" -> new AssociationMeasure.Raw();
-            default -> new AssociationMeasure.Raw();
-            };
-
-        final long[] rowMargin = new long[terms];
-        final long[] colMargin = new long[terms];
-        long total = 0L;
-        for (int row = 0; row < terms; row++) {
-            for (int col = 0; col < terms; col++) {
-                if (row == col) continue; // diagonal is not part of the count
-                final long v = coocMat.countByRank(row, col);
-                rowMargin[row] += v;
-                colMargin[col] += v;
-                total += v;
-            }
-        }
-
-        final DecimalFormat fmt = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance(Locale.US));
-
-        TermLexicon lexicon = contentFluc.termLexicon();
-        for (int col = 0; col < terms; col++) {
-            final int termId = coocMat.id(col);
-            writer.append(',').append(lexicon.form(termId));
-        }
-        writer.append('\n');
-        for (int row = 0; row < terms; row++) {
-            final int termId = coocMat.id(row);
-            writer.append(lexicon.form(termId));
-            for (int col = 0; col < terms; col++) {
-                double score;
-                if (row == col)
-                    score = 0;
-                else
-                    score = scorer.score(coocMat.countByRank(row, col), rowMargin[row], colMargin[col], total);
-                if (score == Double.NEGATIVE_INFINITY) score = 0;
-                writer.append(',').append(fmt.format(score));
-            }
-            writer.append('\n');
-        }
-
+            default -> new AssociationMeasure.Pearson();
+        };
     }
-
 }
