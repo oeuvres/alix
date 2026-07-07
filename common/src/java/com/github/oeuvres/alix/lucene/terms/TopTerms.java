@@ -65,6 +65,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private boolean mutable;
 
+    /** Number of leading ranks filled by the most recent {@link #promote(int[], Comparator)} call. */
+    private int promotedCount;
+
     /** Ranked term ids; {@code null} means no ranking has been produced. */
     private int[] rank2termId;
 
@@ -190,7 +193,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * <p>
      * This method does not alter term counts or scores. If highlights are
-     * attached to ranks, they are moved with their terms.
+     * attached to ranks, they are moved with their terms. On success the number
+     * of promoted terms is recorded and exposed by {@link #promotedCount()} and
+     * {@link TermEntry#isPromoted()}: promoted terms occupy the leading ranks.
      * </p>
      *
      * @param termIds selected dense term ids to promote
@@ -213,34 +218,42 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             throw new IllegalStateException(
                 "No ranking: call rank(...), ranking(...), or setRanking(...) first");
         }
+
+        for (int index = 0; index < ids.length; index++) {
+            checkTermId(ids[index], "termIds[" + index + "]");
+        }
         if (ids.length == 0) {
             return this;
         }
 
-        final int vocabSize = fieldStats.vocabSize();
-        final boolean[] promoted = new boolean[vocabSize];
-        final TermValue[] values = new TermValue[ids.length];
+        // Unique, in-population, filter-eligible ids kept ascending so that the
+        // merge below can test membership with Arrays.binarySearch. This is
+        // sized to the promotion set, never to the vocabulary.
+        final int[] sorted = ids.clone();
+        Arrays.sort(sorted);
+
+        final int[] promotedIds = new int[sorted.length];
+        final TermValue[] values = new TermValue[sorted.length];
         int valueCount = 0;
-
-        for (int index = 0; index < ids.length; index++) {
-            final int termId = ids[index];
-            checkTermId(termId, "termIds[" + index + "]");
-
-            if (promoted[termId]
-                    || termFreq[termId] == 0L
+        int previous = -1;
+        for (int i = 0; i < sorted.length; i++) {
+            final int termId = sorted[i];
+            if (termId == previous) {
+                continue;
+            }
+            previous = termId;
+            if (termFreq[termId] == 0L
                     || (rankFilter != null && !rankFilter.get(termId))) {
                 continue;
             }
-
-            promoted[termId] = true;
-            values[valueCount++] = termValue(termId);
+            promotedIds[valueCount] = termId;
+            values[valueCount] = termValue(termId);
+            valueCount++;
         }
 
         if (valueCount == 0) {
             return this;
         }
-
-        Arrays.sort(values, 0, valueCount, order);
 
         final int oldSize = rank2termId.length;
         if (valueCount > oldSize) {
@@ -249,39 +262,38 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                     + valueCount);
         }
 
+        Arrays.sort(values, 0, valueCount, order);
+
         final int[] newRanking = new int[oldSize];
         final String[] newHilites = hilites == null ? null : new String[oldSize];
-        final String[] hiliteByTermId;
 
-        if (hilites == null) {
-            hiliteByTermId = null;
-        }
-        else {
-            hiliteByTermId = new String[vocabSize];
-            for (int rank = 0; rank < oldSize; rank++) {
-                hiliteByTermId[rank2termId[rank]] = hilites[rank];
+        // Front block: promoted terms in comparator order. frontOfPromoted maps
+        // a position in promotedIds to its front rank, so a promoted term's
+        // previous highlight can be restored while scanning old ranks below.
+        final int[] frontOfPromoted = newHilites == null ? null : new int[valueCount];
+        for (int front = 0; front < valueCount; front++) {
+            final int termId = values[front].termId();
+            newRanking[front] = termId;
+            if (frontOfPromoted != null) {
+                frontOfPromoted[Arrays.binarySearch(promotedIds, 0, valueCount, termId)] = front;
             }
         }
 
-        int rank = 0;
-        for (int index = 0; index < valueCount; index++) {
-            final int termId = values[index].termId();
-            newRanking[rank] = termId;
-            if (newHilites != null) {
-                newHilites[rank] = hiliteByTermId[termId];
-            }
-            rank++;
-        }
-
+        // Tail: retained terms in previous order. A promoted term is skipped
+        // here but donates its previous highlight to its front position.
+        int rank = valueCount;
         for (int oldRank = 0; oldRank < oldSize && rank < oldSize; oldRank++) {
             final int termId = rank2termId[oldRank];
-            if (promoted[termId]) {
+            final int pos = Arrays.binarySearch(promotedIds, 0, valueCount, termId);
+            if (pos >= 0) {
+                if (newHilites != null) {
+                    newHilites[frontOfPromoted[pos]] = hilites[oldRank];
+                }
                 continue;
             }
-
             newRanking[rank] = termId;
             if (newHilites != null) {
-                newHilites[rank] = hiliteByTermId[termId];
+                newHilites[rank] = hilites[oldRank];
             }
             rank++;
         }
@@ -292,7 +304,19 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         hilites = newHilites == null || rank == oldSize
             ? newHilites
             : Arrays.copyOf(newHilites, rank);
+        this.promotedCount = valueCount;
         return this;
+    }
+
+    /**
+     * Returns the number of leading ranks occupied by the most recent promotion.
+     *
+     * @return promoted term count, or {@code 0} when the current ranking carries
+     *         no promotion
+     */
+    public int promotedCount()
+    {
+        return promotedCount;
     }
 
     /**
@@ -621,6 +645,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         this.rankFilter = filter;
         this.scores = scores;
         this.hilites = hilites;
+        this.promotedCount = 0;
         return this;
     }
 
@@ -678,7 +703,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     {
         return termFreq[termId];
     }
-    
+
     /**
      * Replaces the current population occurrence-count vector.
      *
@@ -748,6 +773,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         this.rankFilter = filter;
         this.scores = scores;
         this.hilites = hilites;
+        this.promotedCount = 0;
     }
 
     /**
@@ -843,6 +869,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         rankFilter = null;
         scores = null;
         hilites = null;
+        promotedCount = 0;
     }
 
     /**
@@ -1105,6 +1132,24 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         public String hilite()
         {
             return hilites == null ? null : hilites[rank];
+        }
+
+        /**
+         * Reports whether this term was moved to the front by the most recent
+         * {@link TopTerms#promote(int[], Comparator)} call.
+         *
+         * <p>
+         * Promoted terms always occupy the leading ranks, so this is {@code true}
+         * exactly for the first {@link TopTerms#promotedCount()} entries of the
+         * ranking. A ranking produced without promotion reports {@code false} for
+         * every entry.
+         * </p>
+         *
+         * @return {@code true} if this entry is a promoted term
+         */
+        public boolean isPromoted()
+        {
+            return rank < promotedCount;
         }
 
         /**

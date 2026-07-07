@@ -125,6 +125,10 @@ public abstract class Op
                     AlixServlet.prepareJsonl(response);
                     jsonl(index, request, response);
                 }
+                case "txt" -> {
+                    AlixServlet.prepareTxt(response);
+                    txt(index, request, response);
+                }
                 default -> AlixServlet.jsonError(response, 406,
                         getClass().getSimpleName() + ": unsupported format: " + format);
             }
@@ -263,6 +267,23 @@ public abstract class Op
         HttpServletResponse resp) throws IOException
     {
         AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": default html not implemented");
+    }
+
+    /**
+     * Free plain. The default implementation emits a 406
+     * JSON error; subclasses override to write CSV to the response.
+     *
+     * @param index    target Lucene index
+     * @param req      servlet request
+     * @param resp     servlet response (Content-Type already set to CSV)
+     * @throws IOException if response writing fails
+     */
+    protected void txt(
+        LuceneIndex index,
+        HttpServletRequest req,
+        HttpServletResponse resp) throws IOException
+    {
+        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": csv not implemented");
     }
 
     /**

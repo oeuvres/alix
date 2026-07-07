@@ -31,7 +31,7 @@ import com.github.oeuvres.alix.web.util.HttpPars;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public class OpCoocs extends Op
+public class OpCoocMatrix extends Op
 {
     /**
      * Two-dimensional layout of the node set by SVD of a residual matrix — the

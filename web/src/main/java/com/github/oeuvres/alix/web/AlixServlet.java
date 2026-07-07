@@ -66,6 +66,7 @@ import static com.github.oeuvres.alix.web.Pars.DOCID;
  */
 public class AlixServlet extends HttpServlet
 {
+    private static final String CONTENT_TXT = "text/plain";
     private static final String CONTENT_CSV = "text/plain";
     private static final String CONTENT_HTML = "text/html";
     private static final String CONTENT_JSON = "application/json";
@@ -285,11 +286,7 @@ public class AlixServlet extends HttpServlet
 
         final String format = segment.substring(dot + 1);
 
-        if (isKnownFormat(format)) {
-            return new String[] { segment.substring(0, dot), format };
-        }
-
-        return new String[] { segment, null };
+        return new String[] { segment.substring(0, dot), format };
     }
 
 
@@ -407,19 +404,6 @@ public class AlixServlet extends HttpServlet
         return docs[0].doc;
     }
 
-    /**
-     * Tests whether a path extension is an operation output format.
-     *
-     * @param format extension without the dot
-     * @return {@code true} if the extension is a known operation format
-     */
-    private static boolean isKnownFormat(final String format)
-    {
-        return "json".equals(format)
-            || "jsonl".equals(format)
-            || "html".equals(format)
-            || "csv".equals(format);
-    }
 
     /**
      * Lists configured indices as JSON.
@@ -515,6 +499,15 @@ public class AlixServlet extends HttpServlet
         response.setContentType(CONTENT_JSONL);
     }
 
+    /**
+     * Sets response headers for HTML output.
+     *
+     * @param response HTTP response
+     */
+    protected static void prepareTxt(final HttpServletResponse response)
+    {
+        response.setContentType(CONTENT_TXT);
+    }
 
     /**
      * Registers all available operations.
@@ -527,7 +520,7 @@ public class AlixServlet extends HttpServlet
     private void registerOps()
     {
         ops.put("chrono", new OpChrono());
-        ops.put("coocs", new OpCoocs());
+        ops.put("cooc-matrix", new OpCoocMatrix());
         ops.put("cooc-profile", new OpCoocProfile());
         ops.put("doc", new OpDoc());
         ops.put("freqlist", new OpFreqlist());

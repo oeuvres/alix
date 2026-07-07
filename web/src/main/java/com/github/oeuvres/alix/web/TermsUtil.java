@@ -1,6 +1,8 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.io.Writer;
+import java.util.Locale;
 
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -11,6 +13,34 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class TermsUtil
 {
+    static void txt(
+        final HttpServletResponse response,
+        final MetaUtil meta,
+        final HttpPars pars,
+        TopTerms terms
+    ) throws IOException {
+        int rank = 1;
+        Writer writer = response.getWriter();
+        for (TermEntry term : terms) {
+            if (term.isPromoted()) {
+                writer
+                .append(term.form())
+                .append(" (")
+                .append(String.valueOf(term.freq()))
+                .append("), ");
+                continue;
+            }
+            else {
+                writer.append(String.valueOf(rank++)).append(". ")
+                .append(term.form())
+                .append(" (")
+                .append(String.format(Locale.FRANCE, "%.5g", term.score()))
+                .append(" ; ")
+                .append(String.valueOf(term.freq()))
+                .append("), ");
+            }
+        }
+    }
 
     static void json(
         final HttpServletResponse response,

@@ -227,4 +227,17 @@ public final class OpTerms extends Op
         TopTerms topTerms = topTerms(index, pars, meta);
         TermsUtil.json(response, meta, pars, topTerms);
     }
+    
+    @Override
+    protected void txt(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException
+    {
+        final HttpPars pars = new HttpPars(request, response);
+        final MetaUtil meta = new MetaUtil();
+        TopTerms topTerms = topTerms(index, pars, meta);
+        TermsUtil.txt(response, meta, pars, topTerms);
+    }
 }
