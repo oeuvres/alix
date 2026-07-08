@@ -6521,7 +6521,7 @@ aventure/S.	po:NOUN
 aventuré/F.	po:ADJ
 aventurer/a0p+	po:VERB
 aventureusement	po:ADV
-aventureux/W.	po:NOUN po:ADJ
+aventureux/W.	po:ADJ
 aventurier/F.	po:NOUN po:ADJ
 aventurine/S.	po:NOUN
 aventurisme/S.	po:NOUN
@@ -16241,8 +16241,7 @@ conjoindre/wB	po:VERB
 conjoint/F.	po:ADJ po:NOUN
 conjointement	po:ADV
 conjoncteur/S.	po:NOUN
-conjonctif/F.	po:NOUN po:ADJ
-conjonctif/S.	po:NOUN po:ADJ
+conjonctif/F.	po:ADJ
 conjonctive/s.	po:NOUN po:ADJ
 conjonction/S.	po:NOUN
 conjonctival/W.	po:ADJ
@@ -17904,7 +17903,8 @@ couvent/S.	po:NOUN
 couventine/S.	po:NOUN
 couver/a0p+	po:VERB
 couvercle/S.	po:NOUN
-couvert/F.	po:NOUN po:ADJ
+couvert/F.	po:ADJ
+couvert/S.	po:NOUN
 couvertine/S.	po:NOUN
 couverture/S.	po:NOUN
 couveuse/S.	po:NOUN po:ADJ
@@ -20112,7 +20112,7 @@ découronnement/S.	po:NOUN
 découronner/a0p+	po:VERB
 décours	po:NOUN
 décousure/S.	po:NOUN
-découvert/F.	po:NOUN po:ADJ
+découvert/F.	po:ADJ
 découverte/S.	po:NOUN
 découvrable/S.	po:ADJ
 découvrement/S.	po:NOUN
@@ -23022,8 +23022,8 @@ développement/S.	po:NOUN
 développemental/W.	po:ADJ
 développer/a0p+	po:VERB
 développeur/Fs	po:NOUN
-devenir/S.	po:NOUN
 devenir/i0q+	po:VERB
+devenir/S.	po:NOUN
 déventé/F.	po:ADJ
 déventer/a0p+	po:VERB
 devenu/F.	po:ADJ
@@ -40352,8 +40352,7 @@ instruire/yM	po:VERB
 instruit/F.	po:ADJ
 instrument/S.	po:NOUN
 instrumentaire/S.	po:ADJ
-instrumental/W.	po:ADJ
-instrumental/X.	po:NOUN
+instrumental/W.	po:ADJ po:NOUN
 instrumentalement	po:ADV
 instrumentalisation/S.	po:NOUN
 instrumentalisé/F.	po:ADJ
@@ -51895,8 +51894,7 @@ optimiser/a0p+	po:VERB
 optimiseur/S.	po:NOUN
 optimisme/S.	po:NOUN
 optimiste/S.	po:NOUN po:ADJ
-optimum/I.	po:NOUN po:ADJ
-optimum/S.	po:NOUN po:ADJ
+optimum/S.	po:ADJ
 option/S.	po:NOUN
 optionnel/F+	po:ADJ
 optionnellement	po:ADV
@@ -51990,7 +51988,7 @@ ordinalement	po:ADV
 ordinand/S.	po:NOUN
 ordinant/S.	po:NOUN
 ordinariat/S.	po:NOUN
-ordinateur/Fc	po:NOUN po:ADJ
+ordinateur/S.	po:NOUN
 ordination/S.	po:NOUN
 ordinogramme/S.	po:NOUN
 ordinosaure/S.	po:NOUN
@@ -54529,7 +54527,7 @@ pénéplaine/S.	po:NOUN
 pénétrabilité/S.	po:NOUN
 pénétrable/S.	po:ADJ
 pénétrance/S.	po:NOUN
-pénétrant/F.	po:NOUN po:ADJ
+pénétrant/F.	po:ADJ
 pénétrateur/S.	po:NOUN
 pénétration/S.	po:NOUN
 pénétré/F.	po:ADJ
@@ -58935,7 +58933,6 @@ prévôté/S.	po:NOUN
 prévoyance/S.	po:NOUN
 prévoyant/F.	po:ADJ
 prévu/S.	po:NOUN
-priant/F.	po:NOUN po:ADJ
 priapée/S.	po:NOUN
 priapisme/S.	po:NOUN
 prié/F.	po:ADJ
@@ -70606,7 +70603,7 @@ subsidiation/S.	po:NOUN
 subsidié/F.	po:ADJ
 subsidier/a0p+	po:VERB
 subsistance/S.	po:NOUN
-subsistant/F.	po:NOUN po:ADJ
+subsistant/F.	po:ADJ
 subsister/a0p.	po:VERB
 subsomption/S.	po:NOUN
 subsonique/S.	po:ADJ
@@ -70797,7 +70794,7 @@ suitée/S.	po:ADJ
 suivant	po:ADP
 suivant/F.	po:ADJ po:NOUN
 suiveur/Fs	po:NOUN po:ADJ
-suivi/S.	po:NOUN po:ADJ
+suivi/F.	po:ADJ
 suivisme/S.	po:NOUN
 suiviste/S.	po:NOUN po:ADJ
 suivre/xQ	po:VERB
