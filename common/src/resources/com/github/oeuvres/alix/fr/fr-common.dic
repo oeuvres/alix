@@ -53877,9 +53877,9 @@ passant/F.	po:NOUN po:ADJ
 passation/S.	po:NOUN
 passavant/S.	po:NOUN
 passe/S.	po:NOUN
-passé	po:ADP
-passé/F.	po:ADJ
 passé/S.	po:NOUN
+passé/F.	po:ADJ
+passé	po:ADP
 passe-bande/S.	po:ADJ
 passe-coupe/S.	po:NOUN
 passe-crassane	po:NOUN
@@ -62694,6 +62694,7 @@ rééducateur/Fc	po:NOUN po:ADJ
 rééducation/S.	po:NOUN
 rééduqué/F.	po:ADJ
 rééduquer/a0p+	po:VERB
+réel/S.	po:NOUN
 réel/F+	po:ADJ
 réélaboration/S.	po:NOUN
 réélection/S.	po:NOUN
@@ -68214,6 +68215,7 @@ signé/F.	po:ADJ
 signer/a0p+	po:VERB
 signet/S.	po:NOUN
 signifiance/S.	po:NOUN
+signifiant/S.	po:NOUN
 signifiant/F.	po:ADJ
 significateur/Fc	po:ADJ
 significatif/F.	po:ADJ
