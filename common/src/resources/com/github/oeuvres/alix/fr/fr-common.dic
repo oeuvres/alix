@@ -822,7 +822,7 @@ acouphène/S.	po:NOUN
 acousmatique/S.	po:ADJ
 acousmie/S.	po:NOUN
 acousticien/F+	po:NOUN
-acoustique/S.	po:NOUN po:ADJ
+acoustique/S.	po:ADJ po:NOUN
 acoustiquement	po:ADV
 acquéresse/S.	po:NOUN
 acquéreur/Fs	po:NOUN po:ADJ
@@ -2756,7 +2756,8 @@ amibe/S.	po:NOUN
 amibiase/S.	po:NOUN
 amibien/F+	po:NOUN po:ADJ
 amiboïde/S.	po:ADJ
-amical/W.	po:ADJ po:NOUN
+amical/W.	po:ADJ
+amicale/S.	po:NOUN
 amicalement	po:ADV
 amicalisme/S.	po:NOUN
 amicaliste/S.	po:NOUN
@@ -15626,7 +15627,7 @@ comparateur/Fc	po:ADJ
 comparateur/S.	po:NOUN
 comparatif/F.	po:ADJ
 comparatisme/S.	po:NOUN
-comparatiste/S.	po:NOUN po:ADJ
+comparatiste/S.	po:ADJ po:NOUN
 comparativement	po:ADV
 comparé/F.	po:ADJ
 comparer/a0p+	po:VERB
@@ -19364,7 +19365,7 @@ débile/S.	po:NOUN po:ADJ
 débilement	po:ADV
 débilitant/F.	po:ADJ
 débilitation/S.	po:NOUN
-débilité/S.	po:NOUN po:ADJ
+débilité/S.	po:NOUN
 débiliter/a0p+	po:VERB
 débillardé/F.	po:ADJ
 débillarder/a0p+	po:VERB
@@ -19806,7 +19807,9 @@ décile/S.	po:NOUN
 décillé/F.	po:ADJ
 déciller/a0p+	po:VERB
 décimable/S.	po:ADJ
-décimal/W.	po:NOUN po:ADJ
+décimal/W.	po:ADJ
+décimal/X.	po:NOUN
+décimale/S.	po:NOUN
 décimalisation/S.	po:NOUN
 décimalisé/F.	po:ADJ
 décimaliser/a0p+	po:VERB
@@ -20112,6 +20115,7 @@ découronnement/S.	po:NOUN
 découronner/a0p+	po:VERB
 décours	po:NOUN
 décousure/S.	po:NOUN
+découvert/S.	po:NOUN
 découvert/F.	po:ADJ
 découverte/S.	po:NOUN
 découvrable/S.	po:ADJ
@@ -24197,7 +24201,7 @@ docu-drame/S.	po:NOUN
 docu-fiction/S.	po:NOUN
 docudrame/S.	po:NOUN
 document/S.	po:NOUN
-documentaire/S.	po:NOUN po:ADJ
+documentaire/S.	po:ADJ po:NOUN
 documentaliste/S.	po:NOUN
 documentariste/S.	po:NOUN
 documentation/S.	po:NOUN
@@ -26554,7 +26558,7 @@ emmuseler/d0p+	po:VERB
 émorfilé/F.	po:ADJ
 émorfiler/a0p+	po:VERB
 émoticône/S.	po:NOUN
-émotif/F.	po:NOUN po:ADJ
+émotif/F.	po:ADJ po:NOUN
 émotion/S.	po:NOUN
 émotionnable/S.	po:ADJ
 émotionnant/F.	po:ADJ
@@ -29176,8 +29180,7 @@ et	po:CCONJ
 étampeur/Fs	po:NOUN
 étampure/S.	po:NOUN
 étamure/S.	po:NOUN
-étanche/S.	po:NOUN po:ADJ
-étanché/F.	po:ADJ
+étanche/S.	po:ADJ po:NOUN
 étanchéification/S.	po:NOUN
 étanchéifié/F.	po:ADJ
 étanchéifier/a0p+	po:VERB
@@ -29701,7 +29704,7 @@ eux-mêmes	po:PRON
 évitement/S.	po:NOUN
 éviter/a0p+	po:VERB
 évocable/S.	po:ADJ
-évocateur/Fc	po:NOUN po:ADJ
+évocateur/Fc	po:ADJ
 évocation/S.	po:NOUN
 évocatoire/S.	po:ADJ
 évohé	po:INTJ
@@ -37439,7 +37442,7 @@ humanitarisme/S.	po:NOUN
 humanitariste/S.	po:NOUN po:ADJ
 humanité/S.	po:NOUN
 humanoïde/S.	po:NOUN po:ADJ
-humble/S.	po:NOUN po:ADJ
+humble/S.	po:ADJ po:NOUN
 humblement	po:ADV
 humé/F.	po:ADJ
 humectage/S.	po:NOUN
@@ -41042,7 +41045,7 @@ inventé/F.	po:ADJ
 inventer/a0p+	po:VERB
 inventeur/Fc	po:NOUN po:ADJ
 inventeuse/S.	po:NOUN
-inventif/F.	po:NOUN po:ADJ
+inventif/F.	po:ADJ po:NOUN
 invention/S.	po:NOUN
 inventivité/S.	po:NOUN
 inventoriage/S.	po:NOUN
@@ -41233,7 +41236,7 @@ irréductible/S.	po:ADJ
 irréductiblement	po:ADV
 irréel/F+	po:NOUN po:ADJ
 irréellement	po:ADV
-irréfléchi/F.	po:NOUN po:ADJ
+irréfléchi/F.	po:ADJ
 irréflexion/S.	po:NOUN
 irréformabilité/S.	po:NOUN
 irréformable/S.	po:ADJ
@@ -45025,7 +45028,7 @@ maladif/F.	po:ADJ
 maladivement	po:ADV
 maladrerie/S.	po:NOUN
 maladresse/S.	po:NOUN
-maladroit/F.	po:NOUN po:ADJ
+maladroit/F.	po:ADJ po:NOUN
 maladroitement	po:ADV
 malaga/S.	po:NOUN
 malaire/S.	po:ADJ
@@ -45590,7 +45593,7 @@ margé/F.	po:ADJ
 margelle/S.	po:NOUN
 marger/a0p+	po:VERB
 margeur/Fs	po:NOUN
-marginal/W.	po:NOUN po:ADJ
+marginal/W.	po:ADJ po:NOUN
 marginalement	po:ADV
 marginalisation/S.	po:NOUN
 marginalisé/F.	po:NOUN po:ADJ
@@ -52602,7 +52605,7 @@ ovo	po:ADV
 ovocyte/S.	po:NOUN
 ovogenèse/S.	po:NOUN
 ovoïdal/W.	po:ADJ
-ovoïde/S.	po:NOUN po:ADJ
+ovoïde/S.	po:ADJ po:NOUN
 ovoproduit/S.	po:NOUN
 ovotestis	po:NOUN is:inv
 ovovivipare/S.	po:NOUN po:ADJ
@@ -53618,7 +53621,7 @@ parésie/S.	po:NOUN
 paresse/S.	po:NOUN
 paresser/a0p.	po:VERB
 paresseusement	po:ADV
-paresseux/W.	po:NOUN po:ADJ
+paresseux/W.	po:ADJ po:NOUN
 paresthésie/S.	po:NOUN
 pareur/Fs	po:NOUN
 parfaire/wD	po:VERB
@@ -66190,7 +66193,7 @@ saisies-exécutions	po:NOUN st:saisie-exécution is:feminine is:plural
 saisine/S.	po:NOUN
 saisir/f0p+	po:VERB
 saisissable/S.	po:ADJ
-saisissant/F.	po:NOUN po:ADJ
+saisissant/F.	po:ADJ
 saisissement/S.	po:NOUN
 saisisseur/S.	po:NOUN
 saison/S.	po:NOUN
@@ -66229,8 +66232,7 @@ salarisation/S.	po:NOUN
 salaud/S.	po:NOUN po:ADJ
 salauderie/S.	po:NOUN
 salchow/S.	po:NOUN
-sale/S.	po:NOUN po:ADJ
-salé	po:NOUN
+sale/S.	po:ADJ po:NOUN
 salé/F.	po:ADJ
 salègre/S.	po:NOUN
 salement	po:ADV
@@ -68859,7 +68861,7 @@ soliloquie/S.	po:NOUN
 solin/S.	po:NOUN
 solipède/S.	po:ADJ
 solipsisme/S.	po:NOUN
-solipsiste/S.	po:NOUN po:ADJ
+solipsiste/S.	po:ADJ po:NOUN
 soliste/S.	po:NOUN
 solitaire/S.	po:ADJ po:NOUN
 solitairement	po:ADV
@@ -70541,7 +70543,7 @@ subligneux/W.	po:ADJ
 sublimable/S.	po:ADJ
 sublimation/S.	po:NOUN
 sublimatoire/S.	po:ADJ
-sublime/S.	po:NOUN po:ADJ
+sublime/S.	po:ADJ po:NOUN
 sublimé/F.	po:ADJ
 sublimement	po:ADV
 sublimer/a0p+	po:VERB
@@ -70798,7 +70800,8 @@ suivi/F.	po:ADJ
 suivisme/S.	po:NOUN
 suiviste/S.	po:NOUN po:ADJ
 suivre/xQ	po:VERB
-sujet/F+	po:NOUN
+sujet/S.	po:NOUN
+sujet/F+	po:ADJ
 sujétion/S.	po:NOUN
 sukkeler/d0p.	po:VERB
 sukuma/S.	po:NOUN po:ADJ
@@ -72865,7 +72868,7 @@ télophase/S.	po:NOUN
 télougou/S.	po:NOUN
 telson/S.	po:NOUN
 tembotrione/S.	po:NOUN
-téméraire/S.	po:NOUN po:ADJ
+téméraire/S.	po:ADJ po:NOUN
 témérairement	po:ADV
 témérité/S.	po:NOUN
 témoignage/S.	po:NOUN
@@ -73986,7 +73989,8 @@ tombac/S.	po:NOUN
 tombal/W.	po:ADJ
 tombant/F.	po:ADJ
 tombe/S.	po:NOUN
-tombé/F.	po:NOUN po:ADJ
+tombé/F.	po:ADJ
+tombée/S.	po:NOUN
 tombeau/X.	po:NOUN
 tombelle/S.	po:NOUN
 tomber/a0p+	po:VERB
@@ -74125,7 +74129,7 @@ tordant/F.	po:ADJ
 tordeur/Fs	po:NOUN
 tordoir/S.	po:NOUN
 tordre/tA	po:VERB
-tordu/F.	po:NOUN po:ADJ
+tordu/F.	po:ADJ po:NOUN
 tore/S.	po:NOUN
 toréador/S.	po:NOUN
 toréer/a0p.	po:VERB
