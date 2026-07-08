@@ -102,8 +102,9 @@ public final class TermLexicon {
      * morphological fields of the field's dictionary.
      * <p>
      * These are independent membership bits, but {@code po:} triggers are treated as one ordered POS axis: only
-     * the first {@code po:} token of a dictionary line may set a POS flag. A term may still carry several flags
-     * at once, for example one POS flag and one named-entity flag. Each constant declares the {@code key:value}
+     * the first {@code po:} token encountered for one resolved term id may set a POS flag. A term may still carry
+     * several flags at once, for example one POS flag and one named-entity flag. Each constant declares the
+     * {@code key:value}
      * tokens that set it — part of speech through {@code po:} (e.g. {@code po:ADJ}), named-entity type through
      * {@code ne:} (e.g. {@code ne:pers}). The model extends by a local edit: add a constant with its trigger
      * tokens, or add a token to an existing constant. Tokens present in the dictionary but declared by no
@@ -263,6 +264,7 @@ public final class TermLexicon {
         this.vocabSize = off.length - 1;
 
         final EnumMap<TermFlag, BitSet> bits = new EnumMap<>(TermFlag.class);
+        final BitSet posTerms = new BitSet(vocabSize);
 
         Dictionary dict = null;
         if (dic != null) {
@@ -289,7 +291,7 @@ public final class TermLexicon {
                 if (body != null) {
                     body.append(line).append('\n');
                 }
-                harvestFlags(line, cut, tid, bits);
+                harvestFlags(line, cut, tid, bits, posTerms);
             }
             if (aff != null && kept > 0) {
                 final ByteArrayInputStream filtered = new ByteArrayInputStream(
@@ -557,40 +559,47 @@ public final class TermLexicon {
     /**
      * Sets every flag triggered by one kept dictionary line, scanning its Hunspell morphological tokens from
      * the end of the headword. Whitespace-delimited non-POS tokens are cumulative. POS tokens are ordered: only
-     * the first {@code po:} token is allowed to set a flag, even when later {@code po:} tokens also match
-     * {@link #FLAG_TRIGGERS}. Tokens that match no flag (affix codes, {@code fr:}, unmodelled tags) are ignored.
+     * the first {@code po:} token encountered for one resolved term id is allowed to set a POS flag. Later
+     * {@code po:} tokens for the same term id, even from another dictionary line, are ignored. Tokens that match
+     * no flag (affix codes, {@code fr:}, unmodelled tags) are ignored, but an unmodelled primary {@code po:}
+     * still consumes the term's POS slot.
      *
-     * @param line   raw dictionary line
-     * @param from   index where the morphological fields begin (the headword end)
-     * @param termId resolved term id for the line's headword
-     * @param bits   flag sets being filled
+     * @param line     raw dictionary line
+     * @param from     index where the morphological fields begin (the headword end)
+     * @param termId   resolved term id for the line's headword
+     * @param bits     flag sets being filled
+     * @param posTerms term ids whose primary POS token has already been consumed
      */
     private void harvestFlags(final String line, final int from, final int termId,
-            final EnumMap<TermFlag, BitSet> bits) {
+            final EnumMap<TermFlag, BitSet> bits, final BitSet posTerms) {
         final int n = line.length();
-        boolean posSeen = false;
+        boolean posSeenInLine = false;
         int i = from;
         while (i < n) {
-            while (i < n && (line.charAt(i) == ' ' || line.charAt(i) == '\t')) {
+            while (i < n && (line.charAt(i) == ' ' || line.charAt(i) == '	')) {
                 i++;
             }
             final int start = i;
-            while (i < n && line.charAt(i) != ' ' && line.charAt(i) != '\t') {
+            while (i < n && line.charAt(i) != ' ' && line.charAt(i) != '	') {
                 i++;
             }
-            if (i > start) {
-                final String token = line.substring(start, i);
-                if (token.startsWith("po:")) {
-                    if (posSeen) {
-                        continue;
-                    }
-                    posSeen = true;
+            if (i <= start) {
+                continue;
+            }
+
+            final String token = line.substring(start, i);
+            if (token.startsWith("po:")) {
+                if (posSeenInLine || posTerms.get(termId)) {
+                    continue;
                 }
-                final List<TermFlag> flags = FLAG_TRIGGERS.get(token);
-                if (flags != null) {
-                    for (final TermFlag flag : flags) {
-                        bits.computeIfAbsent(flag, k -> new BitSet(vocabSize)).set(termId);
-                    }
+                posSeenInLine = true;
+                posTerms.set(termId);
+            }
+
+            final List<TermFlag> flags = FLAG_TRIGGERS.get(token);
+            if (flags != null) {
+                for (final TermFlag flag : flags) {
+                    bits.computeIfAbsent(flag, k -> new BitSet(vocabSize)).set(termId);
                 }
             }
         }
