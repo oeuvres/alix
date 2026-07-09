@@ -41,10 +41,11 @@ public class Pars
     public static final String SLOP             = "slop";
     public static final int    SLOP_DEFAULT     = 20;
     public static final int[]  SLOP_RANGE       = {0, 200};
-    public static final String SORT             = "sort";
+    public static final String SMOOTH           = "smooth";
     public static final String SNIPPETS         = "snippets";
     public static final int    SNIPPETS_DEFAULT = 3;
     public static final int[]  SNIPPETS_RANGE   = {-1, 100};
+    public static final String SORT             = "sort";
     public static final String START            = "start";
     public static final String TERMS            = "terms";
     public static final int    TERMS_DEFAULT    = 50;

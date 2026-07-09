@@ -24,7 +24,7 @@ public class HistoSnippets implements SnippetsConsumer
     }
     
 	@Override
-	public void docSnippets(int docId, Snippets snippets) throws IOException {
+	public void docSnippets(int docId, DocSnippets snippets) throws IOException {
         final int histoIndex = histo.index(docId, -1);
         if (histoIndex < 0) return;
         final int snippetsCount = snippets.count();

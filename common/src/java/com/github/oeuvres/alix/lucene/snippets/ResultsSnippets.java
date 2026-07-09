@@ -25,9 +25,9 @@ import static com.github.oeuvres.alix.common.Names.*;
  * A {@link SnippetsConsumer} that writes span search results as an HTML
  * fragment. The renderer is a stateful, fluent-configured object: required
  * inputs are passed to the constructor, optional inputs via chained setters,
- * then the caller invokes either {@link #docSnippets(int, Snippets)} per
+ * then the caller invokes either {@link #docSnippets(int, DocSnippets)} per
  * document inside a {@link SpanWalker} loop, or the lower-level
- * {@link #docOpen(int, String)} / {@link #snippets(int, Snippets)} /
+ * {@link #docOpen(int, String)} / {@link #snippets(int, DocSnippets)} /
  * {@link #docClose(int)} triple for finer control.
  *
  * <h2>Snippet selection</h2>
@@ -57,7 +57,7 @@ import static com.github.oeuvres.alix.common.Names.*;
  *
  * <h2>Constraints</h2>
  * <p>
- * Required {@link Snippets} mode: {@link Snippets.Usage#OFFSETS}.
+ * Required {@link DocSnippets} mode: {@link DocSnippets.Usage#OFFSETS}.
  * Document-level pagination is the responsibility of {@link SpanWalker},
  * not this renderer. This class is not thread-safe.
  * </p>
@@ -210,13 +210,13 @@ public class ResultsSnippets implements SnippetsConsumer
      *
      * @param docId    Lucene document id
      * @param snippets finished snippets for {@code docId}; must be in
-     *                 {@link Snippets.Usage#OFFSETS}
+     *                 {@link DocSnippets.Usage#OFFSETS}
      * @throws IOException if the writer or stored-fields access fails
      */
     @Override
     public void docSnippets(
         final int docId,
-        final Snippets snippets
+        final DocSnippets snippets
     ) throws IOException {
         docOpen(docId, "hassnippets");
         final int snipCount = snippets.count();
@@ -329,12 +329,12 @@ public class ResultsSnippets implements SnippetsConsumer
      *
      * @param docId    Lucene document id
      * @param snippets finished snippets for {@code docId}; must be in
-     *                 {@link Snippets.Usage#OFFSETS}
+     *                 {@link DocSnippets.Usage#OFFSETS}
      * @throws IOException if the writer or stored-fields access fails
      */
     public void snippets(
         final int docId,
-        final Snippets snippets
+        final DocSnippets snippets
     ) throws IOException {
         ensureDoc(docId);
         final int snipCount = snippets.count();
@@ -449,8 +449,8 @@ public class ResultsSnippets implements SnippetsConsumer
      * Requires the snippet to contain at least one match. A snippet without
      * matches in OFFSETS mode is an upstream invariant violation and will
      * surface as an {@link IndexOutOfBoundsException} from
-     * {@link Snippets#matchStartOffset(int)} via the {@code -1} returned by
-     * {@link Snippets#snipStartMatch(int)}; this is intentional.
+     * {@link DocSnippets#matchStartOffset(int)} via the {@code -1} returned by
+     * {@link DocSnippets#snipStartMatch(int)}; this is intentional.
      * </p>
      *
      * @param snippets finished snippets in OFFSETS mode
@@ -458,7 +458,7 @@ public class ResultsSnippets implements SnippetsConsumer
      * @throws IOException if the writer fails
      */
     private void print(
-        final Snippets snippets,
+        final DocSnippets snippets,
         final int snipOrd
     ) throws IOException {
         final int leftMatchOrd = snippets.snipStartMatch(snipOrd);

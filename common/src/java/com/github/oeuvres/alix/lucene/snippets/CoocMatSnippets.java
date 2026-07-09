@@ -187,7 +187,7 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
     @Override
     public void docSnippets(
         final int docId,
-        final Snippets snippets
+        final DocSnippets snippets
     )
         throws IOException
     {

@@ -16,7 +16,7 @@ import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.ResultsSnippets;
-import com.github.oeuvres.alix.lucene.snippets.Snippets;
+import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
@@ -149,7 +149,7 @@ public class OpResults extends Op {
             return;
         }
 
-        Snippets snippets = new Snippets(Snippets.Usage.OFFSETS, slop);
+        DocSnippets snippets = new DocSnippets(DocSnippets.Usage.OFFSETS, slop);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,

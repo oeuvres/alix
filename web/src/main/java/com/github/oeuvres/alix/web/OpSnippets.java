@@ -12,7 +12,7 @@ import org.apache.lucene.queries.spans.SpanQuery;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.ResultsSnippets;
-import com.github.oeuvres.alix.lucene.snippets.Snippets;
+import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
@@ -110,7 +110,7 @@ public class OpSnippets extends Op
         .rail(rail)
         .termWeights(termWeights)
         .urlTemplate("{docname}?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
-        Snippets snippets = new Snippets(Snippets.Usage.OFFSETS, slop);
+        DocSnippets snippets = new DocSnippets(DocSnippets.Usage.OFFSETS, slop);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,

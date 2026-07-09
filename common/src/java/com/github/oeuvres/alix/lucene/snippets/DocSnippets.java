@@ -44,7 +44,7 @@ import org.apache.lucene.queries.spans.SpanCollector;
  * This class is not thread-safe.
  * </p>
  */
-public final class Snippets implements SpanCollector
+public final class DocSnippets implements SpanCollector
 {
     /**
      * Collection level.
@@ -108,7 +108,7 @@ public final class Snippets implements SpanCollector
      *                 and the next span start. {@code 0} merges only touching or overlapping
      *                 spans; positive values fuse spans separated by up to that many positions.
      */
-    public Snippets(final Usage usage, final int mergeGap)
+    public DocSnippets(final Usage usage, final int mergeGap)
     {
         if (usage == null) {
             throw new IllegalArgumentException("usage must not be null");

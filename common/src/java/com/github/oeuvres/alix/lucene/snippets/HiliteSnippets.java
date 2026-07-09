@@ -16,11 +16,11 @@ import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 
-import com.github.oeuvres.alix.lucene.snippets.Snippets.Usage;
+import com.github.oeuvres.alix.lucene.snippets.DocSnippets.Usage;
 
 /**
  * Injects highlight markup into a stored document for one {@link SpanQuery}, using a
- * {@link SpanWalker} to collect spans into {@link Snippets} and merging overlapping or
+ * {@link SpanWalker} to collect spans into {@link DocSnippets} and merging overlapping or
  * gap-close raw spans into user-visible passages.
  *
  * <h2>Output</h2>
@@ -82,7 +82,7 @@ public final class HiliteSnippets
     private long[] events;
     private final Term[] queryTerms;
     private final IndexSearcher searcher;
-    private final Snippets snippets;
+    private final DocSnippets snippets;
     private final SpanWalker walker;
 
     /**
@@ -106,8 +106,8 @@ public final class HiliteSnippets
         if (mergeGap < 0) {
             throw new IllegalArgumentException("mergeGap must be >= 0");
         }
-        Usage usage = Snippets.Usage.OFFSETS;
-        this.snippets = new Snippets(usage, mergeGap);
+        Usage usage = DocSnippets.Usage.OFFSETS;
+        this.snippets = new DocSnippets(usage, mergeGap);
         this.walker = new SpanWalker(searcher, spanQuery, snippets);
 
         final Set<Term> termSet = new HashSet<>();

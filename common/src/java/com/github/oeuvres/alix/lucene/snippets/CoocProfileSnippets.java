@@ -132,7 +132,7 @@ public final class CoocProfileSnippets implements SnippetsConsumer
     @Override
     public void docSnippets(
         final int docId,
-        final Snippets snippets
+        final DocSnippets snippets
     )
         throws IOException {
         final int n = left.length;

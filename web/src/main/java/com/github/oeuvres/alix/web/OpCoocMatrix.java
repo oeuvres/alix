@@ -18,7 +18,7 @@ import org.hipparchus.linear.SingularValueDecomposition;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
-import com.github.oeuvres.alix.lucene.snippets.Snippets;
+import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
@@ -53,6 +53,16 @@ import jakarta.servlet.http.HttpServletResponse;
  * product {@code rowSum(a)·rowSum(b)/total} is only the zeroth iteration. Cells
  * are add-k smoothed ({@code smooth} parameter, default 0.5) before the fit, to
  * stop small-count Pearson residuals injecting noise inertia into the spectrum.
+ * </p>
+ *
+ * <p>
+ * Three residuals are exposed through {@code assoc}: {@code pearson} (default,
+ * χ², variance-stabilised, favours well-attested contrasts), {@code g2}
+ * (deviance, same family, tamer on small expectations) and {@code logratio}
+ * (double-centred logs, Lewi's spectral map — multiplicative contrasts weigh
+ * evenly, so rarer vocabulary carries more of the geometry). The first two
+ * residualise against the multiplicative IPF fit cell by cell; the last centres
+ * additively in log space over the whole table.
  * </p>
  *
  * <p>
@@ -100,7 +110,9 @@ public final class OpCoocMatrix extends Op
      * <p>
      * Order of operations is deliberate: smooth every off-diagonal cell first,
      * take the margins of the smoothed table, fit γ on those margins, then
-     * residualise each cell against {@code γ(a)·γ(b)}. Smoothing only zero cells
+     * residualise each cell against {@code γ(a)·γ(b)} — or, in {@code logratio}
+     * mode, skip the multiplicative fit and centre additively in log space
+     * ({@link #logRatio}). Smoothing only zero cells
      * would bias the margins; a flat add-k prior does not. {@code freq} is the
      * separate occurrence marginal read from the diagonal, which
      * {@code CoocMatSnippets} fills; it is not smoothed and not part of the
@@ -150,9 +162,9 @@ public final class OpCoocMatrix extends Op
 
         final IntMatrixById coocMat = new IntMatrixById(termIds);
         final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
-        new SpanWalker(index.searcher(), spanQuery, new Snippets(Snippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
+        new SpanWalker(index.searcher(), spanQuery, new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
 
-        final double smooth = smooth(pars);
+        final double smooth = pars.getDouble(SMOOTH, 0.5);
         final int n = coocMat.length();
         final long[] freq = new long[n];
         final double[] rowSum = new double[n];
@@ -169,14 +181,19 @@ public final class OpCoocMatrix extends Op
             }
         }
 
-        final String assoc = pars.getString("assoc", "pearson");
-        final double[] gamma = ipf(rowSum);
-        final double[][] s = new double[n][n];
-        for (int a = 0; a < n; a++) {
-            for (int b = 0; b < n; b++) {
-                if (a == b) continue;
-                final double v = residualCell(assoc, o[a][b], gamma[a] * gamma[b]);
-                s[a][b] = Double.isFinite(v) ? v : 0d;
+        final String assoc = pars.getString("assoc", "g2");
+        final double[][] s;
+        if ("g2".equals(assoc)) {
+            s = logRatio(o);
+        } else {
+            final double[] gamma = ipf(rowSum);
+            s = new double[n][n];
+            for (int a = 0; a < n; a++) {
+                for (int b = 0; b < n; b++) {
+                    if (a == b) continue;
+                    final double v = residualCell(assoc, o[a][b], gamma[a] * gamma[b]);
+                    s[a][b] = Double.isFinite(v) ? v : 0d;
+                }
             }
         }
 
@@ -360,14 +377,82 @@ public final class OpCoocMatrix extends Op
     }
 
     /**
+     * Log-ratio (spectral-map) residual matrix: the log of each off-diagonal
+     * cell, double-centred by the least-squares fit of the additive
+     * quasi-independence model {@code log o(a,b) ≈ α(a) + α(b)}, {@code a ≠ b}
+     * — the exact additive analogue of the multiplicative fit in {@link #ipf},
+     * solved by the same Gauss–Seidel scheme (the normal equation for each α,
+     * others held fixed, is closed-form). Double-centring is what makes the log
+     * usable as map geometry: it removes the size factor that dominates the SVD
+     * of any near-non-negative matrix, and preserves the independence centring
+     * that clipping (PPMI) destroys. Relative to the Pearson residual, all
+     * multiplicative contrasts weigh the same regardless of expected count, so
+     * rare-word oppositions carry more inertia — lexical specificity rather
+     * than bulk co-occurrence.
+     *
+     * <p>
+     * Cells must be positive to take the log; upstream add-k smoothing
+     * guarantees that except at {@code smooth=0}, where non-positive cells are
+     * excluded from the fit and residualised at 0 — treated as uninformative
+     * rather than infinitely repelled. The fit is unweighted, consistent with
+     * the omitted {@code 1/√mass} step of the rest of the class (Lewi's
+     * spectral map rather than Greenacre's weighted log-ratio analysis).
+     * </p>
+     *
+     * @param o smoothed off-diagonal counts, symmetric, zero diagonal
+     * @return the double-centred log matrix, zero diagonal
+     */
+    private static double[][] logRatio(final double[][] o) {
+        final int n = o.length;
+        final double[] alpha = new double[n];
+        final double[] rowSumL = new double[n];
+        final int[] rowLen = new int[n];
+        for (int a = 0; a < n; a++) {
+            for (int b = 0; b < n; b++) {
+                if (a == b || o[a][b] <= 0d) continue;
+                rowSumL[a] += Math.log(o[a][b]);
+                rowLen[a]++;
+            }
+        }
+        for (int a = 0; a < n; a++) {
+            if (rowLen[a] > 0) alpha[a] = rowSumL[a] / (2d * rowLen[a]);
+        }
+        for (int iter = 0; iter < 200; iter++) {
+            double err = 0d;
+            for (int a = 0; a < n; a++) {
+                if (rowLen[a] == 0) continue;
+                double cross = 0d;
+                for (int b = 0; b < n; b++) {
+                    if (b == a || o[a][b] <= 0d) continue;
+                    cross += alpha[b];
+                }
+                final double next = (rowSumL[a] - cross) / rowLen[a];
+                err = Math.max(err, Math.abs(next - alpha[a]));
+                alpha[a] = next;
+            }
+            if (err < 1e-10) break;
+        }
+        final double[][] s = new double[n][n];
+        for (int a = 0; a < n; a++) {
+            for (int b = 0; b < n; b++) {
+                if (a == b || o[a][b] <= 0d) continue;
+                s[a][b] = Math.log(o[a][b]) - alpha[a] - alpha[b];
+            }
+        }
+        return s;
+    }
+
+    /**
      * Signed cell residual of the observed count against the fitted expectation.
      * Pearson is {@code (o − e)/√e}; G² is the Poisson deviance residual
      * {@code sign(o − e)·√(2·(o·ln(o/e) − o + e))}, which stays bounded where the
      * Pearson residual explodes on small expectations. The {@code − o + e} term
      * is what keeps zero cells finite: at {@code o = 0} the deviance is
-     * {@code 2e}, residual {@code −√(2e)}. Any other {@code assoc} value is
-     * served as Pearson: only independence-centred measures give a meaningful
-     * spectral map.
+     * {@code 2e}, residual {@code −√(2e)}. {@code "logratio"} never reaches
+     * this method — it is not a per-cell function of {@code (o, e)}, its
+     * centring is a fit over the whole table, handled by {@link #logRatio}. Any
+     * other {@code assoc} value is served as Pearson: only independence-centred
+     * measures give a meaningful spectral map.
      *
      * @param assoc residual name, {@code "pearson"} or {@code "g2"}
      * @param o     observed, smoothed count
@@ -396,24 +481,4 @@ public final class OpCoocMatrix extends Op
         return Math.round(v * f) / f;
     }
 
-    /**
-     * Add-k smoothing constant from the {@code smooth} parameter, default 0.5
-     * (the Jeffreys-flavoured choice), clamped to {@code [0, ∞)}; {@code 0}
-     * disables smoothing, which is the A/B lever against the unsmoothed map.
-     * Parsed here rather than through a typed getter so the class does not
-     * depend on {@code HttpPars} having a {@code getDouble}; swap for the typed
-     * getter if one exists.
-     *
-     * @param pars request parameters
-     * @return the smoothing constant
-     */
-    private static double smooth(final HttpPars pars) {
-        final String raw = pars.getString("smooth", "0.5");
-        try {
-            final double v = Double.parseDouble(raw);
-            return (v >= 0d && Double.isFinite(v)) ? v : 0.5d;
-        } catch (final NumberFormatException e) {
-            return 0.5d;
-        }
-    }
 }

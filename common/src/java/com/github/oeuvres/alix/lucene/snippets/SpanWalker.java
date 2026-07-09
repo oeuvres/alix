@@ -24,7 +24,7 @@ import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 
 /**
  * Walks a {@link SpanQuery} and drains every accepted document's span positions into a reusable
- * {@link Snippets} buffer supplied at construction.
+ * {@link DocSnippets} buffer supplied at construction.
  *
  * <p>Two entry points are provided. {@link #visit(int)} drains the spans of one global document id
  * into the configured snippets — intended for relevance-sorted hit lists where documents are
@@ -71,7 +71,7 @@ public final class SpanWalker
     private final IndexSearcher searcher;
 
     /** Snippet buffer this walker drains into; reused across documents. */
-    private final Snippets snippets;
+    private final DocSnippets snippets;
 
     /** Rewritten span query enumerated by this walker. */
     private final SpanQuery spanQuery;
@@ -93,7 +93,7 @@ public final class SpanWalker
          *                 a consumer must copy any data it needs to keep
          * @throws IOException if the consumer performs Lucene I/O and it fails
          */
-        public void docSnippets(int docId, Snippets snippets) throws IOException;
+        public void docSnippets(int docId, DocSnippets snippets) throws IOException;
     }
 
     /**
@@ -103,7 +103,7 @@ public final class SpanWalker
      * @param searcher  index searcher used for query rewrite, weight creation, and leaf access
      * @param spanQuery span query to enumerate
      * @param snippets  reusable per-document snippet collector; its
-     *                  {@link Snippets#usage() usage} fixes the postings level requested from
+     *                  {@link DocSnippets#usage() usage} fixes the postings level requested from
      *                  leaves
      * @throws IOException              if query rewrite or weight creation fails
      * @throws NullPointerException     if any argument is {@code null}
@@ -112,7 +112,7 @@ public final class SpanWalker
     public SpanWalker(
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
-            final Snippets snippets) throws IOException
+            final DocSnippets snippets) throws IOException
     {
         this(searcher, spanQuery, snippets, null);
     }
@@ -127,7 +127,7 @@ public final class SpanWalker
      * @param searcher    index searcher used for query rewrite, weight creation, and leaf access
      * @param spanQuery   span query to enumerate
      * @param snippets    reusable per-document snippet collector; its
-     *                    {@link Snippets#usage() usage} fixes the postings level requested from
+     *                    {@link DocSnippets#usage() usage} fixes the postings level requested from
      *                    leaves
      * @param filterQuery optional non-scoring Lucene filter query, or {@code null}
      * @throws IOException              if query rewrite, weight creation, or filter materialization
@@ -139,7 +139,7 @@ public final class SpanWalker
     public SpanWalker(
             final IndexSearcher searcher,
             final SpanQuery spanQuery,
-            final Snippets snippets,
+            final DocSnippets snippets,
             final Query filterQuery) throws IOException
     {
         this.searcher = Objects.requireNonNull(searcher, "searcher");
@@ -148,7 +148,7 @@ public final class SpanWalker
         this.maxDoc = searcher.getIndexReader().maxDoc();
         this.leaves = searcher.getLeafContexts();
         this.leafCursors = new LeafCursor[leaves.size()];
-        this.postings = snippets.usage() == Snippets.Usage.OFFSETS
+        this.postings = snippets.usage() == DocSnippets.Usage.OFFSETS
                 ? Postings.OFFSETS
                 : Postings.POSITIONS;
 
@@ -216,7 +216,7 @@ public final class SpanWalker
 
     /**
      * Drains the spans of one document into the configured snippets buffer. The walker calls
-     * {@link Snippets#openDoc(int)} on entry and {@link Snippets#closeDoc()} on exit, so the
+     * {@link DocSnippets#openDoc(int)} on entry and {@link DocSnippets#closeDoc()} on exit, so the
      * caller may treat the buffer as a fresh snapshot of the document on return.
      *
      * <p>Intended for relevance-sorted hit lists. Repeated forward-leaning calls in the same leaf

@@ -14,7 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
-import com.github.oeuvres.alix.lucene.snippets.Snippets;
+import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.snippets.TopCoocSnippets;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
@@ -165,7 +165,7 @@ public final class OpTerms extends Op
             final SpanWalker walker = new SpanWalker(
                 index.searcher(),
                 spanQuery,
-                new Snippets(Snippets.Usage.POSITIONS, slop),
+                new DocSnippets(DocSnippets.Usage.POSITIONS, slop),
                 filterQuery
             );
             

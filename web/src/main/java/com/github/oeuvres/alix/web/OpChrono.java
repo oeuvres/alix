@@ -14,7 +14,7 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.output.HistoNum;
 import com.github.oeuvres.alix.lucene.output.HistoNum.Col;
 import com.github.oeuvres.alix.lucene.snippets.HistoSnippets;
-import com.github.oeuvres.alix.lucene.snippets.Snippets;
+import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
@@ -59,7 +59,7 @@ public class OpChrono extends Op
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,
-            new Snippets(Snippets.Usage.FREQS, slop),
+            new DocSnippets(DocSnippets.Usage.FREQS, slop),
             filterQuery
         );
         final HistoSnippets consumer = new HistoSnippets(histo);

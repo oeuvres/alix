@@ -168,7 +168,7 @@ public final class TopCoocSnippets implements SnippetsConsumer
     @Override
     public void docSnippets(
         final int docId,
-        final Snippets snippets
+        final DocSnippets snippets
     )
         throws IOException {
         windowMask.clear();
