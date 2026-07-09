@@ -23,7 +23,6 @@ import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
-import com.github.oeuvres.alix.util.AssociationMeasure;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -46,10 +45,31 @@ import jakarta.servlet.http.HttpServletResponse;
  * Analysis: the {@code 1/√mass} step is omitted, which is what stops
  * low-frequency terms being flung to the rim and yields the more even spread.
  * </p>
+ *
+ * <p>
+ * The expectation model is symmetric quasi-independence, {@code e(a,b) =
+ * γ(a)·γ(b)} on the off-diagonal cells, fitted by {@link #ipf} — the correct
+ * treatment of the structural zeros on the diagonal, of which the plain margin
+ * product {@code rowSum(a)·rowSum(b)/total} is only the zeroth iteration. Cells
+ * are add-k smoothed ({@code smooth} parameter, default 0.5) before the fit, to
+ * stop small-count Pearson residuals injecting noise inertia into the spectrum.
+ * </p>
+ *
+ * <p>
+ * Up to {@link #DIMS} axes are emitted, each with a deterministic sign (the
+ * point of largest absolute coordinate is positive), so maps are visually
+ * comparable across runs and parameter settings. Each node carries its
+ * {@code cos²} in the drawn plane — the share of the node's own inertia the
+ * first two axes capture — so a client can distinguish a genuinely neutral
+ * central point from a badly represented one.
+ * </p>
  */
 public final class OpCoocMatrix extends Op
 {
-    
+
+    /** Maximum number of axes emitted; clients cluster on all, draw the first two. */
+    private static final int DIMS = 6;
+
     /**
      * Immutable result of a co-occurrence map: parallel arrays indexed by rank, plus
      * the inertia share of each axis. Produced by {@link OpCoocMatrix#compute} and
@@ -59,131 +79,40 @@ public final class OpCoocMatrix extends Op
      * @param form    term form, by rank
      * @param freq    occurrence marginal f(a), by rank — the matrix diagonal filled
      *                by {@code CoocMatSnippets}, direction-independent
-     * @param xy      coordinates, {@code xy[rank][axis]}
+     * @param coords  coordinates, {@code coords[rank][axis]}, axes sign-fixed;
+     *                the drawn plane is axes 0 and 1
+     * @param cos2    per node, share of its inertia carried by the drawn plane,
+     *                in {@code [0, 1]} — the representation-quality diagnostic
      * @param inertia percentage of total inertia carried by each axis
      */
-    record CoocMap(String[] form, long[] freq, double[][] xy, double[] inertia) {}
-     
-
-    @Override
-    protected void csv(
-        final LuceneIndex index,
-        final HttpServletRequest request,
-        final HttpServletResponse response
-    )
-        throws IOException {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
-        final CoocMap map = compute(index, pars, meta);
-        final Writer writer = response.getWriter();
-        if (map == null) {
-            meta.toString(writer, pars);
-            return;
-        }
-        final DecimalFormat fmt = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance(Locale.US));
-        writer.append("form,freq,x,y\n");
-        for (int i = 0; i < map.form().length; i++) {
-            writer.append(csvCell(map.form()[i])).append(',')
-                  .append(Long.toString(map.freq()[i])).append(',')
-                  .append(fmt.format(map.xy()[i][0])).append(',')
-                  .append(fmt.format(map.xy()[i][1])).append('\n');
-        }
-
-    }
-    
-    /**
-     * CSV-escapes a field per RFC 4180: quoted only when it contains a comma,
-     * double quote, CR or LF, with internal quotes doubled.
-     *
-     * @param s field value
-     * @return the field, quoted if it needs to be
-     */
-    private static String csvCell(final String s) {
-        if (s.indexOf(',') < 0 && s.indexOf('"') < 0 && s.indexOf('\n') < 0 && s.indexOf('\r') < 0) return s;
-        return '"' + s.replace("\"", "\"\"") + '"';
-    }
-
-
-    @Override
-    protected void json(
-        final LuceneIndex index,
-        final HttpServletRequest request,
-        final HttpServletResponse response
-    )
-        throws IOException {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
-        final CoocMap map = compute(index, pars, meta);
-        try (JsonWriter jw = Op.jsonWriter(response)) {
-            jw.beginObject();
- 
-            jw.name("meta");
-            jw.beginObject();
-            meta.toJson(jw, pars);
-            jw.endObject();
- 
-            if (map != null) {
-                jw.name("data");
-                jw.beginObject();
-                jw.name("axes");
-                jw.beginObject();
-                jw.name("dim1_pct").value(round(map.inertia()[0], 1));
-                jw.name("dim2_pct").value(round(map.inertia()[1], 1));
-                jw.name("cum2_pct").value(round(map.inertia()[0] + map.inertia()[1], 1));
-                jw.name("spectrum");
-                jw.beginArray();
-                for (final double pct : map.inertia()) {
-                    jw.value(round(pct, 1));
-                }
-                jw.endArray();
-                jw.endObject();
-                jw.name("nodes");
-                jw.beginArray();
-                for (int i = 0; i < map.form().length; i++) {
-                    jw.beginObject();
-                    jw.name("id").value(map.form()[i]);
-                    jw.name("freq").value(map.freq()[i]);
-                    jw.name("x").value(round(map.xy()[i][0], 4));
-                    jw.name("y").value(round(map.xy()[i][1], 4));
-                    jw.endObject();
-                }
-                jw.endArray();
-                jw.endObject();
-            }
- 
-            jw.endObject();
-        }
-
-    }
-    
-    /**
-     * Rounds to {@code decimals} fractional digits, to keep serialised
-     * coordinates short.
-     *
-     * @param v        value
-     * @param decimals number of fractional digits
-     * @return the rounded value
-     */
-    private static double round(final double v, final int decimals) {
-        final double f = Math.pow(10, decimals);
-        return Math.round(v * f) / f;
-    }
+    record CoocMap(String[] form, long[] freq, double[][] coords, double[] cos2, double[] inertia) {}
 
 
     /**
-     * Runs the whole pipeline — term selection, span walk, residual matrix, SVD —
-     * and returns the layout, or {@code null} when there is nothing to draw (no
-     * top terms, or no span query). Format-independent; callers serialise the
-     * result. The SVD math is the version verified against a numpy reference; it
-     * additionally keeps the diagonal occurrence marginal as {@code freq} for
-     * display and the leading inertia shares for diagnostics and axis captions.
+     * Runs the whole pipeline — term selection, span walk, smoothing, IPF fit,
+     * residual matrix, SVD — and returns the layout, or {@code null} when there
+     * is nothing to draw (no top terms, or no span query). Format-independent;
+     * callers serialise the result. The SVD math is the version verified against
+     * a numpy reference; it additionally keeps the diagonal occurrence marginal
+     * as {@code freq} for display and the leading inertia shares for diagnostics
+     * and axis captions.
      *
      * <p>
-     * Margins for the residual are the off-diagonal row sums of the symmetrised
-     * matrix (the table's own margins, a zeroed diagonal); {@code freq} is the
+     * Order of operations is deliberate: smooth every off-diagonal cell first,
+     * take the margins of the smoothed table, fit γ on those margins, then
+     * residualise each cell against {@code γ(a)·γ(b)}. Smoothing only zero cells
+     * would bias the margins; a flat add-k prior does not. {@code freq} is the
      * separate occurrence marginal read from the diagonal, which
-     * {@code CoocMatSnippets} fills. {@code pivotIds} is present in {@code meta}
-     * only in co-occurrence mode, so its use is guarded.
+     * {@code CoocMatSnippets} fills; it is not smoothed and not part of the
+     * model. {@code pivotIds} is present in {@code meta} only in co-occurrence
+     * mode, so its use is guarded.
+     * </p>
+     *
+     * <p>
+     * Post-SVD: the {@code cos²} denominator is the node's full inertia over all
+     * axes (row norm of the residual matrix, an exact identity of the SVD), so
+     * it is computed before truncation to {@link #DIMS}. Sign-fixing negates
+     * whole columns, which changes no distance and no inertia.
      * </p>
      *
      * @param index the index to read
@@ -223,31 +152,30 @@ public final class OpCoocMatrix extends Op
         final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
         new SpanWalker(index.searcher(), spanQuery, new Snippets(Snippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
 
+        final double smooth = smooth(pars);
         final int n = coocMat.length();
-        final int dims = 2;
         final long[] freq = new long[n];
-        final long[] rowSum = new long[n];
-        final long[][] o = new long[n][n];
-        long total = 0L;
+        final double[] rowSum = new double[n];
+        final double[][] o = new double[n][n];
         for (int a = 0; a < n; a++) {
             freq[a] = coocMat.countByRank(a, a);
             for (int b = 0; b < n; b++) {
                 if (a == b) continue;
-                final long v = directed
-                    ? (long) coocMat.countByRank(a, b) + coocMat.countByRank(b, a)
-                    : coocMat.countByRank(a, b);
+                final double v = smooth + (directed
+                    ? (double) coocMat.countByRank(a, b) + coocMat.countByRank(b, a)
+                    : coocMat.countByRank(a, b));
                 o[a][b] = v;
                 rowSum[a] += v;
-                total += v;
             }
         }
 
-        final AssociationMeasure residual = residual(pars);
+        final String assoc = pars.getString("assoc", "pearson");
+        final double[] gamma = ipf(rowSum);
         final double[][] s = new double[n][n];
         for (int a = 0; a < n; a++) {
             for (int b = 0; b < n; b++) {
                 if (a == b) continue;
-                final double v = residual.score(o[a][b], rowSum[a], rowSum[b], total);
+                final double v = residualCell(assoc, o[a][b], gamma[a] * gamma[b]);
                 s[a][b] = Double.isFinite(v) ? v : 0d;
             }
         }
@@ -261,34 +189,231 @@ public final class OpCoocMatrix extends Op
         final int inertiaLen = Math.min(10, sv.length);
         final double[] inertia = new double[inertiaLen];
         for (int k = 0; k < inertiaLen; k++) inertia[k] = 100d * sv[k] * sv[k] / sumSq;
-        final double[][] xy = new double[n][dims];
-        for (int a = 0; a < n; a++)
-            for (int k = 0; k < dims; k++)
-                xy[a][k] = u.getEntry(a, k) * sv[k];
+
+        final int dims = Math.min(n, DIMS);
+        final double[][] coords = new double[n][dims];
+        final double[] cos2 = new double[n];
+        for (int a = 0; a < n; a++) {
+            double denom = 0d;
+            for (int k = 0; k < sv.length; k++) {
+                final double c = u.getEntry(a, k) * sv[k];
+                denom += c * c;
+                if (k < dims) coords[a][k] = c;
+            }
+            final double num = coords[a][0] * coords[a][0] + coords[a][1] * coords[a][1];
+            cos2[a] = denom > 0d ? num / denom : 0d;
+        }
+        for (int k = 0; k < dims; k++) {
+            int arg = 0;
+            for (int a = 1; a < n; a++) {
+                if (Math.abs(coords[a][k]) > Math.abs(coords[arg][k])) arg = a;
+            }
+            if (coords[arg][k] < 0d) {
+                for (int a = 0; a < n; a++) coords[a][k] = -coords[a][k];
+            }
+        }
 
         final TermLexicon lexicon = contentFluc.termLexicon();
         final String[] form = new String[n];
         for (int a = 0; a < n; a++) form[a] = lexicon.form(coocMat.id(a));
 
-        return new CoocMap(form, freq, xy, inertia);
+        return new CoocMap(form, freq, coords, cos2, inertia);
+    }
+
+    @Override
+    protected void csv(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    )
+        throws IOException {
+        final HttpPars pars = new HttpPars(request, response);
+        final MetaUtil meta = new MetaUtil();
+        final CoocMap map = compute(index, pars, meta);
+        final Writer writer = response.getWriter();
+        if (map == null) {
+            meta.toString(writer, pars);
+            return;
+        }
+        final DecimalFormat fmt = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance(Locale.US));
+        writer.append("form,freq,x,y,cos2\n");
+        for (int i = 0; i < map.form().length; i++) {
+            writer.append(csvCell(map.form()[i])).append(',')
+                  .append(Long.toString(map.freq()[i])).append(',')
+                  .append(fmt.format(map.coords()[i][0])).append(',')
+                  .append(fmt.format(map.coords()[i][1])).append(',')
+                  .append(fmt.format(map.cos2()[i])).append('\n');
+        }
+
     }
 
     /**
-     * Residual measure for the map, from {@code assoc}. Only measures centred on
-     * independence give a meaningful spectral map, so the choice is Pearson (χ²,
-     * the default) or log-likelihood (G²); any other value falls back to Pearson.
+     * CSV-escapes a field per RFC 4180: quoted only when it contains a comma,
+     * double quote, CR or LF, with internal quotes doubled.
+     *
+     * @param s field value
+     * @return the field, quoted if it needs to be
+     */
+    private static String csvCell(final String s) {
+        if (s.indexOf(',') < 0 && s.indexOf('"') < 0 && s.indexOf('\n') < 0 && s.indexOf('\r') < 0) return s;
+        return '"' + s.replace("\"", "\"\"") + '"';
+    }
+
+    /**
+     * Fits the symmetric quasi-independence model {@code e(a,b) = γ(a)·γ(b)},
+     * {@code a ≠ b}, to the off-diagonal margins by iterative proportional
+     * fitting, so the structural zeros on the diagonal no longer bias the
+     * expected counts. The update is Gauss–Seidel — each new γ is used
+     * immediately, with the running sum maintained incrementally — so a table of
+     * this size converges in a handful of sweeps. Iteration zero (the
+     * initialisation) reproduces the plain margin model
+     * {@code e = rowSum(a)·rowSum(b)/total}. Rows with a zero margin get
+     * {@code γ = 0} and drop out of the expectations.
+     *
+     * @param rowSum off-diagonal row sums of the smoothed symmetric matrix
+     * @return the multipliers γ, indexed by rank
+     */
+    private static double[] ipf(final double[] rowSum) {
+        final int n = rowSum.length;
+        double total = 0d;
+        for (final double m : rowSum) total += m;
+        if (total <= 0d) return new double[n];
+        final double[] gamma = new double[n];
+        final double norm = Math.sqrt(total);
+        for (int a = 0; a < n; a++) gamma[a] = rowSum[a] / norm;
+        double gSum = 0d;
+        for (final double g : gamma) gSum += g;
+        for (int iter = 0; iter < 200; iter++) {
+            double err = 0d;
+            for (int a = 0; a < n; a++) {
+                final double denom = gSum - gamma[a];
+                if (denom <= 0d) continue;
+                final double next = rowSum[a] / denom;
+                err = Math.max(err, Math.abs(next - gamma[a]) / (next + 1e-12));
+                gSum += next - gamma[a];
+                gamma[a] = next;
+            }
+            if (err < 1e-10) break;
+        }
+        return gamma;
+    }
+
+    @Override
+    protected void json(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    )
+        throws IOException {
+        final HttpPars pars = new HttpPars(request, response);
+        final MetaUtil meta = new MetaUtil();
+        final CoocMap map = compute(index, pars, meta);
+        try (JsonWriter jw = Op.jsonWriter(response)) {
+            jw.beginObject();
+
+            jw.name("meta");
+            jw.beginObject();
+            meta.toJson(jw, pars);
+            jw.endObject();
+
+            if (map != null) {
+                final int dims = map.coords()[0].length;
+                jw.name("data");
+                jw.beginObject();
+                jw.name("axes");
+                jw.beginObject();
+                jw.name("dims").value(dims);
+                jw.name("dim1_pct").value(round(map.inertia()[0], 1));
+                jw.name("dim2_pct").value(round(map.inertia()[1], 1));
+                jw.name("cum2_pct").value(round(map.inertia()[0] + map.inertia()[1], 1));
+                jw.name("spectrum");
+                jw.beginArray();
+                for (final double pct : map.inertia()) {
+                    jw.value(round(pct, 1));
+                }
+                jw.endArray();
+                jw.endObject();
+                jw.name("nodes");
+                jw.beginArray();
+                for (int i = 0; i < map.form().length; i++) {
+                    jw.beginObject();
+                    jw.name("id").value(map.form()[i]);
+                    jw.name("freq").value(map.freq()[i]);
+                    jw.name("x").value(round(map.coords()[i][0], 4));
+                    jw.name("y").value(round(map.coords()[i][1], 4));
+                    jw.name("cos2").value(round(map.cos2()[i], 4));
+                    jw.name("coords");
+                    jw.beginArray();
+                    for (int k = 0; k < dims; k++) {
+                        jw.value(round(map.coords()[i][k], 4));
+                    }
+                    jw.endArray();
+                    jw.endObject();
+                }
+                jw.endArray();
+                jw.endObject();
+            }
+
+            jw.endObject();
+        }
+
+    }
+
+    /**
+     * Signed cell residual of the observed count against the fitted expectation.
+     * Pearson is {@code (o − e)/√e}; G² is the Poisson deviance residual
+     * {@code sign(o − e)·√(2·(o·ln(o/e) − o + e))}, which stays bounded where the
+     * Pearson residual explodes on small expectations. The {@code − o + e} term
+     * is what keeps zero cells finite: at {@code o = 0} the deviance is
+     * {@code 2e}, residual {@code −√(2e)}. Any other {@code assoc} value is
+     * served as Pearson: only independence-centred measures give a meaningful
+     * spectral map.
+     *
+     * @param assoc residual name, {@code "pearson"} or {@code "g2"}
+     * @param o     observed, smoothed count
+     * @param e     expected count under the fitted model
+     * @return the signed residual, 0 when {@code e} is not positive
+     */
+    private static double residualCell(final String assoc, final double o, final double e) {
+        if (e <= 0d) return 0d;
+        if ("g2".equals(assoc)) {
+            final double dev = 2d * ((o > 0d ? o * Math.log(o / e) : 0d) - o + e);
+            return Math.copySign(Math.sqrt(Math.max(0d, dev)), o - e);
+        }
+        return (o - e) / Math.sqrt(e);
+    }
+
+    /**
+     * Rounds to {@code decimals} fractional digits, to keep serialised
+     * coordinates short.
+     *
+     * @param v        value
+     * @param decimals number of fractional digits
+     * @return the rounded value
+     */
+    private static double round(final double v, final int decimals) {
+        final double f = Math.pow(10, decimals);
+        return Math.round(v * f) / f;
+    }
+
+    /**
+     * Add-k smoothing constant from the {@code smooth} parameter, default 0.5
+     * (the Jeffreys-flavoured choice), clamped to {@code [0, ∞)}; {@code 0}
+     * disables smoothing, which is the A/B lever against the unsmoothed map.
+     * Parsed here rather than through a typed getter so the class does not
+     * depend on {@code HttpPars} having a {@code getDouble}; swap for the typed
+     * getter if one exists.
      *
      * @param pars request parameters
-     * @return the residual measure
+     * @return the smoothing constant
      */
-    private static AssociationMeasure residual(final HttpPars pars) {
-        return switch (pars.getString("assoc", "pearson")) {
-            case "g2" -> new AssociationMeasure.LogLikelihood();
-            case "ppmi" -> new AssociationMeasure.Ppmi();
-            case "npmi" -> new AssociationMeasure.Npmi();
-            case "logdice" -> new AssociationMeasure.LogDice();
-            case "raw" -> new AssociationMeasure.Raw();
-            default -> new AssociationMeasure.Pearson();
-        };
+    private static double smooth(final HttpPars pars) {
+        final String raw = pars.getString("smooth", "0.5");
+        try {
+            final double v = Double.parseDouble(raw);
+            return (v >= 0d && Double.isFinite(v)) ? v : 0.5d;
+        } catch (final NumberFormatException e) {
+            return 0.5d;
+        }
     }
 }
