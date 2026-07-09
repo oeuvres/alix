@@ -129,6 +129,13 @@ public final class OpCoocMatrix extends Op
                 jw.beginObject();
                 jw.name("dim1_pct").value(round(map.inertia()[0], 1));
                 jw.name("dim2_pct").value(round(map.inertia()[1], 1));
+                jw.name("cum2_pct").value(round(map.inertia()[0] + map.inertia()[1], 1));
+                jw.name("spectrum");
+                jw.beginArray();
+                for (final double pct : map.inertia()) {
+                    jw.value(round(pct, 1));
+                }
+                jw.endArray();
                 jw.endObject();
                 jw.name("nodes");
                 jw.beginArray();
@@ -169,7 +176,7 @@ public final class OpCoocMatrix extends Op
      * top terms, or no span query). Format-independent; callers serialise the
      * result. The SVD math is the version verified against a numpy reference; it
      * additionally keeps the diagonal occurrence marginal as {@code freq} for
-     * display and the first two inertia shares for the axis captions.
+     * display and the leading inertia shares for diagnostics and axis captions.
      *
      * <p>
      * Margins for the residual are the off-diagonal row sums of the symmetrised
@@ -226,7 +233,9 @@ public final class OpCoocMatrix extends Op
             freq[a] = coocMat.countByRank(a, a);
             for (int b = 0; b < n; b++) {
                 if (a == b) continue;
-                final long v = (long) coocMat.countByRank(a, b) + coocMat.countByRank(b, a);
+                final long v = directed
+                    ? (long) coocMat.countByRank(a, b) + coocMat.countByRank(b, a)
+                    : coocMat.countByRank(a, b);
                 o[a][b] = v;
                 rowSum[a] += v;
                 total += v;
@@ -249,8 +258,9 @@ public final class OpCoocMatrix extends Op
         final RealMatrix u = svd.getU();
         double sumSq = 0d;
         for (final double x : sv) sumSq += x * x;
-        final double[] inertia = new double[dims];
-        for (int k = 0; k < dims; k++) inertia[k] = 100d * sv[k] * sv[k] / sumSq;
+        final int inertiaLen = Math.min(10, sv.length);
+        final double[] inertia = new double[inertiaLen];
+        for (int k = 0; k < inertiaLen; k++) inertia[k] = 100d * sv[k] * sv[k] / sumSq;
         final double[][] xy = new double[n][dims];
         for (int a = 0; a < n; a++)
             for (int k = 0; k < dims; k++)
