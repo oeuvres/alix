@@ -14,6 +14,7 @@ import org.apache.lucene.search.Query;
 import org.hipparchus.linear.Array2DRowRealMatrix;
 import org.hipparchus.linear.RealMatrix;
 import org.hipparchus.linear.SingularValueDecomposition;
+import org.hipparchus.special.Gamma;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
@@ -51,8 +52,11 @@ import jakarta.servlet.http.HttpServletResponse;
  * γ(a)·γ(b)} on the off-diagonal cells, fitted by {@link #ipf} — the correct
  * treatment of the structural zeros on the diagonal, of which the plain margin
  * product {@code rowSum(a)·rowSum(b)/total} is only the zeroth iteration. Cells
- * are add-k smoothed ({@code smooth} parameter, default 0.5) before the fit, to
+ * are add-k smoothed before the fit, to
  * stop small-count Pearson residuals injecting noise inertia into the spectrum.
+ * The k is fitted on the observed counts by empirical Bayes
+ * ({@link #smoothFit}) unless the {@code smooth} parameter carries an explicit
+ * non-negative value.
  * </p>
  *
  * <p>
@@ -108,9 +112,11 @@ public final class OpCoocMatrix extends Op
      * and axis captions.
      *
      * <p>
-     * Order of operations is deliberate: smooth every off-diagonal cell first,
-     * take the margins of the smoothed table, fit γ on those margins, then
-     * residualise each cell against {@code γ(a)·γ(b)} — or, in {@code logratio}
+     * Order of operations is deliberate: fit k on the raw distinct-pair counts
+     * when no explicit {@code smooth} was given ({@link #smoothFit}), smooth
+     * every off-diagonal cell, take the margins of the smoothed table, fit γ
+     * on those margins, then residualise each cell against
+     * {@code γ(a)·γ(b)} — or, in {@code logratio}
      * mode, skip the multiplicative fit and centre additively in log space
      * ({@link #logRatio}). Smoothing only zero cells
      * would bias the margins; a flat add-k prior does not. {@code freq} is the
@@ -164,20 +170,42 @@ public final class OpCoocMatrix extends Op
         final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
         new SpanWalker(index.searcher(), spanQuery, new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
 
-        final double smooth = pars.getDouble(SMOOTH, 0.5);
         final int n = coocMat.length();
         final long[] freq = new long[n];
         final double[] rowSum = new double[n];
         final double[][] o = new double[n][n];
+        int cmax = 0;
         for (int a = 0; a < n; a++) {
             freq[a] = coocMat.countByRank(a, a);
             for (int b = 0; b < n; b++) {
                 if (a == b) continue;
-                final double v = smooth + (directed
+                final double v = directed
                     ? (double) coocMat.countByRank(a, b) + coocMat.countByRank(b, a)
-                    : coocMat.countByRank(a, b));
+                    : coocMat.countByRank(a, b);
                 o[a][b] = v;
-                rowSum[a] += v;
+                if (v > cmax) cmax = (int) v;
+            }
+        }
+
+        double smooth = pars.getDouble(SMOOTH, 1d);
+        if (smooth < 0d) {
+            final long[] hist = new long[cmax + 1];
+            long total = 0L;
+            for (int a = 0; a < n; a++) {
+                for (int b = a + 1; b < n; b++) {
+                    final int c = (int) o[a][b];
+                    hist[c]++;
+                    total += c;
+                }
+            }
+            smooth = smoothFit(hist, (long) n * (n - 1) / 2, total);
+        }
+
+        for (int a = 0; a < n; a++) {
+            for (int b = 0; b < n; b++) {
+                if (a == b) continue;
+                o[a][b] += smooth;
+                rowSum[a] += o[a][b];
             }
         }
 
@@ -479,6 +507,41 @@ public final class OpCoocMatrix extends Op
     private static double round(final double v, final int decimals) {
         final double f = Math.pow(10, decimals);
         return Math.round(v * f) / f;
+    }
+
+    /**
+     * Empirical Bayes add-k: the concentration of a symmetric Dirichlet prior
+     * over the off-diagonal cells, fitted on the raw counts by maximising the
+     * Dirichlet-multinomial marginal likelihood (Minka's fixed point). The
+     * numerator {@code Σ ψ(c + k) − ψ(k)} telescopes into partial harmonic
+     * sums for integer counts, so one iteration costs {@code O(maxCount)} and
+     * the whole fit a few dozen µs at map sizes — invisible next to the span
+     * walk. The model treats cells as exchangeable, which co-occurrence cells
+     * are not: the estimate is a data-driven default, not an oracle, and an
+     * explicit non-negative {@code smooth} parameter bypasses it.
+     *
+     * @param hist  {@code hist[c]} = number of distinct off-diagonal cells with raw count {@code c}
+     * @param cells number of distinct off-diagonal cells, {@code n·(n−1)/2}
+     * @param total sum of the raw counts over those cells
+     * @return the fitted k, clamped to {@code [0.001, 10]}; 0.5 (the Jeffreys
+     *         prior) when there is nothing to fit
+     */
+    private static double smoothFit(final long[] hist, final long cells, final long total) {
+        if (cells <= 0 || total <= 0) return 0.5;
+        double k = 0.5;
+        for (int iter = 0; iter < 100; iter++) {
+            double num = 0d;
+            double harmonic = 0d;
+            for (int c = 1; c < hist.length; c++) {
+                harmonic += 1d / (c - 1 + k);
+                if (hist[c] > 0) num += hist[c] * harmonic;
+            }
+            final double den = cells * (Gamma.digamma(total + cells * k) - Gamma.digamma(cells * k));
+            final double next = Math.min(10d, Math.max(0.001d, k * num / den));
+            if (Math.abs(next - k) < 1e-6) return next;
+            k = next;
+        }
+        return k;
     }
 
 }
