@@ -3,8 +3,6 @@ package com.github.oeuvres.alix.lucene.snippets;
 import java.io.IOException;
 import java.io.Writer;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -66,14 +64,12 @@ public class ResultsSnippets implements SnippetsConsumer
 {
     private final Detagger detagger = new Detagger(Set.of("i", "em"));
     private final Writer writer;
-    private final Locale locale;
     private final int snipLimit;
     private final StoredFields storedFields;
+    private final Locale locale;
+    private SnippetScorer snippetScorer;
     private final ResourceBundle messages;
     private final NumberFormat numForm;
-    private TermRail rail;
-    private double[] termWeights;
-    private int[] termDedup;
     private final TopArray topSnips;
     private int ctx = 10;
     private String fieldDocline = "docline";
@@ -84,8 +80,6 @@ public class ResultsSnippets implements SnippetsConsumer
     private Document doc;
     private String content;
     private String docname;
-    /** Monotonic stamp for per-snippet term dedup in {@link #scoreSnippet}; not a snippet ordinal. */
-    private int dedupEpoch;
 
     /**
      * Creates a renderer with the four required inputs. Optional
@@ -111,7 +105,8 @@ public class ResultsSnippets implements SnippetsConsumer
         final Writer writer,
         final StoredFields storedFields,
         final int snipLimit,
-        final Locale locale
+        final Locale locale,
+        final SnippetScorer snippetScorer
     ) {
         this.writer = Objects.requireNonNull(writer, "writer");
         this.storedFields = Objects.requireNonNull(storedFields, "storedFields");
@@ -121,6 +116,7 @@ public class ResultsSnippets implements SnippetsConsumer
         } else {
             this.topSnips = null;
         }
+        this.snippetScorer = snippetScorer;
         if (locale == null) this.locale = Locale.getDefault();
         else this.locale = locale;
         this.numForm = NumberFormat.getInstance(this.locale);
@@ -271,35 +267,6 @@ public class ResultsSnippets implements SnippetsConsumer
     }
 
     /**
-     * Reports whether snippet ranking is fully configured. Scoring requires
-     * both a {@link TermRail} (set via {@link #rail(TermRail)}) and a term
-     * weight array (set via {@link #termWeights(double[])}); without both,
-     * any code path that would invoke ranking fails with
-     * {@link IllegalArgumentException}.
-     *
-     * @return {@code true} when ranking is fully configured
-     */
-    public boolean hasScoring()
-    {
-        return rail != null && termWeights != null;
-    }
-
-    /**
-     * Sets the term rail used to score snippet windows. Required for
-     * ranking, together with {@link #termWeights(double[])}. Without both,
-     * ranking branches throw {@link IllegalArgumentException}.
-     *
-     * @param rail term rail aligned with the index used by this renderer
-     * @return this instance
-     */
-    public ResultsSnippets rail(
-        final TermRail rail
-    ) {
-        this.rail = rail;
-        return this;
-    }
-
-    /**
      * Returns the maximum number of snippets rendered per document, as
      * fixed at construction. {@code 0} disables snippet rendering and the
      * loading of the content field; a negative value lifts the cap and
@@ -356,12 +323,19 @@ public class ResultsSnippets implements SnippetsConsumer
                 print(snippets, snipOrd);
             }
             writer.append("</ol>\n");
-        } else {
+        } else if(snippetScorer == null) {
+            writer.append("<ol class=\"snippets\">\n");
+            for (int snipOrd = 0; snipOrd < snipLimit; snipOrd++) {
+                print(snippets, snipOrd);
+            }
+            writer.append("</ol>\n");
+        }
+        else {
             topSnips.clear();
             for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
                 final int startPos = Math.max(0, snippets.snipStartPosition(snipOrd) - ctx);
                 final int endPos = snippets.snipEndPosition(snipOrd) + ctx;
-                topSnips.push(snipOrd, scoreSnippet(docId, startPos, endPos));
+                topSnips.push(snipOrd, snippetScorer.score(docId, startPos, endPos));
             }
             writer.append("<ol class=\"snippets\">\n");
             for (final TopArray.TopEntry pair : topSnips) {
@@ -369,23 +343,6 @@ public class ResultsSnippets implements SnippetsConsumer
             }
             writer.append("</ol>\n");
         }
-    }
-
-    /**
-     * Sets the per-term weight array used by snippet scoring. Indexed by
-     * term id; sized to the term universe of the configured {@link TermRail}.
-     * Term ids outside this range are silently ignored at scoring time.
-     * Required for ranking, together with {@link #rail(TermRail)}.
-     *
-     * @param termWeights per-term weights, indexed by term id
-     * @return this instance
-     * @throws NullPointerException if {@code termWeights} is {@code null}
-     */
-    public ResultsSnippets termWeights(
-        final double[] termWeights
-    ) {
-        this.termWeights = Objects.requireNonNull(termWeights, "termWeights");
-        return this;
     }
 
     /**
@@ -499,46 +456,6 @@ public class ResultsSnippets implements SnippetsConsumer
             .append(">")
             .append("→</a>\n");
         writer.append("</li>\n");
-    }
-
-    /**
-     * Computes the score of a snippet window as the sum of term weights for
-     * the distinct terms appearing in {@code [startPosition, endPosition)}
-     * on the rail for {@code docId}. Each term contributes at most once per
-     * snippet via {@link #dedupEpoch}.
-     *
-     * @param docId         Lucene document id
-     * @param startPosition first position to include, inclusive
-     * @param endPosition   first position to exclude
-     * @return accumulated score
-     * @throws IllegalArgumentException if either {@link #rail(TermRail)} or
-     *         {@link #termWeights(double[])} has not been set
-     */
-    private double scoreSnippet(
-        final int docId,
-        final int startPosition,
-        final int endPosition
-    ) {
-        if (rail == null || termWeights == null) {
-            final List<String> message = new ArrayList<>(2);
-            if (rail == null)
-                message.add("Score the snippets needs a TermRail to get terms to score, see #rail(TermRail).");
-            if (termWeights == null)
-                message.add("Score the snippets needs a by term score array, see #termWeights(double[]).");
-            throw new IllegalArgumentException(String.join("\n", message));
-        }
-        if (termDedup == null) {
-            termDedup = new int[termWeights.length];
-        }
-        final double[] acc = { 0d };
-        dedupEpoch++;
-        rail.scanWindow(docId, startPosition, endPosition, termId -> {
-            if (termId < termDedup.length && termDedup[termId] != dedupEpoch) {
-                termDedup[termId] = dedupEpoch;
-                acc[0] += termWeights[termId];
-            }
-        });
-        return acc[0];
     }
 
     /**

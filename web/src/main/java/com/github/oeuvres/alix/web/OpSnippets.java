@@ -105,10 +105,9 @@ public class OpSnippets extends Op
             writer, 
             index.reader().storedFields(), 
             snipLimit,
-            index.locale()
+            index.locale(),
+            null
         ).ctx(ctx)
-        .rail(rail)
-        .termWeights(termWeights)
         .urlTemplate("{docname}?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
         DocSnippets snippets = new DocSnippets(DocSnippets.Usage.OFFSETS, slop);
         final SpanWalker walker = new SpanWalker(

@@ -89,10 +89,8 @@ public final class DocSnippets implements SpanCollector
     private int snipStartPos;
     /** Current snippet end position */
     private int snipEndPos;
-    // POSITIONS
     /** (snippetStartPosition, snippetEndPosition) */
     private long[] snippets;
-    // OFFSETS
     /** Count of matches collected for current doc, after dedup once {@link #closeDoc()} has run */
     private int matchCount;
     /** (position, matchOffsetsIndex) of a matched token */

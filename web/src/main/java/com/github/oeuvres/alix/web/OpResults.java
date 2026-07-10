@@ -16,6 +16,7 @@ import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.ResultsSnippets;
+import com.github.oeuvres.alix.lucene.snippets.SnippetScorer;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
@@ -106,18 +107,18 @@ public class OpResults extends Op {
         meta.toString(writer, pars);
         writer.append("\n-->\n");
         
-        // MAYBE, get a locale from lang param
+        // build the snippet scorer
+        SnippetScorer snipScore = new SnippetScorer.ThemeWords(rail, termWeights);
 
         final ResultsSnippets results = new ResultsSnippets(
             writer, 
             index.reader().storedFields(), 
             snipLimit,
-            index.locale()
+            index.locale(),
+            snipScore
         ).fieldContent(contentFname)
          .fieldDocline(docline)
          .ctx(ctx)
-         .rail(rail)
-         .termWeights(termWeights)
          .urlTemplate("{docname}?" + pars.queryString(FTEXT, Q, CTX) + "&amp;slop=" + slop);
 
         // no query, list docs
@@ -158,9 +159,9 @@ public class OpResults extends Op {
         );
         int nextDoc = 0;
 
-        final String sort = pars.getString(SORT, SCORE, Set.of(SCORE, DATE), SORT);
+        final String sort = pars.getString(SORT, DOCS, Set.of(DOCS, SNIPPETS, DATE), SORT);
+        // linear walk in docId order
         if (DATE.equals(sort)) {
-            // linear walk in docId order
             writer.append("<p class=\"statshits\">");
             final int hitsCount = walker.hits();
             if (docs < hitsCount) {
@@ -169,8 +170,15 @@ public class OpResults extends Op {
             writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
             writer.flush();
             nextDoc = walker.walk(from, docs, results);
-        } else {
-            // relevance
+        }
+        // linear walk in docId order, collect snippet, sort and diaplays
+        else if (SNIPPETS.equals(sort)) {
+            // here, what should be the best API?
+            // to have the counts of snippets, we need to loop all docs
+            // we need a TopSlot<Snippet> to display to snippets
+        }
+        // document relevance
+        else {
             final Query query;
             if (filterQuery != null) {
                 query = new BooleanQuery.Builder()
@@ -185,7 +193,7 @@ public class OpResults extends Op {
             writer.append("<p class=\"statshits\">");
             if (docs < hitsCount)
                 writer.append(String.valueOf(docs)).append("/");
-            writer.append(String.valueOf(hitsCount)).append(" documents ").append("</p>\n");
+            writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
             writer.flush();
 
             for (ScoreDoc sd : hits) {
@@ -330,10 +338,11 @@ public class OpResults extends Op {
                     <form id="search-form">
                       <textarea name="%s">%s</textarea>
                       <button type="submit" name="%s" value="%s">by date</button>
-                      <button type="submit" name="%s" value="%s">by score</button>
+                      <button type="submit" name="%s" value="%s">by docs</button>
+                      <button type="submit" name="%s" value="%s">by snippets</button>
                     </form>
                     <section class="hits">
-                """.formatted(Q, pars.getString(Q, ""), SORT, DATE, SORT, SCORE));
+                """.formatted(Q, pars.getString(Q, ""), SORT, DATE, SORT, DOCS, SORT, SNIPPETS));
 
         html(index, request, response); // writes the fragment directly into the same response
         writer.write("""

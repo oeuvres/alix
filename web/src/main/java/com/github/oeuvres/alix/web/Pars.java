@@ -35,7 +35,6 @@ public class Pars
     public static final String ROWS             = "rows";
     public static final int    ROWS_DEFAULT     = 2000;
     public static final int[]  ROWS_RANGE       = {1, 2000};
-    public static final String SCORE            = "score";
     public static final String SCORER           = "scorer";
     public static final String SIMPLE_MATHS     = "simplemaths";
     public static final String SLOP             = "slop";
