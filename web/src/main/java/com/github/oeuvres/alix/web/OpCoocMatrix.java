@@ -1,5 +1,6 @@
 package com.github.oeuvres.alix.web;
 
+import static com.github.oeuvres.alix.lucene.terms.TopTerms.TermValue.FREQ;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 import java.io.IOException;
@@ -7,6 +8,7 @@ import java.io.Writer;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Locale;
 
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -21,8 +23,11 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
+import com.github.oeuvres.alix.lucene.snippets.TopCoocSnippets;
+import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.IntMatrixById;
@@ -39,7 +44,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * {@link CoocMap}; {@link CoocMatUtil} serialises it as CSV or JSON.
  *
  * <p>
- * The map is always symmetric, so {@code directed} does not reach the geometry:
+ * With identical row and column vocabularies, the map follows the historical
+ * symmetric geometry, so {@code directed} does not reach that geometry:
  * folding the directed matrix onto its transpose is exactly what symmetrisation
  * does, and the undirected factor of two washes out under the scale invariance
  * of correspondence-style analysis. It is not mass-rescaled Correspondence
@@ -48,7 +54,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * </p>
  *
  * <p>
- * The expectation model is symmetric quasi-independence, {@code e(a,b) =
+ * For square tables, the expectation model is symmetric quasi-independence, {@code e(a,b) =
  * γ(a)·γ(b)} on the off-diagonal cells, fitted by {@link #ipf} — the correct
  * treatment of the structural zeros on the diagonal, of which the plain margin
  * product {@code rowSum(a)·rowSum(b)/total} is only the zeroth iteration. Cells
@@ -91,8 +97,9 @@ public final class OpCoocMatrix extends Op
      * trivially serialisable to any format.
      *
      * @param form    term form, by rank
-     * @param freq    occurrence marginal f(a), by rank — the matrix diagonal filled
-     *                by {@code CoocMatSnippets}, direction-independent
+     * @param freq    occurrence marginal f(a), by row rank; read from the
+     *                historical diagonal in square mode and from the query population
+     *                in rectangular mode
      * @param coords  coordinates, {@code coords[rank][axis]}, axes sign-fixed;
      *                the drawn plane is axes 0 and 1
      * @param cos2    per node, share of its inertia carried by the drawn plane,
@@ -145,123 +152,550 @@ public final class OpCoocMatrix extends Op
         final MetaUtil meta
     )
         throws IOException {
-        final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
-        if (topTerms == null) return null;
         final SpanQuery spanQuery = spanQuery(index, pars);
         if (spanQuery == null) return null;
-
-        final int[] pivotIds = (int[]) meta.get("pivotIds");
-        final IntList termIds = new IntList(topTerms.size());
-        for (final TermEntry term : topTerms) {
-            final int termId = term.termId();
-            if (pivotIds != null && Arrays.binarySearch(pivotIds, termId) >= 0) continue;
-            termIds.push(termId);
-        }
-
-        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final Query filterQuery = filterQuery(index, pars);
-        final String contentFname = pars.getString(FTEXT, index.content());
-        final FlucText contentFluc = index.flucText(contentFname);
+        FlucText contentFluc = contentFluc(index, pars, meta);
+        TermLexicon contentLexicon = contentFluc.termLexicon();
+        TopTerms topTerms = contentFluc.topTerms();
+        
+        // pivotsIds
+        final int[] pivotIds = contentFluc.termLexicon().termIds(spanQuery);
+        // increment the topK of pivots
+        final int terms = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
+
+        // same as for the span query parser
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
         final int right = pars.getInt(RIGHT, RIGHT_RANGE, slop);
+        final SpanWalker walker = new SpanWalker(
+            index.searcher(),
+            spanQuery,
+            new DocSnippets(DocSnippets.Usage.POSITIONS, slop),
+            filterQuery
+        );
+        
+        final TopCoocSnippets consumer = new TopCoocSnippets(
+            contentFluc.termStats(),
+            contentFluc.termRail(),
+            left,
+            right);
+        consumer.bindTo(topTerms.buffers());
+        walker.walk(consumer);
+        topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
+        meta.put("pivotIds", pivotIds);
+        meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
+        meta.put("fieldTokens", contentFluc.termStats().fieldTokens());
+        meta.put("focusTokens", consumer.coocTokens());
+        meta.put("focusDocs", consumer.coocDocsTotal());
+        meta.put("hits", walker.hits());
+        
+        final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
+        final KeynessScorer scorer = tsort(pars);
+        
+        // get sorted rows, maybe filtered by a flag, will be the rows of interest to display
+        // Should we filter pivots now or after?
+        topTerms.rank(scorer, terms, tflag).promote(pivotIds, FREQ);
+        final IntList termIds = new IntList(topTerms.size());
+        BitSet rows = new BitSet(contentLexicon.vocabSize());
+        for (final TermEntry term : topTerms) {
+            final int termId = term.termId();
+            // shall we cut pivotIds from rows for SVD? Does it add signal or noise?
+            if (pivotIds != null && Arrays.binarySearch(pivotIds, termId) >= 0) continue;
+            rows.set(termId);
+            termIds.push(termId);
+        }
+        int[] rowIds = termIds.toUniq();
+        // get more co-occurrents than the focus terms, without filtering flag, to add semantic signal
+        // 0 = same as rows. Positive, cols added
+        final int cols = pars.getInt("cols", new int[]{0, 200}, 0);
+        final int[] colIds;
+        if (cols == 0) {
+            colIds = rowIds;
+        }
+        else {
+            // keep same scorer? do raw sort add signal or noise?
+            topTerms.rank(scorer, terms+cols, TermFlag.NULL).promote(pivotIds, FREQ);
+            // here termIds contains rows, add other terms
+            for (final TermEntry term : topTerms) {
+                final int termId = term.termId();
+                if (rows.get(termId)) continue;
+                termIds.push(termId);
+            }
+            colIds = termIds.toUniq();
+        }
+        final IntMatrixById coocMat = new IntMatrixById(rowIds, colIds);
         final boolean directed = pars.getBoolean("directed", false);
-
-        final IntMatrixById coocMat = new IntMatrixById(termIds);
         final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
         new SpanWalker(index.searcher(), spanQuery, new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
+        
+        // Convert the collected counts into a normalized residual matrix, run
+        // its SVD, and retain coordinates only for the displayed row terms.
+        // When both axes are identical, coocMap() deliberately delegates to the
+        // former symmetric implementation so that cols=0 remains compatible.
+        return coocMap(coocMat, topTerms, contentLexicon, pars, directed);
+    }
 
-        final int n = coocMat.length();
+    /**
+     * Builds the map from a collected co-occurrence matrix.
+     *
+     * <p>
+     * A matrix whose row and column ids are identical follows the historical
+     * symmetric path. A genuinely rectangular matrix follows a two-axis
+     * quasi-independence model with separate row and column effects.
+     * </p>
+     *
+     * @param coocMat collected co-occurrence matrix
+     * @param topTerms query-population term counts
+     * @param lexicon term lexicon
+     * @param pars request parameters
+     * @param directed whether the square collector recorded directed cells
+     * @return co-occurrence map for the row terms
+     */
+    private static CoocMap coocMap(
+        final IntMatrixById coocMat,
+        final TopTerms topTerms,
+        final TermLexicon lexicon,
+        final HttpPars pars,
+        final boolean directed
+    ) {
+        if (Arrays.equals(coocMat.rowIds(), coocMat.colIds())) {
+            return coocMapSquare(coocMat, lexicon, pars, directed);
+        }
+        return coocMapRectangular(coocMat, topTerms, lexicon, pars);
+    }
+
+    /**
+     * Historical square normalization retained verbatim in substance.
+     *
+     * <p>
+     * Keeping this separate is intentional: when {@code cols=0}, row and column
+     * ids are identical and this method reproduces the former smoothing,
+     * symmetric IPF, residualization, SVD coordinates, and diagonal frequencies.
+     * </p>
+     *
+     * @param coocMat square co-occurrence matrix
+     * @param lexicon term lexicon
+     * @param pars request parameters
+     * @param directed whether opposite directed cells must be folded together
+     * @return map for the square matrix
+     */
+    private static CoocMap coocMapSquare(
+        final IntMatrixById coocMat,
+        final TermLexicon lexicon,
+        final HttpPars pars,
+        final boolean directed
+    ) {
+        final int n = coocMat.rowCount();
         final long[] freq = new long[n];
         final double[] rowSum = new double[n];
-        final double[][] o = new double[n][n];
-        int cmax = 0;
-        for (int a = 0; a < n; a++) {
-            freq[a] = coocMat.countByRank(a, a);
-            for (int b = 0; b < n; b++) {
-                if (a == b) continue;
-                final double v = directed
-                    ? (double) coocMat.countByRank(a, b) + coocMat.countByRank(b, a)
-                    : coocMat.countByRank(a, b);
-                o[a][b] = v;
-                if (v > cmax) cmax = (int) v;
+        final double[][] observed = new double[n][n];
+
+        // Step 1. Copy raw off-diagonal counts and preserve the old diagonal
+        // occurrence marginal used for display.
+        int maxCount = 0;
+        for (int row = 0; row < n; row++) {
+            freq[row] = coocMat.countByRank(row, row);
+            for (int col = 0; col < n; col++) {
+                if (row == col) {
+                    continue;
+                }
+                final double value = directed
+                    ? (double) coocMat.countByRank(row, col)
+                        + coocMat.countByRank(col, row)
+                    : coocMat.countByRank(row, col);
+                observed[row][col] = value;
+                if (value > maxCount) {
+                    maxCount = (int) value;
+                }
             }
         }
 
+        // Step 2. Fit or read the add-k smoothing parameter on distinct
+        // unordered off-diagonal cells.
         double smooth = pars.getDouble(SMOOTH, 1d);
         if (smooth < 0d) {
-            final long[] hist = new long[cmax + 1];
+            final long[] histogram = new long[maxCount + 1];
             long total = 0L;
-            for (int a = 0; a < n; a++) {
-                for (int b = a + 1; b < n; b++) {
-                    final int c = (int) o[a][b];
-                    hist[c]++;
-                    total += c;
+            for (int row = 0; row < n; row++) {
+                for (int col = row + 1; col < n; col++) {
+                    final int count = (int) observed[row][col];
+                    histogram[count]++;
+                    total += count;
                 }
             }
-            smooth = smoothFit(hist, (long) n * (n - 1) / 2, total);
+            smooth = smoothFit(histogram, (long) n * (n - 1) / 2, total);
         }
 
-        for (int a = 0; a < n; a++) {
-            for (int b = 0; b < n; b++) {
-                if (a == b) continue;
-                o[a][b] += smooth;
-                rowSum[a] += o[a][b];
+        // Step 3. Smooth every admissible cell and compute smoothed margins.
+        for (int row = 0; row < n; row++) {
+            for (int col = 0; col < n; col++) {
+                if (row == col) {
+                    continue;
+                }
+                observed[row][col] += smooth;
+                rowSum[row] += observed[row][col];
             }
         }
 
+        // Step 4. Convert counts to the selected independence-centred residual.
         final String assoc = pars.getString("assoc", "g2");
-        final double[][] s;
+        final double[][] residual;
         if ("g2".equals(assoc)) {
-            s = logRatio(o);
-        } else {
+            residual = logRatio(observed);
+        }
+        else {
             final double[] gamma = ipf(rowSum);
-            s = new double[n][n];
-            for (int a = 0; a < n; a++) {
-                for (int b = 0; b < n; b++) {
-                    if (a == b) continue;
-                    final double v = residualCell(assoc, o[a][b], gamma[a] * gamma[b]);
-                    s[a][b] = Double.isFinite(v) ? v : 0d;
+            residual = new double[n][n];
+            for (int row = 0; row < n; row++) {
+                for (int col = 0; col < n; col++) {
+                    if (row == col) {
+                        continue;
+                    }
+                    final double value = residualCell(
+                        assoc, observed[row][col], gamma[row] * gamma[col]);
+                    residual[row][col] = Double.isFinite(value) ? value : 0d;
                 }
             }
         }
 
+        return svdMap(residual, freq, coocMat.rowIds(), lexicon);
+    }
+
+    /**
+     * Normalizes a rectangular co-occurrence table and maps its row profiles.
+     *
+     * <p>
+     * Self-term cells are structural zeros identified by equality of ids, not by
+     * equality of ranks. Pearson and deviance residuals use the fitted rectangular
+     * quasi-independence table. Log-ratio residuals use separate additive row and
+     * column effects.
+     * </p>
+     *
+     * @param coocMat rectangular co-occurrence matrix
+     * @param topTerms query-population term counts
+     * @param lexicon term lexicon
+     * @param pars request parameters
+     * @return map for the row terms
+     */
+    private static CoocMap coocMapRectangular(
+        final IntMatrixById coocMat,
+        final TopTerms topTerms,
+        final TermLexicon lexicon,
+        final HttpPars pars
+    ) {
+        final int rowCount = coocMat.rowCount();
+        final int colCount = coocMat.colCount();
+        final long[] freq = new long[rowCount];
+        final boolean[][] admissible = new boolean[rowCount][colCount];
+        final double[][] observed = new double[rowCount][colCount];
+
+        // Step 1. Copy raw counts. Row frequencies come from the query population
+        // because a rectangular matrix has no diagonal-marginal convention.
+        int maxCount = 0;
+        long admissibleCells = 0L;
+        long rawTotal = 0L;
+        for (int row = 0; row < rowCount; row++) {
+            final int rowId = coocMat.rowId(row);
+            freq[row] = topTerms.termFreq(rowId);
+            for (int col = 0; col < colCount; col++) {
+                if (rowId == coocMat.colId(col)) {
+                    continue;
+                }
+                admissible[row][col] = true;
+                admissibleCells++;
+                final int count = coocMat.countByRank(row, col);
+                observed[row][col] = count;
+                rawTotal += count;
+                if (count > maxCount) {
+                    maxCount = count;
+                }
+            }
+        }
+
+        // Step 2. Fit or read add-k smoothing over all admissible rectangular cells.
+        double smooth = pars.getDouble(SMOOTH, 1d);
+        if (smooth < 0d) {
+            final long[] histogram = new long[maxCount + 1];
+            for (int row = 0; row < rowCount; row++) {
+                for (int col = 0; col < colCount; col++) {
+                    if (!admissible[row][col]) {
+                        continue;
+                    }
+                    histogram[(int) observed[row][col]]++;
+                }
+            }
+            smooth = smoothFit(histogram, admissibleCells, rawTotal);
+        }
+
+        // Step 3. Smooth all admissible cells and compute both sets of margins.
+        final double[] rowSum = new double[rowCount];
+        final double[] colSum = new double[colCount];
+        for (int row = 0; row < rowCount; row++) {
+            for (int col = 0; col < colCount; col++) {
+                if (!admissible[row][col]) {
+                    continue;
+                }
+                observed[row][col] += smooth;
+                rowSum[row] += observed[row][col];
+                colSum[col] += observed[row][col];
+            }
+        }
+
+        // Step 4. Remove row and column mass effects before SVD.
+        final String assoc = pars.getString("assoc", "g2");
+        final double[][] residual;
+        if ("logratio".equals(assoc)) {
+            residual = logRatio(observed, admissible);
+        }
+        else {
+            final double[][] expected = ipf(rowSum, colSum, admissible);
+            residual = new double[rowCount][colCount];
+            for (int row = 0; row < rowCount; row++) {
+                for (int col = 0; col < colCount; col++) {
+                    if (!admissible[row][col]) {
+                        continue;
+                    }
+                    final double value = residualCell(
+                        assoc, observed[row][col], expected[row][col]);
+                    residual[row][col] = Double.isFinite(value) ? value : 0d;
+                }
+            }
+        }
+
+        return svdMap(residual, freq, coocMat.rowIds(), lexicon);
+    }
+
+    /**
+     * Fits a rectangular independence table while respecting structural zeros.
+     *
+     * @param rowSum target row margins
+     * @param colSum target column margins
+     * @param admissible cells included in the model
+     * @return fitted expected counts
+     */
+    private static double[][] ipf(
+        final double[] rowSum,
+        final double[] colSum,
+        final boolean[][] admissible
+    ) {
+        final int rowCount = rowSum.length;
+        final int colCount = colSum.length;
+        final double[][] expected = new double[rowCount][colCount];
+        for (int row = 0; row < rowCount; row++) {
+            for (int col = 0; col < colCount; col++) {
+                if (admissible[row][col]) {
+                    expected[row][col] = 1d;
+                }
+            }
+        }
+
+        for (int iteration = 0; iteration < 500; iteration++) {
+            double error = 0d;
+
+            for (int row = 0; row < rowCount; row++) {
+                double fitted = 0d;
+                for (int col = 0; col < colCount; col++) {
+                    fitted += expected[row][col];
+                }
+                if (fitted <= 0d) {
+                    continue;
+                }
+                final double factor = rowSum[row] / fitted;
+                for (int col = 0; col < colCount; col++) {
+                    expected[row][col] *= factor;
+                }
+            }
+
+            for (int col = 0; col < colCount; col++) {
+                double fitted = 0d;
+                for (int row = 0; row < rowCount; row++) {
+                    fitted += expected[row][col];
+                }
+                if (fitted <= 0d) {
+                    continue;
+                }
+                final double factor = colSum[col] / fitted;
+                for (int row = 0; row < rowCount; row++) {
+                    expected[row][col] *= factor;
+                }
+            }
+
+            for (int row = 0; row < rowCount; row++) {
+                double fitted = 0d;
+                for (int col = 0; col < colCount; col++) {
+                    fitted += expected[row][col];
+                }
+                error = Math.max(
+                    error, Math.abs(fitted - rowSum[row]) / (rowSum[row] + 1e-12));
+            }
+            if (error < 1e-10) {
+                break;
+            }
+        }
+        return expected;
+    }
+
+    /**
+     * Computes rectangular log-ratio residuals with separate row and column effects.
+     *
+     * @param observed positive smoothed counts
+     * @param admissible cells included in the fit
+     * @return double-centred logarithms
+     */
+    private static double[][] logRatio(
+        final double[][] observed,
+        final boolean[][] admissible
+    ) {
+        final int rowCount = observed.length;
+        final int colCount = observed[0].length;
+        final double[] alpha = new double[rowCount];
+        final double[] beta = new double[colCount];
+
+        for (int iteration = 0; iteration < 500; iteration++) {
+            double error = 0d;
+
+            for (int row = 0; row < rowCount; row++) {
+                double sum = 0d;
+                int count = 0;
+                for (int col = 0; col < colCount; col++) {
+                    if (!admissible[row][col] || observed[row][col] <= 0d) {
+                        continue;
+                    }
+                    sum += Math.log(observed[row][col]) - beta[col];
+                    count++;
+                }
+                if (count > 0) {
+                    final double next = sum / count;
+                    error = Math.max(error, Math.abs(next - alpha[row]));
+                    alpha[row] = next;
+                }
+            }
+
+            for (int col = 0; col < colCount; col++) {
+                double sum = 0d;
+                int count = 0;
+                for (int row = 0; row < rowCount; row++) {
+                    if (!admissible[row][col] || observed[row][col] <= 0d) {
+                        continue;
+                    }
+                    sum += Math.log(observed[row][col]) - alpha[row];
+                    count++;
+                }
+                if (count > 0) {
+                    final double next = sum / count;
+                    error = Math.max(error, Math.abs(next - beta[col]));
+                    beta[col] = next;
+                }
+            }
+
+            // Fix the arbitrary additive origin without changing alpha + beta.
+            double mean = 0d;
+            for (final double value : alpha) {
+                mean += value;
+            }
+            mean /= rowCount;
+            for (int row = 0; row < rowCount; row++) {
+                alpha[row] -= mean;
+            }
+            for (int col = 0; col < colCount; col++) {
+                beta[col] += mean;
+            }
+
+            if (error < 1e-10) {
+                break;
+            }
+        }
+
+        final double[][] residual = new double[rowCount][colCount];
+        for (int row = 0; row < rowCount; row++) {
+            for (int col = 0; col < colCount; col++) {
+                if (!admissible[row][col] || observed[row][col] <= 0d) {
+                    continue;
+                }
+                residual[row][col] =
+                    Math.log(observed[row][col]) - alpha[row] - beta[col];
+            }
+        }
+        return residual;
+    }
+
+    /**
+     * Runs SVD and builds row coordinates, representation quality, and inertia.
+     *
+     * @param residual normalized row-by-column matrix
+     * @param freq display frequency by row rank
+     * @param rowIds row ids by rank
+     * @param lexicon term lexicon
+     * @return map of the row terms
+     */
+    private static CoocMap svdMap(
+        final double[][] residual,
+        final long[] freq,
+        final int[] rowIds,
+        final TermLexicon lexicon
+    ) {
+        final int rowCount = residual.length;
         final SingularValueDecomposition svd =
-            new SingularValueDecomposition(new Array2DRowRealMatrix(s, false));
-        final double[] sv = svd.getSingularValues();
+            new SingularValueDecomposition(new Array2DRowRealMatrix(residual, false));
+        final double[] singularValues = svd.getSingularValues();
         final RealMatrix u = svd.getU();
-        double sumSq = 0d;
-        for (final double x : sv) sumSq += x * x;
-        final int inertiaLen = Math.min(10, sv.length);
-        final double[] inertia = new double[inertiaLen];
-        for (int k = 0; k < inertiaLen; k++) inertia[k] = 100d * sv[k] * sv[k] / sumSq;
 
-        final int dims = Math.min(n, DIMS);
-        final double[][] coords = new double[n][dims];
-        final double[] cos2 = new double[n];
-        for (int a = 0; a < n; a++) {
-            double denom = 0d;
-            for (int k = 0; k < sv.length; k++) {
-                final double c = u.getEntry(a, k) * sv[k];
-                denom += c * c;
-                if (k < dims) coords[a][k] = c;
-            }
-            final double num = coords[a][0] * coords[a][0] + coords[a][1] * coords[a][1];
-            cos2[a] = denom > 0d ? num / denom : 0d;
+        // Step 5. Convert squared singular values to axis inertia percentages.
+        double totalInertia = 0d;
+        for (final double value : singularValues) {
+            totalInertia += value * value;
         }
-        for (int k = 0; k < dims; k++) {
-            int arg = 0;
-            for (int a = 1; a < n; a++) {
-                if (Math.abs(coords[a][k]) > Math.abs(coords[arg][k])) arg = a;
-            }
-            if (coords[arg][k] < 0d) {
-                for (int a = 0; a < n; a++) coords[a][k] = -coords[a][k];
+        final int inertiaLength = Math.min(10, singularValues.length);
+        final double[] inertia = new double[inertiaLength];
+        if (totalInertia > 0d) {
+            for (int axis = 0; axis < inertiaLength; axis++) {
+                inertia[axis] = 100d * singularValues[axis] * singularValues[axis]
+                    / totalInertia;
             }
         }
 
-        final TermLexicon lexicon = contentFluc.termLexicon();
-        final String[] form = new String[n];
-        for (int a = 0; a < n; a++) form[a] = lexicon.form(coocMat.id(a));
+        // Step 6. Principal row coordinates are U times the singular values.
+        final int dims = Math.min(DIMS, singularValues.length);
+        final double[][] coords = new double[rowCount][dims];
+        final double[] cos2 = new double[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+            double denominator = 0d;
+            for (int axis = 0; axis < singularValues.length; axis++) {
+                final double coordinate =
+                    u.getEntry(row, axis) * singularValues[axis];
+                denominator += coordinate * coordinate;
+                if (axis < dims) {
+                    coords[row][axis] = coordinate;
+                }
+            }
+            double numerator = 0d;
+            for (int axis = 0; axis < Math.min(2, dims); axis++) {
+                numerator += coords[row][axis] * coords[row][axis];
+            }
+            cos2[row] = denominator > 0d ? numerator / denominator : 0d;
+        }
 
+        // Step 7. Fix each emitted axis sign deterministically.
+        for (int axis = 0; axis < dims; axis++) {
+            int greatest = 0;
+            for (int row = 1; row < rowCount; row++) {
+                if (Math.abs(coords[row][axis]) > Math.abs(coords[greatest][axis])) {
+                    greatest = row;
+                }
+            }
+            if (coords[greatest][axis] < 0d) {
+                for (int row = 0; row < rowCount; row++) {
+                    coords[row][axis] = -coords[row][axis];
+                }
+            }
+        }
+
+        // Step 8. Attach display forms to row ranks.
+        final String[] form = new String[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+            form[row] = lexicon.form(rowIds[row]);
+        }
         return new CoocMap(form, freq, coords, cos2, inertia);
     }
 

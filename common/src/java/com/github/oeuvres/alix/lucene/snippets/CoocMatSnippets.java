@@ -30,96 +30,97 @@ import java.util.function.IntConsumer;
 
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
-import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.util.IntList;
+import com.github.oeuvres.alix.util.IntMatrixById;
 
 /**
- * A {@link SnippetsConsumer} that fills a {@link IntMatrixById} with per-snippet co-occurrence counts, the
- * matrix-valued sibling of {@code TopCoocSnippets}.
+ * A {@link SnippetsConsumer} that fills a rectangular {@link IntMatrixById}
+ * with per-snippet co-occurrence counts.
  *
- * <h2>Counting model: per-snippet window, occurrence counts</h2>
+ * <h2>Axes</h2>
  * <p>
- * One context is one snippet window. For each snippet at positions {@code [start, end)} the window
- * {@code [start - left, end + right)} is scanned through {@link TermRail#scanWindow}, which yields the
- * node occurrences in ascending position order. Each occurrence is counted, not merely its presence:
- * a node appearing {@code k} times in the window contributes {@code k}. Snippet windows are scanned
- * independently and are never unioned, so a node falling inside two overlapping windows is counted in
- * both — the price of strict snippet-level co-occurrence. After each window:
+ * Rows and columns are independent term-id sets. A term occurrence may belong
+ * to neither axis, one axis, or both. Cell {@code (rowId, colId)} counts
+ * occurrence pairs between the row term and the column term. Terms outside both
+ * axes are ignored.
  * </p>
- * <ul>
- * <li>each node's diagonal cell is incremented by its occurrence count in the window — the diagonal is
- * therefore the occurrence marginal f(a) = &#931; n(a);</li>
- * <li>for each unordered pair the off-diagonal cells receive n(a)&#183;n(b), the number of co-occurring
- * occurrence pairs (see <i>Direction</i> for how the two cells are split);</li>
- * <li>{@link IntMatrixById#incTotal()} is called once — {@link IntMatrixById#total()} is therefore the number of
- * snippet windows, the sample size N.</li>
- * </ul>
+ *
+ * <h2>Counting model</h2>
  * <p>
- * Marginals, joints and N thus come out on one consistent occurrence-and-window basis. log-Dice and
- * PMI (with N from {@link IntMatrixById#total()}) are well defined on this footing; the G&#178;/log-likelihood
- * contingency interpretation is approximate, since occurrence products are not Bernoulli trial counts.
+ * One context is one snippet window. Each occurrence pair is counted exactly
+ * once. If a row term occurs {@code r} times and a different column term occurs
+ * {@code c} times in a window, their cell receives {@code r * c}.
+ * Self-pairs are excluded by term id, not by rank: row and column ranks are
+ * unrelated in a rectangular matrix.
+ * </p>
+ *
+ * <p>
+ * For an id present on both axes, its identity cell stores its occurrence
+ * marginal. This retains the former square-matrix convention without assuming
+ * that equal row and column ranks denote the same term. Callers performing
+ * residual analysis must treat identity cells as structural cells and exclude
+ * them from the co-occurrence model.
  * </p>
  *
  * <h2>Direction</h2>
  * <p>
- * When {@code directed} is {@code false} the matrix is symmetric and full: both {@code (a, b)} and
- * {@code (b, a)} receive n(a)&#183;n(b). When {@code directed} is {@code true} the matrix is
- * directional: {@code (a, b)} counts only the occurrence pairs in which <em>a precedes b</em> in the
- * text, and {@code (b, a)} the reverse, so the two cells sum to n(a)&#183;n(b) and the undirected
- * matrix is the directed one folded onto its transpose. Ascending-position scanning makes the callback
- * order the textual order, which is what lets the split be computed without reading position values.
- * The diagonal is the occurrence marginal in both modes, never a self-pair count.
+ * When {@code directed} is {@code true}, {@code (rowId, colId)} counts only
+ * pairs in which the row occurrence precedes the column occurrence. When it is
+ * {@code false}, textual order is ignored and every row-column occurrence pair
+ * contributes to its cell.
  * </p>
  *
- * <h2>Node set and exclusions</h2>
  * <p>
- * The matrix is built over a fixed node set. Any term id outside that set maps to rank {@code -1} via
- * {@link IntMatrixById#rank(int)} and is ignored. Query pivots appear as rows and columns if and only if
- * their ids are in the node set; there is no pivot logic here.
+ * On a square matrix whose row and column id sets are identical, this reproduces
+ * the former behavior precisely: the undirected matrix is symmetric, while the
+ * two directed cells split pairs according to textual order.
  * </p>
  *
- * <h2>Preconditions and lifecycle</h2>
+ * <h2>Lifecycle</h2>
  * <p>
- * The {@link TermRail} and the node ids must share one term-id space, i.e. the same
- * {@code TermLexicon} and field. The matrix passed at construction is filled in place; this consumer
- * keeps only per-window scratch, all of it cleared per window, so one instance may be reused across
- * successive {@code walk} calls without a reset. Not thread-safe.
+ * Scratch counts are cleared after every snippet. The matrix is filled in
+ * place. This class is not thread-safe.
  * </p>
  */
 public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
 {
-    /** Whether co-occurrences are recorded directionally ({@code (a, b)} = a precedes b). */
+    /** Whether a cell counts only row-before-column occurrence pairs. */
     private final boolean directed;
 
     /** Number of context positions read to the left of each snippet. */
     private final int left;
 
-    /** Target matrix, filled in place. */
+    /** Target rectangular matrix, filled in place. */
     private final IntMatrixById mat;
 
-    /** Forward positional rail for the matrix's field. */
+    /** Forward positional rail for the matrix field. */
     private final TermRail rail;
 
     /** Number of context positions read to the right of each snippet. */
     private final int right;
 
-    /** Per-window occurrence count, one per rank; reset to zero after each window. */
-    private final int[] seenCount;
+    /** Per-window occurrence counts indexed by column rank. */
+    private final int[] seenColCount;
 
-    /** Distinct ranks seen in the current window, in first-seen order. */
-    private final IntList touched = new IntList();
+    /** Per-window occurrence counts indexed by row rank. */
+    private final int[] seenRowCount;
+
+    /** Distinct column ranks seen in the current window. */
+    private final IntList touchedCols = new IntList();
+
+    /** Distinct row ranks seen in the current window. */
+    private final IntList touchedRows = new IntList();
 
     /**
-     * Constructs a co-occurrence-matrix listener over a fixed node set.
+     * Constructs a rectangular co-occurrence-matrix listener.
      *
-     * @param mat matrix to fill; its node ids must live in {@code rail}'s term-id space.
-     * @param rail forward positional rail for the same field.
-     * @param left context width on the left of each snippet, in positions; {@code >= 0}.
-     * @param right context width on the right of each snippet, in positions; {@code >= 0}.
-     * @param directed {@code true} to record direction ({@code (a, b)} counts a before b),
-     * {@code false} for a symmetric full matrix.
-     * @throws NullPointerException if {@code mat} or {@code rail} is {@code null}.
-     * @throws IllegalArgumentException if {@code left} or {@code right} is negative.
+     * @param mat target matrix; both axes must use the rail term-id space
+     * @param rail positional rail for the same indexed field
+     * @param left context width to the left, in positions
+     * @param right context width to the right, in positions
+     * @param directed {@code true} for row-before-column counts
+     * @throws IllegalArgumentException if {@code left} or {@code right} is negative
+     * @throws NullPointerException if {@code mat} or {@code rail} is {@code null}
      */
     public CoocMatSnippets(
         final IntMatrixById mat,
@@ -137,52 +138,55 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
         this.left = left;
         this.right = right;
         this.directed = directed;
-        this.seenCount = new int[mat.length()];
+        this.seenRowCount = new int[mat.rowCount()];
+        this.seenColCount = new int[mat.colCount()];
     }
 
     /**
-     * Rail sink: records one node occurrence in the current window. Adds this occurrence's
-     * co-occurrence with every distinct node already seen in the window — to one cell when
-     * {@code directed}, to both when symmetric — then increments this node's occurrence count. Public
-     * only to satisfy {@link IntConsumer}; not meant to be called directly.
+     * Records one term occurrence from the positional rail.
      *
-     * @param termId a term id read from the rail.
+     * <p>
+     * The callback order is textual order. A current column occurrence is paired
+     * with preceding row occurrences. In undirected mode, a current row occurrence
+     * is additionally paired with preceding column occurrences. These two cases
+     * are disjoint occurrence pairs, so no cell is counted twice.
+     * </p>
+     *
+     * @param termId dense term id read from the rail
      */
     @Override
     public void accept(final int termId)
     {
-        final int rank = mat.rank(termId);
-        if (rank < 0) {
-            return;
+        final int rowRank = mat.rowRank(termId);
+        final int colRank = mat.colRank(termId);
+
+        if (colRank >= 0) {
+            addPrecedingRows(termId, colRank);
         }
-        final int distinct = touched.size();
-        final int[] ranks = touched.data();
-        for (int i = 0; i < distinct; i++) {
-            final int seen = ranks[i];
-            if (seen == rank) {
-                continue;
+        if (!directed && rowRank >= 0) {
+            addPrecedingCols(termId, rowRank);
+        }
+
+        if (rowRank >= 0) {
+            if (seenRowCount[rowRank] == 0) {
+                touchedRows.push(rowRank);
             }
-            final int count = seenCount[seen];
-            mat.incByRank(seen, rank, count);
-            if (!directed) {
-                mat.incByRank(rank, seen, count);
+            seenRowCount[rowRank]++;
+        }
+        if (colRank >= 0) {
+            if (seenColCount[colRank] == 0) {
+                touchedCols.push(colRank);
             }
+            seenColCount[colRank]++;
         }
-        if (seenCount[rank] == 0) {
-            touched.push(rank);
-        }
-        seenCount[rank]++;
     }
 
     /**
-     * Accumulates one document's snippets into the matrix, treating each snippet window as a separate
-     * context. For each snippet the window is scanned in position order, off-diagonal pair cells are
-     * filled as occurrences arrive, then each present node's diagonal is incremented by its occurrence
-     * count and the window is counted toward {@link IntMatrixById#total()}.
+     * Accumulates every snippet window of one document.
      *
-     * @param docId global Lucene document id.
-     * @param snippets finished snippets for {@code docId}; read only within this call.
-     * @throws IOException never thrown here, declared by the interface.
+     * @param docId global Lucene document id
+     * @param snippets completed snippets for the document
+     * @throws IOException if the rail scan fails
      */
     @Override
     public void docSnippets(
@@ -196,17 +200,92 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
             final int start = snippets.snipStartPosition(snipOrd);
             final int end = snippets.snipEndPosition(snipOrd);
 
-            touched.clear();
+            touchedRows.clear();
+            touchedCols.clear();
             rail.scanWindow(docId, start - left, end + right, this);
 
-            final int distinct = touched.size();
-            final int[] ranks = touched.data();
-            for (int i = 0; i < distinct; i++) {
-                final int rank = ranks[i];
-                mat.incByRank(rank, rank, seenCount[rank]);
-                seenCount[rank] = 0;
-            }
+            addIdentityMarginals();
+            clearWindow();
             mat.incTotal();
+        }
+    }
+
+    /**
+     * Adds pairs formed by a current column occurrence and preceding row
+     * occurrences.
+     *
+     * @param termId current column term id
+     * @param colRank current column rank
+     */
+    private void addPrecedingRows(
+        final int termId,
+        final int colRank
+    ) {
+        final int size = touchedRows.size();
+        final int[] ranks = touchedRows.data();
+        for (int i = 0; i < size; i++) {
+            final int rowRank = ranks[i];
+            if (mat.rowId(rowRank) == termId) {
+                continue;
+            }
+            mat.incByRank(rowRank, colRank, seenRowCount[rowRank]);
+        }
+    }
+
+    /**
+     * Adds pairs formed by a current row occurrence and preceding column
+     * occurrences. Used only for undirected counting.
+     *
+     * @param termId current row term id
+     * @param rowRank current row rank
+     */
+    private void addPrecedingCols(
+        final int termId,
+        final int rowRank
+    ) {
+        final int size = touchedCols.size();
+        final int[] ranks = touchedCols.data();
+        for (int i = 0; i < size; i++) {
+            final int colRank = ranks[i];
+            if (mat.colId(colRank) == termId) {
+                continue;
+            }
+            mat.incByRank(rowRank, colRank, seenColCount[colRank]);
+        }
+    }
+
+    /**
+     * Stores row-term occurrence marginals in identity cells where the same term
+     * id belongs to the column axis.
+     */
+    private void addIdentityMarginals()
+    {
+        final int size = touchedRows.size();
+        final int[] ranks = touchedRows.data();
+        for (int i = 0; i < size; i++) {
+            final int rowRank = ranks[i];
+            final int colRank = mat.colRank(mat.rowId(rowRank));
+            if (colRank >= 0) {
+                mat.incByRank(rowRank, colRank, seenRowCount[rowRank]);
+            }
+        }
+    }
+
+    /**
+     * Clears all per-window counters touched by the completed scan.
+     */
+    private void clearWindow()
+    {
+        final int rowSize = touchedRows.size();
+        final int[] rowRanks = touchedRows.data();
+        for (int i = 0; i < rowSize; i++) {
+            seenRowCount[rowRanks[i]] = 0;
+        }
+
+        final int colSize = touchedCols.size();
+        final int[] colRanks = touchedCols.data();
+        for (int i = 0; i < colSize; i++) {
+            seenColCount[colRanks[i]] = 0;
         }
     }
 }
