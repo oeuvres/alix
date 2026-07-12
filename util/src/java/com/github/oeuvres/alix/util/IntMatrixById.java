@@ -5,74 +5,30 @@
  * Frédéric Glorieux <frederic.glorieux@fictif.org>
  * Copyright 2016 Frédéric Glorieux <frederic.glorieux@fictif.org>
  *
- * Alix is a java library to index and search XML text documents
- * with Lucene https://lucene.apache.org/core/
- * including linguistic expertness for French,
- * available under Apache license.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Licensed under the Apache License, Version 2.0.
  */
 package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
- * A dense square matrix accumulating co-occurrence counts between a small,
- * fixed set of non-negative term ids (typically 20–200) drawn from a larger id
- * space, such as a field or segment vocabulary.
+ * A dense rectangular matrix addressed by independent sets of non-negative row
+ * and column ids.
  * <p>
- * The matrix is addressed by <i>rank</i>, a contiguous local index in
- * {@code [0, length())} assigned to each node id in ascending id order. Cells
- * are a {@code length × length} row-major {@code int} array.
+ * Each axis has its own contiguous rank space. Cells are stored row-major in an
+ * {@code int[]} of size {@code rowCount() * columnCount()}.
  * </p>
  * <p>
- * <b>Lookup.</b> id → rank is resolved by a direct-address table of size
- * {@code maxNodeId + 1} ({@code -1} marking a non-node): a single array load,
- * no branch. A microbenchmark over id universes of this size found this
- * markedly faster than binary search over the node array. The price is memory
- * proportional to the largest node id, not to the node count: a vocabulary on
- * the order of {@code 10^4} ids is a table of tens of kilobytes, but a node id
- * in the millions would allocate a correspondingly large table. This structure
- * is therefore intended for bounded id universes, trading space for a fast,
- * branchless lookup; for an unbounded ordinal space a binary-search variant
- * would be the better trade. Node ids must be non-negative.
+ * Id-to-rank lookup uses a direct-address table for each axis. Memory therefore
+ * depends on the greatest row id and greatest column id, not only on the number
+ * of selected ids.
  * </p>
  * <p>
- * <b>Two flavours of accessor.</b> Id-space methods ({@link #inc(int, int)},
- * {@link #count(int, int)}) translate each id to its rank through the table and
- * validate membership. Rank-space methods ({@link #incByRank(int, int)},
- * {@link #countByRank(int, int)}) take ranks directly and skip both the
- * translation and the check; they serve the inner accumulation loop, where a
- * context's ids are resolved to ranks once via {@link #rank(int)} and then many
- * cells are written. Because the table makes the id-space path cheap too (one
- * load plus a branch), prefer it unless profiling the fill loop shows the
- * per-write check matters.
- * </p>
- * <p>
- * <b>Diagonal as marginals.</b> The diagonal cell {@code (r, r)} is, by
- * construction, the marginal count of the node of rank {@code r}: the number of
- * contexts in which it occurs. Increment it once per context per present node
- * (alongside {@link #incTotal()}) and the matrix then carries everything an
- * association measure needs: f(a) and f(b) on the diagonal, f(a,b) off it, and
- * the sample size N from {@link #total()}. Counts are {@code int}; this is ample
- * for literary-corpus scale but would overflow near 2.1 billion.
- * </p>
- * <p>
- * <b>Direction.</b> {@link #inc(int, int)} touches a single cell, so the
- * matrix is directional: {@code inc(a, b)} and {@code inc(b, a)} are distinct
- * cells. For a symmetric co-occurrence count, either write both orders, or write
- * only the upper triangle and canonicalise reads on the caller side. This class
- * imposes no choice, so that left/right context can also be recorded if wanted.
+ * The one-list constructor creates a square matrix and is retained as a
+ * convenience. A rectangular matrix has no general diagonal-as-marginal
+ * convention; row and column marginals must be maintained separately by the
+ * caller when required.
  * </p>
  * <p>
  * Not thread-safe.
@@ -80,248 +36,281 @@ import java.util.Arrays;
  */
 public class IntMatrixById
 {
-    /** The edges: a {@code length × length} matrix, flattened row-major. */
+    /** Matrix cells, flattened row-major. */
     private final int[] cells;
-    /** rank → id: node ids, sorted ascending, deduplicated. */
-    private final int[] idByRank;
-    /** Side of the square, i.e. the number of nodes. */
-    private final int length;
-    /**
-     * id → rank: direct-address table of size {@code maxNodeId + 1}, holding the
-     * rank of each node id and {@code -1} at every other index. Chosen over
-     * binary search for its single-load, branchless lookup at this id range.
-     */
-    private final int[] rankById;
-    /** Number of contexts accumulated, the sample size for association measures. */
+    /** Number of columns, used as the row-major stride. */
+    private final int colCount;
+    /** Column rank to column id. */
+    private final int[] colIdByRank;
+    /** Column id to column rank. */
+    private final int[] colRankById;
+    /** Number of rows. */
+    private final int rowCount;
+    /** Row rank to row id. */
+    private final int[] rowIdByRank;
+    /** Row id to row rank. */
+    private final int[] rowRankById;
+    /** Number of accumulated contexts. */
     private long total;
 
     /**
-     * Builds a matrix over a set of node ids. The list is reduced to sorted,
-     * unique values via {@link IntList#toUniq()}, so the input need not be sorted
-     * or deduplicated and its order is irrelevant. Allocates the cell matrix
-     * ({@code length²} ints) and the id → rank table ({@code maxNodeId + 1} ints);
-     * see the class description on the memory implication of large ids.
+     * Builds a rectangular matrix with independent row and column id sets. Each
+     * list is sorted and deduplicated through {@link IntList#toUniq()}.
      *
-     * @param list node ids, all non-negative, at least one distinct value.
-     * @throws NullPointerException if {@code list} is {@code null}.
-     * @throws IllegalArgumentException if the reduced set is empty.
-     * @throws ArrayIndexOutOfBoundsException if any node id is negative.
+     * @param rowIds ids accepted on the row axis.
+     * @param colIds ids accepted on the column axis.
+     * @throws NullPointerException if either list is {@code null}.
+     * @throws IllegalArgumentException if either reduced set is empty, contains a
+     *         negative id, or the matrix is too large for one Java array.
      */
     public IntMatrixById(
-        final IntList list
+        final int[] rowIds,
+        final int[] colIds
     ) {
-        this.idByRank = list.toUniq();
-        if (this.idByRank.length == 0) {
-            throw new IllegalArgumentException("empty node set, nothing to record");
+        Objects.requireNonNull(rowIds, "rowIds");
+        Objects.requireNonNull(colIds, "columnIds");
+        this.rowIdByRank = IntList.uniq(rowIds);
+        this.colIdByRank = IntList.uniq(colIds);
+        this.rowCount = rowIdByRank.length;
+        this.colCount = colIdByRank.length;
+        final long cellCount = (long) rowCount * colCount;
+        if (cellCount > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                "matrix too large: " + rowCount + " x " + colCount + " = " + cellCount + " cells"
+            );
         }
-        this.length = this.idByRank.length;
-        this.cells = new int[this.length * this.length];
-        // toUniq() is sorted ascending, so the largest id is the last element
-        final int max = idByRank[length - 1];
-        this.rankById = new int[max + 1];
-        Arrays.fill(this.rankById, -1);
-        for (int rank = 0; rank < length; rank++) {
-            final int id = idByRank[rank];
-            this.rankById[id] = rank;
-        }
+        this.cells = new int[(int) cellCount];
+        this.rowRankById = rankById(rowIdByRank);
+        this.colRankById = rankById(colIdByRank);
     }
 
     /**
-     * Whether an id is one of the nodes. Never throws; out-of-range and negative
-     * ids simply return {@code false}.
+     * Returns whether an id belongs to the column axis.
      *
-     * @param id any int.
-     * @return {@code true} if {@code id} is a node, {@code false} otherwise.
+     * @param id any id.
+     * @return {@code true} if the id is a column id.
      */
-    public boolean contains(
+    public boolean containsCol(
         final int id
     ) {
-        return rank(id) >= 0;
+        return colRank(id) >= 0;
     }
 
     /**
-     * Count recorded for an ordered pair of ids.
+     * Returns whether an id belongs to the row axis.
      *
-     * @param rowId a node id.
-     * @param colId a node id.
-     * @return the cell value.
-     * @throws IllegalArgumentException if either id is not a node.
+     * @param id any id.
+     * @return {@code true} if the id is a row id.
+     */
+    public boolean containsRow(
+        final int id
+    ) {
+        return rowRank(id) >= 0;
+    }
+
+    /**
+     * Returns the number of columns.
+     *
+     * @return column count.
+     */
+    public int colCount() {
+        return colCount;
+    }
+
+    /**
+     * Returns the column id at a column rank.
+     *
+     * @param rank column rank.
+     * @return column id.
+     * @throws IllegalArgumentException if the rank is outside the column axis.
+     */
+    public int colId(
+        final int rank
+    ) {
+        checkRank(rank, colCount, "column");
+        return colIdByRank[rank];
+    }
+
+    /**
+     * Returns column ids in ascending rank order. The returned array is the live
+     * backing array and must be treated as read-only.
+     *
+     * @return column rank to id mapping.
+     */
+    public int[] colIds() {
+        return colIdByRank;
+    }
+
+    /**
+     * Returns the rank of a column id.
+     *
+     * @param id any id.
+     * @return a rank in {@code [0, columnCount())}, or {@code -1}.
+     */
+    public int colRank(
+        final int id
+    ) {
+        return rank(id, colRankById);
+    }
+
+    /**
+     * Returns the value stored for a row id and column id.
+     *
+     * @param rowId row id.
+     * @param columnId column id.
+     * @return cell value.
+     * @throws IllegalArgumentException if either id does not belong to its axis.
      */
     public int count(
         final int rowId,
-        final int colId
+        final int columnId
     ) {
-        return cells[cellIndex(rowId, colId)];
+        return cells[cellIndex(rowId, columnId)];
     }
 
     /**
-     * Count recorded for an ordered pair of ranks, without id translation or
-     * bounds check. Both ranks must come from {@link #rank(int)} or
-     * {@link #ids()}; an out-of-range rank is a caller error and may read the
-     * wrong cell or throw.
+     * Returns a cell by ranks without id translation or bounds checking.
      *
-     * @param row a rank in {@code [0, length())}.
-     * @param col a rank in {@code [0, length())}.
-     * @return the cell value.
+     * @param rowRank row rank.
+     * @param columnRank column rank.
+     * @return cell value.
      */
     public int countByRank(
-        final int row,
-        final int col
+        final int rowRank,
+        final int columnRank
     ) {
-        return cells[row * length + col];
+        return cells[rowRank * colCount + columnRank];
     }
 
     /**
-     * The node id by rank number.
+     * Increments a cell by one.
      *
-     * @return rank → id.
-     */
-    public int id(
-        final int rank
-    ) {
-        if (rank < 0)
-            throw new IllegalArgumentException(rank + " < 0, is not a valid rank");
-        if (rank >= length)
-            throw new IllegalArgumentException(rank + " >= length=" + length + ", is not a valid rank");
-        return idByRank[rank];
-    }
-
-    /**
-     * The node ids in rank order (ascending). Returns the live backing array;
-     * treat it as read-only.
-     *
-     * @return rank → id.
-     */
-    public int[] ids() {
-        return idByRank;
-    }
-
-    /**
-     * Increments by one the cell for an ordered pair of ids.
-     *
-     * @param rowId a node id.
-     * @param colId a node id.
-     * @throws IllegalArgumentException if either id is not a node.
+     * @param rowId row id.
+     * @param columnId column id.
+     * @throws IllegalArgumentException if either id does not belong to its axis.
      */
     public void inc(
         final int rowId,
-        final int colId
+        final int columnId
     ) {
-        cells[cellIndex(rowId, colId)]++;
+        cells[cellIndex(rowId, columnId)]++;
     }
 
     /**
-     * Increments by one the cell for an ordered pair of ranks, without id
-     * translation or bounds check. For the inner accumulation loop. Both ranks
-     * must come from {@link #rank(int)} or {@link #ids()}; an out-of-range rank
-     * is a caller error and may corrupt a cell or throw.
+     * Increments a cell by an amount.
      *
-     * @param row a rank in {@code [0, length())}.
-     * @param col a rank in {@code [0, length())}.
+     * @param rowId row id.
+     * @param columnId column id.
+     * @param amount amount to add.
+     * @throws IllegalArgumentException if either id does not belong to its axis.
      */
-    public void incByRank(
-        final int row,
-        final int col
-    ) {
-        cells[row * length + col]++;
-    }
-
-    /**
-     * Increments by amount the cell for an ordered pair of ranks, without id
-     * translation or bounds check. For the inner accumulation loop. Both ranks
-     * must come from {@link #rank(int)} or {@link #ids()}; an out-of-range rank
-     * is a caller error and may corrupt a cell or throw.
-     *
-     * @param row a rank in {@code [0, length())}.
-     * @param col a rank in {@code [0, length())}.
-     */
-    public void incByRank(
-        final int row,
-        final int col,
+    public void inc(
+        final int rowId,
+        final int columnId,
         final int amount
     ) {
-        cells[row * length + col] += amount;
+        cells[cellIndex(rowId, columnId)] += amount;
     }
 
     /**
-     * Increments by one the context count returned by {@link #total()}. Call once
-     * per context (window or document) accumulated.
+     * Increments a cell by one using ranks without translation or bounds checks.
+     *
+     * @param rowRank row rank.
+     * @param columnRank column rank.
+     */
+    public void incByRank(
+        final int rowRank,
+        final int columnRank
+    ) {
+        cells[rowRank * colCount + columnRank]++;
+    }
+
+    /**
+     * Increments a cell by an amount using ranks without translation or bounds
+     * checks.
+     *
+     * @param rowRank row rank.
+     * @param columnRank column rank.
+     * @param amount amount to add.
+     */
+    public void incByRank(
+        final int rowRank,
+        final int columnRank,
+        final int amount
+    ) {
+        cells[rowRank * colCount + columnRank] += amount;
+    }
+
+    /**
+     * Increments the accumulated context count by one.
      */
     public void incTotal() {
         total++;
     }
 
     /**
-     * Side of the square, i.e. the number of nodes.
+     * Returns the number of rows.
      *
-     * @return node count.
+     * @return row count.
      */
-    public int length() {
-        return length;
+    public int rowCount() {
+        return rowCount;
     }
 
     /**
-     * Rank of an id, or {@code -1} if the id is not a node. Negative ids and ids
-     * larger than the greatest node id return {@code -1} rather than throwing, so
-     * this doubles as a total membership test.
+     * Returns the row id at a row rank.
      *
-     * @param id any int.
-     * @return rank in {@code [0, length())}, or {@code -1}.
+     * @param rank row rank.
+     * @return row id.
+     * @throws IllegalArgumentException if the rank is outside the row axis.
      */
-    public int rank(
+    public int rowId(
+        final int rank
+    ) {
+        checkRank(rank, rowCount, "row");
+        return rowIdByRank[rank];
+    }
+
+    /**
+     * Returns row ids in ascending rank order. The returned array is the live
+     * backing array and must be treated as read-only.
+     *
+     * @return row rank to id mapping.
+     */
+    public int[] rowIds() {
+        return rowIdByRank;
+    }
+
+    /**
+     * Returns the rank of a row id.
+     *
+     * @param id any id.
+     * @return a rank in {@code [0, rowCount())}, or {@code -1}.
+     */
+    public int rowRank(
         final int id
     ) {
-        if (id < 0 || id >= rankById.length) {
-            return -1;
-        }
-        return rankById[id];
+        return rank(id, rowRankById);
     }
 
     /**
-     * Sets the count for an ordered pair of ids. Expert use (tests,
-     * deserialisation): the value is written verbatim with no validation, so a
-     * negative or absurd value will silently corrupt the marginals and totals an
-     * association measure later relies on. Callers are responsible for passing a
-     * sane, non-negative count.
+     * Sets a cell value.
      *
-     * @param rowId a node id.
-     * @param colId a node id.
-     * @param value new cell value, expected {@code >= 0}.
-     * @throws IllegalArgumentException if either id is not a node.
+     * @param rowId row id.
+     * @param columnId column id.
+     * @param value new value.
+     * @throws IllegalArgumentException if either id does not belong to its axis.
      */
     public void set(
         final int rowId,
-        final int colId,
+        final int columnId,
         final int value
     ) {
-        cells[cellIndex(rowId, colId)] = value;
+        cells[cellIndex(rowId, columnId)] = value;
     }
 
     /**
-     * Tab-separated dump of the whole matrix: a header row of node ids, then one
-     * row per node prefixed by its id. For debugging; not a stable format.
-     *
-     * @return the matrix as text.
-     */
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder();
-        for (int col = 0; col < length; col++) {
-            sb.append('\t').append(idByRank[col]);
-        }
-        sb.append('\n');
-        for (int row = 0; row < length; row++) {
-            sb.append(idByRank[row]);
-            for (int col = 0; col < length; col++) {
-                sb.append('\t').append(cells[row * length + col]);
-            }
-            sb.append('\n');
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Number of contexts accumulated, the sample size N for association measures.
+     * Returns the number of accumulated contexts.
      *
      * @return context count.
      */
@@ -330,27 +319,104 @@ public class IntMatrixById
     }
 
     /**
-     * Flat index of a cell, translating both ids to ranks through the table and
-     * checking membership, so the id-space accessors fail with a legible message
-     * rather than an array fault.
+     * Returns a tab-separated representation of the matrix.
      *
-     * @param rowId a node id.
-     * @param colId a node id.
-     * @return index into {@link #cells}.
-     * @throws IllegalArgumentException if either id is not a node.
+     * @return matrix text with column ids in the header and row ids at left.
+     */
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        for (int column = 0; column < colCount; column++) {
+            sb.append('\t').append(colIdByRank[column]);
+        }
+        sb.append('\n');
+        for (int row = 0; row < rowCount; row++) {
+            sb.append(rowIdByRank[row]);
+            final int offset = row * colCount;
+            for (int column = 0; column < colCount; column++) {
+                sb.append('\t').append(cells[offset + column]);
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Returns the flat cell index for a row id and column id.
+     *
+     * @param rowId row id.
+     * @param columnId column id.
+     * @return flat row-major index.
+     * @throws IllegalArgumentException if either id does not belong to its axis.
      */
     private int cellIndex(
         final int rowId,
-        final int colId
+        final int columnId
     ) {
-        final int row = rank(rowId);
-        if (row < 0) {
-            throw new IllegalArgumentException(rowId + " is not a node (rowId)");
+        final int rowRank = rowRank(rowId);
+        if (rowRank < 0) {
+            throw new IllegalArgumentException(rowId + " is not a row id");
         }
-        final int col = rank(colId);
-        if (col < 0) {
-            throw new IllegalArgumentException(colId + " is not a node (colId)");
+        final int columnRank = colRank(columnId);
+        if (columnRank < 0) {
+            throw new IllegalArgumentException(columnId + " is not a column id");
         }
-        return row * length + col;
+        return rowRank * colCount + columnRank;
     }
+
+    /**
+     * Checks a rank against an axis length.
+     *
+     * @param rank rank to check.
+     * @param length axis length.
+     * @param axis axis name for the exception message.
+     * @throws IllegalArgumentException if the rank is outside the axis.
+     */
+    private static void checkRank(
+        final int rank,
+        final int length,
+        final String axis
+    ) {
+        if (rank < 0 || rank >= length) {
+            throw new IllegalArgumentException(
+                rank + " is not a valid " + axis + " rank; expected [0, " + length + ")"
+            );
+        }
+    }
+
+    /**
+     * Builds a direct id-to-rank table.
+     *
+     * @param idByRank sorted non-negative ids.
+     * @return direct id-to-rank table.
+     */
+    private static int[] rankById(
+        final int[] idByRank
+    ) {
+        final int[] rankById = new int[idByRank[idByRank.length - 1] + 1];
+        Arrays.fill(rankById, -1);
+        for (int rank = 0; rank < idByRank.length; rank++) {
+            rankById[idByRank[rank]] = rank;
+        }
+        return rankById;
+    }
+
+    /**
+     * Returns the rank of an id in a direct-address table.
+     *
+     * @param id id to resolve.
+     * @param rankById direct-address table.
+     * @return rank, or {@code -1}.
+     */
+    private static int rank(
+        final int id,
+        final int[] rankById
+    ) {
+        if (id < 0 || id >= rankById.length) {
+            return -1;
+        }
+        return rankById[id];
+    }
+
+
 }
