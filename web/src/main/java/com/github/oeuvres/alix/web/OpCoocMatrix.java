@@ -215,7 +215,7 @@ public final class OpCoocMatrix extends Op
         }
         else {
             // keep same scorer? do raw sort add signal or noise?
-            topTerms.rank(scorer, terms+cols, TermFlag.NULL).promote(pivotIds, FREQ);
+            topTerms.rank(scorer, terms+cols, tflag).promote(pivotIds, FREQ);
             // here termIds contains rows, add other terms
             for (final TermEntry term : topTerms) {
                 final int termId = term.termId();
@@ -237,19 +237,21 @@ public final class OpCoocMatrix extends Op
     }
 
     /**
-     * Builds the map from a collected co-occurrence matrix.
+     * Builds the map from a collected row-by-column co-occurrence matrix.
      *
      * <p>
-     * A matrix whose row and column ids are identical follows the historical
-     * symmetric path. A genuinely rectangular matrix follows a two-axis
-     * quasi-independence model with separate row and column effects.
+     * Square and rectangular matrices deliberately follow the same normalization
+     * path. When both axes contain the same ids, the two-axis structural-zero
+     * model reduces to the square quasi-independence model. This avoids changing
+     * the association measure merely because one feature column was added.
      * </p>
      *
      * @param coocMat collected co-occurrence matrix
      * @param topTerms query-population term counts
      * @param lexicon term lexicon
      * @param pars request parameters
-     * @param directed whether the square collector recorded directed cells
+     * @param directed retained for the collector API; normalization uses the
+     *        cells as collected
      * @return co-occurrence map for the row terms
      */
     private static CoocMap coocMap(
@@ -259,111 +261,11 @@ public final class OpCoocMatrix extends Op
         final HttpPars pars,
         final boolean directed
     ) {
-        if (Arrays.equals(coocMat.rowIds(), coocMat.colIds())) {
-            return coocMapSquare(coocMat, lexicon, pars, directed);
-        }
         return coocMapRectangular(coocMat, topTerms, lexicon, pars);
     }
 
     /**
-     * Historical square normalization retained verbatim in substance.
-     *
-     * <p>
-     * Keeping this separate is intentional: when {@code cols=0}, row and column
-     * ids are identical and this method reproduces the former smoothing,
-     * symmetric IPF, residualization, SVD coordinates, and diagonal frequencies.
-     * </p>
-     *
-     * @param coocMat square co-occurrence matrix
-     * @param lexicon term lexicon
-     * @param pars request parameters
-     * @param directed whether opposite directed cells must be folded together
-     * @return map for the square matrix
-     */
-    private static CoocMap coocMapSquare(
-        final IntMatrixById coocMat,
-        final TermLexicon lexicon,
-        final HttpPars pars,
-        final boolean directed
-    ) {
-        final int n = coocMat.rowCount();
-        final long[] freq = new long[n];
-        final double[] rowSum = new double[n];
-        final double[][] observed = new double[n][n];
-
-        // Step 1. Copy raw off-diagonal counts and preserve the old diagonal
-        // occurrence marginal used for display.
-        int maxCount = 0;
-        for (int row = 0; row < n; row++) {
-            freq[row] = coocMat.countByRank(row, row);
-            for (int col = 0; col < n; col++) {
-                if (row == col) {
-                    continue;
-                }
-                final double value = directed
-                    ? (double) coocMat.countByRank(row, col)
-                        + coocMat.countByRank(col, row)
-                    : coocMat.countByRank(row, col);
-                observed[row][col] = value;
-                if (value > maxCount) {
-                    maxCount = (int) value;
-                }
-            }
-        }
-
-        // Step 2. Fit or read the add-k smoothing parameter on distinct
-        // unordered off-diagonal cells.
-        double smooth = pars.getDouble(SMOOTH, 1d);
-        if (smooth < 0d) {
-            final long[] histogram = new long[maxCount + 1];
-            long total = 0L;
-            for (int row = 0; row < n; row++) {
-                for (int col = row + 1; col < n; col++) {
-                    final int count = (int) observed[row][col];
-                    histogram[count]++;
-                    total += count;
-                }
-            }
-            smooth = smoothFit(histogram, (long) n * (n - 1) / 2, total);
-        }
-
-        // Step 3. Smooth every admissible cell and compute smoothed margins.
-        for (int row = 0; row < n; row++) {
-            for (int col = 0; col < n; col++) {
-                if (row == col) {
-                    continue;
-                }
-                observed[row][col] += smooth;
-                rowSum[row] += observed[row][col];
-            }
-        }
-
-        // Step 4. Convert counts to the selected independence-centred residual.
-        final String assoc = pars.getString("assoc", "g2");
-        final double[][] residual;
-        if ("g2".equals(assoc)) {
-            residual = logRatio(observed);
-        }
-        else {
-            final double[] gamma = ipf(rowSum);
-            residual = new double[n][n];
-            for (int row = 0; row < n; row++) {
-                for (int col = 0; col < n; col++) {
-                    if (row == col) {
-                        continue;
-                    }
-                    final double value = residualCell(
-                        assoc, observed[row][col], gamma[row] * gamma[col]);
-                    residual[row][col] = Double.isFinite(value) ? value : 0d;
-                }
-            }
-        }
-
-        return svdMap(residual, freq, coocMat.rowIds(), lexicon);
-    }
-
-    /**
-     * Normalizes a rectangular co-occurrence table and maps its row profiles.
+     * Normalizes a square or rectangular co-occurrence table and maps its row profiles.
      *
      * <p>
      * Self-term cells are structural zeros identified by equality of ids, not by
@@ -372,7 +274,7 @@ public final class OpCoocMatrix extends Op
      * column effects.
      * </p>
      *
-     * @param coocMat rectangular co-occurrence matrix
+     * @param coocMat row-by-column co-occurrence matrix
      * @param topTerms query-population term counts
      * @param lexicon term lexicon
      * @param pars request parameters
