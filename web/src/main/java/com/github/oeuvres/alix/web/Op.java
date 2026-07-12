@@ -20,7 +20,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
+import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
+import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
@@ -447,4 +449,30 @@ public abstract class Op
         return IntPoint.newRangeQuery(flucYear.name(), start, end);
     }
 
+    static KeynessScorer tsort(HttpPars pars)
+    {
+        return switch (pars.getString(TSORT, "")) {
+            case "count" -> new KeynessScorer.Count();
+            case "raw" -> new KeynessScorer.Count();
+            case "g2" -> new KeynessScorer.LogLikelihood();
+            case "logratio" -> new KeynessScorer.LogRatio();
+            case "logdice" -> new KeynessScorer.LogDice();
+            case "chi2" -> new KeynessScorer.Chi2();
+            case "simple" -> new KeynessScorer.SimpleMaths();
+            default -> new KeynessScorer.LogLikelihood();
+        };
+    }
+    
+    static FlucText contentFluc(final LuceneIndex index, final HttpPars pars, final MetaUtil meta)
+    {
+        String textField = pars.getString(FTEXT, index.content());
+        meta.put("textField", textField);
+        final FlucText flucText = index.flucText(textField);
+        if (flucText == null) {
+            pars.response().setStatus(404);
+            meta.put("error", "field '" + textField + "' not found or not a text field");
+            return null;
+        }
+        return flucText;
+    }
 }
