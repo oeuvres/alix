@@ -106,7 +106,90 @@ public final class OpCoocMatrix extends Op
      *                in {@code [0, 1]} — the representation-quality diagnostic
      * @param inertia percentage of total inertia carried by each axis
      */
-    record CoocMap(String[] form, long[] freq, double[][] coords, double[] cos2, double[] inertia) {}
+    record CoocMap(int[] id, String[] form, long[] freq, double[][] coords, double[] cos2, double[] inertia) {}
+
+    /**
+     * The association measures {@code assoc} selects, i.e. the map algorithms.
+     * All of them centre the table against the same rectangular
+     * quasi-independence fit of {@link #ipf} — an uncentred matrix has a
+     * dominant size axis and gives no usable map — and differ only in the three
+     * choices that matter: the scale the contrast is measured on (count, log),
+     * whether contrasts are clipped, and whether row profiles are rescaled by
+     * their mass afterwards.
+     *
+     * <p>
+     * {@link #CA} is the only member that sets {@code massScale}: it is
+     * {@link #PEARSON} plus the {@code 1/√mass} step of textbook correspondence
+     * analysis, which restores the χ² metric and throws rare terms to the rim.
+     * Since the rescaling multiplies a whole row of coordinates by one constant,
+     * it moves points but leaves {@code cos²} and the inertia spectrum
+     * untouched — CA and Pearson share a spectrum and differ only in layout.
+     * </p>
+     *
+     * <p>
+     * {@link #LOGRATIO} is the only member not built cell-by-cell from
+     * {@code (o, e)}: its centring is an additive fit over the whole table
+     * ({@link #logRatio}). {@link #PPMI} and {@link #SPPMI} clip negative
+     * contrasts to zero, which discards the anti-associations that carry much
+     * of a two-dimensional map's geometry; they are here as the distributional
+     * semantics baseline, not as map candidates. {@code SPPMI} reads its shift
+     * from the {@code shift} parameter (Levy &amp; Goldberg's {@code k},
+     * default 1, i.e. plain PPMI).
+     * </p>
+     */
+    enum Assoc
+    {
+        /** Correspondence analysis: {@link #PEARSON} with the χ² mass rescaling of row profiles. */
+        CA(true),
+        /** Poisson deviance residual, bounded where Pearson explodes on small expectations. */
+        G2(false),
+        /** Freeman–Tukey, the other classic variance-stabilised count residual. */
+        FT(false),
+        /** Lewi's spectral map: log cells, double-centred by an additive row/column fit. */
+        LOGRATIO(false),
+        /** Pearson χ² residual, {@code (o − e)/√e}; favours well-attested contrasts. */
+        PEARSON(false),
+        /** Pointwise mutual information, {@code log(o/e)}, signed and unclipped. */
+        PMI(false),
+        /** Positive PMI, {@code max(0, log(o/e))}. */
+        PPMI(false),
+        /** Shifted positive PMI, {@code max(0, log(o/e) − log shift)}. */
+        SPPMI(false);
+
+        /** Whether row coordinates are divided by {@code √mass} after the SVD. */
+        final boolean massScale;
+
+        Assoc(final boolean massScale) {
+            this.massScale = massScale;
+        }
+
+        /**
+         * Resolves the {@code assoc} parameter, case-insensitively; an unknown
+         * name falls back to {@link #G2} rather than failing the request, since
+         * this is a display endpoint.
+         *
+         * @param name parameter value
+         * @return the measure
+         */
+        static Assoc of(final String name) {
+            if (name == null) return G2;
+            for (final Assoc assoc : values()) {
+                if (assoc.name().equalsIgnoreCase(name)) return assoc;
+            }
+            return G2;
+        }
+    }
+
+    /**
+     * A residual matrix ready for the SVD, with the per-row rescaling to apply
+     * to the coordinates it produces. {@code massScale} is {@code null} for
+     * every measure but {@link Assoc#CA}, so the common path allocates nothing.
+     *
+     * @param matrix    residual cells, {@code [row][col]}, structural zeros at 0
+     * @param massScale factor applied to each row's coordinates after the SVD,
+     *                  or {@code null} for no rescaling
+     */
+    record Residual(double[][] matrix, double[] massScale) {}
 
 
     /**
@@ -215,7 +298,7 @@ public final class OpCoocMatrix extends Op
         }
         else {
             // keep same scorer? do raw sort add signal or noise?
-            topTerms.rank(scorer, terms+cols, tflag).promote(pivotIds, FREQ);
+            topTerms.rank(scorer, terms+cols, TermFlag.NULL).promote(pivotIds, FREQ);
             // here termIds contains rows, add other terms
             for (final TermEntry term : topTerms) {
                 final int termId = term.termId();
@@ -228,50 +311,26 @@ public final class OpCoocMatrix extends Op
         final boolean directed = pars.getBoolean("directed", false);
         final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
         new SpanWalker(index.searcher(), spanQuery, new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
-        
+        meta.put("freqs", coocMat.toString());
         // Convert the collected counts into a normalized residual matrix, run
         // its SVD, and retain coordinates only for the displayed row terms.
-        // When both axes are identical, coocMap() deliberately delegates to the
-        // former symmetric implementation so that cols=0 remains compatible.
-        return coocMap(coocMat, topTerms, contentLexicon, pars, directed);
+        return coocMap(coocMat, topTerms, contentLexicon, pars);
     }
 
     /**
-     * Builds the map from a collected row-by-column co-occurrence matrix.
+     * Builds the map from a collected row-by-column co-occurrence matrix:
+     * normalizes the table and maps its row profiles.
      *
      * <p>
      * Square and rectangular matrices deliberately follow the same normalization
      * path. When both axes contain the same ids, the two-axis structural-zero
-     * model reduces to the square quasi-independence model. This avoids changing
-     * the association measure merely because one feature column was added.
-     * </p>
-     *
-     * @param coocMat collected co-occurrence matrix
-     * @param topTerms query-population term counts
-     * @param lexicon term lexicon
-     * @param pars request parameters
-     * @param directed retained for the collector API; normalization uses the
-     *        cells as collected
-     * @return co-occurrence map for the row terms
-     */
-    private static CoocMap coocMap(
-        final IntMatrixById coocMat,
-        final TopTerms topTerms,
-        final TermLexicon lexicon,
-        final HttpPars pars,
-        final boolean directed
-    ) {
-        return coocMapRectangular(coocMat, topTerms, lexicon, pars);
-    }
-
-    /**
-     * Normalizes a square or rectangular co-occurrence table and maps its row profiles.
-     *
-     * <p>
-     * Self-term cells are structural zeros identified by equality of ids, not by
-     * equality of ranks. Pearson and deviance residuals use the fitted rectangular
-     * quasi-independence table. Log-ratio residuals use separate additive row and
-     * column effects.
+     * model reduces to the square quasi-independence model, so {@code cols=0}
+     * reproduces the former symmetric implementation exactly. This avoids
+     * changing the association measure merely because one feature column was
+     * added. Self-term cells are structural zeros identified by equality of
+     * ids, not by equality of ranks. Pearson and deviance residuals use the
+     * fitted rectangular quasi-independence table. Log-ratio residuals use
+     * separate additive row and column effects.
      * </p>
      *
      * @param coocMat row-by-column co-occurrence matrix
@@ -280,7 +339,7 @@ public final class OpCoocMatrix extends Op
      * @param pars request parameters
      * @return map for the row terms
      */
-    private static CoocMap coocMapRectangular(
+    private static CoocMap coocMap(
         final IntMatrixById coocMat,
         final TopTerms topTerms,
         final TermLexicon lexicon,
@@ -316,7 +375,7 @@ public final class OpCoocMatrix extends Op
         }
 
         // Step 2. Fit or read add-k smoothing over all admissible rectangular cells.
-        double smooth = pars.getDouble(SMOOTH, 1d);
+        double smooth = pars.getDouble(SMOOTH, 0.5d);
         if (smooth < 0d) {
             final long[] histogram = new long[maxCount + 1];
             for (int row = 0; row < rowCount; row++) {
@@ -345,25 +404,8 @@ public final class OpCoocMatrix extends Op
         }
 
         // Step 4. Remove row and column mass effects before SVD.
-        final String assoc = pars.getString("assoc", "g2");
-        final double[][] residual;
-        if ("logratio".equals(assoc)) {
-            residual = logRatio(observed, admissible);
-        }
-        else {
-            final double[][] expected = ipf(rowSum, colSum, admissible);
-            residual = new double[rowCount][colCount];
-            for (int row = 0; row < rowCount; row++) {
-                for (int col = 0; col < colCount; col++) {
-                    if (!admissible[row][col]) {
-                        continue;
-                    }
-                    final double value = residualCell(
-                        assoc, observed[row][col], expected[row][col]);
-                    residual[row][col] = Double.isFinite(value) ? value : 0d;
-                }
-            }
-        }
+        final Assoc assoc = Assoc.of(pars.getString("assoc", Assoc.G2.name()));
+        final Residual residual = residual(assoc, observed, admissible, rowSum, colSum, pars);
 
         return svdMap(residual, freq, coocMat.rowIds(), lexicon);
     }
@@ -523,23 +565,101 @@ public final class OpCoocMatrix extends Op
     }
 
     /**
+     * Builds the residual matrix the SVD reads, for the chosen measure — the
+     * one place where map algorithms are selected, so a new one costs an
+     * {@link Assoc} constant and, unless it is a per-cell function of
+     * {@code (o, e)} (in which case {@link #residualCell} suffices), a branch
+     * here.
+     *
+     * <p>
+     * All measures but {@link Assoc#LOGRATIO} residualise cell by cell against
+     * the fitted expectation, so the {@link #ipf} fit is shared. The mass
+     * rescaling of {@link Assoc#CA} is returned rather than applied, because it
+     * belongs to the coordinates, not to the matrix: applying it to the cells
+     * would change the SVD, applying it to the coordinates is exactly the
+     * {@code D_r^{-1/2}} of correspondence analysis. Masses are taken from the
+     * smoothed margins, consistent with the rest of the fit.
+     * </p>
+     *
+     * @param assoc      chosen measure
+     * @param observed   smoothed counts, {@code [row][col]}
+     * @param admissible cells in the model, {@code false} on structural zeros
+     * @param rowSum     smoothed row margins
+     * @param colSum     smoothed column margins
+     * @param pars       request parameters, read for measure-specific knobs
+     * @return the residual matrix and its row rescaling
+     */
+    private static Residual residual(
+        final Assoc assoc,
+        final double[][] observed,
+        final boolean[][] admissible,
+        final double[] rowSum,
+        final double[] colSum,
+        final HttpPars pars
+    ) {
+        final int rowCount = observed.length;
+        final int colCount = observed[0].length;
+        if (assoc == Assoc.LOGRATIO) {
+            return new Residual(logRatio(observed, admissible), null);
+        }
+
+        final double shift = assoc == Assoc.SPPMI ? Math.max(1d, pars.getDouble("shift", 1d)) : 1d;
+        final double[][] expected = ipf(rowSum, colSum, admissible);
+        final double[][] matrix = new double[rowCount][colCount];
+        for (int row = 0; row < rowCount; row++) {
+            for (int col = 0; col < colCount; col++) {
+                if (!admissible[row][col]) {
+                    continue;
+                }
+                final double value = residualCell(
+                    assoc, observed[row][col], expected[row][col], shift);
+                matrix[row][col] = Double.isFinite(value) ? value : 0d;
+            }
+        }
+
+        if (!assoc.massScale) {
+            return new Residual(matrix, null);
+        }
+        double total = 0d;
+        for (final double sum : colSum) {
+            total += sum;
+        }
+        final double[] massScale = new double[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+            final double mass = total > 0d ? rowSum[row] / total : 0d;
+            massScale[row] = mass > 0d ? 1d / Math.sqrt(mass) : 0d;
+        }
+        return new Residual(matrix, massScale);
+    }
+
+    /**
      * Runs SVD and builds row coordinates, representation quality, and inertia.
      *
-     * @param residual normalized row-by-column matrix
+     * <p>
+     * The mass rescaling of {@link Assoc#CA}, when present, multiplies all of a
+     * row's coordinates by one constant, so it moves the point without touching
+     * {@code cos²} (a ratio of that row's own coordinates) or the inertia
+     * spectrum (read from the singular values of the unscaled matrix). It is
+     * applied before the sign fixing, which reads the largest coordinate.
+     * </p>
+     *
+     * @param residual normalized row-by-column matrix with its row rescaling
      * @param freq display frequency by row rank
      * @param rowIds row ids by rank
      * @param lexicon term lexicon
      * @return map of the row terms
      */
     private static CoocMap svdMap(
-        final double[][] residual,
+        final Residual residual,
         final long[] freq,
         final int[] rowIds,
         final TermLexicon lexicon
     ) {
-        final int rowCount = residual.length;
+        final double[][] matrix = residual.matrix();
+        final double[] massScale = residual.massScale();
+        final int rowCount = matrix.length;
         final SingularValueDecomposition svd =
-            new SingularValueDecomposition(new Array2DRowRealMatrix(residual, false));
+            new SingularValueDecomposition(new Array2DRowRealMatrix(matrix, false));
         final double[] singularValues = svd.getSingularValues();
         final RealMatrix u = svd.getU();
 
@@ -576,6 +696,11 @@ public final class OpCoocMatrix extends Op
                 numerator += coords[row][axis] * coords[row][axis];
             }
             cos2[row] = denominator > 0d ? numerator / denominator : 0d;
+            if (massScale != null) {
+                for (int axis = 0; axis < dims; axis++) {
+                    coords[row][axis] *= massScale[row];
+                }
+            }
         }
 
         // Step 7. Fix each emitted axis sign deterministically.
@@ -595,10 +720,12 @@ public final class OpCoocMatrix extends Op
 
         // Step 8. Attach display forms to row ranks.
         final String[] form = new String[rowCount];
+        final int[] id = new int[rowCount];
         for (int row = 0; row < rowCount; row++) {
+            id[row] = rowIds[row];
             form[row] = lexicon.form(rowIds[row]);
         }
-        return new CoocMap(form, freq, coords, cos2, inertia);
+        return new CoocMap(id, form, freq, coords, cos2, inertia);
     }
 
     @Override
@@ -640,44 +767,6 @@ public final class OpCoocMatrix extends Op
         return '"' + s.replace("\"", "\"\"") + '"';
     }
 
-    /**
-     * Fits the symmetric quasi-independence model {@code e(a,b) = γ(a)·γ(b)},
-     * {@code a ≠ b}, to the off-diagonal margins by iterative proportional
-     * fitting, so the structural zeros on the diagonal no longer bias the
-     * expected counts. The update is Gauss–Seidel — each new γ is used
-     * immediately, with the running sum maintained incrementally — so a table of
-     * this size converges in a handful of sweeps. Iteration zero (the
-     * initialisation) reproduces the plain margin model
-     * {@code e = rowSum(a)·rowSum(b)/total}. Rows with a zero margin get
-     * {@code γ = 0} and drop out of the expectations.
-     *
-     * @param rowSum off-diagonal row sums of the smoothed symmetric matrix
-     * @return the multipliers γ, indexed by rank
-     */
-    private static double[] ipf(final double[] rowSum) {
-        final int n = rowSum.length;
-        double total = 0d;
-        for (final double m : rowSum) total += m;
-        if (total <= 0d) return new double[n];
-        final double[] gamma = new double[n];
-        final double norm = Math.sqrt(total);
-        for (int a = 0; a < n; a++) gamma[a] = rowSum[a] / norm;
-        double gSum = 0d;
-        for (final double g : gamma) gSum += g;
-        for (int iter = 0; iter < 200; iter++) {
-            double err = 0d;
-            for (int a = 0; a < n; a++) {
-                final double denom = gSum - gamma[a];
-                if (denom <= 0d) continue;
-                final double next = rowSum[a] / denom;
-                err = Math.max(err, Math.abs(next - gamma[a]) / (next + 1e-12));
-                gSum += next - gamma[a];
-                gamma[a] = next;
-            }
-            if (err < 1e-10) break;
-        }
-        return gamma;
-    }
 
     @Override
     protected void json(
@@ -718,7 +807,8 @@ public final class OpCoocMatrix extends Op
                 jw.beginArray();
                 for (int i = 0; i < map.form().length; i++) {
                     jw.beginObject();
-                    jw.name("id").value(map.form()[i]);
+                    jw.name("id").value(map.id()[i]);
+                    jw.name("form").value(map.form()[i]);
                     jw.name("freq").value(map.freq()[i]);
                     jw.name("x").value(round(map.coords()[i][0], 4));
                     jw.name("y").value(round(map.coords()[i][1], 4));
@@ -740,96 +830,64 @@ public final class OpCoocMatrix extends Op
 
     }
 
-    /**
-     * Log-ratio (spectral-map) residual matrix: the log of each off-diagonal
-     * cell, double-centred by the least-squares fit of the additive
-     * quasi-independence model {@code log o(a,b) ≈ α(a) + α(b)}, {@code a ≠ b}
-     * — the exact additive analogue of the multiplicative fit in {@link #ipf},
-     * solved by the same Gauss–Seidel scheme (the normal equation for each α,
-     * others held fixed, is closed-form). Double-centring is what makes the log
-     * usable as map geometry: it removes the size factor that dominates the SVD
-     * of any near-non-negative matrix, and preserves the independence centring
-     * that clipping (PPMI) destroys. Relative to the Pearson residual, all
-     * multiplicative contrasts weigh the same regardless of expected count, so
-     * rare-word oppositions carry more inertia — lexical specificity rather
-     * than bulk co-occurrence.
-     *
-     * <p>
-     * Cells must be positive to take the log; upstream add-k smoothing
-     * guarantees that except at {@code smooth=0}, where non-positive cells are
-     * excluded from the fit and residualised at 0 — treated as uninformative
-     * rather than infinitely repelled. The fit is unweighted, consistent with
-     * the omitted {@code 1/√mass} step of the rest of the class (Lewi's
-     * spectral map rather than Greenacre's weighted log-ratio analysis).
-     * </p>
-     *
-     * @param o smoothed off-diagonal counts, symmetric, zero diagonal
-     * @return the double-centred log matrix, zero diagonal
-     */
-    private static double[][] logRatio(final double[][] o) {
-        final int n = o.length;
-        final double[] alpha = new double[n];
-        final double[] rowSumL = new double[n];
-        final int[] rowLen = new int[n];
-        for (int a = 0; a < n; a++) {
-            for (int b = 0; b < n; b++) {
-                if (a == b || o[a][b] <= 0d) continue;
-                rowSumL[a] += Math.log(o[a][b]);
-                rowLen[a]++;
-            }
-        }
-        for (int a = 0; a < n; a++) {
-            if (rowLen[a] > 0) alpha[a] = rowSumL[a] / (2d * rowLen[a]);
-        }
-        for (int iter = 0; iter < 200; iter++) {
-            double err = 0d;
-            for (int a = 0; a < n; a++) {
-                if (rowLen[a] == 0) continue;
-                double cross = 0d;
-                for (int b = 0; b < n; b++) {
-                    if (b == a || o[a][b] <= 0d) continue;
-                    cross += alpha[b];
-                }
-                final double next = (rowSumL[a] - cross) / rowLen[a];
-                err = Math.max(err, Math.abs(next - alpha[a]));
-                alpha[a] = next;
-            }
-            if (err < 1e-10) break;
-        }
-        final double[][] s = new double[n][n];
-        for (int a = 0; a < n; a++) {
-            for (int b = 0; b < n; b++) {
-                if (a == b || o[a][b] <= 0d) continue;
-                s[a][b] = Math.log(o[a][b]) - alpha[a] - alpha[b];
-            }
-        }
-        return s;
-    }
 
     /**
-     * Signed cell residual of the observed count against the fitted expectation.
-     * Pearson is {@code (o − e)/√e}; G² is the Poisson deviance residual
-     * {@code sign(o − e)·√(2·(o·ln(o/e) − o + e))}, which stays bounded where the
-     * Pearson residual explodes on small expectations. The {@code − o + e} term
-     * is what keeps zero cells finite: at {@code o = 0} the deviance is
-     * {@code 2e}, residual {@code −√(2e)}. {@code "logratio"} never reaches
-     * this method — it is not a per-cell function of {@code (o, e)}, its
-     * centring is a fit over the whole table, handled by {@link #logRatio}. Any
-     * other {@code assoc} value is served as Pearson: only independence-centred
-     * measures give a meaningful spectral map.
+     * Cell residual of an observed count against its fitted expectation, for
+     * every measure that is a function of {@code (o, e)} alone — all of them
+     * but {@link Assoc#LOGRATIO}, whose centring is a fit over the whole table
+     * ({@link #logRatio}) and which therefore never reaches this method.
      *
-     * @param assoc residual name, {@code "pearson"} or {@code "g2"}
+     * <p>
+     * The count-scale residuals differ only in how they tame small
+     * expectations: {@link Assoc#PEARSON} is {@code (o − e)/√e}, which explodes
+     * there; {@link Assoc#G2} is the Poisson deviance
+     * {@code sign(o − e)·√(2·(o·ln(o/e) − o + e))}, where the {@code − o + e}
+     * term is what keeps zero cells finite (at {@code o = 0} the deviance is
+     * {@code 2e}, residual {@code −√(2e)}); {@link Assoc#FT} is Freeman–Tukey,
+     * {@code √o + √(o+1) − √(4e+1)}, the classic variance-stabilising
+     * alternative. {@link Assoc#CA} is Pearson — correspondence analysis
+     * differs from the spectral map only by the mass rescaling of the
+     * coordinates, not by the cell.
+     * </p>
+     *
+     * <p>
+     * The log-scale residuals measure the same contrast multiplicatively:
+     * {@link Assoc#PMI} is {@code log(o/e)}, signed; {@link Assoc#PPMI} and
+     * {@link Assoc#SPPMI} clip it at zero, {@code SPPMI} after subtracting
+     * {@code log shift}. Clipping discards the anti-associations, which is
+     * defensible for retrieval and lossy for a map.
+     * </p>
+     *
+     * @param assoc chosen measure
      * @param o     observed, smoothed count
      * @param e     expected count under the fitted model
-     * @return the signed residual, 0 when {@code e} is not positive
+     * @param shift the {@code k} of shifted PPMI; ignored by every other measure
+     * @return the residual, 0 when {@code e} is not positive
      */
-    private static double residualCell(final String assoc, final double o, final double e) {
-        if (e <= 0d) return 0d;
-        if ("g2".equals(assoc)) {
-            final double dev = 2d * ((o > 0d ? o * Math.log(o / e) : 0d) - o + e);
-            return Math.copySign(Math.sqrt(Math.max(0d, dev)), o - e);
+    private static double residualCell(
+        final Assoc assoc,
+        final double o,
+        final double e,
+        final double shift
+    ) {
+        if (e <= 0d) {
+            return 0d;
         }
-        return (o - e) / Math.sqrt(e);
+        switch (assoc) {
+            case FT:
+                return Math.sqrt(o) + Math.sqrt(o + 1d) - Math.sqrt(4d * e + 1d);
+            case G2:
+                final double deviance = 2d * ((o > 0d ? o * Math.log(o / e) : 0d) - o + e);
+                return Math.copySign(Math.sqrt(Math.max(0d, deviance)), o - e);
+            case PMI:
+                return o > 0d ? Math.log(o / e) : 0d;
+            case PPMI:
+                return o > 0d ? Math.max(0d, Math.log(o / e)) : 0d;
+            case SPPMI:
+                return o > 0d ? Math.max(0d, Math.log(o / e) - Math.log(shift)) : 0d;
+            default:
+                return (o - e) / Math.sqrt(e);
+        }
     }
 
     /**
