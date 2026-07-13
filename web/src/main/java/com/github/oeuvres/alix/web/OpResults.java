@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Set;
 
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -11,18 +13,23 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.github.oeuvres.alix.common.Names;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.ResultsSnippets;
+import com.github.oeuvres.alix.lucene.snippets.SnippetHit;
 import com.github.oeuvres.alix.lucene.snippets.SnippetScorer;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
+import com.github.oeuvres.alix.lucene.snippets.TopSnippetCollector;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
+import com.github.oeuvres.alix.util.Detagger;
+import com.github.oeuvres.alix.util.TopSlot;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,10 +37,13 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import static com.github.oeuvres.alix.web.Pars.*;
 
+
 /**
  * Full concordance in natural docId order.
  */
 public class OpResults extends Op {
+
+    private final Detagger detagger = new Detagger(Set.of("i", "em"));
 
     @Override
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
@@ -107,12 +117,14 @@ public class OpResults extends Op {
         meta.toString(writer, pars);
         writer.append("\n-->\n");
         
+        StoredFields storedFields = index.reader().storedFields();
+        
         // build the snippet scorer
         SnippetScorer snipScore = new SnippetScorer.ThemeWords(rail, termWeights);
 
         final ResultsSnippets results = new ResultsSnippets(
             writer, 
-            index.reader().storedFields(), 
+            storedFields, 
             snipLimit,
             index.locale(),
             snipScore
@@ -171,11 +183,88 @@ public class OpResults extends Op {
             writer.flush();
             nextDoc = walker.walk(from, docs, results);
         }
-        // linear walk in docId order, collect snippet, sort and diaplays
+        // snippet relevance
         else if (SNIPPETS.equals(sort)) {
             // here, what should be the best API?
             // to have the counts of snippets, we need to loop all docs
             // we need a TopSlot<Snippet> to display to snippets
+            final DocSnippets posSnips = new DocSnippets(DocSnippets.Usage.OFFSETS, slop);
+            final SpanWalker posWalker = new SpanWalker(
+                index.searcher(),
+                spanQuery,
+                posSnips,
+                filterQuery
+            );
+
+            final TopSnippetCollector topSnips = new TopSnippetCollector(
+                docs,      // or rows; name should become "rows" for snippet mode
+                ctx,
+                snipScore
+            );
+            posWalker.walk(topSnips);
+
+            writer.append("<p class=\"statshits\">");
+            writer.append(String.valueOf(topSnips.hits().length()));
+            writer.append(" / ");
+            writer.append(String.valueOf(topSnips.snippetCount()));
+            writer.append(" snippets in ");
+            writer.append(String.valueOf(topSnips.docCount()));
+            writer.append(" textes</p>\n");
+            
+            int rank = 0;
+
+            for (TopSlot.Entry<SnippetHit> entry : topSnips.hits()) {
+                rank++;
+
+                final SnippetHit hit = entry.value();
+                final Document doc = storedFields.document(
+                    hit.docId(),
+                    Set.of(Names.ALIX_ID, contentFname, docline)
+                );
+
+                final String content = doc.get(contentFname);
+                final String docname = doc.get(Names.ALIX_ID);
+                final String title = doc.get(docline);
+
+                final int snipAnchor = hit.snipOrd() + 1;
+                final String url = docname + "?"
+                    + pars.queryString(FTEXT, Q, CTX)
+                    + "&amp;slop=" + slop;
+
+                writer
+                    .append("\n<article class=\"snippet-result\"")
+                    .append(" data-docid=\"").append(Integer.toString(hit.docId())).append("\"")
+                    .append(" data-score=\"").append(Double.toString(entry.score())).append("\"")
+                    .append(">\n");
+
+                writer
+                    .append("<h4 class=\"result-title\">")
+                    .append("<a href=\"").append(url).append("\">")
+                    .append(title)
+                    .append("</a>")
+                    .append("</h4>\n");
+
+                writer
+                    .append("<span class=\"snippet-no\">")
+                    .append(Integer.toString(rank))
+                    .append("</span>\n");
+
+                hit.write(
+                    writer,
+                    detagger,
+                    content,
+                    ctx
+                );
+
+                writer
+                    .append("<a")
+                    .append(" href=\"").append(url)
+                    .append("#snippet-").append(Integer.toString(snipAnchor)).append("\"")
+                    .append(" class=\"snippet-open\"")
+                    .append(">")
+                    .append("→</a>\n")
+                    .append("</article>\n");
+            }
         }
         // document relevance
         else {
