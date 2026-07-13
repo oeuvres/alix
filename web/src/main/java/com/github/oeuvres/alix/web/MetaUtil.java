@@ -82,6 +82,17 @@ public class MetaUtil
     }
     
     /**
+     * Records an {@code String[]} meta entry.
+     *
+     * @param key   entry name
+     * @param values entry values
+     */
+    public void put(final String key, final String[] values)
+    {
+        entries.put(key, values);
+    }
+    
+    /**
      * Records a {@code long} meta entry.
      *
      * @param key   entry name

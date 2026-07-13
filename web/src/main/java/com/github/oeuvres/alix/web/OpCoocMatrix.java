@@ -278,7 +278,7 @@ public final class OpCoocMatrix extends Op
         
         // get sorted rows, maybe filtered by a flag, will be the rows of interest to display
         // Should we filter pivots now or after?
-        topTerms.rank(scorer, terms, tflag).promote(pivotIds, FREQ);
+        topTerms.rank(scorer, terms + pivotIds.length, tflag).promote(pivotIds, FREQ);
         final IntList termIds = new IntList(topTerms.size());
         BitSet rows = new BitSet(contentLexicon.vocabSize());
         for (final TermEntry term : topTerms) {
@@ -289,6 +289,13 @@ public final class OpCoocMatrix extends Op
             termIds.push(termId);
         }
         int[] rowIds = termIds.toUniq();
+        final String[] rowForms = new String[rowIds.length];
+        int i=0;
+        for (final int termId : rowIds) {
+            rowForms[i++] = contentLexicon.form(termId);
+        }
+        meta.put("rows", rowForms);
+
         // get more co-occurrents than the focus terms, without filtering flag, to add semantic signal
         // 0 = same as rows. Positive, cols added
         final int cols = pars.getInt("cols", new int[]{0, 200}, 0);
@@ -298,14 +305,21 @@ public final class OpCoocMatrix extends Op
         }
         else {
             // keep same scorer? do raw sort add signal or noise?
-            topTerms.rank(scorer, terms+cols, TermFlag.NULL).promote(pivotIds, FREQ);
+            topTerms.rank(scorer, terms + pivotIds.length +cols, tflag).promote(pivotIds, FREQ); // TermFlag.NULL
+
             // here termIds contains rows, add other terms
+            int k = 0;
+            final String[] colForms = new String[cols];
             for (final TermEntry term : topTerms) {
                 final int termId = term.termId();
+                if (pivotIds != null && Arrays.binarySearch(pivotIds, termId) >= 0) continue;
                 if (rows.get(termId)) continue;
                 termIds.push(termId);
+                colForms[k] = term.form() + " (" + term.freq() + " ; " + term.score() + ")";
+                if (++k >= cols) break;
             }
             colIds = termIds.toUniq();
+            meta.put("cols", colForms);
         }
         final IntMatrixById coocMat = new IntMatrixById(rowIds, colIds);
         final boolean directed = pars.getBoolean("directed", false);
@@ -374,6 +388,7 @@ public final class OpCoocMatrix extends Op
             }
         }
 
+        /*
         // Step 2. Fit or read add-k smoothing over all admissible rectangular cells.
         double smooth = pars.getDouble(SMOOTH, 0.5d);
         if (smooth < 0d) {
@@ -388,6 +403,7 @@ public final class OpCoocMatrix extends Op
             }
             smooth = smoothFit(histogram, admissibleCells, rawTotal);
         }
+        */
 
         // Step 3. Smooth all admissible cells and compute both sets of margins.
         final double[] rowSum = new double[rowCount];
@@ -397,7 +413,7 @@ public final class OpCoocMatrix extends Op
                 if (!admissible[row][col]) {
                     continue;
                 }
-                observed[row][col] += smooth;
+                // observed[row][col] += smooth;
                 rowSum[row] += observed[row][col];
                 colSum[col] += observed[row][col];
             }

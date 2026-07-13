@@ -403,11 +403,11 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *                                  {@code flag == null}
      */
     public TopTerms rank(
-        final KeynessScorer scorer,
+        KeynessScorer scorer,
         final int topK,
         final TermFlag flag)
     {
-        final KeynessScorer ks = Objects.requireNonNull(scorer, "scorer");
+        if (scorer == null) scorer = new KeynessScorer.Count();
         final BitSet filter = rankingFilter(flag);
         checkTopK(topK);
 
@@ -427,7 +427,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
             final long fieldTermCount = fieldStats.termFreq(termId);
             final long otherTermCount = fieldTermCount - localTermCount;
-            final double score = ks.score(
+            final double score = scorer.score(
                     localTermCount, tokens, otherTermCount, otherTokens);
 
             if (Double.isNaN(score)) {
@@ -1185,6 +1185,12 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         public TermValue value()
         {
             return termValue(termId);
+        }
+        
+        @Override
+        public String toString()
+        {
+            return form() + " (" + score() + " ; " + freq() + ")";
         }
     }
 
