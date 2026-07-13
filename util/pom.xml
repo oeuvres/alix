@@ -15,4 +15,12 @@
     <build>
         <sourceDirectory>src/java</sourceDirectory>
     </build>
+    <dependencies>
+        <!-- Pearson SVD -->
+        <dependency>
+            <groupId>org.hipparchus</groupId>
+            <artifactId>hipparchus-core</artifactId>
+            <version>2.3</version>
+        </dependency>
+    </dependencies>
 </project>

@@ -11,6 +11,7 @@ package com.github.oeuvres.alix.util;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.IntFunction;
 
 /**
  * A dense rectangular matrix addressed by independent sets of non-negative row
@@ -44,12 +45,16 @@ public class IntMatrixById
     private final int[] colIdByRank;
     /** Column id to column rank. */
     private final int[] colRankById;
+    /** Column id to label. */
+    private final String[] colLabelByRank;
     /** Number of rows. */
     private final int rowCount;
     /** Row rank to row id. */
     private final int[] rowIdByRank;
     /** Row id to row rank. */
     private final int[] rowRankById;
+    /** Row id to label. */
+    private final String[] rowLabelByRank;
     /** Number of accumulated contexts. */
     private long total;
 
@@ -65,7 +70,8 @@ public class IntMatrixById
      */
     public IntMatrixById(
         final int[] rowIds,
-        final int[] colIds
+        final int[] colIds,
+        IntFunction<String> label
     ) {
         Objects.requireNonNull(rowIds, "rowIds");
         Objects.requireNonNull(colIds, "columnIds");
@@ -82,6 +88,20 @@ public class IntMatrixById
         this.cells = new int[(int) cellCount];
         this.rowRankById = rankById(rowIdByRank);
         this.colRankById = rankById(colIdByRank);
+        if (label == null) {
+            rowLabelByRank = null;
+            colLabelByRank = null;
+        }
+        else {
+            rowLabelByRank = new String[rowCount];
+            for (int rank = 0; rank < rowIdByRank.length; rank++) {
+                rowLabelByRank[rank] = label.apply(rowIdByRank[rank]);
+            }
+            colLabelByRank = new String[colCount];
+            for (int rank = 0; rank < colIdByRank.length; rank++) {
+                colLabelByRank[rank] = label.apply(colIdByRank[rank]);
+            }
+        }
     }
 
     /**
@@ -139,6 +159,20 @@ public class IntMatrixById
      */
     public int[] colIds() {
         return colIdByRank;
+    }
+    
+    /**
+     * Returns the label of a col by rank.
+     *
+     * @param rank {@code [0, colCount())}.
+     * @return a String.
+     */
+    public String colLabelByRank(
+        final int rank
+    ) {
+        if (colLabelByRank == null) return null;
+        if (rank < 0 || rank >= colCount()) return null;
+        return colLabelByRank[rank];
     }
 
     /**
@@ -282,6 +316,20 @@ public class IntMatrixById
     }
 
     /**
+     * Returns the label of a row by rank.
+     *
+     * @param rank {@code [0, rowCount())}.
+     * @return a String.
+     */
+    public String rowLabelByRank(
+        final int rank
+    ) {
+        if (rowLabelByRank == null) return null;
+        if (rank < 0 || rank >= rowCount()) return null;
+        return rowLabelByRank[rank];
+    }
+    
+    /**
      * Returns the rank of a row id.
      *
      * @param id any id.
@@ -292,6 +340,23 @@ public class IntMatrixById
     ) {
         return rank(id, rowRankById);
     }
+    
+    /**
+     * Returns the sum of a row, by rank.
+     *
+     * @param rank {@code [0, rowCount())}.
+     * @return a rank in {@code [0, rowCount())}, or {@code -1}.
+     */
+    public long rowSumByRank(
+        final int rowRank
+    ) {
+        long sum = 0;
+        for (int colRank = 0; colRank < colCount; colRank++) {
+            sum += countByRank(rowRank, colRank);
+        }
+        return sum;
+    }
+
 
     /**
      * Sets a cell value.

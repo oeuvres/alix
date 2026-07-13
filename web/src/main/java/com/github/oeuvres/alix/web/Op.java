@@ -475,4 +475,16 @@ public abstract class Op
         }
         return flucText;
     }
+    
+    /**
+     * CSV-escapes a field per RFC 4180: quoted only when it contains a comma,
+     * double quote, CR or LF, with internal quotes doubled.
+     *
+     * @param s field value
+     * @return the field, quoted if it needs to be
+     */
+    static String csvEscape(final String s) {
+        if (s.indexOf(',') < 0 && s.indexOf(';') < 0 && s.indexOf('"') < 0 && s.indexOf('\n') < 0 && s.indexOf('\r') < 0) return s;
+        return '"' + s.replace("\"", "\"\"") + '"';
+    }
 }
