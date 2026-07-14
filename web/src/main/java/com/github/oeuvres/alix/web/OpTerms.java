@@ -162,9 +162,9 @@ public final class OpTerms extends Op
             meta.put("pivotIds", pivotIds);
             meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
             meta.put("fieldTokens", contentFluc.termStats().fieldTokens());
-            meta.put("focusTokens", consumer.coocTokens());
-            meta.put("focusDocs", consumer.coocDocsTotal());
-            meta.put("hits", walker.hits());
+            meta.put("focusTokens", consumer.tokenCount());
+            meta.put("focusDocs", consumer.documentCount());
+            meta.put("focusSnippets", consumer.contextCount());
             return topTerms.rank(scorer, terms, tflag).promote(pivotIds, FREQ);
         }
     }

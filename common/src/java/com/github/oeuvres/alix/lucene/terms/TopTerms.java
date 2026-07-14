@@ -30,10 +30,12 @@ import com.github.oeuvres.alix.util.TopArray;
  * </p>
  *
  * <p>
- * On construction, the current population is the whole field: occurrence and
- * document-count arrays alias {@link TermStats}. Calling
- * {@link #select(IndexReader, FixedBitSet)} or writing through {@link #buffers()}
- * switches the instance to local mutable buffers.
+ * On construction, the current population is the whole field: occurrence,
+ * document-count, and context-count arrays alias {@link TermStats}. In that
+ * default population one document is one context. Calling
+ * {@link #select(IndexReader, FixedBitSet)}, {@link #beginPopulation()}, or
+ * writing through {@link #buffers()} switches the instance to local mutable
+ * buffers.
  * </p>
  *
  * <p>
@@ -47,6 +49,9 @@ import com.github.oeuvres.alix.util.TopArray;
  */
 public final class TopTerms implements Iterable<TopTerms.TermEntry>
 {
+    /** Number of contexts in the current population. */
+    private int contexts;
+
     /** Number of documents in the current population. */
     private int docs;
 
@@ -76,6 +81,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
     /** Score vector indexed by dense term id; {@code null} means score == frequency. */
     private double[] scores;
+
+    /** Current population context counts, indexed by dense term id. */
+    private int[] termContexts;
 
     /** Current population document counts, indexed by dense term id. */
     private int[] termDocs;
@@ -115,6 +123,26 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Starts a local population and returns its writable count sink.
+     *
+     * <p>
+     * The returned object owns the complete population lifecycle: callers write
+     * occurrence, document, and context counts into its arrays, then call
+     * {@link Population#complete(long, int, int)} once to publish the totals to
+     * this {@code TopTerms} instance. This keeps count vectors and population
+     * totals in one transaction and is preferred over the legacy
+     * {@link #buffers()} plus {@link #setTotals(long, int, int)} sequence.
+     * </p>
+     *
+     * @return writable local population
+     */
+    public Population beginPopulation()
+    {
+        useLocal();
+        return new Population();
+    }
+
+    /**
      * Returns writable local population buffers, after switching this instance
      * to local mutable storage and clearing previous content.
      *
@@ -122,7 +150,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * The returned arrays are aliased and indexed by dense term id. Index
      * {@code 0} is the absent-term sentinel and must not be written. The buffers
      * are zeroed on every call. After writing into them, the caller must
-     * declare the population totals via {@link #setTotals(long, int)}.
+     * declare the population totals via {@link #setTotals(long, int, int)}.
+     * Prefer {@link #beginPopulation()}, which keeps the arrays and totals bound
+     * to the same population object.
      * </p>
      *
      * @return local population buffers
@@ -130,7 +160,34 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     public Buffers buffers()
     {
         useLocal();
-        return new Buffers(termFreq, termDocs);
+        return new Buffers(termFreq, termDocs, termContexts);
+    }
+
+    /**
+     * Returns the current population context count.
+     *
+     * <p>
+     * A context is the counting unit chosen by the population collector. For a
+     * normal field or document-subset population, one context is one document.
+     * For snippet co-occurrence populations, one context is one merged snippet.
+     * </p>
+     *
+     * @return context count
+     */
+    public int contexts()
+    {
+        return contexts;
+    }
+
+    /**
+     * Returns the current population context count for one term.
+     *
+     * @param termId dense term id
+     * @return number of population contexts containing the term
+     */
+    public int contexts(final int termId)
+    {
+        return termContexts[termId];
     }
 
     /**
@@ -520,8 +577,10 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     {
         termFreq = fieldStats.termFreqRef();
         termDocs = fieldStats.termDocsRef();
+        termContexts = termDocs;
         tokens = fieldStats.fieldTokens();
         docs = fieldStats.fieldDocs();
+        contexts = docs;
         mutable = false;
         clearRanking();
         return this;
@@ -569,6 +628,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                 final int freq = postings.freq();
                 termFreq[termId] += freq;
                 termDocs[termId]++;
+                termContexts[termId]++;
                 tokenCount += freq;
             }
 
@@ -577,6 +637,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
         tokens = tokenCount;
         this.docs = bits.cardinality();
+        this.contexts = this.docs;
         return this;
     }
 
@@ -651,22 +712,49 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
     /**
      * Sets current population totals after an external collector has written
-     * into this instance's local buffers.
+     * into this instance's local buffers, treating documents as contexts.
+     *
+     * <p>
+     * This overload is retained for document-based collectors. Snippet or other
+     * non-document populations must use {@link #setTotals(long, int, int)} or,
+     * preferably, {@link #beginPopulation()}.
+     * </p>
      *
      * @param tokens current population token count
-     * @param docs   current population document count
+     * @param docs current population document and context count
      * @throws IllegalArgumentException if a value is negative
      */
     public void setTotals(final long tokens, final int docs)
     {
+        setTotals(tokens, docs, docs);
+    }
+
+    /**
+     * Sets current population totals after an external collector has written
+     * into this instance's local buffers.
+     *
+     * @param tokens current population token count
+     * @param docs current population document count
+     * @param contexts current population context count
+     * @throws IllegalArgumentException if a value is negative
+     */
+    public void setTotals(
+        final long tokens,
+        final int docs,
+        final int contexts
+    ) {
         if (tokens < 0L) {
             throw new IllegalArgumentException("tokens must be >= 0");
         }
         if (docs < 0) {
             throw new IllegalArgumentException("docs must be >= 0");
         }
+        if (contexts < 0) {
+            throw new IllegalArgumentException("contexts must be >= 0");
+        }
         this.tokens = tokens;
         this.docs = docs;
+        this.contexts = contexts;
     }
 
     /**
@@ -677,6 +765,20 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     public int size()
     {
         return rank2termId == null ? 0 : rank2termId.length;
+    }
+
+    /**
+     * Returns the current population context-count vector.
+     *
+     * <p>
+     * The returned array is aliased, not copied.
+     * </p>
+     *
+     * @return context-count vector indexed by dense term id
+     */
+    public int[] termContextsRef()
+    {
+        return termContexts;
     }
 
     /**
@@ -940,6 +1042,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     private TermValue termValue(final int termId)
     {
         return new TermValue(
+            termContexts[termId],
             termDocs[termId],
             fieldStats.termDocs(termId),
             fieldStats.termFreq(termId),
@@ -959,14 +1062,17 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         if (!mutable) {
             termFreq = new long[vocabSize];
             termDocs = new int[vocabSize];
+            termContexts = new int[vocabSize];
             mutable = true;
         } else {
             Arrays.fill(termFreq, 0L);
             Arrays.fill(termDocs, 0);
+            Arrays.fill(termContexts, 0);
         }
 
         tokens = 0L;
         docs = 0;
+        contexts = 0;
         clearRanking();
     }
 
@@ -980,9 +1086,84 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * @param termFreq per-term occurrence-count buffer
      * @param termDocs per-term document-count buffer
+     * @param termContexts per-term context-count buffer
      */
-    public record Buffers(long[] termFreq, int[] termDocs)
+    public record Buffers(
+        long[] termFreq,
+        int[] termDocs,
+        int[] termContexts
+    ) {
+    }
+
+    /**
+     * Writable local population with an explicit completion step.
+     *
+     * <p>
+     * Instances are created only by {@link #beginPopulation()}. Count arrays are
+     * live aliases owned by the enclosing {@code TopTerms}. A population may be
+     * completed exactly once.
+     * </p>
+     */
+    public final class Population
     {
+        /** Whether totals have already been published. */
+        private boolean completed;
+
+        /** Creates a population bound to the enclosing count arrays. */
+        private Population()
+        {
+        }
+
+        /**
+         * Publishes the population totals to the enclosing {@code TopTerms}.
+         *
+         * @param tokens population token count
+         * @param docs population document count
+         * @param contexts population context count
+         * @throws IllegalArgumentException if a value is negative
+         * @throws IllegalStateException if this population was already completed
+         */
+        public void complete(
+            final long tokens,
+            final int docs,
+            final int contexts
+        ) {
+            if (completed) {
+                throw new IllegalStateException("population already completed");
+            }
+            TopTerms.this.setTotals(tokens, docs, contexts);
+            completed = true;
+        }
+
+        /**
+         * Returns the writable per-term context counts.
+         *
+         * @return context-count vector indexed by dense term id
+         */
+        public int[] termContexts()
+        {
+            return TopTerms.this.termContexts;
+        }
+
+        /**
+         * Returns the writable per-term document counts.
+         *
+         * @return document-count vector indexed by dense term id
+         */
+        public int[] termDocs()
+        {
+            return TopTerms.this.termDocs;
+        }
+
+        /**
+         * Returns the writable per-term occurrence counts.
+         *
+         * @return occurrence-count vector indexed by dense term id
+         */
+        public long[] termFreq()
+        {
+            return TopTerms.this.termFreq;
+        }
     }
 
     /**
@@ -994,6 +1175,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * term id as their final deterministic tie-breaker.
      * </p>
      *
+     * @param contexts current population context count
      * @param docs current population document count
      * @param fieldDocs full-field document count
      * @param fieldFreq full-field occurrence count
@@ -1003,6 +1185,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param termId dense term id
      */
     public record TermValue(
+        long contexts,
         long docs,
         long fieldDocs,
         long fieldFreq,
@@ -1011,6 +1194,12 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         double score,
         int termId)
     {
+        /** Orders terms by descending current population context count. */
+        public static final Comparator<TermValue> CONTEXTS = Comparator
+            .comparingLong(TermValue::contexts)
+            .reversed()
+            .thenComparingInt(TermValue::termId);
+
         /** Orders terms by descending current population document count. */
         public static final Comparator<TermValue> DOCS = Comparator
             .comparingLong(TermValue::docs)
@@ -1072,6 +1261,16 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         {
             this.rank = rank;
             this.termId = termId;
+        }
+
+        /**
+         * Returns the current population context count for this term.
+         *
+         * @return current count of contexts containing this term
+         */
+        public long contexts()
+        {
+            return termContexts[termId];
         }
 
         /**
@@ -1178,6 +1377,17 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         /**
+         * Returns a textual representation of this ranked term.
+         *
+         * @return display form, score, and occurrence count
+         */
+        @Override
+        public String toString()
+        {
+            return form() + " (" + score() + " ; " + freq() + ")";
+        }
+
+        /**
          * Returns all stable values exposed by this entry.
          *
          * @return immutable term-value snapshot
@@ -1185,12 +1395,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         public TermValue value()
         {
             return termValue(termId);
-        }
-        
-        @Override
-        public String toString()
-        {
-            return form() + " (" + score() + " ; " + freq() + ")";
         }
     }
 

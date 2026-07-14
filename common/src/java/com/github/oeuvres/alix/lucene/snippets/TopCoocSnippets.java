@@ -8,10 +8,11 @@ import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
+import com.github.oeuvres.alix.lucene.terms.TopTerms.Population;
 
 /**
- * Accumulates per-term counts in fixed-width windows around the merged snippets
- * produced by {@link SpanWalker}.
+ * Accumulates occurrence, document, and context counts in windows around the
+ * merged snippets produced by {@link SpanWalker}.
  *
  * <p>
  * Each merged snippet is one independent context. For a snippet occupying
@@ -22,24 +23,33 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
  * </p>
  *
  * <p>
- * {@link Buffers#termFreq()} stores occurrence counts across snippet contexts.
- * An indexed occurrence covered by two distinct snippet windows is therefore
- * counted twice, once in each context. This is the same counting model used by
- * {@link CoocMatSnippets}; consequently, for identical walks and term axes,
- * {@code termFreq[termId]} equals the matrix identity cell for that term.
+ * Three per-term statistics are collected:
  * </p>
+ * <ul>
+ * <li>{@link Population#termFreq()} counts occurrences across snippet contexts.
+ * An indexed position covered by two distinct context windows is counted once
+ * in each context. This is the same counting model as {@link CoocMatSnippets},
+ * so the count equals the matrix identity cell for an identical walk.</li>
+ * <li>{@link Population#termContexts()} counts merged snippets containing the
+ * term, once per {@code (term, snippet)} pair.</li>
+ * <li>{@link Population#termDocs()} counts Lucene documents containing the term
+ * in at least one scanned snippet window, once per {@code (term, document)}
+ * pair.</li>
+ * </ul>
  *
  * <p>
- * {@link Buffers#termDocs()} stores snippet frequency: it is incremented once
- * per {@code (term, snippet)} pair, regardless of how often the term occurs in
- * that snippet. The name comes from the generic {@code TopTerms} TF/DF model;
- * within this consumer, a snippet is the local counting context.
+ * Bind with {@link #bindTo(Population)} when possible. After the walk and any
+ * pivot subtraction, {@link #complete()} publishes token, document, and context
+ * totals to the same {@code TopTerms} population. The legacy
+ * {@link #bindTo(Buffers)} overload remains available for callers that publish
+ * totals separately.
  * </p>
  *
  * <p>
  * Pivot occurrences are collected during the walk and may be removed afterward
- * with {@link #subtractPivots(int[])}. This removes them from both per-term
- * buffers and from the token total used by keyness scoring.
+ * with {@link #subtractPivots(int[])}. This clears all three per-term counts for
+ * each pivot and removes pivot occurrences from the token total. Document and
+ * context totals describe the walked population and are therefore unchanged.
  * </p>
  *
  * <p>
@@ -48,17 +58,23 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
  */
 public final class TopCoocSnippets implements SnippetsConsumer
 {
-    /** Bound local-population buffers. */
-    private Buffers buffers;
+    /** Whether totals have been published to the bound population. */
+    private boolean completed;
 
-    /** Total non-pivot token occurrences across snippet contexts. */
-    private long coocTokens;
+    /** Number of merged snippet contexts processed. */
+    private int contextCount;
 
-    /** Field statistics used to validate buffer sizes. */
+    /** Number of Lucene documents containing at least one merged snippet. */
+    private int documentCount;
+
+    /** Field statistics used to validate count-vector sizes. */
     private final TermStats fieldStats;
 
     /** Number of context positions read before each snippet. */
     private final int left;
+
+    /** Population completed by {@link #complete()}, or {@code null} for legacy binding. */
+    private Population population;
 
     /** Forward positional rail for the indexed field. */
     private final TermRail rail;
@@ -66,11 +82,23 @@ public final class TopCoocSnippets implements SnippetsConsumer
     /** Number of context positions read after each snippet. */
     private final int right;
 
-    /** Number of merged snippets processed. */
-    private int snippetCount;
+    /** Writable per-term context counts. */
+    private int[] termContexts;
 
-    /** Terms already counted toward snippet frequency in the current snippet. */
-    private final BitSet termSeen;
+    /** Writable per-term document counts. */
+    private int[] termDocs;
+
+    /** Writable per-term occurrence counts. */
+    private long[] termFreq;
+
+    /** Terms already counted in the current snippet context. */
+    private final BitSet termSeenInContext;
+
+    /** Terms already counted in the current Lucene document. */
+    private final BitSet termSeenInDocument;
+
+    /** Total non-pivot occurrences counted across snippet contexts. */
+    private long tokenCount;
 
     /**
      * Constructs a snippet co-occurrence consumer.
@@ -96,70 +124,94 @@ public final class TopCoocSnippets implements SnippetsConsumer
         }
         this.left = left;
         this.right = right;
-        this.termSeen = new BitSet(fieldStats.vocabSize());
+        final int vocabSize = fieldStats.vocabSize();
+        this.termSeenInContext = new BitSet(vocabSize);
+        this.termSeenInDocument = new BitSet(vocabSize);
     }
 
     /**
-     * Binds writable local-population buffers to this consumer.
+     * Binds legacy writable population buffers and resets accumulated totals.
      *
      * <p>
-     * Calling this method does not reset the consumer totals. Call
-     * {@link #reset()} before reusing this instance for another walk.
+     * This overload cannot publish totals automatically. After the walk, the
+     * caller must transfer {@link #tokenCount()}, {@link #documentCount()}, and
+     * {@link #contextCount()} to the owning population.
      * </p>
      *
      * @param buffers buffers obtained from
      * {@link com.github.oeuvres.alix.lucene.terms.TopTerms#buffers()}
      * @return this consumer
-     * @throws IllegalArgumentException if a buffer length differs from the vocabulary size
+     * @throws IllegalArgumentException if a vector length differs from the vocabulary size
      * @throws NullPointerException if {@code buffers} is {@code null}
      */
-    public TopCoocSnippets bindTo(
-        final Buffers buffers
-    ) {
+    public TopCoocSnippets bindTo(final Buffers buffers)
+    {
         final Buffers target = Objects.requireNonNull(buffers, "buffers");
-        final int vocabSize = fieldStats.vocabSize();
-        if (target.termFreq().length != vocabSize || target.termDocs().length != vocabSize) {
-            throw new IllegalArgumentException(
-                "buffer length mismatch: vocabSize=" + vocabSize
-                    + ", termFreq.length=" + target.termFreq().length
-                    + ", termDocs.length=" + target.termDocs().length);
-        }
-        this.buffers = target;
+        bindVectors(target.termFreq(), target.termDocs(), target.termContexts());
+        population = null;
+        reset();
         return this;
     }
 
     /**
-     * Returns the number of merged snippets processed.
+     * Binds a writable population and resets accumulated totals.
      *
      * <p>
-     * The historical method name is retained for compatibility with existing
-     * callers. The returned value is a snippet count, not a Lucene document count.
+     * After the walk and any pivot subtraction, call {@link #complete()} to
+     * publish all totals to the bound population.
      * </p>
      *
-     * @return number of merged snippet contexts
+     * @param population population obtained from
+     * {@link com.github.oeuvres.alix.lucene.terms.TopTerms#beginPopulation()}
+     * @return this consumer
+     * @throws IllegalArgumentException if a vector length differs from the vocabulary size
+     * @throws NullPointerException if {@code population} is {@code null}
      */
-    public int coocDocsTotal()
+    public TopCoocSnippets bindTo(final Population population)
     {
-        return snippetCount;
+        final Population target = Objects.requireNonNull(population, "population");
+        bindVectors(target.termFreq(), target.termDocs(), target.termContexts());
+        this.population = target;
+        reset();
+        return this;
     }
 
     /**
-     * Returns the total non-pivot token occurrences counted across snippet contexts.
+     * Publishes accumulated totals to the population bound through
+     * {@link #bindTo(Population)}.
      *
-     * @return local-population token total
+     * @throws IllegalStateException if no population was bound or it was already completed
      */
-    public long coocTokens()
+    public void complete()
     {
-        return coocTokens;
+        if (completed) {
+            throw new IllegalStateException("consumer already completed");
+        }
+        if (population == null) {
+            throw new IllegalStateException(
+                "bindTo(TopTerms.Population) must be called before complete()");
+        }
+        population.complete(tokenCount, documentCount, contextCount);
+        completed = true;
     }
 
     /**
-     * Accumulates all merged snippet windows from one Lucene document.
+     * Returns the number of merged snippet contexts processed.
+     *
+     * @return context count
+     */
+    public int contextCount()
+    {
+        return contextCount;
+    }
+
+    /**
+     * Accumulates every merged snippet window from one Lucene document.
      *
      * @param docId global Lucene document id
      * @param snippets merged snippets collected for the document
      * @throws IOException if snippet processing fails
-     * @throws IllegalStateException if no buffers have been bound
+     * @throws IllegalStateException if no count vectors have been bound
      */
     @Override
     public void docSnippets(
@@ -168,80 +220,166 @@ public final class TopCoocSnippets implements SnippetsConsumer
     )
         throws IOException
     {
-        if (buffers == null) {
-            throw new IllegalStateException("bindTo() must be called before walking snippets");
+        requireCollecting();
+
+        final int count = snippets.count();
+        if (count == 0) {
+            return;
         }
 
-        final long[] termFreq = buffers.termFreq();
-        final int[] termDocs = buffers.termDocs();
-        final int count = snippets.count();
+        documentCount++;
+        termSeenInDocument.clear();
 
         for (int snippetOrd = 0; snippetOrd < count; snippetOrd++) {
-            termSeen.clear();
+            termSeenInContext.clear();
 
             final int start = snippets.snipStartPosition(snippetOrd);
             final int end = snippets.snipEndPosition(snippetOrd);
 
             rail.scanWindow(docId, start - left, end + right, termId -> {
                 termFreq[termId]++;
-                coocTokens++;
+                tokenCount++;
 
-                if (!termSeen.get(termId)) {
-                    termSeen.set(termId);
+                if (!termSeenInContext.get(termId)) {
+                    termSeenInContext.set(termId);
+                    termContexts[termId]++;
+                }
+
+                if (!termSeenInDocument.get(termId)) {
+                    termSeenInDocument.set(termId);
                     termDocs[termId]++;
                 }
             });
 
-            snippetCount++;
+            contextCount++;
         }
+    }
+
+    /**
+     * Returns the number of Lucene documents containing at least one merged snippet.
+     *
+     * @return document count
+     */
+    public int documentCount()
+    {
+        return documentCount;
     }
 
     /**
      * Clears totals accumulated by this consumer.
      *
      * <p>
-     * The bound buffers are not cleared. Obtain fresh buffers from
-     * {@code TopTerms.buffers()} before a new collection pass.
+     * Bound count vectors are not cleared. Obtain a fresh population or fresh
+     * buffers before starting another collection pass.
      * </p>
      */
     public void reset()
     {
-        coocTokens = 0L;
-        snippetCount = 0;
+        completed = false;
+        contextCount = 0;
+        documentCount = 0;
+        tokenCount = 0L;
+        termSeenInContext.clear();
+        termSeenInDocument.clear();
     }
 
     /**
      * Removes pivot terms accumulated during the walk.
      *
      * <p>
-     * Every occurrence of each pivot is removed from the local token total, and
-     * its occurrence and snippet-frequency entries are cleared. Call this method
-     * once after the walk and before reading totals or ranking terms.
+     * Every occurrence of each pivot is removed from the token total, and its
+     * occurrence, document-frequency, and context-frequency entries are cleared.
+     * Call this method once after the walk and before {@link #complete()} or
+     * ranking terms.
      * </p>
      *
      * @param pivotIds dense ids of pivot terms; {@code null} and empty arrays are ignored
-     * @throws IllegalStateException if no buffers have been bound
+     * @throws IllegalArgumentException if a pivot id is outside the vocabulary
+     * @throws IllegalStateException if no count vectors have been bound
      */
-    public void subtractPivots(
-        final int[] pivotIds
-    ) {
+    public void subtractPivots(final int[] pivotIds)
+    {
         if (pivotIds == null || pivotIds.length == 0) {
             return;
         }
-        if (buffers == null) {
-            throw new IllegalStateException("bindTo() must be called before subtractPivots()");
-        }
+        requireCollecting();
 
-        final long[] termFreq = buffers.termFreq();
-        final int[] termDocs = buffers.termDocs();
         long pivotTokens = 0L;
-
+        final int vocabSize = fieldStats.vocabSize();
         for (final int pivotId : pivotIds) {
+            if (pivotId <= 0 || pivotId >= vocabSize) {
+                throw new IllegalArgumentException(
+                    "pivotId=" + pivotId + ", expected 1.." + (vocabSize - 1));
+            }
             pivotTokens += termFreq[pivotId];
             termFreq[pivotId] = 0L;
             termDocs[pivotId] = 0;
+            termContexts[pivotId] = 0;
         }
 
-        coocTokens -= pivotTokens;
+        tokenCount -= pivotTokens;
+    }
+
+    /**
+     * Returns the total non-pivot occurrences counted across snippet contexts.
+     *
+     * @return token occurrence count
+     */
+    public long tokenCount()
+    {
+        return tokenCount;
+    }
+
+    /**
+     * Binds writable count vectors after validating their lengths.
+     *
+     * @param termFreq occurrence-count vector
+     * @param termDocs document-count vector
+     * @param termContexts context-count vector
+     * @throws IllegalArgumentException if a vector length differs from the vocabulary size
+     */
+    private void bindVectors(
+        final long[] termFreq,
+        final int[] termDocs,
+        final int[] termContexts
+    ) {
+        final int vocabSize = fieldStats.vocabSize();
+        if (termFreq.length != vocabSize
+                || termDocs.length != vocabSize
+                || termContexts.length != vocabSize) {
+            throw new IllegalArgumentException(
+                "count-vector length mismatch: vocabSize=" + vocabSize
+                    + ", termFreq.length=" + termFreq.length
+                    + ", termDocs.length=" + termDocs.length
+                    + ", termContexts.length=" + termContexts.length);
+        }
+        this.termFreq = termFreq;
+        this.termDocs = termDocs;
+        this.termContexts = termContexts;
+    }
+
+    /**
+     * Verifies that collection is still open.
+     *
+     * @throws IllegalStateException if totals were already published
+     */
+    private void requireCollecting()
+    {
+        requireBound();
+        if (completed) {
+            throw new IllegalStateException("consumer already completed");
+        }
+    }
+
+    /**
+     * Verifies that writable count vectors have been bound.
+     *
+     * @throws IllegalStateException if no count vectors have been bound
+     */
+    private void requireBound()
+    {
+        if (termFreq == null || termDocs == null || termContexts == null) {
+            throw new IllegalStateException("bindTo() must be called before collecting snippets");
+        }
     }
 }

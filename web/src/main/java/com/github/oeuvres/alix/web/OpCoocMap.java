@@ -77,20 +77,24 @@ public final class OpCoocMap extends Op
             filterQuery
         );
         
+        final TopTerms.Population population = topTerms.beginPopulation();
         final TopCoocSnippets consumer = new TopCoocSnippets(
             contentFluc.termStats(),
             contentFluc.termRail(),
             left,
-            right);
+            right
+        ).bindTo(population);
         consumer.bindTo(topTerms.buffers());
         walker.walk(consumer);
         consumer.subtractPivots(pivotIds); // should remove topTerms and simplify ranking
-        topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
+        consumer.complete();
+        
         meta.put("pivotIds", pivotIds);
         meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
         meta.put("fieldTokens", contentFluc.termStats().fieldTokens());
-        meta.put("focusTokens", consumer.coocTokens());
-        meta.put("focusSnippets", consumer.coocDocsTotal());
+        meta.put("snippets", consumer.contextCount());
+        meta.put("focusDocs", consumer.documentCount());
+        meta.put("focusTokens", consumer.tokenCount());
         meta.put("hits", walker.hits());
         
         final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
