@@ -5,9 +5,7 @@ import static com.github.oeuvres.alix.web.Pars.*;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Locale;
 import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -36,6 +34,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 
+/**
+ * Produces co-occurrence tables and their contingency-SVD representations.
+ */
 public final class OpCoocMap extends Op
 {
     
@@ -154,6 +155,82 @@ public final class OpCoocMap extends Op
         return coocMat;
     }
 
+    /**
+     * Builds leading row principal coordinates for hierarchical clustering.
+     *
+     * <p>
+     * The method obtains the tested source table from {@link #coocMat} and uses
+     * the same smoothing, expectation, association, and clipping parameters as
+     * the semantic map. Its output coordinates are specifically
+     * {@code U_k Sigma_k}: the singular-value exponent is fixed to one and no
+     * row-mass scaling or row normalisation is applied.
+     * </p>
+     *
+     * @param index Lucene index
+     * @param pars resolved HTTP parameters
+     * @param meta response metadata collector
+     * @param dimensions number of leading dimensions to retain
+     * @return HAC row coordinates, or {@code null} when no span query is given
+     * @throws IllegalArgumentException if {@code dimensions < 1}
+     * @throws IOException if the co-occurrence table cannot be built
+     */
+    public static SvdLayout hacCoordinates(
+        final LuceneIndex index,
+        final HttpPars pars,
+        final MetaUtil meta,
+        final int dimensions
+    )
+        throws IOException {
+        if (dimensions < 1) {
+            throw new IllegalArgumentException(
+                "dimensions must be at least 1, got " + dimensions);
+        }
+        final IntMatrixById coocMat = coocMat(index, pars, meta);
+        if (coocMat == null) {
+            return null;
+        }
+
+        final ContingencySvd model = contingencySvd(coocMat, pars);
+        final SvdLayout layout = model.principalCoordinates(dimensions);
+        putSvdMeta(model, layout, meta);
+        meta.put("svdCoordinates", "U_k Sigma_k");
+        meta.put("svdDimensions", layout.coords()[0].length);
+        return layout;
+    }
+
+    /**
+     * Prepares association residuals from a co-occurrence table.
+     *
+     * @param coocMat filled co-occurrence matrix
+     * @param pars resolved HTTP parameters
+     * @return model ready for decomposition
+     */
+    private static ContingencySvd contingencySvd(
+        final IntMatrixById coocMat,
+        final HttpPars pars
+    ) {
+        final ContingencySvd model = new ContingencySvd(coocMat);
+        final Assoc assoc = pars.getEnum("assoc", Assoc.PMI);
+        switch (assoc) {
+            case PEARSON, G2, FT -> model.expectIpf();
+            case PMI, PPMI, SPPMI -> {
+                model.smooth(0.5);
+                model.expectLog();
+            }
+        }
+
+        final double shift = assoc == Assoc.SPPMI
+            ? pars.getDouble("shift", 1d)
+            : 1d;
+        model.residual(assoc, shift);
+
+        final double clip = pars.getDouble("clip", 0d);
+        if (clip > 0d) {
+            model.clipResiduals(clip);
+        }
+        return model;
+    }
+
     protected void csv(
         final LuceneIndex index,
         final HttpServletRequest request,
@@ -189,6 +266,27 @@ public final class OpCoocMap extends Op
             writer.append(line + '\n');
         }*/
     }
+
+    /**
+     * Adds decomposition and expectation diagnostics to response metadata.
+     *
+     * @param model decomposed contingency-SVD model
+     * @param layout projected layout
+     * @param meta response metadata collector
+     */
+    private static void putSvdMeta(
+        final ContingencySvd model,
+        final SvdLayout layout,
+        final MetaUtil meta
+    ) {
+        meta.put("svdFitConverged", model.fitConverged());
+        meta.put("svdFitError", model.fitError());
+        meta.put("svdFitIterations", model.fitIterations());
+        meta.put("svdRank", layout.inertia().length);
+        if (!Double.isNaN(model.smoothK())) {
+            meta.put("svdSmooth", model.smoothK());
+        }
+    }
     
     
     /**
@@ -208,29 +306,7 @@ public final class OpCoocMap extends Op
         final HttpPars pars,
         final MetaUtil meta
     ) {
-        final ContingencySvd model = new ContingencySvd(coocMat);
-        
-        final Assoc assoc = pars.getEnum(
-            "assoc",
-            Assoc.PMI
-        );
-        switch (assoc) {
-            case PEARSON, G2, FT -> {
-                model.expectIpf();
-            }
-            case PMI, PPMI, SPPMI -> {
-                model.smooth(0.5);
-                model.expectLog();
-            }
-        }
-        final double shift = assoc == Assoc.SPPMI
-            ? pars.getDouble("shift", 1d)
-            : 1d;
-        model.residual(assoc, shift);
-        final double clip = pars.getDouble("clip", 0d);
-        if (clip > 0d) {
-            model.clipResiduals(clip);
-        }
+        final ContingencySvd model = contingencySvd(coocMat, pars);
         model.decompose();
         final double weightAxes = pars.getDouble("weight-axes", 1);
         if (weightAxes > 0) model.weightAxes(weightAxes);
@@ -238,14 +314,7 @@ public final class OpCoocMap extends Op
         final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
         final SvdLayout map = model.project(dims);
 
-        meta.put("svdFitConverged", model.fitConverged());
-        meta.put("svdFitError", model.fitError());
-        meta.put("svdFitIterations", model.fitIterations());
-        meta.put("svdRank", map.inertia().length);
-        if (!Double.isNaN(model.smoothK())) {
-            meta.put("svdSmooth", model.smoothK());
-        }
-
+        putSvdMeta(model, map, meta);
         return map;
     }
 

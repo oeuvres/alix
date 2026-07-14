@@ -41,10 +41,11 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * the residual matrix and initialises the full row embedding with the left
  * singular vectors {@code U}. {@link #weightAxes(double)} multiplies axis
  * {@code j} by {@code sigma[j]^power}; for example, power {@code 1} transforms
- * {@code U} into the principal coordinates {@code U Sigma}. Optional row
- * transformations are then applied by {@link #scaleRowsByMass()} or
- * {@link #normalizeRows()}. Finally, {@link #project(int)} returns the leading
- * dimensions as an {@link SvdLayout}.
+ * {@code U} into the principal coordinates {@code U Sigma}. Optional row-mass
+ * scaling is then applied by {@link #scaleRowsByMass()}. Finally,
+ * {@link #project(int)} returns the leading dimensions as an {@link SvdLayout}.
+ * {@link #projectNormalized(int)} instead normalises each row after retaining
+ * the requested dimensions.
  * </p>
  * <p>
  * Identity cells of an {@link IntMatrixById} are treated as structural cells.
@@ -67,8 +68,8 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * <p>
  * An omitted operation means that no corresponding transformation is applied:
  * omit smoothing for raw counts, omit {@code weightAxes(...)} to retain
- * {@code U}, omit {@code scaleRowsByMass()} for no mass scaling, and omit
- * {@code normalizeRows()} for no row normalisation.
+ * {@code U}, omit {@code scaleRowsByMass()} for no mass scaling, and use
+ * {@code projectNormalized(...)} only when unit rows are required.
  * </p>
  * <p>
  * Every contingency-preparation operation invalidates all downstream products.
@@ -183,9 +184,6 @@ public class ContingencySvd
 
     /** Whether row-mass scaling has been applied to the current embedding. */
     private boolean rowsMassScaled;
-
-    /** Whether row normalisation has been applied to the current embedding. */
-    private boolean rowsNormalized;
 
     /** Singular values, or {@code null}. */
     private double[] singularValues;
@@ -412,7 +410,6 @@ public class ContingencySvd
 
         axesWeighted = false;
         rowsMassScaled = false;
-        rowsNormalized = false;
         return this;
     }
 
@@ -682,37 +679,6 @@ public class ContingencySvd
     }
 
     /**
-     * Normalises every full embedding row to unit Euclidean length.
-     *
-     * <p>
-     * This SVD-and-embedding operation acts on all numerical-rank dimensions,
-     * before {@link #project(int)} retains a leading subset. It is intended for
-     * cosine-oriented comparison. Row normalisation and row-mass scaling are
-     * alternative row geometries; applying both would cancel the mass factor,
-     * so this method rejects an embedding already scaled by mass.
-     * </p>
-     *
-     * @return this pipeline
-     * @throws IllegalStateException before {@link #decompose()}, after previous
-     *         row normalisation, or after {@link #scaleRowsByMass()}
-     */
-    public ContingencySvd normalizeRows()
-    {
-        requireEmbedding();
-        if (rowsNormalized) {
-            throw new IllegalStateException("rows are already normalized");
-        }
-        if (rowsMassScaled) {
-            throw new IllegalStateException(
-                "normalizeRows() and scaleRowsByMass() are alternative row geometries");
-        }
-
-        normalizeEmbeddingRows(embedding);
-        rowsNormalized = true;
-        return this;
-    }
-
-    /**
      * Returns the observed table after any smoothing.
      *
      * @return live observed matrix
@@ -749,6 +715,36 @@ public class ContingencySvd
     }
 
     /**
+     * Decomposes the residual matrix and returns its leading row principal
+     * coordinates {@code U_k Sigma_k}.
+     *
+     * <p>
+     * This convenience operation deliberately fixes the singular-value power
+     * to one. With all numerical-rank axes retained, Euclidean distances and
+     * dot products between these coordinates are identical to those between
+     * rows of the residual matrix. Retaining fewer axes gives the corresponding
+     * truncated-SVD approximation.
+     * </p>
+     * <p>
+     * Calling this method rebuilds the decomposition and therefore discards any
+     * previous axis weighting or row-mass scaling.
+     * </p>
+     *
+     * @param dims number of leading dimensions to retain
+     * @return layout containing {@code U_k Sigma_k} row coordinates
+     * @throws IllegalArgumentException if {@code dims < 1}
+     * @throws IllegalStateException before {@link #residual(Assoc)} or for a
+     *         rank-zero residual matrix
+     */
+    public SvdLayout principalCoordinates(
+        final int dims
+    ) {
+        decompose();
+        weightAxes(1d);
+        return project(dims);
+    }
+
+    /**
      * Projects the current full embedding onto its leading dimensions.
      *
      * <p>
@@ -768,6 +764,44 @@ public class ContingencySvd
      */
     public SvdLayout project(
         final int dims
+    ) {
+        return project(dims, false);
+    }
+
+    /**
+     * Projects the current embedding and normalises each projected row to unit
+     * Euclidean length.
+     *
+     * <p>
+     * Normalisation is intentionally performed after dimensional projection.
+     * Euclidean distance between the returned rows is therefore the chord
+     * distance associated with cosine similarity in the retained space.
+     * Row-mass scaling is rejected because subsequent unit normalisation would
+     * cancel its row factor.
+     * </p>
+     *
+     * @param dims number of leading dimensions to retain
+     * @return layout containing unit-length projected rows
+     * @throws IllegalArgumentException if {@code dims < 1}
+     * @throws IllegalStateException before {@link #decompose()}, after
+     *         {@link #scaleRowsByMass()}, or for a rank-zero residual matrix
+     */
+    public SvdLayout projectNormalized(
+        final int dims
+    ) {
+        if (rowsMassScaled) {
+            throw new IllegalStateException(
+                "projectNormalized() and scaleRowsByMass() are alternative row geometries");
+        }
+        return project(dims, true);
+    }
+
+    /**
+     * Builds a projected layout from the current full embedding.
+     */
+    private SvdLayout project(
+        final int dims,
+        final boolean normalizeRows
     ) {
         requireEmbedding();
         if (dims < 1) {
@@ -796,6 +830,9 @@ public class ContingencySvd
             cos2[row] = denominator > 0d ? numerator / denominator : 0d;
         }
 
+        if (normalizeRows) {
+            normalizeEmbeddingRows(coords);
+        }
         fixAxisSigns(coords);
 
         final String[] labels = new String[observed.length];
@@ -926,14 +963,12 @@ public class ContingencySvd
      * <p>
      * This SVD-and-embedding operation applies the correspondence-analysis row
      * factor {@code 1 / sqrt(rowMass)} using admissible observed row margins.
-     * It acts on all numerical-rank dimensions before projection. Mass scaling
-     * and row normalisation are alternative row geometries, because subsequent
-     * unit normalisation would cancel the mass factor.
+     * It acts on all numerical-rank dimensions before projection.
      * </p>
      *
      * @return this pipeline
-     * @throws IllegalStateException before {@link #decompose()}, after previous
-     *         mass scaling, or after {@link #normalizeRows()}
+     * @throws IllegalStateException before {@link #decompose()} or after
+     *         previous mass scaling
      */
     public ContingencySvd scaleRowsByMass()
     {
@@ -941,11 +976,6 @@ public class ContingencySvd
         if (rowsMassScaled) {
             throw new IllegalStateException("rows are already scaled by mass");
         }
-        if (rowsNormalized) {
-            throw new IllegalStateException(
-                "scaleRowsByMass() and normalizeRows() are alternative row geometries");
-        }
-
         final double[] margins = rowSums();
         double total = 0d;
         for (final double margin : margins) {
@@ -1083,8 +1113,8 @@ public class ContingencySvd
      * embedding into {@code U Sigma^power}. Power {@code 1} therefore produces
      * principal coordinates; power {@code 0.5} produces
      * {@code U sqrt(Sigma)}. To retain unweighted {@code U}, omit this method.
-     * The operation must precede row-mass scaling or row normalisation and may
-     * be applied only once per decomposition.
+     * The operation must precede row-mass scaling and may be applied only once
+     * per decomposition.
      * </p>
      *
      * @param power positive finite singular-value exponent
@@ -1105,9 +1135,9 @@ public class ContingencySvd
         if (axesWeighted) {
             throw new IllegalStateException("axes are already weighted");
         }
-        if (rowsMassScaled || rowsNormalized) {
+        if (rowsMassScaled) {
             throw new IllegalStateException(
-                "weightAxes() must precede row scaling or normalization");
+                "weightAxes() must precede row-mass scaling");
         }
 
         for (int axis = 0; axis < rank; axis++) {
@@ -1347,7 +1377,6 @@ public class ContingencySvd
         rank = 0;
         axesWeighted = false;
         rowsMassScaled = false;
-        rowsNormalized = false;
     }
 
     /**
