@@ -232,22 +232,22 @@ public class OpResults extends Op {
                     + "&amp;slop=" + slop;
 
                 writer
-                    .append("\n<article class=\"snippet-result\"")
+                    .append("\n<article class=\"result result-snippet\"")
                     .append(" data-docid=\"").append(Integer.toString(hit.docId())).append("\"")
-                    .append(" data-score=\"").append(Double.toString(entry.score())).append("\"")
                     .append(">\n");
 
                 writer
                     .append("<h4 class=\"result-title\">")
                     .append("<a href=\"").append(url).append("\">")
+                    .append("<span class=\"no\">")
+                    .append(Integer.toString(rank))
+                    .append(") </span>")
                     .append(title)
                     .append("</a>")
                     .append("</h4>\n");
 
                 writer
-                    .append("<span class=\"snippet-no\">")
-                    .append(Integer.toString(rank))
-                    .append("</span>\n");
+                    .append("<div class=\"snippet\">");
 
                 hit.write(
                     writer,
@@ -263,6 +263,7 @@ public class OpResults extends Op {
                     .append(" class=\"snippet-open\"")
                     .append(">")
                     .append("→</a>\n")
+                    .append("</div>\n")
                     .append("</article>\n");
             }
         }

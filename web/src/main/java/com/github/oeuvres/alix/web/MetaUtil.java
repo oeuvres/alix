@@ -36,6 +36,16 @@ public class MetaUtil
     }
     
     /**
+     * Records a {@code boolean} meta entry.
+     *
+     * @param key   entry name
+     * @param value entry value
+     */
+    public void put(final String key, final boolean value)
+    {
+        entries.put(key, Boolean.valueOf(value));
+    }
+    /**
      * Records a {@code double} meta entry.
      *
      * @param key   entry name
@@ -225,7 +235,8 @@ public class MetaUtil
             return;
         }
         if (v instanceof Double d) {
-            jw.value(d);
+            if (Double.isNaN(d)) jw.value("NaN");
+            else jw.value(d);
             return;
         }
         if (v instanceof Boolean b) {

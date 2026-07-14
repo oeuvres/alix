@@ -20,49 +20,60 @@ import com.github.oeuvres.alix.util.IntMatrixById;
 /**
  * Builds semantic row embeddings from a contingency or co-occurrence table.
  *
+ * <h2>Contingency preparation</h2>
  * <p>
- * The pipeline separates four decisions:
+ * The first phase converts observed counts into a matrix suitable for linear
+ * decomposition. Optional smoothing is applied by {@link #smooth(double)} or
+ * {@link #smoothAuto()}. An expectation model is then fitted by
+ * {@link #expectIpf()} or {@link #expectLog()}, and {@link #residual(Assoc)}
+ * compares each observed cell with its expectation. {@link #clipResiduals(double)}
+ * is an optional robustness transformation on that residual matrix.
  * </p>
- * <ol>
- * <li>optional smoothing of admissible observed cells;</li>
- * <li>an expectation model;</li>
- * <li>an association residual against that expectation;</li>
- * <li>an SVD embedding and optional coordinate transformations.</li>
- * </ol>
+ * <p>
+ * These operations belong to contingency-table modelling, not to singular
+ * value decomposition. SVD receives only the completed residual matrix; it has
+ * no knowledge of observed counts, expected counts, or association measures.
+ * </p>
  *
+ * <h2>SVD and embedding</h2>
+ * <p>
+ * The second phase starts with {@link #decompose()}, which computes the SVD of
+ * the residual matrix and initialises the full row embedding with the left
+ * singular vectors {@code U}. {@link #weightAxes(double)} multiplies axis
+ * {@code j} by {@code sigma[j]^power}; for example, power {@code 1} transforms
+ * {@code U} into the principal coordinates {@code U Sigma}. Optional row
+ * transformations are then applied by {@link #scaleRowsByMass()} or
+ * {@link #normalizeRows()}. Finally, {@link #project(int)} returns the leading
+ * dimensions as an {@link SvdLayout}.
+ * </p>
+ * <p>
+ * Identity cells of an {@link IntMatrixById} are treated as structural cells.
+ * They may contain row occurrence marginals for display, but they are excluded
+ * from smoothing, expectation fitting, residual computation, and SVD. The
+ * constructor copies identity values into the layout frequency vector;
+ * {@link #overrideFrequencies(long[])} may replace that display metadata.
+ * </p>
+ * <p>
+ * The ordinary principal-coordinate pipeline is therefore:
+ * </p>
  * <pre>{@code
- * ContingencySvd svd = new ContingencySvd(coocMat)
+ * SvdLayout layout = new ContingencySvd(coocMat)
  *     .expectIpf()
  *     .residual(Assoc.G2)
- *     .singularPower(1d)
- *     .massScale(false)
- *     .normalizeRows(false)
- *     .svd();
- *
- * SvdLayout map = svd.layout(6);
- * SvdLayout hac = svd.layout(svd.dimensionsForInertia(90d));
+ *     .decompose()
+ *     .weightAxes(1d)
+ *     .project(6);
  * }</pre>
- *
  * <p>
- * Identity cells of an {@link IntMatrixById} are treated as structural cells:
- * they may contain row occurrence marginals for display, but they are not
- * row-column association observations. The constructor copies those identity
- * values into the layout frequency vector before excluding them from the
- * statistical table. Calling {@link #freq(long[])} remains available as an
- * explicit override.
+ * An omitted operation means that no corresponding transformation is applied:
+ * omit smoothing for raw counts, omit {@code weightAxes(...)} to retain
+ * {@code U}, omit {@code scaleRowsByMass()} for no mass scaling, and omit
+ * {@code normalizeRows()} for no row normalisation.
  * </p>
- *
  * <p>
- * Coordinate hooks affect only {@link #layout(int)} and do not recompute the
- * decomposition: {@link #singularPower(double)} selects {@code U Sigma^p},
- * {@link #massScale(boolean)} applies the correspondence-analysis row-mass
- * factor, and {@link #normalizeRows(boolean)} produces unit row vectors suited
- * to cosine-based comparison.
- * </p>
- *
- * <p>
- * Every mutating pipeline step invalidates its downstream products. Returned
- * matrix arrays are live internal arrays and must be treated as read-only. This
+ * Every contingency-preparation operation invalidates all downstream products.
+ * {@link #decompose()} resets previous embedding transformations. Matrix
+ * accessors return live internal arrays that must be treated as read-only. This
  * class is mutable and not thread-safe.
  * </p>
  */
@@ -88,7 +99,7 @@ public class ContingencySvd
     }
 
     /**
-     * Row embedding and diagnostics returned by {@link #layout(int)}.
+     * Row embedding and diagnostics returned by {@link #project(int)}.
      *
      * @param id row ids by rank
      * @param label row labels by rank
@@ -122,11 +133,17 @@ public class ContingencySvd
     /** Default expectation-fit convergence tolerance. */
     private static final double DEFAULT_FIT_TOLERANCE = 1e-10;
 
+    /** Whether singular-value weighting has been applied to the current embedding. */
+    private boolean axesWeighted;
+
     /** Column ids by rank. */
     private final int[] colId;
 
     /** Column labels by rank, or {@code null}. */
     private final String[] colLabel;
+
+    /** Full current row embedding, or {@code null} before decomposition. */
+    private double[][] embedding;
 
     /** Fitted expectation, or {@code null}. */
     private double[][] expected;
@@ -149,12 +166,6 @@ public class ContingencySvd
     /** Display frequency by row rank, or {@code null}. */
     private long[] freq;
 
-    /** Whether to divide row coordinates by the square root of row mass. */
-    private boolean massScale;
-
-    /** Whether to L2-normalise emitted row coordinates. */
-    private boolean normalizeRows;
-
     /** Observed admissible cells, mutated by smoothing. */
     private final double[][] observed;
 
@@ -170,8 +181,11 @@ public class ContingencySvd
     /** Row labels by rank, or {@code null}. */
     private final String[] rowLabel;
 
-    /** Exponent applied to singular values in emitted coordinates. */
-    private double singularPower = 1d;
+    /** Whether row-mass scaling has been applied to the current embedding. */
+    private boolean rowsMassScaled;
+
+    /** Whether row normalisation has been applied to the current embedding. */
+    private boolean rowsNormalized;
 
     /** Singular values, or {@code null}. */
     private double[] singularValues;
@@ -181,9 +195,6 @@ public class ContingencySvd
 
     /** Structural-cell mask. */
     private final boolean[][] structural;
-
-    /** Left singular vectors by row and axis, or {@code null}. */
-    private double[][] u;
 
     /**
      * Constructs a pipeline from a plain rectangular table.
@@ -310,12 +321,13 @@ public class ContingencySvd
     }
 
     /**
-     * Clips residual magnitudes before decomposition.
+     * Clips every residual to a symmetric absolute limit.
      *
      * <p>
-     * This is an explicit robustness hook for exploratory maps when a small
-     * number of cells dominates the spectrum. It should be reported with the
-     * result because it changes the geometry.
+     * This optional contingency-preparation operation is a robustness hook for
+     * exploratory maps dominated by a small number of extreme cells. Because
+     * it changes the residual geometry, the chosen limit must be reported with
+     * the result.
      * </p>
      *
      * @param absoluteLimit positive finite residual magnitude ceiling
@@ -340,7 +352,7 @@ public class ContingencySvd
                     Math.min(absoluteLimit, residuals[row][col]));
             }
         }
-        invalidateSvd();
+        invalidateDecomposition();
         return this;
     }
 
@@ -357,7 +369,7 @@ public class ContingencySvd
     /**
      * Returns column labels by rank.
      *
-     * @return a copy of the labels, or {@code null}
+     * @return a copy of the labels, or {@code null} when no labels were supplied
      */
     public String[] columnLabels()
     {
@@ -365,46 +377,65 @@ public class ContingencySvd
     }
 
     /**
-     * Returns the smallest leading dimension count reaching a cumulative
-     * singular-value inertia threshold.
+     * Decomposes the residual matrix and initialises the full row embedding.
      *
-     * @param percent cumulative inertia threshold in {@code (0, 100]}
-     * @return required number of leading dimensions, capped by numerical rank
-     * @throws IllegalArgumentException if {@code percent} is invalid
-     * @throws IllegalStateException before {@link #svd()} or for a rank-zero
-     *         residual matrix
+     * <p>
+     * This is the boundary between contingency preparation and SVD. The method
+     * computes {@code residuals = U Sigma V^T}, stores the singular values, and
+     * initialises the row embedding with the numerical-rank columns of
+     * {@code U}. It does not apply singular-value weighting, mass scaling, row
+     * normalisation, or dimensional projection.
+     * </p>
+     * <p>
+     * Calling this method again discards all previous embedding transformations
+     * and rebuilds the embedding from the current residual matrix.
+     * </p>
+     *
+     * @return this pipeline
+     * @throws IllegalStateException before {@link #residual(Assoc)}
      */
-    public int dimensionsForInertia(
-        final double percent
-    ) {
-        requireSvd();
-        if (!Double.isFinite(percent) || percent <= 0d || percent > 100d) {
-            throw new IllegalArgumentException("percent must be in (0, 100], got " + percent);
+    public ContingencySvd decompose()
+    {
+        if (residuals == null) {
+            throw new IllegalStateException("call residual() before decompose()");
         }
-        if (rank == 0) {
-            throw new IllegalStateException("residual matrix has numerical rank 0");
+        final SingularValueDecomposition decomposition =
+            new SingularValueDecomposition(new Array2DRowRealMatrix(residuals, false));
+        singularValues = decomposition.getSingularValues();
+        rank = decomposition.getRank();
+
+        final double[][] left = decomposition.getU().getData();
+        embedding = new double[left.length][rank];
+        for (int row = 0; row < left.length; row++) {
+            System.arraycopy(left[row], 0, embedding[row], 0, rank);
         }
-        double total = 0d;
-        for (int axis = 0; axis < rank; axis++) {
-            total += singularValues[axis] * singularValues[axis];
-        }
-        if (total <= 0d) {
-            return 1;
-        }
-        double cumulative = 0d;
-        for (int axis = 0; axis < rank; axis++) {
-            cumulative += singularValues[axis] * singularValues[axis];
-            if (100d * cumulative / total >= percent) {
-                return axis + 1;
-            }
-        }
-        return rank;
+
+        axesWeighted = false;
+        rowsMassScaled = false;
+        rowsNormalized = false;
+        return this;
+    }
+
+    /**
+     * Returns the current full row embedding.
+     *
+     * <p>
+     * Immediately after {@link #decompose()}, this matrix is {@code U}. Later
+     * embedding operations mutate it in place. The returned array is live and
+     * must be treated as read-only.
+     * </p>
+     *
+     * @return live full embedding, or {@code null} before decomposition
+     */
+    public double[][] embedding()
+    {
+        return embedding;
     }
 
     /**
      * Returns the fitted expectation matrix.
      *
-     * @return live expectation matrix, or {@code null}
+     * @return live expectation matrix, or {@code null} before expectation fitting
      */
     public double[][] expected()
     {
@@ -412,8 +443,13 @@ public class ContingencySvd
     }
 
     /**
-     * Fits a multiplicative quasi-independence model by iterative proportional
-     * fitting while respecting structural cells.
+     * Fits a multiplicative quasi-independence expectation by iterative
+     * proportional fitting while respecting structural cells.
+     *
+     * <p>
+     * This is a contingency-preparation operation. It reproduces the observed
+     * admissible row and column margins within the configured tolerance.
+     * </p>
      *
      * @return this pipeline
      */
@@ -436,42 +472,37 @@ public class ContingencySvd
 
         for (int iteration = 1; iteration <= fitMaxIterations; iteration++) {
             for (int row = 0; row < rowCount; row++) {
-                final double fitted = rowSum(fit, row);
-                scaleRow(fit, row, fitted, rowTarget[row]);
+                scaleRow(fit, row, rowSum(fit, row), rowTarget[row]);
             }
             for (int col = 0; col < colCount; col++) {
-                final double fitted = colSum(fit, col);
-                scaleColumn(fit, col, fitted, colTarget[col]);
+                scaleColumn(fit, col, colSum(fit, col), colTarget[col]);
             }
 
-            final double error = marginError(fit, rowTarget, colTarget);
             fitIterations = iteration;
-            fitError = error;
-            if (error <= fitTolerance) {
+            fitError = marginError(fit, rowTarget, colTarget);
+            if (fitError <= fitTolerance) {
                 fitConverged = true;
                 break;
             }
         }
 
-        this.expected = fit;
+        expected = fit;
         invalidateResiduals();
         return this;
     }
 
     /**
-     * Fits an additive row-column model to log observed cells by alternating
-     * least squares.
+     * Fits an additive row-column expectation in logarithmic space.
      *
      * <p>
-     * All admissible cells must be positive. Call {@link #smooth(double)} or
-     * {@link #smoothAuto()} first when the table contains zeros. This explicit
-     * precondition prevents signed PMI from silently treating absent pairs as
-     * neutral values.
+     * This is a contingency-preparation operation. Every admissible observed
+     * cell must be positive; call {@link #smooth(double)} or
+     * {@link #smoothAuto()} first when zeros are present.
      * </p>
      *
      * @return this pipeline
      * @throws IllegalStateException if an admissible observed cell is not
-     *         strictly positive
+     *         strictly positive or a fitted expectation is non-finite
      */
     public ContingencySvd expectLog()
     {
@@ -518,10 +549,9 @@ public class ContingencySvd
             }
 
             centre(alpha, beta);
-            final double error = parameterError(alpha, beta, previousAlpha, previousBeta);
             fitIterations = iteration;
-            fitError = error;
-            if (error <= fitTolerance) {
+            fitError = parameterError(alpha, beta, previousAlpha, previousBeta);
+            if (fitError <= fitTolerance) {
                 fitConverged = true;
                 break;
             }
@@ -542,9 +572,48 @@ public class ContingencySvd
             }
         }
 
-        this.expected = fit;
+        expected = fit;
         invalidateResiduals();
         return this;
+    }
+
+    /**
+     * Finds the smallest number of leading axes reaching an inertia threshold.
+     *
+     * @param percent cumulative singular-value inertia threshold in
+     *        {@code (0, 100]}
+     * @return required number of leading dimensions, capped by numerical rank
+     * @throws IllegalArgumentException if {@code percent} is invalid
+     * @throws IllegalStateException before {@link #decompose()} or for a
+     *         rank-zero residual matrix
+     */
+    public int findDimensionsForInertia(
+        final double percent
+    ) {
+        requireEmbedding();
+        if (!Double.isFinite(percent) || percent <= 0d || percent > 100d) {
+            throw new IllegalArgumentException("percent must be in (0, 100], got " + percent);
+        }
+        if (rank == 0) {
+            throw new IllegalStateException("residual matrix has numerical rank 0");
+        }
+
+        double total = 0d;
+        for (int axis = 0; axis < rank; axis++) {
+            total += singularValues[axis] * singularValues[axis];
+        }
+        if (total <= 0d) {
+            return 1;
+        }
+
+        double cumulative = 0d;
+        for (int axis = 0; axis < rank; axis++) {
+            cumulative += singularValues[axis] * singularValues[axis];
+            if (100d * cumulative / total >= percent) {
+                return axis + 1;
+            }
+        }
+        return rank;
     }
 
     /**
@@ -590,7 +659,7 @@ public class ContingencySvd
         if (iterations < 1) {
             throw new IllegalArgumentException("iterations must be at least 1, got " + iterations);
         }
-        this.fitMaxIterations = iterations;
+        fitMaxIterations = iterations;
         return this;
     }
 
@@ -605,123 +674,41 @@ public class ContingencySvd
         final double tolerance
     ) {
         if (!Double.isFinite(tolerance) || tolerance <= 0d) {
-            throw new IllegalArgumentException("tolerance must be positive and finite, got " + tolerance);
+            throw new IllegalArgumentException(
+                "tolerance must be positive and finite, got " + tolerance);
         }
-        this.fitTolerance = tolerance;
+        fitTolerance = tolerance;
         return this;
     }
 
     /**
-     * Overrides the display frequency emitted by {@link #layout(int)}.
+     * Normalises every full embedding row to unit Euclidean length.
      *
      * <p>
-     * The constructor taking {@link IntMatrixById} already initialises this
-     * vector from identity cells. Use this method only to replace that default,
-     * for example with snippet-presence frequency rather than occurrence
-     * frequency.
+     * This SVD-and-embedding operation acts on all numerical-rank dimensions,
+     * before {@link #project(int)} retains a leading subset. It is intended for
+     * cosine-oriented comparison. Row normalisation and row-mass scaling are
+     * alternative row geometries; applying both would cancel the mass factor,
+     * so this method rejects an embedding already scaled by mass.
      * </p>
      *
-     * @param byRowRank display frequency, or {@code null} to clear
      * @return this pipeline
-     * @throws IllegalArgumentException if the vector length differs from the row
-     *         count
+     * @throws IllegalStateException before {@link #decompose()}, after previous
+     *         row normalisation, or after {@link #scaleRowsByMass()}
      */
-    public ContingencySvd freq(
-        final long[] byRowRank
-    ) {
-        if (byRowRank != null && byRowRank.length != observed.length) {
-            throw new IllegalArgumentException(
-                "freq length " + byRowRank.length + " differs from row count " + observed.length);
+    public ContingencySvd normalizeRows()
+    {
+        requireEmbedding();
+        if (rowsNormalized) {
+            throw new IllegalStateException("rows are already normalized");
         }
-        this.freq = byRowRank == null ? null : byRowRank.clone();
-        return this;
-    }
-
-    /**
-     * Packages leading row coordinates and diagnostics.
-     *
-     * @param dims number of leading axes to emit
-     * @return immutable layout record containing newly allocated vectors
-     * @throws IllegalArgumentException if {@code dims < 1}
-     * @throws IllegalStateException before {@link #svd()} or for a rank-zero
-     *         residual matrix
-     */
-    public SvdLayout layout(
-        final int dims
-    ) {
-        requireSvd();
-        if (dims < 1) {
-            throw new IllegalArgumentException("dims must be at least 1, got " + dims);
-        }
-        if (rank == 0) {
-            throw new IllegalStateException("residual matrix has numerical rank 0");
+        if (rowsMassScaled) {
+            throw new IllegalStateException(
+                "normalizeRows() and scaleRowsByMass() are alternative row geometries");
         }
 
-        final int rowCount = observed.length;
-        final int axes = Math.min(dims, rank);
-        final double[] inertia = inertiaSpectrum();
-        final double[][] coords = new double[rowCount][axes];
-        final double[] cos2 = new double[rowCount];
-        final double[] rowNorm = new double[rowCount];
-
-        for (int row = 0; row < rowCount; row++) {
-            double denominator = 0d;
-            for (int axis = 0; axis < rank; axis++) {
-                final double scale = poweredSingularValue(singularValues[axis]);
-                final double coordinate = u[row][axis] * scale;
-                denominator += coordinate * coordinate;
-                if (axis < axes) {
-                    coords[row][axis] = coordinate;
-                }
-            }
-            rowNorm[row] = Math.sqrt(denominator);
-            double numerator = 0d;
-            for (int axis = 0; axis < Math.min(2, axes); axis++) {
-                numerator += coords[row][axis] * coords[row][axis];
-            }
-            cos2[row] = denominator > 0d ? numerator / denominator : 0d;
-        }
-
-        if (massScale) {
-            applyMassScale(coords, rowNorm);
-        }
-        if (normalizeRows) {
-            normalizeRows(coords, rowNorm);
-        }
-        fixAxisSigns(coords);
-
-        final String[] labels = new String[rowCount];
-        if (rowLabel != null) {
-            System.arraycopy(rowLabel, 0, labels, 0, rowCount);
-        }
-        final long[] displayFreq = freq == null ? new long[rowCount] : freq.clone();
-        return new SvdLayout(rowId.clone(), labels, displayFreq, coords, cos2, inertia);
-    }
-
-    /**
-     * Enables correspondence-analysis row-mass scaling.
-     *
-     * @param enabled {@code true} to multiply each row by
-     *        {@code 1 / sqrt(rowMass)}
-     * @return this pipeline
-     */
-    public ContingencySvd massScale(
-        final boolean enabled
-    ) {
-        this.massScale = enabled;
-        return this;
-    }
-
-    /**
-     * Enables L2 normalisation of emitted row coordinates.
-     *
-     * @param enabled {@code true} for unit row vectors
-     * @return this pipeline
-     */
-    public ContingencySvd normalizeRows(
-        final boolean enabled
-    ) {
-        this.normalizeRows = enabled;
+        normalizeEmbeddingRows(embedding);
+        rowsNormalized = true;
         return this;
     }
 
@@ -736,7 +723,101 @@ public class ContingencySvd
     }
 
     /**
+     * Overrides the display frequency emitted by {@link #project(int)}.
+     *
+     * <p>
+     * This metadata does not participate in contingency preparation, SVD, or
+     * embedding geometry. The {@link IntMatrixById} constructor already obtains
+     * a default occurrence marginal from identity cells.
+     * </p>
+     *
+     * @param byRowRank display frequency, or {@code null} to clear the override
+     * @return this pipeline
+     * @throws IllegalArgumentException if the vector length differs from the row
+     *         count
+     */
+    public ContingencySvd overrideFrequencies(
+        final long[] byRowRank
+    ) {
+        if (byRowRank != null && byRowRank.length != observed.length) {
+            throw new IllegalArgumentException(
+                "frequency length " + byRowRank.length
+                    + " differs from row count " + observed.length);
+        }
+        freq = byRowRank == null ? null : byRowRank.clone();
+        return this;
+    }
+
+    /**
+     * Projects the current full embedding onto its leading dimensions.
+     *
+     * <p>
+     * This is the terminal SVD-and-embedding operation. It retains the first
+     * {@code dims} axes of the current full embedding, fixes arbitrary SVD axis
+     * signs deterministically in the returned copy, calculates each row's
+     * two-axis cos-squared against its full current embedding norm, and packages
+     * the result as an {@link SvdLayout}. It performs no I/O; JSON or CSV export
+     * belongs to the caller.
+     * </p>
+     *
+     * @param dims number of leading dimensions to retain
+     * @return layout containing newly allocated coordinate and metadata arrays
+     * @throws IllegalArgumentException if {@code dims < 1}
+     * @throws IllegalStateException before {@link #decompose()} or for a
+     *         rank-zero residual matrix
+     */
+    public SvdLayout project(
+        final int dims
+    ) {
+        requireEmbedding();
+        if (dims < 1) {
+            throw new IllegalArgumentException("dims must be at least 1, got " + dims);
+        }
+        if (rank == 0) {
+            throw new IllegalStateException("residual matrix has numerical rank 0");
+        }
+
+        final int axes = Math.min(dims, rank);
+        final double[][] coords = new double[embedding.length][axes];
+        final double[] cos2 = new double[embedding.length];
+
+        for (int row = 0; row < embedding.length; row++) {
+            System.arraycopy(embedding[row], 0, coords[row], 0, axes);
+
+            double denominator = 0d;
+            for (int axis = 0; axis < embedding[row].length; axis++) {
+                denominator += embedding[row][axis] * embedding[row][axis];
+            }
+
+            double numerator = 0d;
+            for (int axis = 0; axis < Math.min(2, axes); axis++) {
+                numerator += coords[row][axis] * coords[row][axis];
+            }
+            cos2[row] = denominator > 0d ? numerator / denominator : 0d;
+        }
+
+        fixAxisSigns(coords);
+
+        final String[] labels = new String[observed.length];
+        if (rowLabel != null) {
+            System.arraycopy(rowLabel, 0, labels, 0, rowLabel.length);
+        }
+        final long[] displayFreq = freq == null ? new long[observed.length] : freq.clone();
+        return new SvdLayout(
+            rowId.clone(),
+            labels,
+            displayFreq,
+            coords,
+            cos2,
+            inertiaSpectrum());
+    }
+
+    /**
      * Computes association residuals with the default SPPMI shift of one.
+     *
+     * <p>
+     * This is the final normal contingency-preparation operation before SVD.
+     * </p>
      *
      * @param association association function
      * @return this pipeline
@@ -753,8 +834,13 @@ public class ContingencySvd
     /**
      * Computes association residuals against the fitted expectation.
      *
+     * <p>
+     * Structural cells remain zero. The {@code shift} is read only for
+     * {@link Assoc#SPPMI}.
+     * </p>
+     *
      * @param association association function
-     * @param shift SPPMI shift, finite and at least one
+     * @param shift finite SPPMI shift of at least one
      * @return this pipeline
      * @throws IllegalArgumentException if {@code shift} is invalid
      * @throws IllegalStateException before an expectation fit, when signed PMI
@@ -771,17 +857,16 @@ public class ContingencySvd
             throw new IllegalStateException("call expectIpf() or expectLog() before residual()");
         }
         if (!Double.isFinite(shift) || shift < 1d) {
-            throw new IllegalArgumentException("shift must be finite and at least 1, got " + shift);
+            throw new IllegalArgumentException(
+                "shift must be finite and at least 1, got " + shift);
         }
         if (association == Assoc.PMI) {
             requirePositiveObserved("residual(PMI)");
         }
 
-        final int rowCount = observed.length;
-        final int colCount = observed[0].length;
-        final double[][] matrix = new double[rowCount][colCount];
-        for (int row = 0; row < rowCount; row++) {
-            for (int col = 0; col < colCount; col++) {
+        final double[][] matrix = new double[observed.length][observed[0].length];
+        for (int row = 0; row < observed.length; row++) {
+            for (int col = 0; col < observed[row].length; col++) {
                 if (structural[row][col]) {
                     continue;
                 }
@@ -800,15 +885,15 @@ public class ContingencySvd
             }
         }
 
-        this.residuals = matrix;
-        invalidateSvd();
+        residuals = matrix;
+        invalidateDecomposition();
         return this;
     }
 
     /**
      * Returns the residual matrix used by the decomposition.
      *
-     * @return live residual matrix, or {@code null}
+     * @return live residual matrix, or {@code null} before residual computation
      */
     public double[][] residuals()
     {
@@ -828,7 +913,7 @@ public class ContingencySvd
     /**
      * Returns row labels by rank.
      *
-     * @return a copy of the labels, or {@code null}
+     * @return a copy of the labels, or {@code null} when no labels were supplied
      */
     public String[] rowLabels()
     {
@@ -836,33 +921,52 @@ public class ContingencySvd
     }
 
     /**
-     * Sets the singular-value exponent used in emitted row coordinates.
+     * Scales each full embedding row by the inverse square root of its mass.
      *
      * <p>
-     * {@code 1} emits principal coordinates {@code U Sigma}; {@code 0.5}
-     * softens dominance by the first axes; {@code 0} emits non-null left
-     * singular vectors. This choice affects semantic distances but not the
-     * inertia spectrum.
+     * This SVD-and-embedding operation applies the correspondence-analysis row
+     * factor {@code 1 / sqrt(rowMass)} using admissible observed row margins.
+     * It acts on all numerical-rank dimensions before projection. Mass scaling
+     * and row normalisation are alternative row geometries, because subsequent
+     * unit normalisation would cancel the mass factor.
      * </p>
      *
-     * @param power finite non-negative exponent
      * @return this pipeline
-     * @throws IllegalArgumentException if {@code power} is invalid
+     * @throws IllegalStateException before {@link #decompose()}, after previous
+     *         mass scaling, or after {@link #normalizeRows()}
      */
-    public ContingencySvd singularPower(
-        final double power
-    ) {
-        if (!Double.isFinite(power) || power < 0d) {
-            throw new IllegalArgumentException("power must be finite and non-negative, got " + power);
+    public ContingencySvd scaleRowsByMass()
+    {
+        requireEmbedding();
+        if (rowsMassScaled) {
+            throw new IllegalStateException("rows are already scaled by mass");
         }
-        this.singularPower = power;
+        if (rowsNormalized) {
+            throw new IllegalStateException(
+                "scaleRowsByMass() and normalizeRows() are alternative row geometries");
+        }
+
+        final double[] margins = rowSums();
+        double total = 0d;
+        for (final double margin : margins) {
+            total += margin;
+        }
+        for (int row = 0; row < embedding.length; row++) {
+            final double mass = total > 0d ? margins[row] / total : 0d;
+            final double factor = mass > 0d ? 1d / Math.sqrt(mass) : 0d;
+            for (int axis = 0; axis < embedding[row].length; axis++) {
+                embedding[row][axis] *= factor;
+            }
+        }
+
+        rowsMassScaled = true;
         return this;
     }
 
     /**
      * Returns singular values from the latest decomposition.
      *
-     * @return live singular-value vector, or {@code null}
+     * @return live singular-value vector, or {@code null} before decomposition
      */
     public double[] singularValues()
     {
@@ -870,17 +974,23 @@ public class ContingencySvd
     }
 
     /**
-     * Adds a constant to every admissible observed cell.
+     * Adds a positive constant to every admissible observed cell.
      *
-     * @param k finite non-negative add-k value
+     * <p>
+     * This is an optional contingency-preparation operation. Omit the call when
+     * no smoothing is required; {@code smooth(0)} is deliberately rejected so
+     * that every invoked operation changes the data.
+     * </p>
+     *
+     * @param k positive finite add-k value
      * @return this pipeline
-     * @throws IllegalArgumentException if {@code k} is invalid
+     * @throws IllegalArgumentException if {@code k} is not positive and finite
      */
     public ContingencySvd smooth(
         final double k
     ) {
-        if (!Double.isFinite(k) || k < 0d) {
-            throw new IllegalArgumentException("k must be finite and non-negative, got " + k);
+        if (!Double.isFinite(k) || k <= 0d) {
+            throw new IllegalArgumentException("k must be positive and finite, got " + k);
         }
         for (int row = 0; row < observed.length; row++) {
             for (int col = 0; col < observed[row].length; col++) {
@@ -895,8 +1005,12 @@ public class ContingencySvd
     }
 
     /**
-     * Fits a symmetric Dirichlet add-k value on raw integer observations and
-     * applies it.
+     * Estimates and applies a symmetric Dirichlet add-k value.
+     *
+     * <p>
+     * This contingency-preparation operation must run on raw integer counts and
+     * may therefore be called only before explicit smoothing.
+     * </p>
      *
      * @return this pipeline
      * @throws IllegalStateException after previous smoothing or when an
@@ -962,21 +1076,48 @@ public class ContingencySvd
     }
 
     /**
-     * Decomposes the residual matrix.
+     * Weights every full embedding axis by a power of its singular value.
      *
+     * <p>
+     * This SVD-and-embedding operation transforms the initial {@code U}
+     * embedding into {@code U Sigma^power}. Power {@code 1} therefore produces
+     * principal coordinates; power {@code 0.5} produces
+     * {@code U sqrt(Sigma)}. To retain unweighted {@code U}, omit this method.
+     * The operation must precede row-mass scaling or row normalisation and may
+     * be applied only once per decomposition.
+     * </p>
+     *
+     * @param power positive finite singular-value exponent
      * @return this pipeline
-     * @throws IllegalStateException before {@link #residual(Assoc)}
+     * @throws IllegalArgumentException if {@code power} is not positive and
+     *         finite
+     * @throws IllegalStateException before {@link #decompose()}, after previous
+     *         axis weighting, or after a row transformation
      */
-    public ContingencySvd svd()
-    {
-        if (residuals == null) {
-            throw new IllegalStateException("call residual() before svd()");
+    public ContingencySvd weightAxes(
+        final double power
+    ) {
+        requireEmbedding();
+        if (!Double.isFinite(power) || power <= 0d) {
+            throw new IllegalArgumentException(
+                "power must be positive and finite, got " + power);
         }
-        final SingularValueDecomposition decomposition =
-            new SingularValueDecomposition(new Array2DRowRealMatrix(residuals, false));
-        this.singularValues = decomposition.getSingularValues();
-        this.u = decomposition.getU().getData();
-        this.rank = decomposition.getRank();
+        if (axesWeighted) {
+            throw new IllegalStateException("axes are already weighted");
+        }
+        if (rowsMassScaled || rowsNormalized) {
+            throw new IllegalStateException(
+                "weightAxes() must precede row scaling or normalization");
+        }
+
+        for (int axis = 0; axis < rank; axis++) {
+            final double factor = Math.pow(singularValues[axis], power);
+            for (int row = 0; row < embedding.length; row++) {
+                embedding[row][axis] *= factor;
+            }
+        }
+
+        axesWeighted = true;
         return this;
     }
 
@@ -1027,28 +1168,6 @@ public class ContingencySvd
                     : 0d;
             default:
                 throw new IllegalStateException("unsupported association: " + association);
-        }
-    }
-
-    /**
-     * Applies row-mass scaling to coordinates.
-     */
-    private void applyMassScale(
-        final double[][] coords,
-        final double[] rowNorm
-    ) {
-        final double[] rowSum = rowSums();
-        double total = 0d;
-        for (final double sum : rowSum) {
-            total += sum;
-        }
-        for (int row = 0; row < coords.length; row++) {
-            final double mass = total > 0d ? rowSum[row] / total : 0d;
-            final double factor = mass > 0d ? 1d / Math.sqrt(mass) : 0d;
-            for (int axis = 0; axis < coords[row].length; axis++) {
-                coords[row][axis] *= factor;
-            }
-            rowNorm[row] *= factor;
         }
     }
 
@@ -1215,17 +1334,20 @@ public class ContingencySvd
     private void invalidateResiduals()
     {
         residuals = null;
-        invalidateSvd();
+        invalidateDecomposition();
     }
 
     /**
-     * Clears decomposition products.
+     * Clears decomposition and embedding products.
      */
-    private void invalidateSvd()
+    private void invalidateDecomposition()
     {
         singularValues = null;
-        u = null;
+        embedding = null;
         rank = 0;
+        axesWeighted = false;
+        rowsMassScaled = false;
+        rowsNormalized = false;
     }
 
     /**
@@ -1247,19 +1369,22 @@ public class ContingencySvd
     }
 
     /**
-     * L2-normalises rows in place.
+     * L2-normalises every full embedding row in place.
      */
-    private static void normalizeRows(
-        final double[][] coords,
-        final double[] rowNorm
+    private static void normalizeEmbeddingRows(
+        final double[][] matrix
     ) {
-        for (int row = 0; row < coords.length; row++) {
-            if (rowNorm[row] <= 0d) {
+        for (int row = 0; row < matrix.length; row++) {
+            double norm = 0d;
+            for (int axis = 0; axis < matrix[row].length; axis++) {
+                norm += matrix[row][axis] * matrix[row][axis];
+            }
+            if (norm <= 0d) {
                 continue;
             }
-            final double inverse = 1d / rowNorm[row];
-            for (int axis = 0; axis < coords[row].length; axis++) {
-                coords[row][axis] *= inverse;
+            final double inverse = 1d / Math.sqrt(norm);
+            for (int axis = 0; axis < matrix[row].length; axis++) {
+                matrix[row][axis] *= inverse;
             }
         }
     }
@@ -1284,15 +1409,6 @@ public class ContingencySvd
     }
 
     /**
-     * Returns one singular value raised to the configured power.
-     */
-    private double poweredSingularValue(
-        final double singularValue
-    ) {
-        return singularValue > 0d ? Math.pow(singularValue, singularPower) : 0d;
-    }
-
-    /**
      * Returns a stable relative error with absolute scaling near zero.
      */
     private static double relativeError(
@@ -1311,21 +1427,22 @@ public class ContingencySvd
         for (int row = 0; row < observed.length; row++) {
             for (int col = 0; col < observed[row].length; col++) {
                 if (!structural[row][col] && observed[row][col] <= 0d) {
-                    throw new IllegalStateException(
-                        operation + " requires positive admissible cells; call smooth() first; zero at ["
-                            + row + "][" + col + "]");
+                    // call silently smoothauto, user may not understand why it bug
+                    smoothAuto();
+                    return;
                 }
             }
         }
     }
 
     /**
-     * Requires a completed decomposition.
+     * Requires a completed decomposition and initialised embedding.
      */
-    private void requireSvd()
+    private void requireEmbedding()
     {
-        if (singularValues == null || u == null) {
-            throw new IllegalStateException("call svd() before requesting coordinates");
+        if (singularValues == null || embedding == null) {
+            throw new IllegalStateException(
+                "call decompose() before requesting or transforming coordinates");
         }
     }
 

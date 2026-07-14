@@ -5,8 +5,6 @@ import static com.github.oeuvres.alix.web.Pars.*;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Locale;
@@ -14,10 +12,6 @@ import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
-import org.hipparchus.linear.Array2DRowRealMatrix;
-import org.hipparchus.linear.RealMatrix;
-import org.hipparchus.linear.SingularValueDecomposition;
-import org.hipparchus.special.Gamma;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
@@ -100,6 +94,7 @@ public final class OpCoocMap extends Op
         meta.put("hits", walker.hits());
         
         final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
+        final TermFlag colflag = pars.getEnum("col-flag", TermFlag.NULL);
         final KeynessScorer scorer = tsort(pars);
         
         // get sorted rows, maybe filtered by a flag, will be the rows of interest to display
@@ -128,7 +123,7 @@ public final class OpCoocMap extends Op
         }
         else {
             // keep same scorer? do raw sort add signal or noise?
-            topTerms.rank(scorer, terms +cols, tflag); // TermFlag.NULL
+            topTerms.rank(scorer, terms +cols, colflag); // TermFlag.NULL
 
             // here termIds contains rows, add other terms
             int k = 0;
@@ -191,6 +186,82 @@ public final class OpCoocMap extends Op
     }
     
     
+    /**
+     * Builds a semantic-map layout from HTTP-selected contingency-SVD options.
+     *
+     * <p>The upstream co-occurrence matrix is already fixed when this method is
+     * called. The parameters therefore affect only smoothing, expectation,
+     * association residuals, decomposition geometry, and emitted dimensions.</p>
+     *
+     * @param coocMat filled co-occurrence matrix
+     * @param pars resolved HTTP parameters
+     * @param meta response metadata collector
+     * @return semantic-map layout
+     */
+    private static SvdLayout semanticMap(
+        final IntMatrixById coocMat,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) {
+        final ContingencySvd model = new ContingencySvd(coocMat);
+
+        final double smooth = pars.getDouble("smooth", Double.NaN);
+        if (Double.isNaN(smooth));
+        else if (smooth < 0) model.smoothAuto();
+        else model.smooth(smooth);
+
+        final String expectation = pars.getString(
+            "expect",
+            "ipf",
+            Set.of("ipf", "log")
+        );
+        if ("log".equals(expectation)) {
+            model.expectLog();
+        }
+        else {
+            model.expectIpf();
+        }
+
+        final String associationName = pars.getString(
+            "assoc",
+            "g2",
+            Set.of("ft", "g2", "pearson", "pmi", "ppmi", "sppmi")
+        );
+        final Assoc association = Assoc.valueOf(associationName.toUpperCase(Locale.ROOT));
+        final double shift = association == Assoc.SPPMI
+            ? pars.getDouble("shift", 1d)
+            : 1d;
+        model.residual(association, shift);
+        final double clip = pars.getDouble("clip", 0d);
+        if (clip > 0d) {
+            model.clipResiduals(clip);
+        }
+        model.decompose();
+        final double weightAxes = pars.getDouble("weight-axes", 1);
+        if (weightAxes > 0) model.weightAxes(weightAxes);
+
+        final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
+        final SvdLayout map = model.project(dims);
+
+        meta.put("svdFitConverged", model.fitConverged());
+        meta.put("svdFitError", model.fitError());
+        meta.put("svdFitIterations", model.fitIterations());
+        meta.put("svdRank", map.inertia().length);
+        if (!Double.isNaN(model.smoothK())) {
+            meta.put("svdSmooth", model.smoothK());
+        }
+
+        return map;
+    }
+
+    /**
+     * Writes the semantic-map response as JSON.
+     *
+     * @param index Lucene index
+     * @param request HTTP request
+     * @param response HTTP response
+     * @throws IOException if index access or response writing fails
+     */
     @Override
     protected void json(
         final LuceneIndex index,
@@ -201,17 +272,9 @@ public final class OpCoocMap extends Op
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
         final IntMatrixById coocMat = coocMat(index, pars, meta);
-        
-        ContingencySvd model = new ContingencySvd(coocMat);
-        // TODO, a nice tree to test different parameters
-        final String expect = pars.getString("expect", "ipf", Set.of("ipf", "log"));
-        if ("ipf".equals(expect)) {
-            model.smooth(0.5).expectLog();
-        }
-        else {
-            
-        }
-        final SvdLayout map = model.layout(6);
+        final SvdLayout map = coocMat == null
+            ? null
+            : semanticMap(coocMat, pars, meta);
 
         try (JsonWriter jw = Op.jsonWriter(response)) {
             jw.beginObject();
@@ -222,48 +285,65 @@ public final class OpCoocMap extends Op
             jw.endObject();
 
             if (map != null) {
-                final int dims = map.coords()[0].length;
+                final int dims = map.coords().length == 0
+                    ? 0
+                    : map.coords()[0].length;
+                final double[] spectrum = map.inertia();
+                final double dim1 = spectrum.length > 0 ? spectrum[0] : 0d;
+                final double dim2 = spectrum.length > 1 ? spectrum[1] : 0d;
+                double emittedInertia = 0d;
+                for (int axis = 0; axis < Math.min(dims, spectrum.length); axis++) {
+                    emittedInertia += spectrum[axis];
+                }
+
                 jw.name("data");
                 jw.beginObject();
+
                 jw.name("axes");
                 jw.beginObject();
                 jw.name("dims").value(dims);
-                jw.name("dim1_pct").value(round(map.inertia()[0], 1));
-                jw.name("dim2_pct").value(round(map.inertia()[1], 1));
-                jw.name("cum2_pct").value(round(map.inertia()[0] + map.inertia()[1], 1));
+                jw.name("dim1_pct").value(round(dim1, 1));
+                jw.name("dim2_pct").value(round(dim2, 1));
+                jw.name("cum2_pct").value(round(dim1 + dim2, 1));
+                jw.name("emitted_pct").value(round(emittedInertia, 1));
                 jw.name("spectrum");
                 jw.beginArray();
-                for (final double pct : map.inertia()) {
+                for (final double pct : spectrum) {
                     jw.value(round(pct, 1));
                 }
                 jw.endArray();
                 jw.endObject();
+
                 jw.name("nodes");
                 jw.beginArray();
-                // FIXME, is map.id().length the best way to have row count?
-                for (int i = 0; i < map.id().length; i++) {
+                final int nodeCount = map.id().length;
+                for (int node = 0; node < nodeCount; node++) {
+                    final double[] coords = map.coords()[node];
+                    final double x = coords.length > 0 ? coords[0] : 0d;
+                    final double y = coords.length > 1 ? coords[1] : 0d;
+
                     jw.beginObject();
-                    jw.name("id").value(map.id()[i]);
-                    jw.name("form").value(map.label()[i]);
-                    jw.name("freq").value(map.freq()[i]);
-                    jw.name("x").value(round(map.coords()[i][0], 4));
-                    jw.name("y").value(round(map.coords()[i][1], 4));
-                    jw.name("cos2").value(round(map.cos2()[i], 4));
+                    jw.name("id").value(map.id()[node]);
+                    jw.name("form").value(map.label()[node]);
+                    jw.name("freq").value(map.freq()[node]);
+                    jw.name("x").value(round(x, 4));
+                    jw.name("y").value(round(y, 4));
+                    jw.name("cos2").value(round(map.cos2()[node], 4));
                     jw.name("coords");
                     jw.beginArray();
-                    for (int k = 0; k < dims; k++) {
-                        jw.value(round(map.coords()[i][k], 4));
+                    for (final double coordinate : coords) {
+                        jw.value(round(coordinate, 4));
                     }
                     jw.endArray();
                     jw.endObject();
                 }
                 jw.endArray();
+
                 jw.endObject();
             }
 
             jw.endObject();
         }
-
     }
 
 }
