@@ -104,7 +104,17 @@ public class ContingencySvd
         double[][] coords,
         double[] cos2,
         double[] inertia
-    ) {}
+    ) {
+        /**
+         * Returns the number of row nodes in this layout.
+         *
+         * @return row-node count
+         */
+        public int size()
+        {
+            return id.length;
+        }
+    }
 
     /** Default expectation-fit iteration ceiling. */
     private static final int DEFAULT_FIT_ITERATIONS = 500;
@@ -652,6 +662,7 @@ public class ContingencySvd
         final double[] inertia = inertiaSpectrum();
         final double[][] coords = new double[rowCount][axes];
         final double[] cos2 = new double[rowCount];
+        final double[] rowNorm = new double[rowCount];
 
         for (int row = 0; row < rowCount; row++) {
             double denominator = 0d;
@@ -663,6 +674,7 @@ public class ContingencySvd
                     coords[row][axis] = coordinate;
                 }
             }
+            rowNorm[row] = Math.sqrt(denominator);
             double numerator = 0d;
             for (int axis = 0; axis < Math.min(2, axes); axis++) {
                 numerator += coords[row][axis] * coords[row][axis];
@@ -671,10 +683,10 @@ public class ContingencySvd
         }
 
         if (massScale) {
-            applyMassScale(coords);
+            applyMassScale(coords, rowNorm);
         }
         if (normalizeRows) {
-            normalizeRows(coords);
+            normalizeRows(coords, rowNorm);
         }
         fixAxisSigns(coords);
 
@@ -1022,7 +1034,8 @@ public class ContingencySvd
      * Applies row-mass scaling to coordinates.
      */
     private void applyMassScale(
-        final double[][] coords
+        final double[][] coords,
+        final double[] rowNorm
     ) {
         final double[] rowSum = rowSums();
         double total = 0d;
@@ -1035,6 +1048,7 @@ public class ContingencySvd
             for (int axis = 0; axis < coords[row].length; axis++) {
                 coords[row][axis] *= factor;
             }
+            rowNorm[row] *= factor;
         }
     }
 
@@ -1236,19 +1250,16 @@ public class ContingencySvd
      * L2-normalises rows in place.
      */
     private static void normalizeRows(
-        final double[][] coords
+        final double[][] coords,
+        final double[] rowNorm
     ) {
-        for (final double[] row : coords) {
-            double norm2 = 0d;
-            for (final double value : row) {
-                norm2 += value * value;
-            }
-            if (norm2 <= 0d) {
+        for (int row = 0; row < coords.length; row++) {
+            if (rowNorm[row] <= 0d) {
                 continue;
             }
-            final double inverse = 1d / Math.sqrt(norm2);
-            for (int axis = 0; axis < row.length; axis++) {
-                row[axis] *= inverse;
+            final double inverse = 1d / rowNorm[row];
+            for (int axis = 0; axis < coords[row].length; axis++) {
+                coords[row][axis] *= inverse;
             }
         }
     }
