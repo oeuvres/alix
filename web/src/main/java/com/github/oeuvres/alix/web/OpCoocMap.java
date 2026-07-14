@@ -84,7 +84,7 @@ public final class OpCoocMap extends Op
             left,
             right
         ).bindTo(population);
-        consumer.bindTo(topTerms.buffers());
+        
         walker.walk(consumer);
         consumer.subtractPivots(pivotIds); // should remove topTerms and simplify ranking
         consumer.complete();
@@ -98,7 +98,6 @@ public final class OpCoocMap extends Op
         meta.put("hits", walker.hits());
         
         final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
-        final TermFlag colflag = pars.getEnum("col-flag", TermFlag.NULL);
         final KeynessScorer scorer = tsort(pars);
         
         // get sorted rows, maybe filtered by a flag, will be the rows of interest to display
@@ -126,27 +125,29 @@ public final class OpCoocMap extends Op
             colIds = rowIds;
         }
         else {
-            // keep same scorer? do raw sort add signal or noise?
-            topTerms.rank(scorer, terms +cols, colflag); // TermFlag.NULL
-
-            // here termIds contains rows, add other terms
-            int k = 0;
-            final String[] colForms = new String[cols];
-            for (final TermEntry term : topTerms) {
-                final int termId = term.termId();
-                if (rows.get(termId)) continue;
-                termIds.push(termId);
-                colForms[k] = term.form() + " (" + term.freq() + " ; " + term.score() + ")";
-                if (++k >= cols) break;
+            final int colmin = pars.getInt("colmin", 8);
+            for (TermFlag flag: Set.of(TermFlag.NOUN, TermFlag.VERB)) {
+                // keep same scorer? do raw sort add signal or noise?
+                // new KeynessScorer.Count()
+                topTerms.rank(new KeynessScorer.G2(), terms + (cols * 5), flag);
+                // here termIds contains rows, add other terms
+                int k = 0;
+                for (final TermEntry term : topTerms) {
+                    final int termId = term.termId();
+                    if (rows.get(termId)) continue;
+                    if (term.contexts() < colmin) continue;
+                    termIds.push(termId);
+                    if (++k >= cols) break;
+                }
             }
             colIds = termIds.toUniq();
-            meta.put("cols", colForms);
         }
         final IntMatrixById coocMat = new IntMatrixById(
             rowIds, 
             colIds,
             id -> contentLexicon.form(id)
         );
+        meta.put("colLabels", coocMat.colLabels());
         final boolean directed = pars.getBoolean("directed", false);
         final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
         new SpanWalker(index.searcher(), spanQuery, new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
@@ -208,34 +209,24 @@ public final class OpCoocMap extends Op
         final MetaUtil meta
     ) {
         final ContingencySvd model = new ContingencySvd(coocMat);
-
-        final double smooth = pars.getDouble("smooth", Double.NaN);
-        if (Double.isNaN(smooth));
-        else if (smooth < 0) model.smoothAuto();
-        else model.smooth(smooth);
-
-        final String expectation = pars.getString(
-            "expect",
-            "ipf",
-            Set.of("ipf", "log")
-        );
-        if ("log".equals(expectation)) {
-            model.expectLog();
-        }
-        else {
-            model.expectIpf();
-        }
-
-        final String associationName = pars.getString(
+        
+        final Assoc assoc = pars.getEnum(
             "assoc",
-            "g2",
-            Set.of("ft", "g2", "pearson", "pmi", "ppmi", "sppmi")
+            Assoc.PMI
         );
-        final Assoc association = Assoc.valueOf(associationName.toUpperCase(Locale.ROOT));
-        final double shift = association == Assoc.SPPMI
+        switch (assoc) {
+            case PEARSON, G2, FT -> {
+                model.expectIpf();
+            }
+            case PMI, PPMI, SPPMI -> {
+                model.smooth(0.5);
+                model.expectLog();
+            }
+        }
+        final double shift = assoc == Assoc.SPPMI
             ? pars.getDouble("shift", 1d)
             : 1d;
-        model.residual(association, shift);
+        model.residual(assoc, shift);
         final double clip = pars.getDouble("clip", 0d);
         if (clip > 0d) {
             model.clipResiduals(clip);

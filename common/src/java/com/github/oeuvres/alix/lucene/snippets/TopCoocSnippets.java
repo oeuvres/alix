@@ -7,7 +7,6 @@ import java.util.Objects;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
-import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.Population;
 
 /**
@@ -127,30 +126,6 @@ public final class TopCoocSnippets implements SnippetsConsumer
         final int vocabSize = fieldStats.vocabSize();
         this.termSeenInContext = new BitSet(vocabSize);
         this.termSeenInDocument = new BitSet(vocabSize);
-    }
-
-    /**
-     * Binds legacy writable population buffers and resets accumulated totals.
-     *
-     * <p>
-     * This overload cannot publish totals automatically. After the walk, the
-     * caller must transfer {@link #tokenCount()}, {@link #documentCount()}, and
-     * {@link #contextCount()} to the owning population.
-     * </p>
-     *
-     * @param buffers buffers obtained from
-     * {@link com.github.oeuvres.alix.lucene.terms.TopTerms#buffers()}
-     * @return this consumer
-     * @throws IllegalArgumentException if a vector length differs from the vocabulary size
-     * @throws NullPointerException if {@code buffers} is {@code null}
-     */
-    public TopCoocSnippets bindTo(final Buffers buffers)
-    {
-        final Buffers target = Objects.requireNonNull(buffers, "buffers");
-        bindVectors(target.termFreq(), target.termDocs(), target.termContexts());
-        population = null;
-        reset();
-        return this;
     }
 
     /**

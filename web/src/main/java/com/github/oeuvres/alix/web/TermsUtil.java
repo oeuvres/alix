@@ -56,11 +56,27 @@ public class TermsUtil
             jw.beginObject();
             meta.toJson(jw, pars);
             jw.endObject(); // meta
+            
+            // here, how to 
 
             // data
             if (terms != null) {
                 jw.name("data");
                 jw.beginArray();
+                
+                // loop on pivots
+                for (final TopTerms.ExcludedTerm pivot : terms.excludedTerms()) {
+                    jw.beginObject();
+                    jw.name("form").value(pivot.form());
+                    jw.name("id").value(pivot.termId());
+                    jw.name("docs").value(pivot.docs());
+                    jw.name("snippets").value(pivot.contexts());
+                    jw.name("freq").value(pivot.freq());
+                    jw.name("fieldDocs").value(pivot.fieldDocs());
+                    jw.name("fieldFreq").value(pivot.fieldFreq());
+                    jw.endObject();
+                }
+                
                 int rank = 1;
                 for (TermEntry term : terms) {
                     jw.beginObject();
@@ -69,6 +85,7 @@ public class TermsUtil
                     jw.name("id").value(term.termId());
                     jw.name("html").value(term.hilite()); // for suggest
                     jw.name("docs").value(term.docs());
+                    jw.name("snippets").value(term.contexts());
                     jw.name("fieldDocs").value(term.fieldDocs());
                     jw.name("freq").value(term.freq());
                     jw.name("fieldFreq").value(term.fieldFreq());

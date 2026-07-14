@@ -454,12 +454,12 @@ public abstract class Op
         return switch (pars.getString(TSORT, "")) {
             case "count" -> new KeynessScorer.Count();
             case "raw" -> new KeynessScorer.Count();
-            case "g2" -> new KeynessScorer.LogLikelihood();
+            case "g2" -> new KeynessScorer.G2();
             case "logratio" -> new KeynessScorer.LogRatio();
             case "logdice" -> new KeynessScorer.LogDice();
             case "chi2" -> new KeynessScorer.Chi2();
             case "simple" -> new KeynessScorer.SimpleMaths();
-            default -> new KeynessScorer.LogLikelihood();
+            default -> new KeynessScorer.G2();
         };
     }
     

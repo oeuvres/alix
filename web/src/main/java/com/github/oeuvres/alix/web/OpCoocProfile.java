@@ -79,7 +79,7 @@ public final class OpCoocProfile extends Op
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
         final CoocProfile profile = profile(index, pars, meta);
-        final KeynessScorer scorer = scorer(pars.getString(TSORT, ""));
+        final KeynessScorer scorer = tsort(pars);
         CoocProfileUtil.json(response, meta, pars, profile, scorer);
     }
 
@@ -147,7 +147,7 @@ public final class OpCoocProfile extends Op
         walker.walk(consumer);
         profile.cumulate();
 
-        final KeynessScorer scorer = scorer(pars.getString(TSORT, ""));
+        final KeynessScorer scorer = tsort(pars);
         profile.select(scorer, topK, pivotIds, tflag);
 
         meta.put("hits", walker.hits());
@@ -178,24 +178,4 @@ public final class OpCoocProfile extends Op
         return out;
     }
 
-    /**
-     * Resolves the {@code tsort} parameter to a keyness scorer, matching the co-occurrence mode of
-     * {@link OpTerms}.
-     *
-     * @param tsort scorer key, possibly empty
-     * @return the scorer; log-likelihood when unrecognised
-     */
-    private static KeynessScorer scorer(
-        final String tsort
-    ) {
-        return switch (tsort) {
-            case "count", "raw" -> new KeynessScorer.Count();
-            case "g2" -> new KeynessScorer.LogLikelihood();
-            case "logratio" -> new KeynessScorer.LogRatio();
-            case "logdice" -> new KeynessScorer.LogDice();
-            case "chi2" -> new KeynessScorer.Chi2();
-            case "simple" -> new KeynessScorer.SimpleMaths();
-            default -> new KeynessScorer.LogLikelihood();
-        };
-    }
 }

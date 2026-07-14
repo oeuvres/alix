@@ -39,6 +39,13 @@ import com.github.oeuvres.alix.util.TopArray;
  * </p>
  *
  * <p>
+ * Terms may be removed from the analytical population through
+ * {@link #excludeTerms(int[])}. Their local counts are preserved as immutable
+ * {@link ExcludedTerm} snapshots for display, while ranking and token totals use
+ * the remaining vocabulary.
+ * </p>
+ *
+ * <p>
  * Ranking is optional. A population may be prepared without producing a ranking.
  * Iteration is only available after a ranking method has been called.
  * </p>
@@ -54,6 +61,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
     /** Number of documents in the current population. */
     private int docs;
+
+    /** Stable snapshots of terms excluded from the analytical population. */
+    private ExcludedTerms excludedTerms = ExcludedTerms.empty();
 
     /** Source of immutable field-level statistics. */
     private final TermStats fieldStats;
@@ -143,27 +153,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Returns writable local population buffers, after switching this instance
-     * to local mutable storage and clearing previous content.
-     *
-     * <p>
-     * The returned arrays are aliased and indexed by dense term id. Index
-     * {@code 0} is the absent-term sentinel and must not be written. The buffers
-     * are zeroed on every call. After writing into them, the caller must
-     * declare the population totals via {@link #setTotals(long, int, int)}.
-     * Prefer {@link #beginPopulation()}, which keeps the arrays and totals bound
-     * to the same population object.
-     * </p>
-     *
-     * @return local population buffers
-     */
-    public Buffers buffers()
-    {
-        useLocal();
-        return new Buffers(termFreq, termDocs, termContexts);
-    }
-
-    /**
      * Returns the current population context count.
      *
      * <p>
@@ -209,6 +198,111 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     public int docs(final int termId)
     {
         return termDocs[termId];
+    }
+
+    /**
+     * Excludes terms from the current analytical population while preserving
+     * immutable snapshots for display.
+     *
+     * <p>
+     * For each previously unexcluded term, this method records its local
+     * occurrence, document, and context counts together with its field-level
+     * statistics. It then subtracts the term's local occurrences from
+     * {@link #tokens()}, clears the three local per-term counts, and invalidates
+     * any existing ranking. Population document and context totals are not
+     * changed because excluding a vocabulary item does not remove contexts or
+     * documents from the population.
+     * </p>
+     *
+     * <p>
+     * Repeated calls accumulate exclusions. Duplicate ids, including ids
+     * excluded by an earlier call, are ignored. Snapshots preserve the order in
+     * which terms are first excluded.
+     * </p>
+     *
+     * @param termIds dense ids of terms to exclude; {@code null} and empty arrays
+     *                leave the population unchanged
+     * @return all excluded-term snapshots for the current population
+     * @throws IllegalArgumentException if a term id is outside the vocabulary or
+     *                                  the population token total is inconsistent
+     */
+    public ExcludedTerms excludeTerms(final int[] termIds)
+    {
+        if (termIds == null || termIds.length == 0) {
+            return excludedTerms;
+        }
+        ensureMutablePopulation();
+
+        final BitSet alreadyExcluded = new BitSet(fieldStats.vocabSize());
+        for (final ExcludedTerm term : excludedTerms) {
+            alreadyExcluded.set(term.termId());
+        }
+
+        int additionCount = 0;
+        for (final int termId : termIds) {
+            checkTermId(termId, "termIds");
+            if (!alreadyExcluded.get(termId)) {
+                alreadyExcluded.set(termId);
+                additionCount++;
+            }
+        }
+        if (additionCount == 0) {
+            return excludedTerms;
+        }
+
+        final ExcludedTerm[] snapshots = Arrays.copyOf(
+            excludedTerms.entries,
+            excludedTerms.size() + additionCount);
+        alreadyExcluded.clear();
+        for (final ExcludedTerm term : excludedTerms) {
+            alreadyExcluded.set(term.termId());
+        }
+
+        int index = excludedTerms.size();
+        long excludedTokenCount = 0L;
+        for (final int termId : termIds) {
+            if (alreadyExcluded.get(termId)) {
+                continue;
+            }
+            alreadyExcluded.set(termId);
+            final long frequency = termFreq[termId];
+            snapshots[index++] = new ExcludedTerm(
+                termId,
+                lexicon.form(termId),
+                frequency,
+                termDocs[termId],
+                termContexts[termId],
+                fieldStats.termFreq(termId),
+                fieldStats.termDocs(termId));
+            excludedTokenCount += frequency;
+        }
+
+        if (excludedTokenCount > tokens) {
+            throw new IllegalArgumentException(
+                "excluded term occurrences=" + excludedTokenCount
+                    + " exceed population tokens=" + tokens);
+        }
+        for (int snapshotIndex = excludedTerms.size(); snapshotIndex < snapshots.length; snapshotIndex++) {
+            final int termId = snapshots[snapshotIndex].termId();
+            termContexts[termId] = 0;
+            termDocs[termId] = 0;
+            termFreq[termId] = 0L;
+        }
+        tokens -= excludedTokenCount;
+        excludedTerms = new ExcludedTerms(snapshots);
+        clearRanking();
+        return excludedTerms;
+    }
+
+    /**
+     * Returns immutable snapshots of terms excluded from the current analytical
+     * population.
+     *
+     * @return excluded terms in first-exclusion order
+     */
+    public ExcludedTerms excludedTerms()
+    {
+        return excludedTerms;
     }
 
     /**
@@ -582,6 +676,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         docs = fieldStats.fieldDocs();
         contexts = docs;
         mutable = false;
+        excludedTerms = ExcludedTerms.empty();
         clearRanking();
         return this;
     }
@@ -710,24 +805,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         return this;
     }
 
-    /**
-     * Sets current population totals after an external collector has written
-     * into this instance's local buffers, treating documents as contexts.
-     *
-     * <p>
-     * This overload is retained for document-based collectors. Snippet or other
-     * non-document populations must use {@link #setTotals(long, int, int)} or,
-     * preferably, {@link #beginPopulation()}.
-     * </p>
-     *
-     * @param tokens current population token count
-     * @param docs current population document and context count
-     * @throws IllegalArgumentException if a value is negative
-     */
-    public void setTotals(final long tokens, final int docs)
-    {
-        setTotals(tokens, docs, docs);
-    }
+
 
     /**
      * Sets current population totals after an external collector has written
@@ -738,7 +816,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param contexts current population context count
      * @throws IllegalArgumentException if a value is negative
      */
-    public void setTotals(
+    private void setTotals(
         final long tokens,
         final int docs,
         final int contexts
@@ -1053,6 +1131,21 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Detaches the current population vectors from immutable field statistics
+     * without clearing their values.
+     */
+    private void ensureMutablePopulation()
+    {
+        if (mutable) {
+            return;
+        }
+        termFreq = termFreq.clone();
+        termDocs = termDocs.clone();
+        termContexts = termContexts.clone();
+        mutable = true;
+    }
+
+    /**
      * Switches this instance to local mutable buffers and clears them.
      */
     private void useLocal()
@@ -1073,26 +1166,116 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         tokens = 0L;
         docs = 0;
         contexts = 0;
+        excludedTerms = ExcludedTerms.empty();
         clearRanking();
     }
 
     /**
-     * Writable local population buffers.
+     * Immutable snapshot of one term removed from the analytical population.
+     *
+     * @param termId dense term id
+     * @param form display term
+     * @param freq local occurrence count before exclusion
+     * @param docs local count of documents containing the term before exclusion
+     * @param contexts local count of contexts containing the term before exclusion
+     * @param fieldFreq full-field occurrence count
+     * @param fieldDocs full-field document count
+     */
+    public record ExcludedTerm(
+        int termId,
+        String form,
+        long freq,
+        int docs,
+        int contexts,
+        long fieldFreq,
+        int fieldDocs
+    ) {
+    }
+
+    /**
+     * Immutable ordered collection of terms excluded from one analytical
+     * population.
      *
      * <p>
-     * The arrays are aliased, not copied. They are indexed by dense term id.
-     * Index {@code 0} is the absent-term sentinel and must not be written.
+     * Entries preserve first-exclusion order. The collection is replaced when a
+     * new population starts through {@link #beginPopulation()}, {@link #buffers()},
+     * {@link #reset()}, or {@link #select(IndexReader, FixedBitSet)}.
      * </p>
-     *
-     * @param termFreq per-term occurrence-count buffer
-     * @param termDocs per-term document-count buffer
-     * @param termContexts per-term context-count buffer
      */
-    public record Buffers(
-        long[] termFreq,
-        int[] termDocs,
-        int[] termContexts
-    ) {
+    public static final class ExcludedTerms implements Iterable<ExcludedTerm>
+    {
+        /** Shared empty collection. */
+        private static final ExcludedTerms EMPTY = new ExcludedTerms(new ExcludedTerm[0]);
+
+        /** Snapshots in first-exclusion order. */
+        private final ExcludedTerm[] entries;
+
+        /**
+         * Creates an immutable collection from snapshots.
+         *
+         * @param entries snapshots in display order
+         */
+        private ExcludedTerms(final ExcludedTerm[] entries)
+        {
+            this.entries = entries.clone();
+        }
+
+        /**
+         * Returns the shared empty collection.
+         *
+         * @return empty excluded-term collection
+         */
+        private static ExcludedTerms empty()
+        {
+            return EMPTY;
+        }
+
+        /**
+         * Finds an excluded term by dense term id.
+         *
+         * @param termId dense term id
+         * @return matching snapshot, or {@code null} when the term is not excluded
+         */
+        public ExcludedTerm find(final int termId)
+        {
+            for (final ExcludedTerm entry : entries) {
+                if (entry.termId() == termId) {
+                    return entry;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Reports whether the collection is empty.
+         *
+         * @return {@code true} when no term is excluded
+         */
+        public boolean isEmpty()
+        {
+            return entries.length == 0;
+        }
+
+        /**
+         * Returns an iterator in first-exclusion order.
+         *
+         * @return snapshot iterator
+         */
+        @Override
+        public Iterator<ExcludedTerm> iterator()
+        {
+            return Arrays.asList(entries).iterator();
+        }
+
+        /**
+         * Returns the number of excluded terms.
+         *
+         * @return excluded-term count
+         */
+        public int size()
+        {
+            return entries.length;
+        }
     }
 
     /**

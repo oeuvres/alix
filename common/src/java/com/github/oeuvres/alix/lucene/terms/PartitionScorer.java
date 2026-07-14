@@ -117,9 +117,10 @@ public final class PartitionScorer
             partTokens[part] += docTokens[docId];
         }
 
-        final TopTerms.Buffers buffers = tt.buffers();
-        final long[] termFreq = buffers.termFreq();
-        final int[] termDocs = buffers.termDocs();
+        final TopTerms.Population population = tt.beginPopulation();
+        final long[] termFreq = population.termFreq();
+        final int[] termDocs = population.termDocs();
+        final int[] termContexts = population.termContexts();
 
         final int vocabSize = fieldStats.vocabSize();
         final double[] scoreVec = new double[vocabSize];
@@ -152,6 +153,7 @@ public final class PartitionScorer
             if (focusFreq > 0L) {
                 termFreq[termId] = focusFreq;
                 termDocs[termId] = focusDocsForTerm;
+                termContexts[termId] = focusDocsForTerm;
 
                 final double score = scorer.score(
                         partTermFreq, partTokens, focusPart, focusDocsForTerm, focusDocCount);
@@ -165,7 +167,11 @@ public final class PartitionScorer
             termId++;
         }
 
-        tt.setTotals(partTokens[focusPart], focusDocCount);
+        population.complete(
+            partTokens[focusPart],
+            focusDocCount,
+            focusDocCount
+        );
 
         final int size = top.size();
         final int[] rank2termId = new int[size];

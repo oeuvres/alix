@@ -43,7 +43,7 @@ public interface KeynessScorer {
      * Signed Pearson chi-square X² (Pearson 1900), 2×2 contingency.
      *
      * <p>
-     * Same null model as {@link LogLikelihood} — independence of "term" and
+     * Same null model as {@link G2} — independence of "term" and
      * "focus", expected counts from row/column marginals — but using the
      * Pearson statistic
      * </p>
@@ -162,7 +162,7 @@ public interface KeynessScorer {
      * Log-Likelihood G² (Dunning 1993), for use as a significance pre-filter,
      * not as a ranker. Positive when over-represented in focus.
      */
-    class LogLikelihood implements KeynessScorer {
+    class G2 implements KeynessScorer {
         @Override
         public double score(
             final long focusTermCount,

@@ -176,6 +176,14 @@ public class IntMatrixById
     }
 
     /**
+     * Acess to labels of columns.
+     * @return
+     */
+    public String[] colLabels() {
+        return colLabelByRank;
+    }
+
+    /**
      * Returns the rank of a column id.
      *
      * @param id any id.

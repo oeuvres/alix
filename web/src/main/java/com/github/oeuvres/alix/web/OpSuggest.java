@@ -102,18 +102,18 @@ public final class OpSuggest extends Op
         final MetaUtil meta
     ) throws IOException
     {
-        final String textField = pars.getString(FTEXT, index.content());
-        final FlucText textFluc = index.flucText(textField);
-        if (textFluc == null) {
+        final String ftext = pars.getString(FTEXT, index.content());
+        final FlucText contentFluc = index.flucText(ftext);
+        if (contentFluc == null) {
             pars.response().setStatus(404);
-            meta.put("error", "field '" + textField + "' not found or not a text field");
+            meta.put("error", FTEXT + '=' + ftext + "', field not found or not a text field");
             return null;
         }
-        meta.put("textField", textField);
+        meta.put("textField", ftext);
 
         final Query filterQuery = filterQuery(index, pars);
         final SpanQuery spanQuery = spanQuery(index, pars);
-        final TopTerms topTerms = textFluc.topTerms();
+        final TopTerms topTerms = contentFluc.topTerms();
 
         if (filterQuery == null && spanQuery == null) {
             return topTerms;
@@ -126,6 +126,7 @@ public final class OpSuggest extends Op
             return topTerms.select(index.reader(), focusDocs);
         }
 
+        final int[] pivotIds = contentFluc.termLexicon().termIds(spanQuery);
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
@@ -133,19 +134,16 @@ public final class OpSuggest extends Op
             new DocSnippets(DocSnippets.Usage.POSITIONS, slop),
             filterQuery
         );
+        final TopTerms.Population population = topTerms.beginPopulation();
         final TopCoocSnippets consumer = new TopCoocSnippets(
-            textFluc.termStats(),
-            textFluc.termRail(),
+            contentFluc.termStats(),
+            contentFluc.termRail(),
             slop,
             slop
-        );
-        consumer.bindTo(topTerms.buffers());
+        ).bindTo(population);
         walker.walk(consumer);
-        topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
-
-        meta.put("focusTokens", consumer.coocTokens());
-        meta.put("focusDocs", consumer.coocDocsTotal());
-        meta.put("hits", walker.hits());
+        consumer.complete();
+        topTerms.excludeTerms(pivotIds);
         return topTerms;
     }
 }
