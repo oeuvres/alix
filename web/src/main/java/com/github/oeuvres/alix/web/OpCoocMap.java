@@ -10,6 +10,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Locale;
+import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -89,12 +90,13 @@ public final class OpCoocMap extends Op
             right);
         consumer.bindTo(topTerms.buffers());
         walker.walk(consumer);
+        consumer.subtractPivots(pivotIds); // should remove topTerms and simplify ranking
         topTerms.setTotals(consumer.coocTokens(), consumer.coocDocsTotal());
         meta.put("pivotIds", pivotIds);
         meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
         meta.put("fieldTokens", contentFluc.termStats().fieldTokens());
         meta.put("focusTokens", consumer.coocTokens());
-        meta.put("focusDocs", consumer.coocDocsTotal());
+        meta.put("focusSnippets", consumer.coocDocsTotal());
         meta.put("hits", walker.hits());
         
         final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
@@ -102,15 +104,13 @@ public final class OpCoocMap extends Op
         
         // get sorted rows, maybe filtered by a flag, will be the rows of interest to display
         // Should we filter pivots now or after?
-        topTerms.rank(scorer, terms + pivotIds.length, tflag).promote(pivotIds, FREQ);
+        topTerms.rank(scorer, terms, tflag);
         final IntList termIds = new IntList(topTerms.size());
         BitSet rows = new BitSet(contentLexicon.vocabSize());
         String[] rowTopFreq = new String[terms];
         int i = 0;
         for (final TermEntry term : topTerms) {
             final int termId = term.termId();
-            // shall we cut pivotIds from rows for SVD? Does it add signal or noise?
-            if (pivotIds != null && Arrays.binarySearch(pivotIds, termId) >= 0) continue;
             rows.set(termId);
             termIds.push(termId);
             rowTopFreq[i++] = term.form() + " (" + term.freq() + ") #" + term.termId();
@@ -128,14 +128,13 @@ public final class OpCoocMap extends Op
         }
         else {
             // keep same scorer? do raw sort add signal or noise?
-            topTerms.rank(scorer, terms + pivotIds.length +cols, tflag).promote(pivotIds, FREQ); // TermFlag.NULL
+            topTerms.rank(scorer, terms +cols, tflag); // TermFlag.NULL
 
             // here termIds contains rows, add other terms
             int k = 0;
             final String[] colForms = new String[cols];
             for (final TermEntry term : topTerms) {
                 final int termId = term.termId();
-                if (pivotIds != null && Arrays.binarySearch(pivotIds, termId) >= 0) continue;
                 if (rows.get(termId)) continue;
                 termIds.push(termId);
                 colForms[k] = term.form() + " (" + term.freq() + " ; " + term.score() + ")";
@@ -183,14 +182,7 @@ public final class OpCoocMap extends Op
             }
             writer.append('\n');
         }
-        SvdLayout layout = new ContingencySvd(coocMat)
-            .freq(rowFreq)            // display marginal, uninterpreted
-            // .smooth(0.5)              // or smoothAuto(), or skip
-             .expectIpf()              // or expectLog()
-             .residual(Assoc.G2)        // any cell function against the fitted e
-             .massScale(false)         // true restores textbook CA geometry
-             .svd()
-             .layout(6);
+
 
         /*
         for (String line: (String[])meta.get("rowTopFreq")) {
@@ -210,7 +202,17 @@ public final class OpCoocMap extends Op
         final MetaUtil meta = new MetaUtil();
         final IntMatrixById coocMat = coocMat(index, pars, meta);
         
-        /*
+        ContingencySvd model = new ContingencySvd(coocMat);
+        // TODO, a nice tree to test different parameters
+        final String expect = pars.getString("expect", "ipf", Set.of("ipf", "log"));
+        if ("ipf".equals(expect)) {
+            model.smooth(0.5).expectLog();
+        }
+        else {
+            
+        }
+        final SvdLayout map = model.layout(6);
+
         try (JsonWriter jw = Op.jsonWriter(response)) {
             jw.beginObject();
 
@@ -238,10 +240,11 @@ public final class OpCoocMap extends Op
                 jw.endObject();
                 jw.name("nodes");
                 jw.beginArray();
-                for (int i = 0; i < map.form().length; i++) {
+                // FIXME, is map.id().length the best way to have row count?
+                for (int i = 0; i < map.id().length; i++) {
                     jw.beginObject();
                     jw.name("id").value(map.id()[i]);
-                    jw.name("form").value(map.form()[i]);
+                    jw.name("form").value(map.label()[i]);
                     jw.name("freq").value(map.freq()[i]);
                     jw.name("x").value(round(map.coords()[i][0], 4));
                     jw.name("y").value(round(map.coords()[i][1], 4));
@@ -260,7 +263,6 @@ public final class OpCoocMap extends Op
 
             jw.endObject();
         }
-        */
 
     }
 

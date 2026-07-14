@@ -18,93 +18,84 @@ import org.hipparchus.special.Gamma;
 import com.github.oeuvres.alix.util.IntMatrixById;
 
 /**
- * Residual SVD of a contingency table — the shared machinery of correspondence
- * analysis, the spectral map, and PMI-SVD. Pure math: no Lucene, no servlet,
- * no parameter-parsing types.
+ * Builds semantic row embeddings from a contingency or co-occurrence table.
  *
  * <p>
- * The pipeline is a sequence of explicit steps on one object, each optional or
- * substitutable where the math allows:
+ * The pipeline separates four decisions:
  * </p>
+ * <ol>
+ * <li>optional smoothing of admissible observed cells;</li>
+ * <li>an expectation model;</li>
+ * <li>an association residual against that expectation;</li>
+ * <li>an SVD embedding and optional coordinate transformations.</li>
+ * </ol>
  *
- * <pre>
- * Layout layout = new ContingencySvd(coocMat)
- *     .freq(rowFreq)            // display marginal, uninterpreted
- *     .smooth(0.5)              // or smoothAuto(), or skip
- *     .expectIpf()              // or expectLog()
- *     .residual(Cell.G2)        // any cell function against the fitted e
- *     .massScale(false)         // true restores textbook CA geometry
- *     .svd()
- *     .layout(6);
- * </pre>
+ * <pre>{@code
+ * ContingencySvd svd = new ContingencySvd(coocMat)
+ *     .expectIpf()
+ *     .residual(Assoc.G2)
+ *     .singularPower(1d)
+ *     .massScale(false)
+ *     .normalizeRows(false)
+ *     .svd();
  *
- * <p>
- * The historical association measures decompose into three orthogonal choices
- * — expectation fit, cell function, mass scaling: CA = ipf + {@link Assoc#PEARSON}
- * + massScale; PEARSON, G2, FT, PMI, PPMI, SPPMI = ipf + that cell; the
- * log-ratio spectral map (Lewi) = log fit + {@link Assoc#PMI}, since the
- * double-centred log {@code log(o) − α − β} is {@code log(o/e)} with
- * {@code e = exp(α + β)}. A web layer maps its parameter names onto these
- * triples; combinations with no historical name (deviance against the log
- * fit, PMI with mass scaling) come for free.
- * </p>
+ * SvdLayout map = svd.layout(6);
+ * SvdLayout hac = svd.layout(svd.dimensionsForInertia(90d));
+ * }</pre>
  *
  * <p>
- * State contract: each step invalidates every later product. A
- * {@code smooth*()} clears the expectation, the residuals and the
- * decomposition; an {@code expect*()} clears the residuals and the
- * decomposition; {@code residual()} clears the decomposition. A step whose
- * precondition is missing throws {@link IllegalStateException}. Accessors
- * return live internal arrays, to be treated as read-only, following the
- * {@link IntMatrixById} convention; they return {@code null} before the
- * producing step has run. {@link #massScale(boolean)} and {@link #freq(long[])}
- * touch only the packaging of {@link #layout(int)} and invalidate nothing.
+ * Identity cells of an {@link IntMatrixById} are treated as structural cells:
+ * they may contain row occurrence marginals for display, but they are not
+ * row-column association observations. The constructor copies those identity
+ * values into the layout frequency vector before excluding them from the
+ * statistical table. Calling {@link #freq(long[])} remains available as an
+ * explicit override.
  * </p>
  *
  * <p>
- * Structural zeros (self-pairs, {@code rowId == colId}) are detected from the
- * id sets at construction; those cells are excluded from smoothing, margins,
- * fits and residuals, and stay at 0 in the residual matrix. Not thread-safe.
+ * Coordinate hooks affect only {@link #layout(int)} and do not recompute the
+ * decomposition: {@link #singularPower(double)} selects {@code U Sigma^p},
+ * {@link #massScale(boolean)} applies the correspondence-analysis row-mass
+ * factor, and {@link #normalizeRows(boolean)} produces unit row vectors suited
+ * to cosine-based comparison.
+ * </p>
+ *
+ * <p>
+ * Every mutating pipeline step invalidates its downstream products. Returned
+ * matrix arrays are live internal arrays and must be treated as read-only. This
+ * class is mutable and not thread-safe.
  * </p>
  */
 public class ContingencySvd
 {
     /**
-     * Cell residual, a pure function of an observed and an expected count.
-     * Selecting the expectation fit is a separate step ({@link #expectIpf()},
-     * {@link #expectLog()}), so any cell function combines with any fit.
+     * Cell association applied to an observed and expected count.
      */
     public enum Assoc
     {
-        /** Freeman–Tukey, {@code √o + √(o+1) − √(4e+1)}, variance-stabilised. */
+        /** Freeman-Tukey variance-stabilised residual. */
         FT,
-        /** Poisson deviance residual, signed, finite at {@code o = 0}. */
+        /** Signed Poisson deviance residual. */
         G2,
-        /** Pearson χ² residual, {@code (o − e)/√e}; explodes on small e. */
+        /** Pearson standardised residual. */
         PEARSON,
-        /** Pointwise mutual information, {@code log(o/e)}, signed, unclipped. */
+        /** Signed pointwise mutual information. */
         PMI,
-        /** Positive PMI, {@code max(0, log(o/e))}; discards anti-associations. */
+        /** Positive pointwise mutual information. */
         PPMI,
-        /** Shifted positive PMI, {@code max(0, log(o/e) − log shift)}. */
+        /** Shifted positive pointwise mutual information. */
         SPPMI;
     }
 
     /**
-     * Result of {@link #layout(int)}: parallel arrays by row rank, plus the
-     * inertia share of the leading axes. Holds no reference to the solver;
-     * trivially serialisable.
+     * Row embedding and diagnostics returned by {@link #layout(int)}.
      *
-     * @param id      row id, by rank
-     * @param label   row label, by rank; entries may be {@code null} when the
-     *                source matrix carried no labels
-     * @param freq    display marginal, by rank — copied uninterpreted from
-     *                {@link #freq(long[])}, zeros when never set
-     * @param coords  principal coordinates, {@code coords[rank][axis]},
-     *                mass-rescaled when enabled, axes sign-fixed
-     * @param cos2    share of each row's inertia carried by axes 0 and 1
-     * @param inertia percentage of total inertia carried by each of the
-     *                leading axes (up to 10, independent of {@code dims})
+     * @param id row ids by rank
+     * @param label row labels by rank
+     * @param freq display occurrence marginal by row rank
+     * @param coords row coordinates by axis
+     * @param cos2 share of each row's embedding norm represented by axes 0 and 1
+     * @param inertia full singular-value inertia spectrum, in percent
      */
     public record SvdLayout(
         int[] id,
@@ -115,89 +106,143 @@ public class ContingencySvd
         double[] inertia
     ) {}
 
-    /** Convergence threshold shared by the two expectation fits. */
-    private static final double FIT_EPSILON = 1e-10;
-    /** Iterations ceiling shared by the two expectation fits. */
-    private static final int FIT_ITERATIONS = 500;
-    /** Length ceiling of the emitted inertia spectrum. */
-    private static final int SPECTRUM = 10;
+    /** Default expectation-fit iteration ceiling. */
+    private static final int DEFAULT_FIT_ITERATIONS = 500;
 
-    /** Fitted expectation, or {@code null} before an {@code expect*()} step. */
+    /** Default expectation-fit convergence tolerance. */
+    private static final double DEFAULT_FIT_TOLERANCE = 1e-10;
+
+    /** Column ids by rank. */
+    private final int[] colId;
+
+    /** Column labels by rank, or {@code null}. */
+    private final String[] colLabel;
+
+    /** Fitted expectation, or {@code null}. */
     private double[][] expected;
-    /** Display marginal by row rank, uninterpreted pass-through, or {@code null}. */
+
+    /** Whether the latest expectation fit converged. */
+    private boolean fitConverged;
+
+    /** Final convergence error of the latest expectation fit. */
+    private double fitError = Double.NaN;
+
+    /** Iterations used by the latest expectation fit. */
+    private int fitIterations;
+
+    /** Expectation-fit iteration ceiling. */
+    private int fitMaxIterations = DEFAULT_FIT_ITERATIONS;
+
+    /** Expectation-fit convergence tolerance. */
+    private double fitTolerance = DEFAULT_FIT_TOLERANCE;
+
+    /** Display frequency by row rank, or {@code null}. */
     private long[] freq;
-    /** Whether {@link #layout(int)} divides row coordinates by {@code √mass}. */
+
+    /** Whether to divide row coordinates by the square root of row mass. */
     private boolean massScale;
-    /** Observed cells: raw at construction, smoothed in place by {@code smooth*()}. */
+
+    /** Whether to L2-normalise emitted row coordinates. */
+    private boolean normalizeRows;
+
+    /** Observed admissible cells, mutated by smoothing. */
     private final double[][] observed;
-    /** Residual matrix, or {@code null} before {@link #residual(Assoc)}. */
+
+    /** Residual matrix, or {@code null}. */
     private double[][] residuals;
+
+    /** Numerical rank of the latest decomposition. */
+    private int rank;
+
     /** Row ids by rank. */
     private final int[] rowId;
-    /** Row labels by rank, or {@code null} when the source carried none. */
+
+    /** Row labels by rank, or {@code null}. */
     private final String[] rowLabel;
-    /** Singular values, or {@code null} before {@link #svd()}. */
+
+    /** Exponent applied to singular values in emitted coordinates. */
+    private double singularPower = 1d;
+
+    /** Singular values, or {@code null}. */
     private double[] singularValues;
-    /** Accumulated add-k, {@code NaN} before a {@code smooth*()} step. */
+
+    /** Accumulated add-k value, or {@code NaN}. */
     private double smoothK = Double.NaN;
-    /** Structural zeros, {@code true} where the cell is outside the model. */
+
+    /** Structural-cell mask. */
     private final boolean[][] structural;
-    /** Left singular vectors U by {@code [row][axis]}, or {@code null} before {@link #svd()}. */
+
+    /** Left singular vectors by row and axis, or {@code null}. */
     private double[][] u;
 
     /**
-     * Builds the pipeline from a plain table, for tests and non-cooc uses.
-     * Row ids are the row ranks and rows carry no labels.
+     * Constructs a pipeline from a plain rectangular table.
      *
-     * @param cells      observed counts, {@code [row][col]}, rectangular, copied.
-     * @param structural cells outside the model, same shape, or {@code null} for none.
-     * @throws NullPointerException if {@code cells} is {@code null}.
-     * @throws IllegalArgumentException if the table is empty, ragged, or the
-     *         mask shape differs.
+     * @param cells non-negative finite observed values, copied
+     * @param structural structural-cell mask, copied; {@code null} means none
+     * @throws IllegalArgumentException if the table is empty, ragged, contains
+     *         an invalid value, or the mask shape differs
+     * @throws NullPointerException if {@code cells} or one of its rows is
+     *         {@code null}
      */
     public ContingencySvd(
         final double[][] cells,
         final boolean[][] structural
     ) {
         Objects.requireNonNull(cells, "cells");
-        final int rowCount = cells.length;
-        if (rowCount == 0 || cells[0].length == 0) {
+        if (cells.length == 0) {
             throw new IllegalArgumentException("empty table");
         }
+        Objects.requireNonNull(cells[0], "cells[0]");
+        if (cells[0].length == 0) {
+            throw new IllegalArgumentException("empty table");
+        }
+        final int rowCount = cells.length;
         final int colCount = cells[0].length;
-        this.observed = new double[rowCount][];
-        this.structural = new boolean[rowCount][];
+        if (structural != null && structural.length != rowCount) {
+            throw new IllegalArgumentException("mask row count differs from table row count");
+        }
+
+        this.observed = new double[rowCount][colCount];
+        this.structural = new boolean[rowCount][colCount];
         for (int row = 0; row < rowCount; row++) {
+            Objects.requireNonNull(cells[row], "cells[" + row + "]");
             if (cells[row].length != colCount) {
                 throw new IllegalArgumentException("ragged table at row " + row);
             }
-            this.observed[row] = cells[row].clone();
-            if (structural == null) {
-                this.structural[row] = new boolean[colCount];
-            }
-            else {
-                if (structural.length != rowCount || structural[row].length != colCount) {
-                    throw new IllegalArgumentException("mask shape differs from table shape");
+            if (structural != null) {
+                Objects.requireNonNull(structural[row], "structural[" + row + "]");
+                if (structural[row].length != colCount) {
+                    throw new IllegalArgumentException("mask shape differs at row " + row);
                 }
-                this.structural[row] = structural[row].clone();
+            }
+            for (int col = 0; col < colCount; col++) {
+                final double value = cells[row][col];
+                checkObserved(value, row, col);
+                this.observed[row][col] = value;
+                this.structural[row][col] = structural != null && structural[row][col];
             }
         }
-        this.rowId = new int[rowCount];
-        for (int row = 0; row < rowCount; row++) {
-            rowId[row] = row;
-        }
+
+        this.rowId = sequence(rowCount);
+        this.colId = sequence(colCount);
         this.rowLabel = null;
+        this.colLabel = null;
     }
 
     /**
-     * Builds the pipeline from a filled co-occurrence matrix. Counts are
-     * copied to double storage; the source matrix is neither retained nor
-     * modified. Structural zeros are the self-pair cells,
-     * {@code rowId(row) == colId(col)}. The display marginal is not part of
-     * the count matrix; provide it through {@link #freq(long[])} when wanted.
+     * Constructs a pipeline from a filled id-addressed co-occurrence matrix.
      *
-     * @param counts filled count matrix with ids and labels.
-     * @throws NullPointerException if {@code counts} is {@code null}.
+     * <p>
+     * A cell whose row and column ids are equal is copied into the display
+     * frequency vector and then marked structural. Off-diagonal cells form the
+     * statistical association table.
+     * </p>
+     *
+     * @param counts filled non-empty matrix
+     * @throws IllegalArgumentException if the matrix has no rows or columns, or
+     *         contains a negative count
+     * @throws NullPointerException if {@code counts} is {@code null}
      */
     public ContingencySvd(
         final IntMatrixById counts
@@ -205,43 +250,172 @@ public class ContingencySvd
         Objects.requireNonNull(counts, "counts");
         final int rowCount = counts.rowCount();
         final int colCount = counts.colCount();
+        if (rowCount == 0 || colCount == 0) {
+            throw new IllegalArgumentException("empty table");
+        }
+
         this.observed = new double[rowCount][colCount];
         this.structural = new boolean[rowCount][colCount];
         this.rowId = counts.rowIds().clone();
-        final String[] labels = new String[rowCount];
-        boolean labelled = false;
+        this.colId = new int[colCount];
+
+        final String[] rows = new String[rowCount];
+        boolean rowsLabelled = false;
         for (int row = 0; row < rowCount; row++) {
-            labels[row] = counts.rowLabelByRank(row);
-            labelled |= labels[row] != null;
+            rows[row] = counts.rowLabelByRank(row);
+            rowsLabelled |= rows[row] != null;
         }
-        this.rowLabel = labelled ? labels : null;
+        this.rowLabel = rowsLabelled ? rows : null;
+
+        final String[] cols = new String[colCount];
+        boolean colsLabelled = false;
+        for (int col = 0; col < colCount; col++) {
+            colId[col] = counts.colId(col);
+            cols[col] = counts.colLabelByRank(col);
+            colsLabelled |= cols[col] != null;
+        }
+        this.colLabel = colsLabelled ? cols : null;
+
+        final long[] diagonal = new long[rowCount];
+        boolean hasIdentity = false;
         for (int row = 0; row < rowCount; row++) {
             final int id = counts.rowId(row);
             for (int col = 0; col < colCount; col++) {
+                final int count = counts.countByRank(row, col);
+                if (count < 0) {
+                    throw new IllegalArgumentException(
+                        "negative count at [" + row + "][" + col + "]: " + count);
+                }
                 if (id == counts.colId(col)) {
                     structural[row][col] = true;
-                    continue;
+                    diagonal[row] = count;
+                    hasIdentity = true;
                 }
-                observed[row][col] = counts.countByRank(row, col);
+                else {
+                    observed[row][col] = count;
+                }
             }
         }
+        this.freq = hasIdentity ? diagonal : null;
     }
 
     /**
-     * Fits the multiplicative quasi-independence expectation by iterative
-     * proportional fitting on the margins of the current observed table,
-     * respecting structural zeros — the plain margin product
-     * {@code rowSum·colSum/total} is only the zeroth iteration of this fit.
-     * Invalidates the residuals and the decomposition.
+     * Clips residual magnitudes before decomposition.
      *
-     * @return this.
+     * <p>
+     * This is an explicit robustness hook for exploratory maps when a small
+     * number of cells dominates the spectrum. It should be reported with the
+     * result because it changes the geometry.
+     * </p>
+     *
+     * @param absoluteLimit positive finite residual magnitude ceiling
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code absoluteLimit} is invalid
+     * @throws IllegalStateException before {@link #residual(Assoc)}
      */
-    public ContingencySvd expectIpf() {
+    public ContingencySvd clipResiduals(
+        final double absoluteLimit
+    ) {
+        if (!Double.isFinite(absoluteLimit) || absoluteLimit <= 0d) {
+            throw new IllegalArgumentException(
+                "absoluteLimit must be positive and finite, got " + absoluteLimit);
+        }
+        if (residuals == null) {
+            throw new IllegalStateException("call residual() before clipResiduals()");
+        }
+        for (int row = 0; row < residuals.length; row++) {
+            for (int col = 0; col < residuals[row].length; col++) {
+                residuals[row][col] = Math.max(
+                    -absoluteLimit,
+                    Math.min(absoluteLimit, residuals[row][col]));
+            }
+        }
+        invalidateSvd();
+        return this;
+    }
+
+    /**
+     * Returns column ids by rank.
+     *
+     * @return a copy of the column-id vector
+     */
+    public int[] columnIds()
+    {
+        return colId.clone();
+    }
+
+    /**
+     * Returns column labels by rank.
+     *
+     * @return a copy of the labels, or {@code null}
+     */
+    public String[] columnLabels()
+    {
+        return colLabel == null ? null : colLabel.clone();
+    }
+
+    /**
+     * Returns the smallest leading dimension count reaching a cumulative
+     * singular-value inertia threshold.
+     *
+     * @param percent cumulative inertia threshold in {@code (0, 100]}
+     * @return required number of leading dimensions, capped by numerical rank
+     * @throws IllegalArgumentException if {@code percent} is invalid
+     * @throws IllegalStateException before {@link #svd()} or for a rank-zero
+     *         residual matrix
+     */
+    public int dimensionsForInertia(
+        final double percent
+    ) {
+        requireSvd();
+        if (!Double.isFinite(percent) || percent <= 0d || percent > 100d) {
+            throw new IllegalArgumentException("percent must be in (0, 100], got " + percent);
+        }
+        if (rank == 0) {
+            throw new IllegalStateException("residual matrix has numerical rank 0");
+        }
+        double total = 0d;
+        for (int axis = 0; axis < rank; axis++) {
+            total += singularValues[axis] * singularValues[axis];
+        }
+        if (total <= 0d) {
+            return 1;
+        }
+        double cumulative = 0d;
+        for (int axis = 0; axis < rank; axis++) {
+            cumulative += singularValues[axis] * singularValues[axis];
+            if (100d * cumulative / total >= percent) {
+                return axis + 1;
+            }
+        }
+        return rank;
+    }
+
+    /**
+     * Returns the fitted expectation matrix.
+     *
+     * @return live expectation matrix, or {@code null}
+     */
+    public double[][] expected()
+    {
+        return expected;
+    }
+
+    /**
+     * Fits a multiplicative quasi-independence model by iterative proportional
+     * fitting while respecting structural cells.
+     *
+     * @return this pipeline
+     */
+    public ContingencySvd expectIpf()
+    {
+        resetFitDiagnostics();
         final int rowCount = observed.length;
         final int colCount = observed[0].length;
-        final double[] rowSum = rowSums();
-        final double[] colSum = colSums();
+        final double[] rowTarget = rowSums();
+        final double[] colTarget = colSums();
         final double[][] fit = new double[rowCount][colCount];
+
         for (int row = 0; row < rowCount; row++) {
             for (int col = 0; col < colCount; col++) {
                 if (!structural[row][col]) {
@@ -249,203 +423,241 @@ public class ContingencySvd
                 }
             }
         }
-        for (int iteration = 0; iteration < FIT_ITERATIONS; iteration++) {
+
+        for (int iteration = 1; iteration <= fitMaxIterations; iteration++) {
             for (int row = 0; row < rowCount; row++) {
-                double fitted = 0d;
-                for (int col = 0; col < colCount; col++) {
-                    fitted += fit[row][col];
-                }
-                if (fitted <= 0d) {
-                    continue;
-                }
-                final double factor = rowSum[row] / fitted;
-                for (int col = 0; col < colCount; col++) {
-                    fit[row][col] *= factor;
-                }
+                final double fitted = rowSum(fit, row);
+                scaleRow(fit, row, fitted, rowTarget[row]);
             }
             for (int col = 0; col < colCount; col++) {
-                double fitted = 0d;
-                for (int row = 0; row < rowCount; row++) {
-                    fitted += fit[row][col];
-                }
-                if (fitted <= 0d) {
-                    continue;
-                }
-                final double factor = colSum[col] / fitted;
-                for (int row = 0; row < rowCount; row++) {
-                    fit[row][col] *= factor;
-                }
+                final double fitted = colSum(fit, col);
+                scaleColumn(fit, col, fitted, colTarget[col]);
             }
-            double error = 0d;
-            for (int row = 0; row < rowCount; row++) {
-                double fitted = 0d;
-                for (int col = 0; col < colCount; col++) {
-                    fitted += fit[row][col];
-                }
-                error = Math.max(error, Math.abs(fitted - rowSum[row]) / (rowSum[row] + 1e-12));
-            }
-            if (error < FIT_EPSILON) {
+
+            final double error = marginError(fit, rowTarget, colTarget);
+            fitIterations = iteration;
+            fitError = error;
+            if (error <= fitTolerance) {
+                fitConverged = true;
                 break;
             }
         }
+
         this.expected = fit;
         invalidateResiduals();
         return this;
     }
 
     /**
-     * Fits the additive row/column model in log space by alternating least
-     * squares over the positive admissible cells and stores
-     * {@code expected = exp(α + β)}, so that {@link Assoc#PMI} against this fit
-     * reproduces Lewi's double-centred log-ratio exactly. Zero cells are
-     * excluded from the fit; smoothing first ({@link #smooth}) is the usual
-     * way to keep them in. Invalidates the residuals and the decomposition.
+     * Fits an additive row-column model to log observed cells by alternating
+     * least squares.
      *
-     * @return this.
+     * <p>
+     * All admissible cells must be positive. Call {@link #smooth(double)} or
+     * {@link #smoothAuto()} first when the table contains zeros. This explicit
+     * precondition prevents signed PMI from silently treating absent pairs as
+     * neutral values.
+     * </p>
+     *
+     * @return this pipeline
+     * @throws IllegalStateException if an admissible observed cell is not
+     *         strictly positive
      */
-    public ContingencySvd expectLog() {
+    public ContingencySvd expectLog()
+    {
+        requirePositiveObserved("expectLog()");
+        resetFitDiagnostics();
+
         final int rowCount = observed.length;
         final int colCount = observed[0].length;
         final double[] alpha = new double[rowCount];
         final double[] beta = new double[colCount];
-        for (int iteration = 0; iteration < FIT_ITERATIONS; iteration++) {
-            double error = 0d;
+
+        for (int iteration = 1; iteration <= fitMaxIterations; iteration++) {
+            final double[] previousAlpha = alpha.clone();
+            final double[] previousBeta = beta.clone();
+
             for (int row = 0; row < rowCount; row++) {
                 double sum = 0d;
                 int count = 0;
                 for (int col = 0; col < colCount; col++) {
-                    if (structural[row][col] || observed[row][col] <= 0d) {
+                    if (structural[row][col]) {
                         continue;
                     }
                     sum += Math.log(observed[row][col]) - beta[col];
                     count++;
                 }
                 if (count > 0) {
-                    final double next = sum / count;
-                    error = Math.max(error, Math.abs(next - alpha[row]));
-                    alpha[row] = next;
+                    alpha[row] = sum / count;
                 }
             }
+
             for (int col = 0; col < colCount; col++) {
                 double sum = 0d;
                 int count = 0;
                 for (int row = 0; row < rowCount; row++) {
-                    if (structural[row][col] || observed[row][col] <= 0d) {
+                    if (structural[row][col]) {
                         continue;
                     }
                     sum += Math.log(observed[row][col]) - alpha[row];
                     count++;
                 }
                 if (count > 0) {
-                    final double next = sum / count;
-                    error = Math.max(error, Math.abs(next - beta[col]));
-                    beta[col] = next;
+                    beta[col] = sum / count;
                 }
             }
-            double mean = 0d;
-            for (final double value : alpha) {
-                mean += value;
-            }
-            mean /= rowCount;
-            for (int row = 0; row < rowCount; row++) {
-                alpha[row] -= mean;
-            }
-            for (int col = 0; col < colCount; col++) {
-                beta[col] += mean;
-            }
-            if (error < FIT_EPSILON) {
+
+            centre(alpha, beta);
+            final double error = parameterError(alpha, beta, previousAlpha, previousBeta);
+            fitIterations = iteration;
+            fitError = error;
+            if (error <= fitTolerance) {
+                fitConverged = true;
                 break;
             }
         }
+
         final double[][] fit = new double[rowCount][colCount];
         for (int row = 0; row < rowCount; row++) {
             for (int col = 0; col < colCount; col++) {
                 if (structural[row][col]) {
                     continue;
                 }
-                fit[row][col] = Math.exp(alpha[row] + beta[col]);
+                final double value = Math.exp(alpha[row] + beta[col]);
+                if (!Double.isFinite(value) || value <= 0d) {
+                    throw new IllegalStateException(
+                        "non-finite log expectation at [" + row + "][" + col + "]");
+                }
+                fit[row][col] = value;
             }
         }
+
         this.expected = fit;
         invalidateResiduals();
         return this;
     }
 
     /**
-     * Returns the fitted expectation for inspection — after
-     * {@link #expectIpf()} its margins should reproduce the observed margins,
-     * the one silent failure mode of the fit. Live array, read-only.
+     * Returns whether the latest expectation fit reached its tolerance.
      *
-     * @return expected counts, or {@code null} before an {@code expect*()} step.
+     * @return convergence status
      */
-    public double[][] expected() {
-        return expected;
+    public boolean fitConverged()
+    {
+        return fitConverged;
     }
 
     /**
-     * Sets the display marginal emitted by {@link #layout(int)}. Uninterpreted
-     * pass-through: the math never reads it. Invalidates nothing.
+     * Returns the final convergence error of the latest expectation fit.
      *
-     * @param byRowRank frequency by row rank, or {@code null} to clear.
-     * @return this.
-     * @throws IllegalArgumentException if the length differs from the row count.
+     * @return final error, or {@code NaN} before fitting
+     */
+    public double fitError()
+    {
+        return fitError;
+    }
+
+    /**
+     * Returns the iterations used by the latest expectation fit.
+     *
+     * @return iteration count
+     */
+    public int fitIterations()
+    {
+        return fitIterations;
+    }
+
+    /**
+     * Sets the expectation-fit iteration ceiling.
+     *
+     * @param iterations positive iteration ceiling
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code iterations < 1}
+     */
+    public ContingencySvd fitMaxIterations(
+        final int iterations
+    ) {
+        if (iterations < 1) {
+            throw new IllegalArgumentException("iterations must be at least 1, got " + iterations);
+        }
+        this.fitMaxIterations = iterations;
+        return this;
+    }
+
+    /**
+     * Sets the expectation-fit convergence tolerance.
+     *
+     * @param tolerance positive finite tolerance
+     * @return this pipeline
+     * @throws IllegalArgumentException if the tolerance is invalid
+     */
+    public ContingencySvd fitTolerance(
+        final double tolerance
+    ) {
+        if (!Double.isFinite(tolerance) || tolerance <= 0d) {
+            throw new IllegalArgumentException("tolerance must be positive and finite, got " + tolerance);
+        }
+        this.fitTolerance = tolerance;
+        return this;
+    }
+
+    /**
+     * Overrides the display frequency emitted by {@link #layout(int)}.
+     *
+     * <p>
+     * The constructor taking {@link IntMatrixById} already initialises this
+     * vector from identity cells. Use this method only to replace that default,
+     * for example with snippet-presence frequency rather than occurrence
+     * frequency.
+     * </p>
+     *
+     * @param byRowRank display frequency, or {@code null} to clear
+     * @return this pipeline
+     * @throws IllegalArgumentException if the vector length differs from the row
+     *         count
      */
     public ContingencySvd freq(
         final long[] byRowRank
     ) {
         if (byRowRank != null && byRowRank.length != observed.length) {
             throw new IllegalArgumentException(
-                "freq length " + byRowRank.length + " differs from row count " + observed.length
-            );
+                "freq length " + byRowRank.length + " differs from row count " + observed.length);
         }
         this.freq = byRowRank == null ? null : byRowRank.clone();
         return this;
     }
 
     /**
-     * Runs the terminal packaging step: principal coordinates {@code U·Σ}
-     * truncated to {@code dims} axes, mass rescaling when enabled, per-row
-     * cos² over axes 0 and 1 (denominator over all axes, computed before
-     * truncation — an exact identity of the SVD), inertia percentages, and
-     * deterministic axis signs (the point of largest absolute coordinate is
-     * positive), so maps are visually comparable across runs. The mass
-     * rescaling multiplies a whole row of coordinates by one constant, so it
-     * moves points without touching cos² or the spectrum; it is applied
-     * before the sign fixing, which reads the largest coordinate.
+     * Packages leading row coordinates and diagnostics.
      *
-     * @param dims number of axes to emit, capped by the rank of the residual matrix.
-     * @return the layout.
-     * @throws IllegalStateException before {@link #svd()}.
-     * @throws IllegalArgumentException if {@code dims < 1}.
+     * @param dims number of leading axes to emit
+     * @return immutable layout record containing newly allocated vectors
+     * @throws IllegalArgumentException if {@code dims < 1}
+     * @throws IllegalStateException before {@link #svd()} or for a rank-zero
+     *         residual matrix
      */
     public SvdLayout layout(
         final int dims
     ) {
-        if (singularValues == null) {
-            throw new IllegalStateException("call svd() before layout()");
-        }
+        requireSvd();
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
         }
+        if (rank == 0) {
+            throw new IllegalStateException("residual matrix has numerical rank 0");
+        }
+
         final int rowCount = observed.length;
-        final int axes = Math.min(dims, singularValues.length);
-        double totalInertia = 0d;
-        for (final double value : singularValues) {
-            totalInertia += value * value;
-        }
-        final int spectrumLength = Math.min(SPECTRUM, singularValues.length);
-        final double[] inertia = new double[spectrumLength];
-        if (totalInertia > 0d) {
-            for (int axis = 0; axis < spectrumLength; axis++) {
-                inertia[axis] = 100d * singularValues[axis] * singularValues[axis] / totalInertia;
-            }
-        }
+        final int axes = Math.min(dims, rank);
+        final double[] inertia = inertiaSpectrum();
         final double[][] coords = new double[rowCount][axes];
         final double[] cos2 = new double[rowCount];
+
         for (int row = 0; row < rowCount; row++) {
             double denominator = 0d;
-            for (int axis = 0; axis < singularValues.length; axis++) {
-                final double coordinate = u[row][axis] * singularValues[axis];
+            for (int axis = 0; axis < rank; axis++) {
+                final double scale = poweredSingularValue(singularValues[axis]);
+                final double coordinate = u[row][axis] * scale;
                 denominator += coordinate * coordinate;
                 if (axis < axes) {
                     coords[row][axis] = coordinate;
@@ -457,107 +669,102 @@ public class ContingencySvd
             }
             cos2[row] = denominator > 0d ? numerator / denominator : 0d;
         }
+
         if (massScale) {
-            final double[] rowSum = rowSums();
-            double total = 0d;
-            for (final double sum : rowSum) {
-                total += sum;
-            }
-            for (int row = 0; row < rowCount; row++) {
-                final double mass = total > 0d ? rowSum[row] / total : 0d;
-                final double factor = mass > 0d ? 1d / Math.sqrt(mass) : 0d;
-                for (int axis = 0; axis < axes; axis++) {
-                    coords[row][axis] *= factor;
-                }
-            }
+            applyMassScale(coords);
         }
-        for (int axis = 0; axis < axes; axis++) {
-            int greatest = 0;
-            for (int row = 1; row < rowCount; row++) {
-                if (Math.abs(coords[row][axis]) > Math.abs(coords[greatest][axis])) {
-                    greatest = row;
-                }
-            }
-            if (coords[greatest][axis] < 0d) {
-                for (int row = 0; row < rowCount; row++) {
-                    coords[row][axis] = -coords[row][axis];
-                }
-            }
+        if (normalizeRows) {
+            normalizeRows(coords);
         }
-        final String[] label = new String[rowCount];
+        fixAxisSigns(coords);
+
+        final String[] labels = new String[rowCount];
         if (rowLabel != null) {
-            System.arraycopy(rowLabel, 0, label, 0, rowCount);
+            System.arraycopy(rowLabel, 0, labels, 0, rowCount);
         }
         final long[] displayFreq = freq == null ? new long[rowCount] : freq.clone();
-        return new SvdLayout(rowId.clone(), label, displayFreq, coords, cos2, inertia);
+        return new SvdLayout(rowId.clone(), labels, displayFreq, coords, cos2, inertia);
     }
 
     /**
-     * Enables or disables the {@code 1/√mass} rescaling of row coordinates —
-     * the {@code D_r^{−1/2}} separating textbook correspondence analysis from
-     * the spectral map, which restores the χ² metric and throws rare terms to
-     * the rim. It touches only the packaging in {@link #layout(int)}, so it
-     * may be toggled after {@link #svd()} to compare both geometries of the
-     * same decomposition without recomputing anything. Masses are the row
-     * margins of the current observed table.
+     * Enables correspondence-analysis row-mass scaling.
      *
-     * @param massScale {@code true} for CA geometry.
-     * @return this.
+     * @param enabled {@code true} to multiply each row by
+     *        {@code 1 / sqrt(rowMass)}
+     * @return this pipeline
      */
     public ContingencySvd massScale(
-        final boolean massScale
+        final boolean enabled
     ) {
-        this.massScale = massScale;
+        this.massScale = enabled;
         return this;
     }
 
     /**
-     * Returns the observed table for inspection: raw counts at construction,
-     * smoothed values after a {@code smooth*()} step. Live array, read-only.
+     * Enables L2 normalisation of emitted row coordinates.
      *
-     * @return observed cells.
+     * @param enabled {@code true} for unit row vectors
+     * @return this pipeline
      */
-    public double[][] observed() {
+    public ContingencySvd normalizeRows(
+        final boolean enabled
+    ) {
+        this.normalizeRows = enabled;
+        return this;
+    }
+
+    /**
+     * Returns the observed table after any smoothing.
+     *
+     * @return live observed matrix
+     */
+    public double[][] observed()
+    {
         return observed;
     }
 
     /**
-     * Computes the residual of every admissible cell against the fitted
-     * expectation; structural zeros and non-finite values stay at 0.
-     * Shift-free overload; {@link Assoc#SPPMI} behaves as {@link Assoc#PPMI}.
-     * Invalidates the decomposition.
+     * Computes association residuals with the default SPPMI shift of one.
      *
-     * @param cell cell function.
-     * @return this.
-     * @throws IllegalStateException before an {@code expect*()} step.
+     * @param association association function
+     * @return this pipeline
+     * @throws IllegalStateException before an expectation fit or when signed PMI
+     *         is requested with zero admissible observations
+     * @throws NullPointerException if {@code association} is {@code null}
      */
     public ContingencySvd residual(
-        final Assoc cell
+        final Assoc association
     ) {
-        return residual(cell, 1d);
+        return residual(association, 1d);
     }
 
     /**
-     * Computes residuals with a shift, read only by {@link Assoc#SPPMI}
-     * (Levy &amp; Goldberg's {@code k}). Invalidates the decomposition.
+     * Computes association residuals against the fitted expectation.
      *
-     * @param cell  cell function.
-     * @param shift SPPMI shift, {@code ≥ 1}.
-     * @return this.
-     * @throws IllegalStateException before an {@code expect*()} step.
-     * @throws IllegalArgumentException if {@code shift < 1}.
+     * @param association association function
+     * @param shift SPPMI shift, finite and at least one
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code shift} is invalid
+     * @throws IllegalStateException before an expectation fit, when signed PMI
+     *         is requested with zero admissible observations, or when a
+     *         non-finite residual is produced
+     * @throws NullPointerException if {@code association} is {@code null}
      */
     public ContingencySvd residual(
-        final Assoc cell,
+        final Assoc association,
         final double shift
     ) {
-        Objects.requireNonNull(cell, "cell");
+        Objects.requireNonNull(association, "association");
         if (expected == null) {
             throw new IllegalStateException("call expectIpf() or expectLog() before residual()");
         }
-        if (shift < 1d) {
-            throw new IllegalArgumentException("shift must be at least 1, got " + shift);
+        if (!Double.isFinite(shift) || shift < 1d) {
+            throw new IllegalArgumentException("shift must be finite and at least 1, got " + shift);
         }
+        if (association == Assoc.PMI) {
+            requirePositiveObserved("residual(PMI)");
+        }
+
         final int rowCount = observed.length;
         final int colCount = observed[0].length;
         final double[][] matrix = new double[rowCount][colCount];
@@ -566,46 +773,96 @@ public class ContingencySvd
                 if (structural[row][col]) {
                     continue;
                 }
-                final double value = cell(cell, observed[row][col], expected[row][col], shift);
-                matrix[row][col] = Double.isFinite(value) ? value : 0d;
+                final double value = association(
+                    association,
+                    observed[row][col],
+                    expected[row][col],
+                    shift,
+                    row,
+                    col);
+                if (!Double.isFinite(value)) {
+                    throw new IllegalStateException(
+                        "non-finite residual at [" + row + "][" + col + "]");
+                }
+                matrix[row][col] = value;
             }
         }
+
         this.residuals = matrix;
         invalidateSvd();
         return this;
     }
 
     /**
-     * Returns the residual matrix the SVD reads, for inspection — the place
-     * to check whether a few huge cells dominate the inertia before blaming
-     * the decomposition. Live array, read-only.
+     * Returns the residual matrix used by the decomposition.
      *
-     * @return residuals, or {@code null} before {@link #residual(Assoc)}.
+     * @return live residual matrix, or {@code null}
      */
-    public double[][] residuals() {
+    public double[][] residuals()
+    {
         return residuals;
     }
 
     /**
-     * Returns the singular values, for scree inspection. Live array, read-only.
+     * Returns row ids by rank.
      *
-     * @return singular values, or {@code null} before {@link #svd()}.
+     * @return a copy of the row-id vector
      */
-    public double[] singularValues() {
+    public int[] rowIds()
+    {
+        return rowId.clone();
+    }
+
+    /**
+     * Returns row labels by rank.
+     *
+     * @return a copy of the labels, or {@code null}
+     */
+    public String[] rowLabels()
+    {
+        return rowLabel == null ? null : rowLabel.clone();
+    }
+
+    /**
+     * Sets the singular-value exponent used in emitted row coordinates.
+     *
+     * <p>
+     * {@code 1} emits principal coordinates {@code U Sigma}; {@code 0.5}
+     * softens dominance by the first axes; {@code 0} emits non-null left
+     * singular vectors. This choice affects semantic distances but not the
+     * inertia spectrum.
+     * </p>
+     *
+     * @param power finite non-negative exponent
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code power} is invalid
+     */
+    public ContingencySvd singularPower(
+        final double power
+    ) {
+        if (!Double.isFinite(power) || power < 0d) {
+            throw new IllegalArgumentException("power must be finite and non-negative, got " + power);
+        }
+        this.singularPower = power;
+        return this;
+    }
+
+    /**
+     * Returns singular values from the latest decomposition.
+     *
+     * @return live singular-value vector, or {@code null}
+     */
+    public double[] singularValues()
+    {
         return singularValues;
     }
 
     /**
-     * Adds k to every admissible cell — smoothing only zero cells would bias
-     * the margins; a flat add-k prior does not. Skipping this step is
-     * legitimate for the deviance and Freeman–Tukey cells, which are finite
-     * at zero; the log-scale cells and {@link #expectLog()} need positive
-     * cells to see the zeros at all. Repeated calls accumulate. Invalidates
-     * the expectation, the residuals and the decomposition.
+     * Adds a constant to every admissible observed cell.
      *
-     * @param k add-k, {@code ≥ 0}.
-     * @return this.
-     * @throws IllegalArgumentException if {@code k} is negative or not finite.
+     * @param k finite non-negative add-k value
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code k} is invalid
      */
     public ContingencySvd smooth(
         final double k
@@ -613,14 +870,11 @@ public class ContingencySvd
         if (!Double.isFinite(k) || k < 0d) {
             throw new IllegalArgumentException("k must be finite and non-negative, got " + k);
         }
-        final int rowCount = observed.length;
-        final int colCount = observed[0].length;
-        for (int row = 0; row < rowCount; row++) {
-            for (int col = 0; col < colCount; col++) {
-                if (structural[row][col]) {
-                    continue;
+        for (int row = 0; row < observed.length; row++) {
+            for (int col = 0; col < observed[row].length; col++) {
+                if (!structural[row][col]) {
+                    observed[row][col] += k;
                 }
-                observed[row][col] += k;
             }
         }
         smoothK = Double.isNaN(smoothK) ? k : smoothK + k;
@@ -629,178 +883,279 @@ public class ContingencySvd
     }
 
     /**
-     * Fits k on the raw counts by empirical Bayes — the concentration of a
-     * symmetric Dirichlet prior over the admissible cells, maximising the
-     * Dirichlet-multinomial marginal likelihood by Minka's fixed point — and
-     * applies it. The model treats cells as exchangeable, which co-occurrence
-     * cells are not: the estimate is a data-driven default, not an oracle.
-     * Must run on raw integer counts, so it throws after a previous
-     * {@code smooth*()} call — the one ordering the invalidation cascade
-     * cannot repair. The fitted value is readable through {@link #smoothK()}.
-     * Invalidates the expectation, the residuals and the decomposition.
+     * Fits a symmetric Dirichlet add-k value on raw integer observations and
+     * applies it.
      *
-     * @return this.
-     * @throws IllegalStateException if the table was already smoothed.
+     * @return this pipeline
+     * @throws IllegalStateException after previous smoothing or when an
+     *         admissible observation is not an integer count
      */
-    public ContingencySvd smoothAuto() {
+    public ContingencySvd smoothAuto()
+    {
         if (!Double.isNaN(smoothK)) {
             throw new IllegalStateException(
-                "smoothAuto() must run on raw counts, smooth() was already applied"
-            );
+                "smoothAuto() must run on raw counts before smooth()");
         }
-        final int rowCount = observed.length;
-        final int colCount = observed[0].length;
+
         int maxCount = 0;
         long cells = 0L;
         long total = 0L;
-        for (int row = 0; row < rowCount; row++) {
-            for (int col = 0; col < colCount; col++) {
+        for (int row = 0; row < observed.length; row++) {
+            for (int col = 0; col < observed[row].length; col++) {
                 if (structural[row][col]) {
                     continue;
                 }
-                final int count = (int) observed[row][col];
+                final double value = observed[row][col];
+                if (value != Math.rint(value) || value > Integer.MAX_VALUE) {
+                    throw new IllegalStateException(
+                        "smoothAuto() requires integer counts; got " + value
+                            + " at [" + row + "][" + col + "]");
+                }
+                final int count = (int) value;
                 cells++;
                 total += count;
-                if (count > maxCount) {
-                    maxCount = count;
+                maxCount = Math.max(maxCount, count);
+            }
+        }
+
+        final long[] histogram = new long[maxCount + 1];
+        for (int row = 0; row < observed.length; row++) {
+            for (int col = 0; col < observed[row].length; col++) {
+                if (!structural[row][col]) {
+                    histogram[(int) observed[row][col]]++;
                 }
             }
         }
-        final long[] hist = new long[maxCount + 1];
-        for (int row = 0; row < rowCount; row++) {
-            for (int col = 0; col < colCount; col++) {
-                if (structural[row][col]) {
-                    continue;
-                }
-                hist[(int) observed[row][col]]++;
-            }
-        }
-        return smooth(fitK(hist, cells, total));
+        return smooth(fitK(histogram, cells, total));
     }
 
     /**
-     * Returns the accumulated add-k, for reporting in response metadata.
+     * Returns the accumulated add-k value.
      *
-     * @return k, or {@code NaN} before a {@code smooth*()} step.
+     * @return accumulated value, or {@code NaN} before smoothing
      */
-    public double smoothK() {
+    public double smoothK()
+    {
         return smoothK;
+    }
+
+    /**
+     * Returns the structural-cell mask.
+     *
+     * @return live structural mask
+     */
+    public boolean[][] structural()
+    {
+        return structural;
     }
 
     /**
      * Decomposes the residual matrix.
      *
-     * @return this.
-     * @throws IllegalStateException before {@link #residual(Assoc)}.
+     * @return this pipeline
+     * @throws IllegalStateException before {@link #residual(Assoc)}
      */
-    public ContingencySvd svd() {
+    public ContingencySvd svd()
+    {
         if (residuals == null) {
             throw new IllegalStateException("call residual() before svd()");
         }
-        final SingularValueDecomposition svd =
+        final SingularValueDecomposition decomposition =
             new SingularValueDecomposition(new Array2DRowRealMatrix(residuals, false));
-        this.singularValues = svd.getSingularValues();
-        this.u = svd.getU().getData();
+        this.singularValues = decomposition.getSingularValues();
+        this.u = decomposition.getU().getData();
+        this.rank = decomposition.getRank();
         return this;
     }
 
     /**
-     * Cell residual of an observed count against its fitted expectation.
-     * The count-scale cells differ in how they tame small expectations:
-     * {@link Assoc#PEARSON} explodes there; {@link Assoc#G2} is the Poisson
-     * deviance {@code sign(o − e)·√(2·(o·ln(o/e) − o + e))}, where the
-     * {@code − o + e} term keeps zero cells finite (at {@code o = 0} the
-     * deviance is {@code 2e}, residual {@code −√(2e)}); {@link Assoc#FT} is
-     * the classic variance-stabilising alternative. The log-scale cells
-     * measure the same contrast multiplicatively; clipping
-     * ({@link Assoc#PPMI}, {@link Assoc#SPPMI}) discards the anti-associations,
-     * defensible for retrieval and lossy for a map.
-     *
-     * @param cell  cell function.
-     * @param o     observed, possibly smoothed count.
-     * @param e     expected count under the fitted model.
-     * @param shift the {@code k} of shifted PPMI, ignored by every other cell.
-     * @return the residual, 0 when {@code e} is not positive.
+     * Computes one association value.
      */
-    private static double cell(
-        final Assoc cell,
-        final double o,
-        final double e,
-        final double shift
+    private static double association(
+        final Assoc association,
+        final double observed,
+        final double expected,
+        final double shift,
+        final int row,
+        final int col
     ) {
-        if (e <= 0d) {
-            return 0d;
+        if (expected <= 0d) {
+            if (observed == 0d) {
+                return 0d;
+            }
+            throw new IllegalStateException(
+                "positive observation with non-positive expectation at ["
+                    + row + "][" + col + "]");
         }
-        switch (cell) {
+
+        switch (association) {
             case FT:
-                return Math.sqrt(o) + Math.sqrt(o + 1d) - Math.sqrt(4d * e + 1d);
+                return Math.sqrt(observed)
+                    + Math.sqrt(observed + 1d)
+                    - Math.sqrt(4d * expected + 1d);
             case G2:
-                final double deviance = 2d * ((o > 0d ? o * Math.log(o / e) : 0d) - o + e);
-                return Math.copySign(Math.sqrt(Math.max(0d, deviance)), o - e);
+                final double deviance = 2d * (
+                    (observed > 0d ? observed * Math.log(observed / expected) : 0d)
+                        - observed
+                        + expected);
+                return Math.copySign(
+                    Math.sqrt(Math.max(0d, deviance)),
+                    observed - expected);
+            case PEARSON:
+                return (observed - expected) / Math.sqrt(expected);
             case PMI:
-                return o > 0d ? Math.log(o / e) : 0d;
+                return Math.log(observed / expected);
             case PPMI:
-                return o > 0d ? Math.max(0d, Math.log(o / e)) : 0d;
+                return observed > 0d
+                    ? Math.max(0d, Math.log(observed / expected))
+                    : 0d;
             case SPPMI:
-                return o > 0d ? Math.max(0d, Math.log(o / e) - Math.log(shift)) : 0d;
+                return observed > 0d
+                    ? Math.max(0d, Math.log(observed / expected) - Math.log(shift))
+                    : 0d;
             default:
-                return (o - e) / Math.sqrt(e);
+                throw new IllegalStateException("unsupported association: " + association);
         }
     }
 
     /**
-     * Sums the admissible cells of each column of the current observed table.
-     *
-     * @return column margins.
+     * Applies row-mass scaling to coordinates.
      */
-    private double[] colSums() {
-        final int rowCount = observed.length;
-        final int colCount = observed[0].length;
-        final double[] colSum = new double[colCount];
-        for (int row = 0; row < rowCount; row++) {
-            for (int col = 0; col < colCount; col++) {
-                if (structural[row][col]) {
-                    continue;
-                }
-                colSum[col] += observed[row][col];
+    private void applyMassScale(
+        final double[][] coords
+    ) {
+        final double[] rowSum = rowSums();
+        double total = 0d;
+        for (final double sum : rowSum) {
+            total += sum;
+        }
+        for (int row = 0; row < coords.length; row++) {
+            final double mass = total > 0d ? rowSum[row] / total : 0d;
+            final double factor = mass > 0d ? 1d / Math.sqrt(mass) : 0d;
+            for (int axis = 0; axis < coords[row].length; axis++) {
+                coords[row][axis] *= factor;
             }
         }
-        return colSum;
     }
 
     /**
-     * Empirical Bayes add-k by Minka's fixed point on the
-     * Dirichlet-multinomial marginal likelihood. The numerator
-     * {@code Σ ψ(c + k) − ψ(k)} telescopes into partial harmonic sums for
-     * integer counts, so one iteration costs {@code O(maxCount)} and the
-     * whole fit a few dozen µs at map sizes.
-     *
-     * @param hist  {@code hist[c]} = number of admissible cells with raw count {@code c}.
-     * @param cells number of admissible cells.
-     * @param total sum of the raw counts over those cells.
-     * @return the fitted k, clamped to {@code [0.001, 10]}; 0.5 (the Jeffreys
-     *         prior) when there is nothing to fit.
+     * Centres the additive log-fit parameters without changing fitted values.
+     */
+    private static void centre(
+        final double[] alpha,
+        final double[] beta
+    ) {
+        double mean = 0d;
+        for (final double value : alpha) {
+            mean += value;
+        }
+        mean /= alpha.length;
+        for (int row = 0; row < alpha.length; row++) {
+            alpha[row] -= mean;
+        }
+        for (int col = 0; col < beta.length; col++) {
+            beta[col] += mean;
+        }
+    }
+
+    /**
+     * Checks one observed value.
+     */
+    private static void checkObserved(
+        final double value,
+        final int row,
+        final int col
+    ) {
+        if (!Double.isFinite(value) || value < 0d) {
+            throw new IllegalArgumentException(
+                "observed value must be finite and non-negative at ["
+                    + row + "][" + col + "]: " + value);
+        }
+    }
+
+    /**
+     * Returns one fitted column sum.
+     */
+    private static double colSum(
+        final double[][] matrix,
+        final int col
+    ) {
+        double sum = 0d;
+        for (final double[] row : matrix) {
+            sum += row[col];
+        }
+        return sum;
+    }
+
+    /**
+     * Returns admissible observed column margins.
+     */
+    private double[] colSums()
+    {
+        final double[] sums = new double[observed[0].length];
+        for (int row = 0; row < observed.length; row++) {
+            for (int col = 0; col < observed[row].length; col++) {
+                if (!structural[row][col]) {
+                    sums[col] += observed[row][col];
+                }
+            }
+        }
+        return sums;
+    }
+
+    /**
+     * Fixes arbitrary SVD axis signs deterministically.
+     */
+    private static void fixAxisSigns(
+        final double[][] coords
+    ) {
+        if (coords.length == 0 || coords[0].length == 0) {
+            return;
+        }
+        for (int axis = 0; axis < coords[0].length; axis++) {
+            int greatest = 0;
+            for (int row = 1; row < coords.length; row++) {
+                if (Math.abs(coords[row][axis]) > Math.abs(coords[greatest][axis])) {
+                    greatest = row;
+                }
+            }
+            if (coords[greatest][axis] < 0d) {
+                for (int row = 0; row < coords.length; row++) {
+                    coords[row][axis] = -coords[row][axis];
+                }
+            }
+        }
+    }
+
+    /**
+     * Fits a symmetric Dirichlet add-k value.
      */
     private static double fitK(
-        final long[] hist,
+        final long[] histogram,
         final long cells,
         final long total
     ) {
-        if (cells <= 0 || total <= 0) {
-            return 0.5;
+        if (cells <= 0L || total <= 0L) {
+            return 0.5d;
         }
-        double k = 0.5;
-        for (int iter = 0; iter < 100; iter++) {
-            double num = 0d;
+        double k = 0.5d;
+        for (int iteration = 0; iteration < 100; iteration++) {
+            double numerator = 0d;
             double harmonic = 0d;
-            for (int c = 1; c < hist.length; c++) {
-                harmonic += 1d / (c - 1 + k);
-                if (hist[c] > 0) {
-                    num += hist[c] * harmonic;
-                }
+            for (int count = 1; count < histogram.length; count++) {
+                harmonic += 1d / (count - 1d + k);
+                numerator += histogram[count] * harmonic;
             }
-            final double den = cells * (Gamma.digamma(total + cells * k) - Gamma.digamma(cells * k));
-            final double next = Math.min(10d, Math.max(0.001d, k * num / den));
+            final double denominator = cells * (
+                Gamma.digamma(total + cells * k)
+                    - Gamma.digamma(cells * k));
+            if (!Double.isFinite(numerator)
+                    || !Double.isFinite(denominator)
+                    || numerator <= 0d
+                    || denominator <= 0d) {
+                return k;
+            }
+            final double next = Math.min(10d, Math.max(0.001d, k * numerator / denominator));
             if (Math.abs(next - k) < 1e-6) {
                 return next;
             }
@@ -810,46 +1165,253 @@ public class ContingencySvd
     }
 
     /**
-     * Clears the expectation and everything after it.
+     * Returns the full inertia spectrum.
      */
-    private void invalidateExpectation() {
+    private double[] inertiaSpectrum()
+    {
+        double total = 0d;
+        for (int axis = 0; axis < rank; axis++) {
+            total += singularValues[axis] * singularValues[axis];
+        }
+        final double[] inertia = new double[rank];
+        if (total > 0d) {
+            for (int axis = 0; axis < rank; axis++) {
+                inertia[axis] = 100d
+                    * singularValues[axis]
+                    * singularValues[axis]
+                    / total;
+            }
+        }
+        return inertia;
+    }
+
+    /**
+     * Clears the expectation and downstream products.
+     */
+    private void invalidateExpectation()
+    {
         expected = null;
+        resetFitDiagnostics();
         invalidateResiduals();
     }
 
     /**
-     * Clears the residuals and everything after them.
+     * Clears residuals and downstream products.
      */
-    private void invalidateResiduals() {
+    private void invalidateResiduals()
+    {
         residuals = null;
         invalidateSvd();
     }
 
     /**
-     * Clears the decomposition.
+     * Clears decomposition products.
      */
-    private void invalidateSvd() {
+    private void invalidateSvd()
+    {
         singularValues = null;
         u = null;
+        rank = 0;
     }
 
     /**
-     * Sums the admissible cells of each row of the current observed table.
-     *
-     * @return row margins.
+     * Returns the maximum relative row or column margin error.
      */
-    private double[] rowSums() {
-        final int rowCount = observed.length;
-        final int colCount = observed[0].length;
-        final double[] rowSum = new double[rowCount];
-        for (int row = 0; row < rowCount; row++) {
-            for (int col = 0; col < colCount; col++) {
-                if (structural[row][col]) {
-                    continue;
-                }
-                rowSum[row] += observed[row][col];
+    private static double marginError(
+        final double[][] fit,
+        final double[] rowTarget,
+        final double[] colTarget
+    ) {
+        double error = 0d;
+        for (int row = 0; row < rowTarget.length; row++) {
+            error = Math.max(error, relativeError(rowSum(fit, row), rowTarget[row]));
+        }
+        for (int col = 0; col < colTarget.length; col++) {
+            error = Math.max(error, relativeError(colSum(fit, col), colTarget[col]));
+        }
+        return error;
+    }
+
+    /**
+     * L2-normalises rows in place.
+     */
+    private static void normalizeRows(
+        final double[][] coords
+    ) {
+        for (final double[] row : coords) {
+            double norm2 = 0d;
+            for (final double value : row) {
+                norm2 += value * value;
+            }
+            if (norm2 <= 0d) {
+                continue;
+            }
+            final double inverse = 1d / Math.sqrt(norm2);
+            for (int axis = 0; axis < row.length; axis++) {
+                row[axis] *= inverse;
             }
         }
-        return rowSum;
+    }
+
+    /**
+     * Returns the maximum parameter change between log-fit iterations.
+     */
+    private static double parameterError(
+        final double[] alpha,
+        final double[] beta,
+        final double[] previousAlpha,
+        final double[] previousBeta
+    ) {
+        double error = 0d;
+        for (int row = 0; row < alpha.length; row++) {
+            error = Math.max(error, Math.abs(alpha[row] - previousAlpha[row]));
+        }
+        for (int col = 0; col < beta.length; col++) {
+            error = Math.max(error, Math.abs(beta[col] - previousBeta[col]));
+        }
+        return error;
+    }
+
+    /**
+     * Returns one singular value raised to the configured power.
+     */
+    private double poweredSingularValue(
+        final double singularValue
+    ) {
+        return singularValue > 0d ? Math.pow(singularValue, singularPower) : 0d;
+    }
+
+    /**
+     * Returns a stable relative error with absolute scaling near zero.
+     */
+    private static double relativeError(
+        final double fitted,
+        final double target
+    ) {
+        return Math.abs(fitted - target) / Math.max(1d, Math.abs(target));
+    }
+
+    /**
+     * Requires all admissible observations to be positive.
+     */
+    private void requirePositiveObserved(
+        final String operation
+    ) {
+        for (int row = 0; row < observed.length; row++) {
+            for (int col = 0; col < observed[row].length; col++) {
+                if (!structural[row][col] && observed[row][col] <= 0d) {
+                    throw new IllegalStateException(
+                        operation + " requires positive admissible cells; call smooth() first; zero at ["
+                            + row + "][" + col + "]");
+                }
+            }
+        }
+    }
+
+    /**
+     * Requires a completed decomposition.
+     */
+    private void requireSvd()
+    {
+        if (singularValues == null || u == null) {
+            throw new IllegalStateException("call svd() before requesting coordinates");
+        }
+    }
+
+    /**
+     * Resets expectation-fit diagnostics.
+     */
+    private void resetFitDiagnostics()
+    {
+        fitConverged = false;
+        fitError = Double.NaN;
+        fitIterations = 0;
+    }
+
+    /**
+     * Returns one fitted row sum.
+     */
+    private static double rowSum(
+        final double[][] matrix,
+        final int row
+    ) {
+        double sum = 0d;
+        for (final double value : matrix[row]) {
+            sum += value;
+        }
+        return sum;
+    }
+
+    /**
+     * Returns admissible observed row margins.
+     */
+    private double[] rowSums()
+    {
+        final double[] sums = new double[observed.length];
+        for (int row = 0; row < observed.length; row++) {
+            for (int col = 0; col < observed[row].length; col++) {
+                if (!structural[row][col]) {
+                    sums[row] += observed[row][col];
+                }
+            }
+        }
+        return sums;
+    }
+
+    /**
+     * Scales one fitted column to a target margin.
+     */
+    private static void scaleColumn(
+        final double[][] fit,
+        final int col,
+        final double fitted,
+        final double target
+    ) {
+        if (fitted <= 0d) {
+            if (target > 0d) {
+                throw new IllegalStateException(
+                    "IPF cannot reach positive column margin " + target + " at column " + col);
+            }
+            return;
+        }
+        final double factor = target / fitted;
+        for (final double[] row : fit) {
+            row[col] *= factor;
+        }
+    }
+
+    /**
+     * Scales one fitted row to a target margin.
+     */
+    private static void scaleRow(
+        final double[][] fit,
+        final int row,
+        final double fitted,
+        final double target
+    ) {
+        if (fitted <= 0d) {
+            if (target > 0d) {
+                throw new IllegalStateException(
+                    "IPF cannot reach positive row margin " + target + " at row " + row);
+            }
+            return;
+        }
+        final double factor = target / fitted;
+        for (int col = 0; col < fit[row].length; col++) {
+            fit[row][col] *= factor;
+        }
+    }
+
+    /**
+     * Builds a zero-based integer sequence.
+     */
+    private static int[] sequence(
+        final int length
+    ) {
+        final int[] sequence = new int[length];
+        for (int index = 0; index < length; index++) {
+            sequence[index] = index;
+        }
+        return sequence;
     }
 }

@@ -487,4 +487,17 @@ public abstract class Op
         if (s.indexOf(',') < 0 && s.indexOf(';') < 0 && s.indexOf('"') < 0 && s.indexOf('\n') < 0 && s.indexOf('\r') < 0) return s;
         return '"' + s.replace("\"", "\"\"") + '"';
     }
+    
+    /**
+     * Rounds to {@code decimals} fractional digits, to keep serialised
+     * numbers short.
+     *
+     * @param v        value
+     * @param decimals number of fractional digits
+     * @return the rounded value
+     */
+    static double round(final double v, final int decimals) {
+        final double f = Math.pow(10, decimals);
+        return Math.round(v * f) / f;
+    }
 }
