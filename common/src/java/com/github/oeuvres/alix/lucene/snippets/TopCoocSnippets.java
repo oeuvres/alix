@@ -1,7 +1,6 @@
 package com.github.oeuvres.alix.lucene.snippets;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
 
@@ -9,95 +8,77 @@ import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.Buffers;
-import com.github.oeuvres.alix.util.IntList;
 
 /**
- * {@link SnippetsConsumer} accumulating per-term cooccurrence counts in a fixed-width window
- * around each snippet produced by {@link SpanWalker}.
+ * Accumulates per-term counts in fixed-width windows around the merged snippets
+ * produced by {@link SpanWalker}.
+ *
  * <p>
- * For every snippet at positions {@code [snipStart, snipEnd)} the listener marks the contiguous
- * range {@code [max(0, snipStart - left), snipEnd + right)} in a per-document {@link BitSet}.
- * After all snippets of a document have been seen, the marked positions are resolved to term ids
- * via {@link TermRail#scanPositions}, and each resolved term id is written into the
- * {@link Buffers} bound via {@link #bindTo(Buffers)}.
+ * Each merged snippet is one independent context. For a snippet occupying
+ * {@code [snipStart, snipEnd)}, this consumer scans the half-open window
+ * {@code [snipStart - left, snipEnd + right)} through
+ * {@link TermRail#scanWindow(int, int, int, java.util.function.IntConsumer)}.
+ * The rail clips the window to the document bounds.
  * </p>
- * <h2>Pivot exclusion</h2>
+ *
  * <p>
- * Term ids passed to {@link #setPivotIds(int[])} are excluded from the count <em>everywhere</em>
- * in the window, not only inside the matched span. This is by design, and supports an iterative
- * query-refinement workflow: a user running {@code SpanNear("foo ... bar")} wants {@code baz} to
- * surface as a cooccurrent so the next query can be {@code SpanNear("foo ... bar ... baz")}, but
- * does not want {@code foo} or {@code bar} themselves to surface as cooccurrents even when extra
- * occurrences of them fall in the slop window before or after the snippet. Position-based
- * exclusion of the matched span alone would surface those extras and is therefore not used here.
+ * {@link Buffers#termFreq()} stores occurrence counts across snippet contexts.
+ * An indexed occurrence covered by two distinct snippet windows is therefore
+ * counted twice, once in each context. This is the same counting model used by
+ * {@link CoocMatSnippets}; consequently, for identical walks and term axes,
+ * {@code termFreq[termId]} equals the matrix identity cell for that term.
  * </p>
+ *
  * <p>
- * The pivot set is held sorted and deduplicated and probed with {@link Arrays#binarySearch}.
- * {@link #setPivotIds(int[])} normalises its argument via {@link IntList#uniq(int[])}; callers
- * may pass any int array.
+ * {@link Buffers#termDocs()} stores snippet frequency: it is incremented once
+ * per {@code (term, snippet)} pair, regardless of how often the term occurs in
+ * that snippet. The name comes from the generic {@code TopTerms} TF/DF model;
+ * within this consumer, a snippet is the local counting context.
  * </p>
- * <h2>Per-document deduplication for document frequency</h2>
+ *
  * <p>
- * A vocabulary-sized bitset tracks which term ids have already been counted in the current
- * document, so {@link Buffers#termDocs()} is incremented at most once per (term, document) pair
- * while {@link Buffers#termFreq()} is incremented per occurrence.
+ * Pivot occurrences are collected during the walk and may be removed afterward
+ * with {@link #subtractPivots(int[])}. This removes them from both per-term
+ * buffers and from the token total used by keyness scoring.
  * </p>
- * <h2>Lifecycle</h2>
+ *
  * <p>
- * {@link #bindTo(Buffers)} and {@link #setPivotIds(int[])} must both be called before the walk
- * starts. {@link #reset()} clears {@link #coocTokens()} and {@link #coocDocsTotal()} between
- * walks; the bound {@link Buffers} and pivot ids persist and must be replaced with another
- * {@code bindTo} / {@code setPivotIds} call if they need to change.
- * </p>
- * <p>
- * After the walk, {@link #coocTokens()} and {@link #coocDocsTotal()} are the focus-side totals
- * used as denominators in keyness scoring.
- * </p>
- * <p>
- * This class is not thread-safe.
+ * This class is mutable and not thread-safe.
  * </p>
  */
 public final class TopCoocSnippets implements SnippetsConsumer
 {
-    /** Bound focus buffers; {@code null} until {@link #bindTo(Buffers)} is called. */
+    /** Bound local-population buffers. */
     private Buffers buffers;
 
-    /** Number of documents that contributed at least one non-pivot cooccurrence position. */
-    private int coocDocsTotal;
-
-    /** Total non-pivot non-gap rail positions counted across all documents. */
+    /** Total non-pivot token occurrences across snippet contexts. */
     private long coocTokens;
 
-    /** Whether the current document contributed at least one non-pivot cooccurrence position. */
-    private boolean docContributed;
-
-    /** Field statistics for the pivot field; used for vocabulary size and max document width. */
+    /** Field statistics used to validate buffer sizes. */
     private final TermStats fieldStats;
 
-    /** Number of context positions to read on the left of each snippet. */
+    /** Number of context positions read before each snippet. */
     private final int left;
 
-    /** Forward positional rail for the pivot field. */
+    /** Forward positional rail for the indexed field. */
     private final TermRail rail;
 
-    /** Number of context positions to read on the right of each snippet. */
+    /** Number of context positions read after each snippet. */
     private final int right;
 
-    /** Per-document set of term ids already counted toward {@link Buffers#termDocs()}. */
+    /** Number of merged snippets processed. */
+    private int snippetCount;
+
+    /** Terms already counted toward snippet frequency in the current snippet. */
     private final BitSet termSeen;
 
-    /** Per-document accumulated window positions across all snippets of the document. */
-    private final BitSet windowMask;
-
     /**
-     * Constructs a cooccurrence listener.
+     * Constructs a snippet co-occurrence consumer.
      *
-     * @param fieldStats field statistics for the pivot field
+     * @param fieldStats field statistics for the indexed field
      * @param rail forward positional rail for the same field
-     * @param left context width on the left of each snippet, in positions; must be
-     * {@code >= 0}
-     * @param right context width on the right of each snippet, in positions; must be
-     * {@code >= 0}
+     * @param left number of positions to include before each snippet
+     * @param right number of positions to include after each snippet
      * @throws IllegalArgumentException if {@code left} or {@code right} is negative
      * @throws NullPointerException if {@code fieldStats} or {@code rail} is {@code null}
      */
@@ -111,124 +92,156 @@ public final class TopCoocSnippets implements SnippetsConsumer
         this.rail = Objects.requireNonNull(rail, "rail");
         if (left < 0 || right < 0) {
             throw new IllegalArgumentException(
-                    "left and right must be >= 0; got left=" + left + ", right=" + right);
+                "left and right must be >= 0; got left=" + left + ", right=" + right);
         }
         this.left = left;
         this.right = right;
-        this.windowMask = new BitSet(fieldStats.maxWidth());
         this.termSeen = new BitSet(fieldStats.vocabSize());
     }
 
     /**
-     * Binds this listener to a {@link Buffers} instance obtained from a
-     * {@link com.github.oeuvres.alix.lucene.terms.TopTerms}. Must be called before the walk
-     * starts. Does not touch {@link #coocTokens()} or {@link #coocDocsTotal()}; call
-     * {@link #reset()} explicitly when reusing the listener across walks.
+     * Binds writable local-population buffers to this consumer.
      *
-     * @param buffers focus buffers to write into; lengths must equal
-     * {@code fieldStats.vocabSize()}
+     * <p>
+     * Calling this method does not reset the consumer totals. Call
+     * {@link #reset()} before reusing this instance for another walk.
+     * </p>
+     *
+     * @param buffers buffers obtained from
+     * {@link com.github.oeuvres.alix.lucene.terms.TopTerms#buffers()}
+     * @return this consumer
+     * @throws IllegalArgumentException if a buffer length differs from the vocabulary size
      * @throws NullPointerException if {@code buffers} is {@code null}
-     * @throws IllegalArgumentException if buffer lengths do not match
-     * {@code fieldStats.vocabSize()}
      */
     public TopCoocSnippets bindTo(
         final Buffers buffers
     ) {
-        Objects.requireNonNull(buffers, "buffers");
-        final int vocab = fieldStats.vocabSize();
-        if (buffers.termFreq().length != vocab || buffers.termDocs().length != vocab) {
+        final Buffers target = Objects.requireNonNull(buffers, "buffers");
+        final int vocabSize = fieldStats.vocabSize();
+        if (target.termFreq().length != vocabSize || target.termDocs().length != vocabSize) {
             throw new IllegalArgumentException(
-                    "buffer length mismatch: vocabSize=" + vocab + ", termFreq.length=" + buffers.termFreq().length
-                            + ", termDocs.length=" + buffers.termDocs().length);
+                "buffer length mismatch: vocabSize=" + vocabSize
+                    + ", termFreq.length=" + target.termFreq().length
+                    + ", termDocs.length=" + target.termDocs().length);
         }
-        this.buffers = buffers;
+        this.buffers = target;
         return this;
     }
 
     /**
-     * Returns the number of documents that contributed at least one non-pivot cooccurrence
-     * position.
+     * Returns the number of merged snippets processed.
      *
-     * @return focus document count
+     * <p>
+     * The historical method name is retained for compatibility with existing
+     * callers. The returned value is a snippet count, not a Lucene document count.
+     * </p>
+     *
+     * @return number of merged snippet contexts
      */
-    public int coocDocsTotal() {
-        return coocDocsTotal;
+    public int coocDocsTotal()
+    {
+        return snippetCount;
     }
 
     /**
-     * Returns the total non-pivot non-gap rail positions counted across all documents. Used as
-     * the focus-side denominator in keyness scoring.
+     * Returns the total non-pivot token occurrences counted across snippet contexts.
      *
-     * @return total cooccurrence token count
+     * @return local-population token total
      */
-    public long coocTokens() {
+    public long coocTokens()
+    {
         return coocTokens;
     }
 
+    /**
+     * Accumulates all merged snippet windows from one Lucene document.
+     *
+     * @param docId global Lucene document id
+     * @param snippets merged snippets collected for the document
+     * @throws IOException if snippet processing fails
+     * @throws IllegalStateException if no buffers have been bound
+     */
     @Override
     public void docSnippets(
         final int docId,
         final DocSnippets snippets
     )
-        throws IOException {
-        windowMask.clear();
-        termSeen.clear();
-        docContributed = false;
-
-        final int snipCount = snippets.count();
-        for (int snipOrd = 0; snipOrd < snipCount; snipOrd++) {
-            final int snipStartPosition = snippets.snipStartPosition(snipOrd);
-            final int snipEndPosition = snippets.snipEndPosition(snipOrd);
-            final int winStartPosition = Math.max(0, snipStartPosition - left);
-            final int winEndPosition = snipEndPosition + right;
-            windowMask.set(winStartPosition, winEndPosition);
+        throws IOException
+    {
+        if (buffers == null) {
+            throw new IllegalStateException("bindTo() must be called before walking snippets");
         }
 
         final long[] termFreq = buffers.termFreq();
         final int[] termDocs = buffers.termDocs();
-        rail.scanPositions(docId, windowMask, termId -> {
-            termFreq[termId]++;
-            coocTokens++;
-            if (!termSeen.get(termId)) {
-                termSeen.set(termId);
-                termDocs[termId]++;
-            }
-            docContributed = true;
-        });
+        final int count = snippets.count();
 
-        if (docContributed) {
-            coocDocsTotal++;
+        for (int snippetOrd = 0; snippetOrd < count; snippetOrd++) {
+            termSeen.clear();
+
+            final int start = snippets.snipStartPosition(snippetOrd);
+            final int end = snippets.snipEndPosition(snippetOrd);
+
+            rail.scanWindow(docId, start - left, end + right, termId -> {
+                termFreq[termId]++;
+                coocTokens++;
+
+                if (!termSeen.get(termId)) {
+                    termSeen.set(termId);
+                    termDocs[termId]++;
+                }
+            });
+
+            snippetCount++;
         }
     }
 
     /**
-     * Removes pivot contributions accumulated during the walk: subtracts pivot
-     * occurrences from {@link #coocTokens()} and clears their per-term buffers so
-     * they cannot surface in the ranking. Call once, after the walk and before the
-     * totals are read.
+     * Clears totals accumulated by this consumer.
+     *
+     * <p>
+     * The bound buffers are not cleared. Obtain fresh buffers from
+     * {@code TopTerms.buffers()} before a new collection pass.
+     * </p>
+     */
+    public void reset()
+    {
+        coocTokens = 0L;
+        snippetCount = 0;
+    }
+
+    /**
+     * Removes pivot terms accumulated during the walk.
+     *
+     * <p>
+     * Every occurrence of each pivot is removed from the local token total, and
+     * its occurrence and snippet-frequency entries are cleared. Call this method
+     * once after the walk and before reading totals or ranking terms.
+     * </p>
+     *
+     * @param pivotIds dense ids of pivot terms; {@code null} and empty arrays are ignored
+     * @throws IllegalStateException if no buffers have been bound
      */
     public void subtractPivots(
         final int[] pivotIds
     ) {
-        if (pivotIds == null) return;
-        if (pivotIds.length < 1) return;
+        if (pivotIds == null || pivotIds.length == 0) {
+            return;
+        }
+        if (buffers == null) {
+            throw new IllegalStateException("bindTo() must be called before subtractPivots()");
+        }
+
         final long[] termFreq = buffers.termFreq();
         final int[] termDocs = buffers.termDocs();
         long pivotTokens = 0L;
-        for (final int p : pivotIds) {
-            pivotTokens += termFreq[p];
-            termFreq[p] = 0L;
-            termDocs[p] = 0;
-        }
-        coocTokens -= pivotTokens;
-    }
 
-    /**
-     * Clears the accumulators {@link #coocTokens()} and {@link #coocDocsTotal()}. The bound
-     * {@link Buffers} and pivot ids are preserved.
-     */
-    public void reset() {
-        coocTokens = 0L;
-        coocDocsTotal = 0;
+        for (final int pivotId : pivotIds) {
+            pivotTokens += termFreq[pivotId];
+            termFreq[pivotId] = 0L;
+            termDocs[pivotId] = 0;
+        }
+
+        coocTokens -= pivotTokens;
     }
 }
