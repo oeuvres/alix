@@ -42,10 +42,12 @@ import jakarta.servlet.http.HttpServletResponse;
 public final class OpCoocMap extends Op
 {
     /** Tables available from the debug CSV endpoint. */
-    private enum CsvStep
+    private enum CsvType
     {
         /** Observed contingency table. */
         CONTINGENCY,
+        /** Euclidian distances, for HAC or phylogenetic */
+        DISTANCES,
         /** HAC principal-coordinate feature table for Orange. */
         HAC;
     }
@@ -273,6 +275,36 @@ public final class OpCoocMap extends Op
     }
 
     /**
+     * Writes a square Euclidean distance matrix accepted by SplitsTree CSV.
+     *
+     * @param writer response writer
+     * @param coocMat source of row labels
+     * @param layout row coordinates
+     * @throws IOException if the matrix cannot be written
+     */
+    private static void writeDistances(
+        final Writer writer,
+        final IntMatrixById coocMat,
+        final SvdLayout layout
+    )
+        throws IOException {
+        final double[][] coords = layout.coords();
+        for (int row = 0; row < layout.size(); row++) {
+            final String label = coocMat.rowLabelByRank(row);
+            writer.append(csvEscape(label == null ? "" : label));
+            for (int col = 0; col < layout.size(); col++) {
+                double squared = 0d;
+                for (int axis = 0; axis < coords[row].length; axis++) {
+                    final double delta = coords[row][axis] - coords[col][axis];
+                    squared += delta * delta;
+                }
+                writer.append(',').append(Double.toString(Math.sqrt(squared)));
+            }
+            writer.append('\n');
+        }
+    }
+
+    /**
      * Writes an Orange native feature table for hierarchical clustering.
      *
      * <p>
@@ -343,19 +375,28 @@ public final class OpCoocMap extends Op
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
         final Writer writer = response.getWriter();
-        final CsvStep step = pars.getEnum("step", CsvStep.CONTINGENCY);
-        switch (step) {
+        final IntMatrixById coocMat = coocMat(index, pars, meta);
+        if (coocMat == null) {
+            meta.toString(writer, pars);
+            return;
+        }
+        final CsvType type = pars.getEnum("type", CsvType.CONTINGENCY);
+        switch (type) {
             case CONTINGENCY -> {
-                final IntMatrixById coocMat = coocMat(index, pars, meta);
-                if (coocMat == null) {
-                    meta.toString(writer, pars);
-                    return;
-                }
                 writeContingency(coocMat, writer);
+            }
+            case DISTANCES -> {
+                final int dimensions = pars.getInt("dims", new int[] { 1, 300 }, 50);
+                final SvdLayout layout = hacCoordinates(
+                    coocMat,
+                    pars,
+                    meta,
+                    dimensions
+                );
+                writeDistances(writer, coocMat, layout);
             }
             case HAC -> {
                 final int dimensions = pars.getInt("dims", new int[] { 1, 300 }, 50);
-                final IntMatrixById coocMat = coocMat(index, pars, meta);
                 final SvdLayout layout = hacCoordinates(
                     coocMat,
                     pars,

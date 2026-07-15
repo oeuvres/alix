@@ -314,6 +314,15 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     {
         return fieldStats;
     }
+    
+    /**
+     * Gives access to unerlying lexicon of ths list of terms.
+     * @return The lexicon for this field
+     */
+    public TermLexicon lexicon()
+    {
+        return lexicon;
+    }
 
     /**
      * Returns an iterator over the current ranking.
