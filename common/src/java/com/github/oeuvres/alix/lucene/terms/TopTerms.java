@@ -490,19 +490,21 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Ranks flag-matching terms by raw occurrence count.
      *
      * <p>
-     * The flag restricts ranking candidates only. Population counts and token
-     * totals remain unchanged. {@link TermFlag#NULL} selects all terms.
+     * The flags restrict ranking candidates only. A term is eligible when it
+     * carries at least one supplied flag. Population counts and token totals
+     * remain unchanged. No flags, or {@link TermFlag#NULL}, select all terms.
      * </p>
      *
      * @param topK maximum number of ranked terms to retain
-     * @param flag required term flag, or {@link TermFlag#NULL} for all terms
+     * @param flags accepted term flags
      * @return this instance
      * @throws IllegalArgumentException if {@code topK < 1}
-     * @throws NullPointerException     if {@code flag == null}
+     * @throws NullPointerException     if {@code flags == null} or one of its
+     *                                  elements is {@code null}
      */
-    public TopTerms rank(final int topK, final TermFlag flag)
+    public TopTerms rank(final int topK, final TermFlag... flags)
     {
-        return rank(new KeynessScorer.Count(), topK, flag);
+        return rank(new KeynessScorer.Count(), topK, flags);
     }
 
     /**
@@ -539,27 +541,28 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Ranks flag-matching terms with a keyness scorer.
      *
      * <p>
-     * The flag restricts ranking candidates only. The scorer still receives the
-     * complete current-population and field token totals, so filtering does not
-     * change a term's score. It only changes eligibility and rank.
-     * {@link TermFlag#NULL} selects all terms.
+     * The flags restrict ranking candidates only. A term is eligible when it
+     * carries at least one supplied flag. The scorer still receives the complete
+     * current-population and field token totals, so filtering does not change a
+     * term's score. It only changes eligibility and rank. No flags, or
+     * {@link TermFlag#NULL}, select all terms.
      * </p>
      *
      * @param scorer scorer used to rank terms
      * @param topK   maximum number of ranked terms to retain
-     * @param flag   required term flag, or {@link TermFlag#NULL} for all terms
+     * @param flags  accepted term flags
      * @return this instance
      * @throws IllegalArgumentException if {@code topK < 1}
-     * @throws NullPointerException     if {@code scorer == null} or
-     *                                  {@code flag == null}
+     * @throws NullPointerException     if {@code flags == null} or one of its
+     *                                  elements is {@code null}
      */
     public TopTerms rank(
         KeynessScorer scorer,
         final int topK,
-        final TermFlag flag)
+        final TermFlag... flags)
     {
         if (scorer == null) scorer = new KeynessScorer.Count();
-        final BitSet filter = rankingFilter(flag);
+        final BitSet filter = rankingFilter(flags);
         checkTopK(topK);
 
         final int vocabSize = fieldStats.vocabSize();
@@ -1076,15 +1079,31 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Resolves a term flag to a private ranking filter.
+     * Resolves term flags to a private union ranking filter.
      *
-     * @param flag required term flag, or {@link TermFlag#NULL} for all terms
+     * @param flags accepted term flags
      * @return eligible term ids, or {@code null} for all terms
-     * @throws NullPointerException if {@code flag == null}
+     * @throws NullPointerException if {@code flags == null} or one of its
+     *                              elements is {@code null}
      */
-    private BitSet rankingFilter(final TermFlag flag)
+    private BitSet rankingFilter(final TermFlag... flags)
     {
-        return lexicon.bits(Objects.requireNonNull(flag, "flag"));
+        Objects.requireNonNull(flags, "flags");
+        if (flags.length == 0) {
+            return null;
+        }
+
+        final BitSet filter = new BitSet(fieldStats.vocabSize());
+        for (int index = 0; index < flags.length; index++) {
+            final TermFlag flag = Objects.requireNonNull(
+                flags[index],
+                "flags[" + index + "]");
+            if (flag == TermFlag.NULL) {
+                return null;
+            }
+            filter.or(lexicon.bits(flag));
+        }
+        return filter;
     }
 
     /**

@@ -49,6 +49,7 @@ public class TermsUtil
         TopTerms terms
     ) throws IOException {
         try (JsonWriter jw = Op.jsonWriter(response)) {
+            boolean hasContexts = meta.get("spanQuery") != null;
             jw.beginObject();
 
             // meta
@@ -68,12 +69,13 @@ public class TermsUtil
                 for (final TopTerms.ExcludedTerm pivot : terms.excludedTerms()) {
                     jw.beginObject();
                     jw.name("form").value(pivot.form());
-                    jw.name("id").value(pivot.termId());
+                    jw.name("type").value("pivot");
                     jw.name("docs").value(pivot.docs());
-                    jw.name("snippets").value(pivot.contexts());
+                    if (hasContexts) jw.name("snippets").value(pivot.contexts());
                     jw.name("freq").value(pivot.freq());
                     jw.name("fieldDocs").value(pivot.fieldDocs());
                     jw.name("fieldFreq").value(pivot.fieldFreq());
+                    jw.name("id").value(pivot.termId());
                     jw.endObject();
                 }
                 
@@ -85,7 +87,7 @@ public class TermsUtil
                     jw.name("id").value(term.termId());
                     jw.name("html").value(term.hilite()); // for suggest
                     jw.name("docs").value(term.docs());
-                    jw.name("snippets").value(term.contexts());
+                    if (hasContexts) jw.name("snippets").value(term.contexts());
                     jw.name("fieldDocs").value(term.fieldDocs());
                     jw.name("freq").value(term.freq());
                     jw.name("fieldFreq").value(term.fieldFreq());

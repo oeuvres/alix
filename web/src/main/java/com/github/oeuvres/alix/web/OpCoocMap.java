@@ -39,6 +39,14 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public final class OpCoocMap extends Op
 {
+    /** Tables available from the debug CSV endpoint. */
+    private enum CsvStep
+    {
+        /** Observed contingency table. */
+        CONTINGENCY,
+        /** HAC principal-coordinate feature table for Orange. */
+        HAC;
+    }
     
     /**
      * Build the cooc matrix.
@@ -127,19 +135,14 @@ public final class OpCoocMap extends Op
         }
         else {
             final int colmin = pars.getInt("colmin", 8);
-            for (TermFlag flag: Set.of(TermFlag.NOUN, TermFlag.VERB)) {
-                // keep same scorer? do raw sort add signal or noise?
-                // new KeynessScorer.Count()
-                topTerms.rank(new KeynessScorer.G2(), terms + (cols * 5), flag);
-                // here termIds contains rows, add other terms
-                int k = 0;
-                for (final TermEntry term : topTerms) {
-                    final int termId = term.termId();
-                    if (rows.get(termId)) continue;
-                    if (term.contexts() < colmin) continue;
-                    termIds.push(termId);
-                    if (++k >= cols) break;
-                }
+            topTerms.rank(new KeynessScorer.G2(), terms + (cols * 5), TermFlag.NOUN, TermFlag.VERB);
+            int k = 0;
+            for (final TermEntry term : topTerms) {
+                final int termId = term.termId();
+                if (rows.get(termId)) continue;
+                if (term.contexts() < colmin) continue;
+                termIds.push(termId);
+                if (++k >= cols) break;
             }
             colIds = termIds.toUniq();
         }
@@ -231,6 +234,94 @@ public final class OpCoocMap extends Op
         return model;
     }
 
+    /**
+     * Writes the observed co-occurrence contingency table.
+     *
+     * @param coocMat filled co-occurrence matrix
+     * @param writer response writer
+     * @throws IOException if the table cannot be written
+     */
+    private static void writeContingency(
+        final IntMatrixById coocMat,
+        final Writer writer
+    )
+        throws IOException {
+        final char separator = '\t';
+        for (int colRank = 0; colRank < coocMat.colCount(); colRank++) {
+            final String label = coocMat.colLabelByRank(colRank);
+            writer.append(separator).append(csvEscape(label));
+        }
+        writer.append('\n');
+
+        for (int rowRank = 0; rowRank < coocMat.rowCount(); rowRank++) {
+            final String label = coocMat.rowLabelByRank(rowRank);
+            writer.append(csvEscape(label));
+            for (int colRank = 0; colRank < coocMat.colCount(); colRank++) {
+                writer.append(separator);
+                writer.append(Integer.toString(coocMat.countByRank(rowRank, colRank)));
+            }
+            writer.append('\n');
+        }
+    }
+
+    /**
+     * Writes an Orange native feature table for hierarchical clustering.
+     *
+     * <p>
+     * The first three rows declare column names, types, and roles. Term form,
+     * term id, and frequency are metadata; only the {@code U_k Sigma_k}
+     * coordinates are continuous input features. Coordinates are written at
+     * full {@code double} precision.
+     * </p>
+     *
+     * @param layout HAC principal-coordinate layout
+     * @param writer response writer
+     * @throws IOException if the table cannot be written
+     */
+    private static void writeOrangeHac(
+        final SvdLayout layout,
+        final Writer writer
+    )
+        throws IOException {
+        final char separator = '\t';
+        final int dimensions = layout.coords()[0].length;
+
+        writer.append("form").append(separator);
+        writer.append("id").append(separator);
+        writer.append("freq");
+        for (int axis = 0; axis < dimensions; axis++) {
+            writer.append(separator).append("svd_").append(Integer.toString(axis + 1));
+        }
+        writer.append('\n');
+
+        writer.append("string").append(separator);
+        writer.append("continuous").append(separator);
+        writer.append("continuous");
+        for (int axis = 0; axis < dimensions; axis++) {
+            writer.append(separator).append("continuous");
+        }
+        writer.append('\n');
+
+        writer.append("meta").append(separator);
+        writer.append("meta").append(separator);
+        writer.append("meta");
+        for (int axis = 0; axis < dimensions; axis++) {
+            writer.append(separator);
+        }
+        writer.append('\n');
+
+        for (int row = 0; row < layout.size(); row++) {
+            final String label = layout.label()[row];
+            writer.append(csvEscape(label == null ? "" : label)).append(separator);
+            writer.append(Integer.toString(layout.id()[row])).append(separator);
+            writer.append(Long.toString(layout.freq()[row]));
+            for (final double coordinate : layout.coords()[row]) {
+                writer.append(separator).append(Double.toString(coordinate));
+            }
+            writer.append('\n');
+        }
+    }
+
     protected void csv(
         final LuceneIndex index,
         final HttpServletRequest request,
@@ -238,33 +329,32 @@ public final class OpCoocMap extends Op
     ) throws IOException {
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
-        final IntMatrixById coocMat = coocMat(index, pars, meta);
         final Writer writer = response.getWriter();
-        if (coocMat == null) {
-            meta.toString(writer, pars);
-            return;
-        }
-        // final DecimalFormat fmt = new DecimalFormat("0.####", DecimalFormatSymbols.getInstance(Locale.US));
-        final char sep = '\t';
-        for (int colRank = 0; colRank < coocMat.colCount(); colRank++) {
-            String label = coocMat.colLabelByRank(colRank);
-            writer.append(sep).append(csvEscape(label));
-        }
-        writer.append('\n');
-        for (int rowRank = 0; rowRank < coocMat.rowCount(); rowRank++) {
-            String label = coocMat.rowLabelByRank(rowRank);
-            writer.append(csvEscape(label));
-            for (int colRank = 0; colRank < coocMat.colCount(); colRank++) {
-                writer.append(sep).append("" + coocMat.countByRank(rowRank, colRank));
+        final CsvStep step = pars.getEnum("step", CsvStep.CONTINGENCY);
+        switch (step) {
+            case CONTINGENCY -> {
+                final IntMatrixById coocMat = coocMat(index, pars, meta);
+                if (coocMat == null) {
+                    meta.toString(writer, pars);
+                    return;
+                }
+                writeContingency(coocMat, writer);
             }
-            writer.append('\n');
+            case HAC -> {
+                final int dimensions = pars.getInt("dims", new int[] { 1, 300 }, 50);
+                final SvdLayout layout = hacCoordinates(
+                    index,
+                    pars,
+                    meta,
+                    dimensions
+                );
+                if (layout == null) {
+                    meta.toString(writer, pars);
+                    return;
+                }
+                writeOrangeHac(layout, writer);
+            }
         }
-
-
-        /*
-        for (String line: (String[])meta.get("rowTopFreq")) {
-            writer.append(line + '\n');
-        }*/
     }
 
     /**

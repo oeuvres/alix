@@ -135,6 +135,7 @@ public final class OpTerms extends Op
             return topTerms.select(index.reader(), focusDocs).rank(scorer, terms, tflag);
         }
         else {
+            meta.put("spanQuery", spanQuery.toString());
             // pivotsIds
             final int[] pivotIds = contentFluc.termLexicon().termIds(spanQuery);
             // same as for the span query parser

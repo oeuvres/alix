@@ -125,7 +125,8 @@ public final class OpSuggest extends Op
             );
             return topTerms.select(index.reader(), focusDocs);
         }
-
+        // span query
+        meta.put("spanQuery", spanQuery.toString());
         final int[] pivotIds = contentFluc.termLexicon().termIds(spanQuery);
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanWalker walker = new SpanWalker(
