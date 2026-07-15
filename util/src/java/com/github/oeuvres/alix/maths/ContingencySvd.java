@@ -26,8 +26,10 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * decomposition. Optional smoothing is applied by {@link #smooth(double)} or
  * {@link #smoothAuto()}. An expectation model is then fitted by
  * {@link #expectIpf()} or {@link #expectLog()}, and {@link #residual(Assoc)}
- * compares each observed cell with its expectation. {@link #clipResiduals(double)}
- * is an optional robustness transformation on that residual matrix.
+ * compares each observed cell with its expectation. When no expectation has
+ * been fitted, {@code residual(...)} uses IPF as the default. Signed PMI also
+ * applies automatic smoothing when required. {@link #clipResiduals(double)} is
+ * an optional robustness transformation on that residual matrix.
  * </p>
  * <p>
  * These operations belong to contingency-table modelling, not to singular
@@ -48,26 +50,23 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * the requested dimensions.
  * </p>
  * <p>
- * Identity cells of an {@link IntMatrixById} are treated as structural cells.
- * They may contain row occurrence marginals for display, but they are excluded
- * from smoothing, expectation fitting, residual computation, and SVD. The
- * constructor copies identity values into the layout frequency vector;
- * {@link #overrideFrequencies(long[])} may replace that display metadata.
+ * Identity cells of an {@link IntMatrixById} are treated as structural cells
+ * and excluded from smoothing, expectation fitting, residual computation, and
+ * SVD. Input identifiers, labels, and display metadata remain the
+ * responsibility of the caller. Output rows retain input row order.
  * </p>
  * <p>
  * The ordinary principal-coordinate pipeline is therefore:
  * </p>
  * <pre>{@code
  * SvdLayout layout = new ContingencySvd(coocMat)
- *     .expectIpf()
  *     .residual(Assoc.G2)
- *     .decompose()
- *     .weightAxes(1d)
- *     .project(6);
+ *     .principalCoordinates(6);
  * }</pre>
  * <p>
  * An omitted operation means that no corresponding transformation is applied:
- * omit smoothing for raw counts, omit {@code weightAxes(...)} to retain
+ * omit an explicit expectation fit to use IPF, omit smoothing when the chosen
+ * association accepts zero counts, omit {@code weightAxes(...)} to retain
  * {@code U}, omit {@code scaleRowsByMass()} for no mass scaling, and use
  * {@code projectNormalized(...)} only when unit rows are required.
  * </p>
@@ -102,17 +101,11 @@ public class ContingencySvd
     /**
      * Row embedding and diagnostics returned by {@link #project(int)}.
      *
-     * @param id row ids by rank
-     * @param label row labels by rank
-     * @param freq display occurrence marginal by row rank
      * @param coords row coordinates by axis
      * @param cos2 share of each row's embedding norm represented by axes 0 and 1
      * @param inertia full singular-value inertia spectrum, in percent
      */
     public record SvdLayout(
-        int[] id,
-        String[] label,
-        long[] freq,
         double[][] coords,
         double[] cos2,
         double[] inertia
@@ -124,7 +117,7 @@ public class ContingencySvd
          */
         public int size()
         {
-            return id.length;
+            return coords.length;
         }
     }
 
@@ -136,12 +129,6 @@ public class ContingencySvd
 
     /** Whether singular-value weighting has been applied to the current embedding. */
     private boolean axesWeighted;
-
-    /** Column ids by rank. */
-    private final int[] colId;
-
-    /** Column labels by rank, or {@code null}. */
-    private final String[] colLabel;
 
     /** Full current row embedding, or {@code null} before decomposition. */
     private double[][] embedding;
@@ -164,9 +151,6 @@ public class ContingencySvd
     /** Expectation-fit convergence tolerance. */
     private double fitTolerance = DEFAULT_FIT_TOLERANCE;
 
-    /** Display frequency by row rank, or {@code null}. */
-    private long[] freq;
-
     /** Observed admissible cells, mutated by smoothing. */
     private final double[][] observed;
 
@@ -175,12 +159,6 @@ public class ContingencySvd
 
     /** Numerical rank of the latest decomposition. */
     private int rank;
-
-    /** Row ids by rank. */
-    private final int[] rowId;
-
-    /** Row labels by rank, or {@code null}. */
-    private final String[] rowLabel;
 
     /** Whether row-mass scaling has been applied to the current embedding. */
     private boolean rowsMassScaled;
@@ -243,19 +221,14 @@ public class ContingencySvd
             }
         }
 
-        this.rowId = sequence(rowCount);
-        this.colId = sequence(colCount);
-        this.rowLabel = null;
-        this.colLabel = null;
     }
 
     /**
      * Constructs a pipeline from a filled id-addressed co-occurrence matrix.
      *
      * <p>
-     * A cell whose row and column ids are equal is copied into the display
-     * frequency vector and then marked structural. Off-diagonal cells form the
-     * statistical association table.
+     * A cell whose row and column ids are equal is marked structural.
+     * Off-diagonal cells form the statistical association table.
      * </p>
      *
      * @param counts filled non-empty matrix
@@ -275,28 +248,6 @@ public class ContingencySvd
 
         this.observed = new double[rowCount][colCount];
         this.structural = new boolean[rowCount][colCount];
-        this.rowId = counts.rowIds().clone();
-        this.colId = new int[colCount];
-
-        final String[] rows = new String[rowCount];
-        boolean rowsLabelled = false;
-        for (int row = 0; row < rowCount; row++) {
-            rows[row] = counts.rowLabelByRank(row);
-            rowsLabelled |= rows[row] != null;
-        }
-        this.rowLabel = rowsLabelled ? rows : null;
-
-        final String[] cols = new String[colCount];
-        boolean colsLabelled = false;
-        for (int col = 0; col < colCount; col++) {
-            colId[col] = counts.colId(col);
-            cols[col] = counts.colLabelByRank(col);
-            colsLabelled |= cols[col] != null;
-        }
-        this.colLabel = colsLabelled ? cols : null;
-
-        final long[] diagonal = new long[rowCount];
-        boolean hasIdentity = false;
         for (int row = 0; row < rowCount; row++) {
             final int id = counts.rowId(row);
             for (int col = 0; col < colCount; col++) {
@@ -307,15 +258,12 @@ public class ContingencySvd
                 }
                 if (id == counts.colId(col)) {
                     structural[row][col] = true;
-                    diagonal[row] = count;
-                    hasIdentity = true;
                 }
                 else {
                     observed[row][col] = count;
                 }
             }
         }
-        this.freq = hasIdentity ? diagonal : null;
     }
 
     /**
@@ -352,26 +300,6 @@ public class ContingencySvd
         }
         invalidateDecomposition();
         return this;
-    }
-
-    /**
-     * Returns column ids by rank.
-     *
-     * @return a copy of the column-id vector
-     */
-    public int[] columnIds()
-    {
-        return colId.clone();
-    }
-
-    /**
-     * Returns column labels by rank.
-     *
-     * @return a copy of the labels, or {@code null} when no labels were supplied
-     */
-    public String[] columnLabels()
-    {
-        return colLabel == null ? null : colLabel.clone();
     }
 
     /**
@@ -492,18 +420,16 @@ public class ContingencySvd
      * Fits an additive row-column expectation in logarithmic space.
      *
      * <p>
-     * This is a contingency-preparation operation. Every admissible observed
-     * cell must be positive; call {@link #smooth(double)} or
-     * {@link #smoothAuto()} first when zeros are present.
+     * This is a contingency-preparation operation. When an admissible zero is
+     * present, default smoothing is applied before fitting.
      * </p>
      *
      * @return this pipeline
-     * @throws IllegalStateException if an admissible observed cell is not
-     *         strictly positive or a fitted expectation is non-finite
+     * @throws IllegalStateException if a fitted expectation is non-finite
      */
     public ContingencySvd expectLog()
     {
-        requirePositiveObserved("expectLog()");
+        smoothZerosIfNeeded();
         resetFitDiagnostics();
 
         final int rowCount = observed.length;
@@ -689,32 +615,6 @@ public class ContingencySvd
     }
 
     /**
-     * Overrides the display frequency emitted by {@link #project(int)}.
-     *
-     * <p>
-     * This metadata does not participate in contingency preparation, SVD, or
-     * embedding geometry. The {@link IntMatrixById} constructor already obtains
-     * a default occurrence marginal from identity cells.
-     * </p>
-     *
-     * @param byRowRank display frequency, or {@code null} to clear the override
-     * @return this pipeline
-     * @throws IllegalArgumentException if the vector length differs from the row
-     *         count
-     */
-    public ContingencySvd overrideFrequencies(
-        final long[] byRowRank
-    ) {
-        if (byRowRank != null && byRowRank.length != observed.length) {
-            throw new IllegalArgumentException(
-                "frequency length " + byRowRank.length
-                    + " differs from row count " + observed.length);
-        }
-        freq = byRowRank == null ? null : byRowRank.clone();
-        return this;
-    }
-
-    /**
      * Decomposes the residual matrix and returns its leading row principal
      * coordinates {@code U_k Sigma_k}.
      *
@@ -835,15 +735,7 @@ public class ContingencySvd
         }
         fixAxisSigns(coords);
 
-        final String[] labels = new String[observed.length];
-        if (rowLabel != null) {
-            System.arraycopy(rowLabel, 0, labels, 0, rowLabel.length);
-        }
-        final long[] displayFreq = freq == null ? new long[observed.length] : freq.clone();
         return new SvdLayout(
-            rowId.clone(),
-            labels,
-            displayFreq,
             coords,
             cos2,
             inertiaSpectrum());
@@ -858,8 +750,6 @@ public class ContingencySvd
      *
      * @param association association function
      * @return this pipeline
-     * @throws IllegalStateException before an expectation fit or when signed PMI
-     *         is requested with zero admissible observations
      * @throws NullPointerException if {@code association} is {@code null}
      */
     public ContingencySvd residual(
@@ -873,16 +763,17 @@ public class ContingencySvd
      *
      * <p>
      * Structural cells remain zero. The {@code shift} is read only for
-     * {@link Assoc#SPPMI}.
+     * {@link Assoc#SPPMI}. When no expectation has been fitted, the default IPF
+     * expectation is fitted automatically. Signed PMI also applies default
+     * smoothing when admissible zeros are present and then refits the
+     * invalidated expectation.
      * </p>
      *
      * @param association association function
      * @param shift finite SPPMI shift of at least one
      * @return this pipeline
      * @throws IllegalArgumentException if {@code shift} is invalid
-     * @throws IllegalStateException before an expectation fit, when signed PMI
-     *         is requested with zero admissible observations, or when a
-     *         non-finite residual is produced
+     * @throws IllegalStateException when a non-finite residual is produced
      * @throws NullPointerException if {@code association} is {@code null}
      */
     public ContingencySvd residual(
@@ -890,15 +781,15 @@ public class ContingencySvd
         final double shift
     ) {
         Objects.requireNonNull(association, "association");
-        if (expected == null) {
-            throw new IllegalStateException("call expectIpf() or expectLog() before residual()");
-        }
         if (!Double.isFinite(shift) || shift < 1d) {
             throw new IllegalArgumentException(
                 "shift must be finite and at least 1, got " + shift);
         }
         if (association == Assoc.PMI) {
-            requirePositiveObserved("residual(PMI)");
+            smoothZerosIfNeeded();
+        }
+        if (expected == null) {
+            expectIpf();
         }
 
         final double[][] matrix = new double[observed.length][observed[0].length];
@@ -935,26 +826,6 @@ public class ContingencySvd
     public double[][] residuals()
     {
         return residuals;
-    }
-
-    /**
-     * Returns row ids by rank.
-     *
-     * @return a copy of the row-id vector
-     */
-    public int[] rowIds()
-    {
-        return rowId.clone();
-    }
-
-    /**
-     * Returns row labels by rank.
-     *
-     * @return a copy of the labels, or {@code null} when no labels were supplied
-     */
-    public String[] rowLabels()
-    {
-        return rowLabel == null ? null : rowLabel.clone();
     }
 
     /**
@@ -1448,15 +1319,13 @@ public class ContingencySvd
     }
 
     /**
-     * Requires all admissible observations to be positive.
+     * Applies default smoothing when an admissible zero is present.
      */
-    private void requirePositiveObserved(
-        final String operation
-    ) {
+    private void smoothZerosIfNeeded()
+    {
         for (int row = 0; row < observed.length; row++) {
             for (int col = 0; col < observed[row].length; col++) {
                 if (!structural[row][col] && observed[row][col] <= 0d) {
-                    // call silently smoothauto, user may not understand why it bug
                     smoothAuto();
                     return;
                 }
@@ -1559,16 +1428,4 @@ public class ContingencySvd
         }
     }
 
-    /**
-     * Builds a zero-based integer sequence.
-     */
-    private static int[] sequence(
-        final int length
-    ) {
-        final int[] sequence = new int[length];
-        for (int index = 0; index < length; index++) {
-            sequence[index] = index;
-        }
-        return sequence;
-    }
 }

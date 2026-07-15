@@ -6,6 +6,8 @@ import static com.github.oeuvres.alix.web.Pars.*;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -114,17 +116,23 @@ public final class OpCoocMap extends Op
         topTerms.rank(scorer, terms, tflag);
         final IntList termIds = new IntList(topTerms.size());
         BitSet rows = new BitSet(contentLexicon.vocabSize());
-        String[] rowTopFreq = new String[terms];
+
         int i = 0;
+        final Map<Integer, Long> frequencyById = new HashMap<>();
         for (final TermEntry term : topTerms) {
             final int termId = term.termId();
             rows.set(termId);
             termIds.push(termId);
-            rowTopFreq[i++] = term.form() + " (" + term.freq() + ") #" + term.termId();
+            frequencyById.put(termId, term.freq());
         }
-        meta.put("rowTopFreq", rowTopFreq);
-        
         int[] rowIds = termIds.toUniq();
+        final long[] rowFreq = new long[rowIds.length];
+        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
+            final Long frequency = frequencyById.get(rowIds[rowRank]);
+            if (frequency == null) continue;
+            rowFreq[rowRank] = frequency;
+        }
+        meta.put("rowFreq", rowFreq);
 
         // get more co-occurrents than the focus terms, without filtering flag, to add semantic signal
         // 0 = same as rows. Positive, cols added
@@ -134,6 +142,7 @@ public final class OpCoocMap extends Op
             colIds = rowIds;
         }
         else {
+            termIds.clear(); // independant features
             final int colmin = pars.getInt("colmin", 8);
             topTerms.rank(new KeynessScorer.G2(), terms + (cols * 5), TermFlag.NOUN, TermFlag.VERB);
             int k = 0;
@@ -169,7 +178,7 @@ public final class OpCoocMap extends Op
      * row-mass scaling or row normalisation is applied.
      * </p>
      *
-     * @param index Lucene index
+     * @param coocMat contingency matrix
      * @param pars resolved HTTP parameters
      * @param meta response metadata collector
      * @param dimensions number of leading dimensions to retain
@@ -178,19 +187,18 @@ public final class OpCoocMap extends Op
      * @throws IOException if the co-occurrence table cannot be built
      */
     public static SvdLayout hacCoordinates(
-        final LuceneIndex index,
+        final IntMatrixById coocMat,
         final HttpPars pars,
         final MetaUtil meta,
         final int dimensions
     )
         throws IOException {
+        if (coocMat == null) {
+            return null;
+        }
         if (dimensions < 1) {
             throw new IllegalArgumentException(
                 "dimensions must be at least 1, got " + dimensions);
-        }
-        final IntMatrixById coocMat = coocMat(index, pars, meta);
-        if (coocMat == null) {
-            return null;
         }
 
         final ContingencySvd model = contingencySvd(coocMat, pars);
@@ -279,16 +287,19 @@ public final class OpCoocMap extends Op
      * @throws IOException if the table cannot be written
      */
     private static void writeOrangeHac(
+        final Writer writer,
+        final IntMatrixById coocMat,
         final SvdLayout layout,
-        final Writer writer
+        final MetaUtil meta
     )
         throws IOException {
         final char separator = '\t';
         final int dimensions = layout.coords()[0].length;
 
+        long[] rowFreq = (long[])meta.remove("rowFreq");
         writer.append("form").append(separator);
         writer.append("id").append(separator);
-        writer.append("freq");
+        if (rowFreq != null) writer.append("freq");
         for (int axis = 0; axis < dimensions; axis++) {
             writer.append(separator).append("svd_").append(Integer.toString(axis + 1));
         }
@@ -309,14 +320,16 @@ public final class OpCoocMap extends Op
             writer.append(separator);
         }
         writer.append('\n');
-
         for (int row = 0; row < layout.size(); row++) {
-            final String label = layout.label()[row];
+            final String label = coocMat.rowLabelByRank(row);
             writer.append(csvEscape(label == null ? "" : label)).append(separator);
-            writer.append(Integer.toString(layout.id()[row])).append(separator);
-            writer.append(Long.toString(layout.freq()[row]));
+            writer.append(Integer.toString(coocMat.rowId(row))).append(separator);
+            if (rowFreq != null) writer.append(Long.toString(rowFreq[row])).append(separator);
+            boolean first = true;
             for (final double coordinate : layout.coords()[row]) {
-                writer.append(separator).append(Double.toString(coordinate));
+                if (first) first = false;
+                else writer.append(separator);
+                writer.append(Double.toString(coordinate));
             }
             writer.append('\n');
         }
@@ -342,8 +355,9 @@ public final class OpCoocMap extends Op
             }
             case HAC -> {
                 final int dimensions = pars.getInt("dims", new int[] { 1, 300 }, 50);
+                final IntMatrixById coocMat = coocMat(index, pars, meta);
                 final SvdLayout layout = hacCoordinates(
-                    index,
+                    coocMat,
                     pars,
                     meta,
                     dimensions
@@ -352,7 +366,7 @@ public final class OpCoocMap extends Op
                     meta.toString(writer, pars);
                     return;
                 }
-                writeOrangeHac(layout, writer);
+                writeOrangeHac(writer, coocMat, layout, meta);
             }
         }
     }
@@ -437,7 +451,7 @@ public final class OpCoocMap extends Op
             jw.beginObject();
             meta.toJson(jw, pars);
             jw.endObject();
-
+            long[] rowFreq = (long[])meta.remove("rowFreq");
             if (map != null) {
                 final int dims = map.coords().length == 0
                     ? 0
@@ -470,16 +484,16 @@ public final class OpCoocMap extends Op
 
                 jw.name("nodes");
                 jw.beginArray();
-                final int nodeCount = map.id().length;
+                final int nodeCount = map.size();
                 for (int node = 0; node < nodeCount; node++) {
                     final double[] coords = map.coords()[node];
                     final double x = coords.length > 0 ? coords[0] : 0d;
                     final double y = coords.length > 1 ? coords[1] : 0d;
 
                     jw.beginObject();
-                    jw.name("id").value(map.id()[node]);
-                    jw.name("form").value(map.label()[node]);
-                    jw.name("freq").value(map.freq()[node]);
+                    jw.name("id").value(coocMat.rowId(node));
+                    jw.name("form").value(coocMat.rowLabelByRank(node));
+                    if (rowFreq != null) jw.name("freq").value(rowFreq[node]);
                     jw.name("x").value(round(x, 4));
                     jw.name("y").value(round(y, 4));
                     jw.name("cos2").value(round(map.cos2()[node], 4));

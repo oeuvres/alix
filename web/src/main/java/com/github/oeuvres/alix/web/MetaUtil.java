@@ -66,7 +66,7 @@ public class MetaUtil
      * @param key   entry name
      * @param value entry value
      */
-    public void put(final String key, final Float value)
+    public void put(final String key, final float value)
     {
         entries.put(key, Float.valueOf(value));
     }
@@ -125,6 +125,29 @@ public class MetaUtil
     {
         entries.put(key, value);
     }
+    
+    /**
+     * Records a generic {@code Object} meta entry.
+     *
+     * @param key   entry name
+     * @param value entry value
+     */
+    public void put(final String key, final Object value)
+    {
+        entries.put(key, value);
+    }
+    
+    /**
+     * Remove an entry.
+     * 
+     * @param key  entry name
+     * @return old entry {@code Object} or null if none
+     */
+    public Object remove(final String key)
+    {
+        return entries.remove(key);
+    }
+
 
     /**
      * Renders the accumulated entries as an HTML {@code <li>}
