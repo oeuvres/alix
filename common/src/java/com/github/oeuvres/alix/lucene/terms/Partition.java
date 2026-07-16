@@ -316,7 +316,7 @@ public final class Partition
 
         // Phase 1: tally per-value document and token counts.
         final int range = denseRange(intMin, intMax);
-        final int[] docTokens = stats.docTokensRef();
+        final int[] docTokens = stats.docTokens();
         final int[] valueDocs = new int[range];
         final long[] valueTokens = new long[range];
         tallyValues(num, docTokens, acceptedDocs, intMin, valueDocs, valueTokens);

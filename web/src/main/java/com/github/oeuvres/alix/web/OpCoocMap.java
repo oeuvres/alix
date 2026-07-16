@@ -1,6 +1,5 @@
 package com.github.oeuvres.alix.web;
 
-import static com.github.oeuvres.alix.lucene.terms.TopTerms.TermValue.FREQ;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 import java.io.IOException;
@@ -8,7 +7,6 @@ import java.io.Writer;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -19,6 +17,7 @@ import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.snippets.TopCoocSnippets;
+import com.github.oeuvres.alix.lucene.terms.ContingencyDistance;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
@@ -37,19 +36,19 @@ import jakarta.servlet.http.HttpServletResponse;
 
 
 /**
- * Produces co-occurrence tables and their contingency-SVD representations.
+ * Produces co-occurrence tables, row distances, and contingency-SVD maps.
  */
 public final class OpCoocMap extends Op
 {
-    /** Tables available from the debug CSV endpoint. */
+    /** Tables available from the CSV endpoint. */
     private enum CsvType
     {
         /** Observed contingency table. */
         CONTINGENCY,
-        /** Euclidian distances, for HAC or phylogenetic */
-        DISTANCES,
-        /** HAC principal-coordinate feature table for Orange. */
-        HAC;
+        /** Chord distances between positive square-root G² profiles. */
+        G2,
+        /** Hellinger distances between row profiles. */
+        HELLINGER;
     }
     
     /**
@@ -119,7 +118,6 @@ public final class OpCoocMap extends Op
         final IntList termIds = new IntList(topTerms.size());
         BitSet rows = new BitSet(contentLexicon.vocabSize());
 
-        int i = 0;
         final Map<Integer, Long> frequencyById = new HashMap<>();
         for (final TermEntry term : topTerms) {
             final int termId = term.termId();
@@ -167,48 +165,6 @@ public final class OpCoocMap extends Op
         final CoocMatSnippets recorder = new CoocMatSnippets(coocMat, contentFluc.termRail(), left, right, directed);
         new SpanWalker(index.searcher(), spanQuery, new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery).walk(recorder);
         return coocMat;
-    }
-
-    /**
-     * Builds leading row principal coordinates for hierarchical clustering.
-     *
-     * <p>
-     * The method obtains the tested source table from {@link #coocMat} and uses
-     * the same smoothing, expectation, association, and clipping parameters as
-     * the semantic map. Its output coordinates are specifically
-     * {@code U_k Sigma_k}: the singular-value exponent is fixed to one and no
-     * row-mass scaling or row normalisation is applied.
-     * </p>
-     *
-     * @param coocMat contingency matrix
-     * @param pars resolved HTTP parameters
-     * @param meta response metadata collector
-     * @param dimensions number of leading dimensions to retain
-     * @return HAC row coordinates, or {@code null} when no span query is given
-     * @throws IllegalArgumentException if {@code dimensions < 1}
-     * @throws IOException if the co-occurrence table cannot be built
-     */
-    public static SvdLayout hacCoordinates(
-        final IntMatrixById coocMat,
-        final HttpPars pars,
-        final MetaUtil meta,
-        final int dimensions
-    )
-        throws IOException {
-        if (coocMat == null) {
-            return null;
-        }
-        if (dimensions < 1) {
-            throw new IllegalArgumentException(
-                "dimensions must be at least 1, got " + dimensions);
-        }
-
-        final ContingencySvd model = contingencySvd(coocMat, pars);
-        final SvdLayout layout = model.principalCoordinates(dimensions);
-        putSvdMeta(model, layout, meta);
-        meta.put("svdCoordinates", "U_k Sigma_k");
-        meta.put("svdDimensions", layout.coords()[0].length);
-        return layout;
     }
 
     /**
@@ -275,98 +231,67 @@ public final class OpCoocMap extends Op
     }
 
     /**
-     * Writes a square Euclidean distance matrix accepted by SplitsTree CSV.
+     * Copies matrix counts into a rectangular primitive array.
+     *
+     * @param coocMat source co-occurrence matrix
+     * @return counts indexed by row rank and column rank
+     */
+    private static int[][] contingencyCounts(final IntMatrixById coocMat)
+    {
+        final int[][] counts = new int[coocMat.rowCount()][coocMat.colCount()];
+        for (int row = 0; row < coocMat.rowCount(); row++) {
+            for (int col = 0; col < coocMat.colCount(); col++) {
+                counts[row][col] = coocMat.countByRank(row, col);
+            }
+        }
+        return counts;
+    }
+
+    /**
+     * Writes a square distance matrix accepted by SplitsTree CSV.
      *
      * @param writer response writer
      * @param coocMat source of row labels
-     * @param layout row coordinates
+     * @param distances full symmetric row-distance matrix
      * @throws IOException if the matrix cannot be written
      */
     private static void writeDistances(
         final Writer writer,
         final IntMatrixById coocMat,
-        final SvdLayout layout
+        final double[][] distances
     )
         throws IOException {
-        final double[][] coords = layout.coords();
-        for (int row = 0; row < layout.size(); row++) {
+        if (distances.length != coocMat.rowCount()) {
+            throw new IllegalArgumentException(
+                "Distance rows " + distances.length
+                    + " != contingency rows " + coocMat.rowCount()
+            );
+        }
+        for (int row = 0; row < distances.length; row++) {
+            if (distances[row].length != distances.length) {
+                throw new IllegalArgumentException(
+                    "Distance matrix is not square at row " + row
+                );
+            }
             final String label = coocMat.rowLabelByRank(row);
             writer.append(csvEscape(label == null ? "" : label));
-            for (int col = 0; col < layout.size(); col++) {
-                double squared = 0d;
-                for (int axis = 0; axis < coords[row].length; axis++) {
-                    final double delta = coords[row][axis] - coords[col][axis];
-                    squared += delta * delta;
-                }
-                writer.append(',').append(Double.toString(Math.sqrt(squared)));
+            for (int col = 0; col < distances.length; col++) {
+                writer.append(',').append(Double.toString(distances[row][col]));
             }
             writer.append('\n');
         }
     }
 
     /**
-     * Writes an Orange native feature table for hierarchical clustering.
+     * Writes the raw contingency table or a full distance matrix between its
+     * rows. Raw contingency is the default.
      *
-     * <p>
-     * The first three rows declare column names, types, and roles. Term form,
-     * term id, and frequency are metadata; only the {@code U_k Sigma_k}
-     * coordinates are continuous input features. Coordinates are written at
-     * full {@code double} precision.
-     * </p>
-     *
-     * @param layout HAC principal-coordinate layout
-     * @param writer response writer
-     * @throws IOException if the table cannot be written
+     * @param index Lucene index
+     * @param request HTTP request
+     * @param response HTTP response
+     * @throws IOException if the table cannot be built or written
      */
-    private static void writeOrangeHac(
-        final Writer writer,
-        final IntMatrixById coocMat,
-        final SvdLayout layout,
-        final MetaUtil meta
-    )
-        throws IOException {
-        final char separator = '\t';
-        final int dimensions = layout.coords()[0].length;
-
-        long[] rowFreq = (long[])meta.remove("rowFreq");
-        writer.append("form").append(separator);
-        writer.append("id").append(separator);
-        if (rowFreq != null) writer.append("freq");
-        for (int axis = 0; axis < dimensions; axis++) {
-            writer.append(separator).append("svd_").append(Integer.toString(axis + 1));
-        }
-        writer.append('\n');
-
-        writer.append("string").append(separator);
-        writer.append("continuous").append(separator);
-        writer.append("continuous");
-        for (int axis = 0; axis < dimensions; axis++) {
-            writer.append(separator).append("continuous");
-        }
-        writer.append('\n');
-
-        writer.append("meta").append(separator);
-        writer.append("meta").append(separator);
-        writer.append("meta");
-        for (int axis = 0; axis < dimensions; axis++) {
-            writer.append(separator);
-        }
-        writer.append('\n');
-        for (int row = 0; row < layout.size(); row++) {
-            final String label = coocMat.rowLabelByRank(row);
-            writer.append(csvEscape(label == null ? "" : label)).append(separator);
-            writer.append(Integer.toString(coocMat.rowId(row))).append(separator);
-            if (rowFreq != null) writer.append(Long.toString(rowFreq[row])).append(separator);
-            boolean first = true;
-            for (final double coordinate : layout.coords()[row]) {
-                if (first) first = false;
-                else writer.append(separator);
-                writer.append(Double.toString(coordinate));
-            }
-            writer.append('\n');
-        }
-    }
-
+    @Override
     protected void csv(
         final LuceneIndex index,
         final HttpServletRequest request,
@@ -385,29 +310,23 @@ public final class OpCoocMap extends Op
             case CONTINGENCY -> {
                 writeContingency(coocMat, writer);
             }
-            case DISTANCES -> {
-                final int dimensions = pars.getInt("dims", new int[] { 1, 300 }, 50);
-                final SvdLayout layout = hacCoordinates(
-                    coocMat,
-                    pars,
-                    meta,
-                    dimensions
+            case G2 -> {
+                final ContingencyDistance distance = new ContingencyDistance.PositiveKeynessChord(
+                    new KeynessScorer.G2()
                 );
-                writeDistances(writer, coocMat, layout);
+                writeDistances(
+                    writer,
+                    coocMat,
+                    distance.distances(contingencyCounts(coocMat))
+                );
             }
-            case HAC -> {
-                final int dimensions = pars.getInt("dims", new int[] { 1, 300 }, 50);
-                final SvdLayout layout = hacCoordinates(
+            case HELLINGER -> {
+                final ContingencyDistance distance = new ContingencyDistance.Hellinger();
+                writeDistances(
+                    writer,
                     coocMat,
-                    pars,
-                    meta,
-                    dimensions
+                    distance.distances(contingencyCounts(coocMat))
                 );
-                if (layout == null) {
-                    meta.toString(writer, pars);
-                    return;
-                }
-                writeOrangeHac(writer, coocMat, layout, meta);
             }
         }
     }
