@@ -14,6 +14,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.terms.TermDocScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
@@ -33,6 +34,8 @@ public class OpClades extends Op
     /** Distance matrices that Alix computes in addition to raw characters. */
     private enum Distance
     {
+        BINARY,
+        BM25,
         OCHIAI;
     }
 
@@ -132,6 +135,74 @@ public class OpClades extends Op
     }
 
     /**
+     * Builds one weighted document vector per selected term.
+     *
+     * <p>
+     * Every retained document is first scored with a zero term frequency so
+     * scorers for which absence is informative, such as signed keyness, remain
+     * correct. Posting visits then replace the coordinates of documents that
+     * contain the term.
+     * </p>
+     *
+     * @param reader    index reader supplying term postings
+     * @param lexicon   term lexicon aligned with the reader
+     * @param rowIds    selected dense term ids
+     * @param docFilter retained document dimensions
+     * @param termStats corpus, term and document statistics
+     * @param scorer    local term-document scorer
+     * @return vectors indexed by selected-term rank and global document id
+     * @throws IOException if terms or postings cannot be read
+     */
+    private static double[][] termDocVectors(
+        final IndexReader reader,
+        final TermLexicon lexicon,
+        final int[] rowIds,
+        final FixedBitSet docFilter,
+        final TermStats termStats,
+        final TermDocScorer scorer
+    ) throws IOException {
+        final double[][] rows = new double[rowIds.length][reader.maxDoc()];
+        final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
+        final TermsEnum termsEnum = terms == null ? null : terms.iterator();
+        final BytesRefBuilder termBytes = new BytesRefBuilder();
+        final int[] docTokens = termStats.docTokens();
+        PostingsEnum postings = null;
+
+        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
+            final int termId = rowIds[rowRank];
+            final double[] row = rows[rowRank];
+            final TermDocScorer.Prepared prepared = scorer.prepare(
+                termStats.fieldTokens(),
+                termStats.fieldDocs(),
+                termStats.termFreq(termId),
+                termStats.termDocs(termId)
+            );
+
+            for (int docId = 0; docId < docFilter.length(); docId++) {
+                if (docFilter.get(docId)) {
+                    row[docId] = prepared.score(0, docTokens[docId]);
+                }
+            }
+
+            if (termsEnum == null
+                || !termsEnum.seekExact(lexicon.formBytes(termId, termBytes))) {
+                continue;
+            }
+            postings = termsEnum.postings(postings, PostingsEnum.FREQS);
+            for (
+                int docId = postings.nextDoc();
+                docId != DocIdSetIterator.NO_MORE_DOCS;
+                docId = postings.nextDoc()
+            ) {
+                if (docFilter.get(docId)) {
+                    row[docId] = prepared.score(postings.freq(), docTokens[docId]);
+                }
+            }
+        }
+        return rows;
+    }
+
+    /**
      * Appends one safely quoted NEXUS label.
      */
     private static void appendNexusLabel(final Writer writer, final String label)
@@ -194,7 +265,7 @@ public class OpClades extends Op
      * {@code sqrt(2 - 2 * similarity)}.
      * </p>
      */
-    private static double ochiaiDistance(
+    static double ochiaiDistance(
         final FixedBitSet rowA,
         final FixedBitSet rowB,
         final int cardA,
@@ -210,7 +281,7 @@ public class OpClades extends Op
     }
 
     /** Computes the full symmetric Ochiai chord-distance matrix. */
-    private static double[][] ochiaiDistances(
+    static double[][] ochiaiDistances(
         final FixedBitSet[] docPresence
     ) {
         final int size = docPresence.length;
@@ -228,6 +299,71 @@ public class OpClades extends Op
                     docPresence[colRank],
                     cardinalities[rowRank],
                     cardinalities[colRank]
+                );
+                distances[rowRank][colRank] = distance;
+                distances[colRank][rowRank] = distance;
+            }
+        }
+        return distances;
+    }
+
+    /**
+     * Returns chord distance between two real-valued document vectors.
+     *
+     * <p>
+     * The result is the Euclidean distance between the corresponding unit
+     * vectors: {@code sqrt(2 - 2 * cosine)}.
+     * </p>
+     *
+     * @param rowA first document vector
+     * @param rowB second document vector
+     * @return cosine chord distance
+     * @throws IllegalArgumentException if vector lengths differ
+     */
+    static double cosineDistance(final double[] rowA, final double[] rowB)
+    {
+        if (rowA.length != rowB.length) {
+            throw new IllegalArgumentException(
+                "Vector lengths differ: " + rowA.length + " != " + rowB.length
+            );
+        }
+
+        double dot = 0d;
+        double normA = 0d;
+        double normB = 0d;
+        for (int docId = 0; docId < rowA.length; docId++) {
+            final double a = rowA[docId];
+            final double b = rowB[docId];
+            dot += a * b;
+            normA += a * a;
+            normB += b * b;
+        }
+
+        if (normA == 0d || normB == 0d) {
+            return normA == normB ? 0d : Math.sqrt(2d);
+        }
+        final double similarity = Math.max(
+            -1d,
+            Math.min(1d, dot / Math.sqrt(normA * normB))
+        );
+        return Math.sqrt(Math.max(0d, 2d - 2d * similarity));
+    }
+
+    /**
+     * Computes a full symmetric cosine chord-distance matrix.
+     *
+     * @param termDocVectors document vectors indexed by selected-term rank
+     * @return symmetric distance matrix
+     */
+    static double[][] cosineDistances(final double[][] termDocVectors)
+    {
+        final int size = termDocVectors.length;
+        final double[][] distances = new double[size][size];
+        for (int rowRank = 0; rowRank < size; rowRank++) {
+            for (int colRank = 0; colRank < rowRank; colRank++) {
+                final double distance = cosineDistance(
+                    termDocVectors[rowRank],
+                    termDocVectors[colRank]
                 );
                 distances[rowRank][colRank] = distance;
                 distances[colRank][rowRank] = distance;
@@ -308,7 +444,7 @@ public class OpClades extends Op
             return;
         }
         // here get different stats used by distance algos
-        TermStats termStats = topTerms.termStats();
+        final TermStats termStats = topTerms.termStats();
 
         final IntList rowList = new IntList(topTerms.size());
         for (final TermEntry term : topTerms) {
@@ -330,9 +466,22 @@ public class OpClades extends Op
             row.and(featDocs);
         }
 
-        final Distance distance = pars.getEnum("distance", Distance.OCHIAI);
+        final Distance distance = pars.getEnum("distance", Distance.BM25);
+        TermDocScorer scorer = switch (distance) {
+            case BM25 -> new TermDocScorer.BM25();
+            case BINARY -> new TermDocScorer.Binary();
+            default -> null;
+        };
         final double[][] distances = switch (distance) {
             case OCHIAI -> ochiaiDistances(docPresence);
+            default -> cosineDistances(termDocVectors(
+                index.reader(),
+                lexicon,
+                rowIds,
+                featDocs,
+                termStats,
+                scorer
+            ));
         };
 
         switch (format) {

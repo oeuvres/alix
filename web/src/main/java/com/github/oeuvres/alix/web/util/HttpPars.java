@@ -439,8 +439,7 @@ public class HttpPars
 
     /**
      * Resolve a request parameter as an {@link Enum} constant.
-     * Uses {@link Enum#valueOf(Class, String)} to match; returns
-     * the fallback on mismatch or absence.
+     * Matching is case-insensitive; returns the fallback on mismatch or absence.
      *
      * @param <E>      enum type, inferred from {@code fallback}.
      * @param name     parameter name.
@@ -458,11 +457,11 @@ public class HttpPars
         if (!hasValue(value)) {
             return record(name, fallback, Source.FALLBACK);
         }
-        try {
-            return record(name, Enum.valueOf(fallback.getDeclaringClass(), value), Source.HTTP);
-        } catch (IllegalArgumentException e) {
-            return record(name, fallback, Source.FALLBACK);
+        final E parsed = parseEnum(value, fallback.getDeclaringClass());
+        if (parsed != null) {
+            return record(name, parsed, Source.HTTP);
         }
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
@@ -485,12 +484,10 @@ public class HttpPars
         }
         String value = request.getParameter(name);
         if (hasValue(value)) {
-            try {
-                final E ret = Enum.valueOf(fallback.getDeclaringClass(), value);
-                cookie(cookie, ret.name());
-                return record(name, ret, Source.HTTP);
-            } catch (IllegalArgumentException e) {
-                // bad param, fall through
+            final E parsed = parseEnum(value, fallback.getDeclaringClass());
+            if (parsed != null) {
+                cookie(cookie, parsed.name());
+                return record(name, parsed, Source.HTTP);
             }
         }
         if (value != null) {
@@ -501,12 +498,12 @@ public class HttpPars
         if (value == null) {
             return record(name, fallback, Source.FALLBACK);
         }
-        try {
-            return record(name, Enum.valueOf(fallback.getDeclaringClass(), value), Source.COOKIE);
-        } catch (IllegalArgumentException e) {
-            cookie(cookie, null);
-            return record(name, fallback, Source.FALLBACK);
+        final E parsed = parseEnum(value, fallback.getDeclaringClass());
+        if (parsed != null) {
+            return record(name, parsed, Source.COOKIE);
         }
+        cookie(cookie, null);
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
@@ -998,6 +995,26 @@ public class HttpPars
     public HttpServletResponse response()
     {
         return response;
+    }
+
+    /**
+     * Parse an enum constant without regard to case.
+     *
+     * @param <E> enum type
+     * @param value value to parse
+     * @param enumClass enum class
+     * @return matching enum constant, or {@code null} if the value is blank or invalid
+     */
+    private <E extends Enum<E>> E parseEnum(final String value, final Class<E> enumClass)
+    {
+        if (!hasValue(value)) return null;
+        final String candidate = value.trim();
+        for (final E constant : enumClass.getEnumConstants()) {
+            if (constant.name().equalsIgnoreCase(candidate)) {
+                return constant;
+            }
+        }
+        return null;
     }
 
     /**

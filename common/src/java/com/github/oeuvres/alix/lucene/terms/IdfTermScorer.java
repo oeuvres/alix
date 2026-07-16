@@ -1,6 +1,5 @@
 package com.github.oeuvres.alix.lucene.terms;
 
-import com.github.oeuvres.alix.lucene.terms.IdfTermScorer.BM25.Mode;
 
 /**
  * Local scorer for one term across documents, optionally contrastive
@@ -536,7 +535,7 @@ public abstract class IdfTermScorer
      * {@code 2 × docTermFreq × ln(docTermFreq / expected)}.
      * Positive when over-represented, negative when under-represented.
      */
-    public static class G extends IdfTermScorer
+    public static class G2 extends IdfTermScorer
     {
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
