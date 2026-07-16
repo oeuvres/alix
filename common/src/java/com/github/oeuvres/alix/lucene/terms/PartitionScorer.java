@@ -90,8 +90,8 @@ public final class PartitionScorer
                             + " != reader.maxDoc()=" + r.maxDoc());
         }
 
-        final TermStats fieldStats = tt.fieldStats();
-        final String field = fieldStats.field();
+        final TermStats termStats = tt.termStats();
+        final String field = termStats.field();
         final Terms terms = MultiTerms.getTerms(r, field);
 
         if (terms == null) {
@@ -106,7 +106,7 @@ public final class PartitionScorer
         final int focusPart = partition.focusPart();
         final int focusDocCount = partition.partDocs(focusPart);
         final byte[] docPart = partition.docPartRef();
-        final int[] docTokens = fieldStats.docTokensRef();
+        final int[] docTokens = termStats.docTokens();
 
         final long[] partTokens = new long[partCount];
         for (int docId = 0; docId < docPart.length; docId++) {
@@ -122,7 +122,7 @@ public final class PartitionScorer
         final int[] termDocs = population.termDocs();
         final int[] termContexts = population.termContexts();
 
-        final int vocabSize = fieldStats.vocabSize();
+        final int vocabSize = termStats.vocabSize();
         final double[] scoreVec = new double[vocabSize];
         final long[] partTermFreq = new long[partCount];
         final TopArray top = new TopArray(topK);

@@ -505,7 +505,7 @@ public final class TermStats
      *
      * @return reference to {@code docTokens}, indexed by global doc id
      */
-    public int[] docTokensRef()
+    public int[] docTokens()
     {
         return docTokens;
     }
@@ -522,6 +522,18 @@ public final class TermStats
     {
         checkDocId(docId);
         return docWidths[docId];
+    }
+    
+    /**
+     * Give direct access to a vector, by internal Lucene docId, of “width”
+     * (position indexed, even empty positions, for example, if stopwords have 
+     * been removed).
+     * 
+     * @return
+     */
+    public int[] docWidths()
+    {
+        return docWidths;
     }
     
     /**

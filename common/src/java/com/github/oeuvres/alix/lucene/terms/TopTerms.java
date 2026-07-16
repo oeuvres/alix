@@ -56,6 +56,9 @@ import com.github.oeuvres.alix.util.TopArray;
  */
 public final class TopTerms implements Iterable<TopTerms.TermEntry>
 {
+    /** Indexed field of those term stats. */
+    private final String field;
+    
     /** Number of contexts in the current population. */
     private int contexts;
 
@@ -66,7 +69,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     private ExcludedTerms excludedTerms = ExcludedTerms.empty();
 
     /** Source of immutable field-level statistics. */
-    private final TermStats fieldStats;
+    private final TermStats termStats;
 
     /** Optional per-rank highlight strings. */
     private String[] hilites;
@@ -113,22 +116,26 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * switched to local buffers.
      * </p>
      *
-     * @param fieldStats field-level statistics
+     * @param termStats field-level statistics
      * @param lexicon    dense term lexicon aligned with {@code fieldStats}
      * @throws IllegalArgumentException if vocabulary sizes differ
      * @throws NullPointerException     if an argument is {@code null}
      */
-    public TopTerms(final TermStats fieldStats, final TermLexicon lexicon)
+    public TopTerms(final TermStats termStats, final TermLexicon lexicon)
     {
-        this.fieldStats = Objects.requireNonNull(fieldStats, "fieldStats");
+        this.termStats = Objects.requireNonNull(termStats, "termStats");
         this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
-
-        if (lexicon.vocabSize() != fieldStats.vocabSize()) {
+        if (!lexicon.field().equals(termStats.field())) {
+            throw new IllegalArgumentException(
+                    "Field name mismatch: lexicon=" + lexicon.field()
+                            + ", termStats=" + termStats.field());
+        }
+        if (lexicon.vocabSize() != termStats.vocabSize()) {
             throw new IllegalArgumentException(
                     "Vocabulary size mismatch: lexicon=" + lexicon.vocabSize()
-                            + ", fieldStats=" + fieldStats.vocabSize());
+                            + ", termStats=" + termStats.vocabSize());
         }
-
+        this.field = lexicon.field();
         reset();
     }
 
@@ -199,6 +206,15 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     {
         return termDocs[termId];
     }
+    
+    /**
+     * Returns the indexed field name covered by these term stats.
+     *
+     * @return field name, never null
+     */
+    public String field() {
+        return field;
+    }
 
     /**
      * Excludes terms from the current analytical population while preserving
@@ -233,7 +249,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
         ensureMutablePopulation();
 
-        final BitSet alreadyExcluded = new BitSet(fieldStats.vocabSize());
+        final BitSet alreadyExcluded = new BitSet(termStats.vocabSize());
         for (final ExcludedTerm term : excludedTerms) {
             alreadyExcluded.set(term.termId());
         }
@@ -272,8 +288,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                 frequency,
                 termDocs[termId],
                 termContexts[termId],
-                fieldStats.termFreq(termId),
-                fieldStats.termDocs(termId));
+                termStats.termFreq(termId),
+                termStats.termDocs(termId));
             excludedTokenCount += frequency;
         }
 
@@ -310,9 +326,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * @return field-level statistics
      */
-    public TermStats fieldStats()
+    public TermStats termStats()
     {
-        return fieldStats;
+        return termStats;
     }
     
     /**
@@ -574,8 +590,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         final BitSet filter = rankingFilter(flags);
         checkTopK(topK);
 
-        final int vocabSize = fieldStats.vocabSize();
-        final long fieldTokens = fieldStats.fieldTokens();
+        final int vocabSize = termStats.vocabSize();
+        final long fieldTokens = termStats.fieldTokens();
         final long otherTokens = fieldTokens - tokens;
         final double[] scoreVec = new double[vocabSize];
         final TopArray top = new TopArray(topK);
@@ -588,7 +604,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                 continue;
             }
 
-            final long fieldTermCount = fieldStats.termFreq(termId);
+            final long fieldTermCount = termStats.termFreq(termId);
             final long otherTermCount = fieldTermCount - localTermCount;
             final double score = scorer.score(
                     localTermCount, tokens, otherTermCount, otherTokens);
@@ -681,11 +697,11 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     public TopTerms reset()
     {
-        termFreq = fieldStats.termFreqRef();
-        termDocs = fieldStats.termDocsRef();
+        termFreq = termStats.termFreqRef();
+        termDocs = termStats.termDocsRef();
         termContexts = termDocs;
-        tokens = fieldStats.fieldTokens();
-        docs = fieldStats.fieldDocs();
+        tokens = termStats.fieldTokens();
+        docs = termStats.fieldDocs();
         contexts = docs;
         mutable = false;
         excludedTerms = ExcludedTerms.empty();
@@ -1016,7 +1032,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private void checkTermId(final int termId, final String name)
     {
-        final int vocabSize = fieldStats.vocabSize();
+        final int vocabSize = termStats.vocabSize();
         if (termId <= 0 || termId >= vocabSize) {
             throw new IllegalArgumentException(
                 name + "=" + termId + ", expected 1.." + (vocabSize - 1));
@@ -1045,7 +1061,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private void checkVectorLength(final int length, final String name)
     {
-        final int vocabSize = fieldStats.vocabSize();
+        final int vocabSize = termStats.vocabSize();
         if (length != vocabSize) {
             throw new IllegalArgumentException(
                     name + "=" + length + ", expected " + vocabSize);
@@ -1102,7 +1118,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             return null;
         }
 
-        final BitSet filter = new BitSet(fieldStats.vocabSize());
+        final BitSet filter = new BitSet(termStats.vocabSize());
         for (int index = 0; index < flags.length; index++) {
             final TermFlag flag = Objects.requireNonNull(
                 flags[index],
@@ -1125,7 +1141,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private Terms requireTerms(final IndexReader reader) throws IOException
     {
-        final String field = fieldStats.field();
+        final String field = termStats.field();
         final Terms terms = MultiTerms.getTerms(reader, field);
 
         if (terms == null) {
@@ -1150,8 +1166,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         return new TermValue(
             termContexts[termId],
             termDocs[termId],
-            fieldStats.termDocs(termId),
-            fieldStats.termFreq(termId),
+            termStats.termDocs(termId),
+            termStats.termFreq(termId),
             lexicon.form(termId),
             termFreq[termId],
             scores == null ? (double) termFreq[termId] : scores[termId],
@@ -1178,7 +1194,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private void useLocal()
     {
-        final int vocabSize = fieldStats.vocabSize();
+        final int vocabSize = termStats.vocabSize();
 
         if (!mutable) {
             termFreq = new long[vocabSize];
@@ -1501,7 +1517,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
          */
         public long fieldDocs()
         {
-            return fieldStats.termDocs(termId);
+            return termStats.termDocs(termId);
         }
 
         /**
@@ -1511,7 +1527,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
          */
         public long fieldFreq()
         {
-            return fieldStats.termFreq(termId);
+            return termStats.termFreq(termId);
         }
 
         /**

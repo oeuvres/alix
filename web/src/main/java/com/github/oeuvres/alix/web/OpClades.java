@@ -15,6 +15,7 @@ import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.util.IntList;
@@ -24,10 +25,24 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Exports selected terms as taxa and live documents as binary characters.
+ * Exports selected terms as taxa with live-document binary characters and a
+ * selected distance matrix.
  */
 public class OpClades extends Op
 {
+    /** Distance matrices that Alix computes in addition to raw characters. */
+    private enum Distance
+    {
+        OCHIAI;
+    }
+
+    /** HTTP serialization selected by the response extension. */
+    private enum Format
+    {
+        NEXUS,
+        CSV;
+    }
+
     /**
      * Collects the live global document ids of the reader snapshot.
      */
@@ -48,11 +63,14 @@ public class OpClades extends Op
         }
         return liveDocs;
     }
-    
+
     /**
-     * Prune non significative docs
+     * Retains document columns that are not constant across selected terms.
      */
-    private static FixedBitSet filterDocs(final FixedBitSet liveDocs, final FixedBitSet[] docPresence)
+    private static FixedBitSet filterDocs(
+        final FixedBitSet liveDocs,
+        final FixedBitSet[] docPresence
+    )
     {
         final FixedBitSet featDocs = new FixedBitSet(liveDocs.length());
 
@@ -74,7 +92,6 @@ public class OpClades extends Op
         }
         return featDocs;
     }
-
 
     /**
      * Collects one document-presence bitset per selected term by walking its
@@ -131,11 +148,10 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes a STANDARD binary CHARACTERS block. Columns follow live Lucene
-     * document-id order; constant zero columns are retained for this first
-     * experiment.
+     * Writes a STANDARD binary CHARACTERS block. Columns follow Lucene
+     * document-id order after constant-column filtering.
      */
-    private static void writeNexus(
+    private static void writeCharacters(
         final Writer writer,
         final TermLexicon lexicon,
         final int[] rowIds,
@@ -143,7 +159,6 @@ public class OpClades extends Op
         final FixedBitSet docFilter
     )
         throws IOException {
-        writer.append("#NEXUS\n\n");
         writer.append("BEGIN CHARACTERS;\n");
         writer.append("    DIMENSIONS NTAX=")
             .append(Integer.toString(rowIds.length))
@@ -168,14 +183,118 @@ public class OpClades extends Op
         writer.append("    ;\n");
         writer.append("END;\n");
     }
-    
-    
 
-    @Override
-    protected void txt(
+    /**
+     * Returns the chord distance associated with binary Ochiai similarity.
+     *
+     * <p>
+     * For binary document vectors, Ochiai similarity is cosine similarity:
+     * {@code |A intersection B| / sqrt(|A| |B|)}. Chord distance is the
+     * Euclidean distance between the corresponding unit vectors:
+     * {@code sqrt(2 - 2 * similarity)}.
+     * </p>
+     */
+    private static double ochiaiDistance(
+        final FixedBitSet rowA,
+        final FixedBitSet rowB,
+        final int cardA,
+        final int cardB
+    ) {
+        if (cardA == 0 || cardB == 0) {
+            return cardA == cardB ? 0d : Math.sqrt(2d);
+        }
+
+        final long intersection = FixedBitSet.intersectionCount(rowA, rowB);
+        final double similarity = intersection / Math.sqrt((double) cardA * cardB);
+        return Math.sqrt(Math.max(0d, 2d - 2d * similarity));
+    }
+
+    /** Computes the full symmetric Ochiai chord-distance matrix. */
+    private static double[][] ochiaiDistances(
+        final FixedBitSet[] docPresence
+    ) {
+        final int size = docPresence.length;
+        final int[] cardinalities = new int[size];
+        for (int rowRank = 0; rowRank < size; rowRank++) {
+            cardinalities[rowRank] = docPresence[rowRank].cardinality();
+        }
+
+        // Compute each symmetric pair only once.
+        final double[][] distances = new double[size][size];
+        for (int rowRank = 0; rowRank < size; rowRank++) {
+            for (int colRank = 0; colRank < rowRank; colRank++) {
+                final double distance = ochiaiDistance(
+                    docPresence[rowRank],
+                    docPresence[colRank],
+                    cardinalities[rowRank],
+                    cardinalities[colRank]
+                );
+                distances[rowRank][colRank] = distance;
+                distances[colRank][rowRank] = distance;
+            }
+        }
+        return distances;
+    }
+
+    /** Writes a full square distance matrix as a NEXUS block. */
+    private static void writeNexusDistances(
+        final Writer writer,
+        final TermLexicon lexicon,
+        final int[] rowIds,
+        final double[][] distances,
+        final Distance distance
+    )
+        throws IOException {
+        final int size = rowIds.length;
+        writer.append("BEGIN DISTANCES;\n");
+        writer.append("    DIMENSIONS NTAX=")
+            .append(Integer.toString(size))
+            .append(";\n");
+        writer.append("    FORMAT TRIANGLE=BOTH DIAGONAL LABELS=LEFT;\n");
+        writer.append("    [DISTANCE=").append(distance.name()).append("]\n");
+        writer.append("    MATRIX\n");
+
+        for (int rowRank = 0; rowRank < size; rowRank++) {
+            writer.append("        ");
+            appendNexusLabel(writer, lexicon.form(rowIds[rowRank]));
+            for (int colRank = 0; colRank < size; colRank++) {
+                writer.append(' ')
+                    .append(Double.toString(distances[rowRank][colRank]));
+            }
+            writer.append('\n');
+        }
+
+        writer.append("    ;\n");
+        writer.append("END;\n");
+    }
+
+    /** Writes a full square distance matrix for SplitsTree's CSV importer. */
+    private static void writeCsvDistances(
+        final Writer writer,
+        final TermLexicon lexicon,
+        final int[] rowIds,
+        final double[][] distances
+    )
+        throws IOException {
+        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
+            writer.append(csvEscape(lexicon.form(rowIds[rowRank])));
+            for (int colRank = 0; colRank < rowIds.length; colRank++) {
+                writer.append(',')
+                    .append(Double.toString(distances[rowRank][colRank]));
+            }
+            writer.append('\n');
+        }
+    }
+
+    /**
+     * Builds the selected term-by-document data once. NEXUS contains both raw
+     * characters and distances; CSV contains the selected distance matrix.
+     */
+    private static void write(
         final LuceneIndex index,
         final HttpServletRequest request,
-        final HttpServletResponse response
+        final HttpServletResponse response,
+        final Format format
     ) throws IOException {
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
@@ -188,6 +307,8 @@ public class OpClades extends Op
             writer.append("Houston, on a un problème.");
             return;
         }
+        // here get different stats used by distance algos
+        TermStats termStats = topTerms.termStats();
 
         final IntList rowList = new IntList(topTerms.size());
         for (final TermEntry term : topTerms) {
@@ -203,6 +324,54 @@ public class OpClades extends Op
             liveDocs
         );
         final FixedBitSet featDocs = filterDocs(liveDocs, docPresence);
-        writeNexus(writer, lexicon, rowIds, docPresence, featDocs);
+
+        // Distances and exported characters must use exactly the same columns.
+        for (final FixedBitSet row : docPresence) {
+            row.and(featDocs);
+        }
+
+        final Distance distance = pars.getEnum("distance", Distance.OCHIAI);
+        final double[][] distances = switch (distance) {
+            case OCHIAI -> ochiaiDistances(docPresence);
+        };
+
+        switch (format) {
+            case NEXUS -> {
+                writer.append("#NEXUS\n\n");
+                writeCharacters(writer, lexicon, rowIds, docPresence, featDocs);
+                writer.append('\n');
+                writeNexusDistances(
+                    writer,
+                    lexicon,
+                    rowIds,
+                    distances,
+                    distance
+                );
+            }
+            case CSV -> writeCsvDistances(
+                writer,
+                lexicon,
+                rowIds,
+                distances
+            );
+        }
+    }
+
+    @Override
+    protected void txt(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException {
+        write(index, request, response, Format.NEXUS);
+    }
+
+    @Override
+    protected void csv(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException {
+        write(index, request, response, Format.CSV);
     }
 }
