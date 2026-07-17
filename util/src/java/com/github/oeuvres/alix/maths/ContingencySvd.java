@@ -36,6 +36,12 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * value decomposition. SVD receives only the completed residual matrix; it has
  * no knowledge of observed counts, expected counts, or association measures.
  * </p>
+ * <p>
+ * A non-negative matrix that has already been weighted, such as a
+ * term-by-document BM25 score matrix, may bypass contingency modelling through
+ * {@link #fromScores(double[][])}. Such a matrix may optionally be column
+ * centred with {@link #centerColumns()} before decomposition.
+ * </p>
  *
  * <h2>SVD and embedding</h2>
  * <p>
@@ -267,6 +273,41 @@ public class ContingencySvd
     }
 
     /**
+     * Centres every decomposition-input column over its rows.
+     *
+     * <p>
+     * This operation is intended primarily for a matrix supplied by
+     * {@link #fromScores(double[][])}. It removes the common score component of
+     * every document column before SVD. The resulting negative values are
+     * centred coordinates, not negative observations or evidence inferred from
+     * absent terms.
+     * </p>
+     *
+     * @return this pipeline
+     * @throws IllegalStateException when no decomposition-input matrix is available
+     */
+    public ContingencySvd centerColumns()
+    {
+        if (residuals == null) {
+            throw new IllegalStateException(
+                "call residual() or use fromScores() before centerColumns()"
+            );
+        }
+        for (int col = 0; col < residuals[0].length; col++) {
+            double mean = 0d;
+            for (int row = 0; row < residuals.length; row++) {
+                mean += residuals[row][col];
+            }
+            mean /= residuals.length;
+            for (int row = 0; row < residuals.length; row++) {
+                residuals[row][col] -= mean;
+            }
+        }
+        invalidateDecomposition();
+        return this;
+    }
+
+    /**
      * Clips every residual to a symmetric absolute limit.
      *
      * <p>
@@ -279,7 +320,7 @@ public class ContingencySvd
      * @param absoluteLimit positive finite residual magnitude ceiling
      * @return this pipeline
      * @throws IllegalArgumentException if {@code absoluteLimit} is invalid
-     * @throws IllegalStateException before {@link #residual(Assoc)}
+     * @throws IllegalStateException when no decomposition-input matrix is available
      */
     public ContingencySvd clipResiduals(
         final double absoluteLimit
@@ -602,6 +643,30 @@ public class ContingencySvd
         }
         fitTolerance = tolerance;
         return this;
+    }
+
+    /**
+     * Creates a decomposition pipeline from an already weighted score matrix.
+     *
+     * <p>
+     * The supplied values become the direct SVD input: no expectation fitting,
+     * association calculation, smoothing, or structural-cell masking is
+     * applied. This is the entry point for matrices such as term-by-document
+     * BM25 scores. The matrix is copied.
+     * </p>
+     *
+     * @param scores non-empty rectangular matrix of finite non-negative scores
+     * @return pipeline ready for optional centring and decomposition
+     * @throws IllegalArgumentException if the matrix is empty, ragged, or
+     *         contains an invalid value
+     * @throws NullPointerException if {@code scores} or one of its rows is
+     *         {@code null}
+     */
+    public static ContingencySvd fromScores(final double[][] scores)
+    {
+        final ContingencySvd model = new ContingencySvd(scores, null);
+        model.residuals = copy(model.observed);
+        return model;
     }
 
     /**
@@ -1105,6 +1170,18 @@ public class ContingencySvd
                 "observed value must be finite and non-negative at ["
                     + row + "][" + col + "]: " + value);
         }
+    }
+
+    /**
+     * Copies a rectangular matrix.
+     */
+    private static double[][] copy(final double[][] matrix)
+    {
+        final double[][] copy = new double[matrix.length][];
+        for (int row = 0; row < matrix.length; row++) {
+            copy[row] = matrix[row].clone();
+        }
+        return copy;
     }
 
     /**

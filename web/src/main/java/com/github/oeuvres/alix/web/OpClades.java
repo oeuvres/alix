@@ -2,6 +2,9 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
@@ -19,22 +22,24 @@ import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
+import com.github.oeuvres.alix.maths.ContingencySvd;
+import com.github.oeuvres.alix.maths.ContingencySvd.SvdLayout;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.util.HttpPars;
+import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Exports selected terms as taxa with live-document binary characters and a
- * selected distance matrix.
+ * Exports selected terms as taxa, document-vector distances, and a centred
+ * BM25 term-by-document SVD map.
  */
 public class OpClades extends Op
 {
     /** Distance matrices that Alix computes in addition to raw characters. */
     private enum Distance
     {
-        BINARY,
         BM25,
         OCHIAI;
     }
@@ -150,7 +155,7 @@ public class OpClades extends Op
      * @param docFilter retained document dimensions
      * @param termStats corpus, term and document statistics
      * @param scorer    local term-document scorer
-     * @return vectors indexed by selected-term rank and global document id
+     * @return vectors indexed by selected-term rank and compact retained-document rank
      * @throws IOException if terms or postings cannot be read
      */
     private static double[][] termDocVectors(
@@ -161,7 +166,16 @@ public class OpClades extends Op
         final TermStats termStats,
         final TermDocScorer scorer
     ) throws IOException {
-        final double[][] rows = new double[rowIds.length][reader.maxDoc()];
+        final int[] docRanks = new int[reader.maxDoc()];
+        Arrays.fill(docRanks, -1);
+        int docCount = 0;
+        for (int docId = 0; docId < docFilter.length(); docId++) {
+            if (docFilter.get(docId)) {
+                docRanks[docId] = docCount++;
+            }
+        }
+
+        final double[][] rows = new double[rowIds.length][docCount];
         final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
         final TermsEnum termsEnum = terms == null ? null : terms.iterator();
         final BytesRefBuilder termBytes = new BytesRefBuilder();
@@ -180,7 +194,7 @@ public class OpClades extends Op
 
             for (int docId = 0; docId < docFilter.length(); docId++) {
                 if (docFilter.get(docId)) {
-                    row[docId] = prepared.score(0, docTokens[docId]);
+                    row[docRanks[docId]] = prepared.score(0, docTokens[docId]);
                 }
             }
 
@@ -195,11 +209,88 @@ public class OpClades extends Op
                 docId = postings.nextDoc()
             ) {
                 if (docFilter.get(docId)) {
-                    row[docId] = prepared.score(postings.freq(), docTokens[docId]);
+                    row[docRanks[docId]] = prepared.score(
+                        postings.freq(),
+                        docTokens[docId]
+                    );
                 }
             }
         }
         return rows;
+    }
+
+    /**
+     * Retains every live document containing at least one selected term.
+     *
+     * <p>
+     * Unlike binary-character filtering, this score-vector filter retains
+     * documents containing every selected term because their frequencies and
+     * BM25 values may still discriminate the rows.
+     * </p>
+     *
+     * @param liveDocs live documents in the reader snapshot
+     * @param docPresence one presence row per selected term
+     * @return union of selected-term document sets restricted to live documents
+     */
+    private static FixedBitSet unionDocs(
+        final FixedBitSet liveDocs,
+        final FixedBitSet[] docPresence
+    ) {
+        final FixedBitSet union = new FixedBitSet(liveDocs.length());
+        for (final FixedBitSet row : docPresence) {
+            union.or(row);
+        }
+        union.and(liveDocs);
+        return union;
+    }
+
+    /**
+     * Builds centred principal coordinates from the full BM25 score matrix.
+     *
+     * @param reader index reader supplying postings
+     * @param lexicon selected-term lexicon
+     * @param rowIds selected dense term ids
+     * @param docFilter retained document columns
+     * @param termStats corpus and term statistics
+     * @param pars resolved HTTP parameters
+     * @param meta response metadata collector
+     * @return projected BM25 score layout
+     * @throws IOException if postings cannot be read
+     */
+    private static SvdLayout bm25Map(
+        final IndexReader reader,
+        final TermLexicon lexicon,
+        final int[] rowIds,
+        final FixedBitSet docFilter,
+        final TermStats termStats,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) throws IOException {
+        final TermDocScorer scorer = new TermDocScorer.BM25();
+        final double[][] scores = termDocVectors(
+            reader,
+            lexicon,
+            rowIds,
+            docFilter,
+            termStats,
+            scorer
+        );
+        final ContingencySvd model = ContingencySvd.fromScores(scores);
+        model.centerColumns();
+        model.decompose();
+
+        final double weightAxes = pars.getDouble("weight-axes", 1d);
+        if (weightAxes > 0d) {
+            model.weightAxes(weightAxes);
+        }
+        final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
+        final SvdLayout map = model.project(dims);
+
+        meta.put("documents", docFilter.cardinality());
+        meta.put("score", scorer.toString());
+        meta.put("svdCentered", true);
+        meta.put("svdRank", map.inertia().length);
+        return map;
     }
 
     /**
@@ -467,21 +558,16 @@ public class OpClades extends Op
         }
 
         final Distance distance = pars.getEnum("distance", Distance.BM25);
-        TermDocScorer scorer = switch (distance) {
-            case BM25 -> new TermDocScorer.BM25();
-            case BINARY -> new TermDocScorer.Binary();
-            default -> null;
-        };
         final double[][] distances = switch (distance) {
-            case OCHIAI -> ochiaiDistances(docPresence);
-            default -> cosineDistances(termDocVectors(
+            case BM25 -> cosineDistances(termDocVectors(
                 index.reader(),
                 lexicon,
                 rowIds,
                 featDocs,
                 termStats,
-                scorer
+                new TermDocScorer.BM25()
             ));
+            case OCHIAI -> ochiaiDistances(docPresence);
         };
 
         switch (format) {
@@ -503,6 +589,140 @@ public class OpClades extends Op
                 rowIds,
                 distances
             );
+        }
+    }
+
+    /**
+     * Writes a centred BM25 term-by-document SVD map as JSON.
+     *
+     * <p>
+     * The response shape matches the co-occurrence semantic-map endpoint:
+     * axes contain inertia diagnostics and nodes contain the first two display
+     * coordinates together with every requested emitted coordinate.
+     * </p>
+     *
+     * @param index Lucene index
+     * @param request HTTP request
+     * @param response HTTP response
+     * @throws IOException if index access or response writing fails
+     */
+    @Override
+    protected void json(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException {
+        final HttpPars pars = new HttpPars(request, response);
+        final MetaUtil meta = new MetaUtil();
+        final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
+
+        int[] rowIds = null;
+        long[] rowFreq = null;
+        TermLexicon lexicon = null;
+        SvdLayout map = null;
+
+        if (topTerms == null) {
+            response.setStatus(400);
+        }
+        else {
+            final Map<Integer, Long> frequencyById = new HashMap<>();
+            final IntList rowList = new IntList(topTerms.size());
+            for (final TermEntry term : topTerms) {
+                rowList.push(term.termId());
+                frequencyById.put(term.termId(), term.freq());
+            }
+            rowIds = rowList.toUniq();
+            rowFreq = new long[rowIds.length];
+            for (int row = 0; row < rowIds.length; row++) {
+                rowFreq[row] = frequencyById.getOrDefault(rowIds[row], 0L);
+            }
+
+            lexicon = topTerms.lexicon();
+            final FixedBitSet liveDocs = liveDocs(index.reader());
+            final FixedBitSet[] presence = docPresence(
+                index.reader(),
+                lexicon,
+                rowIds,
+                liveDocs
+            );
+            final FixedBitSet documents = unionDocs(liveDocs, presence);
+            map = bm25Map(
+                index.reader(),
+                lexicon,
+                rowIds,
+                documents,
+                topTerms.termStats(),
+                pars,
+                meta
+            );
+        }
+
+        try (JsonWriter jw = Op.jsonWriter(response)) {
+            jw.beginObject();
+
+            jw.name("meta");
+            jw.beginObject();
+            meta.toJson(jw, pars);
+            jw.endObject();
+
+            if (map != null) {
+                final int dims = map.coords().length == 0
+                    ? 0
+                    : map.coords()[0].length;
+                final double[] spectrum = map.inertia();
+                final double dim1 = spectrum.length > 0 ? spectrum[0] : 0d;
+                final double dim2 = spectrum.length > 1 ? spectrum[1] : 0d;
+                double emittedInertia = 0d;
+                for (int axis = 0; axis < Math.min(dims, spectrum.length); axis++) {
+                    emittedInertia += spectrum[axis];
+                }
+
+                jw.name("data");
+                jw.beginObject();
+
+                jw.name("axes");
+                jw.beginObject();
+                jw.name("dims").value(dims);
+                jw.name("dim1_pct").value(round(dim1, 1));
+                jw.name("dim2_pct").value(round(dim2, 1));
+                jw.name("cum2_pct").value(round(dim1 + dim2, 1));
+                jw.name("emitted_pct").value(round(emittedInertia, 1));
+                jw.name("spectrum");
+                jw.beginArray();
+                for (final double percent : spectrum) {
+                    jw.value(round(percent, 1));
+                }
+                jw.endArray();
+                jw.endObject();
+
+                jw.name("nodes");
+                jw.beginArray();
+                for (int node = 0; node < map.size(); node++) {
+                    final double[] coords = map.coords()[node];
+                    final double x = coords.length > 0 ? coords[0] : 0d;
+                    final double y = coords.length > 1 ? coords[1] : 0d;
+
+                    jw.beginObject();
+                    jw.name("id").value(rowIds[node]);
+                    jw.name("form").value(lexicon.form(rowIds[node]));
+                    jw.name("freq").value(rowFreq[node]);
+                    jw.name("x").value(round(x, 4));
+                    jw.name("y").value(round(y, 4));
+                    jw.name("cos2").value(round(map.cos2()[node], 4));
+                    jw.name("coords");
+                    jw.beginArray();
+                    for (final double coordinate : coords) {
+                        jw.value(round(coordinate, 4));
+                    }
+                    jw.endArray();
+                    jw.endObject();
+                }
+                jw.endArray();
+
+                jw.endObject();
+            }
+
+            jw.endObject();
         }
     }
 
