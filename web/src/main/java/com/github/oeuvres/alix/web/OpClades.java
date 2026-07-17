@@ -6,14 +6,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -22,8 +18,6 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
-import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.terms.TermDocScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
@@ -39,174 +33,237 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Exports selected terms as taxa, document-vector distances, and alternative
- * term maps over the full corpus.
+ * Maps selected terms over the full corpus by factorising association residuals
+ * of their term-by-document table.
  *
  * <p>
- * A previous experiment represented every term by its vector of Lucene BM25
- * document scores. It was rejected: BM25 is calibrated to rank documents for
- * one query term, but its scores have no demonstrated comparability across
- * different terms. The resulting term geometry was governed almost entirely
- * by corpus document frequency. Do not restore BM25 term profiles without an
- * explicit cross-term calibration model and evidence that it removes this
- * prevalence geometry.
+ * The default map ({@code projection=G2_CA}) factorises signed square-root G²
+ * deviance residuals; {@code projection=CA} is the classical Pearson-residual
+ * correspondence-analysis control. Both share one pipeline: fit a
+ * quasi-independence expectation by IPF, form residuals, decompose, take
+ * principal coordinates {@code U Sigma}, and scale rows by inverse square-root
+ * mass. The JSON response mirrors the co-occurrence semantic-map endpoint (an
+ * {@code axes} block plus {@code nodes}); {@code view=diagnostic} adds
+ * per-term corpus frequencies and nearest neighbours. The {@code .csv}
+ * extension emits the raw term-by-document contingency table.
  * </p>
  *
+ * <h2>Rejected experiments</h2>
  * <p>
- * The default map performs correspondence analysis on a complete lexical
- * table containing the selected terms and an {@code OTHER} row that completes
- * every document to its indexed-token count. Signed-G² SVD, positive-G² SVD,
- * raw-frequency SVD, and positive-G² chord NMDS remain available as controls.
+ * These routes were tried and removed; they are recorded so they are not
+ * restored without a model that addresses why they failed.
+ * </p>
+ * <ul>
+ * <li>BM25 term profiles: term geometry was governed almost entirely by corpus
+ * document frequency, because BM25 scores are not comparable across query
+ * terms. Needs an explicit cross-term calibration before reuse.</li>
+ * <li>Uncentred decomposition of raw frequencies or positive document G²:
+ * produced a prevalence axis.</li>
+ * <li>L2 / chord / NMDS on positive G²: gave rare one-document profiles the
+ * same geometric weight as well-supported terms.</li>
+ * <li>Hidden {@code OTHER} background row with explicit zero-mass barycentre
+ * projection: statistically defensible but the invisible row displaced the
+ * visible terms and degraded the semantic map.</li>
+ * <li>Locality-preserving projection (LPP) of the leading factors: its
+ * k-nearest-neighbour graph changed discontinuously as terms were added and
+ * truncation discarded coordinates needed downstream.</li>
+ * <li>Server-side Varimax / display-axis Varimax rotation: superseded by the
+ * client-side axis alignment in {@code alix-map.js}; removed from this
+ * endpoint.</li>
+ * </ul>
+ *
+ * <p>
+ * As an independent geometry for comparison, {@code .csv?csv=OCHIAI} emits the
+ * n×n binary Ochiai chord-distance square between the selected terms
+ * ({@link #ochiaiDistances(FixedBitSet[])} over live-document presence bitsets),
+ * for external seriation, filtration, or heatmap prototypes that challenge the
+ * SVD map.
  * </p>
  */
 public class OpClades extends Op
 {
-    /** Distance matrices that Alix computes in addition to raw characters. */
-    private enum Distance
+    /** Table emitted by the {@code .csv} extension. */
+    private enum CsvKind
     {
-        G2,
+        /** Selected term-by-document raw contingency table. */
+        CONTINGENCY,
+        /** Selected term-by-term binary Ochiai chord-distance square. */
         OCHIAI;
-    }
-
-    /** HTTP serialization selected by the response extension. */
-    private enum Format
-    {
-        NEXUS,
-        CSV;
     }
 
     /** JSON representations exposed by the endpoint. */
     private enum JsonView
     {
-        /** Selected projection with detailed term explanations. */
+        /** Compact selected projection with corpus and neighbour explanations. */
         DIAGNOSTIC,
         /** Compact selected projection. */
-        MAP,
-        /** Raw frequencies, positive-G² profiles, and document metadata. */
-        MATRIX;
+        MAP;
     }
 
-    /** Alternative term-map experiments retained for direct comparison. */
+    /** Association residual family used to build the map. */
     private enum Projection
     {
-        /** Correspondence analysis of the completed lexical table. */
+        /** Pearson correspondence analysis of selected term rows. */
         CA,
-        /** Direct truncated SVD of signed square-root G² residuals. */
-        SIGNED_G2_SVD,
-        /** Direct truncated SVD of unnormalised positive G² profiles. */
-        G2_SVD,
-        /** Positive document-vs-rest G², chord distance, and nonmetric MDS. */
-        G2_NMDS,
-        /** Direct truncated SVD of the raw term-document frequency table. */
-        SVD;
+        /** G² deviance-residual factor analysis of selected term rows. */
+        G2_CA;
     }
 
-    /** Raw term frequencies and derived profiles with document mapping. */
+    /** Raw term frequencies with document mapping. */
     private record TermDocMatrix(
         int[][] frequencies,
-        double[][] profiles,
-        double[][] signedProfiles,
         int[] docIds
     ) {}
 
-    /** Projection-independent layout and fit diagnostics. */
-    private record MapLayout(
+    /**
+     * Projected map plus the diagnostics the {@link ContingencySvd} layout does
+     * not provide.
+     *
+     * @param projection association family used
+     * @param embedding full mass-scaled row embedding, read-only, kept for
+     *        nearest-neighbour distances
+     * @param coordinates leading display dimensions
+     * @param cos2 share of each row's squared norm on axes 0 and 1
+     * @param cos3 share of each row's squared norm on axes 0, 1 and 2
+     * @param inertia full singular-value inertia spectrum, in percent
+     * @param massPercent row mass, in percent
+     * @param squaredDistance squared distance of each row from the origin
+     * @param contributionPercent per-displayed-axis inertia contribution, in
+     *        percent
+     */
+    private record TermMap(
         Projection projection,
+        double[][] embedding,
         double[][] coordinates,
         double[] cos2,
+        double[] cos3,
         double[] inertia,
-        CaDiagnostics ca,
-        double stress,
-        int iterations,
-        boolean converged
-    ) {}
-
-    /** Correspondence-analysis diagnostics for displayed term rows. */
-    private record CaDiagnostics(
         double[] massPercent,
         double[] squaredDistance,
-        double[][] contributionPercent,
-        double otherMassPercent,
-        double[] otherContributionPercent
-    ) {}
-
-    /** Full-corpus vectors, distances, and projected map. */
-    private record TermMapAnalysis(
-        TermDocMatrix matrix,
-        double[][] vectors,
-        double[][] distances,
-        MapLayout layout
-    ) {}
-
-    /** Result of a deterministic nonmetric multidimensional scaling fit. */
-    record MdsLayout(
-        double[][] coordinates,
-        double stress,
-        int iterations,
-        boolean converged
+        double[][] contributionPercent
     ) {}
 
     /**
-     * Collects the live global document ids of the reader snapshot.
+     * Builds the selected full-corpus term map and records its metadata.
      */
-    private static FixedBitSet liveDocs(final IndexReader reader)
-    {
-        final FixedBitSet liveDocs = new FixedBitSet(reader.maxDoc());
-        for (final var context : reader.leaves()) {
-            final Bits leafLiveDocs = context.reader().getLiveDocs();
-            if (leafLiveDocs == null) {
-                liveDocs.set(context.docBase, context.docBase + context.reader().maxDoc());
-                continue;
-            }
-            for (int localDocId = 0; localDocId < context.reader().maxDoc(); localDocId++) {
-                if (leafLiveDocs.get(localDocId)) {
-                    liveDocs.set(context.docBase + localDocId);
-                }
-            }
-        }
-        return liveDocs;
-    }
-
-    /**
-     * Retains document columns that are not constant across selected terms.
-     */
-    private static FixedBitSet filterDocs(
+    private static TermMap analyze(
+        final IndexReader reader,
+        final TermLexicon lexicon,
+        final int[] rowIds,
         final FixedBitSet liveDocs,
-        final FixedBitSet[] docPresence
-    )
-    {
-        final FixedBitSet featDocs = new FixedBitSet(liveDocs.length());
-
-        for (int docId = 0; docId < liveDocs.length(); docId++) {
-            if (!liveDocs.get(docId)) {
-                continue;
-            }
-
-            int present = 0;
-            for (final FixedBitSet row : docPresence) {
-                if (row.get(docId)) {
-                    present++;
-                }
-            }
-
-            if (present > 0 && present < docPresence.length) {
-                featDocs.set(docId);
-            }
-        }
-        return featDocs;
+        final HttpPars pars,
+        final MetaUtil meta
+    ) throws IOException {
+        final TermDocMatrix matrix = termDocMatrix(reader, lexicon, rowIds, liveDocs);
+        final Projection projection = pars.getEnum("projection", Projection.G2_CA);
+        meta.put("documents", liveDocs.cardinality());
+        meta.put("documentUniverse", "full corpus");
+        meta.put("focusRestricted", false);
+        meta.put("source", "raw term-document frequencies");
+        return termMap(matrix, pars, meta, projection);
     }
 
     /**
-     * Collects one document-presence bitset per selected term by walking its
-     * postings directly.
+     * Per-displayed-axis inertia contribution of every row, in percent.
      */
-    private static FixedBitSet[] docPresence(
+    private static double[][] contributions(
+        final double[] masses,
+        final double[][] embedding,
+        final int dims
+    ) {
+        final double[] axisEnergy = new double[dims];
+        for (int row = 0; row < embedding.length; row++) {
+            for (int axis = 0; axis < dims; axis++) {
+                axisEnergy[axis] += masses[row]
+                    * embedding[row][axis] * embedding[row][axis];
+            }
+        }
+        final double[][] contributions = new double[embedding.length][dims];
+        for (int row = 0; row < embedding.length; row++) {
+            for (int axis = 0; axis < dims; axis++) {
+                contributions[row][axis] = axisEnergy[axis] > 0d
+                    ? 100d * masses[row]
+                        * embedding[row][axis] * embedding[row][axis]
+                        / axisEnergy[axis]
+                    : 0d;
+            }
+        }
+        return contributions;
+    }
+
+    /**
+     * Share of each row's squared embedding norm held by its first three axes.
+     */
+    private static double[] cos3(final double[][] embedding)
+    {
+        final double[] quality = new double[embedding.length];
+        for (int row = 0; row < embedding.length; row++) {
+            double shown = 0d;
+            double total = 0d;
+            for (int axis = 0; axis < embedding[row].length; axis++) {
+                final double squared = embedding[row][axis] * embedding[row][axis];
+                total += squared;
+                if (axis < 3) {
+                    shown += squared;
+                }
+            }
+            quality[row] = total > 0d ? shown / total : 0d;
+        }
+        return quality;
+    }
+
+    @Override
+    protected void csv(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException {
+        final HttpPars pars = new HttpPars(request, response);
+        final MetaUtil meta = new MetaUtil();
+        final Writer writer = response.getWriter();
+
+        final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
+        if (topTerms == null) {
+            response.setStatus(400);
+            writer.append("no term selection");
+            return;
+        }
+        final IntList rowList = new IntList(topTerms.size());
+        for (final TermEntry term : topTerms) {
+            rowList.push(term.termId());
+        }
+        final int[] rowIds = rowList.toUniq();
+        final TermLexicon lexicon = topTerms.lexicon();
+        final FixedBitSet liveDocs = liveDocs(index.reader());
+
+        switch (pars.getEnum("csv", CsvKind.CONTINGENCY)) {
+            case CONTINGENCY -> writeContingencyCsv(
+                writer,
+                lexicon,
+                rowIds,
+                termDocMatrix(index.reader(), lexicon, rowIds, liveDocs)
+            );
+            case OCHIAI -> writeSquareCsv(
+                writer,
+                lexicon,
+                rowIds,
+                ochiaiDistances(
+                    docPresence(index.reader(), lexicon, rowIds, liveDocs)
+                )
+            );
+        }
+    }
+
+    /**
+     * Collects one live-document presence bitset per selected term by walking
+     * its postings directly. Feeds the Ochiai term-distance square.
+     */
+    static FixedBitSet[] docPresence(
         final IndexReader reader,
         final TermLexicon lexicon,
         final int[] rowIds,
         final FixedBitSet liveDocs
-    )
-        throws IOException {
+    ) throws IOException {
         final FixedBitSet[] rows = new FixedBitSet[rowIds.length];
         final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
         final TermsEnum termsEnum = terms == null ? null : terms.iterator();
@@ -234,561 +291,133 @@ public class OpClades extends Op
         return rows;
     }
 
+    /** Computes full Euclidean distances between equal-width rows. */
+    private static double[][] euclideanDistances(final double[][] rows)
+    {
+        final int size = rows.length;
+        final int width = size == 0 ? 0 : rows[0].length;
+        final double[][] distances = new double[size][size];
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < row; col++) {
+                double squared = 0d;
+                for (int axis = 0; axis < width; axis++) {
+                    final double delta = rows[row][axis] - rows[col][axis];
+                    squared += delta * delta;
+                }
+                final double distance = Math.sqrt(Math.max(0d, squared));
+                distances[row][col] = distance;
+                distances[col][row] = distance;
+            }
+        }
+        return distances;
+    }
+
     /**
-     * Builds raw frequency rows and positive and signed-root G² profiles.
+     * Writes the selected-term factor map as JSON.
      *
-     * <p>
-     * G² is calculated by the shared keyness implementation with the document
-     * as focus and the disjoint corpus remainder as reference. The positive
-     * profile retains {@code sqrt(G²)} only for over-representation. The signed
-     * profile retains {@code +sqrt(G²)} for over-representation and
-     * {@code -sqrt(G²)} for under-representation. Every retained document is
-     * scored, including zero-frequency cells.
-     * </p>
-     *
-     * @param reader    index reader supplying term postings
-     * @param lexicon   term lexicon aligned with the reader
-     * @param rowIds    selected dense term ids
-     * @param docFilter retained document dimensions
-     * @param termStats corpus, term and document statistics
-     * @return raw frequencies, profile weights, and compact document ids
-     * @throws IOException if terms or postings cannot be read
+     * @param index Lucene index
+     * @param request HTTP request
+     * @param response HTTP response
+     * @throws IOException if index access or response writing fails
      */
-    private static TermDocMatrix termDocMatrix(
-        final IndexReader reader,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final FixedBitSet docFilter,
-        final TermStats termStats
+    @Override
+    protected void json(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
     ) throws IOException {
-        final int[] docRanks = new int[reader.maxDoc()];
-        Arrays.fill(docRanks, -1);
-        int docCount = 0;
-        for (int docId = 0; docId < docFilter.length(); docId++) {
-            if (docFilter.get(docId)) {
-                docRanks[docId] = docCount++;
-            }
+        final HttpPars pars = new HttpPars(request, response);
+        final MetaUtil meta = new MetaUtil();
+        final JsonView view = pars.getEnum("view", JsonView.MAP);
+        final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
+
+        int[] rowIds = null;
+        long[] rowFreq = null;
+        TermLexicon lexicon = null;
+        TermStats termStats = null;
+        TermMap map = null;
+
+        if (topTerms == null) {
+            response.setStatus(400);
         }
-
-        final int[] docIds = new int[docCount];
-        for (int docId = 0; docId < docRanks.length; docId++) {
-            final int docRank = docRanks[docId];
-            if (docRank >= 0) {
-                docIds[docRank] = docId;
+        else {
+            final Map<Integer, Long> frequencyById = new HashMap<>();
+            final IntList rowList = new IntList(topTerms.size());
+            for (final TermEntry term : topTerms) {
+                rowList.push(term.termId());
+                frequencyById.put(term.termId(), term.freq());
             }
-        }
-
-        final int[][] frequencies = new int[rowIds.length][docCount];
-        final double[][] profiles = new double[rowIds.length][docCount];
-        final double[][] signedProfiles = new double[rowIds.length][docCount];
-        final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
-        final TermsEnum termsEnum = terms == null ? null : terms.iterator();
-        final BytesRefBuilder termBytes = new BytesRefBuilder();
-        final int[] docTokens = termStats.docTokens();
-        final TermDocScorer scorer = new TermDocScorer.Keyness(
-            new KeynessScorer.G2()
-        );
-        PostingsEnum postings = null;
-
-        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
-            final int termId = rowIds[rowRank];
-            final TermDocScorer.Prepared prepared = scorer.prepare(
-                termStats.fieldTokens(),
-                termStats.fieldDocs(),
-                termStats.termFreq(termId),
-                termStats.termDocs(termId)
+            rowIds = rowList.toUniq();
+            rowFreq = new long[rowIds.length];
+            for (int row = 0; row < rowIds.length; row++) {
+                rowFreq[row] = frequencyById.getOrDefault(rowIds[row], 0L);
+            }
+            lexicon = topTerms.lexicon();
+            termStats = topTerms.termStats();
+            map = analyze(
+                index.reader(),
+                lexicon,
+                rowIds,
+                liveDocs(index.reader()),
+                pars,
+                meta
             );
+        }
 
-            if (termsEnum != null
-                && termsEnum.seekExact(lexicon.formBytes(termId, termBytes))) {
-                postings = termsEnum.postings(postings, PostingsEnum.FREQS);
-                for (
-                    int docId = postings.nextDoc();
-                    docId != DocIdSetIterator.NO_MORE_DOCS;
-                    docId = postings.nextDoc()
-                ) {
-                    if (docFilter.get(docId)) {
-                        frequencies[rowRank][docRanks[docId]] = postings.freq();
-                    }
+        try (JsonWriter jw = Op.jsonWriter(response)) {
+            jw.beginObject();
+            jw.name("meta");
+            jw.beginObject();
+            meta.toJson(jw, pars);
+            jw.endObject();
+            if (map != null) {
+                writeMapData(
+                    jw,
+                    pars,
+                    map,
+                    rowIds,
+                    rowFreq,
+                    lexicon,
+                    termStats,
+                    view == JsonView.DIAGNOSTIC
+                );
+            }
+            jw.endObject();
+        }
+    }
+
+    /**
+     * Collects the live global document ids of the reader snapshot.
+     */
+    private static FixedBitSet liveDocs(final IndexReader reader)
+    {
+        final FixedBitSet liveDocs = new FixedBitSet(reader.maxDoc());
+        for (final var context : reader.leaves()) {
+            final Bits leafLiveDocs = context.reader().getLiveDocs();
+            if (leafLiveDocs == null) {
+                liveDocs.set(context.docBase, context.docBase + context.reader().maxDoc());
+                continue;
+            }
+            for (int localDocId = 0; localDocId < context.reader().maxDoc(); localDocId++) {
+                if (leafLiveDocs.get(localDocId)) {
+                    liveDocs.set(context.docBase + localDocId);
                 }
             }
-
-            for (int docRank = 0; docRank < docCount; docRank++) {
-                final int docId = docIds[docRank];
-                final double signedG2 = prepared.score(
-                    frequencies[rowRank][docRank],
-                    docTokens[docId]
-                );
-                profiles[rowRank][docRank] = positiveRoot(signedG2);
-                signedProfiles[rowRank][docRank] = signedRoot(signedG2);
-            }
         }
-        return new TermDocMatrix(frequencies, profiles, signedProfiles, docIds);
+        return liveDocs;
     }
 
-    /**
-     * Retains every live document containing at least one selected term.
-     *
-     * <p>
-     * Unlike binary-character filtering, this profile filter retains
-     * documents containing every selected term because their frequencies and
-     * positive G² values may still discriminate the rows.
-     * </p>
-     *
-     * @param liveDocs live documents in the reader snapshot
-     * @param docPresence one presence row per selected term
-     * @return union of selected-term document sets restricted to live documents
-     */
-    private static FixedBitSet unionDocs(
-        final FixedBitSet liveDocs,
-        final FixedBitSet[] docPresence
-    ) {
-        final FixedBitSet union = new FixedBitSet(liveDocs.length());
-        for (final FixedBitSet row : docPresence) {
-            union.or(row);
-        }
-        union.and(liveDocs);
-        return union;
-    }
-
-    /**
-     * Builds the selected full-corpus term map.
-     *
-     * @param reader index reader supplying postings
-     * @param lexicon selected-term lexicon
-     * @param rowIds selected dense term ids
-     * @param docFilter retained document columns
-     * @param termStats corpus and term statistics
-     * @param pars resolved HTTP parameters
-     * @param meta response metadata collector
-     * @return frequencies, projection vectors, distances, and layout
-     * @throws IOException if postings cannot be read
-     */
-    private static TermMapAnalysis termMapAnalysis(
-        final IndexReader reader,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final FixedBitSet docFilter,
-        final TermStats termStats,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) throws IOException {
-        final TermDocMatrix matrix = termDocMatrix(
-            reader,
-            lexicon,
-            rowIds,
-            docFilter,
-            termStats
-        );
-        final Projection projection = pars.getEnum(
-            "projection",
-            Projection.CA
-        );
-
-        meta.put("documents", docFilter.cardinality());
-        meta.put("documentUniverse", "full corpus");
-        meta.put("focusRestricted", false);
-        meta.put("source", "raw term-document frequencies");
-        return switch (projection) {
-            case CA -> correspondenceAnalysis(matrix, termStats, pars, meta);
-            case SIGNED_G2_SVD -> signedG2SvdAnalysis(matrix, pars, meta);
-            case G2_SVD -> g2SvdAnalysis(matrix, pars, meta);
-            case G2_NMDS -> g2NmdsAnalysis(matrix, pars, meta);
-            case SVD -> rawSvdAnalysis(matrix, pars, meta);
-        };
-    }
-
-    /**
-     * Builds a genuine correspondence analysis of the completed lexical table.
-     *
-     * <p>
-     * The final row contains every indexed token not represented by a selected
-     * term, so each column margin equals the complete document length. Pearson
-     * residuals remove the independence expectation. SVD principal coordinates
-     * are then scaled by inverse square-root row mass. The background row helps
-     * define the geometry but is not emitted as a node.
-     * </p>
-     */
-    private static TermMapAnalysis correspondenceAnalysis(
-        final TermDocMatrix matrix,
-        final TermStats termStats,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) {
-        final int termCount = matrix.frequencies().length;
-        final double[][] table = completedLexicalTable(
-            matrix,
-            termStats.docTokens()
-        );
-        final ContingencySvd model = new ContingencySvd(table, null);
-        model.expectIpf();
-        model.residual(Assoc.PEARSON);
-        model.decompose();
-        model.weightAxes(1d);
-        model.scaleRowsByMass();
-
-        final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
-        final SvdLayout fullMap = model.project(dims);
-        final double[][] coordinates = firstRows(fullMap.coords(), termCount);
-        final double[] cos2 = Arrays.copyOf(fullMap.cos2(), termCount);
-        final double[][] embedding = firstRows(model.embedding(), termCount);
-        final double[][] residuals = firstRows(model.residuals(), termCount);
-        final int emittedDims = coordinates.length == 0
-            ? 0
-            : coordinates[0].length;
-        final CaDiagnostics diagnostics = caDiagnostics(
-            table,
-            model.embedding(),
-            model.singularValues(),
-            termCount,
-            emittedDims
-        );
-
-        meta.put("profile", "Pearson residuals from complete lexical table");
-        meta.put("rowNormalization", "inverse sqrt row mass");
-        meta.put("distance", "chi-square / Euclidean CA principal coordinates");
-        meta.put("projection", "correspondence analysis");
-        meta.put("caBackgroundRow", "OTHER");
-        meta.put("caCentered", true);
-        meta.put("svdAxisWeight", 1d);
-        meta.put("svdRank", fullMap.inertia().length);
-        meta.put("svdFitConverged", model.fitConverged());
-        meta.put("svdFitError", model.fitError());
-        meta.put("svdFitIterations", model.fitIterations());
-
-        return new TermMapAnalysis(
-            matrix,
-            residuals,
-            euclideanDistances(embedding),
-            new MapLayout(
-                Projection.CA,
-                coordinates,
-                cos2,
-                fullMap.inertia(),
-                diagnostics,
-                Double.NaN,
-                0,
-                true
-            )
-        );
-    }
-
-    /** Builds the retained positive-G² chord NMDS experiment. */
-    private static TermMapAnalysis g2NmdsAnalysis(
-        final TermDocMatrix matrix,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) {
-        final double[][] normalized = normalizeRows(matrix.profiles());
-        final double[][] distances = chordDistances(normalized);
-        final int starts = pars.getInt("mds-starts", new int[] { 1, 20 }, 4);
-        final int maxIterations = pars.getInt(
-            "mds-iterations",
-            new int[] { 10, 5000 },
-            1000
-        );
-        final double tolerance = pars.getDouble("mds-tolerance", 1e-7d);
-        final MdsLayout map = nonmetricMds(
-            distances,
-            starts,
-            maxIterations,
-            tolerance
-        );
-
-        meta.put("profile", "sqrt positive document-vs-rest G2");
-        meta.put("rowNormalization", "L2");
-        meta.put("distance", "chord");
-        meta.put("projection", "nonmetric MDS");
-        meta.put("mdsStress", map.stress());
-        meta.put("mdsIterations", map.iterations());
-        meta.put("mdsConverged", map.converged());
-        return new TermMapAnalysis(
-            matrix,
-            matrix.profiles(),
-            distances,
-            new MapLayout(
-                Projection.G2_NMDS,
-                map.coordinates(),
-                null,
-                null,
-                null,
-                map.stress(),
-                map.iterations(),
-                map.converged()
-            )
-        );
-    }
-
-    /** Builds direct principal coordinates from signed square-root G² rows. */
-    private static TermMapAnalysis signedG2SvdAnalysis(
-        final TermDocMatrix matrix,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) {
-        return svdAnalysis(
-            matrix,
-            matrix.signedProfiles(),
-            Projection.SIGNED_G2_SVD,
-            "signed sqrt document-vs-rest G2",
-            "signed-G2 SVD",
-            pars,
-            meta
-        );
-    }
-
-    /** Builds direct principal coordinates from positive-G² profile rows. */
-    private static TermMapAnalysis g2SvdAnalysis(
-        final TermDocMatrix matrix,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) {
-        return svdAnalysis(
-            matrix,
-            matrix.profiles(),
-            Projection.G2_SVD,
-            "sqrt positive document-vs-rest G2",
-            "positive-G2 SVD",
-            pars,
-            meta
-        );
-    }
-
-    /** Builds direct principal coordinates from raw frequency rows. */
-    private static TermMapAnalysis rawSvdAnalysis(
-        final TermDocMatrix matrix,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) {
-        final double[][] frequencies = frequencyRows(matrix.frequencies());
-        return svdAnalysis(
-            matrix,
-            frequencies,
-            Projection.SVD,
-            "raw term-document frequency",
-            "raw-frequency SVD",
-            pars,
-            meta
-        );
-    }
-
-    /** Decomposes an already prepared term-document coordinate matrix. */
-    private static TermMapAnalysis svdAnalysis(
-        final TermDocMatrix matrix,
-        final double[][] vectors,
-        final Projection projection,
-        final String profileLabel,
-        final String projectionLabel,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) {
-        final ContingencySvd model = projection == Projection.SIGNED_G2_SVD
-            ? ContingencySvd.fromResiduals(vectors)
-            : ContingencySvd.fromScores(vectors);
-        final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
-        final SvdLayout map = model.principalCoordinates(dims);
-        final double[][] distances = euclideanDistances(model.embedding());
-
-        meta.put("profile", profileLabel);
-        meta.put("rowNormalization", "none");
-        meta.put("distance", "Euclidean in full SVD embedding");
-        meta.put("projection", projectionLabel);
-        meta.put("svdCentered", false);
-        meta.put("svdAxisWeight", 1d);
-        meta.put("svdRank", map.inertia().length);
-        return new TermMapAnalysis(
-            matrix,
-            vectors,
-            distances,
-            new MapLayout(
-                projection,
-                map.coords(),
-                map.cos2(),
-                map.inertia(),
-                null,
-                Double.NaN,
-                0,
-                true
-            )
-        );
-    }
-
-    /** Converts integer frequency rows to the direct SVD input matrix. */
-    private static double[][] frequencyRows(final int[][] frequencies)
+    /** Row mass in percent, aligned with {@code masses}. */
+    private static double[] massPercent(final double[] masses)
     {
-        final double[][] rows = new double[frequencies.length][];
-        for (int row = 0; row < frequencies.length; row++) {
-            rows[row] = new double[frequencies[row].length];
-            for (int col = 0; col < frequencies[row].length; col++) {
-                rows[row][col] = frequencies[row][col];
-            }
+        final double[] percent = masses.clone();
+        for (int row = 0; row < percent.length; row++) {
+            percent[row] *= 100d;
         }
-        return rows;
+        return percent;
     }
 
-    /** Builds selected-term rows plus an exact all-other-tokens row. */
-    private static double[][] completedLexicalTable(
-        final TermDocMatrix matrix,
-        final int[] docTokens
-    ) {
-        final int termCount = matrix.frequencies().length;
-        final int docCount = matrix.docIds().length;
-        final double[][] table = new double[termCount + 1][docCount];
-        for (int docRank = 0; docRank < docCount; docRank++) {
-            long selected = 0L;
-            for (int term = 0; term < termCount; term++) {
-                final int frequency = matrix.frequencies()[term][docRank];
-                table[term][docRank] = frequency;
-                selected += frequency;
-            }
-            final int docId = matrix.docIds()[docRank];
-            final long other = (long) docTokens[docId] - selected;
-            if (other < 0L) {
-                throw new IllegalStateException(
-                    "Selected term counts exceed indexed tokens for document "
-                        + docId + ": " + selected + " > " + docTokens[docId]
-                );
-            }
-            table[termCount][docRank] = other;
-        }
-        return table;
-    }
-
-    /** Copies the requested leading rows of a rectangular matrix. */
-    private static double[][] firstRows(
-        final double[][] matrix,
-        final int count
-    ) {
-        if (count < 0 || count > matrix.length) {
-            throw new IllegalArgumentException("Invalid row count " + count);
-        }
-        final double[][] rows = new double[count][];
-        for (int row = 0; row < count; row++) {
-            rows[row] = matrix[row].clone();
-        }
-        return rows;
-    }
-
-    /** Calculates masses, origin distances, and axis contributions for CA. */
-    private static CaDiagnostics caDiagnostics(
-        final double[][] table,
-        final double[][] embedding,
-        final double[] singularValues,
-        final int termCount,
-        final int dims
-    ) {
-        final double[] rowTotals = new double[table.length];
-        double total = 0d;
-        for (int row = 0; row < table.length; row++) {
-            for (final double value : table[row]) {
-                rowTotals[row] += value;
-            }
-            total += rowTotals[row];
-        }
-
-        final double[] masses = new double[termCount];
-        final double[] squaredDistances = new double[termCount];
-        final double[][] contributions = new double[termCount][dims];
-        for (int row = 0; row < termCount; row++) {
-            final double mass = total > 0d ? rowTotals[row] / total : 0d;
-            masses[row] = 100d * mass;
-            for (final double coordinate : embedding[row]) {
-                squaredDistances[row] += coordinate * coordinate;
-            }
-            for (int axis = 0; axis < dims; axis++) {
-                final double eigenvalue = singularValues[axis] * singularValues[axis];
-                contributions[row][axis] = eigenvalue > 0d
-                    ? 100d * mass * embedding[row][axis] * embedding[row][axis]
-                        / eigenvalue
-                    : 0d;
-            }
-        }
-
-        final int otherRow = termCount;
-        final double otherMass = total > 0d
-            ? 100d * rowTotals[otherRow] / total
-            : 0d;
-        final double[] otherContributions = new double[dims];
-        final double otherMassRatio = otherMass / 100d;
-        for (int axis = 0; axis < dims; axis++) {
-            final double eigenvalue = singularValues[axis] * singularValues[axis];
-            otherContributions[axis] = eigenvalue > 0d
-                ? 100d * otherMassRatio
-                    * embedding[otherRow][axis] * embedding[otherRow][axis]
-                    / eigenvalue
-                : 0d;
-        }
-        return new CaDiagnostics(
-            masses,
-            squaredDistances,
-            contributions,
-            otherMass,
-            otherContributions
-        );
-    }
-
-    /**
-     * Converts signed G² to a positive-root profile coordinate.
-     *
-     * @param signedG2 signed document-versus-rest G²
-     * @return square root for positive finite scores, otherwise zero
-     */
-    static double positiveRoot(final double signedG2)
-    {
-        if (!(signedG2 > 0d) || !Double.isFinite(signedG2)) {
-            return 0d;
-        }
-        return Math.sqrt(signedG2);
-    }
-
-    /**
-     * Converts signed G² to a signed square-root residual coordinate.
-     *
-     * @param signedG2 signed document-versus-rest G²
-     * @return signed square root, or zero for a non-finite or zero score
-     */
-    static double signedRoot(final double signedG2)
-    {
-        if (!Double.isFinite(signedG2) || signedG2 == 0d) {
-            return 0d;
-        }
-        return Math.copySign(Math.sqrt(Math.abs(signedG2)), signedG2);
-    }
-
-    /**
-     * Returns the share of squared row energy held by its largest coordinates.
-     */
-    private static double energyShare(final double[] row, final int count)
-    {
-        final double[] energy = new double[row.length];
-        double total = 0d;
-        for (int col = 0; col < row.length; col++) {
-            energy[col] = row[col] * row[col];
-            total += energy[col];
-        }
-        if (total <= 0d) {
-            return 0d;
-        }
-        Arrays.sort(energy);
-        double top = 0d;
-        for (int rank = 0; rank < Math.min(count, energy.length); rank++) {
-            top += energy[energy.length - 1 - rank];
-        }
-        return top / total;
-    }
-
-    /**
-     * Returns the L2 norm of a vector.
-     */
-    private static double l2(final double[] row)
-    {
-        double squared = 0d;
-        for (final double value : row) {
-            squared += value * value;
-        }
-        return Math.sqrt(squared);
-    }
-
-    /** Returns term ranks ordered by increasing chord distance. */
+    /** Returns term ranks ordered by increasing distance from {@code row}. */
     private static int[] nearest(
         final double[][] distances,
         final int row,
@@ -814,138 +443,12 @@ public class OpClades extends Op
     }
 
     /**
-     * Counts non-zero coordinates in a vector.
-     */
-    private static int nonZero(final double[] row)
-    {
-        int count = 0;
-        for (final double value : row) {
-            if (value != 0d) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    /**
-     * Returns a request parameter or a fallback for absent and blank values.
-     */
-    private static String parameter(
-        final HttpServletRequest request,
-        final String name,
-        final String fallback
-    ) {
-        final String value = request.getParameter(name);
-        return value == null || value.isBlank() ? fallback : value;
-    }
-
-    /**
-     * Returns a stored string or numeric field as display text.
-     */
-    private static String storedText(
-        final Document document,
-        final String fieldName
-    ) {
-        final IndexableField field = document.getField(fieldName);
-        if (field == null) {
-            return null;
-        }
-        final String text = field.stringValue();
-        if (text != null) {
-            return text;
-        }
-        final Number number = field.numericValue();
-        return number == null ? null : number.toString();
-    }
-
-    /** Writes one document and its corpus metadata. */
-    private static void writeDocument(
-        final JsonWriter jw,
-        final StoredFields storedFields,
-        final int docId,
-        final int docTokens,
-        final String titleField,
-        final String yearField,
-        final Integer rank
-    ) throws IOException {
-        final Document document = storedFields.document(docId);
-        jw.beginObject();
-        if (rank != null) {
-            jw.name("rank").value(rank);
-        }
-        jw.name("id").value(docId);
-        jw.name("tokens").value(docTokens);
-        final String title = storedText(document, titleField);
-        if (title != null) {
-            jw.name("title").value(title);
-        }
-        final String year = storedText(document, yearField);
-        if (year != null) {
-            jw.name("year").value(year);
-        }
-        jw.endObject();
-    }
-
-    /**
-     * Appends one safely quoted NEXUS label.
-     */
-    private static void appendNexusLabel(final Writer writer, final String label)
-        throws IOException {
-        writer.append('\'');
-        for (int i = 0; i < label.length(); i++) {
-            final char c = label.charAt(i);
-            if (c == '\'') {
-                writer.append('\'');
-            }
-            writer.append(c);
-        }
-        writer.append('\'');
-    }
-
-    /**
-     * Writes a STANDARD binary CHARACTERS block. Columns follow Lucene
-     * document-id order after constant-column filtering.
-     */
-    private static void writeCharacters(
-        final Writer writer,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final FixedBitSet[] docPresence,
-        final FixedBitSet docFilter
-    )
-        throws IOException {
-        writer.append("BEGIN CHARACTERS;\n");
-        writer.append("    DIMENSIONS NTAX=")
-            .append(Integer.toString(rowIds.length))
-            .append(" NCHAR=")
-            .append(Integer.toString(docFilter.cardinality()))
-            .append(";\n");
-        writer.append("    FORMAT DATATYPE=STANDARD SYMBOLS=\"01\" LABELS=LEFT;\n");
-        writer.append("    MATRIX\n");
-
-        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
-            writer.append("        ");
-            appendNexusLabel(writer, lexicon.form(rowIds[rowRank]));
-            writer.append(' ');
-            for (int docId = 0; docId < docFilter.length(); docId++) {
-                if (docFilter.get(docId)) {
-                    writer.append(docPresence[rowRank].get(docId) ? '1' : '0');
-                }
-            }
-            writer.append('\n');
-        }
-
-        writer.append("    ;\n");
-        writer.append("END;\n");
-    }
-
-    /**
      * Returns the chord distance associated with binary Ochiai similarity.
      *
      * <p>
-     * For binary document vectors, Ochiai similarity is cosine similarity:
-     * {@code |A intersection B| / sqrt(|A| |B|)}. Chord distance is the
-     * Euclidean distance between the corresponding unit vectors:
+     * For binary document vectors Ochiai similarity is cosine similarity,
+     * {@code |A ∩ B| / sqrt(|A| |B|)}; the returned chord distance is the
+     * Euclidean distance between the corresponding unit vectors,
      * {@code sqrt(2 - 2 * similarity)}.
      * </p>
      */
@@ -958,23 +461,19 @@ public class OpClades extends Op
         if (cardA == 0 || cardB == 0) {
             return cardA == cardB ? 0d : Math.sqrt(2d);
         }
-
         final long intersection = FixedBitSet.intersectionCount(rowA, rowB);
         final double similarity = intersection / Math.sqrt((double) cardA * cardB);
         return Math.sqrt(Math.max(0d, 2d - 2d * similarity));
     }
 
     /** Computes the full symmetric Ochiai chord-distance matrix. */
-    static double[][] ochiaiDistances(
-        final FixedBitSet[] docPresence
-    ) {
+    static double[][] ochiaiDistances(final FixedBitSet[] docPresence)
+    {
         final int size = docPresence.length;
         final int[] cardinalities = new int[size];
         for (int rowRank = 0; rowRank < size; rowRank++) {
             cardinalities[rowRank] = docPresence[rowRank].cardinality();
         }
-
-        // Compute each symmetric pair only once.
         final double[][] distances = new double[size][size];
         for (int rowRank = 0; rowRank < size; rowRank++) {
             for (int colRank = 0; colRank < rowRank; colRank++) {
@@ -991,925 +490,280 @@ public class OpClades extends Op
         return distances;
     }
 
-    /**
-     * L2-normalizes profile rows without changing the source matrix.
-     *
-     * @param rows term-by-document profile matrix
-     * @return normalized matrix with one unit vector per non-zero row
-     * @throws IllegalArgumentException if rows are ragged or contain a zero row
-     */
-    static double[][] normalizeRows(final double[][] rows)
+    /** Returns normalized observed row masses of a contingency table. */
+    private static double[] rowMasses(final double[][] table)
     {
-        if (rows.length == 0) {
-            return new double[0][0];
+        final double[] masses = new double[table.length];
+        double total = 0d;
+        for (int row = 0; row < table.length; row++) {
+            for (final double value : table[row]) {
+                masses[row] += value;
+            }
+            total += masses[row];
         }
-        final int width = rows[0].length;
-        final double[][] normalized = new double[rows.length][width];
-        for (int row = 0; row < rows.length; row++) {
-            if (rows[row].length != width) {
-                throw new IllegalArgumentException("Score matrix is ragged");
-            }
-            final double norm = l2(rows[row]);
-            if (!(norm > 0d) || !Double.isFinite(norm)) {
-                throw new IllegalArgumentException(
-                    "Term profile row " + row + " has no finite positive norm"
-                );
-            }
-            for (int col = 0; col < width; col++) {
-                normalized[row][col] = rows[row][col] / norm;
-            }
+        if (!(total > 0d)) {
+            throw new IllegalArgumentException("term table has no positive mass");
         }
-        return normalized;
+        for (int row = 0; row < masses.length; row++) {
+            masses[row] /= total;
+        }
+        return masses;
+    }
+
+    /** Squared distance of every embedding row from the origin. */
+    private static double[] squaredDistances(final double[][] embedding)
+    {
+        final double[] squared = new double[embedding.length];
+        for (int row = 0; row < embedding.length; row++) {
+            double sum = 0d;
+            for (final double value : embedding[row]) {
+                sum += value * value;
+            }
+            squared[row] = sum;
+        }
+        return squared;
     }
 
     /**
-     * Computes Euclidean chord distances between L2-normalized rows.
+     * Builds raw frequency rows for every retained document.
      *
-     * @param normalized unit term-by-document vectors
-     * @return full symmetric chord-distance matrix
-     * @throws IllegalArgumentException if rows are ragged
+     * @param reader index reader supplying term postings
+     * @param lexicon term lexicon aligned with the reader
+     * @param rowIds selected dense term ids
+     * @param docFilter retained document dimensions
+     * @return raw frequencies and compact document ids
+     * @throws IOException if terms or postings cannot be read
      */
-    static double[][] chordDistances(final double[][] normalized)
-    {
-        final int size = normalized.length;
-        final int width = size == 0 ? 0 : normalized[0].length;
-        final double[][] distances = new double[size][size];
-        for (int row = 0; row < size; row++) {
-            if (normalized[row].length != width) {
-                throw new IllegalArgumentException("Normalized matrix is ragged");
-            }
-            for (int col = 0; col < row; col++) {
-                double squared = 0d;
-                for (int doc = 0; doc < width; doc++) {
-                    final double delta = normalized[row][doc]
-                        - normalized[col][doc];
-                    squared += delta * delta;
-                }
-                final double distance = Math.sqrt(Math.max(0d, squared));
-                distances[row][col] = distance;
-                distances[col][row] = distance;
-            }
-        }
-        return distances;
-    }
-
-    /** Computes full Euclidean distances between equal-width rows. */
-    private static double[][] euclideanDistances(final double[][] rows)
-    {
-        final int size = rows.length;
-        final int width = size == 0 ? 0 : rows[0].length;
-        final double[][] distances = new double[size][size];
-        for (int row = 0; row < size; row++) {
-            if (rows[row].length != width) {
-                throw new IllegalArgumentException("Embedding matrix is ragged");
-            }
-            for (int col = 0; col < row; col++) {
-                double squared = 0d;
-                for (int axis = 0; axis < width; axis++) {
-                    final double delta = rows[row][axis] - rows[col][axis];
-                    squared += delta * delta;
-                }
-                final double distance = Math.sqrt(Math.max(0d, squared));
-                distances[row][col] = distance;
-                distances[col][row] = distance;
-            }
-        }
-        return distances;
-    }
-
-    /** Pair of rows ordered by its original dissimilarity. */
-    private record MdsPair(int row, int col, double dissimilarity) {}
-
-    /**
-     * Fits a deterministic two-dimensional nonmetric MDS map by monotone
-     * regression and SMACOF majorization.
-     *
-     * <p>
-     * The first start uses classical scaling only as an initialization. Later
-     * starts use a fixed pseudo-random sequence. The returned fit is the start
-     * with the lowest normalized Kruskal stress.
-     * </p>
-     *
-     * @param dissimilarities full symmetric distance matrix
-     * @param starts deterministic starts to compare
-     * @param maxIterations maximum SMACOF updates per start
-     * @param tolerance relative stress convergence threshold
-     * @return best two-dimensional layout
-     */
-    static MdsLayout nonmetricMds(
-        final double[][] dissimilarities,
-        final int starts,
-        final int maxIterations,
-        final double tolerance
-    ) {
-        if (starts < 1 || maxIterations < 1) {
-            throw new IllegalArgumentException(
-                "NMDS starts and iterations must be positive"
-            );
-        }
-        if (!(tolerance > 0d && tolerance < 1d)) {
-            throw new IllegalArgumentException(
-                "NMDS tolerance must be strictly between 0 and 1"
-            );
-        }
-        validateDistances(dissimilarities);
-        final int size = dissimilarities.length;
-        if (size == 0) {
-            return new MdsLayout(new double[0][2], 0d, 0, true);
-        }
-        if (size == 1) {
-            return new MdsLayout(new double[1][2], 0d, 0, true);
-        }
-
-        final MdsPair[] pairs = sortedPairs(dissimilarities);
-        final Random random = new Random(0x4e4d44534cL);
-        MdsLayout best = null;
-        for (int start = 0; start < starts; start++) {
-            final double[][] initial = start == 0
-                ? classicalStart(dissimilarities)
-                : randomStart(size, random);
-            final MdsLayout candidate = fitNonmetricMds(
-                initial,
-                pairs,
-                maxIterations,
-                tolerance
-            );
-            if (best == null || candidate.stress() < best.stress()) {
-                best = candidate;
-            }
-        }
-        orient(best.coordinates());
-        return best;
-    }
-
-    /** Validates the square symmetric dissimilarity matrix. */
-    private static void validateDistances(final double[][] distances)
-    {
-        for (int row = 0; row < distances.length; row++) {
-            if (distances[row].length != distances.length) {
-                throw new IllegalArgumentException("Distance matrix is not square");
-            }
-            if (Math.abs(distances[row][row]) > 1e-12d) {
-                throw new IllegalArgumentException("Distance diagonal is not zero");
-            }
-            for (int col = 0; col < row; col++) {
-                final double value = distances[row][col];
-                if (!Double.isFinite(value) || value < 0d) {
-                    throw new IllegalArgumentException(
-                        "Distances must be finite and non-negative"
-                    );
-                }
-                if (Math.abs(value - distances[col][row]) > 1e-10d) {
-                    throw new IllegalArgumentException(
-                        "Distance matrix is not symmetric"
-                    );
-                }
-            }
-        }
-    }
-
-    /** Returns all lower-triangle pairs in stable dissimilarity order. */
-    private static MdsPair[] sortedPairs(final double[][] distances)
-    {
-        final int size = distances.length;
-        final MdsPair[] pairs = new MdsPair[size * (size - 1) / 2];
-        int cursor = 0;
-        for (int row = 0; row < size; row++) {
-            for (int col = 0; col < row; col++) {
-                pairs[cursor++] = new MdsPair(row, col, distances[row][col]);
-            }
-        }
-        Arrays.sort(
-            pairs,
-            Comparator.comparingDouble(MdsPair::dissimilarity)
-                .thenComparingInt(MdsPair::row)
-                .thenComparingInt(MdsPair::col)
-        );
-        return pairs;
-    }
-
-    /** Builds a two-axis classical-scaling initialization. */
-    private static double[][] classicalStart(final double[][] distances)
-    {
-        final int size = distances.length;
-        final double[] rowMeans = new double[size];
-        double totalMean = 0d;
-        for (int row = 0; row < size; row++) {
-            for (int col = 0; col < size; col++) {
-                rowMeans[row] += distances[row][col] * distances[row][col];
-            }
-            rowMeans[row] /= size;
-            totalMean += rowMeans[row];
-        }
-        totalMean /= size;
-
-        final double[][] gram = new double[size][size];
-        for (int row = 0; row < size; row++) {
-            for (int col = 0; col < size; col++) {
-                gram[row][col] = -0.5d * (
-                    distances[row][col] * distances[row][col]
-                    - rowMeans[row]
-                    - rowMeans[col]
-                    + totalMean
-                );
+    private static TermDocMatrix termDocMatrix(
+        final IndexReader reader,
+        final TermLexicon lexicon,
+        final int[] rowIds,
+        final FixedBitSet docFilter
+    ) throws IOException {
+        final int[] docRanks = new int[reader.maxDoc()];
+        Arrays.fill(docRanks, -1);
+        int docCount = 0;
+        for (int docId = 0; docId < docFilter.length(); docId++) {
+            if (docFilter.get(docId)) {
+                docRanks[docId] = docCount++;
             }
         }
 
-        final double[][] vectors = new double[2][size];
-        final double[][] coordinates = new double[size][2];
-        for (int axis = 0; axis < 2; axis++) {
-            final double[] vector = vectors[axis];
-            for (int row = 0; row < size; row++) {
-                vector[row] = Math.sin((row + 1d) * (axis + 1.61803398875d));
+        final int[] docIds = new int[docCount];
+        for (int docId = 0; docId < docRanks.length; docId++) {
+            if (docRanks[docId] >= 0) {
+                docIds[docRanks[docId]] = docId;
             }
-            orthonormalize(vector, vectors, axis);
-            for (int iteration = 0; iteration < 1000; iteration++) {
-                final double[] next = multiply(gram, vector);
-                orthonormalize(next, vectors, axis);
-                if (dot(next, vector) < 0d) {
-                    for (int row = 0; row < size; row++) {
-                        next[row] = -next[row];
+        }
+
+        final int[][] frequencies = new int[rowIds.length][docCount];
+        final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
+        final TermsEnum termsEnum = terms == null ? null : terms.iterator();
+        final BytesRefBuilder termBytes = new BytesRefBuilder();
+        PostingsEnum postings = null;
+
+        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
+            if (termsEnum != null
+                && termsEnum.seekExact(lexicon.formBytes(rowIds[rowRank], termBytes))) {
+                postings = termsEnum.postings(postings, PostingsEnum.FREQS);
+                for (
+                    int docId = postings.nextDoc();
+                    docId != DocIdSetIterator.NO_MORE_DOCS;
+                    docId = postings.nextDoc()
+                ) {
+                    if (docFilter.get(docId)) {
+                        frequencies[rowRank][docRanks[docId]] = postings.freq();
                     }
                 }
-                double change = 0d;
-                for (int row = 0; row < size; row++) {
-                    final double delta = next[row] - vector[row];
-                    change += delta * delta;
-                    vector[row] = next[row];
-                }
-                if (change < 1e-24d) {
-                    break;
-                }
-            }
-            final double eigenvalue = dot(vector, multiply(gram, vector));
-            final double scale = Math.sqrt(Math.max(0d, eigenvalue));
-            for (int row = 0; row < size; row++) {
-                coordinates[row][axis] = scale * vector[row];
             }
         }
-        standardize(coordinates);
-        return coordinates;
-    }
-
-    /** Fits one NMDS start and retains its lowest-stress iterate. */
-    private static MdsLayout fitNonmetricMds(
-        final double[][] initial,
-        final MdsPair[] pairs,
-        final int maxIterations,
-        final double tolerance
-    ) {
-        final int size = initial.length;
-        double[][] coordinates = copy(initial);
-        double[][] bestCoordinates = copy(initial);
-        double bestStress = Double.POSITIVE_INFINITY;
-        double previousStress = Double.POSITIVE_INFINITY;
-        boolean converged = false;
-        int iterations = 0;
-
-        for (int iteration = 1; iteration <= maxIterations; iteration++) {
-            final double[] fitted = disparities(coordinates, pairs);
-            final double[][] b = new double[size][size];
-            for (int pair = 0; pair < pairs.length; pair++) {
-                final MdsPair item = pairs[pair];
-                final double distance = pointDistance(
-                    coordinates[item.row()],
-                    coordinates[item.col()]
-                );
-                final double ratio = distance > 1e-15d
-                    ? fitted[pair] / distance
-                    : 0d;
-                b[item.row()][item.col()] = -ratio;
-                b[item.col()][item.row()] = -ratio;
-                b[item.row()][item.row()] += ratio;
-                b[item.col()][item.col()] += ratio;
-            }
-
-            final double[][] next = new double[size][2];
-            for (int row = 0; row < size; row++) {
-                for (int col = 0; col < size; col++) {
-                    next[row][0] += b[row][col] * coordinates[col][0] / size;
-                    next[row][1] += b[row][col] * coordinates[col][1] / size;
-                }
-            }
-            center(next);
-            final double stress = normalizedStress(next, pairs);
-            iterations = iteration;
-            if (stress < bestStress) {
-                bestStress = stress;
-                bestCoordinates = copy(next);
-            }
-            if (Double.isFinite(previousStress)
-                && Math.abs(previousStress - stress)
-                    <= tolerance * Math.max(1d, previousStress)) {
-                converged = true;
-                break;
-            }
-            previousStress = stress;
-            coordinates = next;
-        }
-        return new MdsLayout(bestCoordinates, bestStress, iterations, converged);
-    }
-
-    /** Fits monotone disparities to current distances using weighted PAVA. */
-    private static double[] disparities(
-        final double[][] coordinates,
-        final MdsPair[] pairs
-    ) {
-        final int pairCount = pairs.length;
-        final double[] values = new double[pairCount];
-        final int[] groupByPair = new int[pairCount];
-        final double[] groupMeans = new double[pairCount];
-        final int[] groupWeights = new int[pairCount];
-        int groups = 0;
-
-        for (int pair = 0; pair < pairCount;) {
-            final double dissimilarity = pairs[pair].dissimilarity();
-            int end = pair;
-            double sum = 0d;
-            while (end < pairCount
-                && Double.compare(pairs[end].dissimilarity(), dissimilarity) == 0) {
-                sum += pointDistance(
-                    coordinates[pairs[end].row()],
-                    coordinates[pairs[end].col()]
-                );
-                groupByPair[end] = groups;
-                end++;
-            }
-            groupMeans[groups] = sum / (end - pair);
-            groupWeights[groups] = end - pair;
-            groups++;
-            pair = end;
-        }
-
-        final double[] blockMeans = new double[groups];
-        final int[] blockWeights = new int[groups];
-        final int[] blockEnds = new int[groups];
-        int blocks = 0;
-        for (int group = 0; group < groups; group++) {
-            blockMeans[blocks] = groupMeans[group];
-            blockWeights[blocks] = groupWeights[group];
-            blockEnds[blocks] = group;
-            blocks++;
-            while (blocks > 1 && blockMeans[blocks - 2] > blockMeans[blocks - 1]) {
-                final int weight = blockWeights[blocks - 2]
-                    + blockWeights[blocks - 1];
-                blockMeans[blocks - 2] = (
-                    blockMeans[blocks - 2] * blockWeights[blocks - 2]
-                    + blockMeans[blocks - 1] * blockWeights[blocks - 1]
-                ) / weight;
-                blockWeights[blocks - 2] = weight;
-                blockEnds[blocks - 2] = blockEnds[blocks - 1];
-                blocks--;
-            }
-        }
-
-        int firstGroup = 0;
-        for (int block = 0; block < blocks; block++) {
-            for (int group = firstGroup; group <= blockEnds[block]; group++) {
-                groupMeans[group] = blockMeans[block];
-            }
-            firstGroup = blockEnds[block] + 1;
-        }
-        double squared = 0d;
-        for (int pair = 0; pair < pairCount; pair++) {
-            values[pair] = groupMeans[groupByPair[pair]];
-            squared += values[pair] * values[pair];
-        }
-        if (squared > 0d) {
-            final double scale = Math.sqrt(pairCount / squared);
-            for (int pair = 0; pair < pairCount; pair++) {
-                values[pair] *= scale;
-            }
-        }
-        return values;
-    }
-
-    /** Returns normalized Kruskal Stress-1 for current coordinates. */
-    private static double normalizedStress(
-        final double[][] coordinates,
-        final MdsPair[] pairs
-    ) {
-        final double[] fitted = disparities(coordinates, pairs);
-        double residual = 0d;
-        double denominator = 0d;
-        for (int pair = 0; pair < pairs.length; pair++) {
-            final double distance = pointDistance(
-                coordinates[pairs[pair].row()],
-                coordinates[pairs[pair].col()]
-            );
-            final double delta = distance - fitted[pair];
-            residual += delta * delta;
-            denominator += fitted[pair] * fitted[pair];
-        }
-        return denominator > 0d ? Math.sqrt(residual / denominator) : 0d;
-    }
-
-    /** Returns deterministic random initial coordinates. */
-    private static double[][] randomStart(final int size, final Random random)
-    {
-        final double[][] coordinates = new double[size][2];
-        for (int row = 0; row < size; row++) {
-            coordinates[row][0] = random.nextDouble() - 0.5d;
-            coordinates[row][1] = random.nextDouble() - 0.5d;
-        }
-        standardize(coordinates);
-        return coordinates;
-    }
-
-    /** Centers and scales coordinates to unit root-mean-square radius. */
-    private static void standardize(final double[][] coordinates)
-    {
-        center(coordinates);
-        double squared = 0d;
-        for (final double[] point : coordinates) {
-            squared += point[0] * point[0] + point[1] * point[1];
-        }
-        final double scale = squared > 0d
-            ? Math.sqrt(coordinates.length / squared)
-            : 1d;
-        for (final double[] point : coordinates) {
-            point[0] *= scale;
-            point[1] *= scale;
-        }
-    }
-
-    /** Centers coordinates on the origin. */
-    private static void center(final double[][] coordinates)
-    {
-        double meanX = 0d;
-        double meanY = 0d;
-        for (final double[] point : coordinates) {
-            meanX += point[0];
-            meanY += point[1];
-        }
-        meanX /= coordinates.length;
-        meanY /= coordinates.length;
-        for (final double[] point : coordinates) {
-            point[0] -= meanX;
-            point[1] -= meanY;
-        }
-    }
-
-    /** Rotates and reflects a fitted map into a stable display orientation. */
-    private static void orient(final double[][] coordinates)
-    {
-        if (coordinates.length == 0) {
-            return;
-        }
-        center(coordinates);
-        double xx = 0d;
-        double yy = 0d;
-        double xy = 0d;
-        for (final double[] point : coordinates) {
-            xx += point[0] * point[0];
-            yy += point[1] * point[1];
-            xy += point[0] * point[1];
-        }
-        final double angle = 0.5d * Math.atan2(2d * xy, xx - yy);
-        final double cosine = Math.cos(angle);
-        final double sine = Math.sin(angle);
-        for (final double[] point : coordinates) {
-            final double x = cosine * point[0] + sine * point[1];
-            final double y = -sine * point[0] + cosine * point[1];
-            point[0] = x;
-            point[1] = y;
-        }
-        reflectAxis(coordinates, 0);
-        reflectAxis(coordinates, 1);
-    }
-
-    /** Reflects an axis so its largest absolute coordinate is positive. */
-    private static void reflectAxis(final double[][] coordinates, final int axis)
-    {
-        int extreme = 0;
-        for (int row = 1; row < coordinates.length; row++) {
-            if (Math.abs(coordinates[row][axis])
-                > Math.abs(coordinates[extreme][axis])) {
-                extreme = row;
-            }
-        }
-        if (coordinates[extreme][axis] < 0d) {
-            for (final double[] point : coordinates) {
-                point[axis] = -point[axis];
-            }
-        }
-    }
-
-    /** Multiplies a square matrix by a vector. */
-    private static double[] multiply(final double[][] matrix, final double[] vector)
-    {
-        final double[] product = new double[vector.length];
-        for (int row = 0; row < matrix.length; row++) {
-            for (int col = 0; col < vector.length; col++) {
-                product[row] += matrix[row][col] * vector[col];
-            }
-        }
-        return product;
-    }
-
-    /** Makes a vector unit length and orthogonal to preceding basis vectors. */
-    private static void orthonormalize(
-        final double[] vector,
-        final double[][] basis,
-        final int count
-    ) {
-        for (int rank = 0; rank < count; rank++) {
-            final double projection = dot(vector, basis[rank]);
-            for (int row = 0; row < vector.length; row++) {
-                vector[row] -= projection * basis[rank][row];
-            }
-        }
-        double norm = Math.sqrt(dot(vector, vector));
-        if (!(norm > 1e-15d)) {
-            Arrays.fill(vector, 0d);
-            vector[count % vector.length] = 1d;
-            norm = 1d;
-        }
-        for (int row = 0; row < vector.length; row++) {
-            vector[row] /= norm;
-        }
-    }
-
-    /** Returns a vector dot product. */
-    private static double dot(final double[] a, final double[] b)
-    {
-        double product = 0d;
-        for (int row = 0; row < a.length; row++) {
-            product += a[row] * b[row];
-        }
-        return product;
-    }
-
-    /** Returns Euclidean distance between two display points. */
-    private static double pointDistance(final double[] a, final double[] b)
-    {
-        return Math.hypot(a[0] - b[0], a[1] - b[1]);
-    }
-
-    /** Deep-copies a rectangular matrix. */
-    private static double[][] copy(final double[][] source)
-    {
-        final double[][] copy = new double[source.length][];
-        for (int row = 0; row < source.length; row++) {
-            copy[row] = Arrays.copyOf(source[row], source[row].length);
-        }
-        return copy;
+        return new TermDocMatrix(frequencies, docIds);
     }
 
     /**
-     * Returns chord distance between two real-valued document vectors.
+     * Factorises association residuals of the selected term-document table.
      *
      * <p>
-     * The result is the Euclidean distance between the corresponding unit
-     * vectors: {@code sqrt(2 - 2 * cosine)}.
+     * Coordinates, {@code cos2} and the inertia spectrum come from the
+     * {@link ContingencySvd} principal-coordinate layout; {@code cos3} and the
+     * correspondence-analysis diagnostics (mass, origin distance, per-axis
+     * contribution) are computed from the same full embedding. G² gives the
+     * default signed square-root deviance residuals, Pearson the classical CA
+     * control.
      * </p>
-     *
-     * @param rowA first document vector
-     * @param rowB second document vector
-     * @return cosine chord distance
-     * @throws IllegalArgumentException if vector lengths differ
      */
-    static double cosineDistance(final double[] rowA, final double[] rowB)
-    {
-        if (rowA.length != rowB.length) {
-            throw new IllegalArgumentException(
-                "Vector lengths differ: " + rowA.length + " != " + rowB.length
-            );
-        }
+    private static TermMap termMap(
+        final TermDocMatrix matrix,
+        final HttpPars pars,
+        final MetaUtil meta,
+        final Projection projection
+    ) {
+        final Assoc association = projection == Projection.CA ? Assoc.PEARSON : Assoc.G2;
+        final double[][] table = toDoubleTable(matrix.frequencies());
+        final ContingencySvd model = new ContingencySvd(table, null)
+            .residual(association)
+            .decompose()
+            .weightAxes(1d)
+            .scaleRowsByMass();
 
-        double dot = 0d;
-        double normA = 0d;
-        double normB = 0d;
-        for (int docId = 0; docId < rowA.length; docId++) {
-            final double a = rowA[docId];
-            final double b = rowB[docId];
-            dot += a * b;
-            normA += a * a;
-            normB += b * b;
-        }
+        final int requestedDims = pars.getInt("dims", new int[] { 2, 50 }, 6);
+        final SvdLayout layout = model.project(requestedDims);
+        final double[][] embedding = model.embedding();
+        final double[][] coordinates = layout.coords();
+        final int dims = coordinates.length == 0 ? 0 : coordinates[0].length;
+        final double[] masses = rowMasses(table);
 
-        if (normA == 0d || normB == 0d) {
-            return normA == normB ? 0d : Math.sqrt(2d);
-        }
-        final double similarity = Math.max(
-            -1d,
-            Math.min(1d, dot / Math.sqrt(normA * normB))
+        final boolean deviance = association == Assoc.G2;
+        meta.put(
+            "profile",
+            deviance ? "signed sqrt G2 deviance residuals" : "Pearson residuals"
         );
-        return Math.sqrt(Math.max(0d, 2d - 2d * similarity));
-    }
-
-    /**
-     * Computes a full symmetric cosine chord-distance matrix.
-     *
-     * @param termDocVectors document vectors indexed by selected-term rank
-     * @return symmetric distance matrix
-     */
-    static double[][] cosineDistances(final double[][] termDocVectors)
-    {
-        final int size = termDocVectors.length;
-        final double[][] distances = new double[size][size];
-        for (int rowRank = 0; rowRank < size; rowRank++) {
-            for (int colRank = 0; colRank < rowRank; colRank++) {
-                final double distance = cosineDistance(
-                    termDocVectors[rowRank],
-                    termDocVectors[colRank]
-                );
-                distances[rowRank][colRank] = distance;
-                distances[colRank][rowRank] = distance;
-            }
-        }
-        return distances;
-    }
-
-    /** Writes a full square distance matrix as a NEXUS block. */
-    private static void writeNexusDistances(
-        final Writer writer,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final double[][] distances,
-        final Distance distance
-    )
-        throws IOException {
-        final int size = rowIds.length;
-        writer.append("BEGIN DISTANCES;\n");
-        writer.append("    DIMENSIONS NTAX=")
-            .append(Integer.toString(size))
-            .append(";\n");
-        writer.append("    FORMAT TRIANGLE=BOTH DIAGONAL LABELS=LEFT;\n");
-        writer.append("    [DISTANCE=").append(distance.name()).append("]\n");
-        writer.append("    MATRIX\n");
-
-        for (int rowRank = 0; rowRank < size; rowRank++) {
-            writer.append("        ");
-            appendNexusLabel(writer, lexicon.form(rowIds[rowRank]));
-            for (int colRank = 0; colRank < size; colRank++) {
-                writer.append(' ')
-                    .append(Double.toString(distances[rowRank][colRank]));
-            }
-            writer.append('\n');
-        }
-
-        writer.append("    ;\n");
-        writer.append("END;\n");
-    }
-
-    /** Writes a full square distance matrix for SplitsTree's CSV importer. */
-    private static void writeCsvDistances(
-        final Writer writer,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final double[][] distances
-    )
-        throws IOException {
-        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
-            writer.append(csvEscape(lexicon.form(rowIds[rowRank])));
-            for (int colRank = 0; colRank < rowIds.length; colRank++) {
-                writer.append(',')
-                    .append(Double.toString(distances[rowRank][colRank]));
-            }
-            writer.append('\n');
-        }
-    }
-
-    /**
-     * Builds the selected term-by-document data once. NEXUS contains both raw
-     * characters and distances; CSV contains the selected distance matrix.
-     */
-    private static void write(
-        final LuceneIndex index,
-        final HttpServletRequest request,
-        final HttpServletResponse response,
-        final Format format
-    ) throws IOException {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
-        final Writer writer = response.getWriter();
-
-        // Keep the same taxon selection and order source as the terms endpoint.
-        final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
-        if (topTerms == null) {
-            response.setStatus(400);
-            writer.append("Houston, on a un problème.");
-            return;
-        }
-        // here get different stats used by distance algos
-        final TermStats termStats = topTerms.termStats();
-
-        final IntList rowList = new IntList(topTerms.size());
-        for (final TermEntry term : topTerms) {
-            rowList.push(term.termId());
-        }
-        final int[] rowIds = rowList.toUniq();
-        final TermLexicon lexicon = topTerms.lexicon();
-        final FixedBitSet liveDocs = liveDocs(index.reader());
-        final FixedBitSet[] docPresence = docPresence(
-            index.reader(),
-            lexicon,
-            rowIds,
-            liveDocs
+        meta.put("table", "selected terms only");
+        meta.put("rowNormalization", "inverse sqrt row mass");
+        meta.put(
+            "distance",
+            deviance
+                ? "Euclidean in row-mass-scaled G2 residual coordinates"
+                : "chi-square / Euclidean CA principal coordinates"
         );
-        final FixedBitSet profileDocs = unionDocs(liveDocs, docPresence);
-        final FixedBitSet featDocs = filterDocs(liveDocs, docPresence);
+        meta.put(
+            "projection",
+            deviance ? "G2 residual factor analysis" : "correspondence analysis"
+        );
+        meta.put("association", association.toString());
+        meta.put("rotation", "NONE");
+        meta.put("svdAxisWeight", 1d);
+        meta.put("svdRank", embedding.length == 0 ? 0 : embedding[0].length);
+        meta.put("svdFitConverged", model.fitConverged());
+        meta.put("svdFitError", model.fitError());
+        meta.put("svdFitIterations", model.fitIterations());
 
-        // Binary characters omit constant columns; G² profiles keep the union.
-        for (final FixedBitSet row : docPresence) {
-            row.and(featDocs);
-        }
-
-        final Distance distance = pars.getEnum("distance", Distance.G2);
-        final double[][] distances = switch (distance) {
-            case G2 -> chordDistances(normalizeRows(termDocMatrix(
-                index.reader(),
-                lexicon,
-                rowIds,
-                profileDocs,
-                termStats
-            ).profiles()));
-            case OCHIAI -> ochiaiDistances(docPresence);
-        };
-
-        switch (format) {
-            case NEXUS -> {
-                writer.append("#NEXUS\n\n");
-                writeCharacters(writer, lexicon, rowIds, docPresence, featDocs);
-                writer.append('\n');
-                writeNexusDistances(
-                    writer,
-                    lexicon,
-                    rowIds,
-                    distances,
-                    distance
-                );
-            }
-            case CSV -> writeCsvDistances(
-                writer,
-                lexicon,
-                rowIds,
-                distances
-            );
-        }
+        return new TermMap(
+            projection,
+            embedding,
+            coordinates,
+            layout.cos2(),
+            cos3(embedding),
+            layout.inertia(),
+            massPercent(masses),
+            squaredDistances(embedding),
+            contributions(masses, embedding, dims)
+        );
     }
 
-    /** Writes projection-specific axis and fit metadata. */
-    private static void writeAxes(
-        final JsonWriter jw,
-        final MapLayout map
-    ) throws IOException {
+    /** Copies raw selected-term frequencies into a double contingency table. */
+    private static double[][] toDoubleTable(final int[][] frequencies)
+    {
+        final double[][] table = new double[frequencies.length][];
+        for (int row = 0; row < frequencies.length; row++) {
+            final int[] source = frequencies[row];
+            final double[] target = new double[source.length];
+            for (int col = 0; col < source.length; col++) {
+                target[col] = source[col];
+            }
+            table[row] = target;
+        }
+        return table;
+    }
+
+    /** Writes the axis and fit metadata block. */
+    private static void writeAxes(final JsonWriter jw, final TermMap map)
+        throws IOException {
         jw.name("axes");
         jw.beginObject();
         final int dims = map.coordinates().length == 0
             ? 0
             : map.coordinates()[0].length;
+        final double[] inertia = map.inertia();
+        final double dim1 = inertia.length > 0 ? inertia[0] : 0d;
+        final double dim2 = inertia.length > 1 ? inertia[1] : 0d;
+        double emitted = 0d;
+        for (int axis = 0; axis < Math.min(dims, inertia.length); axis++) {
+            emitted += inertia[axis];
+        }
+
         jw.name("dims").value(dims);
-        switch (map.projection()) {
-            case G2_NMDS -> {
-                jw.name("method").value("nonmetric MDS");
-                jw.name("distance").value("L2-normalized positive-G2 chord");
-                jw.name("stress").value(round(map.stress(), 6));
-                jw.name("iterations").value(map.iterations());
-                jw.name("converged").value(map.converged());
-            }
-            case CA, SIGNED_G2_SVD, G2_SVD, SVD -> {
-                final double[] inertia = map.inertia();
-                final double dim1 = inertia.length > 0 ? inertia[0] : 0d;
-                final double dim2 = inertia.length > 1 ? inertia[1] : 0d;
-                double emitted = 0d;
-                for (int axis = 0; axis < Math.min(dims, inertia.length); axis++) {
-                    emitted += inertia[axis];
-                }
-                final String method = switch (map.projection()) {
-                    case CA -> "correspondence analysis";
-                    case SIGNED_G2_SVD -> "signed-G2 SVD";
-                    case G2_SVD -> "positive-G2 SVD";
-                    case SVD -> "raw-frequency SVD";
-                    default -> throw new IllegalStateException(
-                        "Unsupported SVD projection " + map.projection()
-                    );
-                };
-                jw.name("method").value(method);
-                jw.name("dim1_pct").value(round(dim1, 1));
-                jw.name("dim2_pct").value(round(dim2, 1));
-                jw.name("cum2_pct").value(round(dim1 + dim2, 1));
-                jw.name("emitted_pct").value(round(emitted, 1));
-                jw.name("spectrum");
-                jw.beginArray();
-                for (final double percent : inertia) {
-                    jw.value(round(percent, 1));
-                }
-                jw.endArray();
-                if (map.ca() != null) {
-                    jw.name("other_mass_pct").value(
-                        round(map.ca().otherMassPercent(), 6)
-                    );
-                    jw.name("other_contrib_pct");
-                    jw.beginArray();
-                    for (final double contribution
-                        : map.ca().otherContributionPercent()) {
-                        jw.value(round(contribution, 6));
-                    }
-                    jw.endArray();
-                }
-            }
+        jw.name("method").value(switch (map.projection()) {
+            case G2_CA -> "G2 residual factor analysis";
+            case CA -> "correspondence analysis";
+        });
+        jw.name("rotation").value("NONE");
+        jw.name("dim1_pct").value(round(dim1, 1));
+        jw.name("dim2_pct").value(round(dim2, 1));
+        jw.name("cum2_pct").value(round(dim1 + dim2, 1));
+        jw.name("emitted_pct").value(round(emitted, 1));
+        jw.name("spectrum");
+        jw.beginArray();
+        for (final double percent : inertia) {
+            jw.value(round(percent, 1));
         }
+        jw.endArray();
         jw.endObject();
     }
 
     /**
-     * Writes raw frequencies and derived profiles with document metadata.
+     * Writes the selected term-by-document contingency table as CSV. Columns
+     * are documents holding at least one selected-term occurrence; the first
+     * cell of each row is the term form.
      */
-    private static void writeMatrixData(
-        final JsonWriter jw,
-        final IndexReader reader,
-        final HttpServletRequest request,
-        final TermMapAnalysis analysis,
-        final int[] rowIds,
-        final long[] rowFreq,
+    private static void writeContingencyCsv(
+        final Writer writer,
         final TermLexicon lexicon,
-        final TermStats termStats
+        final int[] rowIds,
+        final TermDocMatrix matrix
     ) throws IOException {
-        final String titleField = parameter(request, "ftitle", "title");
-        final String yearField = parameter(request, "fyear", "year");
-        final StoredFields storedFields = reader.storedFields();
-        final int[] docTokens = termStats.docTokens();
-        final TermDocMatrix matrix = analysis.matrix();
-
-        jw.name("data");
-        jw.beginObject();
-        jw.name("kind").value("term-document-frequency");
-        jw.name("derivedProfile").value(
-            "positive-and-signed-sqrt-document-vs-rest-G2"
-        );
-        jw.name("rows").value(rowIds.length);
-        jw.name("cols").value(matrix.docIds().length);
-
-        jw.name("documents");
-        jw.beginArray();
-        for (int docRank = 0; docRank < matrix.docIds().length; docRank++) {
-            final int docId = matrix.docIds()[docRank];
-            writeDocument(
-                jw,
-                storedFields,
-                docId,
-                docTokens[docId],
-                titleField,
-                yearField,
-                docRank
-            );
+        final int[][] frequencies = matrix.frequencies();
+        final int[] docIds = matrix.docIds();
+        final boolean[] keep = new boolean[docIds.length];
+        for (int col = 0; col < docIds.length; col++) {
+            for (int row = 0; row < frequencies.length; row++) {
+                if (frequencies[row][col] > 0) {
+                    keep[col] = true;
+                    break;
+                }
+            }
         }
-        jw.endArray();
 
-        jw.name("terms");
-        jw.beginArray();
+        writer.append("form");
+        for (int col = 0; col < docIds.length; col++) {
+            if (keep[col]) {
+                writer.append(',').append(Integer.toString(docIds[col]));
+            }
+        }
+        writer.append('\n');
+
         for (int row = 0; row < rowIds.length; row++) {
-            final int termId = rowIds[row];
-            final int corpusDf = termStats.termDocs(termId);
-            jw.beginObject();
-            jw.name("id").value(termId);
-            jw.name("form").value(lexicon.form(termId));
-            jw.name("freq").value(rowFreq[row]);
-            jw.name("corpusTf").value(termStats.termFreq(termId));
-            jw.name("corpusDf").value(corpusDf);
-            jw.name("frequencies");
-            jw.beginArray();
-            for (final int frequency : matrix.frequencies()[row]) {
-                jw.value(frequency);
+            writer.append(csvEscape(lexicon.form(rowIds[row])));
+            for (int col = 0; col < docIds.length; col++) {
+                if (keep[col]) {
+                    writer.append(',')
+                        .append(Integer.toString(frequencies[row][col]));
+                }
             }
-            jw.endArray();
-            jw.name("profile");
-            jw.beginArray();
-            for (final double weight : matrix.profiles()[row]) {
-                jw.value(weight);
-            }
-            jw.endArray();
-            jw.name("signedProfile");
-            jw.beginArray();
-            for (final double weight : matrix.signedProfiles()[row]) {
-                jw.value(weight);
-            }
-            jw.endArray();
-            jw.endObject();
+            writer.append('\n');
         }
-        jw.endArray();
-        jw.endObject();
     }
 
     /**
-     * Writes the selected term map and optional diagnostics.
+     * Writes the selected term map and, when requested, per-term corpus
+     * frequencies and nearest neighbours.
      */
     private static void writeMapData(
         final JsonWriter jw,
         final HttpPars pars,
-        final TermMapAnalysis analysis,
+        final TermMap map,
         final int[] rowIds,
         final long[] rowFreq,
         final TermLexicon lexicon,
         final TermStats termStats,
         final boolean diagnostic
     ) throws IOException {
-        final MapLayout map = analysis.layout();
-        final double[][] vectors = analysis.vectors();
-        final double[][] distances = analysis.distances();
-        final int nearestCount = pars.getInt("nearest", new int[] { 1, 20 }, 5);
+        final double[][] distances = diagnostic
+            ? euclideanDistances(map.embedding())
+            : null;
+        final int nearestCount = diagnostic
+            ? pars.getInt("nearest", new int[] { 1, 20 }, 5)
+            : 0;
 
         jw.name("data");
         jw.beginObject();
@@ -1927,32 +781,23 @@ public class OpClades extends Op
             jw.name("freq").value(rowFreq[node]);
             jw.name("x").value(round(coords.length > 0 ? coords[0] : 0d, 4));
             jw.name("y").value(round(coords.length > 1 ? coords[1] : 0d, 4));
-            if (map.cos2() != null) {
-                jw.name("cos2").value(round(map.cos2()[node], 4));
+            jw.name("cos2").value(round(map.cos2()[node], 4));
+            jw.name("cos3").value(round(map.cos3()[node], 4));
+
+            final double[] contributions = map.contributionPercent()[node];
+            double contribution2 = 0d;
+            for (int axis = 0; axis < Math.min(2, contributions.length); axis++) {
+                contribution2 += contributions[axis];
             }
-            if (map.ca() != null) {
-                final double[] contributions =
-                    map.ca().contributionPercent()[node];
-                double contribution2 = 0d;
-                for (int axis = 0;
-                    axis < Math.min(2, contributions.length);
-                    axis++) {
-                    contribution2 += contributions[axis];
-                }
-                jw.name("mass_pct").value(
-                    round(map.ca().massPercent()[node], 6)
-                );
-                jw.name("dist2").value(
-                    round(map.ca().squaredDistance()[node], 6)
-                );
-                jw.name("contrib2_pct").value(round(contribution2, 6));
-                jw.name("contrib_pct");
-                jw.beginArray();
-                for (final double contribution : contributions) {
-                    jw.value(round(contribution, 6));
-                }
-                jw.endArray();
+            jw.name("mass_pct").value(round(map.massPercent()[node], 6));
+            jw.name("dist2").value(round(map.squaredDistance()[node], 6));
+            jw.name("contrib2_pct").value(round(contribution2, 6));
+            jw.name("contrib_pct");
+            jw.beginArray();
+            for (final double contribution : contributions) {
+                jw.value(round(contribution, 6));
             }
+            jw.endArray();
             jw.name("coords");
             jw.beginArray();
             for (final double coordinate : coords) {
@@ -1961,15 +806,8 @@ public class OpClades extends Op
             jw.endArray();
 
             if (diagnostic) {
-                final int corpusDf = termStats.termDocs(termId);
                 jw.name("corpusTf").value(termStats.termFreq(termId));
-                jw.name("corpusDf").value(corpusDf);
-                jw.name("vectorNonzeroDocs").value(nonZero(vectors[node]));
-                jw.name("vectorNorm").value(round(l2(vectors[node]), 6));
-                jw.name("top1Energy").value(round(energyShare(vectors[node], 1), 6));
-                jw.name("top5Energy").value(round(energyShare(vectors[node], 5), 6));
-                jw.name("top10Energy").value(round(energyShare(vectors[node], 10), 6));
-
+                jw.name("corpusDf").value(termStats.termDocs(termId));
                 jw.name("nearest");
                 jw.beginArray();
                 for (final int other : nearest(distances, node, nearestCount)) {
@@ -1988,142 +826,33 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes a correspondence-analysis map or a retained control map as JSON.
+     * Writes a labelled n×n term distance matrix as CSV.
      *
      * <p>
-     * The response shape matches the co-occurrence semantic-map endpoint:
-     * axes contain projection diagnostics and nodes contain display
-     * coordinates. The default {@code projection=CA} performs correspondence
-     * analysis on selected term rows plus an {@code OTHER} row completing every
-     * document to its indexed-token count.
-     * {@code projection=SIGNED_G2_SVD} directly decomposes signed square-root
-     * document-versus-rest G² profiles, including negative scores for absent and
-     * under-represented terms.
-     * {@code projection=G2_SVD} retains positive-G² SVD,
-     * {@code projection=SVD} retains raw-frequency SVD, and
-     * {@code projection=G2_NMDS} retains positive-G² chord NMDS.
-     * Parameter {@code view=diagnostic} adds term explanations;
-     * {@code view=matrix} returns raw frequencies, derived profiles, and
-     * document-column metadata. The default is {@code view=map}.
+     * The first column and the header row carry the term forms; the diagonal is
+     * included and the square is symmetric. This is the raw distance square for
+     * external seriation, filtration, or heatmap prototypes, independent of the
+     * SVD map geometry.
      * </p>
-     *
-     * @param index Lucene index
-     * @param request HTTP request
-     * @param response HTTP response
-     * @throws IOException if index access or response writing fails
      */
-    @Override
-    protected void json(
-        final LuceneIndex index,
-        final HttpServletRequest request,
-        final HttpServletResponse response
+    private static void writeSquareCsv(
+        final Writer writer,
+        final TermLexicon lexicon,
+        final int[] rowIds,
+        final double[][] distances
     ) throws IOException {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
-        final JsonView view = pars.getEnum("view", JsonView.MAP);
-        if (view == JsonView.DIAGNOSTIC) {
-            pars.getInt("nearest", new int[] { 1, 20 }, 5);
+        writer.append("form");
+        for (int col = 0; col < rowIds.length; col++) {
+            writer.append(',').append(csvEscape(lexicon.form(rowIds[col])));
         }
-        final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
+        writer.append('\n');
 
-        int[] rowIds = null;
-        long[] rowFreq = null;
-        TermLexicon lexicon = null;
-        TermStats termStats = null;
-        TermMapAnalysis analysis = null;
-
-        if (topTerms == null) {
-            response.setStatus(400);
-        }
-        else {
-            final Map<Integer, Long> frequencyById = new HashMap<>();
-            final IntList rowList = new IntList(topTerms.size());
-            for (final TermEntry term : topTerms) {
-                rowList.push(term.termId());
-                frequencyById.put(term.termId(), term.freq());
+        for (int row = 0; row < rowIds.length; row++) {
+            writer.append(csvEscape(lexicon.form(rowIds[row])));
+            for (int col = 0; col < rowIds.length; col++) {
+                writer.append(',').append(Double.toString(distances[row][col]));
             }
-            rowIds = rowList.toUniq();
-            rowFreq = new long[rowIds.length];
-            for (int row = 0; row < rowIds.length; row++) {
-                rowFreq[row] = frequencyById.getOrDefault(rowIds[row], 0L);
-            }
-
-            lexicon = topTerms.lexicon();
-            termStats = topTerms.termStats();
-            final FixedBitSet liveDocs = liveDocs(index.reader());
-            analysis = termMapAnalysis(
-                index.reader(),
-                lexicon,
-                rowIds,
-                liveDocs,
-                termStats,
-                pars,
-                meta
-            );
+            writer.append('\n');
         }
-
-        try (JsonWriter jw = Op.jsonWriter(response)) {
-            jw.beginObject();
-
-            jw.name("meta");
-            jw.beginObject();
-            meta.toJson(jw, pars);
-            jw.endObject();
-
-            if (analysis != null) {
-                switch (view) {
-                    case DIAGNOSTIC -> writeMapData(
-                        jw,
-                        pars,
-                        analysis,
-                        rowIds,
-                        rowFreq,
-                        lexicon,
-                        termStats,
-                        true
-                    );
-                    case MAP -> writeMapData(
-                        jw,
-                        pars,
-                        analysis,
-                        rowIds,
-                        rowFreq,
-                        lexicon,
-                        termStats,
-                        false
-                    );
-                    case MATRIX -> writeMatrixData(
-                        jw,
-                        index.reader(),
-                        request,
-                        analysis,
-                        rowIds,
-                        rowFreq,
-                        lexicon,
-                        termStats
-                    );
-                }
-            }
-
-            jw.endObject();
-        }
-    }
-
-    @Override
-    protected void txt(
-        final LuceneIndex index,
-        final HttpServletRequest request,
-        final HttpServletResponse response
-    ) throws IOException {
-        write(index, request, response, Format.NEXUS);
-    }
-
-    @Override
-    protected void csv(
-        final LuceneIndex index,
-        final HttpServletRequest request,
-        final HttpServletResponse response
-    ) throws IOException {
-        write(index, request, response, Format.CSV);
     }
 }
