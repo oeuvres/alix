@@ -29,6 +29,7 @@ import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.maths.ContingencySvd;
+import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
 import com.github.oeuvres.alix.maths.ContingencySvd.SvdLayout;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -52,13 +53,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * </p>
  *
  * <p>
- * The default map first transforms raw term-document frequencies into
- * positive document-versus-rest G² profiles, then directly decomposes those
- * unnormalised profiles by SVD. Its row coordinates are
- * {@code U_k Sigma_k}. Absence and under-representation contribute zero rather
- * than negative evidence. The raw-frequency SVD and the earlier
- * positive-G², chord-distance, nonmetric-MDS path remain available as
- * {@code projection=SVD} and {@code projection=G2_NMDS} controls.
+ * The default map performs correspondence analysis on a complete lexical
+ * table containing the selected terms and an {@code OTHER} row that completes
+ * every document to its indexed-token count. Signed-G² SVD, positive-G² SVD,
+ * raw-frequency SVD, and positive-G² chord NMDS remain available as controls.
  * </p>
  */
 public class OpClades extends Op
@@ -91,6 +89,10 @@ public class OpClades extends Op
     /** Alternative term-map experiments retained for direct comparison. */
     private enum Projection
     {
+        /** Correspondence analysis of the completed lexical table. */
+        CA,
+        /** Direct truncated SVD of signed square-root G² residuals. */
+        SIGNED_G2_SVD,
         /** Direct truncated SVD of unnormalised positive G² profiles. */
         G2_SVD,
         /** Positive document-vs-rest G², chord distance, and nonmetric MDS. */
@@ -103,6 +105,7 @@ public class OpClades extends Op
     private record TermDocMatrix(
         int[][] frequencies,
         double[][] profiles,
+        double[][] signedProfiles,
         int[] docIds
     ) {}
 
@@ -112,9 +115,19 @@ public class OpClades extends Op
         double[][] coordinates,
         double[] cos2,
         double[] inertia,
+        CaDiagnostics ca,
         double stress,
         int iterations,
         boolean converged
+    ) {}
+
+    /** Correspondence-analysis diagnostics for displayed term rows. */
+    private record CaDiagnostics(
+        double[] massPercent,
+        double[] squaredDistance,
+        double[][] contributionPercent,
+        double otherMassPercent,
+        double[] otherContributionPercent
     ) {}
 
     /** Full-corpus vectors, distances, and projected map. */
@@ -222,14 +235,15 @@ public class OpClades extends Op
     }
 
     /**
-     * Builds raw frequency rows and positive-root G² profiles.
+     * Builds raw frequency rows and positive and signed-root G² profiles.
      *
      * <p>
      * G² is calculated by the shared keyness implementation with the document
-     * as focus and the disjoint corpus remainder as reference. A coordinate is
-     * {@code sqrt(G²)} only when the term is over-represented in the document;
-     * otherwise it is zero. Consequently, absent terms and under-representation
-     * never become negative evidence.
+     * as focus and the disjoint corpus remainder as reference. The positive
+     * profile retains {@code sqrt(G²)} only for over-representation. The signed
+     * profile retains {@code +sqrt(G²)} for over-representation and
+     * {@code -sqrt(G²)} for under-representation. Every retained document is
+     * scored, including zero-frequency cells.
      * </p>
      *
      * @param reader    index reader supplying term postings
@@ -266,6 +280,7 @@ public class OpClades extends Op
 
         final int[][] frequencies = new int[rowIds.length][docCount];
         final double[][] profiles = new double[rowIds.length][docCount];
+        final double[][] signedProfiles = new double[rowIds.length][docCount];
         final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
         final TermsEnum termsEnum = terms == null ? null : terms.iterator();
         final BytesRefBuilder termBytes = new BytesRefBuilder();
@@ -284,27 +299,31 @@ public class OpClades extends Op
                 termStats.termDocs(termId)
             );
 
-            if (termsEnum == null
-                || !termsEnum.seekExact(lexicon.formBytes(termId, termBytes))) {
-                continue;
-            }
-            postings = termsEnum.postings(postings, PostingsEnum.FREQS);
-            for (
-                int docId = postings.nextDoc();
-                docId != DocIdSetIterator.NO_MORE_DOCS;
-                docId = postings.nextDoc()
-            ) {
-                if (docFilter.get(docId)) {
-                    final int docRank = docRanks[docId];
-                    final int frequency = postings.freq();
-                    frequencies[rowRank][docRank] = frequency;
-                    profiles[rowRank][docRank] = positiveRoot(
-                        prepared.score(frequency, docTokens[docId])
-                    );
+            if (termsEnum != null
+                && termsEnum.seekExact(lexicon.formBytes(termId, termBytes))) {
+                postings = termsEnum.postings(postings, PostingsEnum.FREQS);
+                for (
+                    int docId = postings.nextDoc();
+                    docId != DocIdSetIterator.NO_MORE_DOCS;
+                    docId = postings.nextDoc()
+                ) {
+                    if (docFilter.get(docId)) {
+                        frequencies[rowRank][docRanks[docId]] = postings.freq();
+                    }
                 }
             }
+
+            for (int docRank = 0; docRank < docCount; docRank++) {
+                final int docId = docIds[docRank];
+                final double signedG2 = prepared.score(
+                    frequencies[rowRank][docRank],
+                    docTokens[docId]
+                );
+                profiles[rowRank][docRank] = positiveRoot(signedG2);
+                signedProfiles[rowRank][docRank] = signedRoot(signedG2);
+            }
         }
-        return new TermDocMatrix(frequencies, profiles, docIds);
+        return new TermDocMatrix(frequencies, profiles, signedProfiles, docIds);
     }
 
     /**
@@ -363,7 +382,7 @@ public class OpClades extends Op
         );
         final Projection projection = pars.getEnum(
             "projection",
-            Projection.G2_SVD
+            Projection.CA
         );
 
         meta.put("documents", docFilter.cardinality());
@@ -371,10 +390,87 @@ public class OpClades extends Op
         meta.put("focusRestricted", false);
         meta.put("source", "raw term-document frequencies");
         return switch (projection) {
+            case CA -> correspondenceAnalysis(matrix, termStats, pars, meta);
+            case SIGNED_G2_SVD -> signedG2SvdAnalysis(matrix, pars, meta);
             case G2_SVD -> g2SvdAnalysis(matrix, pars, meta);
             case G2_NMDS -> g2NmdsAnalysis(matrix, pars, meta);
             case SVD -> rawSvdAnalysis(matrix, pars, meta);
         };
+    }
+
+    /**
+     * Builds a genuine correspondence analysis of the completed lexical table.
+     *
+     * <p>
+     * The final row contains every indexed token not represented by a selected
+     * term, so each column margin equals the complete document length. Pearson
+     * residuals remove the independence expectation. SVD principal coordinates
+     * are then scaled by inverse square-root row mass. The background row helps
+     * define the geometry but is not emitted as a node.
+     * </p>
+     */
+    private static TermMapAnalysis correspondenceAnalysis(
+        final TermDocMatrix matrix,
+        final TermStats termStats,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) {
+        final int termCount = matrix.frequencies().length;
+        final double[][] table = completedLexicalTable(
+            matrix,
+            termStats.docTokens()
+        );
+        final ContingencySvd model = new ContingencySvd(table, null);
+        model.expectIpf();
+        model.residual(Assoc.PEARSON);
+        model.decompose();
+        model.weightAxes(1d);
+        model.scaleRowsByMass();
+
+        final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
+        final SvdLayout fullMap = model.project(dims);
+        final double[][] coordinates = firstRows(fullMap.coords(), termCount);
+        final double[] cos2 = Arrays.copyOf(fullMap.cos2(), termCount);
+        final double[][] embedding = firstRows(model.embedding(), termCount);
+        final double[][] residuals = firstRows(model.residuals(), termCount);
+        final int emittedDims = coordinates.length == 0
+            ? 0
+            : coordinates[0].length;
+        final CaDiagnostics diagnostics = caDiagnostics(
+            table,
+            model.embedding(),
+            model.singularValues(),
+            termCount,
+            emittedDims
+        );
+
+        meta.put("profile", "Pearson residuals from complete lexical table");
+        meta.put("rowNormalization", "inverse sqrt row mass");
+        meta.put("distance", "chi-square / Euclidean CA principal coordinates");
+        meta.put("projection", "correspondence analysis");
+        meta.put("caBackgroundRow", "OTHER");
+        meta.put("caCentered", true);
+        meta.put("svdAxisWeight", 1d);
+        meta.put("svdRank", fullMap.inertia().length);
+        meta.put("svdFitConverged", model.fitConverged());
+        meta.put("svdFitError", model.fitError());
+        meta.put("svdFitIterations", model.fitIterations());
+
+        return new TermMapAnalysis(
+            matrix,
+            residuals,
+            euclideanDistances(embedding),
+            new MapLayout(
+                Projection.CA,
+                coordinates,
+                cos2,
+                fullMap.inertia(),
+                diagnostics,
+                Double.NaN,
+                0,
+                true
+            )
+        );
     }
 
     /** Builds the retained positive-G² chord NMDS experiment. */
@@ -415,10 +511,28 @@ public class OpClades extends Op
                 map.coordinates(),
                 null,
                 null,
+                null,
                 map.stress(),
                 map.iterations(),
                 map.converged()
             )
+        );
+    }
+
+    /** Builds direct principal coordinates from signed square-root G² rows. */
+    private static TermMapAnalysis signedG2SvdAnalysis(
+        final TermDocMatrix matrix,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) {
+        return svdAnalysis(
+            matrix,
+            matrix.signedProfiles(),
+            Projection.SIGNED_G2_SVD,
+            "signed sqrt document-vs-rest G2",
+            "signed-G2 SVD",
+            pars,
+            meta
         );
     }
 
@@ -457,7 +571,7 @@ public class OpClades extends Op
         );
     }
 
-    /** Decomposes an already prepared non-negative term-document matrix. */
+    /** Decomposes an already prepared term-document coordinate matrix. */
     private static TermMapAnalysis svdAnalysis(
         final TermDocMatrix matrix,
         final double[][] vectors,
@@ -467,7 +581,9 @@ public class OpClades extends Op
         final HttpPars pars,
         final MetaUtil meta
     ) {
-        final ContingencySvd model = ContingencySvd.fromScores(vectors);
+        final ContingencySvd model = projection == Projection.SIGNED_G2_SVD
+            ? ContingencySvd.fromResiduals(vectors)
+            : ContingencySvd.fromScores(vectors);
         final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
         final SvdLayout map = model.principalCoordinates(dims);
         final double[][] distances = euclideanDistances(model.embedding());
@@ -488,6 +604,7 @@ public class OpClades extends Op
                 map.coords(),
                 map.cos2(),
                 map.inertia(),
+                null,
                 Double.NaN,
                 0,
                 true
@@ -508,6 +625,107 @@ public class OpClades extends Op
         return rows;
     }
 
+    /** Builds selected-term rows plus an exact all-other-tokens row. */
+    private static double[][] completedLexicalTable(
+        final TermDocMatrix matrix,
+        final int[] docTokens
+    ) {
+        final int termCount = matrix.frequencies().length;
+        final int docCount = matrix.docIds().length;
+        final double[][] table = new double[termCount + 1][docCount];
+        for (int docRank = 0; docRank < docCount; docRank++) {
+            long selected = 0L;
+            for (int term = 0; term < termCount; term++) {
+                final int frequency = matrix.frequencies()[term][docRank];
+                table[term][docRank] = frequency;
+                selected += frequency;
+            }
+            final int docId = matrix.docIds()[docRank];
+            final long other = (long) docTokens[docId] - selected;
+            if (other < 0L) {
+                throw new IllegalStateException(
+                    "Selected term counts exceed indexed tokens for document "
+                        + docId + ": " + selected + " > " + docTokens[docId]
+                );
+            }
+            table[termCount][docRank] = other;
+        }
+        return table;
+    }
+
+    /** Copies the requested leading rows of a rectangular matrix. */
+    private static double[][] firstRows(
+        final double[][] matrix,
+        final int count
+    ) {
+        if (count < 0 || count > matrix.length) {
+            throw new IllegalArgumentException("Invalid row count " + count);
+        }
+        final double[][] rows = new double[count][];
+        for (int row = 0; row < count; row++) {
+            rows[row] = matrix[row].clone();
+        }
+        return rows;
+    }
+
+    /** Calculates masses, origin distances, and axis contributions for CA. */
+    private static CaDiagnostics caDiagnostics(
+        final double[][] table,
+        final double[][] embedding,
+        final double[] singularValues,
+        final int termCount,
+        final int dims
+    ) {
+        final double[] rowTotals = new double[table.length];
+        double total = 0d;
+        for (int row = 0; row < table.length; row++) {
+            for (final double value : table[row]) {
+                rowTotals[row] += value;
+            }
+            total += rowTotals[row];
+        }
+
+        final double[] masses = new double[termCount];
+        final double[] squaredDistances = new double[termCount];
+        final double[][] contributions = new double[termCount][dims];
+        for (int row = 0; row < termCount; row++) {
+            final double mass = total > 0d ? rowTotals[row] / total : 0d;
+            masses[row] = 100d * mass;
+            for (final double coordinate : embedding[row]) {
+                squaredDistances[row] += coordinate * coordinate;
+            }
+            for (int axis = 0; axis < dims; axis++) {
+                final double eigenvalue = singularValues[axis] * singularValues[axis];
+                contributions[row][axis] = eigenvalue > 0d
+                    ? 100d * mass * embedding[row][axis] * embedding[row][axis]
+                        / eigenvalue
+                    : 0d;
+            }
+        }
+
+        final int otherRow = termCount;
+        final double otherMass = total > 0d
+            ? 100d * rowTotals[otherRow] / total
+            : 0d;
+        final double[] otherContributions = new double[dims];
+        final double otherMassRatio = otherMass / 100d;
+        for (int axis = 0; axis < dims; axis++) {
+            final double eigenvalue = singularValues[axis] * singularValues[axis];
+            otherContributions[axis] = eigenvalue > 0d
+                ? 100d * otherMassRatio
+                    * embedding[otherRow][axis] * embedding[otherRow][axis]
+                    / eigenvalue
+                : 0d;
+        }
+        return new CaDiagnostics(
+            masses,
+            squaredDistances,
+            contributions,
+            otherMass,
+            otherContributions
+        );
+    }
+
     /**
      * Converts signed G² to a positive-root profile coordinate.
      *
@@ -520,6 +738,20 @@ public class OpClades extends Op
             return 0d;
         }
         return Math.sqrt(signedG2);
+    }
+
+    /**
+     * Converts signed G² to a signed square-root residual coordinate.
+     *
+     * @param signedG2 signed document-versus-rest G²
+     * @return signed square root, or zero for a non-finite or zero score
+     */
+    static double signedRoot(final double signedG2)
+    {
+        if (!Double.isFinite(signedG2) || signedG2 == 0d) {
+            return 0d;
+        }
+        return Math.copySign(Math.sqrt(Math.abs(signedG2)), signedG2);
     }
 
     /**
@@ -1537,7 +1769,7 @@ public class OpClades extends Op
                 jw.name("iterations").value(map.iterations());
                 jw.name("converged").value(map.converged());
             }
-            case G2_SVD, SVD -> {
+            case CA, SIGNED_G2_SVD, G2_SVD, SVD -> {
                 final double[] inertia = map.inertia();
                 final double dim1 = inertia.length > 0 ? inertia[0] : 0d;
                 final double dim2 = inertia.length > 1 ? inertia[1] : 0d;
@@ -1545,11 +1777,16 @@ public class OpClades extends Op
                 for (int axis = 0; axis < Math.min(dims, inertia.length); axis++) {
                     emitted += inertia[axis];
                 }
-                jw.name("method").value(
-                    map.projection() == Projection.G2_SVD
-                        ? "positive-G2 SVD"
-                        : "raw-frequency SVD"
-                );
+                final String method = switch (map.projection()) {
+                    case CA -> "correspondence analysis";
+                    case SIGNED_G2_SVD -> "signed-G2 SVD";
+                    case G2_SVD -> "positive-G2 SVD";
+                    case SVD -> "raw-frequency SVD";
+                    default -> throw new IllegalStateException(
+                        "Unsupported SVD projection " + map.projection()
+                    );
+                };
+                jw.name("method").value(method);
                 jw.name("dim1_pct").value(round(dim1, 1));
                 jw.name("dim2_pct").value(round(dim2, 1));
                 jw.name("cum2_pct").value(round(dim1 + dim2, 1));
@@ -1560,6 +1797,18 @@ public class OpClades extends Op
                     jw.value(round(percent, 1));
                 }
                 jw.endArray();
+                if (map.ca() != null) {
+                    jw.name("other_mass_pct").value(
+                        round(map.ca().otherMassPercent(), 6)
+                    );
+                    jw.name("other_contrib_pct");
+                    jw.beginArray();
+                    for (final double contribution
+                        : map.ca().otherContributionPercent()) {
+                        jw.value(round(contribution, 6));
+                    }
+                    jw.endArray();
+                }
             }
         }
         jw.endObject();
@@ -1587,7 +1836,9 @@ public class OpClades extends Op
         jw.name("data");
         jw.beginObject();
         jw.name("kind").value("term-document-frequency");
-        jw.name("derivedProfile").value("sqrt-positive-document-vs-rest-G2");
+        jw.name("derivedProfile").value(
+            "positive-and-signed-sqrt-document-vs-rest-G2"
+        );
         jw.name("rows").value(rowIds.length);
         jw.name("cols").value(matrix.docIds().length);
 
@@ -1627,6 +1878,12 @@ public class OpClades extends Op
             jw.name("profile");
             jw.beginArray();
             for (final double weight : matrix.profiles()[row]) {
+                jw.value(weight);
+            }
+            jw.endArray();
+            jw.name("signedProfile");
+            jw.beginArray();
+            for (final double weight : matrix.signedProfiles()[row]) {
                 jw.value(weight);
             }
             jw.endArray();
@@ -1673,6 +1930,29 @@ public class OpClades extends Op
             if (map.cos2() != null) {
                 jw.name("cos2").value(round(map.cos2()[node], 4));
             }
+            if (map.ca() != null) {
+                final double[] contributions =
+                    map.ca().contributionPercent()[node];
+                double contribution2 = 0d;
+                for (int axis = 0;
+                    axis < Math.min(2, contributions.length);
+                    axis++) {
+                    contribution2 += contributions[axis];
+                }
+                jw.name("mass_pct").value(
+                    round(map.ca().massPercent()[node], 6)
+                );
+                jw.name("dist2").value(
+                    round(map.ca().squaredDistance()[node], 6)
+                );
+                jw.name("contrib2_pct").value(round(contribution2, 6));
+                jw.name("contrib_pct");
+                jw.beginArray();
+                for (final double contribution : contributions) {
+                    jw.value(round(contribution, 6));
+                }
+                jw.endArray();
+            }
             jw.name("coords");
             jw.beginArray();
             for (final double coordinate : coords) {
@@ -1708,15 +1988,20 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes a positive-G² SVD map or one of the retained control maps as JSON.
+     * Writes a correspondence-analysis map or a retained control map as JSON.
      *
      * <p>
      * The response shape matches the co-occurrence semantic-map endpoint:
      * axes contain projection diagnostics and nodes contain display
-     * coordinates. The default {@code projection=G2_SVD} directly decomposes
-     * unnormalised positive document-versus-rest G² profiles.
-     * {@code projection=SVD} retains raw-frequency SVD as a control, while
-     * {@code projection=G2_NMDS} retains the prior positive-G² chord experiment.
+     * coordinates. The default {@code projection=CA} performs correspondence
+     * analysis on selected term rows plus an {@code OTHER} row completing every
+     * document to its indexed-token count.
+     * {@code projection=SIGNED_G2_SVD} directly decomposes signed square-root
+     * document-versus-rest G² profiles, including negative scores for absent and
+     * under-represented terms.
+     * {@code projection=G2_SVD} retains positive-G² SVD,
+     * {@code projection=SVD} retains raw-frequency SVD, and
+     * {@code projection=G2_NMDS} retains positive-G² chord NMDS.
      * Parameter {@code view=diagnostic} adds term explanations;
      * {@code view=matrix} returns raw frequencies, derived profiles, and
      * document-column metadata. The default is {@code view=map}.
@@ -1766,18 +2051,11 @@ public class OpClades extends Op
             lexicon = topTerms.lexicon();
             termStats = topTerms.termStats();
             final FixedBitSet liveDocs = liveDocs(index.reader());
-            final FixedBitSet[] presence = docPresence(
-                index.reader(),
-                lexicon,
-                rowIds,
-                liveDocs
-            );
-            final FixedBitSet documents = unionDocs(liveDocs, presence);
             analysis = termMapAnalysis(
                 index.reader(),
                 lexicon,
                 rowIds,
-                documents,
+                liveDocs,
                 termStats,
                 pars,
                 meta

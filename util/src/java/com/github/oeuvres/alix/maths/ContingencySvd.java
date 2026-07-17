@@ -41,6 +41,8 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * term-by-document BM25 score matrix, may bypass contingency modelling through
  * {@link #fromScores(double[][])}. Such a matrix may optionally be column
  * centred with {@link #centerColumns()} before decomposition.
+ * An already prepared signed association or residual matrix may bypass the
+ * same modelling phase through {@link #fromResiduals(double[][])}.
  * </p>
  *
  * <h2>SVD and embedding</h2>
@@ -676,6 +678,58 @@ public class ContingencySvd
     {
         final ContingencySvd model = new ContingencySvd(scores, null);
         model.residuals = copy(model.observed);
+        return model;
+    }
+
+    /**
+     * Creates a decomposition pipeline from an already prepared signed matrix.
+     *
+     * <p>
+     * The supplied values become the direct SVD input. Unlike
+     * {@link #fromScores(double[][])}, negative coordinates are accepted because
+     * they represent residuals around an explicit expectation. No expectation
+     * fitting, association calculation, smoothing, or centring is applied. The
+     * matrix is copied.
+     * </p>
+     *
+     * @param residuals non-empty rectangular matrix of finite coordinates
+     * @return pipeline ready for decomposition
+     * @throws IllegalArgumentException if the matrix is empty, ragged, or
+     *         contains a non-finite value
+     * @throws NullPointerException if {@code residuals} or one of its rows is
+     *         {@code null}
+     */
+    public static ContingencySvd fromResiduals(final double[][] residuals)
+    {
+        Objects.requireNonNull(residuals, "residuals");
+        if (residuals.length == 0) {
+            throw new IllegalArgumentException("empty matrix");
+        }
+        Objects.requireNonNull(residuals[0], "residuals[0]");
+        if (residuals[0].length == 0) {
+            throw new IllegalArgumentException("empty matrix");
+        }
+        final int width = residuals[0].length;
+        final double[][] input = new double[residuals.length][width];
+        for (int row = 0; row < residuals.length; row++) {
+            Objects.requireNonNull(residuals[row], "residuals[" + row + "]");
+            if (residuals[row].length != width) {
+                throw new IllegalArgumentException("ragged matrix at row " + row);
+            }
+            for (int col = 0; col < width; col++) {
+                final double value = residuals[row][col];
+                if (!Double.isFinite(value)) {
+                    throw new IllegalArgumentException(
+                        "non-finite residual at [" + row + "][" + col + "]: " + value);
+                }
+                input[row][col] = value;
+            }
+        }
+        final ContingencySvd model = new ContingencySvd(
+            new double[residuals.length][width],
+            null
+        );
+        model.residuals = input;
         return model;
     }
 
