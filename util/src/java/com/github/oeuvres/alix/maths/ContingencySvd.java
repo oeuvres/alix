@@ -163,6 +163,9 @@ public class ContingencySvd
     /** Residual matrix, or {@code null}. */
     private double[][] residuals;
 
+    /** Right singular vectors by input column and numerical-rank axis. */
+    private double[][] rightVectors;
+
     /** Numerical rank of the latest decomposition. */
     private int rank;
 
@@ -376,6 +379,13 @@ public class ContingencySvd
         for (int row = 0; row < left.length; row++) {
             System.arraycopy(left[row], 0, embedding[row], 0, rank);
         }
+
+        final double[][] right = decomposition.getV().getData();
+        rightVectors = new double[right.length][rank];
+        for (int col = 0; col < right.length; col++) {
+            System.arraycopy(right[col], 0, rightVectors[col], 0, rank);
+        }
+        fixAxisSigns(embedding, rightVectors);
 
         axesWeighted = false;
         rowsMassScaled = false;
@@ -798,7 +808,6 @@ public class ContingencySvd
         if (normalizeRows) {
             normalizeEmbeddingRows(coords);
         }
-        fixAxisSigns(coords);
 
         return new SvdLayout(
             coords,
@@ -891,6 +900,23 @@ public class ContingencySvd
     public double[][] residuals()
     {
         return residuals;
+    }
+
+    /**
+     * Returns the right singular vectors of the latest decomposition.
+     *
+     * <p>
+     * Rows follow decomposition-input column order and columns follow singular
+     * axes. Axis signs are fixed consistently with {@link #embedding()} and
+     * projected row coordinates, so a document loading can be interpreted
+     * against the displayed term axis.
+     * </p>
+     *
+     * @return live right singular vectors, or {@code null} before decomposition
+     */
+    public double[][] rightVectors()
+    {
+        return rightVectors;
     }
 
     /**
@@ -1215,25 +1241,30 @@ public class ContingencySvd
     }
 
     /**
-     * Fixes arbitrary SVD axis signs deterministically.
+     * Fixes SVD signs jointly for left and right singular vectors.
      */
     private static void fixAxisSigns(
-        final double[][] coords
+        final double[][] left,
+        final double[][] right
     ) {
-        if (coords.length == 0 || coords[0].length == 0) {
+        if (left.length == 0 || left[0].length == 0) {
             return;
         }
-        for (int axis = 0; axis < coords[0].length; axis++) {
+        for (int axis = 0; axis < left[0].length; axis++) {
             int greatest = 0;
-            for (int row = 1; row < coords.length; row++) {
-                if (Math.abs(coords[row][axis]) > Math.abs(coords[greatest][axis])) {
+            for (int row = 1; row < left.length; row++) {
+                if (Math.abs(left[row][axis]) > Math.abs(left[greatest][axis])) {
                     greatest = row;
                 }
             }
-            if (coords[greatest][axis] < 0d) {
-                for (int row = 0; row < coords.length; row++) {
-                    coords[row][axis] = -coords[row][axis];
-                }
+            if (left[greatest][axis] >= 0d) {
+                continue;
+            }
+            for (int row = 0; row < left.length; row++) {
+                left[row][axis] = -left[row][axis];
+            }
+            for (int col = 0; col < right.length; col++) {
+                right[col][axis] = -right[col][axis];
             }
         }
     }
@@ -1322,6 +1353,7 @@ public class ContingencySvd
     {
         singularValues = null;
         embedding = null;
+        rightVectors = null;
         rank = 0;
         axesWeighted = false;
         rowsMassScaled = false;
