@@ -1,29 +1,22 @@
 package com.github.oeuvres.alix.web;
 
-
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.queries.spans.SpanQuery;
-import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
@@ -34,8 +27,6 @@ import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
-import com.github.oeuvres.alix.maths.ContingencySvd;
-import com.github.oeuvres.alix.maths.ContingencySvd.SvdLayout;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
@@ -44,8 +35,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Exports selected terms as taxa, document-vector distances, a centred BM25
- * term-by-document SVD map, and its score and decomposition diagnostics.
+ * Exports selected terms as taxa, document-vector distances, and a nonmetric
+ * BM25 term map over the full corpus.
  */
 public class OpClades extends Op
 {
@@ -66,7 +57,7 @@ public class OpClades extends Op
     /** JSON representations exposed by the endpoint. */
     private enum JsonView
     {
-        /** BM25 map with detailed term and axis explanations. */
+        /** BM25 map with detailed term explanations. */
         DIAGNOSTIC,
         /** Existing compact BM25 map. */
         MAP,
@@ -77,11 +68,20 @@ public class OpClades extends Op
     /** BM25 matrix with its compact-column to Lucene-document mapping. */
     private record TermDocMatrix(double[][] scores, int[] docIds) {}
 
-    /** Decomposed BM25 matrix and its projected term layout. */
+    /** Full-corpus BM25 matrix, normalized rows, distances, and map. */
     private record Bm25Analysis(
         TermDocMatrix matrix,
-        ContingencySvd model,
-        SvdLayout layout
+        double[][] normalized,
+        double[][] distances,
+        MdsLayout layout
+    ) {}
+
+    /** Result of a deterministic nonmetric multidimensional scaling fit. */
+    record MdsLayout(
+        double[][] coordinates,
+        double stress,
+        int iterations,
+        boolean converged
     ) {}
 
     /**
@@ -286,7 +286,7 @@ public class OpClades extends Op
     }
 
     /**
-     * Builds centred principal coordinates from the full BM25 score matrix.
+     * Builds a two-dimensional nonmetric map from the full-corpus BM25 matrix.
      *
      * @param reader index reader supplying postings
      * @param lexicon selected-term lexicon
@@ -295,7 +295,7 @@ public class OpClades extends Op
      * @param termStats corpus and term statistics
      * @param pars resolved HTTP parameters
      * @param meta response metadata collector
-     * @return score matrix, decomposition, and projected layout
+     * @return score matrix, normalized rows, chord distances, and layout
      * @throws IOException if postings cannot be read
      */
     private static Bm25Analysis bm25Analysis(
@@ -316,76 +316,33 @@ public class OpClades extends Op
             termStats,
             scorer
         );
-        final ContingencySvd model = ContingencySvd.fromScores(matrix.scores());
-        model.centerColumns();
-        model.decompose();
-
-        final double weightAxes = pars.getDouble("weight-axes", 1d);
-        if (weightAxes > 0d) {
-            model.weightAxes(weightAxes);
-        }
-        final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
-        final SvdLayout map = model.project(dims);
+        final double[][] normalized = normalizeRows(matrix.scores());
+        final double[][] distances = chordDistances(normalized);
+        final int starts = pars.getInt("mds-starts", new int[] { 1, 20 }, 4);
+        final int maxIterations = pars.getInt(
+            "mds-iterations",
+            new int[] { 10, 5000 },
+            1000
+        );
+        final double tolerance = pars.getDouble("mds-tolerance", 1e-7d);
+        final MdsLayout map = nonmetricMds(
+            distances,
+            starts,
+            maxIterations,
+            tolerance
+        );
 
         meta.put("documents", docFilter.cardinality());
+        meta.put("documentUniverse", "full corpus");
+        meta.put("focusRestricted", false);
         meta.put("score", scorer.toString());
-        meta.put("svdCentered", true);
-        meta.put("svdRank", map.inertia().length);
-        return new Bm25Analysis(matrix, model, map);
-    }
-
-    /**
-     * Returns Lucene documents matched by the focus query and optional filter.
-     *
-     * @param index Lucene index and searcher
-     * @param pars resolved HTTP parameters
-     * @return global document-id bitset
-     * @throws IOException if query construction or collection fails
-     */
-    private static FixedBitSet focusDocs(
-        final LuceneIndex index,
-        final HttpPars pars
-    ) throws IOException {
-        final FixedBitSet docs = new FixedBitSet(index.reader().maxDoc());
-        final SpanQuery span = spanQuery(index, pars);
-        if (span == null) {
-            return docs;
-        }
-        final Query filter = filterQuery(index, pars);
-        final Query query;
-        if (filter == null) {
-            query = span;
-        }
-        else {
-            query = new BooleanQuery.Builder()
-                .add(span, Occur.MUST)
-                .add(filter, Occur.FILTER)
-                .build();
-        }
-
-        index.searcher().search(query, new SimpleCollector() {
-            /** Current leaf's global document base. */
-            private int docBase;
-
-            @Override
-            public void collect(final int localDocId)
-            {
-                docs.set(docBase + localDocId);
-            }
-
-            @Override
-            protected void doSetNextReader(final LeafReaderContext context)
-            {
-                docBase = context.docBase;
-            }
-
-            @Override
-            public ScoreMode scoreMode()
-            {
-                return ScoreMode.COMPLETE_NO_SCORES;
-            }
-        });
-        return docs;
+        meta.put("rowNormalization", "L2");
+        meta.put("distance", "chord");
+        meta.put("projection", "nonmetric MDS");
+        meta.put("mdsStress", map.stress());
+        meta.put("mdsIterations", map.iterations());
+        meta.put("mdsConverged", map.converged());
+        return new Bm25Analysis(matrix, normalized, distances, map);
     }
 
     /**
@@ -424,19 +381,6 @@ public class OpClades extends Op
     }
 
     /**
-     * Returns Euclidean distance between equal-length vectors.
-     */
-    private static double euclidean(final double[] a, final double[] b)
-    {
-        double squared = 0d;
-        for (int axis = 0; axis < a.length; axis++) {
-            final double delta = a[axis] - b[axis];
-            squared += delta * delta;
-        }
-        return Math.sqrt(squared);
-    }
-
-    /**
      * Returns the L2 norm of a vector.
      */
     private static double l2(final double[] row)
@@ -448,24 +392,22 @@ public class OpClades extends Op
         return Math.sqrt(squared);
     }
 
-    /**
-     * Returns term ranks ordered by increasing full-embedding distance.
-     */
+    /** Returns term ranks ordered by increasing chord distance. */
     private static int[] nearest(
-        final double[][] embedding,
+        final double[][] distances,
         final int row,
         final int count
     ) {
-        final Integer[] ranks = new Integer[embedding.length - 1];
+        final Integer[] ranks = new Integer[distances.length - 1];
         int cursor = 0;
-        for (int other = 0; other < embedding.length; other++) {
+        for (int other = 0; other < distances.length; other++) {
             if (other != row) {
                 ranks[cursor++] = other;
             }
         }
         Arrays.sort(
             ranks,
-            Comparator.comparingDouble(other -> euclidean(embedding[row], embedding[other]))
+            Comparator.comparingDouble(other -> distances[row][other])
         );
         final int size = Math.min(count, ranks.length);
         final int[] nearest = new int[size];
@@ -502,57 +444,6 @@ public class OpClades extends Op
     }
 
     /**
-     * Returns the share of one row's full embedding represented by leading axes.
-     */
-    private static double represented(
-        final double[] embedding,
-        final int axes
-    ) {
-        double total = 0d;
-        double emitted = 0d;
-        for (int axis = 0; axis < embedding.length; axis++) {
-            final double squared = embedding[axis] * embedding[axis];
-            total += squared;
-            if (axis < axes) {
-                emitted += squared;
-            }
-        }
-        return total > 0d ? emitted / total : 0d;
-    }
-
-    /**
-     * Returns document ranks ordered by one right-singular-vector loading.
-     */
-    private static int[] topLoadingRanks(
-        final double[][] rightVectors,
-        final int axis,
-        final int count,
-        final boolean positive
-    ) {
-        final Integer[] ranks = new Integer[rightVectors.length];
-        for (int rank = 0; rank < ranks.length; rank++) {
-            ranks[rank] = rank;
-        }
-        Arrays.sort(ranks, (a, b) -> positive
-            ? Double.compare(rightVectors[b][axis], rightVectors[a][axis])
-            : Double.compare(rightVectors[a][axis], rightVectors[b][axis]));
-
-        int size = 0;
-        while (size < ranks.length && size < count) {
-            final double loading = rightVectors[ranks[size]][axis];
-            if ((positive && loading <= 0d) || (!positive && loading >= 0d)) {
-                break;
-            }
-            size++;
-        }
-        final int[] top = new int[size];
-        for (int rank = 0; rank < size; rank++) {
-            top[rank] = ranks[rank];
-        }
-        return top;
-    }
-
-    /**
      * Returns a stored string or numeric field as display text.
      */
     private static String storedText(
@@ -571,19 +462,15 @@ public class OpClades extends Op
         return number == null ? null : number.toString();
     }
 
-    /**
-     * Writes one document and optional axis loading.
-     */
+    /** Writes one document and its corpus metadata. */
     private static void writeDocument(
         final JsonWriter jw,
         final StoredFields storedFields,
         final int docId,
         final int docTokens,
-        final boolean focus,
         final String titleField,
         final String yearField,
-        final Integer rank,
-        final Double loading
+        final Integer rank
     ) throws IOException {
         final Document document = storedFields.document(docId);
         jw.beginObject();
@@ -592,7 +479,6 @@ public class OpClades extends Op
         }
         jw.name("id").value(docId);
         jw.name("tokens").value(docTokens);
-        jw.name("focus").value(focus);
         final String title = storedText(document, titleField);
         if (title != null) {
             jw.name("title").value(title);
@@ -600,9 +486,6 @@ public class OpClades extends Op
         final String year = storedText(document, yearField);
         if (year != null) {
             jw.name("year").value(year);
-        }
-        if (loading != null) {
-            jw.name("loading").value(round(loading, 6));
         }
         jw.endObject();
     }
@@ -710,6 +593,547 @@ public class OpClades extends Op
             }
         }
         return distances;
+    }
+
+    /**
+     * L2-normalizes score rows without changing the source matrix.
+     *
+     * @param rows term-by-document score matrix
+     * @return normalized matrix with one unit vector per non-zero row
+     * @throws IllegalArgumentException if rows are ragged or contain a zero row
+     */
+    static double[][] normalizeRows(final double[][] rows)
+    {
+        if (rows.length == 0) {
+            return new double[0][0];
+        }
+        final int width = rows[0].length;
+        final double[][] normalized = new double[rows.length][width];
+        for (int row = 0; row < rows.length; row++) {
+            if (rows[row].length != width) {
+                throw new IllegalArgumentException("Score matrix is ragged");
+            }
+            final double norm = l2(rows[row]);
+            if (!(norm > 0d) || !Double.isFinite(norm)) {
+                throw new IllegalArgumentException(
+                    "Term score row " + row + " has no finite positive norm"
+                );
+            }
+            for (int col = 0; col < width; col++) {
+                normalized[row][col] = rows[row][col] / norm;
+            }
+        }
+        return normalized;
+    }
+
+    /**
+     * Computes Euclidean chord distances between L2-normalized rows.
+     *
+     * @param normalized unit term-by-document vectors
+     * @return full symmetric chord-distance matrix
+     * @throws IllegalArgumentException if rows are ragged
+     */
+    static double[][] chordDistances(final double[][] normalized)
+    {
+        final int size = normalized.length;
+        final int width = size == 0 ? 0 : normalized[0].length;
+        final double[][] distances = new double[size][size];
+        for (int row = 0; row < size; row++) {
+            if (normalized[row].length != width) {
+                throw new IllegalArgumentException("Normalized matrix is ragged");
+            }
+            for (int col = 0; col < row; col++) {
+                double squared = 0d;
+                for (int doc = 0; doc < width; doc++) {
+                    final double delta = normalized[row][doc]
+                        - normalized[col][doc];
+                    squared += delta * delta;
+                }
+                final double distance = Math.sqrt(Math.max(0d, squared));
+                distances[row][col] = distance;
+                distances[col][row] = distance;
+            }
+        }
+        return distances;
+    }
+
+    /** Pair of rows ordered by its original dissimilarity. */
+    private record MdsPair(int row, int col, double dissimilarity) {}
+
+    /**
+     * Fits a deterministic two-dimensional nonmetric MDS map by monotone
+     * regression and SMACOF majorization.
+     *
+     * <p>
+     * The first start uses classical scaling only as an initialization. Later
+     * starts use a fixed pseudo-random sequence. The returned fit is the start
+     * with the lowest normalized Kruskal stress.
+     * </p>
+     *
+     * @param dissimilarities full symmetric distance matrix
+     * @param starts deterministic starts to compare
+     * @param maxIterations maximum SMACOF updates per start
+     * @param tolerance relative stress convergence threshold
+     * @return best two-dimensional layout
+     */
+    static MdsLayout nonmetricMds(
+        final double[][] dissimilarities,
+        final int starts,
+        final int maxIterations,
+        final double tolerance
+    ) {
+        if (starts < 1 || maxIterations < 1) {
+            throw new IllegalArgumentException(
+                "NMDS starts and iterations must be positive"
+            );
+        }
+        if (!(tolerance > 0d && tolerance < 1d)) {
+            throw new IllegalArgumentException(
+                "NMDS tolerance must be strictly between 0 and 1"
+            );
+        }
+        validateDistances(dissimilarities);
+        final int size = dissimilarities.length;
+        if (size == 0) {
+            return new MdsLayout(new double[0][2], 0d, 0, true);
+        }
+        if (size == 1) {
+            return new MdsLayout(new double[1][2], 0d, 0, true);
+        }
+
+        final MdsPair[] pairs = sortedPairs(dissimilarities);
+        final Random random = new Random(0x4e4d44534cL);
+        MdsLayout best = null;
+        for (int start = 0; start < starts; start++) {
+            final double[][] initial = start == 0
+                ? classicalStart(dissimilarities)
+                : randomStart(size, random);
+            final MdsLayout candidate = fitNonmetricMds(
+                initial,
+                pairs,
+                maxIterations,
+                tolerance
+            );
+            if (best == null || candidate.stress() < best.stress()) {
+                best = candidate;
+            }
+        }
+        orient(best.coordinates());
+        return best;
+    }
+
+    /** Validates the square symmetric dissimilarity matrix. */
+    private static void validateDistances(final double[][] distances)
+    {
+        for (int row = 0; row < distances.length; row++) {
+            if (distances[row].length != distances.length) {
+                throw new IllegalArgumentException("Distance matrix is not square");
+            }
+            if (Math.abs(distances[row][row]) > 1e-12d) {
+                throw new IllegalArgumentException("Distance diagonal is not zero");
+            }
+            for (int col = 0; col < row; col++) {
+                final double value = distances[row][col];
+                if (!Double.isFinite(value) || value < 0d) {
+                    throw new IllegalArgumentException(
+                        "Distances must be finite and non-negative"
+                    );
+                }
+                if (Math.abs(value - distances[col][row]) > 1e-10d) {
+                    throw new IllegalArgumentException(
+                        "Distance matrix is not symmetric"
+                    );
+                }
+            }
+        }
+    }
+
+    /** Returns all lower-triangle pairs in stable dissimilarity order. */
+    private static MdsPair[] sortedPairs(final double[][] distances)
+    {
+        final int size = distances.length;
+        final MdsPair[] pairs = new MdsPair[size * (size - 1) / 2];
+        int cursor = 0;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < row; col++) {
+                pairs[cursor++] = new MdsPair(row, col, distances[row][col]);
+            }
+        }
+        Arrays.sort(
+            pairs,
+            Comparator.comparingDouble(MdsPair::dissimilarity)
+                .thenComparingInt(MdsPair::row)
+                .thenComparingInt(MdsPair::col)
+        );
+        return pairs;
+    }
+
+    /** Builds a two-axis classical-scaling initialization. */
+    private static double[][] classicalStart(final double[][] distances)
+    {
+        final int size = distances.length;
+        final double[] rowMeans = new double[size];
+        double totalMean = 0d;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                rowMeans[row] += distances[row][col] * distances[row][col];
+            }
+            rowMeans[row] /= size;
+            totalMean += rowMeans[row];
+        }
+        totalMean /= size;
+
+        final double[][] gram = new double[size][size];
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                gram[row][col] = -0.5d * (
+                    distances[row][col] * distances[row][col]
+                    - rowMeans[row]
+                    - rowMeans[col]
+                    + totalMean
+                );
+            }
+        }
+
+        final double[][] vectors = new double[2][size];
+        final double[][] coordinates = new double[size][2];
+        for (int axis = 0; axis < 2; axis++) {
+            final double[] vector = vectors[axis];
+            for (int row = 0; row < size; row++) {
+                vector[row] = Math.sin((row + 1d) * (axis + 1.61803398875d));
+            }
+            orthonormalize(vector, vectors, axis);
+            for (int iteration = 0; iteration < 1000; iteration++) {
+                final double[] next = multiply(gram, vector);
+                orthonormalize(next, vectors, axis);
+                if (dot(next, vector) < 0d) {
+                    for (int row = 0; row < size; row++) {
+                        next[row] = -next[row];
+                    }
+                }
+                double change = 0d;
+                for (int row = 0; row < size; row++) {
+                    final double delta = next[row] - vector[row];
+                    change += delta * delta;
+                    vector[row] = next[row];
+                }
+                if (change < 1e-24d) {
+                    break;
+                }
+            }
+            final double eigenvalue = dot(vector, multiply(gram, vector));
+            final double scale = Math.sqrt(Math.max(0d, eigenvalue));
+            for (int row = 0; row < size; row++) {
+                coordinates[row][axis] = scale * vector[row];
+            }
+        }
+        standardize(coordinates);
+        return coordinates;
+    }
+
+    /** Fits one NMDS start and retains its lowest-stress iterate. */
+    private static MdsLayout fitNonmetricMds(
+        final double[][] initial,
+        final MdsPair[] pairs,
+        final int maxIterations,
+        final double tolerance
+    ) {
+        final int size = initial.length;
+        double[][] coordinates = copy(initial);
+        double[][] bestCoordinates = copy(initial);
+        double bestStress = Double.POSITIVE_INFINITY;
+        double previousStress = Double.POSITIVE_INFINITY;
+        boolean converged = false;
+        int iterations = 0;
+
+        for (int iteration = 1; iteration <= maxIterations; iteration++) {
+            final double[] fitted = disparities(coordinates, pairs);
+            final double[][] b = new double[size][size];
+            for (int pair = 0; pair < pairs.length; pair++) {
+                final MdsPair item = pairs[pair];
+                final double distance = pointDistance(
+                    coordinates[item.row()],
+                    coordinates[item.col()]
+                );
+                final double ratio = distance > 1e-15d
+                    ? fitted[pair] / distance
+                    : 0d;
+                b[item.row()][item.col()] = -ratio;
+                b[item.col()][item.row()] = -ratio;
+                b[item.row()][item.row()] += ratio;
+                b[item.col()][item.col()] += ratio;
+            }
+
+            final double[][] next = new double[size][2];
+            for (int row = 0; row < size; row++) {
+                for (int col = 0; col < size; col++) {
+                    next[row][0] += b[row][col] * coordinates[col][0] / size;
+                    next[row][1] += b[row][col] * coordinates[col][1] / size;
+                }
+            }
+            center(next);
+            final double stress = normalizedStress(next, pairs);
+            iterations = iteration;
+            if (stress < bestStress) {
+                bestStress = stress;
+                bestCoordinates = copy(next);
+            }
+            if (Double.isFinite(previousStress)
+                && Math.abs(previousStress - stress)
+                    <= tolerance * Math.max(1d, previousStress)) {
+                converged = true;
+                break;
+            }
+            previousStress = stress;
+            coordinates = next;
+        }
+        return new MdsLayout(bestCoordinates, bestStress, iterations, converged);
+    }
+
+    /** Fits monotone disparities to current distances using weighted PAVA. */
+    private static double[] disparities(
+        final double[][] coordinates,
+        final MdsPair[] pairs
+    ) {
+        final int pairCount = pairs.length;
+        final double[] values = new double[pairCount];
+        final int[] groupByPair = new int[pairCount];
+        final double[] groupMeans = new double[pairCount];
+        final int[] groupWeights = new int[pairCount];
+        int groups = 0;
+
+        for (int pair = 0; pair < pairCount;) {
+            final double dissimilarity = pairs[pair].dissimilarity();
+            int end = pair;
+            double sum = 0d;
+            while (end < pairCount
+                && Double.compare(pairs[end].dissimilarity(), dissimilarity) == 0) {
+                sum += pointDistance(
+                    coordinates[pairs[end].row()],
+                    coordinates[pairs[end].col()]
+                );
+                groupByPair[end] = groups;
+                end++;
+            }
+            groupMeans[groups] = sum / (end - pair);
+            groupWeights[groups] = end - pair;
+            groups++;
+            pair = end;
+        }
+
+        final double[] blockMeans = new double[groups];
+        final int[] blockWeights = new int[groups];
+        final int[] blockEnds = new int[groups];
+        int blocks = 0;
+        for (int group = 0; group < groups; group++) {
+            blockMeans[blocks] = groupMeans[group];
+            blockWeights[blocks] = groupWeights[group];
+            blockEnds[blocks] = group;
+            blocks++;
+            while (blocks > 1 && blockMeans[blocks - 2] > blockMeans[blocks - 1]) {
+                final int weight = blockWeights[blocks - 2]
+                    + blockWeights[blocks - 1];
+                blockMeans[blocks - 2] = (
+                    blockMeans[blocks - 2] * blockWeights[blocks - 2]
+                    + blockMeans[blocks - 1] * blockWeights[blocks - 1]
+                ) / weight;
+                blockWeights[blocks - 2] = weight;
+                blockEnds[blocks - 2] = blockEnds[blocks - 1];
+                blocks--;
+            }
+        }
+
+        int firstGroup = 0;
+        for (int block = 0; block < blocks; block++) {
+            for (int group = firstGroup; group <= blockEnds[block]; group++) {
+                groupMeans[group] = blockMeans[block];
+            }
+            firstGroup = blockEnds[block] + 1;
+        }
+        double squared = 0d;
+        for (int pair = 0; pair < pairCount; pair++) {
+            values[pair] = groupMeans[groupByPair[pair]];
+            squared += values[pair] * values[pair];
+        }
+        if (squared > 0d) {
+            final double scale = Math.sqrt(pairCount / squared);
+            for (int pair = 0; pair < pairCount; pair++) {
+                values[pair] *= scale;
+            }
+        }
+        return values;
+    }
+
+    /** Returns normalized Kruskal Stress-1 for current coordinates. */
+    private static double normalizedStress(
+        final double[][] coordinates,
+        final MdsPair[] pairs
+    ) {
+        final double[] fitted = disparities(coordinates, pairs);
+        double residual = 0d;
+        double denominator = 0d;
+        for (int pair = 0; pair < pairs.length; pair++) {
+            final double distance = pointDistance(
+                coordinates[pairs[pair].row()],
+                coordinates[pairs[pair].col()]
+            );
+            final double delta = distance - fitted[pair];
+            residual += delta * delta;
+            denominator += fitted[pair] * fitted[pair];
+        }
+        return denominator > 0d ? Math.sqrt(residual / denominator) : 0d;
+    }
+
+    /** Returns deterministic random initial coordinates. */
+    private static double[][] randomStart(final int size, final Random random)
+    {
+        final double[][] coordinates = new double[size][2];
+        for (int row = 0; row < size; row++) {
+            coordinates[row][0] = random.nextDouble() - 0.5d;
+            coordinates[row][1] = random.nextDouble() - 0.5d;
+        }
+        standardize(coordinates);
+        return coordinates;
+    }
+
+    /** Centers and scales coordinates to unit root-mean-square radius. */
+    private static void standardize(final double[][] coordinates)
+    {
+        center(coordinates);
+        double squared = 0d;
+        for (final double[] point : coordinates) {
+            squared += point[0] * point[0] + point[1] * point[1];
+        }
+        final double scale = squared > 0d
+            ? Math.sqrt(coordinates.length / squared)
+            : 1d;
+        for (final double[] point : coordinates) {
+            point[0] *= scale;
+            point[1] *= scale;
+        }
+    }
+
+    /** Centers coordinates on the origin. */
+    private static void center(final double[][] coordinates)
+    {
+        double meanX = 0d;
+        double meanY = 0d;
+        for (final double[] point : coordinates) {
+            meanX += point[0];
+            meanY += point[1];
+        }
+        meanX /= coordinates.length;
+        meanY /= coordinates.length;
+        for (final double[] point : coordinates) {
+            point[0] -= meanX;
+            point[1] -= meanY;
+        }
+    }
+
+    /** Rotates and reflects a fitted map into a stable display orientation. */
+    private static void orient(final double[][] coordinates)
+    {
+        if (coordinates.length == 0) {
+            return;
+        }
+        center(coordinates);
+        double xx = 0d;
+        double yy = 0d;
+        double xy = 0d;
+        for (final double[] point : coordinates) {
+            xx += point[0] * point[0];
+            yy += point[1] * point[1];
+            xy += point[0] * point[1];
+        }
+        final double angle = 0.5d * Math.atan2(2d * xy, xx - yy);
+        final double cosine = Math.cos(angle);
+        final double sine = Math.sin(angle);
+        for (final double[] point : coordinates) {
+            final double x = cosine * point[0] + sine * point[1];
+            final double y = -sine * point[0] + cosine * point[1];
+            point[0] = x;
+            point[1] = y;
+        }
+        reflectAxis(coordinates, 0);
+        reflectAxis(coordinates, 1);
+    }
+
+    /** Reflects an axis so its largest absolute coordinate is positive. */
+    private static void reflectAxis(final double[][] coordinates, final int axis)
+    {
+        int extreme = 0;
+        for (int row = 1; row < coordinates.length; row++) {
+            if (Math.abs(coordinates[row][axis])
+                > Math.abs(coordinates[extreme][axis])) {
+                extreme = row;
+            }
+        }
+        if (coordinates[extreme][axis] < 0d) {
+            for (final double[] point : coordinates) {
+                point[axis] = -point[axis];
+            }
+        }
+    }
+
+    /** Multiplies a square matrix by a vector. */
+    private static double[] multiply(final double[][] matrix, final double[] vector)
+    {
+        final double[] product = new double[vector.length];
+        for (int row = 0; row < matrix.length; row++) {
+            for (int col = 0; col < vector.length; col++) {
+                product[row] += matrix[row][col] * vector[col];
+            }
+        }
+        return product;
+    }
+
+    /** Makes a vector unit length and orthogonal to preceding basis vectors. */
+    private static void orthonormalize(
+        final double[] vector,
+        final double[][] basis,
+        final int count
+    ) {
+        for (int rank = 0; rank < count; rank++) {
+            final double projection = dot(vector, basis[rank]);
+            for (int row = 0; row < vector.length; row++) {
+                vector[row] -= projection * basis[rank][row];
+            }
+        }
+        double norm = Math.sqrt(dot(vector, vector));
+        if (!(norm > 1e-15d)) {
+            Arrays.fill(vector, 0d);
+            vector[count % vector.length] = 1d;
+            norm = 1d;
+        }
+        for (int row = 0; row < vector.length; row++) {
+            vector[row] /= norm;
+        }
+    }
+
+    /** Returns a vector dot product. */
+    private static double dot(final double[] a, final double[] b)
+    {
+        double product = 0d;
+        for (int row = 0; row < a.length; row++) {
+            product += a[row] * b[row];
+        }
+        return product;
+    }
+
+    /** Returns Euclidean distance between two display points. */
+    private static double pointDistance(final double[] a, final double[] b)
+    {
+        return Math.hypot(a[0] - b[0], a[1] - b[1]);
+    }
+
+    /** Deep-copies a rectangular matrix. */
+    private static double[][] copy(final double[][] source)
+    {
+        final double[][] copy = new double[source.length][];
+        for (int row = 0; row < source.length; row++) {
+            copy[row] = Arrays.copyOf(source[row], source[row].length);
+        }
+        return copy;
     }
 
     /**
@@ -906,37 +1330,19 @@ public class OpClades extends Op
         }
     }
 
-    /**
-     * Writes decomposition-axis inertia metadata.
-     */
-    private static void writeAxes(
+    /** Writes nonmetric MDS fit metadata. */
+    private static void writeMdsFit(
         final JsonWriter jw,
-        final SvdLayout map
+        final MdsLayout map
     ) throws IOException {
-        final int dims = map.coords().length == 0
-            ? 0
-            : map.coords()[0].length;
-        final double[] spectrum = map.inertia();
-        final double dim1 = spectrum.length > 0 ? spectrum[0] : 0d;
-        final double dim2 = spectrum.length > 1 ? spectrum[1] : 0d;
-        double emittedInertia = 0d;
-        for (int axis = 0; axis < Math.min(dims, spectrum.length); axis++) {
-            emittedInertia += spectrum[axis];
-        }
-
         jw.name("axes");
         jw.beginObject();
-        jw.name("dims").value(dims);
-        jw.name("dim1_pct").value(round(dim1, 1));
-        jw.name("dim2_pct").value(round(dim2, 1));
-        jw.name("cum2_pct").value(round(dim1 + dim2, 1));
-        jw.name("emitted_pct").value(round(emittedInertia, 1));
-        jw.name("spectrum");
-        jw.beginArray();
-        for (final double percent : spectrum) {
-            jw.value(round(percent, 1));
-        }
-        jw.endArray();
+        jw.name("dims").value(2);
+        jw.name("method").value("nonmetric MDS");
+        jw.name("distance").value("L2-normalized BM25 chord");
+        jw.name("stress").value(round(map.stress(), 6));
+        jw.name("iterations").value(map.iterations());
+        jw.name("converged").value(map.converged());
         jw.endObject();
     }
 
@@ -951,9 +1357,7 @@ public class OpClades extends Op
         final int[] rowIds,
         final long[] rowFreq,
         final TermLexicon lexicon,
-        final TermStats termStats,
-        final FixedBitSet[] presence,
-        final FixedBitSet focusDocs
+        final TermStats termStats
     ) throws IOException {
         final String titleField = parameter(request, "ftitle", "title");
         final String yearField = parameter(request, "fyear", "year");
@@ -976,11 +1380,9 @@ public class OpClades extends Op
                 storedFields,
                 docId,
                 docTokens[docId],
-                focusDocs.get(docId),
                 titleField,
                 yearField,
-                docRank,
-                null
+                docRank
             );
         }
         jw.endArray();
@@ -996,9 +1398,6 @@ public class OpClades extends Op
             jw.name("freq").value(rowFreq[row]);
             jw.name("corpusTf").value(termStats.termFreq(termId));
             jw.name("corpusDf").value(corpusDf);
-            jw.name("focusDf").value(
-                FixedBitSet.intersectionCount(presence[row], focusDocs)
-            );
             jw.name("idf").value(round(bm25Idf(termStats.fieldDocs(), corpusDf), 6));
             jw.name("scores");
             jw.beginArray();
@@ -1013,47 +1412,40 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes the BM25 map, optionally with term and document diagnostics.
+     * Writes the BM25 chord-distance NMDS map and optional term diagnostics.
      */
     private static void writeMapData(
         final JsonWriter jw,
-        final IndexReader reader,
-        final HttpServletRequest request,
         final HttpPars pars,
         final Bm25Analysis analysis,
         final int[] rowIds,
         final long[] rowFreq,
         final TermLexicon lexicon,
         final TermStats termStats,
-        final FixedBitSet[] presence,
-        final FixedBitSet focusDocs,
         final boolean diagnostic
     ) throws IOException {
-        final SvdLayout map = analysis.layout();
-        final double[][] embedding = analysis.model().embedding();
-        final double[][] centered = analysis.model().residuals();
+        final MdsLayout map = analysis.layout();
         final double[][] scores = analysis.matrix().scores();
+        final double[][] normalized = analysis.normalized();
+        final double[][] distances = analysis.distances();
         final int nearestCount = pars.getInt("nearest", new int[] { 1, 20 }, 5);
 
         jw.name("data");
         jw.beginObject();
-        writeAxes(jw, map);
+        writeMdsFit(jw, map);
 
         jw.name("nodes");
         jw.beginArray();
-        for (int node = 0; node < map.size(); node++) {
+        for (int node = 0; node < map.coordinates().length; node++) {
             final int termId = rowIds[node];
-            final double[] coords = map.coords()[node];
-            final double x = coords.length > 0 ? coords[0] : 0d;
-            final double y = coords.length > 1 ? coords[1] : 0d;
+            final double[] coords = map.coordinates()[node];
 
             jw.beginObject();
             jw.name("id").value(termId);
             jw.name("form").value(lexicon.form(termId));
             jw.name("freq").value(rowFreq[node]);
-            jw.name("x").value(round(x, 4));
-            jw.name("y").value(round(y, 4));
-            jw.name("cos2").value(round(map.cos2()[node], 4));
+            jw.name("x").value(round(coords[0], 4));
+            jw.name("y").value(round(coords[1], 4));
             jw.name("coords");
             jw.beginArray();
             for (final double coordinate : coords) {
@@ -1065,31 +1457,24 @@ public class OpClades extends Op
                 final int corpusDf = termStats.termDocs(termId);
                 jw.name("corpusTf").value(termStats.termFreq(termId));
                 jw.name("corpusDf").value(corpusDf);
-                jw.name("focusDf").value(
-                    FixedBitSet.intersectionCount(presence[node], focusDocs)
-                );
                 jw.name("idf").value(round(
                     bm25Idf(termStats.fieldDocs(), corpusDf),
                     6
                 ));
                 jw.name("nonzeroDocs").value(nonZero(scores[node]));
-                jw.name("uncenteredNorm").value(round(l2(scores[node]), 6));
-                jw.name("centeredNorm").value(round(l2(centered[node]), 6));
+                jw.name("rawNorm").value(round(l2(scores[node]), 6));
+                jw.name("normalizedNorm").value(round(l2(normalized[node]), 6));
                 jw.name("top1Energy").value(round(energyShare(scores[node], 1), 6));
                 jw.name("top5Energy").value(round(energyShare(scores[node], 5), 6));
                 jw.name("top10Energy").value(round(energyShare(scores[node], 10), 6));
-                jw.name("cos6").value(round(represented(embedding[node], 6), 4));
 
                 jw.name("nearest");
                 jw.beginArray();
-                for (final int other : nearest(embedding, node, nearestCount)) {
+                for (final int other : nearest(distances, node, nearestCount)) {
                     jw.beginObject();
                     jw.name("id").value(rowIds[other]);
                     jw.name("form").value(lexicon.form(rowIds[other]));
-                    jw.name("distance").value(round(
-                        euclidean(embedding[node], embedding[other]),
-                        6
-                    ));
+                    jw.name("distance").value(round(distances[node][other], 6));
                     jw.endObject();
                 }
                 jw.endArray();
@@ -1097,75 +1482,16 @@ public class OpClades extends Op
             jw.endObject();
         }
         jw.endArray();
-
-        if (diagnostic) {
-            final String titleField = parameter(request, "ftitle", "title");
-            final String yearField = parameter(request, "fyear", "year");
-            final StoredFields storedFields = reader.storedFields();
-            final int[] docTokens = termStats.docTokens();
-            final int[] docIds = analysis.matrix().docIds();
-            final double[][] right = analysis.model().rightVectors();
-            final int axisCount = map.coords().length == 0
-                ? 0
-                : map.coords()[0].length;
-            final int topDocs = pars.getInt("topdocs", new int[] { 1, 50 }, 10);
-
-            jw.name("axisDocuments");
-            jw.beginArray();
-            for (int axis = 0; axis < axisCount; axis++) {
-                jw.beginObject();
-                jw.name("axis").value(axis + 1);
-
-                jw.name("positive");
-                jw.beginArray();
-                for (final int docRank : topLoadingRanks(right, axis, topDocs, true)) {
-                    final int docId = docIds[docRank];
-                    writeDocument(
-                        jw,
-                        storedFields,
-                        docId,
-                        docTokens[docId],
-                        focusDocs.get(docId),
-                        titleField,
-                        yearField,
-                        docRank,
-                        right[docRank][axis]
-                    );
-                }
-                jw.endArray();
-
-                jw.name("negative");
-                jw.beginArray();
-                for (final int docRank : topLoadingRanks(right, axis, topDocs, false)) {
-                    final int docId = docIds[docRank];
-                    writeDocument(
-                        jw,
-                        storedFields,
-                        docId,
-                        docTokens[docId],
-                        focusDocs.get(docId),
-                        titleField,
-                        yearField,
-                        docRank,
-                        right[docRank][axis]
-                    );
-                }
-                jw.endArray();
-                jw.endObject();
-            }
-            jw.endArray();
-        }
         jw.endObject();
     }
 
     /**
-     * Writes a centred BM25 term-by-document SVD map as JSON.
+     * Writes an L2-normalized BM25 chord-distance NMDS map as JSON.
      *
      * <p>
      * The response shape matches the co-occurrence semantic-map endpoint:
-     * axes contain inertia diagnostics and nodes contain the first two display
-     * coordinates together with every requested emitted coordinate. Parameter
-     * {@code view=diagnostic} adds term and axis explanations;
+     * axes contain the NMDS fit diagnostics and nodes contain the two display
+     * coordinates. Parameter {@code view=diagnostic} adds term explanations;
      * {@code view=matrix} returns the complete BM25 matrix and document-column
      * metadata. The default is {@code view=map}.
      * </p>
@@ -1186,7 +1512,6 @@ public class OpClades extends Op
         final JsonView view = pars.getEnum("view", JsonView.MAP);
         if (view == JsonView.DIAGNOSTIC) {
             pars.getInt("nearest", new int[] { 1, 20 }, 5);
-            pars.getInt("topdocs", new int[] { 1, 50 }, 10);
         }
         final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
 
@@ -1194,8 +1519,6 @@ public class OpClades extends Op
         long[] rowFreq = null;
         TermLexicon lexicon = null;
         TermStats termStats = null;
-        FixedBitSet[] presence = null;
-        FixedBitSet focusDocs = null;
         Bm25Analysis analysis = null;
 
         if (topTerms == null) {
@@ -1217,14 +1540,13 @@ public class OpClades extends Op
             lexicon = topTerms.lexicon();
             termStats = topTerms.termStats();
             final FixedBitSet liveDocs = liveDocs(index.reader());
-            presence = docPresence(
+            final FixedBitSet[] presence = docPresence(
                 index.reader(),
                 lexicon,
                 rowIds,
                 liveDocs
             );
             final FixedBitSet documents = unionDocs(liveDocs, presence);
-            focusDocs = focusDocs(index, pars);
             analysis = bm25Analysis(
                 index.reader(),
                 lexicon,
@@ -1234,7 +1556,6 @@ public class OpClades extends Op
                 pars,
                 meta
             );
-            meta.put("diagnosticFocusDocs", focusDocs.cardinality());
         }
 
         try (JsonWriter jw = Op.jsonWriter(response)) {
@@ -1249,30 +1570,22 @@ public class OpClades extends Op
                 switch (view) {
                     case DIAGNOSTIC -> writeMapData(
                         jw,
-                        index.reader(),
-                        request,
                         pars,
                         analysis,
                         rowIds,
                         rowFreq,
                         lexicon,
                         termStats,
-                        presence,
-                        focusDocs,
                         true
                     );
                     case MAP -> writeMapData(
                         jw,
-                        index.reader(),
-                        request,
                         pars,
                         analysis,
                         rowIds,
                         rowFreq,
                         lexicon,
                         termStats,
-                        presence,
-                        focusDocs,
                         false
                     );
                     case MATRIX -> writeMatrixData(
@@ -1283,9 +1596,7 @@ public class OpClades extends Op
                         rowIds,
                         rowFreq,
                         lexicon,
-                        termStats,
-                        presence,
-                        focusDocs
+                        termStats
                     );
                 }
             }
