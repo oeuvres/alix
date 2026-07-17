@@ -22,11 +22,14 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TermDocScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
+import com.github.oeuvres.alix.maths.ContingencySvd;
+import com.github.oeuvres.alix.maths.ContingencySvd.SvdLayout;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
@@ -35,15 +38,35 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Exports selected terms as taxa, document-vector distances, and a nonmetric
- * BM25 term map over the full corpus.
+ * Exports selected terms as taxa, document-vector distances, and alternative
+ * term maps over the full corpus.
+ *
+ * <p>
+ * A previous experiment represented every term by its vector of Lucene BM25
+ * document scores. It was rejected: BM25 is calibrated to rank documents for
+ * one query term, but its scores have no demonstrated comparability across
+ * different terms. The resulting term geometry was governed almost entirely
+ * by corpus document frequency. Do not restore BM25 term profiles without an
+ * explicit cross-term calibration model and evidence that it removes this
+ * prevalence geometry.
+ * </p>
+ *
+ * <p>
+ * The default map first transforms raw term-document frequencies into
+ * positive document-versus-rest G² profiles, then directly decomposes those
+ * unnormalised profiles by SVD. Its row coordinates are
+ * {@code U_k Sigma_k}. Absence and under-representation contribute zero rather
+ * than negative evidence. The raw-frequency SVD and the earlier
+ * positive-G², chord-distance, nonmetric-MDS path remain available as
+ * {@code projection=SVD} and {@code projection=G2_NMDS} controls.
+ * </p>
  */
 public class OpClades extends Op
 {
     /** Distance matrices that Alix computes in addition to raw characters. */
     private enum Distance
     {
-        BM25,
+        G2,
         OCHIAI;
     }
 
@@ -57,23 +80,49 @@ public class OpClades extends Op
     /** JSON representations exposed by the endpoint. */
     private enum JsonView
     {
-        /** BM25 map with detailed term explanations. */
+        /** Selected projection with detailed term explanations. */
         DIAGNOSTIC,
-        /** Existing compact BM25 map. */
+        /** Compact selected projection. */
         MAP,
-        /** Complete term-by-document BM25 matrix and column metadata. */
+        /** Raw frequencies, positive-G² profiles, and document metadata. */
         MATRIX;
     }
 
-    /** BM25 matrix with its compact-column to Lucene-document mapping. */
-    private record TermDocMatrix(double[][] scores, int[] docIds) {}
+    /** Alternative term-map experiments retained for direct comparison. */
+    private enum Projection
+    {
+        /** Direct truncated SVD of unnormalised positive G² profiles. */
+        G2_SVD,
+        /** Positive document-vs-rest G², chord distance, and nonmetric MDS. */
+        G2_NMDS,
+        /** Direct truncated SVD of the raw term-document frequency table. */
+        SVD;
+    }
 
-    /** Full-corpus BM25 matrix, normalized rows, distances, and map. */
-    private record Bm25Analysis(
+    /** Raw term frequencies and derived profiles with document mapping. */
+    private record TermDocMatrix(
+        int[][] frequencies,
+        double[][] profiles,
+        int[] docIds
+    ) {}
+
+    /** Projection-independent layout and fit diagnostics. */
+    private record MapLayout(
+        Projection projection,
+        double[][] coordinates,
+        double[] cos2,
+        double[] inertia,
+        double stress,
+        int iterations,
+        boolean converged
+    ) {}
+
+    /** Full-corpus vectors, distances, and projected map. */
+    private record TermMapAnalysis(
         TermDocMatrix matrix,
-        double[][] normalized,
+        double[][] vectors,
         double[][] distances,
-        MdsLayout layout
+        MapLayout layout
     ) {}
 
     /** Result of a deterministic nonmetric multidimensional scaling fit. */
@@ -173,13 +222,14 @@ public class OpClades extends Op
     }
 
     /**
-     * Builds one weighted document vector per selected term.
+     * Builds raw frequency rows and positive-root G² profiles.
      *
      * <p>
-     * Every retained document is first scored with a zero term frequency so
-     * scorers for which absence is informative, such as signed keyness, remain
-     * correct. Posting visits then replace the coordinates of documents that
-     * contain the term.
+     * G² is calculated by the shared keyness implementation with the document
+     * as focus and the disjoint corpus remainder as reference. A coordinate is
+     * {@code sqrt(G²)} only when the term is over-represented in the document;
+     * otherwise it is zero. Consequently, absent terms and under-representation
+     * never become negative evidence.
      * </p>
      *
      * @param reader    index reader supplying term postings
@@ -187,8 +237,7 @@ public class OpClades extends Op
      * @param rowIds    selected dense term ids
      * @param docFilter retained document dimensions
      * @param termStats corpus, term and document statistics
-     * @param scorer    local term-document scorer
-     * @return score matrix and compact-column document ids
+     * @return raw frequencies, profile weights, and compact document ids
      * @throws IOException if terms or postings cannot be read
      */
     private static TermDocMatrix termDocMatrix(
@@ -196,8 +245,7 @@ public class OpClades extends Op
         final TermLexicon lexicon,
         final int[] rowIds,
         final FixedBitSet docFilter,
-        final TermStats termStats,
-        final TermDocScorer scorer
+        final TermStats termStats
     ) throws IOException {
         final int[] docRanks = new int[reader.maxDoc()];
         Arrays.fill(docRanks, -1);
@@ -216,28 +264,25 @@ public class OpClades extends Op
             }
         }
 
-        final double[][] rows = new double[rowIds.length][docCount];
+        final int[][] frequencies = new int[rowIds.length][docCount];
+        final double[][] profiles = new double[rowIds.length][docCount];
         final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
         final TermsEnum termsEnum = terms == null ? null : terms.iterator();
         final BytesRefBuilder termBytes = new BytesRefBuilder();
         final int[] docTokens = termStats.docTokens();
+        final TermDocScorer scorer = new TermDocScorer.Keyness(
+            new KeynessScorer.G2()
+        );
         PostingsEnum postings = null;
 
         for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
             final int termId = rowIds[rowRank];
-            final double[] row = rows[rowRank];
             final TermDocScorer.Prepared prepared = scorer.prepare(
                 termStats.fieldTokens(),
                 termStats.fieldDocs(),
                 termStats.termFreq(termId),
                 termStats.termDocs(termId)
             );
-
-            for (int docId = 0; docId < docFilter.length(); docId++) {
-                if (docFilter.get(docId)) {
-                    row[docRanks[docId]] = prepared.score(0, docTokens[docId]);
-                }
-            }
 
             if (termsEnum == null
                 || !termsEnum.seekExact(lexicon.formBytes(termId, termBytes))) {
@@ -250,23 +295,25 @@ public class OpClades extends Op
                 docId = postings.nextDoc()
             ) {
                 if (docFilter.get(docId)) {
-                    row[docRanks[docId]] = prepared.score(
-                        postings.freq(),
-                        docTokens[docId]
+                    final int docRank = docRanks[docId];
+                    final int frequency = postings.freq();
+                    frequencies[rowRank][docRank] = frequency;
+                    profiles[rowRank][docRank] = positiveRoot(
+                        prepared.score(frequency, docTokens[docId])
                     );
                 }
             }
         }
-        return new TermDocMatrix(rows, docIds);
+        return new TermDocMatrix(frequencies, profiles, docIds);
     }
 
     /**
      * Retains every live document containing at least one selected term.
      *
      * <p>
-     * Unlike binary-character filtering, this score-vector filter retains
+     * Unlike binary-character filtering, this profile filter retains
      * documents containing every selected term because their frequencies and
-     * BM25 values may still discriminate the rows.
+     * positive G² values may still discriminate the rows.
      * </p>
      *
      * @param liveDocs live documents in the reader snapshot
@@ -286,7 +333,7 @@ public class OpClades extends Op
     }
 
     /**
-     * Builds a two-dimensional nonmetric map from the full-corpus BM25 matrix.
+     * Builds the selected full-corpus term map.
      *
      * @param reader index reader supplying postings
      * @param lexicon selected-term lexicon
@@ -295,10 +342,10 @@ public class OpClades extends Op
      * @param termStats corpus and term statistics
      * @param pars resolved HTTP parameters
      * @param meta response metadata collector
-     * @return score matrix, normalized rows, chord distances, and layout
+     * @return frequencies, projection vectors, distances, and layout
      * @throws IOException if postings cannot be read
      */
-    private static Bm25Analysis bm25Analysis(
+    private static TermMapAnalysis termMapAnalysis(
         final IndexReader reader,
         final TermLexicon lexicon,
         final int[] rowIds,
@@ -307,16 +354,36 @@ public class OpClades extends Op
         final HttpPars pars,
         final MetaUtil meta
     ) throws IOException {
-        final TermDocScorer scorer = new TermDocScorer.BM25();
         final TermDocMatrix matrix = termDocMatrix(
             reader,
             lexicon,
             rowIds,
             docFilter,
-            termStats,
-            scorer
+            termStats
         );
-        final double[][] normalized = normalizeRows(matrix.scores());
+        final Projection projection = pars.getEnum(
+            "projection",
+            Projection.G2_SVD
+        );
+
+        meta.put("documents", docFilter.cardinality());
+        meta.put("documentUniverse", "full corpus");
+        meta.put("focusRestricted", false);
+        meta.put("source", "raw term-document frequencies");
+        return switch (projection) {
+            case G2_SVD -> g2SvdAnalysis(matrix, pars, meta);
+            case G2_NMDS -> g2NmdsAnalysis(matrix, pars, meta);
+            case SVD -> rawSvdAnalysis(matrix, pars, meta);
+        };
+    }
+
+    /** Builds the retained positive-G² chord NMDS experiment. */
+    private static TermMapAnalysis g2NmdsAnalysis(
+        final TermDocMatrix matrix,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) {
+        final double[][] normalized = normalizeRows(matrix.profiles());
         final double[][] distances = chordDistances(normalized);
         final int starts = pars.getInt("mds-starts", new int[] { 1, 20 }, 4);
         final int maxIterations = pars.getInt(
@@ -332,30 +399,127 @@ public class OpClades extends Op
             tolerance
         );
 
-        meta.put("documents", docFilter.cardinality());
-        meta.put("documentUniverse", "full corpus");
-        meta.put("focusRestricted", false);
-        meta.put("score", scorer.toString());
+        meta.put("profile", "sqrt positive document-vs-rest G2");
         meta.put("rowNormalization", "L2");
         meta.put("distance", "chord");
         meta.put("projection", "nonmetric MDS");
         meta.put("mdsStress", map.stress());
         meta.put("mdsIterations", map.iterations());
         meta.put("mdsConverged", map.converged());
-        return new Bm25Analysis(matrix, normalized, distances, map);
+        return new TermMapAnalysis(
+            matrix,
+            matrix.profiles(),
+            distances,
+            new MapLayout(
+                Projection.G2_NMDS,
+                map.coordinates(),
+                null,
+                null,
+                map.stress(),
+                map.iterations(),
+                map.converged()
+            )
+        );
+    }
+
+    /** Builds direct principal coordinates from positive-G² profile rows. */
+    private static TermMapAnalysis g2SvdAnalysis(
+        final TermDocMatrix matrix,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) {
+        return svdAnalysis(
+            matrix,
+            matrix.profiles(),
+            Projection.G2_SVD,
+            "sqrt positive document-vs-rest G2",
+            "positive-G2 SVD",
+            pars,
+            meta
+        );
+    }
+
+    /** Builds direct principal coordinates from raw frequency rows. */
+    private static TermMapAnalysis rawSvdAnalysis(
+        final TermDocMatrix matrix,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) {
+        final double[][] frequencies = frequencyRows(matrix.frequencies());
+        return svdAnalysis(
+            matrix,
+            frequencies,
+            Projection.SVD,
+            "raw term-document frequency",
+            "raw-frequency SVD",
+            pars,
+            meta
+        );
+    }
+
+    /** Decomposes an already prepared non-negative term-document matrix. */
+    private static TermMapAnalysis svdAnalysis(
+        final TermDocMatrix matrix,
+        final double[][] vectors,
+        final Projection projection,
+        final String profileLabel,
+        final String projectionLabel,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) {
+        final ContingencySvd model = ContingencySvd.fromScores(vectors);
+        final int dims = pars.getInt("dims", new int[] { 2, 50 }, 6);
+        final SvdLayout map = model.principalCoordinates(dims);
+        final double[][] distances = euclideanDistances(model.embedding());
+
+        meta.put("profile", profileLabel);
+        meta.put("rowNormalization", "none");
+        meta.put("distance", "Euclidean in full SVD embedding");
+        meta.put("projection", projectionLabel);
+        meta.put("svdCentered", false);
+        meta.put("svdAxisWeight", 1d);
+        meta.put("svdRank", map.inertia().length);
+        return new TermMapAnalysis(
+            matrix,
+            vectors,
+            distances,
+            new MapLayout(
+                projection,
+                map.coords(),
+                map.cos2(),
+                map.inertia(),
+                Double.NaN,
+                0,
+                true
+            )
+        );
+    }
+
+    /** Converts integer frequency rows to the direct SVD input matrix. */
+    private static double[][] frequencyRows(final int[][] frequencies)
+    {
+        final double[][] rows = new double[frequencies.length][];
+        for (int row = 0; row < frequencies.length; row++) {
+            rows[row] = new double[frequencies[row].length];
+            for (int col = 0; col < frequencies[row].length; col++) {
+                rows[row][col] = frequencies[row][col];
+            }
+        }
+        return rows;
     }
 
     /**
-     * Returns Lucene-compatible BM25 inverse document frequency.
+     * Converts signed G² to a positive-root profile coordinate.
+     *
+     * @param signedG2 signed document-versus-rest G²
+     * @return square root for positive finite scores, otherwise zero
      */
-    private static double bm25Idf(final int corpusDocs, final int termDocs)
+    static double positiveRoot(final double signedG2)
     {
-        if (corpusDocs <= 0 || termDocs <= 0) {
+        if (!(signedG2 > 0d) || !Double.isFinite(signedG2)) {
             return 0d;
         }
-        return Math.log(
-            1d + (corpusDocs - termDocs + 0.5d) / (termDocs + 0.5d)
-        );
+        return Math.sqrt(signedG2);
     }
 
     /**
@@ -596,9 +760,9 @@ public class OpClades extends Op
     }
 
     /**
-     * L2-normalizes score rows without changing the source matrix.
+     * L2-normalizes profile rows without changing the source matrix.
      *
-     * @param rows term-by-document score matrix
+     * @param rows term-by-document profile matrix
      * @return normalized matrix with one unit vector per non-zero row
      * @throws IllegalArgumentException if rows are ragged or contain a zero row
      */
@@ -616,7 +780,7 @@ public class OpClades extends Op
             final double norm = l2(rows[row]);
             if (!(norm > 0d) || !Double.isFinite(norm)) {
                 throw new IllegalArgumentException(
-                    "Term score row " + row + " has no finite positive norm"
+                    "Term profile row " + row + " has no finite positive norm"
                 );
             }
             for (int col = 0; col < width; col++) {
@@ -647,6 +811,30 @@ public class OpClades extends Op
                 for (int doc = 0; doc < width; doc++) {
                     final double delta = normalized[row][doc]
                         - normalized[col][doc];
+                    squared += delta * delta;
+                }
+                final double distance = Math.sqrt(Math.max(0d, squared));
+                distances[row][col] = distance;
+                distances[col][row] = distance;
+            }
+        }
+        return distances;
+    }
+
+    /** Computes full Euclidean distances between equal-width rows. */
+    private static double[][] euclideanDistances(final double[][] rows)
+    {
+        final int size = rows.length;
+        final int width = size == 0 ? 0 : rows[0].length;
+        final double[][] distances = new double[size][size];
+        for (int row = 0; row < size; row++) {
+            if (rows[row].length != width) {
+                throw new IllegalArgumentException("Embedding matrix is ragged");
+            }
+            for (int col = 0; col < row; col++) {
+                double squared = 0d;
+                for (int axis = 0; axis < width; axis++) {
+                    final double delta = rows[row][axis] - rows[col][axis];
                     squared += delta * delta;
                 }
                 final double distance = Math.sqrt(Math.max(0d, squared));
@@ -1288,23 +1476,23 @@ public class OpClades extends Op
             rowIds,
             liveDocs
         );
+        final FixedBitSet profileDocs = unionDocs(liveDocs, docPresence);
         final FixedBitSet featDocs = filterDocs(liveDocs, docPresence);
 
-        // Distances and exported characters must use exactly the same columns.
+        // Binary characters omit constant columns; G² profiles keep the union.
         for (final FixedBitSet row : docPresence) {
             row.and(featDocs);
         }
 
-        final Distance distance = pars.getEnum("distance", Distance.BM25);
+        final Distance distance = pars.getEnum("distance", Distance.G2);
         final double[][] distances = switch (distance) {
-            case BM25 -> cosineDistances(termDocMatrix(
+            case G2 -> chordDistances(normalizeRows(termDocMatrix(
                 index.reader(),
                 lexicon,
                 rowIds,
-                featDocs,
-                termStats,
-                new TermDocScorer.BM25()
-            ).scores());
+                profileDocs,
+                termStats
+            ).profiles()));
             case OCHIAI -> ochiaiDistances(docPresence);
         };
 
@@ -1330,30 +1518,61 @@ public class OpClades extends Op
         }
     }
 
-    /** Writes nonmetric MDS fit metadata. */
-    private static void writeMdsFit(
+    /** Writes projection-specific axis and fit metadata. */
+    private static void writeAxes(
         final JsonWriter jw,
-        final MdsLayout map
+        final MapLayout map
     ) throws IOException {
         jw.name("axes");
         jw.beginObject();
-        jw.name("dims").value(2);
-        jw.name("method").value("nonmetric MDS");
-        jw.name("distance").value("L2-normalized BM25 chord");
-        jw.name("stress").value(round(map.stress(), 6));
-        jw.name("iterations").value(map.iterations());
-        jw.name("converged").value(map.converged());
+        final int dims = map.coordinates().length == 0
+            ? 0
+            : map.coordinates()[0].length;
+        jw.name("dims").value(dims);
+        switch (map.projection()) {
+            case G2_NMDS -> {
+                jw.name("method").value("nonmetric MDS");
+                jw.name("distance").value("L2-normalized positive-G2 chord");
+                jw.name("stress").value(round(map.stress(), 6));
+                jw.name("iterations").value(map.iterations());
+                jw.name("converged").value(map.converged());
+            }
+            case G2_SVD, SVD -> {
+                final double[] inertia = map.inertia();
+                final double dim1 = inertia.length > 0 ? inertia[0] : 0d;
+                final double dim2 = inertia.length > 1 ? inertia[1] : 0d;
+                double emitted = 0d;
+                for (int axis = 0; axis < Math.min(dims, inertia.length); axis++) {
+                    emitted += inertia[axis];
+                }
+                jw.name("method").value(
+                    map.projection() == Projection.G2_SVD
+                        ? "positive-G2 SVD"
+                        : "raw-frequency SVD"
+                );
+                jw.name("dim1_pct").value(round(dim1, 1));
+                jw.name("dim2_pct").value(round(dim2, 1));
+                jw.name("cum2_pct").value(round(dim1 + dim2, 1));
+                jw.name("emitted_pct").value(round(emitted, 1));
+                jw.name("spectrum");
+                jw.beginArray();
+                for (final double percent : inertia) {
+                    jw.value(round(percent, 1));
+                }
+                jw.endArray();
+            }
+        }
         jw.endObject();
     }
 
     /**
-     * Writes the complete BM25 matrix with term and document metadata.
+     * Writes raw frequencies and derived profiles with document metadata.
      */
     private static void writeMatrixData(
         final JsonWriter jw,
         final IndexReader reader,
         final HttpServletRequest request,
-        final Bm25Analysis analysis,
+        final TermMapAnalysis analysis,
         final int[] rowIds,
         final long[] rowFreq,
         final TermLexicon lexicon,
@@ -1367,7 +1586,8 @@ public class OpClades extends Op
 
         jw.name("data");
         jw.beginObject();
-        jw.name("kind").value("bm25-matrix");
+        jw.name("kind").value("term-document-frequency");
+        jw.name("derivedProfile").value("sqrt-positive-document-vs-rest-G2");
         jw.name("rows").value(rowIds.length);
         jw.name("cols").value(matrix.docIds().length);
 
@@ -1398,11 +1618,16 @@ public class OpClades extends Op
             jw.name("freq").value(rowFreq[row]);
             jw.name("corpusTf").value(termStats.termFreq(termId));
             jw.name("corpusDf").value(corpusDf);
-            jw.name("idf").value(round(bm25Idf(termStats.fieldDocs(), corpusDf), 6));
-            jw.name("scores");
+            jw.name("frequencies");
             jw.beginArray();
-            for (final double score : matrix.scores()[row]) {
-                jw.value(score);
+            for (final int frequency : matrix.frequencies()[row]) {
+                jw.value(frequency);
+            }
+            jw.endArray();
+            jw.name("profile");
+            jw.beginArray();
+            for (final double weight : matrix.profiles()[row]) {
+                jw.value(weight);
             }
             jw.endArray();
             jw.endObject();
@@ -1412,27 +1637,26 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes the BM25 chord-distance NMDS map and optional term diagnostics.
+     * Writes the selected term map and optional diagnostics.
      */
     private static void writeMapData(
         final JsonWriter jw,
         final HttpPars pars,
-        final Bm25Analysis analysis,
+        final TermMapAnalysis analysis,
         final int[] rowIds,
         final long[] rowFreq,
         final TermLexicon lexicon,
         final TermStats termStats,
         final boolean diagnostic
     ) throws IOException {
-        final MdsLayout map = analysis.layout();
-        final double[][] scores = analysis.matrix().scores();
-        final double[][] normalized = analysis.normalized();
+        final MapLayout map = analysis.layout();
+        final double[][] vectors = analysis.vectors();
         final double[][] distances = analysis.distances();
         final int nearestCount = pars.getInt("nearest", new int[] { 1, 20 }, 5);
 
         jw.name("data");
         jw.beginObject();
-        writeMdsFit(jw, map);
+        writeAxes(jw, map);
 
         jw.name("nodes");
         jw.beginArray();
@@ -1444,8 +1668,11 @@ public class OpClades extends Op
             jw.name("id").value(termId);
             jw.name("form").value(lexicon.form(termId));
             jw.name("freq").value(rowFreq[node]);
-            jw.name("x").value(round(coords[0], 4));
-            jw.name("y").value(round(coords[1], 4));
+            jw.name("x").value(round(coords.length > 0 ? coords[0] : 0d, 4));
+            jw.name("y").value(round(coords.length > 1 ? coords[1] : 0d, 4));
+            if (map.cos2() != null) {
+                jw.name("cos2").value(round(map.cos2()[node], 4));
+            }
             jw.name("coords");
             jw.beginArray();
             for (final double coordinate : coords) {
@@ -1457,16 +1684,11 @@ public class OpClades extends Op
                 final int corpusDf = termStats.termDocs(termId);
                 jw.name("corpusTf").value(termStats.termFreq(termId));
                 jw.name("corpusDf").value(corpusDf);
-                jw.name("idf").value(round(
-                    bm25Idf(termStats.fieldDocs(), corpusDf),
-                    6
-                ));
-                jw.name("nonzeroDocs").value(nonZero(scores[node]));
-                jw.name("rawNorm").value(round(l2(scores[node]), 6));
-                jw.name("normalizedNorm").value(round(l2(normalized[node]), 6));
-                jw.name("top1Energy").value(round(energyShare(scores[node], 1), 6));
-                jw.name("top5Energy").value(round(energyShare(scores[node], 5), 6));
-                jw.name("top10Energy").value(round(energyShare(scores[node], 10), 6));
+                jw.name("vectorNonzeroDocs").value(nonZero(vectors[node]));
+                jw.name("vectorNorm").value(round(l2(vectors[node]), 6));
+                jw.name("top1Energy").value(round(energyShare(vectors[node], 1), 6));
+                jw.name("top5Energy").value(round(energyShare(vectors[node], 5), 6));
+                jw.name("top10Energy").value(round(energyShare(vectors[node], 10), 6));
 
                 jw.name("nearest");
                 jw.beginArray();
@@ -1486,14 +1708,18 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes an L2-normalized BM25 chord-distance NMDS map as JSON.
+     * Writes a positive-G² SVD map or one of the retained control maps as JSON.
      *
      * <p>
      * The response shape matches the co-occurrence semantic-map endpoint:
-     * axes contain the NMDS fit diagnostics and nodes contain the two display
-     * coordinates. Parameter {@code view=diagnostic} adds term explanations;
-     * {@code view=matrix} returns the complete BM25 matrix and document-column
-     * metadata. The default is {@code view=map}.
+     * axes contain projection diagnostics and nodes contain display
+     * coordinates. The default {@code projection=G2_SVD} directly decomposes
+     * unnormalised positive document-versus-rest G² profiles.
+     * {@code projection=SVD} retains raw-frequency SVD as a control, while
+     * {@code projection=G2_NMDS} retains the prior positive-G² chord experiment.
+     * Parameter {@code view=diagnostic} adds term explanations;
+     * {@code view=matrix} returns raw frequencies, derived profiles, and
+     * document-column metadata. The default is {@code view=map}.
      * </p>
      *
      * @param index Lucene index
@@ -1519,7 +1745,7 @@ public class OpClades extends Op
         long[] rowFreq = null;
         TermLexicon lexicon = null;
         TermStats termStats = null;
-        Bm25Analysis analysis = null;
+        TermMapAnalysis analysis = null;
 
         if (topTerms == null) {
             response.setStatus(400);
@@ -1547,7 +1773,7 @@ public class OpClades extends Op
                 liveDocs
             );
             final FixedBitSet documents = unionDocs(liveDocs, presence);
-            analysis = bm25Analysis(
+            analysis = termMapAnalysis(
                 index.reader(),
                 lexicon,
                 rowIds,
