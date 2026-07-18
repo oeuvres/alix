@@ -38,8 +38,10 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * <p>
  * The default map ({@code projection=G2_CA}) factorises signed square-root G²
- * deviance residuals; {@code projection=CA} is the classical Pearson-residual
- * correspondence-analysis control. Both share one pipeline: fit a
+ * deviance residuals; {@code projection=FT_CA} uses Freeman-Tukey
+ * variance-stabilised residuals, and {@code projection=CA} is the classical
+ * Pearson-residual correspondence-analysis control. All three share one
+ * pipeline: fit a
  * quasi-independence expectation by IPF, form residuals, decompose, take
  * principal coordinates {@code U Sigma}, and scale rows by inverse square-root
  * mass. The JSON response mirrors the co-occurrence semantic-map endpoint (an
@@ -73,11 +75,12 @@ import jakarta.servlet.http.HttpServletResponse;
  * </ul>
  *
  * <p>
- * As an independent geometry for comparison, {@code .csv?csv=OCHIAI} emits the
- * n×n binary Ochiai chord-distance square between the selected terms
- * ({@link #ochiaiDistances(FixedBitSet[])} over live-document presence bitsets),
- * for external seriation, filtration, or heatmap prototypes that challenge the
- * SVD map.
+ * As independent geometries for comparison, the {@code .csv} extension can
+ * emit labelled n×n binary distance squares over live-document presence
+ * bitsets: {@code csv=OCHIAI} uses Ochiai chord distance and
+ * {@code csv=GENE_SHARING} uses the SplitsTree gene-sharing distance.
+ * These exports support external ordination, seriation, filtration, and
+ * heatmap prototypes that challenge the SVD map.
  * </p>
  */
 public class OpClades extends Op
@@ -87,6 +90,8 @@ public class OpClades extends Op
     {
         /** Selected term-by-document raw contingency table. */
         CONTINGENCY,
+        /** Selected term-by-term binary gene-sharing distance square. */
+        GENE_SHARING,
         /** Selected term-by-term binary Ochiai chord-distance square. */
         OCHIAI;
     }
@@ -105,6 +110,8 @@ public class OpClades extends Op
     {
         /** Pearson correspondence analysis of selected term rows. */
         CA,
+        /** Freeman-Tukey residual factor analysis of selected term rows. */
+        FT_CA,
         /** G² deviance-residual factor analysis of selected term rows. */
         G2_CA;
     }
@@ -243,6 +250,14 @@ public class OpClades extends Op
                 rowIds,
                 termDocMatrix(index.reader(), lexicon, rowIds, liveDocs)
             );
+            case GENE_SHARING -> writeSquareCsv(
+                writer,
+                lexicon,
+                rowIds,
+                geneSharingDistances(
+                    docPresence(index.reader(), lexicon, rowIds, liveDocs)
+                )
+            );
             case OCHIAI -> writeSquareCsv(
                 writer,
                 lexicon,
@@ -256,7 +271,14 @@ public class OpClades extends Op
 
     /**
      * Collects one live-document presence bitset per selected term by walking
-     * its postings directly. Feeds the Ochiai term-distance square.
+     * its postings directly. Feeds the binary term-distance square exporters.
+     *
+     * @param reader index reader supplying term postings
+     * @param lexicon term lexicon aligned with the reader
+     * @param rowIds selected dense term ids
+     * @param liveDocs retained live-document universe
+     * @return document-presence rows aligned with {@code rowIds}
+     * @throws IOException if terms or postings cannot be read
      */
     static FixedBitSet[] docPresence(
         final IndexReader reader,
@@ -490,6 +512,65 @@ public class OpClades extends Op
         return distances;
     }
 
+    /**
+     * Returns the binary gene-sharing distance used by SplitsTree.
+     *
+     * <p>
+     * For non-empty document sets, the similarity is the overlap coefficient,
+     * {@code |A ∩ B| / min(|A|, |B|)}, and the distance is its complement.
+     * Thus, the distance is zero whenever the smaller document set is contained
+     * in the larger one. This is a symmetric dissimilarity, not a metric.
+     * </p>
+     *
+     * @param rowA first document-presence set
+     * @param rowB second document-presence set
+     * @param cardA cardinality of {@code rowA}
+     * @param cardB cardinality of {@code rowB}
+     * @return gene-sharing distance in the interval {@code [0, 1]}
+     */
+    static double geneSharingDistance(
+        final FixedBitSet rowA,
+        final FixedBitSet rowB,
+        final int cardA,
+        final int cardB
+    ) {
+        final int denominator = Math.min(cardA, cardB);
+        if (denominator == 0) {
+            return cardA == cardB ? 0d : 1d;
+        }
+        final long intersection = FixedBitSet.intersectionCount(rowA, rowB);
+        return 1d - (double) intersection / denominator;
+    }
+
+    /**
+     * Computes the full symmetric binary gene-sharing distance matrix.
+     *
+     * @param docPresence one document-presence bitset per selected term
+     * @return symmetric distance matrix aligned with {@code docPresence}
+     */
+    static double[][] geneSharingDistances(final FixedBitSet[] docPresence)
+    {
+        final int size = docPresence.length;
+        final int[] cardinalities = new int[size];
+        for (int rowRank = 0; rowRank < size; rowRank++) {
+            cardinalities[rowRank] = docPresence[rowRank].cardinality();
+        }
+        final double[][] distances = new double[size][size];
+        for (int rowRank = 0; rowRank < size; rowRank++) {
+            for (int colRank = 0; colRank < rowRank; colRank++) {
+                final double distance = geneSharingDistance(
+                    docPresence[rowRank],
+                    docPresence[colRank],
+                    cardinalities[rowRank],
+                    cardinalities[colRank]
+                );
+                distances[rowRank][colRank] = distance;
+                distances[colRank][rowRank] = distance;
+            }
+        }
+        return distances;
+    }
+
     /** Returns normalized observed row masses of a contingency table. */
     private static double[] rowMasses(final double[][] table)
     {
@@ -588,8 +669,8 @@ public class OpClades extends Op
      * {@link ContingencySvd} principal-coordinate layout; {@code cos3} and the
      * correspondence-analysis diagnostics (mass, origin distance, per-axis
      * contribution) are computed from the same full embedding. G² gives the
-     * default signed square-root deviance residuals, Pearson the classical CA
-     * control.
+     * default signed square-root deviance residuals, Freeman-Tukey supplies a
+     * variance-stabilised residual control, and Pearson supplies classical CA.
      * </p>
      */
     private static TermMap termMap(
@@ -598,7 +679,11 @@ public class OpClades extends Op
         final MetaUtil meta,
         final Projection projection
     ) {
-        final Assoc association = projection == Projection.CA ? Assoc.PEARSON : Assoc.G2;
+        final Assoc association = switch (projection) {
+            case CA -> Assoc.PEARSON;
+            case FT_CA -> Assoc.FT;
+            case G2_CA -> Assoc.G2;
+        };
         final double[][] table = toDoubleTable(matrix.frequencies());
         final ContingencySvd model = new ContingencySvd(table, null)
             .residual(association)
@@ -613,23 +698,23 @@ public class OpClades extends Op
         final int dims = coordinates.length == 0 ? 0 : coordinates[0].length;
         final double[] masses = rowMasses(table);
 
-        final boolean deviance = association == Assoc.G2;
-        meta.put(
-            "profile",
-            deviance ? "signed sqrt G2 deviance residuals" : "Pearson residuals"
-        );
+        meta.put("profile", switch (projection) {
+            case CA -> "Pearson residuals";
+            case FT_CA -> "Freeman-Tukey variance-stabilised residuals";
+            case G2_CA -> "signed sqrt G2 deviance residuals";
+        });
         meta.put("table", "selected terms only");
         meta.put("rowNormalization", "inverse sqrt row mass");
-        meta.put(
-            "distance",
-            deviance
-                ? "Euclidean in row-mass-scaled G2 residual coordinates"
-                : "chi-square / Euclidean CA principal coordinates"
-        );
-        meta.put(
-            "projection",
-            deviance ? "G2 residual factor analysis" : "correspondence analysis"
-        );
+        meta.put("distance", switch (projection) {
+            case CA -> "chi-square / Euclidean CA principal coordinates";
+            case FT_CA -> "Euclidean in row-mass-scaled Freeman-Tukey residual coordinates";
+            case G2_CA -> "Euclidean in row-mass-scaled G2 residual coordinates";
+        });
+        meta.put("projection", switch (projection) {
+            case CA -> "correspondence analysis";
+            case FT_CA -> "Freeman-Tukey residual factor analysis";
+            case G2_CA -> "G2 residual factor analysis";
+        });
         meta.put("association", association.toString());
         meta.put("rotation", "NONE");
         meta.put("svdAxisWeight", 1d);
@@ -684,8 +769,9 @@ public class OpClades extends Op
 
         jw.name("dims").value(dims);
         jw.name("method").value(switch (map.projection()) {
-            case G2_CA -> "G2 residual factor analysis";
             case CA -> "correspondence analysis";
+            case FT_CA -> "Freeman-Tukey residual factor analysis";
+            case G2_CA -> "G2 residual factor analysis";
         });
         jw.name("rotation").value("NONE");
         jw.name("dim1_pct").value(round(dim1, 1));
