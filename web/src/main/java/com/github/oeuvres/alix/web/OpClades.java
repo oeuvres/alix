@@ -49,8 +49,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * {@code axes} block plus {@code nodes}); {@code view=diagnostic} adds
  * per-term corpus frequencies and nearest neighbours. {@code view=RADIAL}
  * instead returns a D2 radial layout built from six unscaled G² principal
- * coordinates, soft radial stress, and a power lens. The {@code .csv}
- * extension emits the raw term-by-document contingency table.
+ * coordinates and soft radial stress. Its default radius is mass-corrected
+ * source-space distinctiveness; {@code radius=STRESS} retains the optimized
+ * D2 position norm with its power lens. The {@code .csv} extension emits the
+ * raw term-by-document contingency table.
  * </p>
  *
  * <h2>Rejected experiments</h2>
@@ -88,7 +90,7 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public class OpClades extends Op
 {
-    /** D2 power-lens exponent applied after radial stress optimization. */
+    /** D2 power-lens exponent applied to the optional stress radius. */
     private static final double RADIAL_LENS_EXPONENT = 0.40d;
 
     /** Adam learning rate for the D2 radial stress optimizer. */
@@ -106,7 +108,7 @@ public class OpClades extends Op
     /** Standard deviation of the deterministic angular initialization jitter. */
     private static final double RADIAL_THETA_JITTER = 0.12d;
 
-    /** Number of unscaled G² principal coordinates retained by D2. */
+    /** Default number of unscaled G² principal coordinates retained by D2. */
     private static final int RADIAL_SVD_DIMS = 6;
 
     /** Table emitted by the {@code .csv} extension. */
@@ -131,6 +133,19 @@ public class OpClades extends Op
         RADIAL;
     }
 
+    /**
+     * Selects the radius construction used by the compact radial projection.
+     * The selection affects only the returned radii; optimized D2 angles are
+     * shared by both modes.
+     */
+    private enum RadialRadius
+    {
+        /** Mass-corrected norm in the unscaled G² source coordinates. */
+        DISTINCTIVENESS,
+        /** Power-lensed norm of the optimized radial-stress position. */
+        STRESS;
+    }
+
     /** Association residual family used to build the map. */
     private enum Projection
     {
@@ -152,7 +167,7 @@ public class OpClades extends Op
      * Final D2 radial coordinates aligned with the selected term rows.
      *
      * @param angles angular coordinates in radians
-     * @param radii power-lensed radial coordinates in {@code [0, 1]}
+     * @param radii selected radial coordinates in {@code [0, 1]}
      */
     private record RadialMap(
         double[] angles,
@@ -405,10 +420,17 @@ public class OpClades extends Op
             meta.put("documents", liveDocs.cardinality());
             meta.put("documentUniverse", "full corpus");
             meta.put("focusRestricted", false);
-            meta.put("source", "raw term-document frequencies");
+            if (view != JsonView.RADIAL) {
+                meta.put("source", "raw term-document frequencies");
+            }
 
             if (view == JsonView.RADIAL) {
-                radial = radialMap(matrix, meta);
+                radial = radialMap(
+                    matrix,
+                    meta,
+                    pars.getEnum("radius", RadialRadius.DISTINCTIVENESS),
+                    pars.getInt("dims", new int[] { 2, 50 }, RADIAL_SVD_DIMS)
+                );
             }
             else {
                 map = termMap(
@@ -615,58 +637,69 @@ public class OpClades extends Op
      * <p>
      * The pipeline is fixed: signed square-root G² deviance residuals, six
      * unscaled principal coordinates {@code U_6 Sigma_6}, Euclidean distances
-     * normalized by their pairwise mean, soft radial stress, and the power lens
-     * {@code r' = r^0.40}. The returned map contains only the final radius and
-     * angle required by the client.
+     * normalized by their pairwise mean and soft radial stress. Angles always
+     * come from the optimized positions. Radii are either mass-corrected source
+     * norms or the old power-lensed optimized position norms. The returned map
+     * contains only the final radius and angle required by the client.
      * </p>
      *
      * @param matrix selected term-by-document contingency table
      * @param meta response metadata collector
+     * @param radiusMode selected radial-coordinate source
+     * @param requestedDims number of source dimensions requested
      * @return final radial coordinates aligned with the table rows
      */
     private static RadialMap radialMap(
         final TermDocMatrix matrix,
-        final MetaUtil meta
+        final MetaUtil meta,
+        final RadialRadius radiusMode,
+        final int requestedDims
     ) {
         final double[][] table = toDoubleTable(matrix.frequencies());
         final ContingencySvd model = new ContingencySvd(table, null)
             .residual(Assoc.G2);
-        final SvdLayout layout = model.principalCoordinates(RADIAL_SVD_DIMS);
+        final SvdLayout layout = model.principalCoordinates(requestedDims);
         final double[][] source = layout.coords();
         final int size = source.length;
-        final int dims = size == 0 ? 0 : source[0].length;
+        final int sourceDims = size == 0 ? 0 : source[0].length;
 
         meta.put("view", "RADIAL");
-        meta.put("radialMethod", "G2_SVD_SOFT_RADIAL_D2_V1");
+        meta.put("radialMethod", "G2_SVD_SOFT_RADIAL_D2_V2");
+        meta.put("radius", radiusMode.name());
         meta.put("profile", "signed sqrt G2 deviance residuals");
         meta.put("decomposition", "SVD");
         meta.put("coordinates", "unscaled U Sigma");
-        meta.put("dims", dims);
+        meta.put("dims", sourceDims);
         meta.put("rowNormalization", "none");
         meta.put("distance", "Euclidean in unscaled G2 principal coordinates");
         meta.put("distanceNormalization", "mean pairwise");
         meta.put("projection", "soft radial stress");
-        meta.put("radiusWeight", RADIAL_RADIUS_WEIGHT);
-        meta.put("optimizerIterations", RADIAL_OPTIMIZER_ITERATIONS);
-        meta.put("optimizerLearningRate", RADIAL_LEARNING_RATE);
-        meta.put("optimizerSeed", RADIAL_SEED);
-        meta.put("lens", "power");
-        meta.put("lensExponent", RADIAL_LENS_EXPONENT);
+        switch (radiusMode) {
+            case DISTINCTIVENESS -> {
+                meta.put("radiusMethod", "mass-corrected source norm");
+                meta.put("radiusMassCorrection", "inverse sqrt row mass");
+                meta.put("radiusNormalization", "maximum");
+                meta.put("lens", "none");
+            }
+            case STRESS -> {
+                meta.put(
+                    "radiusMethod",
+                    "optimized radial-stress position norm"
+                );
+                meta.put("radiusNormalization", "maximum");
+                meta.put("lens", "power");
+                meta.put("lensExponent", RADIAL_LENS_EXPONENT);
+            }
+        }
         meta.put("angleUnit", "radian");
         meta.put("angleRange", "[-pi,pi]");
         meta.put("radiusRange", "[0,1]");
         meta.put("svdRank", model.embedding().length == 0
             ? 0
             : model.embedding()[0].length);
-        meta.put("svdFitConverged", model.fitConverged());
-        meta.put("svdFitError", model.fitError());
-        meta.put("svdFitIterations", model.fitIterations());
 
         final double[] angles = new double[size];
         final double[] radii = new double[size];
-        if (size < 2 || dims == 0) {
-            return new RadialMap(angles, radii);
-        }
 
         final double[] sourceRadii = new double[size];
         double sourceRadiusMax = 0d;
@@ -677,6 +710,22 @@ public class OpClades extends Op
             }
             sourceRadii[row] = Math.sqrt(squared);
             sourceRadiusMax = Math.max(sourceRadiusMax, sourceRadii[row]);
+        }
+        if (radiusMode == RadialRadius.DISTINCTIVENESS) {
+            final double[] masses = rowMasses(table);
+            double distinctivenessMax = 0d;
+            for (int row = 0; row < size; row++) {
+                radii[row] = sourceRadii[row] / Math.sqrt(masses[row]);
+                distinctivenessMax = Math.max(distinctivenessMax, radii[row]);
+            }
+            if (distinctivenessMax > 0d) {
+                for (int row = 0; row < size; row++) {
+                    radii[row] /= distinctivenessMax;
+                }
+            }
+        }
+        if (size < 2 || sourceDims == 0) {
+            return new RadialMap(angles, radii);
         }
         if (!(sourceRadiusMax > 0d)) {
             return new RadialMap(angles, radii);
@@ -716,8 +765,8 @@ public class OpClades extends Op
         final Random random = new Random(RADIAL_SEED);
         final double[][] positions = new double[size][2];
         for (int row = 0; row < size; row++) {
-            final double sourceX = dims > 0 ? source[row][0] : 0d;
-            final double sourceY = dims > 1 ? source[row][1] : 0d;
+            final double sourceX = sourceDims > 0 ? source[row][0] : 0d;
+            final double sourceY = sourceDims > 1 ? source[row][1] : 0d;
             final double theta = Math.atan2(sourceY, sourceX)
                 + random.nextGaussian() * RADIAL_THETA_JITTER;
             positions[row][0] = sourceRadii[row] * Math.cos(theta);
@@ -810,22 +859,26 @@ public class OpClades extends Op
                 Math.hypot(bestPositions[row][0], bestPositions[row][1])
             );
         }
-        if (!(modelRadiusMax > 0d)) {
-            return new RadialMap(angles, radii);
-        }
-
         for (int row = 0; row < size; row++) {
             final double modelRadius = Math.hypot(
                 bestPositions[row][0],
                 bestPositions[row][1]
             );
-            radii[row] = Math.pow(
-                Math.min(1d, modelRadius / modelRadiusMax),
-                RADIAL_LENS_EXPONENT
-            );
             angles[row] = modelRadius > 0d
                 ? Math.atan2(bestPositions[row][1], bestPositions[row][0])
                 : 0d;
+        }
+        if (radiusMode == RadialRadius.STRESS && modelRadiusMax > 0d) {
+            for (int row = 0; row < size; row++) {
+                final double modelRadius = Math.hypot(
+                    bestPositions[row][0],
+                    bestPositions[row][1]
+                );
+                radii[row] = Math.pow(
+                    Math.min(1d, modelRadius / modelRadiusMax),
+                    RADIAL_LENS_EXPONENT
+                );
+            }
         }
         return new RadialMap(angles, radii);
     }
