@@ -427,7 +427,7 @@ public class OpClades extends Op
             meta.toJson(jw, pars);
             jw.endObject();
             if (radial != null) {
-                writeRadialData(jw, radial, rowIds, rowFreq, lexicon);
+                writeRadialData(jw, radial, rowIds, rowFreq, lexicon, termStats);
             }
             else if (map != null) {
                 writeMapData(
@@ -1185,17 +1185,20 @@ public class OpClades extends Op
         final RadialMap map,
         final int[] rowIds,
         final long[] rowFreq,
-        final TermLexicon lexicon
+        final TermLexicon lexicon,
+        final TermStats termStats
     ) throws IOException {
         jw.name("data");
         jw.beginObject();
         jw.name("nodes");
         jw.beginArray();
         for (int node = 0; node < map.radii().length; node++) {
+            final int termId = rowIds[node];
             jw.beginObject();
-            jw.name("id").value(rowIds[node]);
-            jw.name("form").value(lexicon.form(rowIds[node]));
+            jw.name("id").value(termId);
+            jw.name("form").value(lexicon.form(termId));
             jw.name("freq").value(rowFreq[node]);
+            jw.name("fieldFreq").value(termStats.termFreq(termId));
             jw.name("radius").value(round(map.radii()[node], 6));
             jw.name("angle").value(round(map.angles()[node], 8));
             jw.endObject();
