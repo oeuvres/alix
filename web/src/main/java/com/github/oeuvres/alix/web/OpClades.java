@@ -80,12 +80,9 @@ import jakarta.servlet.http.HttpServletResponse;
  * </ul>
  *
  * <p>
- * As independent geometries for comparison, the {@code .csv} extension can
- * emit labelled n×n binary distance squares over live-document presence
- * bitsets: {@code csv=OCHIAI} uses Ochiai chord distance and
- * {@code csv=GENE_SHARING} uses the SplitsTree gene-sharing distance.
- * These exports support external ordination, seriation, filtration, and
- * heatmap prototypes that challenge the SVD map.
+ * Binary term-distance squares (Ochiai, gene-sharing) previously exported here
+ * were moved to {@link com.github.oeuvres.alix.maths.BinaryDistance}; this
+ * endpoint now works on counts only.
  * </p>
  */
 public class OpClades extends Op
@@ -115,11 +112,7 @@ public class OpClades extends Op
     private enum CsvKind
     {
         /** Selected term-by-document raw contingency table. */
-        CONTINGENCY,
-        /** Selected term-by-term binary gene-sharing distance square. */
-        GENE_SHARING,
-        /** Selected term-by-term binary Ochiai chord-distance square. */
-        OCHIAI;
+        CONTINGENCY;
     }
 
     /** JSON representations exposed by the endpoint. */
@@ -282,67 +275,7 @@ public class OpClades extends Op
                 rowIds,
                 termDocMatrix(index.reader(), lexicon, rowIds, liveDocs)
             );
-            case GENE_SHARING -> writeSquareCsv(
-                writer,
-                lexicon,
-                rowIds,
-                geneSharingDistances(
-                    docPresence(index.reader(), lexicon, rowIds, liveDocs)
-                )
-            );
-            case OCHIAI -> writeSquareCsv(
-                writer,
-                lexicon,
-                rowIds,
-                ochiaiDistances(
-                    docPresence(index.reader(), lexicon, rowIds, liveDocs)
-                )
-            );
         }
-    }
-
-    /**
-     * Collects one live-document presence bitset per selected term by walking
-     * its postings directly. Feeds the binary term-distance square exporters.
-     *
-     * @param reader index reader supplying term postings
-     * @param lexicon term lexicon aligned with the reader
-     * @param rowIds selected dense term ids
-     * @param liveDocs retained live-document universe
-     * @return document-presence rows aligned with {@code rowIds}
-     * @throws IOException if terms or postings cannot be read
-     */
-    static FixedBitSet[] docPresence(
-        final IndexReader reader,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final FixedBitSet liveDocs
-    ) throws IOException {
-        final FixedBitSet[] rows = new FixedBitSet[rowIds.length];
-        final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
-        final TermsEnum termsEnum = terms == null ? null : terms.iterator();
-        final BytesRefBuilder termBytes = new BytesRefBuilder();
-        PostingsEnum postings = null;
-
-        for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
-            final FixedBitSet docs = new FixedBitSet(reader.maxDoc());
-            rows[rowRank] = docs;
-            if (termsEnum == null
-                || !termsEnum.seekExact(lexicon.formBytes(rowIds[rowRank], termBytes))) {
-                continue;
-            }
-            postings = termsEnum.postings(postings, PostingsEnum.NONE);
-            for (
-                int docId = postings.nextDoc();
-                docId != DocIdSetIterator.NO_MORE_DOCS;
-                docId = postings.nextDoc()
-            ) {
-                if (liveDocs.get(docId)) {
-                    docs.set(docId);
-                }
-            }
-        }
-        return rows;
     }
 
     /** Computes full Euclidean distances between equal-width rows. */
@@ -431,6 +364,12 @@ public class OpClades extends Op
                     pars.getEnum("radius", RadialRadius.DISTINCTIVENESS),
                     pars.getInt("dims", new int[] { 2, 50 }, RADIAL_SVD_DIMS)
                 );
+                meta.put("color", "log2Lift");
+                meta.put(
+                    "colorMethod",
+                    "log2((freq/focusTokens)/(fieldFreq/fieldTokens))"
+                );
+                meta.put("colorReference", 0d);
             }
             else {
                 map = termMap(
@@ -449,7 +388,15 @@ public class OpClades extends Op
             meta.toJson(jw, pars);
             jw.endObject();
             if (radial != null) {
-                writeRadialData(jw, radial, rowIds, rowFreq, lexicon, termStats);
+                writeRadialData(
+                    jw,
+                    radial,
+                    rowIds,
+                    rowFreq,
+                    lexicon,
+                    termStats,
+                    topTerms.tokens()
+                );
             }
             else if (map != null) {
                 writeMapData(
@@ -521,113 +468,6 @@ public class OpClades extends Op
             nearest[rank] = ranks[rank];
         }
         return nearest;
-    }
-
-    /**
-     * Returns the chord distance associated with binary Ochiai similarity.
-     *
-     * <p>
-     * For binary document vectors Ochiai similarity is cosine similarity,
-     * {@code |A ∩ B| / sqrt(|A| |B|)}; the returned chord distance is the
-     * Euclidean distance between the corresponding unit vectors,
-     * {@code sqrt(2 - 2 * similarity)}.
-     * </p>
-     */
-    static double ochiaiDistance(
-        final FixedBitSet rowA,
-        final FixedBitSet rowB,
-        final int cardA,
-        final int cardB
-    ) {
-        if (cardA == 0 || cardB == 0) {
-            return cardA == cardB ? 0d : Math.sqrt(2d);
-        }
-        final long intersection = FixedBitSet.intersectionCount(rowA, rowB);
-        final double similarity = intersection / Math.sqrt((double) cardA * cardB);
-        return Math.sqrt(Math.max(0d, 2d - 2d * similarity));
-    }
-
-    /** Computes the full symmetric Ochiai chord-distance matrix. */
-    static double[][] ochiaiDistances(final FixedBitSet[] docPresence)
-    {
-        final int size = docPresence.length;
-        final int[] cardinalities = new int[size];
-        for (int rowRank = 0; rowRank < size; rowRank++) {
-            cardinalities[rowRank] = docPresence[rowRank].cardinality();
-        }
-        final double[][] distances = new double[size][size];
-        for (int rowRank = 0; rowRank < size; rowRank++) {
-            for (int colRank = 0; colRank < rowRank; colRank++) {
-                final double distance = ochiaiDistance(
-                    docPresence[rowRank],
-                    docPresence[colRank],
-                    cardinalities[rowRank],
-                    cardinalities[colRank]
-                );
-                distances[rowRank][colRank] = distance;
-                distances[colRank][rowRank] = distance;
-            }
-        }
-        return distances;
-    }
-
-    /**
-     * Returns the binary gene-sharing distance used by SplitsTree.
-     *
-     * <p>
-     * For non-empty document sets, the similarity is the overlap coefficient,
-     * {@code |A ∩ B| / min(|A|, |B|)}, and the distance is its complement.
-     * Thus, the distance is zero whenever the smaller document set is contained
-     * in the larger one. This is a symmetric dissimilarity, not a metric.
-     * </p>
-     *
-     * @param rowA first document-presence set
-     * @param rowB second document-presence set
-     * @param cardA cardinality of {@code rowA}
-     * @param cardB cardinality of {@code rowB}
-     * @return gene-sharing distance in the interval {@code [0, 1]}
-     */
-    static double geneSharingDistance(
-        final FixedBitSet rowA,
-        final FixedBitSet rowB,
-        final int cardA,
-        final int cardB
-    ) {
-        final int denominator = Math.min(cardA, cardB);
-        if (denominator == 0) {
-            return cardA == cardB ? 0d : 1d;
-        }
-        final long intersection = FixedBitSet.intersectionCount(rowA, rowB);
-        return 1d - (double) intersection / denominator;
-    }
-
-    /**
-     * Computes the full symmetric binary gene-sharing distance matrix.
-     *
-     * @param docPresence one document-presence bitset per selected term
-     * @return symmetric distance matrix aligned with {@code docPresence}
-     */
-    static double[][] geneSharingDistances(final FixedBitSet[] docPresence)
-    {
-        final int size = docPresence.length;
-        final int[] cardinalities = new int[size];
-        for (int rowRank = 0; rowRank < size; rowRank++) {
-            cardinalities[rowRank] = docPresence[rowRank].cardinality();
-        }
-        final double[][] distances = new double[size][size];
-        for (int rowRank = 0; rowRank < size; rowRank++) {
-            for (int colRank = 0; colRank < rowRank; colRank++) {
-                final double distance = geneSharingDistance(
-                    docPresence[rowRank],
-                    docPresence[colRank],
-                    cardinalities[rowRank],
-                    cardinalities[colRank]
-                );
-                distances[rowRank][colRank] = distance;
-                distances[colRank][rowRank] = distance;
-            }
-        }
-        return distances;
     }
 
     /**
@@ -1231,6 +1071,8 @@ public class OpClades extends Op
      * @param rowIds selected term ids aligned with the radial rows
      * @param rowFreq selected term frequencies aligned with the radial rows
      * @param lexicon term lexicon
+     * @param termStats corpus term statistics
+     * @param focusTokens token count of the focus population
      * @throws IOException if the JSON response cannot be written
      */
     private static void writeRadialData(
@@ -1239,19 +1081,33 @@ public class OpClades extends Op
         final int[] rowIds,
         final long[] rowFreq,
         final TermLexicon lexicon,
-        final TermStats termStats
+        final TermStats termStats,
+        final long focusTokens
     ) throws IOException {
         jw.name("data");
         jw.beginObject();
         jw.name("nodes");
         jw.beginArray();
+        final long fieldTokens = termStats.fieldTokens();
         for (int node = 0; node < map.radii().length; node++) {
             final int termId = rowIds[node];
+            final long fieldFreq = termStats.termFreq(termId);
+            double log2Lift = 0d;
+            if (rowFreq[node] > 0L
+                && fieldFreq > 0L
+                && focusTokens > 0L
+                && fieldTokens > 0L) {
+                final double lift = (double) rowFreq[node]
+                    * fieldTokens
+                    / ((double) fieldFreq * focusTokens);
+                log2Lift = Math.log(lift) / Math.log(2d);
+            }
             jw.beginObject();
             jw.name("id").value(termId);
             jw.name("form").value(lexicon.form(termId));
             jw.name("freq").value(rowFreq[node]);
-            jw.name("fieldFreq").value(termStats.termFreq(termId));
+            jw.name("fieldFreq").value(fieldFreq);
+            jw.name("log2Lift").value(round(log2Lift, 6));
             jw.name("radius").value(round(map.radii()[node], 6));
             jw.name("angle").value(round(map.angles()[node], 8));
             jw.endObject();
@@ -1260,34 +1116,4 @@ public class OpClades extends Op
         jw.endObject();
     }
 
-    /**
-     * Writes a labelled n×n term distance matrix as CSV.
-     *
-     * <p>
-     * The first column and the header row carry the term forms; the diagonal is
-     * included and the square is symmetric. This is the raw distance square for
-     * external seriation, filtration, or heatmap prototypes, independent of the
-     * SVD map geometry.
-     * </p>
-     */
-    private static void writeSquareCsv(
-        final Writer writer,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final double[][] distances
-    ) throws IOException {
-        writer.append("form");
-        for (int col = 0; col < rowIds.length; col++) {
-            writer.append(',').append(csvEscape(lexicon.form(rowIds[col])));
-        }
-        writer.append('\n');
-
-        for (int row = 0; row < rowIds.length; row++) {
-            writer.append(csvEscape(lexicon.form(rowIds[row])));
-            for (int col = 0; col < rowIds.length; col++) {
-                writer.append(',').append(Double.toString(distances[row][col]));
-            }
-            writer.append('\n');
-        }
-    }
 }
