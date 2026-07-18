@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
@@ -46,7 +47,9 @@ import jakarta.servlet.http.HttpServletResponse;
  * principal coordinates {@code U Sigma}, and scale rows by inverse square-root
  * mass. The JSON response mirrors the co-occurrence semantic-map endpoint (an
  * {@code axes} block plus {@code nodes}); {@code view=diagnostic} adds
- * per-term corpus frequencies and nearest neighbours. The {@code .csv}
+ * per-term corpus frequencies and nearest neighbours. {@code view=RADIAL}
+ * instead returns a D2 radial layout built from six unscaled G² principal
+ * coordinates, soft radial stress, and a power lens. The {@code .csv}
  * extension emits the raw term-by-document contingency table.
  * </p>
  *
@@ -85,6 +88,27 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public class OpClades extends Op
 {
+    /** D2 power-lens exponent applied after radial stress optimization. */
+    private static final double RADIAL_LENS_EXPONENT = 0.40d;
+
+    /** Adam learning rate for the D2 radial stress optimizer. */
+    private static final double RADIAL_LEARNING_RATE = 0.045d;
+
+    /** Number of Adam iterations used by the D2 radial stress optimizer. */
+    private static final int RADIAL_OPTIMIZER_ITERATIONS = 3500;
+
+    /** Soft penalty retaining the source-space radial norm. */
+    private static final double RADIAL_RADIUS_WEIGHT = 0.18d;
+
+    /** Deterministic seed used for the radial angular initialization. */
+    private static final long RADIAL_SEED = 7L;
+
+    /** Standard deviation of the deterministic angular initialization jitter. */
+    private static final double RADIAL_THETA_JITTER = 0.12d;
+
+    /** Number of unscaled G² principal coordinates retained by D2. */
+    private static final int RADIAL_SVD_DIMS = 6;
+
     /** Table emitted by the {@code .csv} extension. */
     private enum CsvKind
     {
@@ -102,7 +126,9 @@ public class OpClades extends Op
         /** Compact selected projection with corpus and neighbour explanations. */
         DIAGNOSTIC,
         /** Compact selected projection. */
-        MAP;
+        MAP,
+        /** Compact D2 radial projection. */
+        RADIAL;
     }
 
     /** Association residual family used to build the map. */
@@ -120,6 +146,17 @@ public class OpClades extends Op
     private record TermDocMatrix(
         int[][] frequencies,
         int[] docIds
+    ) {}
+
+    /**
+     * Final D2 radial coordinates aligned with the selected term rows.
+     *
+     * @param angles angular coordinates in radians
+     * @param radii power-lensed radial coordinates in {@code [0, 1]}
+     */
+    private record RadialMap(
+        double[] angles,
+        double[] radii
     ) {}
 
     /**
@@ -149,26 +186,6 @@ public class OpClades extends Op
         double[] squaredDistance,
         double[][] contributionPercent
     ) {}
-
-    /**
-     * Builds the selected full-corpus term map and records its metadata.
-     */
-    private static TermMap analyze(
-        final IndexReader reader,
-        final TermLexicon lexicon,
-        final int[] rowIds,
-        final FixedBitSet liveDocs,
-        final HttpPars pars,
-        final MetaUtil meta
-    ) throws IOException {
-        final TermDocMatrix matrix = termDocMatrix(reader, lexicon, rowIds, liveDocs);
-        final Projection projection = pars.getEnum("projection", Projection.G2_CA);
-        meta.put("documents", liveDocs.cardinality());
-        meta.put("documentUniverse", "full corpus");
-        meta.put("focusRestricted", false);
-        meta.put("source", "raw term-document frequencies");
-        return termMap(matrix, pars, meta, projection);
-    }
 
     /**
      * Per-displayed-axis inertia contribution of every row, in percent.
@@ -358,6 +375,7 @@ public class OpClades extends Op
         TermLexicon lexicon = null;
         TermStats termStats = null;
         TermMap map = null;
+        RadialMap radial = null;
 
         if (topTerms == null) {
             response.setStatus(400);
@@ -376,14 +394,30 @@ public class OpClades extends Op
             }
             lexicon = topTerms.lexicon();
             termStats = topTerms.termStats();
-            map = analyze(
+
+            final FixedBitSet liveDocs = liveDocs(index.reader());
+            final TermDocMatrix matrix = termDocMatrix(
                 index.reader(),
                 lexicon,
                 rowIds,
-                liveDocs(index.reader()),
-                pars,
-                meta
+                liveDocs
             );
+            meta.put("documents", liveDocs.cardinality());
+            meta.put("documentUniverse", "full corpus");
+            meta.put("focusRestricted", false);
+            meta.put("source", "raw term-document frequencies");
+
+            if (view == JsonView.RADIAL) {
+                radial = radialMap(matrix, meta);
+            }
+            else {
+                map = termMap(
+                    matrix,
+                    pars,
+                    meta,
+                    pars.getEnum("projection", Projection.G2_CA)
+                );
+            }
         }
 
         try (JsonWriter jw = Op.jsonWriter(response)) {
@@ -392,7 +426,10 @@ public class OpClades extends Op
             jw.beginObject();
             meta.toJson(jw, pars);
             jw.endObject();
-            if (map != null) {
+            if (radial != null) {
+                writeRadialData(jw, radial, rowIds, rowFreq, lexicon);
+            }
+            else if (map != null) {
                 writeMapData(
                     jw,
                     pars,
@@ -569,6 +606,228 @@ public class OpClades extends Op
             }
         }
         return distances;
+    }
+
+    /**
+     * Builds the deterministic D2 radial layout from the selected contingency
+     * table.
+     *
+     * <p>
+     * The pipeline is fixed: signed square-root G² deviance residuals, six
+     * unscaled principal coordinates {@code U_6 Sigma_6}, Euclidean distances
+     * normalized by their pairwise mean, soft radial stress, and the power lens
+     * {@code r' = r^0.40}. The returned map contains only the final radius and
+     * angle required by the client.
+     * </p>
+     *
+     * @param matrix selected term-by-document contingency table
+     * @param meta response metadata collector
+     * @return final radial coordinates aligned with the table rows
+     */
+    private static RadialMap radialMap(
+        final TermDocMatrix matrix,
+        final MetaUtil meta
+    ) {
+        final double[][] table = toDoubleTable(matrix.frequencies());
+        final ContingencySvd model = new ContingencySvd(table, null)
+            .residual(Assoc.G2);
+        final SvdLayout layout = model.principalCoordinates(RADIAL_SVD_DIMS);
+        final double[][] source = layout.coords();
+        final int size = source.length;
+        final int dims = size == 0 ? 0 : source[0].length;
+
+        meta.put("view", "RADIAL");
+        meta.put("radialMethod", "G2_SVD_SOFT_RADIAL_D2_V1");
+        meta.put("profile", "signed sqrt G2 deviance residuals");
+        meta.put("decomposition", "SVD");
+        meta.put("coordinates", "unscaled U Sigma");
+        meta.put("dims", dims);
+        meta.put("rowNormalization", "none");
+        meta.put("distance", "Euclidean in unscaled G2 principal coordinates");
+        meta.put("distanceNormalization", "mean pairwise");
+        meta.put("projection", "soft radial stress");
+        meta.put("radiusWeight", RADIAL_RADIUS_WEIGHT);
+        meta.put("optimizerIterations", RADIAL_OPTIMIZER_ITERATIONS);
+        meta.put("optimizerLearningRate", RADIAL_LEARNING_RATE);
+        meta.put("optimizerSeed", RADIAL_SEED);
+        meta.put("lens", "power");
+        meta.put("lensExponent", RADIAL_LENS_EXPONENT);
+        meta.put("angleUnit", "radian");
+        meta.put("angleRange", "[-pi,pi]");
+        meta.put("radiusRange", "[0,1]");
+        meta.put("svdRank", model.embedding().length == 0
+            ? 0
+            : model.embedding()[0].length);
+        meta.put("svdFitConverged", model.fitConverged());
+        meta.put("svdFitError", model.fitError());
+        meta.put("svdFitIterations", model.fitIterations());
+
+        final double[] angles = new double[size];
+        final double[] radii = new double[size];
+        if (size < 2 || dims == 0) {
+            return new RadialMap(angles, radii);
+        }
+
+        final double[] sourceRadii = new double[size];
+        double sourceRadiusMax = 0d;
+        for (int row = 0; row < size; row++) {
+            double squared = 0d;
+            for (final double coordinate : source[row]) {
+                squared += coordinate * coordinate;
+            }
+            sourceRadii[row] = Math.sqrt(squared);
+            sourceRadiusMax = Math.max(sourceRadiusMax, sourceRadii[row]);
+        }
+        if (!(sourceRadiusMax > 0d)) {
+            return new RadialMap(angles, radii);
+        }
+        for (int row = 0; row < size; row++) {
+            sourceRadii[row] /= sourceRadiusMax;
+        }
+
+        final double[][] distances = euclideanDistances(source);
+        double distanceSum = 0d;
+        int distanceCount = 0;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < row; col++) {
+                distanceSum += distances[row][col];
+                distanceCount++;
+            }
+        }
+        final double distanceMean = distanceCount > 0
+            ? distanceSum / distanceCount
+            : 0d;
+        if (!(distanceMean > 0d)) {
+            return new RadialMap(angles, radii);
+        }
+
+        double distanceSquaredSum = 0d;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < row; col++) {
+                distances[row][col] /= distanceMean;
+                distances[col][row] = distances[row][col];
+                distanceSquaredSum += distances[row][col] * distances[row][col];
+            }
+        }
+        if (!(distanceSquaredSum > 0d)) {
+            return new RadialMap(angles, radii);
+        }
+
+        final Random random = new Random(RADIAL_SEED);
+        final double[][] positions = new double[size][2];
+        for (int row = 0; row < size; row++) {
+            final double sourceX = dims > 0 ? source[row][0] : 0d;
+            final double sourceY = dims > 1 ? source[row][1] : 0d;
+            final double theta = Math.atan2(sourceY, sourceX)
+                + random.nextGaussian() * RADIAL_THETA_JITTER;
+            positions[row][0] = sourceRadii[row] * Math.cos(theta);
+            positions[row][1] = sourceRadii[row] * Math.sin(theta);
+        }
+
+        final double[][] firstMoment = new double[size][2];
+        final double[][] secondMoment = new double[size][2];
+        final double[][] bestPositions = new double[size][2];
+        for (int row = 0; row < size; row++) {
+            System.arraycopy(positions[row], 0, bestPositions[row], 0, 2);
+        }
+
+        double bestObjective = Double.POSITIVE_INFINITY;
+        for (int iteration = 1; iteration <= RADIAL_OPTIMIZER_ITERATIONS; iteration++) {
+            final double[][] gradient = new double[size][2];
+            double stress = 0d;
+
+            for (int row = 0; row < size; row++) {
+                for (int col = 0; col < row; col++) {
+                    final double deltaX = positions[row][0] - positions[col][0];
+                    final double deltaY = positions[row][1] - positions[col][1];
+                    final double projectedDistance = Math.max(
+                        1e-9d,
+                        Math.hypot(deltaX, deltaY)
+                    );
+                    final double error = projectedDistance - distances[row][col];
+                    final double coefficient =
+                        2d * error / (projectedDistance * distanceSquaredSum);
+
+                    stress += error * error;
+                    gradient[row][0] += coefficient * deltaX;
+                    gradient[row][1] += coefficient * deltaY;
+                    gradient[col][0] -= coefficient * deltaX;
+                    gradient[col][1] -= coefficient * deltaY;
+                }
+            }
+            stress /= distanceSquaredSum;
+
+            double radiusPenalty = 0d;
+            for (int row = 0; row < size; row++) {
+                final double radius = Math.max(
+                    1e-9d,
+                    Math.hypot(positions[row][0], positions[row][1])
+                );
+                final double error = radius - sourceRadii[row];
+                final double coefficient =
+                    2d * RADIAL_RADIUS_WEIGHT * error / (size * radius);
+
+                radiusPenalty += error * error;
+                gradient[row][0] += coefficient * positions[row][0];
+                gradient[row][1] += coefficient * positions[row][1];
+            }
+
+            final double objective = stress
+                + RADIAL_RADIUS_WEIGHT * radiusPenalty / size;
+            if (objective < bestObjective) {
+                bestObjective = objective;
+                for (int row = 0; row < size; row++) {
+                    System.arraycopy(positions[row], 0, bestPositions[row], 0, 2);
+                }
+            }
+
+            final double beta1Power = Math.pow(0.9d, iteration);
+            final double beta2Power = Math.pow(0.999d, iteration);
+            for (int row = 0; row < size; row++) {
+                for (int axis = 0; axis < 2; axis++) {
+                    firstMoment[row][axis] =
+                        0.9d * firstMoment[row][axis]
+                        + 0.1d * gradient[row][axis];
+                    secondMoment[row][axis] =
+                        0.999d * secondMoment[row][axis]
+                        + 0.001d * gradient[row][axis] * gradient[row][axis];
+
+                    final double correctedFirst =
+                        firstMoment[row][axis] / (1d - beta1Power);
+                    final double correctedSecond =
+                        secondMoment[row][axis] / (1d - beta2Power);
+                    positions[row][axis] -= RADIAL_LEARNING_RATE
+                        * correctedFirst
+                        / (Math.sqrt(correctedSecond) + 1e-8d);
+                }
+            }
+        }
+
+        double modelRadiusMax = 0d;
+        for (int row = 0; row < size; row++) {
+            modelRadiusMax = Math.max(
+                modelRadiusMax,
+                Math.hypot(bestPositions[row][0], bestPositions[row][1])
+            );
+        }
+        if (!(modelRadiusMax > 0d)) {
+            return new RadialMap(angles, radii);
+        }
+
+        for (int row = 0; row < size; row++) {
+            final double modelRadius = Math.hypot(
+                bestPositions[row][0],
+                bestPositions[row][1]
+            );
+            radii[row] = Math.pow(
+                Math.min(1d, modelRadius / modelRadiusMax),
+                RADIAL_LENS_EXPONENT
+            );
+            angles[row] = modelRadius > 0d
+                ? Math.atan2(bestPositions[row][1], bestPositions[row][0])
+                : 0d;
+        }
+        return new RadialMap(angles, radii);
     }
 
     /** Returns normalized observed row masses of a contingency table. */
@@ -905,6 +1164,40 @@ public class OpClades extends Op
                 }
                 jw.endArray();
             }
+            jw.endObject();
+        }
+        jw.endArray();
+        jw.endObject();
+    }
+
+    /**
+     * Writes the compact radial node list.
+     *
+     * @param jw JSON writer
+     * @param map final radial coordinates
+     * @param rowIds selected term ids aligned with the radial rows
+     * @param rowFreq selected term frequencies aligned with the radial rows
+     * @param lexicon term lexicon
+     * @throws IOException if the JSON response cannot be written
+     */
+    private static void writeRadialData(
+        final JsonWriter jw,
+        final RadialMap map,
+        final int[] rowIds,
+        final long[] rowFreq,
+        final TermLexicon lexicon
+    ) throws IOException {
+        jw.name("data");
+        jw.beginObject();
+        jw.name("nodes");
+        jw.beginArray();
+        for (int node = 0; node < map.radii().length; node++) {
+            jw.beginObject();
+            jw.name("id").value(rowIds[node]);
+            jw.name("form").value(lexicon.form(rowIds[node]));
+            jw.name("freq").value(rowFreq[node]);
+            jw.name("radius").value(round(map.radii()[node], 6));
+            jw.name("angle").value(round(map.angles()[node], 8));
             jw.endObject();
         }
         jw.endArray();
