@@ -26,6 +26,7 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.maths.ContingencySvd;
 import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
 import com.github.oeuvres.alix.maths.ContingencySvd.SvdLayout;
+import com.github.oeuvres.alix.maths.Distances;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
@@ -276,27 +277,6 @@ public class OpClades extends Op
                 termDocMatrix(index.reader(), lexicon, rowIds, liveDocs)
             );
         }
-    }
-
-    /** Computes full Euclidean distances between equal-width rows. */
-    private static double[][] euclideanDistances(final double[][] rows)
-    {
-        final int size = rows.length;
-        final int width = size == 0 ? 0 : rows[0].length;
-        final double[][] distances = new double[size][size];
-        for (int row = 0; row < size; row++) {
-            for (int col = 0; col < row; col++) {
-                double squared = 0d;
-                for (int axis = 0; axis < width; axis++) {
-                    final double delta = rows[row][axis] - rows[col][axis];
-                    squared += delta * delta;
-                }
-                final double distance = Math.sqrt(Math.max(0d, squared));
-                distances[row][col] = distance;
-                distances[col][row] = distance;
-            }
-        }
-        return distances;
     }
 
     /**
@@ -574,7 +554,7 @@ public class OpClades extends Op
             sourceRadii[row] /= sourceRadiusMax;
         }
 
-        final double[][] distances = euclideanDistances(source);
+        final double[][] distances = Distances.euclidean(source);
         double distanceSum = 0d;
         int distanceCount = 0;
         for (int row = 0; row < size; row++) {
@@ -997,7 +977,7 @@ public class OpClades extends Op
         final boolean diagnostic
     ) throws IOException {
         final double[][] distances = diagnostic
-            ? euclideanDistances(map.embedding())
+            ? Distances.euclidean(map.embedding())
             : null;
         final int nearestCount = diagnostic
             ? pars.getInt("nearest", new int[] { 1, 20 }, 5)
