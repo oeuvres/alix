@@ -45,7 +45,9 @@ import jakarta.servlet.http.HttpServletResponse;
  * IPF, forms residuals, decomposes them, and retains leading principal
  * coordinates {@code U_k Sigma_k}. The default map is classical correspondence
  * analysis: Pearson residuals, chi-square row geometry, and the first factorial
- * plane. The radial view defaults to G² residuals in chi-square-scaled row
+ * plane. The optional {@code minDocTerms} parameter retains only documents
+ * containing at least that many distinct selected terms; its default is 1.
+ * The radial view defaults to G² residuals in chi-square-scaled row
  * geometry before soft radial stress. Its radius remains mass-corrected
  * source-space distinctiveness.
  * The {@code .csv} extension emits the raw term-by-document contingency table.
@@ -143,6 +145,13 @@ public class OpClades extends Op
         int[] docIds
     ) {}
 
+    /** Support-filtered matrix plus retained ranks in the original row list. */
+    private record MatrixFilterResult(
+        TermDocMatrix matrix,
+        int[] rowRanks,
+        int retainedDocuments
+    ) {}
+
     /**
      * Final D2 radial coordinates aligned with the selected term rows.
      *
@@ -209,6 +218,105 @@ public class OpClades extends Op
             }
         }
         return count;
+    }
+
+    /**
+     * Retains documents containing at least {@code minDocTerms} distinct
+     * selected terms, then removes term rows left with zero mass.
+     *
+     * <p>This is the sparse-table preparation recommended by Lebart and Salem:
+     * support counts distinct selected forms, not their occurrence totals.</p>
+     */
+    private static MatrixFilterResult filterByDocumentSupport(
+        final TermDocMatrix source,
+        final int minDocTerms
+    ) {
+        final int[][] frequencies = source.frequencies();
+        final int rows = frequencies.length;
+        final int cols = source.docIds().length;
+        if (rows == 0 || cols == 0) {
+            return new MatrixFilterResult(
+                new TermDocMatrix(new int[0][0], new int[0]),
+                new int[0],
+                0
+            );
+        }
+
+        final boolean[] keepCol = new boolean[cols];
+        int keptCols = 0;
+        for (int col = 0; col < cols; col++) {
+            int support = 0;
+            for (int row = 0; row < rows; row++) {
+                if (frequencies[row][col] > 0) {
+                    support++;
+                }
+            }
+            if (support >= minDocTerms) {
+                keepCol[col] = true;
+                keptCols++;
+            }
+        }
+
+        final boolean[] keepRow = new boolean[rows];
+        int keptRows = 0;
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                if (keepCol[col] && frequencies[row][col] > 0) {
+                    keepRow[row] = true;
+                    keptRows++;
+                    break;
+                }
+            }
+        }
+
+        final int[] rowRanks = new int[keptRows];
+        final int[] docIds = new int[keptCols];
+        final int[][] filtered = new int[keptRows][keptCols];
+        int filteredCol = 0;
+        for (int col = 0; col < cols; col++) {
+            if (keepCol[col]) {
+                docIds[filteredCol++] = source.docIds()[col];
+            }
+        }
+        int filteredRow = 0;
+        for (int row = 0; row < rows; row++) {
+            if (!keepRow[row]) {
+                continue;
+            }
+            rowRanks[filteredRow] = row;
+            filteredCol = 0;
+            for (int col = 0; col < cols; col++) {
+                if (keepCol[col]) {
+                    filtered[filteredRow][filteredCol++] = frequencies[row][col];
+                }
+            }
+            filteredRow++;
+        }
+        return new MatrixFilterResult(
+            new TermDocMatrix(filtered, docIds),
+            rowRanks,
+            keptCols
+        );
+    }
+
+    /** Selects integer values at retained original ranks. */
+    private static int[] selectRanks(final int[] values, final int[] ranks)
+    {
+        final int[] selected = new int[ranks.length];
+        for (int rank = 0; rank < ranks.length; rank++) {
+            selected[rank] = values[ranks[rank]];
+        }
+        return selected;
+    }
+
+    /** Selects long values at retained original ranks. */
+    private static long[] selectRanks(final long[] values, final int[] ranks)
+    {
+        final long[] selected = new long[ranks.length];
+        for (int rank = 0; rank < ranks.length; rank++) {
+            selected[rank] = values[ranks[rank]];
+        }
+        return selected;
     }
 
     /** Returns the contingency association corresponding to a residual mode. */
@@ -293,13 +401,23 @@ public class OpClades extends Op
         final int[] rowIds = rowList.toUniq();
         final TermLexicon lexicon = topTerms.lexicon();
         final FixedBitSet liveDocs = liveDocs(index.reader());
+        final int minDocTerms = pars.getInt(
+            "minDocTerms",
+            new int[] { 1, Math.max(1, rowIds.length) },
+            1
+        );
+        final MatrixFilterResult filtered = filterByDocumentSupport(
+            termDocMatrix(index.reader(), lexicon, rowIds, liveDocs),
+            minDocTerms
+        );
+        final int[] activeRowIds = selectRanks(rowIds, filtered.rowRanks());
 
         switch (pars.getEnum("csv", CsvKind.CONTINGENCY)) {
             case CONTINGENCY -> writeContingencyCsv(
                 writer,
                 lexicon,
-                rowIds,
-                termDocMatrix(index.reader(), lexicon, rowIds, liveDocs)
+                activeRowIds,
+                filtered.matrix()
             );
         }
     }
@@ -348,19 +466,53 @@ public class OpClades extends Op
             lexicon = topTerms.lexicon();
             termStats = topTerms.termStats();
 
+            final int selectedTermsBeforeSupportFilter = rowIds.length;
             final FixedBitSet liveDocs = liveDocs(index.reader());
-            final TermDocMatrix matrix = termDocMatrix(
+            final TermDocMatrix rawMatrix = termDocMatrix(
                 index.reader(),
                 lexicon,
                 rowIds,
                 liveDocs
             );
-            final int activeDocuments = activeDocumentCount(matrix.frequencies());
+            final int activeDocumentsBeforeSupportFilter = activeDocumentCount(
+                rawMatrix.frequencies()
+            );
+            final int minDocTerms = pars.getInt(
+                "minDocTerms",
+                new int[] { 1, Math.max(1, rowIds.length) },
+                1
+            );
+            final MatrixFilterResult filtered = filterByDocumentSupport(
+                rawMatrix,
+                minDocTerms
+            );
+            final TermDocMatrix matrix = filtered.matrix();
+            rowIds = selectRanks(rowIds, filtered.rowRanks());
+            rowFreq = selectRanks(rowFreq, filtered.rowRanks());
+
             meta.put("documents", liveDocs.cardinality());
-            meta.put("activeDocuments", activeDocuments);
+            meta.put(
+                "activeDocumentsBeforeSupportFilter",
+                activeDocumentsBeforeSupportFilter
+            );
+            meta.put("minDocTerms", minDocTerms);
+            meta.put("activeDocuments", filtered.retainedDocuments());
+            meta.put(
+                "supportFilteredDocuments",
+                activeDocumentsBeforeSupportFilter - filtered.retainedDocuments()
+            );
             meta.put(
                 "zeroMassDocuments",
-                liveDocs.cardinality() - activeDocuments
+                liveDocs.cardinality() - activeDocumentsBeforeSupportFilter
+            );
+            meta.put(
+                "selectedTermsBeforeSupportFilter",
+                selectedTermsBeforeSupportFilter
+            );
+            meta.put("activeTerms", rowIds.length);
+            meta.put(
+                "supportFilteredTerms",
+                selectedTermsBeforeSupportFilter - rowIds.length
             );
             meta.put("documentUniverse", "full corpus");
             meta.put("focusRestricted", false);
@@ -377,7 +529,14 @@ public class OpClades extends Op
                 Geometry.CHI2
             );
 
-            if (view == JsonView.RADIAL) {
+            if (rowIds.length < 2 || filtered.retainedDocuments() < 2) {
+                response.setStatus(400);
+                meta.put(
+                    "error",
+                    "minDocTerms leaves fewer than two active terms or documents"
+                );
+            }
+            else if (view == JsonView.RADIAL) {
                 radial = radialMap(
                     matrix,
                     meta,
