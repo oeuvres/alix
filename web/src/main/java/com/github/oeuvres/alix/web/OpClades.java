@@ -3,7 +3,6 @@ package com.github.oeuvres.alix.web;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -47,13 +46,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * quasi-independence expectation by IPF, form residuals, decompose, take
  * principal coordinates {@code U Sigma}, and scale rows by inverse square-root
  * mass. The JSON response mirrors the co-occurrence semantic-map endpoint (an
- * {@code axes} block plus {@code nodes}); {@code view=diagnostic} adds
- * per-term corpus frequencies and nearest neighbours. {@code view=RADIAL}
- * instead returns a D2 radial layout built from six unscaled G² principal
- * coordinates and soft radial stress. Its default radius is mass-corrected
- * source-space distinctiveness; {@code radius=STRESS} retains the optimized
- * D2 position norm with its power lens. The {@code .csv} extension emits the
- * raw term-by-document contingency table.
+ * {@code axes} block plus {@code nodes}). {@code view=RADIAL} instead returns a
+ * D2 radial layout built from six unscaled G² principal coordinates and soft
+ * radial stress, its radius being mass-corrected source-space distinctiveness.
+ * The {@code .csv} extension emits the raw term-by-document contingency table.
  * </p>
  *
  * <h2>Rejected experiments</h2>
@@ -88,9 +84,6 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public class OpClades extends Op
 {
-    /** D2 power-lens exponent applied to the optional stress radius. */
-    private static final double RADIAL_LENS_EXPONENT = 0.40d;
-
     /** Adam learning rate for the D2 radial stress optimizer. */
     private static final double RADIAL_LEARNING_RATE = 0.045d;
 
@@ -119,25 +112,10 @@ public class OpClades extends Op
     /** JSON representations exposed by the endpoint. */
     private enum JsonView
     {
-        /** Compact selected projection with corpus and neighbour explanations. */
-        DIAGNOSTIC,
         /** Compact selected projection. */
         MAP,
         /** Compact D2 radial projection. */
         RADIAL;
-    }
-
-    /**
-     * Selects the radius construction used by the compact radial projection.
-     * The selection affects only the returned radii; optimized D2 angles are
-     * shared by both modes.
-     */
-    private enum RadialRadius
-    {
-        /** Mass-corrected norm in the unscaled G² source coordinates. */
-        DISTINCTIVENESS,
-        /** Power-lensed norm of the optimized radial-stress position. */
-        STRESS;
     }
 
     /** Association residual family used to build the map. */
@@ -173,8 +151,6 @@ public class OpClades extends Op
      * not provide.
      *
      * @param projection association family used
-     * @param embedding full mass-scaled row embedding, read-only, kept for
-     *        nearest-neighbour distances
      * @param coordinates leading display dimensions
      * @param cos2 share of each row's squared norm on axes 0 and 1
      * @param cos3 share of each row's squared norm on axes 0, 1 and 2
@@ -186,7 +162,6 @@ public class OpClades extends Op
      */
     private record TermMap(
         Projection projection,
-        double[][] embedding,
         double[][] coordinates,
         double[] cos2,
         double[] cos3,
@@ -341,7 +316,6 @@ public class OpClades extends Op
                 radial = radialMap(
                     matrix,
                     meta,
-                    pars.getEnum("radius", RadialRadius.DISTINCTIVENESS),
                     pars.getInt("dims", new int[] { 2, 50 }, RADIAL_SVD_DIMS)
                 );
                 meta.put("color", "log2Lift");
@@ -381,13 +355,10 @@ public class OpClades extends Op
             else if (map != null) {
                 writeMapData(
                     jw,
-                    pars,
                     map,
                     rowIds,
                     rowFreq,
-                    lexicon,
-                    termStats,
-                    view == JsonView.DIAGNOSTIC
+                    lexicon
                 );
             }
             jw.endObject();
@@ -425,31 +396,6 @@ public class OpClades extends Op
         return percent;
     }
 
-    /** Returns term ranks ordered by increasing distance from {@code row}. */
-    private static int[] nearest(
-        final double[][] distances,
-        final int row,
-        final int count
-    ) {
-        final Integer[] ranks = new Integer[distances.length - 1];
-        int cursor = 0;
-        for (int other = 0; other < distances.length; other++) {
-            if (other != row) {
-                ranks[cursor++] = other;
-            }
-        }
-        Arrays.sort(
-            ranks,
-            Comparator.comparingDouble(other -> distances[row][other])
-        );
-        final int size = Math.min(count, ranks.length);
-        final int[] nearest = new int[size];
-        for (int rank = 0; rank < size; rank++) {
-            nearest[rank] = ranks[rank];
-        }
-        return nearest;
-    }
-
     /**
      * Builds the deterministic D2 radial layout from the selected contingency
      * table.
@@ -457,22 +403,20 @@ public class OpClades extends Op
      * <p>
      * The pipeline is fixed: signed square-root G² deviance residuals, six
      * unscaled principal coordinates {@code U_6 Sigma_6}, Euclidean distances
-     * normalized by their pairwise mean and soft radial stress. Angles always
-     * come from the optimized positions. Radii are either mass-corrected source
-     * norms or the old power-lensed optimized position norms. The returned map
-     * contains only the final radius and angle required by the client.
+     * normalized by their pairwise mean and soft radial stress. Angles come from
+     * the optimized positions; radii are the mass-corrected source norms. The
+     * returned map contains only the final radius and angle required by the
+     * client.
      * </p>
      *
      * @param matrix selected term-by-document contingency table
      * @param meta response metadata collector
-     * @param radiusMode selected radial-coordinate source
      * @param requestedDims number of source dimensions requested
      * @return final radial coordinates aligned with the table rows
      */
     private static RadialMap radialMap(
         final TermDocMatrix matrix,
         final MetaUtil meta,
-        final RadialRadius radiusMode,
         final int requestedDims
     ) {
         final double[][] table = toDoubleTable(matrix.frequencies());
@@ -485,7 +429,6 @@ public class OpClades extends Op
 
         meta.put("view", "RADIAL");
         meta.put("radialMethod", "G2_SVD_SOFT_RADIAL_D2_V2");
-        meta.put("radius", radiusMode.name());
         meta.put("profile", "signed sqrt G2 deviance residuals");
         meta.put("decomposition", "SVD");
         meta.put("coordinates", "unscaled U Sigma");
@@ -494,23 +437,10 @@ public class OpClades extends Op
         meta.put("distance", "Euclidean in unscaled G2 principal coordinates");
         meta.put("distanceNormalization", "mean pairwise");
         meta.put("projection", "soft radial stress");
-        switch (radiusMode) {
-            case DISTINCTIVENESS -> {
-                meta.put("radiusMethod", "mass-corrected source norm");
-                meta.put("radiusMassCorrection", "inverse sqrt row mass");
-                meta.put("radiusNormalization", "maximum");
-                meta.put("lens", "none");
-            }
-            case STRESS -> {
-                meta.put(
-                    "radiusMethod",
-                    "optimized radial-stress position norm"
-                );
-                meta.put("radiusNormalization", "maximum");
-                meta.put("lens", "power");
-                meta.put("lensExponent", RADIAL_LENS_EXPONENT);
-            }
-        }
+        meta.put("radiusMethod", "mass-corrected source norm");
+        meta.put("radiusMassCorrection", "inverse sqrt row mass");
+        meta.put("radiusNormalization", "maximum");
+        meta.put("lens", "none");
         meta.put("angleUnit", "radian");
         meta.put("angleRange", "[-pi,pi]");
         meta.put("radiusRange", "[0,1]");
@@ -531,17 +461,15 @@ public class OpClades extends Op
             sourceRadii[row] = Math.sqrt(squared);
             sourceRadiusMax = Math.max(sourceRadiusMax, sourceRadii[row]);
         }
-        if (radiusMode == RadialRadius.DISTINCTIVENESS) {
-            final double[] masses = rowMasses(table);
-            double distinctivenessMax = 0d;
+        final double[] masses = rowMasses(table);
+        double distinctivenessMax = 0d;
+        for (int row = 0; row < size; row++) {
+            radii[row] = sourceRadii[row] / Math.sqrt(masses[row]);
+            distinctivenessMax = Math.max(distinctivenessMax, radii[row]);
+        }
+        if (distinctivenessMax > 0d) {
             for (int row = 0; row < size; row++) {
-                radii[row] = sourceRadii[row] / Math.sqrt(masses[row]);
-                distinctivenessMax = Math.max(distinctivenessMax, radii[row]);
-            }
-            if (distinctivenessMax > 0d) {
-                for (int row = 0; row < size; row++) {
-                    radii[row] /= distinctivenessMax;
-                }
+                radii[row] /= distinctivenessMax;
             }
         }
         if (size < 2 || sourceDims == 0) {
@@ -672,13 +600,6 @@ public class OpClades extends Op
             }
         }
 
-        double modelRadiusMax = 0d;
-        for (int row = 0; row < size; row++) {
-            modelRadiusMax = Math.max(
-                modelRadiusMax,
-                Math.hypot(bestPositions[row][0], bestPositions[row][1])
-            );
-        }
         for (int row = 0; row < size; row++) {
             final double modelRadius = Math.hypot(
                 bestPositions[row][0],
@@ -687,18 +608,6 @@ public class OpClades extends Op
             angles[row] = modelRadius > 0d
                 ? Math.atan2(bestPositions[row][1], bestPositions[row][0])
                 : 0d;
-        }
-        if (radiusMode == RadialRadius.STRESS && modelRadiusMax > 0d) {
-            for (int row = 0; row < size; row++) {
-                final double modelRadius = Math.hypot(
-                    bestPositions[row][0],
-                    bestPositions[row][1]
-                );
-                radii[row] = Math.pow(
-                    Math.min(1d, modelRadius / modelRadiusMax),
-                    RADIAL_LENS_EXPONENT
-                );
-            }
         }
         return new RadialMap(angles, radii);
     }
@@ -857,7 +766,6 @@ public class OpClades extends Op
 
         return new TermMap(
             projection,
-            embedding,
             coordinates,
             layout.cos2(),
             cos3(embedding),
@@ -963,26 +871,15 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes the selected term map and, when requested, per-term corpus
-     * frequencies and nearest neighbours.
+     * Writes the selected term map.
      */
     private static void writeMapData(
         final JsonWriter jw,
-        final HttpPars pars,
         final TermMap map,
         final int[] rowIds,
         final long[] rowFreq,
-        final TermLexicon lexicon,
-        final TermStats termStats,
-        final boolean diagnostic
+        final TermLexicon lexicon
     ) throws IOException {
-        final double[][] distances = diagnostic
-            ? Distances.euclidean(map.embedding())
-            : null;
-        final int nearestCount = diagnostic
-            ? pars.getInt("nearest", new int[] { 1, 20 }, 5)
-            : 0;
-
         jw.name("data");
         jw.beginObject();
         writeAxes(jw, map);
@@ -1022,21 +919,6 @@ public class OpClades extends Op
                 jw.value(round(coordinate, 4));
             }
             jw.endArray();
-
-            if (diagnostic) {
-                jw.name("corpusTf").value(termStats.termFreq(termId));
-                jw.name("corpusDf").value(termStats.termDocs(termId));
-                jw.name("nearest");
-                jw.beginArray();
-                for (final int other : nearest(distances, node, nearestCount)) {
-                    jw.beginObject();
-                    jw.name("id").value(rowIds[other]);
-                    jw.name("form").value(lexicon.form(rowIds[other]));
-                    jw.name("distance").value(round(distances[node][other], 6));
-                    jw.endObject();
-                }
-                jw.endArray();
-            }
             jw.endObject();
         }
         jw.endArray();
