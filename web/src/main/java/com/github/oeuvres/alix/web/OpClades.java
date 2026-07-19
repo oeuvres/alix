@@ -38,17 +38,16 @@ import jakarta.servlet.http.HttpServletResponse;
  * of their term-by-document table.
  *
  * <p>
- * The default map ({@code projection=G2_CA}) factorises signed square-root G²
- * deviance residuals; {@code projection=FT_CA} uses Freeman-Tukey
- * variance-stabilised residuals, and {@code projection=CA} is the classical
- * Pearson-residual correspondence-analysis control. All three share one
- * pipeline: fit a
- * quasi-independence expectation by IPF, form residuals, decompose, take
- * principal coordinates {@code U Sigma}, and scale rows by inverse square-root
- * mass. The JSON response mirrors the co-occurrence semantic-map endpoint (an
- * {@code axes} block plus {@code nodes}). {@code view=RADIAL} instead returns a
- * D2 radial layout built from six unscaled G² principal coordinates and soft
- * radial stress, its radius being mass-corrected source-space distinctiveness.
+ * The {@code residual} parameter selects Pearson, signed square-root G², or
+ * Freeman-Tukey residuals. The {@code geometry} parameter selects chi-square or
+ * cosine row geometry. Both choices apply to {@code view=MAP} and
+ * {@code view=RADIAL}. The common pipeline fits the independence expectation by
+ * IPF, forms residuals, decomposes them, and retains leading principal
+ * coordinates {@code U_k Sigma_k}. The default map is classical correspondence
+ * analysis: Pearson residuals, chi-square row geometry, and the first factorial
+ * plane. The radial view defaults to G² residuals in chi-square-scaled row
+ * geometry before soft radial stress. Its radius remains mass-corrected
+ * source-space distinctiveness.
  * The {@code .csv} extension emits the raw term-by-document contingency table.
  * </p>
  *
@@ -99,7 +98,7 @@ public class OpClades extends Op
     /** Standard deviation of the deterministic angular initialization jitter. */
     private static final double RADIAL_THETA_JITTER = 0.12d;
 
-    /** Default number of unscaled G² principal coordinates retained by D2. */
+    /** Default number of principal coordinates retained by D2. */
     private static final int RADIAL_SVD_DIMS = 6;
 
     /** Table emitted by the {@code .csv} extension. */
@@ -118,15 +117,24 @@ public class OpClades extends Op
         RADIAL;
     }
 
-    /** Association residual family used to build the map. */
-    private enum Projection
+    /** Row geometry applied to retained principal coordinates. */
+    private enum Geometry
     {
-        /** Pearson correspondence analysis of selected term rows. */
-        CA,
-        /** Freeman-Tukey residual factor analysis of selected term rows. */
-        FT_CA,
-        /** G² deviance-residual factor analysis of selected term rows. */
-        G2_CA;
+        /** Apply inverse-square-root row-mass chi-square scaling. */
+        CHI2,
+        /** Normalize retained row coordinates to unit length. */
+        COSINE;
+    }
+
+    /** Residual family applied before singular value decomposition. */
+    private enum Residual
+    {
+        /** Freeman-Tukey variance-stabilised residual. */
+        FT,
+        /** Signed square-root G² deviance residual. */
+        G2,
+        /** Pearson standardized residual. */
+        PEARSON;
     }
 
     /** Raw term frequencies with document mapping. */
@@ -150,7 +158,8 @@ public class OpClades extends Op
      * Projected map plus the diagnostics the {@link ContingencySvd} layout does
      * not provide.
      *
-     * @param projection association family used
+     * @param residual residual family used before decomposition
+     * @param geometry row geometry used after dimensional truncation
      * @param coordinates leading display dimensions
      * @param cos2 share of each row's squared norm on axes 0 and 1
      * @param cos3 share of each row's squared norm on axes 0, 1 and 2
@@ -159,17 +168,58 @@ public class OpClades extends Op
      * @param squaredDistance squared distance of each row from the origin
      * @param contributionPercent per-displayed-axis inertia contribution, in
      *        percent
+     * @param eigenvalues classical CA eigenvalues, or an empty array
+     * @param trace classical CA total inertia, or {@link Double#NaN}
+     * @param chiSquare Pearson independence statistic, or {@link Double#NaN}
+     * @param degreesFreedom Pearson independence degrees of freedom, or zero
      */
     private record TermMap(
-        Projection projection,
+        Residual residual,
+        Geometry geometry,
         double[][] coordinates,
         double[] cos2,
         double[] cos3,
         double[] inertia,
         double[] massPercent,
         double[] squaredDistance,
-        double[][] contributionPercent
+        double[][] contributionPercent,
+        double[] eigenvalues,
+        double trace,
+        double chiSquare,
+        int degreesFreedom
     ) {}
+
+    /** Returns the number of document columns with positive selected-term mass. */
+    private static int activeDocumentCount(final int[][] frequencies)
+    {
+        if (frequencies.length == 0) {
+            return 0;
+        }
+        int count = 0;
+        for (int col = 0; col < frequencies[0].length; col++) {
+            boolean active = false;
+            for (final int[] row : frequencies) {
+                if (row[col] > 0) {
+                    active = true;
+                    break;
+                }
+            }
+            if (active) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** Returns the contingency association corresponding to a residual mode. */
+    private static Assoc association(final Residual residual)
+    {
+        return switch (residual) {
+            case FT -> Assoc.FT;
+            case G2 -> Assoc.G2;
+            case PEARSON -> Assoc.PEARSON;
+        };
+    }
 
     /**
      * Per-displayed-axis inertia contribution of every row, in percent.
@@ -305,18 +355,35 @@ public class OpClades extends Op
                 rowIds,
                 liveDocs
             );
+            final int activeDocuments = activeDocumentCount(matrix.frequencies());
             meta.put("documents", liveDocs.cardinality());
+            meta.put("activeDocuments", activeDocuments);
+            meta.put(
+                "zeroMassDocuments",
+                liveDocs.cardinality() - activeDocuments
+            );
             meta.put("documentUniverse", "full corpus");
             meta.put("focusRestricted", false);
             if (view != JsonView.RADIAL) {
                 meta.put("source", "raw term-document frequencies");
             }
 
+            final Residual residual = pars.getEnum(
+                "residual",
+                view == JsonView.MAP ? Residual.PEARSON : Residual.G2
+            );
+            final Geometry geometry = pars.getEnum(
+                "geometry",
+                Geometry.CHI2
+            );
+
             if (view == JsonView.RADIAL) {
                 radial = radialMap(
                     matrix,
                     meta,
-                    pars.getInt("dims", new int[] { 2, 50 }, RADIAL_SVD_DIMS)
+                    pars.getInt("dims", new int[] { 2, 50 }, RADIAL_SVD_DIMS),
+                    residual,
+                    geometry
                 );
                 meta.put("color", "log2Lift");
                 meta.put(
@@ -330,7 +397,8 @@ public class OpClades extends Op
                     matrix,
                     pars,
                     meta,
-                    pars.getEnum("projection", Projection.G2_CA)
+                    residual,
+                    geometry
                 );
             }
         }
@@ -401,43 +469,69 @@ public class OpClades extends Op
      * table.
      *
      * <p>
-     * The pipeline is fixed: signed square-root G² deviance residuals, six
-     * unscaled principal coordinates {@code U_6 Sigma_6}, Euclidean distances
-     * normalized by their pairwise mean and soft radial stress. Angles come from
-     * the optimized positions; radii are the mass-corrected source norms. The
-     * returned map contains only the final radius and angle required by the
+     * The pipeline forms the selected residual family, retains the requested
+     * principal coordinates {@code U_k Sigma_k}, applies the selected row
+     * geometry, normalizes resulting distances by their pairwise mean, and
+     * applies soft radial stress. Angles come from the optimized positions;
+     * radii remain mass-corrected norms of the unnormalized source coordinates.
+     * The returned map contains only the final radius and angle required by the
      * client.
      * </p>
      *
      * @param matrix selected term-by-document contingency table
      * @param meta response metadata collector
      * @param requestedDims number of source dimensions requested
+     * @param residual residual family applied before decomposition
+     * @param geometry row geometry applied after dimensional truncation
      * @return final radial coordinates aligned with the table rows
      */
     private static RadialMap radialMap(
         final TermDocMatrix matrix,
         final MetaUtil meta,
-        final int requestedDims
+        final int requestedDims,
+        final Residual residual,
+        final Geometry geometry
     ) {
         final double[][] table = toDoubleTable(matrix.frequencies());
         final ContingencySvd model = new ContingencySvd(table, null)
-            .residual(Assoc.G2);
-        final SvdLayout layout = model.principalCoordinates(requestedDims);
-        final double[][] source = layout.coords();
+            .residual(association(residual))
+            .decompose()
+            .weightAxes(1d);
+        final SvdLayout rawLayout = model.project(requestedDims);
+        final double[][] rawSource = rawLayout.coords();
+        final double[][] source;
+        if (geometry == Geometry.COSINE) {
+            source = model.projectNormalized(requestedDims).coords();
+        }
+        else {
+            model.scaleRowsByMass();
+            source = model.project(requestedDims).coords();
+        }
         final int size = source.length;
         final int sourceDims = size == 0 ? 0 : source[0].length;
 
         meta.put("view", "RADIAL");
-        meta.put("radialMethod", "G2_SVD_SOFT_RADIAL_D2_V2");
-        meta.put("profile", "signed sqrt G2 deviance residuals");
+        meta.put("radialMethod", "RESIDUAL_SVD_SOFT_RADIAL_D2_V3");
+        meta.put("profile", residualLabel(residual));
+        meta.put("residual", residual.toString());
         meta.put("decomposition", "SVD");
-        meta.put("coordinates", "unscaled U Sigma");
+        meta.put("coordinates", geometry == Geometry.COSINE
+            ? "unit-normalized truncated U Sigma"
+            : "row principal coordinates with inverse sqrt mass scaling");
         meta.put("dims", sourceDims);
-        meta.put("rowNormalization", "none");
-        meta.put("distance", "Euclidean in unscaled G2 principal coordinates");
+        meta.put("geometry", geometry.toString());
+        meta.put("rowNormalization", geometry == Geometry.COSINE
+            ? "unit length after dimensional truncation"
+            : "inverse sqrt row mass");
+        meta.put("distance", geometry == Geometry.COSINE
+            ? "cosine chord distance in retained principal coordinates"
+            : residual == Residual.PEARSON
+                ? "chi-square distance between retained term profiles"
+                : "chi-square-scaled distance in retained residual coordinates");
         meta.put("distanceNormalization", "mean pairwise");
         meta.put("projection", "soft radial stress");
         meta.put("radiusMethod", "mass-corrected source norm");
+        meta.put("radiusSourceGeometry", "unnormalized truncated U Sigma");
         meta.put("radiusMassCorrection", "inverse sqrt row mass");
         meta.put("radiusNormalization", "maximum");
         meta.put("lens", "none");
@@ -455,7 +549,7 @@ public class OpClades extends Op
         double sourceRadiusMax = 0d;
         for (int row = 0; row < size; row++) {
             double squared = 0d;
-            for (final double coordinate : source[row]) {
+            for (final double coordinate : rawSource[row]) {
                 squared += coordinate * coordinate;
             }
             sourceRadii[row] = Math.sqrt(squared);
@@ -632,6 +726,36 @@ public class OpClades extends Op
         return masses;
     }
 
+    /** Returns a human-readable description of a residual mode. */
+    private static String residualLabel(final Residual residual)
+    {
+        return switch (residual) {
+            case FT -> "Freeman-Tukey variance-stabilised residuals";
+            case G2 -> "signed sqrt G2 deviance residuals";
+            case PEARSON -> "Pearson standardized residuals";
+        };
+    }
+
+    /** Multiplies every coordinate by a common factor. */
+    private static void scaleCoordinates(
+        final double[][] coordinates,
+        final double factor
+    ) {
+        for (final double[] row : coordinates) {
+            for (int axis = 0; axis < row.length; axis++) {
+                row[axis] *= factor;
+            }
+        }
+    }
+
+    /** Multiplies every value by a common factor. */
+    private static void scaleValues(final double[] values, final double factor)
+    {
+        for (int index = 0; index < values.length; index++) {
+            values[index] *= factor;
+        }
+    }
+
     /** Squared distance of every embedding row from the origin. */
     private static double[] squaredDistances(final double[][] embedding)
     {
@@ -644,6 +768,18 @@ public class OpClades extends Op
             squared[row] = sum;
         }
         return squared;
+    }
+
+    /** Returns the total observed mass of a contingency table. */
+    private static double tableTotal(final double[][] table)
+    {
+        double total = 0d;
+        for (final double[] row : table) {
+            for (final double value : row) {
+                total += value;
+            }
+        }
+        return total;
     }
 
     /**
@@ -709,53 +845,91 @@ public class OpClades extends Op
      * Coordinates, {@code cos2} and the inertia spectrum come from the
      * {@link ContingencySvd} principal-coordinate layout; {@code cos3} and the
      * correspondence-analysis diagnostics (mass, origin distance, per-axis
-     * contribution) are computed from the same full embedding. G² gives the
-     * default signed square-root deviance residuals, Freeman-Tukey supplies a
-     * variance-stabilised residual control, and Pearson supplies classical CA.
+     * contribution) are computed from the same full embedding. The residual
+     * family is applied before decomposition. Chi-square geometry applies
+     * inverse-square-root row-mass scaling; with Pearson residuals this is
+     * classical correspondence analysis. Cosine geometry instead normalizes
+     * every row after dimensional truncation.
      * </p>
      */
     private static TermMap termMap(
         final TermDocMatrix matrix,
         final HttpPars pars,
         final MetaUtil meta,
-        final Projection projection
+        final Residual residual,
+        final Geometry geometry
     ) {
-        final Assoc association = switch (projection) {
-            case CA -> Assoc.PEARSON;
-            case FT_CA -> Assoc.FT;
-            case G2_CA -> Assoc.G2;
-        };
+        final Assoc association = association(residual);
         final double[][] table = toDoubleTable(matrix.frequencies());
         final ContingencySvd model = new ContingencySvd(table, null)
             .residual(association)
             .decompose()
-            .weightAxes(1d)
-            .scaleRowsByMass();
+            .weightAxes(1d);
 
-        final int requestedDims = pars.getInt("dims", new int[] { 2, 50 }, 6);
-        final SvdLayout layout = model.project(requestedDims);
+        final int requestedDims = pars.getInt("dims", new int[] { 2, 50 }, 2);
+        final SvdLayout layout;
+        if (geometry == Geometry.COSINE) {
+            layout = model.projectNormalized(requestedDims);
+        }
+        else {
+            model.scaleRowsByMass();
+            layout = model.project(requestedDims);
+        }
         final double[][] embedding = model.embedding();
         final double[][] coordinates = layout.coords();
         final int dims = coordinates.length == 0 ? 0 : coordinates[0].length;
         final double[] masses = rowMasses(table);
+        final double total = tableTotal(table);
+        final boolean classical = residual == Residual.PEARSON
+            && geometry == Geometry.CHI2;
+        final double[] squaredDistance = squaredDistances(embedding);
+        double[] eigenvalues = new double[0];
+        double trace = Double.NaN;
+        double chiSquare = Double.NaN;
+        int degreesFreedom = 0;
 
-        meta.put("profile", switch (projection) {
-            case CA -> "Pearson residuals";
-            case FT_CA -> "Freeman-Tukey variance-stabilised residuals";
-            case G2_CA -> "signed sqrt G2 deviance residuals";
-        });
-        meta.put("table", "selected terms only");
-        meta.put("rowNormalization", "inverse sqrt row mass");
-        meta.put("distance", switch (projection) {
-            case CA -> "chi-square / Euclidean CA principal coordinates";
-            case FT_CA -> "Euclidean in row-mass-scaled Freeman-Tukey residual coordinates";
-            case G2_CA -> "Euclidean in row-mass-scaled G2 residual coordinates";
-        });
-        meta.put("projection", switch (projection) {
-            case CA -> "correspondence analysis";
-            case FT_CA -> "Freeman-Tukey residual factor analysis";
-            case G2_CA -> "G2 residual factor analysis";
-        });
+        if (classical) {
+            scaleCoordinates(coordinates, 1d / Math.sqrt(total));
+            scaleValues(squaredDistance, 1d / total);
+
+            final int rank = embedding.length == 0 ? 0 : embedding[0].length;
+            final double[] singularValues = model.singularValues();
+            eigenvalues = new double[rank];
+            trace = 0d;
+            for (int axis = 0; axis < rank; axis++) {
+                eigenvalues[axis] = singularValues[axis]
+                    * singularValues[axis] / total;
+                trace += eigenvalues[axis];
+            }
+            chiSquare = total * trace;
+            degreesFreedom = Math.max(0, table.length - 1)
+                * Math.max(0, activeDocumentCount(matrix.frequencies()) - 1);
+        }
+
+        meta.put("profile", residualLabel(residual));
+        meta.put("residual", residual.toString());
+        meta.put("geometry", geometry.toString());
+        meta.put("method", classical
+            ? "correspondence analysis"
+            : "residual factor analysis");
+        meta.put("table", "query-selected terms x active documents");
+        meta.put("vocabularyConditioning", "selected terms only");
+        meta.put("rowNormalization", geometry == Geometry.COSINE
+            ? "unit length after dimensional truncation"
+            : "inverse sqrt row mass");
+        meta.put("distance", geometry == Geometry.COSINE
+            ? "cosine chord distance in retained principal coordinates"
+            : residual == Residual.PEARSON
+                ? "chi-square distance between term profiles"
+                : "chi-square-scaled distance in residual principal coordinates");
+        meta.put("projection", classical
+            ? requestedDims == 2
+                ? "first factorial plane"
+                : "leading factorial axes"
+            : "leading residual factors");
+        meta.put("coordinateNormalization", classical
+            ? "classical CA"
+            : "none");
         meta.put("association", association.toString());
         meta.put("rotation", "NONE");
         meta.put("svdAxisWeight", 1d);
@@ -765,14 +939,19 @@ public class OpClades extends Op
         meta.put("svdFitIterations", model.fitIterations());
 
         return new TermMap(
-            projection,
+            residual,
+            geometry,
             coordinates,
             layout.cos2(),
             cos3(embedding),
             layout.inertia(),
             massPercent(masses),
-            squaredDistances(embedding),
-            contributions(masses, embedding, dims)
+            squaredDistance,
+            contributions(masses, embedding, dims),
+            eigenvalues,
+            trace,
+            chiSquare,
+            degreesFreedom
         );
     }
 
@@ -808,11 +987,9 @@ public class OpClades extends Op
         }
 
         jw.name("dims").value(dims);
-        jw.name("method").value(switch (map.projection()) {
-            case CA -> "correspondence analysis";
-            case FT_CA -> "Freeman-Tukey residual factor analysis";
-            case G2_CA -> "G2 residual factor analysis";
-        });
+        jw.name("method").value(map.eigenvalues().length > 0
+            ? "correspondence analysis"
+            : residualLabel(map.residual()) + " / " + map.geometry());
         jw.name("rotation").value("NONE");
         jw.name("dim1_pct").value(round(dim1, 1));
         jw.name("dim2_pct").value(round(dim2, 1));
@@ -824,6 +1001,17 @@ public class OpClades extends Op
             jw.value(round(percent, 1));
         }
         jw.endArray();
+        if (map.eigenvalues().length > 0) {
+            jw.name("eigenvalues");
+            jw.beginArray();
+            for (final double eigenvalue : map.eigenvalues()) {
+                jw.value(round(eigenvalue, 8));
+            }
+            jw.endArray();
+            jw.name("trace").value(round(map.trace(), 8));
+            jw.name("chi2").value(round(map.chiSquare(), 4));
+            jw.name("degreesFreedom").value(map.degreesFreedom());
+        }
         jw.endObject();
     }
 
