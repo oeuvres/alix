@@ -29,7 +29,6 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
-import static com.github.oeuvres.alix.lucene.terms.TopTerms.TermValue.FREQ;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 
@@ -165,7 +164,7 @@ public final class OpTerms extends Op
             meta.put("focusTokens", consumer.tokenCount());
             meta.put("focusDocs", consumer.documentCount());
             meta.put("focusSnippets", consumer.contextCount());
-            return topTerms.rank(scorer, terms, tflag).promote(pivotIds, FREQ);
+            return topTerms.rank(scorer, terms, tflag);
         }
     }
     

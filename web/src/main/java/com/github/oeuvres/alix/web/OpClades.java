@@ -107,7 +107,9 @@ public class OpClades extends Op
     private enum CsvKind
     {
         /** Selected term-by-document raw contingency table. */
-        CONTINGENCY;
+        CONTINGENCY,
+        /** Singular-axis and cumulative retained-inertia table. */
+        INERTIA;
     }
 
     /** JSON representations exposed by the endpoint. */
@@ -427,14 +429,35 @@ public class OpClades extends Op
             minDocTerms
         );
         final int[] activeRowIds = selectRanks(rowIds, filtered.rowRanks());
+        final CsvKind csvKind = request.getParameter("csv") == null
+            ? hasSvdCsvParameters(request) ? CsvKind.INERTIA : CsvKind.CONTINGENCY
+            : pars.getEnum("csv", CsvKind.CONTINGENCY);
 
-        switch (pars.getEnum("csv", CsvKind.CONTINGENCY)) {
+        switch (csvKind) {
             case CONTINGENCY -> writeContingencyCsv(
                 writer,
                 lexicon,
                 activeRowIds,
                 filtered.matrix()
             );
+            case INERTIA -> {
+                final JsonView view = pars.getEnum("view", JsonView.MAP);
+                final Residual residual = pars.getEnum(
+                    "residual",
+                    view == JsonView.RADIAL ? Residual.G2 : Residual.PEARSON
+                );
+                final Geometry geometry = pars.getEnum(
+                    "geometry",
+                    view == JsonView.RADIAL ? Geometry.G2 : Geometry.CHI2
+                );
+                writeInertiaCsv(
+                    writer,
+                    filtered.matrix(),
+                    view,
+                    residual,
+                    geometry
+                );
+            }
         }
     }
 
@@ -665,6 +688,28 @@ public class OpClades extends Op
             percent[axis] *= 100d / total;
         }
         return percent;
+    }
+
+    /**
+     * Returns whether an implicit CSV request carries factor-analysis parameters.
+     *
+     * <p>
+     * This permits changing only the extension of a MAP or RADIAL JSON URL to
+     * {@code .csv}: the same request then emits the complete retained-inertia
+     * curve. A CSV URL containing only term-selection parameters keeps the raw
+     * contingency-table default. The explicit {@code csv=CONTINGENCY} and
+     * {@code csv=INERTIA} values override this inference.
+     * </p>
+     *
+     * @param request current HTTP request
+     * @return {@code true} when factor-analysis parameters are present
+     */
+    private static boolean hasSvdCsvParameters(final HttpServletRequest request)
+    {
+        return request.getParameter("view") != null
+            || request.getParameter("dims") != null
+            || request.getParameter("residual") != null
+            || request.getParameter("geometry") != null;
     }
 
     /**
@@ -1312,9 +1357,62 @@ public class OpClades extends Op
     }
 
     /**
-     * Writes the selected term-by-document contingency table as CSV. Columns
-     * are documents holding at least one selected-term occurrence; the first
-     * cell of each row is the term form.
+     * Writes the complete singular-axis and cumulative retained-inertia curve.
+     *
+     * <p>
+     * The decomposition is performed once. Producing all cumulative values is
+     * then linear in the available rank and does not run the radial optimizer.
+     * Geometry is written as request context but does not alter this spectrum,
+     * because CHI2, COSINE, and G2 row geometry are applied after the residual
+     * matrix has been decomposed.
+     * </p>
+     *
+     * @param writer response writer
+     * @param matrix selected term-by-document contingency table
+     * @param view requested JSON-equivalent view
+     * @param residual residual family applied before decomposition
+     * @param geometry requested post-decomposition row geometry
+     * @throws IOException if the CSV response cannot be written
+     */
+    private static void writeInertiaCsv(
+        final Writer writer,
+        final TermDocMatrix matrix,
+        final JsonView view,
+        final Residual residual,
+        final Geometry geometry
+    ) throws IOException {
+        final double[][] table = toDoubleTable(matrix.frequencies());
+        final ContingencySvd model = new ContingencySvd(table, null)
+            .residual(association(residual))
+            .decompose()
+            .weightAxes(1d);
+        final double[] spectrum = inertiaPercent(model.singularValues());
+        final int rank = spectrum.length;
+        double retained = 0d;
+
+        writer.append(
+            "view,residual,geometry,rank,dims,axisInertia_pct,retainedInertia_pct\n"
+        );
+        for (int axis = 0; axis < rank; axis++) {
+            retained += spectrum[axis];
+            writer.append(view.toString()).append(',')
+                .append(residual.toString()).append(',')
+                .append(geometry.toString()).append(',')
+                .append(Integer.toString(rank)).append(',')
+                .append(Integer.toString(axis + 1)).append(',')
+                .append(Double.toString(round(spectrum[axis], 6))).append(',')
+                .append(Double.toString(round(retained, 6))).append('\n');
+        }
+    }
+
+    /**
+     * Writes the selected term-by-document contingency table as CSV.
+     *
+     * @param writer response writer
+     * @param lexicon selected term lexicon
+     * @param rowIds selected term ids aligned with the matrix rows
+     * @param matrix selected term-by-document contingency table
+     * @throws IOException if the CSV response cannot be written
      */
     private static void writeContingencyCsv(
         final Writer writer,

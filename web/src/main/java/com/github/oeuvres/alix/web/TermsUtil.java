@@ -22,23 +22,13 @@ public class TermsUtil
         int rank = 1;
         Writer writer = response.getWriter();
         for (TermEntry term : terms) {
-            if (term.isPromoted()) {
-                writer
-                .append(term.form())
-                .append(" (")
-                .append(String.valueOf(term.freq()))
-                .append("), ");
-                continue;
-            }
-            else {
-                writer.append(String.valueOf(rank++)).append(". ")
-                .append(term.form())
-                .append(" (")
-                .append(String.format(Locale.FRANCE, "%.5g", term.score()))
-                .append(" ; ")
-                .append(String.valueOf(term.freq()))
-                .append("), ");
-            }
+            writer.append(String.valueOf(rank++)).append(". ")
+            .append(term.form())
+            .append(" (")
+            .append(String.format(Locale.FRANCE, "%.5g", term.score()))
+            .append(" ; ")
+            .append(String.valueOf(term.freq()))
+            .append("), ");
         }
     }
 

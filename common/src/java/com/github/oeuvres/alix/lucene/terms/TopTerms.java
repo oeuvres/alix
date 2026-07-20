@@ -3,7 +3,6 @@ package com.github.oeuvres.alix.lucene.terms;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -83,14 +82,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private boolean mutable;
 
-    /** Number of leading ranks filled by the most recent {@link #promote(int[], Comparator)} call. */
-    private int promotedCount;
-
     /** Ranked term ids; {@code null} means no ranking has been produced. */
     private int[] rank2termId;
-
-    /** Eligible term ids for the current ranking, or {@code null} for all terms. */
-    private BitSet rankFilter;
 
     /** Score vector indexed by dense term id; {@code null} means score == frequency. */
     private double[] scores;
@@ -357,145 +350,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Moves selected terms to the start of the current ranking.
-     *
-     * <p>
-     * Selected terms are sorted with {@code comparator}; the remaining terms
-     * retain their previous relative order. A selected term is inserted even
-     * when it was outside the retained ranking, provided that it occurs in the
-     * current population and is eligible for the current ranking. Duplicate and
-     * filter-excluded ids are ignored.
-     * </p>
-     *
-     * <p>
-     * This method does not alter term counts or scores. If highlights are
-     * attached to ranks, they are moved with their terms. On success the number
-     * of promoted terms is recorded and exposed by {@link #promotedCount()} and
-     * {@link TermEntry#isPromoted()}: promoted terms occupy the leading ranks.
-     * </p>
-     *
-     * @param termIds selected dense term ids to promote
-     * @param comparator ordering applied to the promoted terms
-     * @return this instance
-     * @throws IllegalArgumentException if a term id is outside the vocabulary
-     * @throws IllegalStateException if no ranking has been produced or the
-     *         ranking is shorter than the number of promoted terms
-     * @throws NullPointerException if an argument is {@code null}
-     */
-    public TopTerms promote(
-        final int[] termIds,
-        final Comparator<TermValue> comparator)
-    {
-        final int[] ids = Objects.requireNonNull(termIds, "termIds");
-        final Comparator<TermValue> order =
-            Objects.requireNonNull(comparator, "comparator");
-
-        if (rank2termId == null) {
-            throw new IllegalStateException(
-                "No ranking: call rank(...), ranking(...), or setRanking(...) first");
-        }
-
-        for (int index = 0; index < ids.length; index++) {
-            checkTermId(ids[index], "termIds[" + index + "]");
-        }
-        if (ids.length == 0) {
-            return this;
-        }
-
-        // Unique, in-population, filter-eligible ids kept ascending so that the
-        // merge below can test membership with Arrays.binarySearch. This is
-        // sized to the promotion set, never to the vocabulary.
-        final int[] sorted = ids.clone();
-        Arrays.sort(sorted);
-
-        final int[] promotedIds = new int[sorted.length];
-        final TermValue[] values = new TermValue[sorted.length];
-        int valueCount = 0;
-        int previous = -1;
-        for (int i = 0; i < sorted.length; i++) {
-            final int termId = sorted[i];
-            if (termId == previous) {
-                continue;
-            }
-            previous = termId;
-            if (termFreq[termId] == 0L
-                    || (rankFilter != null && !rankFilter.get(termId))) {
-                continue;
-            }
-            promotedIds[valueCount] = termId;
-            values[valueCount] = termValue(termId);
-            valueCount++;
-        }
-
-        if (valueCount == 0) {
-            return this;
-        }
-
-        final int oldSize = rank2termId.length;
-        if (valueCount > oldSize) {
-            throw new IllegalStateException(
-                "Ranking size " + oldSize + " is smaller than promoted term count "
-                    + valueCount);
-        }
-
-        Arrays.sort(values, 0, valueCount, order);
-
-        final int[] newRanking = new int[oldSize];
-        final String[] newHilites = hilites == null ? null : new String[oldSize];
-
-        // Front block: promoted terms in comparator order. frontOfPromoted maps
-        // a position in promotedIds to its front rank, so a promoted term's
-        // previous highlight can be restored while scanning old ranks below.
-        final int[] frontOfPromoted = newHilites == null ? null : new int[valueCount];
-        for (int front = 0; front < valueCount; front++) {
-            final int termId = values[front].termId();
-            newRanking[front] = termId;
-            if (frontOfPromoted != null) {
-                frontOfPromoted[Arrays.binarySearch(promotedIds, 0, valueCount, termId)] = front;
-            }
-        }
-
-        // Tail: retained terms in previous order. A promoted term is skipped
-        // here but donates its previous highlight to its front position.
-        int rank = valueCount;
-        for (int oldRank = 0; oldRank < oldSize && rank < oldSize; oldRank++) {
-            final int termId = rank2termId[oldRank];
-            final int pos = Arrays.binarySearch(promotedIds, 0, valueCount, termId);
-            if (pos >= 0) {
-                if (newHilites != null) {
-                    newHilites[frontOfPromoted[pos]] = hilites[oldRank];
-                }
-                continue;
-            }
-            newRanking[rank] = termId;
-            if (newHilites != null) {
-                newHilites[rank] = hilites[oldRank];
-            }
-            rank++;
-        }
-
-        rank2termId = rank == oldSize
-            ? newRanking
-            : Arrays.copyOf(newRanking, rank);
-        hilites = newHilites == null || rank == oldSize
-            ? newHilites
-            : Arrays.copyOf(newHilites, rank);
-        this.promotedCount = valueCount;
-        return this;
-    }
-
-    /**
-     * Returns the number of leading ranks occupied by the most recent promotion.
-     *
-     * @return promoted term count, or {@code 0} when the current ranking carries
-     *         no promotion
-     */
-    public int promotedCount()
-    {
-        return promotedCount;
-    }
-
-    /**
      * Convenience: ranks the current population by raw occurrence count.
      *
      * <p>
@@ -617,7 +471,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             top.push(termId, score);
         }
 
-        buildRanking(top, scoreVec, null, filter);
+        buildRanking(top, scoreVec, null);
         return this;
     }
 
@@ -680,7 +534,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             top.push(termId, score);
         }
 
-        buildRanking(top, w, null, filter);
+        buildRanking(top, w, null);
         return this;
     }
 
@@ -791,9 +645,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Sets a flag-filtered ranking produced by an external component.
      *
      * <p>
-     * Every ranked term must carry {@code flag}. The filter is retained as
-     * ranking state and is also enforced by {@link #promote(int[], Comparator)}.
-     * {@link TermFlag#NULL} accepts all terms.
+     * Every ranked term must carry {@code flag}. {@link TermFlag#NULL} accepts
+     * all terms.
      * </p>
      *
      * @param rank2termId ranked dense term ids
@@ -826,10 +679,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         this.rank2termId = ranks;
-        this.rankFilter = filter;
         this.scores = scores;
         this.hilites = hilites;
-        this.promotedCount = 0;
         return this;
     }
 
@@ -962,13 +813,11 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param top     retained top list
      * @param scores  score vector indexed by dense term id, or {@code null}
      * @param hilites optional per-rank highlight strings, or {@code null}
-     * @param filter  eligible term ids, or {@code null} for all terms
      */
     private void buildRanking(
         final TopArray top,
         final double[] scores,
-        final String[] hilites,
-        final BitSet filter)
+        final String[] hilites)
     {
         final int size = top.size();
         final int[] ranks = new int[size];
@@ -978,10 +827,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         this.rank2termId = ranks;
-        this.rankFilter = filter;
         this.scores = scores;
         this.hilites = hilites;
-        this.promotedCount = 0;
     }
 
     /**
@@ -1074,10 +921,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     private void clearRanking()
     {
         rank2termId = null;
-        rankFilter = null;
         scores = null;
         hilites = null;
-        promotedCount = 0;
     }
 
     /**
@@ -1153,25 +998,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         return terms;
-    }
-
-    /**
-     * Returns a stable value snapshot for one term.
-     *
-     * @param termId dense term id
-     * @return term values used by promotion comparators
-     */
-    private TermValue termValue(final int termId)
-    {
-        return new TermValue(
-            termContexts[termId],
-            termDocs[termId],
-            termStats.termDocs(termId),
-            termStats.termFreq(termId),
-            lexicon.form(termId),
-            termFreq[termId],
-            scores == null ? (double) termFreq[termId] : scores[termId],
-            termId);
     }
 
     /**
@@ -1394,80 +1220,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Stable term values available to promotion comparators.
-     *
-     * <p>
-     * Numeric comparators sort in descending order. {@link #FORM} and
-     * {@link #TERM_ID} sort in ascending order. All comparators use the dense
-     * term id as their final deterministic tie-breaker.
-     * </p>
-     *
-     * @param contexts current population context count
-     * @param docs current population document count
-     * @param fieldDocs full-field document count
-     * @param fieldFreq full-field occurrence count
-     * @param form display term
-     * @param freq current population occurrence count
-     * @param score ranking score
-     * @param termId dense term id
-     */
-    public record TermValue(
-        long contexts,
-        long docs,
-        long fieldDocs,
-        long fieldFreq,
-        String form,
-        long freq,
-        double score,
-        int termId)
-    {
-        /** Orders terms by descending current population context count. */
-        public static final Comparator<TermValue> CONTEXTS = Comparator
-            .comparingLong(TermValue::contexts)
-            .reversed()
-            .thenComparingInt(TermValue::termId);
-
-        /** Orders terms by descending current population document count. */
-        public static final Comparator<TermValue> DOCS = Comparator
-            .comparingLong(TermValue::docs)
-            .reversed()
-            .thenComparingInt(TermValue::termId);
-
-        /** Orders terms by descending full-field document count. */
-        public static final Comparator<TermValue> FIELD_DOCS = Comparator
-            .comparingLong(TermValue::fieldDocs)
-            .reversed()
-            .thenComparingInt(TermValue::termId);
-
-        /** Orders terms by descending full-field occurrence count. */
-        public static final Comparator<TermValue> FIELD_FREQ = Comparator
-            .comparingLong(TermValue::fieldFreq)
-            .reversed()
-            .thenComparingInt(TermValue::termId);
-
-        /** Orders terms lexically by display form. */
-        public static final Comparator<TermValue> FORM = Comparator
-            .comparing(TermValue::form)
-            .thenComparingInt(TermValue::termId);
-
-        /** Orders terms by descending current population occurrence count. */
-        public static final Comparator<TermValue> FREQ = Comparator
-            .comparingLong(TermValue::freq)
-            .reversed()
-            .thenComparingInt(TermValue::termId);
-
-        /** Orders terms by descending ranking score. */
-        public static final Comparator<TermValue> SCORE = Comparator
-            .comparingDouble(TermValue::score)
-            .reversed()
-            .thenComparingInt(TermValue::termId);
-
-        /** Orders terms by ascending dense term id. */
-        public static final Comparator<TermValue> TERM_ID = Comparator
-            .comparingInt(TermValue::termId);
-    }
-
-    /**
      * Read-only view of one ranked term.
      */
     public final class TermEntry
@@ -1561,24 +1313,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         /**
-         * Reports whether this term was moved to the front by the most recent
-         * {@link TopTerms#promote(int[], Comparator)} call.
-         *
-         * <p>
-         * Promoted terms always occupy the leading ranks, so this is {@code true}
-         * exactly for the first {@link TopTerms#promotedCount()} entries of the
-         * ranking. A ranking produced without promotion reports {@code false} for
-         * every entry.
-         * </p>
-         *
-         * @return {@code true} if this entry is a promoted term
-         */
-        public boolean isPromoted()
-        {
-            return rank < promotedCount;
-        }
-
-        /**
          * Returns the ranking score.
          *
          * <p>
@@ -1614,15 +1348,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             return form() + " (" + score() + " ; " + freq() + ")";
         }
 
-        /**
-         * Returns all stable values exposed by this entry.
-         *
-         * @return immutable term-value snapshot
-         */
-        public TermValue value()
-        {
-            return termValue(termId);
-        }
     }
 
     /**
