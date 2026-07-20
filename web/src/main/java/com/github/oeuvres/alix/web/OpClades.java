@@ -125,7 +125,9 @@ public class OpClades extends Op
         /** Apply inverse-square-root row-mass chi-square scaling. */
         CHI2,
         /** Normalize retained row coordinates to unit length. */
-        COSINE;
+        COSINE,
+        /** Preserve unscaled retained coordinates in signed G² residual space. */
+        G2;
     }
 
     /** Residual family applied before singular value decomposition. */
@@ -540,7 +542,7 @@ public class OpClades extends Op
             );
             final Geometry geometry = pars.getEnum(
                 "geometry",
-                Geometry.CHI2
+                view == JsonView.RADIAL ? Geometry.G2 : Geometry.CHI2
             );
 
             if (rowIds.length < 2 || filtered.retainedDocuments() < 2) {
@@ -700,14 +702,14 @@ public class OpClades extends Op
             .weightAxes(1d);
         final SvdLayout rawLayout = model.project(requestedDims);
         final double[][] rawSource = rawLayout.coords();
-        final double[][] source;
-        if (geometry == Geometry.COSINE) {
-            source = model.projectNormalized(requestedDims).coords();
-        }
-        else {
-            model.scaleRowsByMass();
-            source = model.project(requestedDims).coords();
-        }
+        final double[][] source = switch (geometry) {
+            case CHI2 -> {
+                model.scaleRowsByMass();
+                yield model.project(requestedDims).coords();
+            }
+            case COSINE -> model.projectNormalized(requestedDims).coords();
+            case G2 -> rawSource;
+        };
         final int size = source.length;
         final int sourceDims = size == 0 ? 0 : source[0].length;
         final double[] spectrumPercent = inertiaPercent(model.singularValues());
@@ -722,19 +724,27 @@ public class OpClades extends Op
         meta.put("profile", residualLabel(residual));
         meta.put("residual", residual.toString());
         meta.put("decomposition", "SVD");
-        meta.put("coordinates", geometry == Geometry.COSINE
-            ? "unit-normalized truncated U Sigma"
-            : "row principal coordinates with inverse sqrt mass scaling");
+        meta.put("coordinates", switch (geometry) {
+            case CHI2 -> "row principal coordinates with inverse sqrt mass scaling";
+            case COSINE -> "unit-normalized truncated U Sigma";
+            case G2 -> "unscaled truncated U Sigma in signed G2 residual space";
+        });
         meta.put("dims", sourceDims);
         meta.put("geometry", geometry.toString());
-        meta.put("rowNormalization", geometry == Geometry.COSINE
-            ? "unit length after dimensional truncation"
-            : "inverse sqrt row mass");
-        meta.put("distance", geometry == Geometry.COSINE
-            ? "cosine chord distance in retained principal coordinates"
-            : residual == Residual.PEARSON
+        meta.put("rowNormalization", switch (geometry) {
+            case CHI2 -> "inverse sqrt row mass";
+            case COSINE -> "unit length after dimensional truncation";
+            case G2 -> "none";
+        });
+        meta.put("distance", switch (geometry) {
+            case CHI2 -> residual == Residual.PEARSON
                 ? "chi-square distance between retained term profiles"
-                : "chi-square-scaled distance in retained residual coordinates");
+                : "chi-square-scaled distance in retained residual coordinates";
+            case COSINE -> "cosine chord distance in retained principal coordinates";
+            case G2 -> residual == Residual.G2
+                ? "Euclidean distance in retained signed sqrt G2 residual coordinates"
+                : "Euclidean distance in retained unscaled residual coordinates";
+        });
         meta.put("distanceNormalization", "mean pairwise");
         meta.put("projection", "soft radial stress");
         meta.put("radiusMethod", "mass-corrected source norm");
@@ -1147,14 +1157,14 @@ public class OpClades extends Op
             .weightAxes(1d);
 
         final int requestedDims = pars.getInt("dims", new int[] { 2, 50 }, 2);
-        final SvdLayout layout;
-        if (geometry == Geometry.COSINE) {
-            layout = model.projectNormalized(requestedDims);
-        }
-        else {
-            model.scaleRowsByMass();
-            layout = model.project(requestedDims);
-        }
+        final SvdLayout layout = switch (geometry) {
+            case CHI2 -> {
+                model.scaleRowsByMass();
+                yield model.project(requestedDims);
+            }
+            case COSINE -> model.projectNormalized(requestedDims);
+            case G2 -> model.project(requestedDims);
+        };
         final double[][] embedding = model.embedding();
         final double[][] coordinates = layout.coords();
         final int dims = coordinates.length == 0 ? 0 : coordinates[0].length;
@@ -1194,14 +1204,20 @@ public class OpClades extends Op
             : "residual factor analysis");
         meta.put("table", "query-selected terms x active documents");
         meta.put("vocabularyConditioning", "selected terms only");
-        meta.put("rowNormalization", geometry == Geometry.COSINE
-            ? "unit length after dimensional truncation"
-            : "inverse sqrt row mass");
-        meta.put("distance", geometry == Geometry.COSINE
-            ? "cosine chord distance in retained principal coordinates"
-            : residual == Residual.PEARSON
+        meta.put("rowNormalization", switch (geometry) {
+            case CHI2 -> "inverse sqrt row mass";
+            case COSINE -> "unit length after dimensional truncation";
+            case G2 -> "none";
+        });
+        meta.put("distance", switch (geometry) {
+            case CHI2 -> residual == Residual.PEARSON
                 ? "chi-square distance between term profiles"
-                : "chi-square-scaled distance in residual principal coordinates");
+                : "chi-square-scaled distance in residual principal coordinates";
+            case COSINE -> "cosine chord distance in retained principal coordinates";
+            case G2 -> residual == Residual.G2
+                ? "Euclidean distance in retained signed sqrt G2 residual coordinates"
+                : "Euclidean distance in retained unscaled residual coordinates";
+        });
         meta.put("projection", classical
             ? requestedDims == 2
                 ? "first factorial plane"
