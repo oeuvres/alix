@@ -49,8 +49,8 @@ public final class OpSuggest extends Op
         final HttpServletResponse response
     ) throws IOException
     {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
+        final HttpPars pars = (HttpPars)request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
         final TopTerms topTerms = topTerms(index, pars, meta);
         if (topTerms != null) {
             final String textField = pars.getString(FTEXT, index.content());
@@ -61,7 +61,7 @@ public final class OpSuggest extends Op
             meta.put("limit", topK);
             textFluc.termSuggest().suggest(topTerms, infix, topK);
         }
-        TermsUtil.json(response, meta, pars, topTerms);
+        TermsUtil.json(request, response, topTerms);
     }
 
     /**
@@ -144,7 +144,7 @@ public final class OpSuggest extends Op
         ).bindTo(population);
         walker.walk(consumer);
         consumer.complete();
-        topTerms.excludeTerms(pivotIds);
+        topTerms.populationExclude(pivotIds);
         return topTerms;
     }
 }

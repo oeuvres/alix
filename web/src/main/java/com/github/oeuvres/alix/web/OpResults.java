@@ -48,11 +48,12 @@ public class OpResults extends Op {
     @Override
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+
         final long t0 = System.currentTimeMillis();
 
-        final HttpPars pars = new HttpPars(request, response);
         final Query filterQuery = filterQuery(index, pars);
-        final MetaUtil meta = new MetaUtil();
         final Writer writer = response.getWriter();
 
         
@@ -307,7 +308,9 @@ public class OpResults extends Op {
     @Override
     protected void page(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        final HttpPars pars = new HttpPars(request, response);
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        
         final Writer writer = response.getWriter();
         writer.write("""
                 <!DOCTYPE html>

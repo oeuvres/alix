@@ -32,21 +32,22 @@ import com.github.oeuvres.alix.util.TopArray;
  * On construction, the current population is the whole field: occurrence,
  * document-count, and context-count arrays alias {@link TermStats}. In that
  * default population one document is one context. Calling
- * {@link #select(IndexReader, FixedBitSet)}, {@link #beginPopulation()}, or
- * writing through {@link #buffers()} switches the instance to local mutable
- * buffers.
+ * {@link #select(IndexReader, FixedBitSet)} or {@link #beginPopulation()}
+ * switches the instance to local mutable buffers.
  * </p>
  *
  * <p>
  * Terms may be removed from the analytical population through
- * {@link #excludeTerms(int[])}. Their local counts are preserved as immutable
+ * {@link #populationExclude(int[])}. Their local counts are preserved as immutable
  * {@link ExcludedTerm} snapshots for display, while ranking and token totals use
  * the remaining vocabulary.
  * </p>
  *
  * <p>
  * Ranking is optional. A population may be prepared without producing a ranking.
- * Iteration is only available after a ranking method has been called.
+ * {@link #include(int[])} and {@link #exclude(int[])} retain persistent ranking
+ * preferences without changing population counts or scorer totals. Iteration is
+ * only available after a ranking method has been called.
  * </p>
  *
  * <p>
@@ -75,6 +76,12 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
     /** Maps dense term ids to display terms. */
     private final TermLexicon lexicon;
+
+    /** Term ids forbidden from rankings without changing population counts. */
+    private final BitSet rankingExclude = new BitSet();
+
+    /** Term ids required in rankings without changing population counts. */
+    private final BitSet rankingInclude = new BitSet();
 
     /**
      * True when {@link #termFreq} and {@link #termDocs} are local mutable
@@ -110,7 +117,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * </p>
      *
      * @param termStats field-level statistics
-     * @param lexicon    dense term lexicon aligned with {@code fieldStats}
+     * @param lexicon    dense term lexicon aligned with {@code termStats}
      * @throws IllegalArgumentException if vocabulary sizes differ
      * @throws NullPointerException     if an argument is {@code null}
      */
@@ -140,8 +147,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * occurrence, document, and context counts into its arrays, then call
      * {@link Population#complete(long, int, int)} once to publish the totals to
      * this {@code TopTerms} instance. This keeps count vectors and population
-     * totals in one transaction and is preferred over the legacy
-     * {@link #buffers()} plus {@link #setTotals(long, int, int)} sequence.
+     * totals in one transaction.
      * </p>
      *
      * @return writable local population
@@ -201,12 +207,90 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
     
     /**
+     * Excludes terms from subsequent rankings without changing the analytical
+     * population.
+     *
+     * <p>
+     * Calls are cumulative. For ids previously passed to {@link #include(int[])},
+     * this call wins and removes them from the inclusion set. Null arrays, empty
+     * arrays, duplicate ids, and ids outside the vocabulary are ignored.
+     * </p>
+     *
+     * @param termIds dense term ids to exclude from rankings
+     * @return this instance
+     */
+    public TopTerms exclude(final int[] termIds)
+    {
+        updateRankingSelection(termIds, rankingExclude, rankingInclude);
+        return this;
+    }
+
+    /**
+     * Returns immutable snapshots of terms excluded from the current analytical
+     * population.
+     *
+     * @return population-excluded terms in first-exclusion order
+     */
+    public ExcludedTerms excludedTerms()
+    {
+        return excludedTerms;
+    }
+
+    /**
      * Returns the indexed field name covered by these term stats.
      *
      * @return field name, never null
      */
-    public String field() {
+    public String field()
+    {
         return field;
+    }
+
+    /**
+     * Includes terms in subsequent rankings without changing the analytical
+     * population.
+     *
+     * <p>
+     * Included terms bypass ranking flag filters and consume places within the
+     * requested top limit. Calls are cumulative. For ids previously passed to
+     * {@link #exclude(int[])}, this call wins and removes them from the exclusion
+     * set. Null arrays, empty arrays, duplicate ids, and ids outside the
+     * vocabulary are ignored.
+     * </p>
+     *
+     * @param termIds dense term ids to include in rankings
+     * @return this instance
+     */
+    public TopTerms include(final int[] termIds)
+    {
+        updateRankingSelection(termIds, rankingInclude, rankingExclude);
+        return this;
+    }
+
+    /**
+     * Returns an iterator over the current ranking.
+     *
+     * @return iterator over ranked terms
+     * @throws IllegalStateException if no ranking has been produced
+     */
+    @Override
+    public Iterator<TermEntry> iterator()
+    {
+        if (rank2termId == null) {
+            throw new IllegalStateException(
+                    "No ranking: call rank(...), ranking(...), or setRanking(...) first");
+        }
+        return new TermIter();
+    }
+
+    /**
+     * Returns the term lexicon aligned with this instance.
+     *
+     * @return field term lexicon
+     */
+    public TermLexicon lexicon()
+    {
+        return lexicon;
     }
 
     /**
@@ -229,13 +313,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * which terms are first excluded.
      * </p>
      *
-     * @param termIds dense ids of terms to exclude; {@code null} and empty arrays
-     *                leave the population unchanged
-     * @return all excluded-term snapshots for the current population
+     * @param termIds dense ids of terms to remove from the population;
+     *                {@code null} and empty arrays leave it unchanged
+     * @return all population-excluded term snapshots
      * @throws IllegalArgumentException if a term id is outside the vocabulary or
      *                                  the population token total is inconsistent
      */
-    public ExcludedTerms excludeTerms(final int[] termIds)
+    public ExcludedTerms populationExclude(final int[] termIds)
     {
         if (termIds == null || termIds.length == 0) {
             return excludedTerms;
@@ -304,52 +388,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Returns immutable snapshots of terms excluded from the current analytical
-     * population.
-     *
-     * @return excluded terms in first-exclusion order
-     */
-    public ExcludedTerms excludedTerms()
-    {
-        return excludedTerms;
-    }
-
-    /**
-     * Returns the field-level statistics this instance is bound to.
-     *
-     * @return field-level statistics
-     */
-    public TermStats termStats()
-    {
-        return termStats;
-    }
-    
-    /**
-     * Gives access to unerlying lexicon of ths list of terms.
-     * @return The lexicon for this field
-     */
-    public TermLexicon lexicon()
-    {
-        return lexicon;
-    }
-
-    /**
-     * Returns an iterator over the current ranking.
-     *
-     * @return iterator over ranked terms
-     * @throws IllegalStateException if no ranking has been produced
-     */
-    @Override
-    public Iterator<TermEntry> iterator()
-    {
-        if (rank2termId == null) {
-            throw new IllegalStateException(
-                    "No ranking: call rank(...), ranking(...), or setRanking(...) first");
-        }
-        return new TermIter();
-    }
-
-    /**
      * Convenience: ranks the current population by raw occurrence count.
      *
      * <p>
@@ -378,8 +416,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param flags accepted term flags
      * @return this instance
      * @throws IllegalArgumentException if {@code topK < 1}
-     * @throws NullPointerException     if {@code flags == null} or one of its
-     *                                  elements is {@code null}
      */
     public TopTerms rank(final int topK, final TermFlag... flags)
     {
@@ -409,7 +445,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param topK   maximum number of ranked terms to retain
      * @return this instance
      * @throws IllegalArgumentException if {@code topK < 1}
-     * @throws NullPointerException     if {@code scorer == null}
      */
     public TopTerms rank(final KeynessScorer scorer, final int topK)
     {
@@ -420,11 +455,14 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Ranks flag-matching terms with a keyness scorer.
      *
      * <p>
-     * The flags restrict ranking candidates only. A term is eligible when it
-     * carries at least one supplied flag. The scorer still receives the complete
-     * current-population and field token totals, so filtering does not change a
-     * term's score. It only changes eligibility and rank. No flags, or
-     * {@link TermFlag#NULL}, select all terms.
+     * The flags restrict ordinary ranking candidates only. A term is eligible
+     * when it carries at least one supplied flag. The scorer still receives the
+     * complete current-population and field token totals, so filtering does not
+     * change a term's score. Stored exclusions are omitted. Stored inclusions
+     * bypass the flag filter, consume places within {@code topK}, and displace
+     * the lowest-scoring ordinary terms. If inclusions alone exceed
+     * {@code topK}, only their highest-scoring terms are retained. No flags, or
+     * {@link TermFlag#NULL}, select all ordinary terms.
      * </p>
      *
      * @param scorer scorer used to rank terms
@@ -432,8 +470,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @param flags  accepted term flags
      * @return this instance
      * @throws IllegalArgumentException if {@code topK < 1}
-     * @throws NullPointerException     if {@code flags == null} or one of its
-     *                                  elements is {@code null}
      */
     public TopTerms rank(
         KeynessScorer scorer,
@@ -445,33 +481,45 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         checkTopK(topK);
 
         final int vocabSize = termStats.vocabSize();
-        final long fieldTokens = termStats.fieldTokens();
-        final long otherTokens = fieldTokens - tokens;
+        final long otherTokens = termStats.fieldTokens() - tokens;
         final double[] scoreVec = new double[vocabSize];
-        final TopArray top = new TopArray(topK);
+        final TopArray included = new TopArray(topK);
 
-        for (int termId = firstCandidate(filter);
-                termId >= 0 && termId < vocabSize;
-                termId = nextCandidate(filter, termId)) {
-            final long localTermCount = termFreq[termId];
-            if (localTermCount == 0L) {
-                continue;
-            }
-
-            final long fieldTermCount = termStats.termFreq(termId);
-            final long otherTermCount = fieldTermCount - localTermCount;
-            final double score = scorer.score(
-                    localTermCount, tokens, otherTermCount, otherTokens);
-
-            if (Double.isNaN(score)) {
-                continue;
-            }
-
-            scoreVec[termId] = score;
-            top.push(termId, score);
+        for (int termId = rankingInclude.nextSetBit(1);
+                termId >= 0;
+                termId = rankingInclude.nextSetBit(termId + 1)) {
+            final double score = scorerScore(scorer, termId, otherTokens);
+            scoreVec[termId] = rankingScore(score);
+            included.push(termId, scoreVec[termId]);
         }
 
-        buildRanking(top, scoreVec, null);
+        final int ordinaryLimit = topK - included.size();
+        final TopArray ordinary = ordinaryLimit > 0
+            ? new TopArray(ordinaryLimit)
+            : null;
+
+        if (ordinary != null) {
+            for (int termId = firstCandidate(filter);
+                    termId >= 0 && termId < vocabSize;
+                    termId = nextCandidate(filter, termId)) {
+                if (rankingExclude.get(termId) || rankingInclude.get(termId)) {
+                    continue;
+                }
+                if (termFreq[termId] == 0L) {
+                    continue;
+                }
+
+                final double score = scorerScore(scorer, termId, otherTokens);
+                if (Double.isNaN(score)) {
+                    continue;
+                }
+
+                scoreVec[termId] = score;
+                ordinary.push(termId, score);
+            }
+        }
+
+        buildRanking(included, ordinary, scoreVec, null);
         return this;
     }
 
@@ -499,8 +547,12 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Ranks flag-matching terms by a caller-supplied score vector.
      *
      * <p>
-     * The flag restricts ranking candidates only. The supplied vector is not
-     * modified. {@link TermFlag#NULL} selects all terms.
+     * The flag restricts ordinary ranking candidates only. Stored exclusions are
+     * omitted. Stored inclusions bypass the flag filter, consume places within
+     * {@code topK}, and displace the lowest-scoring ordinary terms. If
+     * inclusions alone exceed {@code topK}, only their highest-scoring terms are
+     * retained. The supplied vector is not modified. {@link TermFlag#NULL}
+     * selects all ordinary terms.
      * </p>
      *
      * @param weights score vector indexed by dense term id
@@ -509,8 +561,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @return this instance
      * @throws IllegalArgumentException if {@code weights.length != vocabSize()}
      *                                  or if {@code topK < 1}
-     * @throws NullPointerException     if {@code weights == null} or
-     *                                  {@code flag == null}
+     * @throws NullPointerException     if {@code weights == null}
      */
     public TopTerms ranking(
         final double[] weights,
@@ -522,19 +573,35 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         checkTopK(topK);
         checkVectorLength(w.length, "weights.length");
 
-        final TopArray top = new TopArray(topK);
-
-        for (int termId = firstCandidate(filter);
-                termId >= 0 && termId < w.length;
-                termId = nextCandidate(filter, termId)) {
-            final double score = w[termId];
-            if (Double.isNaN(score) || score <= 0d) {
-                continue;
-            }
-            top.push(termId, score);
+        final double[] scoreVec = normalizeIncludedScores(w);
+        final TopArray included = new TopArray(topK);
+        for (int termId = rankingInclude.nextSetBit(1);
+                termId >= 0;
+                termId = rankingInclude.nextSetBit(termId + 1)) {
+            included.push(termId, rankingScore(scoreVec[termId]));
         }
 
-        buildRanking(top, w, null);
+        final int ordinaryLimit = topK - included.size();
+        final TopArray ordinary = ordinaryLimit > 0
+            ? new TopArray(ordinaryLimit)
+            : null;
+
+        if (ordinary != null) {
+            for (int termId = firstCandidate(filter);
+                    termId >= 0 && termId < scoreVec.length;
+                    termId = nextCandidate(filter, termId)) {
+                if (rankingExclude.get(termId) || rankingInclude.get(termId)) {
+                    continue;
+                }
+                final double score = scoreVec[termId];
+                if (Double.isNaN(score) || score <= 0d) {
+                    continue;
+                }
+                ordinary.push(termId, score);
+            }
+        }
+
+        buildRanking(included, ordinary, scoreVec, null);
         return this;
     }
 
@@ -544,7 +611,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * <p>
      * After reset, occurrence and document-count arrays alias
      * {@link TermStats}. They must not be modified. Methods that collect local
-     * statistics switch back to local mutable buffers before writing.
+     * statistics switch back to local mutable buffers before writing. Stored
+     * ranking inclusions and exclusions are retained.
      * </p>
      *
      * @return this instance
@@ -645,8 +713,10 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Sets a flag-filtered ranking produced by an external component.
      *
      * <p>
-     * Every ranked term must carry {@code flag}. {@link TermFlag#NULL} accepts
-     * all terms.
+     * Every ordinary source term must carry {@code flag}. Stored exclusions are
+     * omitted. Stored inclusions bypass the flag, may be inserted even when they
+     * are absent from the source ranking, and consume places within the source
+     * ranking length. {@link TermFlag#NULL} accepts all ordinary source terms.
      * </p>
      *
      * @param rank2termId ranked dense term ids
@@ -656,8 +726,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @return this instance
      * @throws IllegalArgumentException if arrays are not aligned with this field
      *                                  or a ranked term does not carry the flag
-     * @throws NullPointerException     if {@code rank2termId == null} or
-     *                                  {@code flag == null}
+     * @throws NullPointerException     if {@code rank2termId == null}
      */
     public TopTerms setRanking(
         final int[] rank2termId,
@@ -677,10 +746,41 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                     "hilites.length=" + hilites.length
                             + ", expected " + ranks.length);
         }
+        if (ranks.length == 0) {
+            this.rank2termId = ranks;
+            this.scores = scores;
+            this.hilites = hilites;
+            return this;
+        }
 
-        this.rank2termId = ranks;
-        this.scores = scores;
-        this.hilites = hilites;
+        final double[] scoreVec = normalizeIncludedScores(scores);
+        final TopArray included = new TopArray(ranks.length);
+        for (int termId = rankingInclude.nextSetBit(1);
+                termId >= 0;
+                termId = rankingInclude.nextSetBit(termId + 1)) {
+            included.push(termId, rankingScore(score(termId, scoreVec)));
+        }
+
+        final int ordinaryLimit = ranks.length - included.size();
+        final TopArray ordinary = ordinaryLimit > 0
+            ? new TopArray(ordinaryLimit)
+            : null;
+
+        if (ordinary != null) {
+            final BitSet seen = new BitSet(termStats.vocabSize());
+            for (final int termId : ranks) {
+                if (seen.get(termId)
+                        || rankingExclude.get(termId)
+                        || rankingInclude.get(termId)) {
+                    continue;
+                }
+                seen.set(termId);
+                ordinary.push(termId, rankingScore(score(termId, scoreVec)));
+            }
+        }
+
+        buildRanking(included, ordinary, scoreVec, null);
+        this.hilites = remapHilites(ranks, hilites);
         return this;
     }
 
@@ -798,6 +898,16 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Returns the field-level statistics this instance is bound to.
+     *
+     * @return field-level statistics
+     */
+    public TermStats termStats()
+    {
+        return termStats;
+    }
+
+    /**
      * Returns the current population token count.
      *
      * @return token count
@@ -808,10 +918,45 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Builds a ranking from a retained top list.
+     * Builds a ranking from mandatory and ordinary retained lists.
      *
-     * @param top     retained top list
-     * @param scores  score vector indexed by dense term id, or {@code null}
+     * @param included mandatory retained terms
+     * @param ordinary ordinary retained terms, or {@code null}
+     * @param scores score vector indexed by dense term id, or {@code null}
+     * @param hilites optional per-rank highlight strings, or {@code null}
+     */
+    private void buildRanking(
+        final TopArray included,
+        final TopArray ordinary,
+        final double[] scores,
+        final String[] hilites)
+    {
+        final int ordinarySize = ordinary == null ? 0 : ordinary.size();
+        final int size = included.size() + ordinarySize;
+        if (size == 0) {
+            rank2termId = new int[0];
+            this.scores = scores;
+            this.hilites = hilites;
+            return;
+        }
+
+        final TopArray top = new TopArray(size);
+        for (int rank = 0; rank < included.size(); rank++) {
+            final int termId = included.id(rank);
+            top.push(termId, rankingScore(score(termId, scores)));
+        }
+        for (int rank = 0; rank < ordinarySize; rank++) {
+            final int termId = ordinary.id(rank);
+            top.push(termId, rankingScore(score(termId, scores)));
+        }
+        buildRanking(top, scores, hilites);
+    }
+
+    /**
+     * Builds a ranking from one retained top list.
+     *
+     * @param top retained top list
+     * @param scores score vector indexed by dense term id, or {@code null}
      * @param hilites optional per-rank highlight strings, or {@code null}
      */
     private void buildRanking(
@@ -863,7 +1008,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
             final int termId = rank2termId[rank];
             final String name = "rank2termId[" + rank + "]";
             checkTermId(termId, name);
-            if (filter != null && !filter.get(termId)) {
+            if (filter != null
+                    && !filter.get(termId)
+                    && !rankingInclude.get(termId)) {
                 throw new IllegalArgumentException(
                     name + "=" + termId + " is excluded by the ranking flag");
             }
@@ -949,31 +1096,30 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Resolves term flags to a private union ranking filter.
+     * Resolves optional term flags to a private union ranking filter.
      *
      * @param flags accepted term flags
      * @return eligible term ids, or {@code null} for all terms
-     * @throws NullPointerException if {@code flags == null} or one of its
-     *                              elements is {@code null}
      */
     private BitSet rankingFilter(final TermFlag... flags)
     {
-        Objects.requireNonNull(flags, "flags");
-        if (flags.length == 0) {
+        if (flags == null || flags.length == 0) {
             return null;
         }
 
         final BitSet filter = new BitSet(termStats.vocabSize());
-        for (int index = 0; index < flags.length; index++) {
-            final TermFlag flag = Objects.requireNonNull(
-                flags[index],
-                "flags[" + index + "]");
+        boolean hasFlag = false;
+        for (final TermFlag flag : flags) {
+            if (flag == null) {
+                continue;
+            }
             if (flag == TermFlag.NULL) {
                 return null;
             }
             filter.or(lexicon.bits(flag));
+            hasFlag = true;
         }
-        return filter;
+        return hasFlag ? filter : null;
     }
 
     /**
@@ -1013,6 +1159,133 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         termDocs = termDocs.clone();
         termContexts = termContexts.clone();
         mutable = true;
+    }
+
+    /**
+     * Normalizes NaN scores for mandatory included terms without modifying the
+     * caller's vector.
+     *
+     * @param source source score vector, or {@code null}
+     * @return the source vector, a normalized clone, or {@code null}
+     */
+    private double[] normalizeIncludedScores(final double[] source)
+    {
+        if (source == null) {
+            return null;
+        }
+        double[] normalized = source;
+        for (int termId = rankingInclude.nextSetBit(1);
+                termId >= 0;
+                termId = rankingInclude.nextSetBit(termId + 1)) {
+            if (!Double.isNaN(source[termId])) {
+                continue;
+            }
+            if (normalized == source) {
+                normalized = source.clone();
+            }
+            normalized[termId] = Double.NEGATIVE_INFINITY;
+        }
+        return normalized;
+    }
+
+    /**
+     * Restores source highlights for terms retained in the constrained ranking.
+     *
+     * @param sourceRanks source ranked term ids
+     * @param sourceHilites source highlights, or {@code null}
+     * @return highlights aligned with the current ranking, or {@code null}
+     */
+    private String[] remapHilites(
+        final int[] sourceRanks,
+        final String[] sourceHilites)
+    {
+        if (sourceHilites == null) {
+            return null;
+        }
+        final String[] remapped = new String[rank2termId.length];
+        for (int rank = 0; rank < rank2termId.length; rank++) {
+            final int termId = rank2termId[rank];
+            for (int sourceRank = 0; sourceRank < sourceRanks.length; sourceRank++) {
+                if (sourceRanks[sourceRank] == termId) {
+                    remapped[rank] = sourceHilites[sourceRank];
+                    break;
+                }
+            }
+        }
+        return remapped;
+    }
+
+    /**
+     * Returns one term's stored score, falling back to current frequency.
+     *
+     * @param termId dense term id
+     * @param scoreVec score vector, or {@code null}
+     * @return stored score or current population frequency
+     */
+    private double score(final int termId, final double[] scoreVec)
+    {
+        return scoreVec == null ? (double) termFreq[termId] : scoreVec[termId];
+    }
+
+    /**
+     * Computes one term's score against the current population.
+     *
+     * @param scorer scorer to apply
+     * @param termId dense term id
+     * @param otherTokens token count outside the current population
+     * @return scorer value
+     */
+    private double scorerScore(
+        final KeynessScorer scorer,
+        final int termId,
+        final long otherTokens)
+    {
+        final long localTermCount = termFreq[termId];
+        final long otherTermCount = termStats.termFreq(termId) - localTermCount;
+        return scorer.score(localTermCount, tokens, otherTermCount, otherTokens);
+    }
+
+    /**
+     * Converts an unrankable mandatory score into the lowest sortable value.
+     *
+     * @param score original score
+     * @return original score, or negative infinity for NaN
+     */
+    private static double rankingScore(final double score)
+    {
+        return Double.isNaN(score) ? Double.NEGATIVE_INFINITY : score;
+    }
+
+    /**
+     * Updates persistent ranking selection, with the latest call winning.
+     *
+     * @param termIds optional dense term ids
+     * @param selected destination selection
+     * @param opposite opposite selection to clear
+     */
+    private void updateRankingSelection(
+        final int[] termIds,
+        final BitSet selected,
+        final BitSet opposite)
+    {
+        if (termIds == null || termIds.length == 0) {
+            return;
+        }
+        final int vocabSize = termStats.vocabSize();
+        boolean changed = false;
+        for (final int termId : termIds) {
+            if (termId <= 0 || termId >= vocabSize) {
+                continue;
+            }
+            if (!selected.get(termId) || opposite.get(termId)) {
+                changed = true;
+            }
+            selected.set(termId);
+            opposite.clear(termId);
+        }
+        if (changed) {
+            clearRanking();
+        }
     }
 
     /**
@@ -1068,8 +1341,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * <p>
      * Entries preserve first-exclusion order. The collection is replaced when a
-     * new population starts through {@link #beginPopulation()}, {@link #buffers()},
-     * {@link #reset()}, or {@link #select(IndexReader, FixedBitSet)}.
+     * new population starts through {@link #beginPopulation()}, {@link #reset()}, or
+     * {@link #select(IndexReader, FixedBitSet)}.
      * </p>
      */
     public static final class ExcludedTerms implements Iterable<ExcludedTerm>

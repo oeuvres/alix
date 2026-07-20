@@ -2,6 +2,8 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -25,8 +27,9 @@ import com.google.gson.stream.JsonWriter;
 public class MetaUtil
 {
     private final Map<String, Object> entries = new LinkedHashMap<>();
+    private final List<String> log = new LinkedList<>();
     long t0 = System.nanoTime();
-
+    
     /**
      * Get back an object from meta
      * 
@@ -36,7 +39,16 @@ public class MetaUtil
     {
         return entries.get(key);
     }
-    
+
+    /**
+     * Add a log message to output.
+     */
+    public void log(String message)
+    {
+        log.add(message);
+    }
+
+
     /**
      * Records a {@code boolean} meta entry.
      *
@@ -210,6 +222,14 @@ public class MetaUtil
             jw.name(e.getKey()).value(e.getValue().source().name());
         }
         jw.endObject();
+        if (log.size() > 0) {
+            jw.name("log").beginObject();
+            jw.beginArray();
+            for (String message: log) {
+                jw.value(message);
+            }
+            jw.endArray();
+        }
         for (Map.Entry<String, Object> e : entries.entrySet()) {
             jw.name(e.getKey());
             jsonObject(jw, e.getValue());

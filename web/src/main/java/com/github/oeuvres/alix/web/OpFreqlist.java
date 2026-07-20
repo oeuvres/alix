@@ -57,8 +57,8 @@ public final class OpFreqlist extends Op
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
             throws IOException
     {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
         TopTerms topTerms = topTerms(index, pars, meta);
         Writer writer = response.getWriter();
         if (topTerms != null) {
@@ -90,6 +90,6 @@ public final class OpFreqlist extends Op
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = topTerms(index, pars, meta);
-        TermsUtil.json(response, meta, pars, topTerms);
+        TermsUtil.json(request, response, topTerms);
     }
 }

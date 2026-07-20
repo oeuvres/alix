@@ -26,8 +26,9 @@ public class OpDoc extends Op
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
         throws IOException
     {
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
         Writer writer = response.getWriter();
-        final HttpPars pars = new HttpPars(request, response);
         final int docId = pars.getInt(DOCID, -1);
         if (docId == -1) {
             response.setStatus(404);

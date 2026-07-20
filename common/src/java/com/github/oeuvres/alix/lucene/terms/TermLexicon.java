@@ -481,7 +481,7 @@ public final class TermLexicon {
      * {@code IndexSearcher.rewrite(Query)}.
      *
      * @param query a rewritten {@link Query}
-     * @return distinct term ids in query-visit order; unknown terms omitted
+     * @return term ids sorted with no duplicates; unknown terms omitted
      */
     public int[] termIds(final Query query) {
         final IntList ids = new IntList();
@@ -496,6 +496,26 @@ public final class TermLexicon {
                 }
             }
         });
+        return ids.toUniq();
+    }
+    
+    /**
+     * Resolves the terms to their term ids, restricted to this lexicon's field. Terms the
+     * lexicon does not know are silently dropped.
+     *
+     * @param terms 
+     * @return term ids sorted with no duplicates; unknown terms omitted
+     */
+    public int[] termIds(final String[] terms) {
+        final IntList ids = new IntList();
+        for (String t: terms) {
+            t = t.strip();
+            if (t.isBlank()) continue;
+            final int termId = id(t);
+            if (termId >= 0) {
+                ids.push(termId);
+            }
+        }
         return ids.toUniq();
     }
 

@@ -3,6 +3,8 @@ package com.github.oeuvres.alix.web;
 public class Pars
 {
     private Pars() {}
+    public static final String ALIX_META        = "alix.meta";
+    public static final String ALIX_PARS        = "alix.pars";
     public static final String BM25             = "bm25";
     public static final String CTX              = "ctx";
     public static final int    CTX_DEFAULT      = 10;

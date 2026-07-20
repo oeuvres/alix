@@ -32,6 +32,8 @@ import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import static com.github.oeuvres.alix.web.Pars.*;
+
 
 /**
  * Maps selected terms over the full corpus by factorising association residuals
@@ -412,12 +414,12 @@ public class OpClades extends Op
             writer.append("no term selection");
             return;
         }
+        
         final IntList rowList = new IntList(topTerms.size());
         for (final TermEntry term : topTerms) {
             rowList.push(term.termId());
         }
         final int[] rowIds = rowList.toUniq();
-        final TermLexicon lexicon = topTerms.lexicon();
         final FixedBitSet liveDocs = liveDocs(index.reader());
         final int minDocTerms = pars.getInt(
             "minDocTerms",
@@ -475,10 +477,32 @@ public class OpClades extends Op
         final HttpServletRequest request,
         final HttpServletResponse response
     ) throws IOException {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
         final JsonView view = pars.getEnum("view", JsonView.MAP);
         final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
+        
+        if (topTerms == null) {
+            response.setStatus(400);
+            // send error?
+            return;
+        }
+        
+        // add or remove terms from list
+        final TermLexicon lexicon = topTerms.lexicon();
+        String include = pars.getString("include", null);
+        if (include != null) {
+            String[] terms = include.split(",");
+            int[] termIds = lexicon.termIds(terms);
+            if (termIds.length > 0) topTerms.include(termIds);
+        }
+        String exclude = pars.getString("exclude", null);
+        if (exclude != null) {
+            String[] terms = exclude.split(",");
+            int[] termIds = lexicon.termIds(terms);
+            if (termIds.length > 0) topTerms.exclude(termIds);
+        }
+
 
         int[] rowIds = null;
         long[] rowFreq = null;
@@ -487,10 +511,8 @@ public class OpClades extends Op
         TermMap map = null;
         RadialMap radial = null;
 
-        if (topTerms == null) {
-            response.setStatus(400);
-        }
-        else {
+
+
             final Map<Integer, Long> frequencyById = new HashMap<>();
             final IntList rowList = new IntList(topTerms.size());
             for (final TermEntry term : topTerms) {
@@ -570,10 +592,9 @@ public class OpClades extends Op
 
             if (rowIds.length < 2 || filtered.retainedDocuments() < 2) {
                 response.setStatus(400);
-                meta.put(
-                    "error",
-                    "minDocTerms leaves fewer than two active terms or documents"
-                );
+                meta.log("minDocTerms leaves fewer than two active terms or documents");
+                AlixServlet.jsonError(request, response);
+                return;
             }
             else if (view == JsonView.RADIAL) {
                 radial = radialMap(
@@ -604,7 +625,6 @@ public class OpClades extends Op
                     geometry
                 );
             }
-        }
 
         try (JsonWriter jw = Op.jsonWriter(response)) {
             jw.beginObject();

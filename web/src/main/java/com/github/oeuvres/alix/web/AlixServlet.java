@@ -29,7 +29,7 @@ import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.common.Names.*;
-import static com.github.oeuvres.alix.web.Pars.DOCID;
+import static com.github.oeuvres.alix.web.Pars.*;
 
 /**
  * Front controller servlet for the Alix search web API.
@@ -128,6 +128,10 @@ public class AlixServlet extends HttpServlet
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setCharacterEncoding("UTF-8");
         response.setHeader("Cache-Control", "no-cache");
+        MetaUtil meta = new MetaUtil();
+        request.setAttribute(ALIX_META, meta);
+        HttpPars pars = new HttpPars(request, response);
+        request.setAttribute(ALIX_PARS, pars);
 
         final String pathInfo = pathInfo(request);
         final String[] segments = pathInfo.split("/");
@@ -141,7 +145,9 @@ public class AlixServlet extends HttpServlet
         final LuceneIndex index = registry.get(indexName);
 
         if (index == null) {
-            jsonError(response, 404, "Unknown index: " + indexName);
+            response.setStatus(404);
+            meta.log("[Index not found]: " + indexName);
+            jsonError(request, response);
             return;
         }
         final long lastModified = Math.max(servletStartedMillis, index.lastModified());
@@ -243,23 +249,20 @@ public class AlixServlet extends HttpServlet
      * @throws IOException if writing the response fails
      */
     static void jsonError(
-        final HttpServletResponse response,
-        final int status,
-        final String message
+        final HttpServletRequest request,
+        final HttpServletResponse response
     ) throws IOException {
-        response.setStatus(status);
         response.setContentType(CONTENT_JSON);
         response.setCharacterEncoding("UTF-8");
     
         try (JsonWriter jw = new JsonWriter(response.getWriter())) {
             jw.beginObject();
-            jw.name("errors");
-            jw.beginArray();
+            jw.name("meta");
             jw.beginObject();
-            jw.name("status").value(status);
-            jw.name("message").value(message);
+            MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
+            meta.toJson(jw, (HttpPars)request.getAttribute(ALIX_PARS));
             jw.endObject();
-            jw.endArray();
+            // error as a block better?
             jw.endObject();
         }
     }
@@ -361,6 +364,7 @@ public class AlixServlet extends HttpServlet
         final HttpServletRequest request,
         final HttpServletResponse response
     ) throws IOException {
+
         final String[] opFormat = splitOpFormat(segment);
         final String opName = opFormat[0];
         final String format = opFormat[1];
@@ -379,7 +383,9 @@ public class AlixServlet extends HttpServlet
             doc.dispatch(index, format, request, response);
             return;
         }
-        jsonError(response, 404, "Unknown operation: " + opName);
+        response.setStatus(404);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log("[NotFound] action unknown");
+        jsonError(request, response);
     }
     
     /**

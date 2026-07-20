@@ -157,7 +157,7 @@ public final class OpTerms extends Op
             ).bindTo(population);
             walker.walk(consumer);
             consumer.complete(); // update TopTerms population
-            topTerms.excludeTerms(pivotIds);
+            topTerms.populationExclude(pivotIds);
             meta.put("pivotIds", pivotIds);
             meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
             meta.put("fieldTokens", contentFluc.termStats().fieldTokens());
@@ -173,8 +173,8 @@ public final class OpTerms extends Op
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
             throws IOException
     {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
         TopTerms topTerms = topTerms(index, pars, meta);
         Writer writer = response.getWriter();
         if (topTerms != null) {
@@ -203,10 +203,10 @@ public final class OpTerms extends Op
         final HttpServletResponse response
     ) throws IOException
     {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
         TopTerms topTerms = topTerms(index, pars, meta);
-        TermsUtil.json(response, meta, pars, topTerms);
+        TermsUtil.json(request, response, topTerms);
     }
     
     @Override

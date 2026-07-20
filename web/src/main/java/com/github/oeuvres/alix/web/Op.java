@@ -131,8 +131,10 @@ public abstract class Op
                     AlixServlet.prepareTxt(response);
                     txt(index, request, response);
                 }
-                default -> AlixServlet.jsonError(response, 406,
-                        getClass().getSimpleName() + ": unsupported format: " + format);
+                default -> {
+                    response.setStatus(406);
+                    ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": unsupported format: " + format);
+                }
             }
     }
 
@@ -174,10 +176,12 @@ public abstract class Op
      */
     protected void csv(
         LuceneIndex index,
-        HttpServletRequest req,
-        HttpServletResponse resp) throws IOException
+        HttpServletRequest request,
+        HttpServletResponse response) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": csv not implemented");
+        response.setStatus(406);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": csv not implemented");
+        AlixServlet.jsonError(request, response);
     }
 
     /**
@@ -193,10 +197,12 @@ public abstract class Op
      */
     protected void html(
         LuceneIndex index,
-        HttpServletRequest req,
-        HttpServletResponse resp) throws IOException
+        HttpServletRequest request,
+        HttpServletResponse response) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": html fragment not implemented");
+        response.setStatus(406);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": html fragment not implemented");
+        AlixServlet.jsonError(request, response);
     }
 
     /**
@@ -211,10 +217,12 @@ public abstract class Op
      */
     protected void json(
         LuceneIndex index,
-        HttpServletRequest req,
-        HttpServletResponse resp) throws IOException
+        HttpServletRequest request,
+        HttpServletResponse response) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": json not implemented");
+        response.setStatus(406);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": json not implemented");
+        AlixServlet.jsonError(request, response);
     }
 
     /**
@@ -229,10 +237,12 @@ public abstract class Op
      */
     protected void jsonl(
         LuceneIndex index,
-        HttpServletRequest req,
-        HttpServletResponse resp) throws IOException
+        HttpServletRequest request,
+        HttpServletResponse response) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": jsonl not implemented");
+        response.setStatus(406);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": csv not implemented");
+        AlixServlet.jsonError(request, response);
     }
 
     /**
@@ -265,10 +275,12 @@ public abstract class Op
      */
     protected void page(
         LuceneIndex index,
-        HttpServletRequest req,
-        HttpServletResponse resp) throws IOException
+        HttpServletRequest request,
+        HttpServletResponse response) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": default html not implemented");
+        response.setStatus(406);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": html not implemented");
+        AlixServlet.jsonError(request, response);
     }
 
     /**
@@ -282,10 +294,12 @@ public abstract class Op
      */
     protected void txt(
         LuceneIndex index,
-        HttpServletRequest req,
-        HttpServletResponse resp) throws IOException
+        HttpServletRequest request,
+        HttpServletResponse response) throws IOException
     {
-        AlixServlet.jsonError(resp, 406, getClass().getSimpleName() + ": csv not implemented");
+        response.setStatus(406);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": txt not implemented");
+        AlixServlet.jsonError(request, response);
     }
 
     /**
