@@ -157,10 +157,15 @@ public class OpClades extends Op
      *
      * @param angles angular coordinates in radians
      * @param radii selected radial coordinates in {@code [0, 1]}
+     * @param massPercent selected-table row mass, in percent
+     * @param retainedContributionPercent share of the retained residual
+     *        geometry carried by each row, in percent
      */
     private record RadialMap(
         double[] angles,
-        double[] radii
+        double[] radii,
+        double[] massPercent,
+        double[] retainedContributionPercent
     ) {}
 
     /**
@@ -544,10 +549,15 @@ public class OpClades extends Op
                     residual,
                     geometry
                 );
-                meta.put("color", "log2Lift");
+                meta.put("size", "mass_pct");
+                meta.put(
+                    "sizeMethod",
+                    "selected-table row mass; client bubble area"
+                );
+                meta.put("color", "retainedContrib_pct");
                 meta.put(
                     "colorMethod",
-                    "log2((freq/focusTokens)/(fieldFreq/fieldTokens))"
+                    "100 * row squared norm in retained U Sigma / retained Frobenius norm squared"
                 );
                 meta.put("colorReference", 0d);
             }
@@ -715,6 +725,10 @@ public class OpClades extends Op
             sourceRadiusMax = Math.max(sourceRadiusMax, sourceRadii[row]);
         }
         final double[] masses = rowMasses(table);
+        final double[] massesPercent = massPercent(masses);
+        final double[] retainedContributions = retainedContributionPercent(
+            rawSource
+        );
         double distinctivenessMax = 0d;
         for (int row = 0; row < size; row++) {
             radii[row] = sourceRadii[row] / Math.sqrt(masses[row]);
@@ -726,10 +740,20 @@ public class OpClades extends Op
             }
         }
         if (size < 2 || sourceDims == 0) {
-            return new RadialMap(angles, radii);
+            return new RadialMap(
+                angles,
+                radii,
+                massesPercent,
+                retainedContributions
+            );
         }
         if (!(sourceRadiusMax > 0d)) {
-            return new RadialMap(angles, radii);
+            return new RadialMap(
+                angles,
+                radii,
+                massesPercent,
+                retainedContributions
+            );
         }
         for (int row = 0; row < size; row++) {
             sourceRadii[row] /= sourceRadiusMax;
@@ -748,7 +772,12 @@ public class OpClades extends Op
             ? distanceSum / distanceCount
             : 0d;
         if (!(distanceMean > 0d)) {
-            return new RadialMap(angles, radii);
+            return new RadialMap(
+                angles,
+                radii,
+                massesPercent,
+                retainedContributions
+            );
         }
 
         double distanceSquaredSum = 0d;
@@ -760,7 +789,12 @@ public class OpClades extends Op
             }
         }
         if (!(distanceSquaredSum > 0d)) {
-            return new RadialMap(angles, radii);
+            return new RadialMap(
+                angles,
+                radii,
+                massesPercent,
+                retainedContributions
+            );
         }
 
         final Random random = new Random(RADIAL_SEED);
@@ -862,7 +896,38 @@ public class OpClades extends Op
                 ? Math.atan2(bestPositions[row][1], bestPositions[row][0])
                 : 0d;
         }
-        return new RadialMap(angles, radii);
+        return new RadialMap(
+            angles,
+            radii,
+            massesPercent,
+            retainedContributions
+        );
+    }
+
+    /**
+     * Returns each row's share of the squared retained {@code U Sigma} norm.
+     * This is the joint counterpart of correspondence-analysis contributions:
+     * it is computed before cosine normalization and therefore remains
+     * comparable across radial geometries.
+     */
+    private static double[] retainedContributionPercent(
+        final double[][] retainedSource
+    ) {
+        final double[] percent = new double[retainedSource.length];
+        double total = 0d;
+        for (int row = 0; row < retainedSource.length; row++) {
+            for (final double coordinate : retainedSource[row]) {
+                percent[row] += coordinate * coordinate;
+            }
+            total += percent[row];
+        }
+        if (!(total > 0d)) {
+            return percent;
+        }
+        for (int row = 0; row < percent.length; row++) {
+            percent[row] *= 100d / total;
+        }
+        return percent;
     }
 
     /** Returns normalized observed row masses of a contingency table. */
@@ -1317,6 +1382,11 @@ public class OpClades extends Op
             jw.name("freq").value(rowFreq[node]);
             jw.name("fieldFreq").value(fieldFreq);
             jw.name("log2Lift").value(round(log2Lift, 6));
+            jw.name("mass_pct").value(round(map.massPercent()[node], 6));
+            jw.name("retainedContrib_pct").value(round(
+                map.retainedContributionPercent()[node],
+                6
+            ));
             jw.name("radius").value(round(map.radii()[node], 6));
             jw.name("angle").value(round(map.angles()[node], 8));
             jw.endObject();
