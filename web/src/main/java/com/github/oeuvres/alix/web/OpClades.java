@@ -160,12 +160,21 @@ public class OpClades extends Op
      * @param massPercent selected-table row mass, in percent
      * @param retainedContributionPercent share of the retained residual
      *        geometry carried by each row, in percent
+     * @param svdRank full available singular-value rank
+     * @param svdDims number of singular dimensions retained by the radial map
+     * @param retainedInertiaPercent share of full singular-value inertia retained
+     *        by {@code svdDims}, in percent
+     * @param spectrumPercent full singular-value inertia spectrum, in percent
      */
     private record RadialMap(
         double[] angles,
         double[] radii,
         double[] massPercent,
-        double[] retainedContributionPercent
+        double[] retainedContributionPercent,
+        int svdRank,
+        int svdDims,
+        double retainedInertiaPercent,
+        double[] spectrumPercent
     ) {}
 
     /**
@@ -634,6 +643,29 @@ public class OpClades extends Op
     }
 
     /**
+     * Converts singular values into their full inertia spectrum in percent.
+     *
+     * @param singularValues singular values in descending order
+     * @return squared singular values normalized to a total of 100 percent
+     */
+    private static double[] inertiaPercent(final double[] singularValues)
+    {
+        final double[] percent = new double[singularValues.length];
+        double total = 0d;
+        for (int axis = 0; axis < singularValues.length; axis++) {
+            percent[axis] = singularValues[axis] * singularValues[axis];
+            total += percent[axis];
+        }
+        if (!(total > 0d)) {
+            return percent;
+        }
+        for (int axis = 0; axis < percent.length; axis++) {
+            percent[axis] *= 100d / total;
+        }
+        return percent;
+    }
+
+    /**
      * Builds the deterministic D2 radial layout from the selected contingency
      * table.
      *
@@ -678,6 +710,12 @@ public class OpClades extends Op
         }
         final int size = source.length;
         final int sourceDims = size == 0 ? 0 : source[0].length;
+        final double[] spectrumPercent = inertiaPercent(model.singularValues());
+        double retainedInertiaPercent = 0d;
+        for (int axis = 0; axis < Math.min(sourceDims, spectrumPercent.length); axis++) {
+            retainedInertiaPercent += spectrumPercent[axis];
+        }
+        final int svdRank = spectrumPercent.length;
 
         meta.put("view", "RADIAL");
         meta.put("radialMethod", "RESIDUAL_SVD_SOFT_RADIAL_D2_V3");
@@ -707,9 +745,7 @@ public class OpClades extends Op
         meta.put("angleUnit", "radian");
         meta.put("angleRange", "[-pi,pi]");
         meta.put("radiusRange", "[0,1]");
-        meta.put("svdRank", model.embedding().length == 0
-            ? 0
-            : model.embedding()[0].length);
+        meta.put("svdRank", svdRank);
 
         final double[] angles = new double[size];
         final double[] radii = new double[size];
@@ -744,7 +780,11 @@ public class OpClades extends Op
                 angles,
                 radii,
                 massesPercent,
-                retainedContributions
+                retainedContributions,
+                svdRank,
+                sourceDims,
+                retainedInertiaPercent,
+                spectrumPercent
             );
         }
         if (!(sourceRadiusMax > 0d)) {
@@ -752,7 +792,11 @@ public class OpClades extends Op
                 angles,
                 radii,
                 massesPercent,
-                retainedContributions
+                retainedContributions,
+                svdRank,
+                sourceDims,
+                retainedInertiaPercent,
+                spectrumPercent
             );
         }
         for (int row = 0; row < size; row++) {
@@ -776,7 +820,11 @@ public class OpClades extends Op
                 angles,
                 radii,
                 massesPercent,
-                retainedContributions
+                retainedContributions,
+                svdRank,
+                sourceDims,
+                retainedInertiaPercent,
+                spectrumPercent
             );
         }
 
@@ -793,7 +841,11 @@ public class OpClades extends Op
                 angles,
                 radii,
                 massesPercent,
-                retainedContributions
+                retainedContributions,
+                svdRank,
+                sourceDims,
+                retainedInertiaPercent,
+                spectrumPercent
             );
         }
 
@@ -900,7 +952,11 @@ public class OpClades extends Op
             angles,
             radii,
             massesPercent,
-            retainedContributions
+            retainedContributions,
+            svdRank,
+            sourceDims,
+            retainedInertiaPercent,
+            spectrumPercent
         );
     }
 
@@ -1360,6 +1416,21 @@ public class OpClades extends Op
     ) throws IOException {
         jw.name("data");
         jw.beginObject();
+        jw.name("svd");
+        jw.beginObject();
+        jw.name("rank").value(map.svdRank());
+        jw.name("dims").value(map.svdDims());
+        jw.name("retainedInertia_pct").value(round(
+            map.retainedInertiaPercent(),
+            1
+        ));
+        jw.name("spectrum_pct");
+        jw.beginArray();
+        for (final double percent : map.spectrumPercent()) {
+            jw.value(round(percent, 1));
+        }
+        jw.endArray();
+        jw.endObject();
         jw.name("nodes");
         jw.beginArray();
         final long fieldTokens = termStats.fieldTokens();
