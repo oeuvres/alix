@@ -75,7 +75,7 @@ public class OpChrono extends Op
     ) throws IOException
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final HistoNum histo = histoNum(index, pars, meta);
         
         try (JsonWriter json = jsonWriter(response)) {

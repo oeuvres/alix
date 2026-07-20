@@ -49,7 +49,7 @@ public class OpResults extends Op {
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
 
         final long t0 = System.currentTimeMillis();
 
@@ -309,7 +309,7 @@ public class OpResults extends Op {
     protected void page(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         
         final Writer writer = response.getWriter();
         writer.write("""

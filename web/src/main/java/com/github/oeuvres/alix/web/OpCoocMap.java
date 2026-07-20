@@ -298,7 +298,7 @@ public final class OpCoocMap extends Op
         final HttpServletResponse response
     ) throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final Writer writer = response.getWriter();
         final IntMatrixById coocMat = coocMat(index, pars, meta);
         if (coocMat == null) {
@@ -398,7 +398,7 @@ public final class OpCoocMap extends Op
     )
         throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final IntMatrixById coocMat = coocMat(index, pars, meta);
         final SvdLayout map = coocMat == null
             ? null

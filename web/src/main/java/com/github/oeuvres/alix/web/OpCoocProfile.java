@@ -59,7 +59,7 @@ public final class OpCoocProfile extends Op
         final HttpServletResponse response
     ) throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final CoocProfile profile = profile(index, pars, meta);
         final Writer writer = response.getWriter();
         if (profile != null) {
@@ -77,7 +77,7 @@ public final class OpCoocProfile extends Op
         final HttpServletResponse response
     ) throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final CoocProfile profile = profile(index, pars, meta);
         final KeynessScorer scorer = tsort(pars);
         CoocProfileUtil.json(response, meta, pars, profile, scorer);

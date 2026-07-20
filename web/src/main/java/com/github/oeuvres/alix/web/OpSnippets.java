@@ -32,7 +32,7 @@ public class OpSnippets extends Op
         throws IOException
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         Writer writer = response.getWriter();
         final String docName = pars.getString(DOCNAME, null);
         int docId = pars.getInt(DOCID, -1);

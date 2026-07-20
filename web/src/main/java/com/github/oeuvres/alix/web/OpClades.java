@@ -19,6 +19,7 @@ import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
@@ -33,7 +34,6 @@ import com.google.gson.stream.JsonWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import static com.github.oeuvres.alix.web.Pars.*;
-
 
 /**
  * Maps selected terms over the full corpus by factorising association residuals
@@ -89,22 +89,22 @@ public class OpClades extends Op
 {
     /** Adam learning rate for the D2 radial stress optimizer. */
     private static final double RADIAL_LEARNING_RATE = 0.045d;
-
+    
     /** Number of Adam iterations used by the D2 radial stress optimizer. */
     private static final int RADIAL_OPTIMIZER_ITERATIONS = 3500;
-
+    
     /** Soft penalty retaining the source-space radial norm. */
     private static final double RADIAL_RADIUS_WEIGHT = 0.18d;
-
+    
     /** Deterministic seed used for the radial angular initialization. */
     private static final long RADIAL_SEED = 7L;
-
+    
     /** Standard deviation of the deterministic angular initialization jitter. */
     private static final double RADIAL_THETA_JITTER = 0.12d;
-
+    
     /** Default number of principal coordinates retained by D2. */
     private static final int RADIAL_SVD_DIMS = 6;
-
+    
     /** Table emitted by the {@code .csv} extension. */
     private enum CsvKind
     {
@@ -113,7 +113,7 @@ public class OpClades extends Op
         /** Singular-axis and cumulative retained-inertia table. */
         INERTIA;
     }
-
+    
     /** JSON representations exposed by the endpoint. */
     private enum JsonView
     {
@@ -122,7 +122,7 @@ public class OpClades extends Op
         /** Compact D2 radial projection. */
         RADIAL;
     }
-
+    
     /** Row geometry applied to retained principal coordinates. */
     private enum Geometry
     {
@@ -133,7 +133,7 @@ public class OpClades extends Op
         /** Preserve unscaled retained coordinates in signed G² residual space. */
         G2;
     }
-
+    
     /** Residual family applied before singular value decomposition. */
     private enum Residual
     {
@@ -144,80 +144,84 @@ public class OpClades extends Op
         /** Pearson standardized residual. */
         PEARSON;
     }
-
+    
     /** Raw term frequencies with document mapping. */
     private record TermDocMatrix(
-        int[][] frequencies,
-        int[] docIds
-    ) {}
-
+            int[][] frequencies,
+            int[] docIds)
+    {
+    }
+    
     /** Support-filtered matrix plus retained ranks in the original row list. */
     private record MatrixFilterResult(
-        TermDocMatrix matrix,
-        int[] rowRanks,
-        int retainedDocuments
-    ) {}
-
+            TermDocMatrix matrix,
+            int[] rowRanks,
+            int retainedDocuments)
+    {
+    }
+    
     /**
      * Final D2 radial coordinates aligned with the selected term rows.
      *
-     * @param angles angular coordinates in radians
-     * @param radii selected radial coordinates in {@code [0, 1]}
-     * @param massPercent selected-table row mass, in percent
+     * @param angles                      angular coordinates in radians
+     * @param radii                       selected radial coordinates in {@code [0, 1]}
+     * @param massPercent                 selected-table row mass, in percent
      * @param retainedContributionPercent share of the retained residual
-     *        geometry carried by each row, in percent
-     * @param svdRank full available singular-value rank
-     * @param svdDims number of singular dimensions retained by the radial map
-     * @param retainedInertiaPercent share of full singular-value inertia retained
-     *        by {@code svdDims}, in percent
-     * @param spectrumPercent full singular-value inertia spectrum, in percent
+     *                                    geometry carried by each row, in percent
+     * @param svdRank                     full available singular-value rank
+     * @param svdDims                     number of singular dimensions retained by the radial map
+     * @param retainedInertiaPercent      share of full singular-value inertia retained
+     *                                    by {@code svdDims}, in percent
+     * @param spectrumPercent             full singular-value inertia spectrum, in percent
      */
     private record RadialMap(
-        double[] angles,
-        double[] radii,
-        double[] massPercent,
-        double[] retainedContributionPercent,
-        int svdRank,
-        int svdDims,
-        double retainedInertiaPercent,
-        double[] spectrumPercent
-    ) {}
-
+            double[] angles,
+            double[] radii,
+            double[] massPercent,
+            double[] retainedContributionPercent,
+            int svdRank,
+            int svdDims,
+            double retainedInertiaPercent,
+            double[] spectrumPercent)
+    {
+    }
+    
     /**
      * Projected map plus the diagnostics the {@link ContingencySvd} layout does
      * not provide.
      *
-     * @param residual residual family used before decomposition
-     * @param geometry row geometry used after dimensional truncation
-     * @param coordinates leading display dimensions
-     * @param cos2 share of each row's squared norm on axes 0 and 1
-     * @param cos3 share of each row's squared norm on axes 0, 1 and 2
-     * @param inertia full singular-value inertia spectrum, in percent
-     * @param massPercent row mass, in percent
-     * @param squaredDistance squared distance of each row from the origin
+     * @param residual            residual family used before decomposition
+     * @param geometry            row geometry used after dimensional truncation
+     * @param coordinates         leading display dimensions
+     * @param cos2                share of each row's squared norm on axes 0 and 1
+     * @param cos3                share of each row's squared norm on axes 0, 1 and 2
+     * @param inertia             full singular-value inertia spectrum, in percent
+     * @param massPercent         row mass, in percent
+     * @param squaredDistance     squared distance of each row from the origin
      * @param contributionPercent per-displayed-axis inertia contribution, in
-     *        percent
-     * @param eigenvalues classical CA eigenvalues, or an empty array
-     * @param trace classical CA total inertia, or {@link Double#NaN}
-     * @param chiSquare Pearson independence statistic, or {@link Double#NaN}
-     * @param degreesFreedom Pearson independence degrees of freedom, or zero
+     *                            percent
+     * @param eigenvalues         classical CA eigenvalues, or an empty array
+     * @param trace               classical CA total inertia, or {@link Double#NaN}
+     * @param chiSquare           Pearson independence statistic, or {@link Double#NaN}
+     * @param degreesFreedom      Pearson independence degrees of freedom, or zero
      */
     private record TermMap(
-        Residual residual,
-        Geometry geometry,
-        double[][] coordinates,
-        double[] cos2,
-        double[] cos3,
-        double[] inertia,
-        double[] massPercent,
-        double[] squaredDistance,
-        double[][] contributionPercent,
-        double[] eigenvalues,
-        double trace,
-        double chiSquare,
-        int degreesFreedom
-    ) {}
-
+            Residual residual,
+            Geometry geometry,
+            double[][] coordinates,
+            double[] cos2,
+            double[] cos3,
+            double[] inertia,
+            double[] massPercent,
+            double[] squaredDistance,
+            double[][] contributionPercent,
+            double[] eigenvalues,
+            double trace,
+            double chiSquare,
+            int degreesFreedom)
+    {
+    }
+    
     /** Returns the number of document columns with positive selected-term mass. */
     private static int activeDocumentCount(final int[][] frequencies)
     {
@@ -239,29 +243,30 @@ public class OpClades extends Op
         }
         return count;
     }
-
+    
     /**
      * Retains documents containing at least {@code minDocTerms} distinct
      * selected terms, then removes term rows left with zero mass.
      *
-     * <p>This is the sparse-table preparation recommended by Lebart and Salem:
-     * support counts distinct selected forms, not their occurrence totals.</p>
+     * <p>
+     * This is the sparse-table preparation recommended by Lebart and Salem:
+     * support counts distinct selected forms, not their occurrence totals.
+     * </p>
      */
     private static MatrixFilterResult filterByDocumentSupport(
         final TermDocMatrix source,
-        final int minDocTerms
-    ) {
+        final int minDocTerms)
+    {
         final int[][] frequencies = source.frequencies();
         final int rows = frequencies.length;
         final int cols = source.docIds().length;
         if (rows == 0 || cols == 0) {
             return new MatrixFilterResult(
-                new TermDocMatrix(new int[0][0], new int[0]),
-                new int[0],
-                0
-            );
+                    new TermDocMatrix(new int[0][0], new int[0]),
+                    new int[0],
+                    0);
         }
-
+        
         final boolean[] keepCol = new boolean[cols];
         int keptCols = 0;
         for (int col = 0; col < cols; col++) {
@@ -276,7 +281,7 @@ public class OpClades extends Op
                 keptCols++;
             }
         }
-
+        
         final boolean[] keepRow = new boolean[rows];
         int keptRows = 0;
         for (int row = 0; row < rows; row++) {
@@ -288,7 +293,7 @@ public class OpClades extends Op
                 }
             }
         }
-
+        
         final int[] rowRanks = new int[keptRows];
         final int[] docIds = new int[keptCols];
         final int[][] filtered = new int[keptRows][keptCols];
@@ -313,12 +318,11 @@ public class OpClades extends Op
             filteredRow++;
         }
         return new MatrixFilterResult(
-            new TermDocMatrix(filtered, docIds),
-            rowRanks,
-            keptCols
-        );
+                new TermDocMatrix(filtered, docIds),
+                rowRanks,
+                keptCols);
     }
-
+    
     /** Selects integer values at retained original ranks. */
     private static int[] selectRanks(final int[] values, final int[] ranks)
     {
@@ -328,7 +332,7 @@ public class OpClades extends Op
         }
         return selected;
     }
-
+    
     /** Selects long values at retained original ranks. */
     private static long[] selectRanks(final long[] values, final int[] ranks)
     {
@@ -338,7 +342,7 @@ public class OpClades extends Op
         }
         return selected;
     }
-
+    
     /** Returns the contingency association corresponding to a residual mode. */
     private static Assoc association(final Residual residual)
     {
@@ -348,35 +352,35 @@ public class OpClades extends Op
             case PEARSON -> Assoc.PEARSON;
         };
     }
-
+    
     /**
      * Per-displayed-axis inertia contribution of every row, in percent.
      */
     private static double[][] contributions(
         final double[] masses,
         final double[][] embedding,
-        final int dims
-    ) {
+        final int dims)
+    {
         final double[] axisEnergy = new double[dims];
         for (int row = 0; row < embedding.length; row++) {
             for (int axis = 0; axis < dims; axis++) {
                 axisEnergy[axis] += masses[row]
-                    * embedding[row][axis] * embedding[row][axis];
+                        * embedding[row][axis] * embedding[row][axis];
             }
         }
         final double[][] contributions = new double[embedding.length][dims];
         for (int row = 0; row < embedding.length; row++) {
             for (int axis = 0; axis < dims; axis++) {
                 contributions[row][axis] = axisEnergy[axis] > 0d
-                    ? 100d * masses[row]
-                        * embedding[row][axis] * embedding[row][axis]
-                        / axisEnergy[axis]
-                    : 0d;
+                        ? 100d * masses[row]
+                                * embedding[row][axis] * embedding[row][axis]
+                                / axisEnergy[axis]
+                        : 0d;
             }
         }
         return contributions;
     }
-
+    
     /**
      * Share of each row's squared embedding norm held by its first three axes.
      */
@@ -397,24 +401,28 @@ public class OpClades extends Op
         }
         return quality;
     }
-
+    
     @Override
     protected void csv(
         final LuceneIndex index,
         final HttpServletRequest request,
-        final HttpServletResponse response
-    ) throws IOException {
+        final HttpServletResponse response) throws IOException
+    {
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
         final Writer writer = response.getWriter();
-
+        
         final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
         if (topTerms == null) {
             response.setStatus(400);
-            writer.append("no term selection");
+            meta.log("[no term selection]");
+            AlixServlet.jsonError(request, response);
             return;
         }
-        
+        final TermLexicon lexicon = topTerms.lexicon();
+        topTerms.rank(
+                pars.getInt("terms", new int[] { 2, 1000 }, 100),
+                pars.getEnum("tflag", TermFlag.NULL));
         final IntList rowList = new IntList(topTerms.size());
         for (final TermEntry term : topTerms) {
             rowList.push(term.termId());
@@ -422,52 +430,46 @@ public class OpClades extends Op
         final int[] rowIds = rowList.toUniq();
         final FixedBitSet liveDocs = liveDocs(index.reader());
         final int minDocTerms = pars.getInt(
-            "minDocTerms",
-            new int[] { 1, Math.max(1, rowIds.length) },
-            1
-        );
+                "minDocTerms",
+                new int[] { 1, Math.max(1, rowIds.length) },
+                1);
         final MatrixFilterResult filtered = filterByDocumentSupport(
-            termDocMatrix(index.reader(), lexicon, rowIds, liveDocs),
-            minDocTerms
-        );
+                termDocMatrix(index.reader(), lexicon, rowIds, liveDocs),
+                minDocTerms);
         final int[] activeRowIds = selectRanks(rowIds, filtered.rowRanks());
         final CsvKind csvKind = request.getParameter("csv") == null
-            ? hasSvdCsvParameters(request) ? CsvKind.INERTIA : CsvKind.CONTINGENCY
-            : pars.getEnum("csv", CsvKind.CONTINGENCY);
-
+                ? hasSvdCsvParameters(request) ? CsvKind.INERTIA : CsvKind.CONTINGENCY
+                : pars.getEnum("csv", CsvKind.CONTINGENCY);
+        
         switch (csvKind) {
             case CONTINGENCY -> writeContingencyCsv(
-                writer,
-                lexicon,
-                activeRowIds,
-                filtered.matrix()
-            );
+                    writer,
+                    lexicon,
+                    activeRowIds,
+                    filtered.matrix());
             case INERTIA -> {
                 final JsonView view = pars.getEnum("view", JsonView.MAP);
                 final Residual residual = pars.getEnum(
-                    "residual",
-                    view == JsonView.RADIAL ? Residual.G2 : Residual.PEARSON
-                );
+                        "residual",
+                        view == JsonView.RADIAL ? Residual.G2 : Residual.PEARSON);
                 final Geometry geometry = pars.getEnum(
-                    "geometry",
-                    view == JsonView.RADIAL ? Geometry.G2 : Geometry.CHI2
-                );
+                        "geometry",
+                        view == JsonView.RADIAL ? Geometry.G2 : Geometry.CHI2);
                 writeInertiaCsv(
-                    writer,
-                    filtered.matrix(),
-                    view,
-                    residual,
-                    geometry
-                );
+                        writer,
+                        filtered.matrix(),
+                        view,
+                        residual,
+                        geometry);
             }
         }
     }
-
+    
     /**
      * Writes the selected-term factor map as JSON.
      *
-     * @param index Lucene index
-     * @param request HTTP request
+     * @param index    Lucene index
+     * @param request  HTTP request
      * @param response HTTP response
      * @throws IOException if index access or response writing fails
      */
@@ -475,157 +477,123 @@ public class OpClades extends Op
     protected void json(
         final LuceneIndex index,
         final HttpServletRequest request,
-        final HttpServletResponse response
-    ) throws IOException {
+        final HttpServletResponse response) throws IOException
+    {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final JsonView view = pars.getEnum("view", JsonView.MAP);
         final TopTerms topTerms = OpTerms.topTerms(index, pars, meta);
         
         if (topTerms == null) {
             response.setStatus(400);
-            // send error?
+            meta.log("[no term selection]");
+            AlixServlet.jsonError(request, response);
             return;
         }
         
-        // add or remove terms from list
         final TermLexicon lexicon = topTerms.lexicon();
-        String include = pars.getString("include", null);
-        if (include != null) {
-            String[] terms = include.split(",");
-            int[] termIds = lexicon.termIds(terms);
-            if (termIds.length > 0) topTerms.include(termIds);
-        }
-        String exclude = pars.getString("exclude", null);
-        if (exclude != null) {
-            String[] terms = exclude.split(",");
-            int[] termIds = lexicon.termIds(terms);
-            if (termIds.length > 0) topTerms.exclude(termIds);
-        }
-
-
+        
         int[] rowIds = null;
         long[] rowFreq = null;
-        TermLexicon lexicon = null;
         TermStats termStats = null;
         TermMap map = null;
         RadialMap radial = null;
-
-
-
-            final Map<Integer, Long> frequencyById = new HashMap<>();
-            final IntList rowList = new IntList(topTerms.size());
-            for (final TermEntry term : topTerms) {
-                rowList.push(term.termId());
-                frequencyById.put(term.termId(), term.freq());
-            }
-            rowIds = rowList.toUniq();
-            rowFreq = new long[rowIds.length];
-            for (int row = 0; row < rowIds.length; row++) {
-                rowFreq[row] = frequencyById.getOrDefault(rowIds[row], 0L);
-            }
-            lexicon = topTerms.lexicon();
-            termStats = topTerms.termStats();
-
-            final int selectedTermsBeforeSupportFilter = rowIds.length;
-            final FixedBitSet liveDocs = liveDocs(index.reader());
-            final TermDocMatrix rawMatrix = termDocMatrix(
+        
+        final Map<Integer, Long> frequencyById = new HashMap<>();
+        final IntList rowList = new IntList(topTerms.size());
+        for (final TermEntry term : topTerms) {
+            rowList.push(term.termId());
+            frequencyById.put(term.termId(), term.freq());
+        }
+        rowIds = rowList.toUniq();
+        rowFreq = new long[rowIds.length];
+        for (int row = 0; row < rowIds.length; row++) {
+            rowFreq[row] = frequencyById.getOrDefault(rowIds[row], 0L);
+        }
+        termStats = topTerms.termStats();
+        
+        final int selectedTermsBeforeSupportFilter = rowIds.length;
+        final FixedBitSet liveDocs = liveDocs(index.reader());
+        final TermDocMatrix rawMatrix = termDocMatrix(
                 index.reader(),
                 lexicon,
                 rowIds,
-                liveDocs
-            );
-            final int activeDocumentsBeforeSupportFilter = activeDocumentCount(
-                rawMatrix.frequencies()
-            );
-            final int minDocTerms = pars.getInt(
+                liveDocs);
+        final int activeDocumentsBeforeSupportFilter = activeDocumentCount(
+                rawMatrix.frequencies());
+        final int minDocTerms = pars.getInt(
                 "minDocTerms",
                 new int[] { 1, Math.max(1, rowIds.length) },
-                1
-            );
-            final MatrixFilterResult filtered = filterByDocumentSupport(
+                1);
+        final MatrixFilterResult filtered = filterByDocumentSupport(
                 rawMatrix,
-                minDocTerms
-            );
-            final TermDocMatrix matrix = filtered.matrix();
-            rowIds = selectRanks(rowIds, filtered.rowRanks());
-            rowFreq = selectRanks(rowFreq, filtered.rowRanks());
-
-            meta.put("documents", liveDocs.cardinality());
-            meta.put(
+                minDocTerms);
+        final TermDocMatrix matrix = filtered.matrix();
+        rowIds = selectRanks(rowIds, filtered.rowRanks());
+        rowFreq = selectRanks(rowFreq, filtered.rowRanks());
+        
+        meta.put("documents", liveDocs.cardinality());
+        meta.put(
                 "activeDocumentsBeforeSupportFilter",
-                activeDocumentsBeforeSupportFilter
-            );
-            meta.put("minDocTerms", minDocTerms);
-            meta.put("activeDocuments", filtered.retainedDocuments());
-            meta.put(
+                activeDocumentsBeforeSupportFilter);
+        meta.put("minDocTerms", minDocTerms);
+        meta.put("activeDocuments", filtered.retainedDocuments());
+        meta.put(
                 "supportFilteredDocuments",
-                activeDocumentsBeforeSupportFilter - filtered.retainedDocuments()
-            );
-            meta.put(
+                activeDocumentsBeforeSupportFilter - filtered.retainedDocuments());
+        meta.put(
                 "zeroMassDocuments",
-                liveDocs.cardinality() - activeDocumentsBeforeSupportFilter
-            );
-            meta.put(
+                liveDocs.cardinality() - activeDocumentsBeforeSupportFilter);
+        meta.put(
                 "selectedTermsBeforeSupportFilter",
-                selectedTermsBeforeSupportFilter
-            );
-            meta.put("activeTerms", rowIds.length);
-            meta.put(
+                selectedTermsBeforeSupportFilter);
+        meta.put("activeTerms", rowIds.length);
+        meta.put(
                 "supportFilteredTerms",
-                selectedTermsBeforeSupportFilter - rowIds.length
-            );
-            meta.put("documentUniverse", "full corpus");
-            meta.put("focusRestricted", false);
-            if (view != JsonView.RADIAL) {
-                meta.put("source", "raw term-document frequencies");
-            }
-
-            final Residual residual = pars.getEnum(
+                selectedTermsBeforeSupportFilter - rowIds.length);
+        meta.put("documentUniverse", "full corpus");
+        meta.put("focusRestricted", false);
+        if (view != JsonView.RADIAL) {
+            meta.put("source", "raw term-document frequencies");
+        }
+        
+        final Residual residual = pars.getEnum(
                 "residual",
-                view == JsonView.MAP ? Residual.PEARSON : Residual.G2
-            );
-            final Geometry geometry = pars.getEnum(
+                view == JsonView.MAP ? Residual.PEARSON : Residual.G2);
+        final Geometry geometry = pars.getEnum(
                 "geometry",
-                view == JsonView.RADIAL ? Geometry.G2 : Geometry.CHI2
-            );
-
-            if (rowIds.length < 2 || filtered.retainedDocuments() < 2) {
-                response.setStatus(400);
-                meta.log("minDocTerms leaves fewer than two active terms or documents");
-                AlixServlet.jsonError(request, response);
-                return;
-            }
-            else if (view == JsonView.RADIAL) {
-                radial = radialMap(
+                view == JsonView.RADIAL ? Geometry.G2 : Geometry.CHI2);
+        
+        if (rowIds.length < 2 || filtered.retainedDocuments() < 2) {
+            response.setStatus(400);
+            meta.log("minDocTerms leaves fewer than two active terms or documents");
+            AlixServlet.jsonError(request, response);
+            return;
+        } else if (view == JsonView.RADIAL) {
+            radial = radialMap(
                     matrix,
                     meta,
                     pars.getInt("dims", new int[] { 2, 50 }, RADIAL_SVD_DIMS),
                     residual,
-                    geometry
-                );
-                meta.put("size", "mass_pct");
-                meta.put(
+                    geometry);
+            meta.put("size", "mass_pct");
+            meta.put(
                     "sizeMethod",
-                    "selected-table row mass; client bubble area"
-                );
-                meta.put("color", "retainedContrib_pct");
-                meta.put(
+                    "selected-table row mass; client bubble area");
+            meta.put("color", "retainedContrib_pct");
+            meta.put(
                     "colorMethod",
-                    "100 * row squared norm in retained U Sigma / retained Frobenius norm squared"
-                );
-                meta.put("colorReference", 0d);
-            }
-            else {
-                map = termMap(
+                    "100 * row squared norm in retained U Sigma / retained Frobenius norm squared");
+            meta.put("colorReference", 0d);
+        } else {
+            map = termMap(
                     matrix,
                     pars,
                     meta,
                     residual,
-                    geometry
-                );
-            }
-
+                    geometry);
+        }
+        
         try (JsonWriter jw = Op.jsonWriter(response)) {
             jw.beginObject();
             jw.name("meta");
@@ -634,28 +602,25 @@ public class OpClades extends Op
             jw.endObject();
             if (radial != null) {
                 writeRadialData(
-                    jw,
-                    radial,
-                    rowIds,
-                    rowFreq,
-                    lexicon,
-                    termStats,
-                    topTerms.tokens()
-                );
-            }
-            else if (map != null) {
+                        jw,
+                        radial,
+                        rowIds,
+                        rowFreq,
+                        lexicon,
+                        termStats,
+                        topTerms.tokens());
+            } else if (map != null) {
                 writeMapData(
-                    jw,
-                    map,
-                    rowIds,
-                    rowFreq,
-                    lexicon
-                );
+                        jw,
+                        map,
+                        rowIds,
+                        rowFreq,
+                        lexicon);
             }
             jw.endObject();
         }
     }
-
+    
     /**
      * Collects the live global document ids of the reader snapshot.
      */
@@ -676,7 +641,7 @@ public class OpClades extends Op
         }
         return liveDocs;
     }
-
+    
     /** Row mass in percent, aligned with {@code masses}. */
     private static double[] massPercent(final double[] masses)
     {
@@ -686,7 +651,7 @@ public class OpClades extends Op
         }
         return percent;
     }
-
+    
     /**
      * Converts singular values into their full inertia spectrum in percent.
      *
@@ -709,7 +674,7 @@ public class OpClades extends Op
         }
         return percent;
     }
-
+    
     /**
      * Returns whether an implicit CSV request carries factor-analysis parameters.
      *
@@ -727,11 +692,11 @@ public class OpClades extends Op
     private static boolean hasSvdCsvParameters(final HttpServletRequest request)
     {
         return request.getParameter("view") != null
-            || request.getParameter("dims") != null
-            || request.getParameter("residual") != null
-            || request.getParameter("geometry") != null;
+                || request.getParameter("dims") != null
+                || request.getParameter("residual") != null
+                || request.getParameter("geometry") != null;
     }
-
+    
     /**
      * Builds the deterministic D2 radial layout from the selected contingency
      * table.
@@ -746,11 +711,11 @@ public class OpClades extends Op
      * client.
      * </p>
      *
-     * @param matrix selected term-by-document contingency table
-     * @param meta response metadata collector
+     * @param matrix        selected term-by-document contingency table
+     * @param meta          response metadata collector
      * @param requestedDims number of source dimensions requested
-     * @param residual residual family applied before decomposition
-     * @param geometry row geometry applied after dimensional truncation
+     * @param residual      residual family applied before decomposition
+     * @param geometry      row geometry applied after dimensional truncation
      * @return final radial coordinates aligned with the table rows
      */
     private static RadialMap radialMap(
@@ -758,13 +723,13 @@ public class OpClades extends Op
         final MetaUtil meta,
         final int requestedDims,
         final Residual residual,
-        final Geometry geometry
-    ) {
+        final Geometry geometry)
+    {
         final double[][] table = toDoubleTable(matrix.frequencies());
         final ContingencySvd model = new ContingencySvd(table, null)
-            .residual(association(residual))
-            .decompose()
-            .weightAxes(1d);
+                .residual(association(residual))
+                .decompose()
+                .weightAxes(1d);
         final SvdLayout rawLayout = model.project(requestedDims);
         final double[][] rawSource = rawLayout.coords();
         final double[][] source = switch (geometry) {
@@ -783,7 +748,7 @@ public class OpClades extends Op
             retainedInertiaPercent += spectrumPercent[axis];
         }
         final int svdRank = spectrumPercent.length;
-
+        
         meta.put("view", "RADIAL");
         meta.put("radialMethod", "RESIDUAL_SVD_SOFT_RADIAL_D2_V3");
         meta.put("profile", residualLabel(residual));
@@ -803,12 +768,12 @@ public class OpClades extends Op
         });
         meta.put("distance", switch (geometry) {
             case CHI2 -> residual == Residual.PEARSON
-                ? "chi-square distance between retained term profiles"
-                : "chi-square-scaled distance in retained residual coordinates";
+                    ? "chi-square distance between retained term profiles"
+                    : "chi-square-scaled distance in retained residual coordinates";
             case COSINE -> "cosine chord distance in retained principal coordinates";
             case G2 -> residual == Residual.G2
-                ? "Euclidean distance in retained signed sqrt G2 residual coordinates"
-                : "Euclidean distance in retained unscaled residual coordinates";
+                    ? "Euclidean distance in retained signed sqrt G2 residual coordinates"
+                    : "Euclidean distance in retained unscaled residual coordinates";
         });
         meta.put("distanceNormalization", "mean pairwise");
         meta.put("projection", "soft radial stress");
@@ -821,10 +786,10 @@ public class OpClades extends Op
         meta.put("angleRange", "[-pi,pi]");
         meta.put("radiusRange", "[0,1]");
         meta.put("svdRank", svdRank);
-
+        
         final double[] angles = new double[size];
         final double[] radii = new double[size];
-
+        
         final double[] sourceRadii = new double[size];
         double sourceRadiusMax = 0d;
         for (int row = 0; row < size; row++) {
@@ -838,8 +803,7 @@ public class OpClades extends Op
         final double[] masses = rowMasses(table);
         final double[] massesPercent = massPercent(masses);
         final double[] retainedContributions = retainedContributionPercent(
-            rawSource
-        );
+                rawSource);
         double distinctivenessMax = 0d;
         for (int row = 0; row < size; row++) {
             radii[row] = sourceRadii[row] / Math.sqrt(masses[row]);
@@ -852,32 +816,30 @@ public class OpClades extends Op
         }
         if (size < 2 || sourceDims == 0) {
             return new RadialMap(
-                angles,
-                radii,
-                massesPercent,
-                retainedContributions,
-                svdRank,
-                sourceDims,
-                retainedInertiaPercent,
-                spectrumPercent
-            );
+                    angles,
+                    radii,
+                    massesPercent,
+                    retainedContributions,
+                    svdRank,
+                    sourceDims,
+                    retainedInertiaPercent,
+                    spectrumPercent);
         }
         if (!(sourceRadiusMax > 0d)) {
             return new RadialMap(
-                angles,
-                radii,
-                massesPercent,
-                retainedContributions,
-                svdRank,
-                sourceDims,
-                retainedInertiaPercent,
-                spectrumPercent
-            );
+                    angles,
+                    radii,
+                    massesPercent,
+                    retainedContributions,
+                    svdRank,
+                    sourceDims,
+                    retainedInertiaPercent,
+                    spectrumPercent);
         }
         for (int row = 0; row < size; row++) {
             sourceRadii[row] /= sourceRadiusMax;
         }
-
+        
         final double[][] distances = Distances.euclidean(source);
         double distanceSum = 0d;
         int distanceCount = 0;
@@ -888,21 +850,20 @@ public class OpClades extends Op
             }
         }
         final double distanceMean = distanceCount > 0
-            ? distanceSum / distanceCount
-            : 0d;
+                ? distanceSum / distanceCount
+                : 0d;
         if (!(distanceMean > 0d)) {
             return new RadialMap(
-                angles,
-                radii,
-                massesPercent,
-                retainedContributions,
-                svdRank,
-                sourceDims,
-                retainedInertiaPercent,
-                spectrumPercent
-            );
+                    angles,
+                    radii,
+                    massesPercent,
+                    retainedContributions,
+                    svdRank,
+                    sourceDims,
+                    retainedInertiaPercent,
+                    spectrumPercent);
         }
-
+        
         double distanceSquaredSum = 0d;
         for (int row = 0; row < size; row++) {
             for (int col = 0; col < row; col++) {
@@ -913,52 +874,49 @@ public class OpClades extends Op
         }
         if (!(distanceSquaredSum > 0d)) {
             return new RadialMap(
-                angles,
-                radii,
-                massesPercent,
-                retainedContributions,
-                svdRank,
-                sourceDims,
-                retainedInertiaPercent,
-                spectrumPercent
-            );
+                    angles,
+                    radii,
+                    massesPercent,
+                    retainedContributions,
+                    svdRank,
+                    sourceDims,
+                    retainedInertiaPercent,
+                    spectrumPercent);
         }
-
+        
         final Random random = new Random(RADIAL_SEED);
         final double[][] positions = new double[size][2];
         for (int row = 0; row < size; row++) {
             final double sourceX = sourceDims > 0 ? source[row][0] : 0d;
             final double sourceY = sourceDims > 1 ? source[row][1] : 0d;
             final double theta = Math.atan2(sourceY, sourceX)
-                + random.nextGaussian() * RADIAL_THETA_JITTER;
+                    + random.nextGaussian() * RADIAL_THETA_JITTER;
             positions[row][0] = sourceRadii[row] * Math.cos(theta);
             positions[row][1] = sourceRadii[row] * Math.sin(theta);
         }
-
+        
         final double[][] firstMoment = new double[size][2];
         final double[][] secondMoment = new double[size][2];
         final double[][] bestPositions = new double[size][2];
         for (int row = 0; row < size; row++) {
             System.arraycopy(positions[row], 0, bestPositions[row], 0, 2);
         }
-
+        
         double bestObjective = Double.POSITIVE_INFINITY;
         for (int iteration = 1; iteration <= RADIAL_OPTIMIZER_ITERATIONS; iteration++) {
             final double[][] gradient = new double[size][2];
             double stress = 0d;
-
+            
             for (int row = 0; row < size; row++) {
                 for (int col = 0; col < row; col++) {
                     final double deltaX = positions[row][0] - positions[col][0];
                     final double deltaY = positions[row][1] - positions[col][1];
                     final double projectedDistance = Math.max(
-                        1e-9d,
-                        Math.hypot(deltaX, deltaY)
-                    );
+                            1e-9d,
+                            Math.hypot(deltaX, deltaY));
                     final double error = projectedDistance - distances[row][col];
-                    final double coefficient =
-                        2d * error / (projectedDistance * distanceSquaredSum);
-
+                    final double coefficient = 2d * error / (projectedDistance * distanceSquaredSum);
+                    
                     stress += error * error;
                     gradient[row][0] += coefficient * deltaX;
                     gradient[row][1] += coefficient * deltaY;
@@ -967,74 +925,66 @@ public class OpClades extends Op
                 }
             }
             stress /= distanceSquaredSum;
-
+            
             double radiusPenalty = 0d;
             for (int row = 0; row < size; row++) {
                 final double radius = Math.max(
-                    1e-9d,
-                    Math.hypot(positions[row][0], positions[row][1])
-                );
+                        1e-9d,
+                        Math.hypot(positions[row][0], positions[row][1]));
                 final double error = radius - sourceRadii[row];
-                final double coefficient =
-                    2d * RADIAL_RADIUS_WEIGHT * error / (size * radius);
-
+                final double coefficient = 2d * RADIAL_RADIUS_WEIGHT * error / (size * radius);
+                
                 radiusPenalty += error * error;
                 gradient[row][0] += coefficient * positions[row][0];
                 gradient[row][1] += coefficient * positions[row][1];
             }
-
+            
             final double objective = stress
-                + RADIAL_RADIUS_WEIGHT * radiusPenalty / size;
+                    + RADIAL_RADIUS_WEIGHT * radiusPenalty / size;
             if (objective < bestObjective) {
                 bestObjective = objective;
                 for (int row = 0; row < size; row++) {
                     System.arraycopy(positions[row], 0, bestPositions[row], 0, 2);
                 }
             }
-
+            
             final double beta1Power = Math.pow(0.9d, iteration);
             final double beta2Power = Math.pow(0.999d, iteration);
             for (int row = 0; row < size; row++) {
                 for (int axis = 0; axis < 2; axis++) {
-                    firstMoment[row][axis] =
-                        0.9d * firstMoment[row][axis]
-                        + 0.1d * gradient[row][axis];
-                    secondMoment[row][axis] =
-                        0.999d * secondMoment[row][axis]
-                        + 0.001d * gradient[row][axis] * gradient[row][axis];
-
-                    final double correctedFirst =
-                        firstMoment[row][axis] / (1d - beta1Power);
-                    final double correctedSecond =
-                        secondMoment[row][axis] / (1d - beta2Power);
+                    firstMoment[row][axis] = 0.9d * firstMoment[row][axis]
+                            + 0.1d * gradient[row][axis];
+                    secondMoment[row][axis] = 0.999d * secondMoment[row][axis]
+                            + 0.001d * gradient[row][axis] * gradient[row][axis];
+                    
+                    final double correctedFirst = firstMoment[row][axis] / (1d - beta1Power);
+                    final double correctedSecond = secondMoment[row][axis] / (1d - beta2Power);
                     positions[row][axis] -= RADIAL_LEARNING_RATE
-                        * correctedFirst
-                        / (Math.sqrt(correctedSecond) + 1e-8d);
+                            * correctedFirst
+                            / (Math.sqrt(correctedSecond) + 1e-8d);
                 }
             }
         }
-
+        
         for (int row = 0; row < size; row++) {
             final double modelRadius = Math.hypot(
-                bestPositions[row][0],
-                bestPositions[row][1]
-            );
+                    bestPositions[row][0],
+                    bestPositions[row][1]);
             angles[row] = modelRadius > 0d
-                ? Math.atan2(bestPositions[row][1], bestPositions[row][0])
-                : 0d;
+                    ? Math.atan2(bestPositions[row][1], bestPositions[row][0])
+                    : 0d;
         }
         return new RadialMap(
-            angles,
-            radii,
-            massesPercent,
-            retainedContributions,
-            svdRank,
-            sourceDims,
-            retainedInertiaPercent,
-            spectrumPercent
-        );
+                angles,
+                radii,
+                massesPercent,
+                retainedContributions,
+                svdRank,
+                sourceDims,
+                retainedInertiaPercent,
+                spectrumPercent);
     }
-
+    
     /**
      * Returns each row's share of the squared retained {@code U Sigma} norm.
      * This is the joint counterpart of correspondence-analysis contributions:
@@ -1042,8 +992,8 @@ public class OpClades extends Op
      * comparable across radial geometries.
      */
     private static double[] retainedContributionPercent(
-        final double[][] retainedSource
-    ) {
+        final double[][] retainedSource)
+    {
         final double[] percent = new double[retainedSource.length];
         double total = 0d;
         for (int row = 0; row < retainedSource.length; row++) {
@@ -1060,7 +1010,7 @@ public class OpClades extends Op
         }
         return percent;
     }
-
+    
     /** Returns normalized observed row masses of a contingency table. */
     private static double[] rowMasses(final double[][] table)
     {
@@ -1080,7 +1030,7 @@ public class OpClades extends Op
         }
         return masses;
     }
-
+    
     /** Returns a human-readable description of a residual mode. */
     private static String residualLabel(final Residual residual)
     {
@@ -1090,19 +1040,19 @@ public class OpClades extends Op
             case PEARSON -> "Pearson standardized residuals";
         };
     }
-
+    
     /** Multiplies every coordinate by a common factor. */
     private static void scaleCoordinates(
         final double[][] coordinates,
-        final double factor
-    ) {
+        final double factor)
+    {
         for (final double[] row : coordinates) {
             for (int axis = 0; axis < row.length; axis++) {
                 row[axis] *= factor;
             }
         }
     }
-
+    
     /** Multiplies every value by a common factor. */
     private static void scaleValues(final double[] values, final double factor)
     {
@@ -1110,7 +1060,7 @@ public class OpClades extends Op
             values[index] *= factor;
         }
     }
-
+    
     /** Squared distance of every embedding row from the origin. */
     private static double[] squaredDistances(final double[][] embedding)
     {
@@ -1124,7 +1074,7 @@ public class OpClades extends Op
         }
         return squared;
     }
-
+    
     /** Returns the total observed mass of a contingency table. */
     private static double tableTotal(final double[][] table)
     {
@@ -1136,13 +1086,13 @@ public class OpClades extends Op
         }
         return total;
     }
-
+    
     /**
      * Builds raw frequency rows for every retained document.
      *
-     * @param reader index reader supplying term postings
-     * @param lexicon term lexicon aligned with the reader
-     * @param rowIds selected dense term ids
+     * @param reader    index reader supplying term postings
+     * @param lexicon   term lexicon aligned with the reader
+     * @param rowIds    selected dense term ids
      * @param docFilter retained document dimensions
      * @return raw frequencies and compact document ids
      * @throws IOException if terms or postings cannot be read
@@ -1151,8 +1101,8 @@ public class OpClades extends Op
         final IndexReader reader,
         final TermLexicon lexicon,
         final int[] rowIds,
-        final FixedBitSet docFilter
-    ) throws IOException {
+        final FixedBitSet docFilter) throws IOException
+    {
         final int[] docRanks = new int[reader.maxDoc()];
         Arrays.fill(docRanks, -1);
         int docCount = 0;
@@ -1161,29 +1111,28 @@ public class OpClades extends Op
                 docRanks[docId] = docCount++;
             }
         }
-
+        
         final int[] docIds = new int[docCount];
         for (int docId = 0; docId < docRanks.length; docId++) {
             if (docRanks[docId] >= 0) {
                 docIds[docRanks[docId]] = docId;
             }
         }
-
+        
         final int[][] frequencies = new int[rowIds.length][docCount];
         final Terms terms = MultiTerms.getTerms(reader, lexicon.field());
         final TermsEnum termsEnum = terms == null ? null : terms.iterator();
         final BytesRefBuilder termBytes = new BytesRefBuilder();
         PostingsEnum postings = null;
-
+        
         for (int rowRank = 0; rowRank < rowIds.length; rowRank++) {
             if (termsEnum != null
-                && termsEnum.seekExact(lexicon.formBytes(rowIds[rowRank], termBytes))) {
+                    && termsEnum.seekExact(lexicon.formBytes(rowIds[rowRank], termBytes)))
+            {
                 postings = termsEnum.postings(postings, PostingsEnum.FREQS);
-                for (
-                    int docId = postings.nextDoc();
-                    docId != DocIdSetIterator.NO_MORE_DOCS;
-                    docId = postings.nextDoc()
-                ) {
+                for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings
+                        .nextDoc())
+                {
                     if (docFilter.get(docId)) {
                         frequencies[rowRank][docRanks[docId]] = postings.freq();
                     }
@@ -1192,7 +1141,7 @@ public class OpClades extends Op
         }
         return new TermDocMatrix(frequencies, docIds);
     }
-
+    
     /**
      * Factorises association residuals of the selected term-document table.
      *
@@ -1212,15 +1161,15 @@ public class OpClades extends Op
         final HttpPars pars,
         final MetaUtil meta,
         final Residual residual,
-        final Geometry geometry
-    ) {
+        final Geometry geometry)
+    {
         final Assoc association = association(residual);
         final double[][] table = toDoubleTable(matrix.frequencies());
         final ContingencySvd model = new ContingencySvd(table, null)
-            .residual(association)
-            .decompose()
-            .weightAxes(1d);
-
+                .residual(association)
+                .decompose()
+                .weightAxes(1d);
+        
         final int requestedDims = pars.getInt("dims", new int[] { 2, 50 }, 2);
         final SvdLayout layout = switch (geometry) {
             case CHI2 -> {
@@ -1236,37 +1185,37 @@ public class OpClades extends Op
         final double[] masses = rowMasses(table);
         final double total = tableTotal(table);
         final boolean classical = residual == Residual.PEARSON
-            && geometry == Geometry.CHI2;
+                && geometry == Geometry.CHI2;
         final double[] squaredDistance = squaredDistances(embedding);
         double[] eigenvalues = new double[0];
         double trace = Double.NaN;
         double chiSquare = Double.NaN;
         int degreesFreedom = 0;
-
+        
         if (classical) {
             scaleCoordinates(coordinates, 1d / Math.sqrt(total));
             scaleValues(squaredDistance, 1d / total);
-
+            
             final int rank = embedding.length == 0 ? 0 : embedding[0].length;
             final double[] singularValues = model.singularValues();
             eigenvalues = new double[rank];
             trace = 0d;
             for (int axis = 0; axis < rank; axis++) {
                 eigenvalues[axis] = singularValues[axis]
-                    * singularValues[axis] / total;
+                        * singularValues[axis] / total;
                 trace += eigenvalues[axis];
             }
             chiSquare = total * trace;
             degreesFreedom = Math.max(0, table.length - 1)
-                * Math.max(0, activeDocumentCount(matrix.frequencies()) - 1);
+                    * Math.max(0, activeDocumentCount(matrix.frequencies()) - 1);
         }
-
+        
         meta.put("profile", residualLabel(residual));
         meta.put("residual", residual.toString());
         meta.put("geometry", geometry.toString());
         meta.put("method", classical
-            ? "correspondence analysis"
-            : "residual factor analysis");
+                ? "correspondence analysis"
+                : "residual factor analysis");
         meta.put("table", "query-selected terms x active documents");
         meta.put("vocabularyConditioning", "selected terms only");
         meta.put("rowNormalization", switch (geometry) {
@@ -1276,21 +1225,21 @@ public class OpClades extends Op
         });
         meta.put("distance", switch (geometry) {
             case CHI2 -> residual == Residual.PEARSON
-                ? "chi-square distance between term profiles"
-                : "chi-square-scaled distance in residual principal coordinates";
+                    ? "chi-square distance between term profiles"
+                    : "chi-square-scaled distance in residual principal coordinates";
             case COSINE -> "cosine chord distance in retained principal coordinates";
             case G2 -> residual == Residual.G2
-                ? "Euclidean distance in retained signed sqrt G2 residual coordinates"
-                : "Euclidean distance in retained unscaled residual coordinates";
+                    ? "Euclidean distance in retained signed sqrt G2 residual coordinates"
+                    : "Euclidean distance in retained unscaled residual coordinates";
         });
         meta.put("projection", classical
-            ? requestedDims == 2
-                ? "first factorial plane"
-                : "leading factorial axes"
-            : "leading residual factors");
+                ? requestedDims == 2
+                        ? "first factorial plane"
+                        : "leading factorial axes"
+                : "leading residual factors");
         meta.put("coordinateNormalization", classical
-            ? "classical CA"
-            : "none");
+                ? "classical CA"
+                : "none");
         meta.put("association", association.toString());
         meta.put("rotation", "NONE");
         meta.put("svdAxisWeight", 1d);
@@ -1298,24 +1247,23 @@ public class OpClades extends Op
         meta.put("svdFitConverged", model.fitConverged());
         meta.put("svdFitError", model.fitError());
         meta.put("svdFitIterations", model.fitIterations());
-
+        
         return new TermMap(
-            residual,
-            geometry,
-            coordinates,
-            layout.cos2(),
-            cos3(embedding),
-            layout.inertia(),
-            massPercent(masses),
-            squaredDistance,
-            contributions(masses, embedding, dims),
-            eigenvalues,
-            trace,
-            chiSquare,
-            degreesFreedom
-        );
+                residual,
+                geometry,
+                coordinates,
+                layout.cos2(),
+                cos3(embedding),
+                layout.inertia(),
+                massPercent(masses),
+                squaredDistance,
+                contributions(masses, embedding, dims),
+                eigenvalues,
+                trace,
+                chiSquare,
+                degreesFreedom);
     }
-
+    
     /** Copies raw selected-term frequencies into a double contingency table. */
     private static double[][] toDoubleTable(final int[][] frequencies)
     {
@@ -1330,15 +1278,16 @@ public class OpClades extends Op
         }
         return table;
     }
-
+    
     /** Writes the axis and fit metadata block. */
     private static void writeAxes(final JsonWriter jw, final TermMap map)
-        throws IOException {
+        throws IOException
+    {
         jw.name("axes");
         jw.beginObject();
         final int dims = map.coordinates().length == 0
-            ? 0
-            : map.coordinates()[0].length;
+                ? 0
+                : map.coordinates()[0].length;
         final double[] inertia = map.inertia();
         final double dim1 = inertia.length > 0 ? inertia[0] : 0d;
         final double dim2 = inertia.length > 1 ? inertia[1] : 0d;
@@ -1346,11 +1295,11 @@ public class OpClades extends Op
         for (int axis = 0; axis < Math.min(dims, inertia.length); axis++) {
             emitted += inertia[axis];
         }
-
+        
         jw.name("dims").value(dims);
         jw.name("method").value(map.eigenvalues().length > 0
-            ? "correspondence analysis"
-            : residualLabel(map.residual()) + " / " + map.geometry());
+                ? "correspondence analysis"
+                : residualLabel(map.residual()) + " / " + map.geometry());
         jw.name("rotation").value("NONE");
         jw.name("dim1_pct").value(round(dim1, 1));
         jw.name("dim2_pct").value(round(dim2, 1));
@@ -1375,7 +1324,7 @@ public class OpClades extends Op
         }
         jw.endObject();
     }
-
+    
     /**
      * Writes the complete singular-axis and cumulative retained-inertia curve.
      *
@@ -1387,9 +1336,9 @@ public class OpClades extends Op
      * matrix has been decomposed.
      * </p>
      *
-     * @param writer response writer
-     * @param matrix selected term-by-document contingency table
-     * @param view requested JSON-equivalent view
+     * @param writer   response writer
+     * @param matrix   selected term-by-document contingency table
+     * @param view     requested JSON-equivalent view
      * @param residual residual family applied before decomposition
      * @param geometry requested post-decomposition row geometry
      * @throws IOException if the CSV response cannot be written
@@ -1399,47 +1348,46 @@ public class OpClades extends Op
         final TermDocMatrix matrix,
         final JsonView view,
         final Residual residual,
-        final Geometry geometry
-    ) throws IOException {
+        final Geometry geometry) throws IOException
+    {
         final double[][] table = toDoubleTable(matrix.frequencies());
         final ContingencySvd model = new ContingencySvd(table, null)
-            .residual(association(residual))
-            .decompose()
-            .weightAxes(1d);
+                .residual(association(residual))
+                .decompose()
+                .weightAxes(1d);
         final double[] spectrum = inertiaPercent(model.singularValues());
         final int rank = spectrum.length;
         double retained = 0d;
-
+        
         writer.append(
-            "view,residual,geometry,rank,dims,axisInertia_pct,retainedInertia_pct\n"
-        );
+                "view,residual,geometry,rank,dims,axisInertia_pct,retainedInertia_pct\n");
         for (int axis = 0; axis < rank; axis++) {
             retained += spectrum[axis];
             writer.append(view.toString()).append(',')
-                .append(residual.toString()).append(',')
-                .append(geometry.toString()).append(',')
-                .append(Integer.toString(rank)).append(',')
-                .append(Integer.toString(axis + 1)).append(',')
-                .append(Double.toString(round(spectrum[axis], 6))).append(',')
-                .append(Double.toString(round(retained, 6))).append('\n');
+                    .append(residual.toString()).append(',')
+                    .append(geometry.toString()).append(',')
+                    .append(Integer.toString(rank)).append(',')
+                    .append(Integer.toString(axis + 1)).append(',')
+                    .append(Double.toString(round(spectrum[axis], 6))).append(',')
+                    .append(Double.toString(round(retained, 6))).append('\n');
         }
     }
-
+    
     /**
      * Writes the selected term-by-document contingency table as CSV.
      *
-     * @param writer response writer
+     * @param writer  response writer
      * @param lexicon selected term lexicon
-     * @param rowIds selected term ids aligned with the matrix rows
-     * @param matrix selected term-by-document contingency table
+     * @param rowIds  selected term ids aligned with the matrix rows
+     * @param matrix  selected term-by-document contingency table
      * @throws IOException if the CSV response cannot be written
      */
     private static void writeContingencyCsv(
         final Writer writer,
         final TermLexicon lexicon,
         final int[] rowIds,
-        final TermDocMatrix matrix
-    ) throws IOException {
+        final TermDocMatrix matrix) throws IOException
+    {
         final int[][] frequencies = matrix.frequencies();
         final int[] docIds = matrix.docIds();
         final boolean[] keep = new boolean[docIds.length];
@@ -1451,7 +1399,7 @@ public class OpClades extends Op
                 }
             }
         }
-
+        
         writer.append("form");
         for (int col = 0; col < docIds.length; col++) {
             if (keep[col]) {
@@ -1459,19 +1407,19 @@ public class OpClades extends Op
             }
         }
         writer.append('\n');
-
+        
         for (int row = 0; row < rowIds.length; row++) {
             writer.append(csvEscape(lexicon.form(rowIds[row])));
             for (int col = 0; col < docIds.length; col++) {
                 if (keep[col]) {
                     writer.append(',')
-                        .append(Integer.toString(frequencies[row][col]));
+                            .append(Integer.toString(frequencies[row][col]));
                 }
             }
             writer.append('\n');
         }
     }
-
+    
     /**
      * Writes the selected term map.
      */
@@ -1480,18 +1428,18 @@ public class OpClades extends Op
         final TermMap map,
         final int[] rowIds,
         final long[] rowFreq,
-        final TermLexicon lexicon
-    ) throws IOException {
+        final TermLexicon lexicon) throws IOException
+    {
         jw.name("data");
         jw.beginObject();
         writeAxes(jw, map);
-
+        
         jw.name("nodes");
         jw.beginArray();
         for (int node = 0; node < map.coordinates().length; node++) {
             final int termId = rowIds[node];
             final double[] coords = map.coordinates()[node];
-
+            
             jw.beginObject();
             jw.name("id").value(termId);
             jw.name("form").value(lexicon.form(termId));
@@ -1500,7 +1448,7 @@ public class OpClades extends Op
             jw.name("y").value(round(coords.length > 1 ? coords[1] : 0d, 4));
             jw.name("cos2").value(round(map.cos2()[node], 4));
             jw.name("cos3").value(round(map.cos3()[node], 4));
-
+            
             final double[] contributions = map.contributionPercent()[node];
             double contribution2 = 0d;
             for (int axis = 0; axis < Math.min(2, contributions.length); axis++) {
@@ -1526,16 +1474,16 @@ public class OpClades extends Op
         jw.endArray();
         jw.endObject();
     }
-
+    
     /**
      * Writes the compact radial node list.
      *
-     * @param jw JSON writer
-     * @param map final radial coordinates
-     * @param rowIds selected term ids aligned with the radial rows
-     * @param rowFreq selected term frequencies aligned with the radial rows
-     * @param lexicon term lexicon
-     * @param termStats corpus term statistics
+     * @param jw          JSON writer
+     * @param map         final radial coordinates
+     * @param rowIds      selected term ids aligned with the radial rows
+     * @param rowFreq     selected term frequencies aligned with the radial rows
+     * @param lexicon     term lexicon
+     * @param termStats   corpus term statistics
      * @param focusTokens token count of the focus population
      * @throws IOException if the JSON response cannot be written
      */
@@ -1546,8 +1494,8 @@ public class OpClades extends Op
         final long[] rowFreq,
         final TermLexicon lexicon,
         final TermStats termStats,
-        final long focusTokens
-    ) throws IOException {
+        final long focusTokens) throws IOException
+    {
         jw.name("data");
         jw.beginObject();
         jw.name("svd");
@@ -1555,9 +1503,8 @@ public class OpClades extends Op
         jw.name("rank").value(map.svdRank());
         jw.name("dims").value(map.svdDims());
         jw.name("retainedInertia_pct").value(round(
-            map.retainedInertiaPercent(),
-            1
-        ));
+                map.retainedInertiaPercent(),
+                1));
         jw.name("spectrum_pct");
         jw.beginArray();
         for (final double percent : map.spectrumPercent()) {
@@ -1573,12 +1520,13 @@ public class OpClades extends Op
             final long fieldFreq = termStats.termFreq(termId);
             double log2Lift = 0d;
             if (rowFreq[node] > 0L
-                && fieldFreq > 0L
-                && focusTokens > 0L
-                && fieldTokens > 0L) {
+                    && fieldFreq > 0L
+                    && focusTokens > 0L
+                    && fieldTokens > 0L)
+            {
                 final double lift = (double) rowFreq[node]
-                    * fieldTokens
-                    / ((double) fieldFreq * focusTokens);
+                        * fieldTokens
+                        / ((double) fieldFreq * focusTokens);
                 log2Lift = Math.log(lift) / Math.log(2d);
             }
             jw.beginObject();
@@ -1589,9 +1537,8 @@ public class OpClades extends Op
             jw.name("log2Lift").value(round(log2Lift, 6));
             jw.name("mass_pct").value(round(map.massPercent()[node], 6));
             jw.name("retainedContrib_pct").value(round(
-                map.retainedContributionPercent()[node],
-                6
-            ));
+                    map.retainedContributionPercent()[node],
+                    6));
             jw.name("radius").value(round(map.radii()[node], 6));
             jw.name("angle").value(round(map.angles()[node], 8));
             jw.endObject();
@@ -1599,5 +1546,5 @@ public class OpClades extends Op
         jw.endArray();
         jw.endObject();
     }
-
+    
 }

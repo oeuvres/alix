@@ -72,16 +72,28 @@ public final class OpTerms extends Op
         final int terms = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         
         FlucText contentFluc = contentFluc(index, pars, meta);
-        TermLexicon textLexicon = contentFluc.termLexicon();
+        TermLexicon contentLexicon = contentFluc.termLexicon();
         TopTerms topTerms = contentFluc.topTerms();
-        
+        String include = pars.getString("include", null);
+        if (include != null) {
+            String[] incs = include.split(",");
+            int[] termIds = contentLexicon.termIds(incs);
+            if (termIds.length > 0) topTerms.include(termIds);
+        }
+        String exclude = pars.getString("exclude", null);
+        if (exclude != null) {
+            String[] excs = exclude.split(",");
+            int[] termIds = contentLexicon.termIds(excs);
+            if (termIds.length > 0) topTerms.exclude(termIds);
+        }
+
         
         final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
-        final BitSet flagBits = textLexicon.bits(tflag);
+        final BitSet flagBits = contentLexicon.bits(tflag);
         meta.put(
             "flagTerms",
             flagBits == null
-                ? textLexicon.vocabSize() - 1
+                ? contentLexicon.vocabSize() - 1
                 : flagBits.cardinality()
         );
 
@@ -204,7 +216,7 @@ public final class OpTerms extends Op
     ) throws IOException
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         TopTerms topTerms = topTerms(index, pars, meta);
         TermsUtil.json(request, response, topTerms);
     }
@@ -219,6 +231,6 @@ public final class OpTerms extends Op
         final HttpPars pars = new HttpPars(request, response);
         final MetaUtil meta = new MetaUtil();
         TopTerms topTerms = topTerms(index, pars, meta);
-        TermsUtil.txt(response, meta, pars, topTerms);
+        TermsUtil.txt(request, response, topTerms);
     }
 }

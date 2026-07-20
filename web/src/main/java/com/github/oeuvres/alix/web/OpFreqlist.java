@@ -58,7 +58,7 @@ public final class OpFreqlist extends Op
             throws IOException
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         TopTerms topTerms = topTerms(index, pars, meta);
         Writer writer = response.getWriter();
         if (topTerms != null) {
