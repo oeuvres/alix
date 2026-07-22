@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.util;
+package com.github.oeuvres.alix.office;
 
 import java.io.Closeable;
 import java.io.IOException;
