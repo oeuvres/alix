@@ -171,10 +171,11 @@ public final class OpTerms extends Op
             consumer.complete(); // update TopTerms population
             topTerms.populationExclude(pivotIds);
             meta.put("pivotIds", pivotIds);
+            meta.put("fieldDocs", contentFluc.termStats().fieldDocs());
             meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
             meta.put("fieldTokens", contentFluc.termStats().fieldTokens());
-            meta.put("focusTokens", consumer.tokenCount());
             meta.put("focusDocs", consumer.documentCount());
+            meta.put("focusTokens", consumer.tokenCount());
             meta.put("focusSnippets", consumer.contextCount());
             return topTerms.rank(scorer, terms, tflag);
         }

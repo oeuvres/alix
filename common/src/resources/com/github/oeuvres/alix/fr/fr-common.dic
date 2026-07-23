@@ -191,7 +191,7 @@ abondant/F.	po:ADJ
 abondé/F.	po:ADJ
 abondement/S.	po:NOUN
 abonder/a0p.	po:VERB
-abonné/F.	po:ADJ po:NOUN
+abonné/F.	po:NOUN po:ADJ
 abonnement/S.	po:NOUN
 abonner/a0p+	po:VERB
 abonni/F.	po:ADJ
@@ -302,7 +302,7 @@ abroutissement/S.	po:NOUN
 abrupt/F.	po:ADJ
 abruptement	po:ADV
 abrupto	po:ADV
-abruti/F.	po:ADJ po:NOUN
+abruti/F.	po:NOUN po:ADJ
 abrutir/f0p+	po:VERB
 abrutissant/F.	po:ADJ
 abrutissement/S.	po:NOUN
@@ -653,7 +653,7 @@ accusatif/F.	po:ADJ
 accusatif/S.	po:NOUN
 accusation/S.	po:NOUN
 accusatoire/S.	po:ADJ
-accusé/F.	po:ADJ po:NOUN
+accusé/F.	po:NOUN po:ADJ
 accuser/a0p+	po:VERB
 ace/S.	po:NOUN
 acédie/S.	po:NOUN
@@ -1118,7 +1118,7 @@ administratif/F.	po:ADJ
 administration/S.	po:NOUN
 administrationaliser/a0p+	po:VERB
 administrativement	po:ADV
-administré/F.	po:ADJ po:NOUN
+administré/F.	po:NOUN po:ADJ
 administrer/a0p+	po:VERB
 admirable/S.	po:ADJ
 admirablement	po:ADV
@@ -1428,7 +1428,6 @@ affiliation/S.	po:NOUN
 affilié/F.	po:ADJ
 affilier/a0p+	po:VERB
 affiloir/S.	po:NOUN
-affin/F.	po:ADJ po:NOUN
 affinage/S.	po:NOUN
 affiné/F.	po:ADJ
 affinement/S.	po:NOUN
@@ -6463,7 +6462,7 @@ avant-cour/S.	po:NOUN
 avant-coureur/S.	po:ADJ
 avant-courrier/F.	po:NOUN po:ADJ
 avant-creuset/S.	po:NOUN
-avant-dernier/F.	po:ADJ po:NOUN
+avant-dernier/F.	po:NOUN po:ADJ
 avant-garde/S.	po:NOUN
 avant-gardisme/S.	po:NOUN
 avant-gardiste/S.	po:NOUN po:ADJ
@@ -13416,7 +13415,7 @@ chercheur/Fs	po:NOUN po:ADJ
 chère/S.	po:NOUN
 chèrement	po:ADV
 chergui/S.	po:NOUN
-chéri/F.	po:ADJ po:NOUN
+chéri/F.	po:NOUN po:ADJ
 chérif/S.	po:NOUN
 chérifien/F+	po:ADJ
 chérimole/S.	po:NOUN
@@ -15998,7 +15997,7 @@ condamnable/S.	po:ADJ
 condamnateur/Fc	po:NOUN po:ADJ
 condamnation/S.	po:NOUN
 condamnatoire/S.	po:ADJ
-condamné/F.	po:ADJ po:NOUN
+condamné/F.	po:NOUN po:ADJ
 condamner/a0p+	po:VERB
 condé/S.	po:NOUN
 condensable/S.	po:ADJ
@@ -16062,7 +16061,7 @@ confédéralisme/S.	po:NOUN
 confédérateur/Fc	po:ADJ
 confédératif/F.	po:ADJ
 confédération/S.	po:NOUN
-confédéré/F.	po:ADJ po:NOUN
+confédéré/F.	po:NOUN po:ADJ
 confédérer/c0p+	po:VERB
 confer/a0p+	po:VERB
 conféré/F.	po:ADJ
@@ -16243,7 +16242,7 @@ conjecture/S.	po:NOUN
 conjecturé/F.	po:ADJ
 conjecturer/a0p+	po:VERB
 conjoindre/wB	po:VERB
-conjoint/F.	po:ADJ po:NOUN
+conjoint/F.	po:NOUN po:ADJ
 conjointement	po:ADV
 conjoncteur/S.	po:NOUN
 conjonctif/F.	po:ADJ
@@ -22187,7 +22186,7 @@ descellé/F.	po:ADJ
 descellement/S.	po:NOUN
 desceller/a0p+	po:VERB
 descendance/S.	po:NOUN
-descendant/F.	po:ADJ po:NOUN
+descendant/F.	po:NOUN po:ADJ
 descenderie/S.	po:NOUN
 descendeur/Fs	po:NOUN
 descendre/tA	po:VERB
@@ -29606,7 +29605,7 @@ eux-mêmes	po:PRON
 évacuation/S.	po:NOUN
 évacué/F.	po:ADJ
 évacuer/a0p+	po:VERB
-évadé/F.	po:ADJ po:NOUN
+évadé/F.	po:NOUN po:ADJ
 évader/a0p+	po:VERB
 évagination/S.	po:NOUN
 évaginé/F.	po:ADJ
@@ -30529,7 +30528,7 @@ faignanter/a0p.	po:VERB
 faille/S.	po:NOUN
 faillé/F.	po:ADJ
 failler/a0p+	po:VERB
-failli/F.	po:ADJ po:NOUN
+failli/F.	po:ADJ
 faillibilité/S.	po:NOUN
 faillible/S.	po:ADJ
 faillir/iU	po:VERB
@@ -31478,11 +31477,13 @@ filtré/F.	po:ADJ
 filtre-presse	po:NOUN is:*
 filtrer/a0p+	po:VERB
 filtreur/Fs	po:NOUN
+fin/S.	po:NOUN
 fin/F.	po:ADJ
 fin	po:ADV
-fin/S.	po:NOUN
 finage/S.	po:NOUN
-final/F.	po:ADJ po:NOUN
+final/F.	po:ADJ
+final/S.	po:NOUN
+finale/S.	po:NOUN
 finalement	po:ADV
 finalisation/S.	po:NOUN
 finalisé/F.	po:ADJ
@@ -37433,7 +37434,7 @@ hululer/a0p.	po:VERB
 hum	po:INTJ
 humage/S.	po:NOUN
 humagne/S.	po:NOUN
-humain/F.	po:ADJ po:NOUN
+humain/F.	po:NOUN po:ADJ
 humainement	po:ADV
 humanisation/S.	po:NOUN
 humanisé/F.	po:ADJ
@@ -41101,7 +41102,7 @@ invitant/F.	po:ADJ
 invitation/S.	po:NOUN
 invitatoire/S.	po:NOUN
 invite/S.	po:NOUN
-invité/F.	po:ADJ po:NOUN
+invité/F.	po:NOUN po:ADJ
 inviter/a0p+	po:VERB
 inviteur/Fs	po:NOUN po:ADJ
 invivable/S.	po:ADJ
@@ -46509,7 +46510,8 @@ ménage/S.	po:NOUN
 ménagé/F.	po:ADJ
 ménageable/S.	po:ADJ
 ménagement/S.	po:NOUN
-ménager/F.	po:ADJ po:NOUN
+ménager/F.	po:ADJ
+ménagère/S.	po:NOUN
 ménager/a0p+	po:VERB
 ménagerie/S.	po:NOUN
 ménagiste/S.	po:NOUN
@@ -56707,6 +56709,7 @@ plasturgie/S.	po:NOUN
 plasturgique/S.	po:ADJ
 plasturgiste/S.	po:NOUN
 plat/F.	po:ADJ po:NOUN
+plat/S.	po:NOUN
 plat-bord	po:NOUN is:singular
 platane/S.	po:NOUN
 plataniste/S.	po:NOUN
