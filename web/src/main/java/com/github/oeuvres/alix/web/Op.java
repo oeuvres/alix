@@ -13,8 +13,6 @@ import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
-import com.google.gson.stream.JsonWriter;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -115,6 +113,10 @@ public abstract class Op
                     AlixServlet.prepareCsv(response);
                     csv(index, request, response);
                 }
+                case "docx" -> {
+                    AlixServlet.prepareDocx(response);
+                    docx(index, request, response);
+                }
                 case "html" -> {
                     AlixServlet.prepareHtml(response);
                     html(index, request, response);
@@ -163,6 +165,24 @@ public abstract class Op
         HttpServletResponse resp) throws IOException
     {
         return true;
+    }
+    
+    /**
+     * DOCX  hook. The default implementation emits a 406
+     *
+     * @param index     target Lucene index
+     * @param request   servlet request
+     * @param response  servlet response
+     * @throws IOException if response writing fails
+     */
+    protected void docx(
+        LuceneIndex index,
+        HttpServletRequest request,
+        HttpServletResponse response) throws IOException
+    {
+        response.setStatus(406);
+        ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": docx not implemented");
+        AlixServlet.jsonError(request, response);
     }
 
     /**
@@ -246,23 +266,6 @@ public abstract class Op
     }
 
     /**
-     * Opens a Gson {@link JsonWriter} on the response writer, setting
-     * {@code Content-Type: application/json} and {@code charset=UTF-8}
-     * as a side effect.
-     *
-     * @param resp servlet response
-     * @return a writer ready to emit a JSON document
-     * @throws IOException if obtaining the response writer fails
-     */
-    protected static JsonWriter jsonWriter(final HttpServletResponse resp)
-        throws IOException
-    {
-        resp.setContentType("application/json");
-        resp.setCharacterEncoding("UTF-8");
-        return new JsonWriter(resp.getWriter());
-    }
-
-    /**
      * Full HTML page hook, with form scaffolding and embedded results.
      * Reached when no format extension is present in the URL. The
      * default implementation emits a 406 JSON error; subclasses override
@@ -300,20 +303,6 @@ public abstract class Op
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": txt not implemented");
         AlixServlet.jsonError(request, response);
-    }
-
-    /**
-     * Sets response headers for HTML streamed output: UTF-8 content
-     * type, {@code Content-Encoding: identity} to disable gzip
-     * buffering, and {@code X-Content-Type-Options: nosniff}.
-     *
-     * @param resp servlet response
-     */
-    protected static void prepareHtmlStream(final HttpServletResponse resp)
-    {
-        resp.setContentType("text/html; charset=UTF-8");
-        resp.setHeader("Content-Encoding", "identity");
-        resp.setHeader("X-Content-Type-Options", "nosniff");
     }
 
     /**

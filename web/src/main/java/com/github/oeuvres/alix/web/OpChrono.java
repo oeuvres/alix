@@ -78,7 +78,7 @@ public class OpChrono extends Op
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final HistoNum histo = histoNum(index, pars, meta);
         
-        try (JsonWriter json = jsonWriter(response)) {
+        try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.beginObject();
 
             // meta

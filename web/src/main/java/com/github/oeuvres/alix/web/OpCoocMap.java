@@ -404,7 +404,7 @@ public final class OpCoocMap extends Op
             ? null
             : semanticMap(coocMat, pars, meta);
 
-        try (JsonWriter jw = Op.jsonWriter(response)) {
+        try (JsonWriter jw = new JsonWriter(response.getWriter())) {
             jw.beginObject();
 
             jw.name("meta");

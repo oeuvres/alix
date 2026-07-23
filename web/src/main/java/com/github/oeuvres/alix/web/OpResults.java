@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Writer;
 import java.util.Set;
 
@@ -14,7 +15,9 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.github.oeuvres.alix.common.Names;
+import com.github.oeuvres.alix.office.Docx;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.snippets.DocxResults;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
@@ -310,7 +313,8 @@ public class OpResults extends Op {
             throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        
+
+
         final Writer writer = response.getWriter();
         writer.write("""
                 <!DOCTYPE html>
@@ -444,5 +448,94 @@ public class OpResults extends Op {
                 </html>
                 """);
         writer.flush();
+    }
+
+    /**
+     * Builds the footnote citation for a document. This is a placeholder using
+     * the docline and identifier; replace the body with your existing HTML-APA
+     * builder. The snippet URL is appended by {@link DocxResults}, so only the
+     * bibliographic part belongs here.
+     *
+     * @param doc          stored document (holds {@code ALIX_ID} and docline)
+     * @param doclineField docline field name
+     * @return inline HTML fragment, or an empty string
+     */
+    protected String citationHtml(final Document doc, final String doclineField) {
+        final String title = doc.get(doclineField);
+        final String name = doc.get(Names.ALIX_ID);
+        final StringBuilder sb = new StringBuilder();
+        if (title != null) sb.append("<i>").append(title).append("</i>");
+        if (name != null) sb.append(" [").append(name).append("]");
+        return sb.toString();
+    }
+
+    /**
+     * Streams a concordance as a docx, reusing the document-relevance ordering
+     * of the default HTML branch. A query is required; the template is loaded
+     * from the classpath at {@code /templates/template.docx}. Every match of a
+     * document is emitted, each snippet carrying an APA footnote.
+     *
+     * @param index    corpus
+     * @param request  request
+     * @param response response; its output stream is taken here
+     * @param pars     resolved parameters
+     * @throws IOException on search or write failure
+     */
+    protected void docx(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException {
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
+
+        
+        final String contentFname = pars.getString(FTEXT, index.content());
+        final FlucText contentFluc = index.flucText(contentFname);
+        if (contentFluc == null) {
+            response.sendError(404, "unknown text field: " + contentFname);
+            return;
+        }
+        final SpanQuery spanQuery = spanQuery(index, pars);
+        if (spanQuery == null) {
+            response.sendError(400, "a query is required for docx export");
+            return;
+        }
+
+        final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+        final String docline = pars.getString(DOCLINE, index.docline());
+        final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
+        final Query filterQuery = filterQuery(index, pars);
+
+        final Query query;
+        if (filterQuery != null) {
+            query = new BooleanQuery.Builder()
+                    .add(filterQuery, BooleanClause.Occur.FILTER)
+                    .add(spanQuery, BooleanClause.Occur.MUST).build();
+        } else {
+            query = spanQuery;
+        }
+        final ScoreDoc[] hits = index.searcher().search(query, docs).scoreDocs;
+
+        response.setHeader("Content-Disposition", "attachment; filename=\"concordance.docx\"");
+
+        final byte[] template = Docx.classpath("/templates/template.docx");
+        final DocSnippets snippets = new DocSnippets(DocSnippets.Usage.OFFSETS, slop);
+        final SpanWalker walker = new SpanWalker(index.searcher(), spanQuery, snippets, filterQuery);
+
+        try (OutputStream os = response.getOutputStream()) {
+            final DocxResults renderer = new DocxResults(
+                    template, os, index.reader().storedFields(), detagger, ctx)
+                .contentField(contentFname)
+                .fieldDocline(docline)
+                .urlTemplate("{docname}?" + pars.queryString(FTEXT, Q, CTX) + "&slop=" + slop)
+                .citationSupplier(doc -> citationHtml(doc, docline));
+            for (final ScoreDoc sd : hits) {
+                walker.visit(sd.doc);
+                renderer.docSnippets(sd.doc, snippets);
+            }
+            renderer.close();
+        }
     }
 }

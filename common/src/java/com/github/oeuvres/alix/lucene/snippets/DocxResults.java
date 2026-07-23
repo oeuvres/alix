@@ -2,15 +2,15 @@ package com.github.oeuvres.alix.lucene.snippets;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Path;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.StoredFields;
 
+import com.github.oeuvres.alix.office.Html;
 import com.github.oeuvres.alix.office.Docx;
 import com.github.oeuvres.alix.util.Detagger;
-import com.github.oeuvres.alix.office.Html;
 
 import static com.github.oeuvres.alix.common.Names.*;
 
@@ -24,9 +24,10 @@ import static com.github.oeuvres.alix.common.Names.*;
  * {@code response.getOutputStream()} <em>before</em> any writer is acquired, and
  * call {@link #close()} to flush the filled package.</p>
  *
- * <p>Wiring: the caller sets {@link SnippetView#citationHtml(String)} from the
- * existing HTML-APA builder. This class holds no Lucene scoring; snippet
- * selection is done upstream exactly as for the HTML renderer.</p>
+ * <p>Wiring: set {@link #citationSupplier(Function)} to your existing HTML-APA
+ * builder; it is called with the current stored {@link Document} and its result
+ * becomes the footnote. This class holds no Lucene scoring; snippet selection is
+ * done upstream exactly as for the HTML renderer.</p>
  */
 public final class DocxResults implements ResultsRenderer {
     private final Docx docx;
@@ -37,6 +38,7 @@ public final class DocxResults implements ResultsRenderer {
     private String contentField = "content";
     private String fieldDocline = "docline";
     private String urlTemplate = "";
+    private Function<Document, String> citationSupplier;
     private int cachedDocId = -1;
     private Document doc;
     private String content;
@@ -45,15 +47,16 @@ public final class DocxResults implements ResultsRenderer {
     /**
      * Creates a docx renderer bound to a template and an output stream.
      *
-     * @param template     path to the {@code .docx} carrying {@code {{BODY}}}
-     *                     and {@code {{NOTES}}} placeholders
+     * @param template     bytes of the {@code .docx} carrying {@code {{BODY}}}
+     *                     and {@code {{NOTES}}} placeholders; load with
+     *                     {@link Docx#classpath(String)}
      * @param out          servlet output stream, owned by the caller
      * @param storedFields stored-field access, valid for the renderer's life
      * @param detagger     context normaliser
      * @param ctx          context width in words
      */
     public DocxResults(
-        final Path template,
+        final byte[] template,
         final OutputStream out,
         final StoredFields storedFields,
         final Detagger detagger,
@@ -76,6 +79,19 @@ public final class DocxResults implements ResultsRenderer {
     public void close() throws IOException {
         docx.write(out);
         out.flush();
+    }
+
+    /**
+     * Sets the citation builder. Called with the current stored document; its
+     * HTML result becomes the snippet's footnote. When {@code null}, snippets
+     * carry no footnote.
+     *
+     * @param citationSupplier maps a document to an inline HTML APA fragment
+     * @return this
+     */
+    public DocxResults citationSupplier(final Function<Document, String> citationSupplier) {
+        this.citationSupplier = citationSupplier;
+        return this;
     }
 
     /**
@@ -148,10 +164,11 @@ public final class DocxResults implements ResultsRenderer {
         ensureDoc(docId);
         if (content == null) return;
         final int count = snippets.count();
+        final String citation = (citationSupplier == null) ? null : citationSupplier.apply(doc);
         for (int snipOrd = 0; snipOrd < count; snipOrd++) {
             final SnippetView view = SnippetView.of(content, snippets, snipOrd, ctx, detagger)
-                .url(docUrl());
-            // view.citationHtml(apa.forDoc(doc));   // <-- wire the APA builder here
+                .url(docUrl())
+                .citationHtml(citation);
             snippet(docId, view);
         }
     }

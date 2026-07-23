@@ -1,11 +1,11 @@
 package com.github.oeuvres.alix.office;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -30,19 +30,35 @@ public final class Docx {
     private static final String BODY_MARK = "{{BODY}}";
     private static final String NOTES_MARK = "{{NOTES}}";
 
-    private final Path template;
+    private final byte[] template;
     private final StringBuilder body = new StringBuilder();
     private final StringBuilder notes = new StringBuilder();
     private int footnoteSeq = 0;
 
     /**
-     * Creates a writer bound to a template package.
+     * Creates a writer bound to a template package held in memory.
      *
-     * @param template path to a {@code .docx} carrying the {@code {{BODY}}} and
+     * @param template bytes of a {@code .docx} carrying the {@code {{BODY}}} and
      *                 {@code {{NOTES}}} placeholders
      */
-    public Docx(final Path template) {
+    public Docx(final byte[] template) {
         this.template = template;
+    }
+
+    /**
+     * Reads a template package from the classpath into a byte array.
+     *
+     * @param resource absolute classpath resource, for example
+     *                 {@code /templates/template.docx}
+     * @return the package bytes
+     * @throws IOException           on read failure
+     * @throws IllegalStateException if the resource is absent
+     */
+    public static byte[] classpath(final String resource) throws IOException {
+        try (InputStream in = Docx.class.getResourceAsStream(resource)) {
+            if (in == null) throw new IllegalStateException("classpath resource not found: " + resource);
+            return in.readAllBytes();
+        }
     }
 
     /**
@@ -179,8 +195,7 @@ public final class Docx {
      * @throws IllegalStateException    if a placeholder is missing from the template
      */
     public void write(final OutputStream out) throws IOException {
-        final byte[] raw = Files.readAllBytes(template);
-        try (ZipInputStream zin = new ZipInputStream(new java.io.ByteArrayInputStream(raw));
+        try (ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(template));
              ZipOutputStream zout = new ZipOutputStream(out)) {
             ZipEntry e;
             final byte[] buf = new byte[8192];

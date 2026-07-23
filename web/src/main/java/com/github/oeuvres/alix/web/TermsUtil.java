@@ -40,7 +40,7 @@ public class TermsUtil
         final HttpServletResponse response,
         TopTerms terms
     ) throws IOException {
-        JsonWriter jw = Op.jsonWriter(response);
+        JsonWriter jw = new JsonWriter(response.getWriter());
         MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
         boolean hasContexts = meta.get("spanQuery") != null;
         jw.beginObject();

@@ -45,10 +45,11 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * /                     -> list available indices
  * /{index}              -> describe one index
  * /{index}/{op}         -> operation default page
- * /{index}/{op}.json    -> operation JSON output
- * /{index}/{op}.html    -> operation HTML fragment
- * /{index}/{op}.jsonl   -> operation JSON Lines output
  * /{index}/{op}.csv     -> operation CSV output
+ * /{index}/{op}.docx    -> operation DOCX output
+ * /{index}/{op}.json    -> operation JSON output
+ * /{index}/{op}.jsonl   -> operation JSON Lines output
+ * /{index}/{op}.html    -> operation HTML fragment
  * }</pre>
  *
  * <h2>Configuration</h2>
@@ -472,9 +473,20 @@ public class AlixServlet extends HttpServlet
     protected static void prepareCsv(final HttpServletResponse response)
     {
         response.setContentType(CONTENT_CSV);
+        response.setCharacterEncoding("UTF-8");
     }
 
-
+    /**
+     * Sets response headers for docx output.
+     *
+     * @param response HTTP response
+     */
+    protected static void prepareDocx(final HttpServletResponse response)
+    {
+        response.setContentType(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    }
+    
     /**
      * Sets response headers for HTML output.
      *
@@ -483,6 +495,7 @@ public class AlixServlet extends HttpServlet
     protected static void prepareHtml(final HttpServletResponse response)
     {
         response.setContentType(CONTENT_HTML);
+        response.setCharacterEncoding("UTF-8");
     }
 
     /**
@@ -493,6 +506,7 @@ public class AlixServlet extends HttpServlet
     protected static void prepareJson(final HttpServletResponse response)
     {
         response.setContentType(CONTENT_JSON);
+        response.setCharacterEncoding("UTF-8");
     }
     
     /**
@@ -503,6 +517,7 @@ public class AlixServlet extends HttpServlet
     protected static void prepareJsonl(final HttpServletResponse response)
     {
         response.setContentType(CONTENT_JSONL);
+        response.setCharacterEncoding("UTF-8");
     }
 
     /**
@@ -513,6 +528,7 @@ public class AlixServlet extends HttpServlet
     protected static void prepareTxt(final HttpServletResponse response)
     {
         response.setContentType(CONTENT_TXT);
+        response.setCharacterEncoding("UTF-8");
     }
 
     /**

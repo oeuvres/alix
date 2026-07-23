@@ -83,7 +83,7 @@ class CoocProfileUtil
         final CoocProfile profile,
         final KeynessScorer scorer
     ) throws IOException {
-        try (JsonWriter jw = Op.jsonWriter(response)) {
+        try (JsonWriter jw = new JsonWriter(response.getWriter())) {
             jw.beginObject();
 
             jw.name("meta");

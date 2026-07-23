@@ -594,7 +594,7 @@ public class OpClades extends Op
                     geometry);
         }
         
-        try (JsonWriter jw = Op.jsonWriter(response)) {
+        try (JsonWriter jw = new JsonWriter(response.getWriter())) {
             jw.beginObject();
             jw.name("meta");
             jw.beginObject();
