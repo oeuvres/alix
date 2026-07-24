@@ -9,6 +9,7 @@
  */
 package com.github.oeuvres.alix.maths;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import org.hipparchus.linear.Array2DRowRealMatrix;
@@ -55,7 +56,9 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * scaling is then applied by {@link #scaleRowsByMass()}. Finally,
  * {@link #project(int)} returns the leading dimensions as an {@link SvdLayout}.
  * {@link #projectNormalized(int)} instead normalises each row after retaining
- * the requested dimensions.
+ * the requested dimensions. {@link #shrinkAxes()} offers a continuous
+ * alternative to a hard truncation rank by damping axes near the noise scale
+ * of the spectrum.
  * </p>
  * <p>
  * Identity cells of an {@link IntMatrixById} are treated as structural cells
@@ -136,6 +139,8 @@ public class ContingencySvd
     private static final double DEFAULT_FIT_TOLERANCE = 1e-10;
 
     /** Whether singular-value weighting has been applied to the current embedding. */
+    private boolean axesShrunk;
+
     private boolean axesWeighted;
 
     /** Full current row embedding, or {@code null} before decomposition. */
@@ -389,6 +394,7 @@ public class ContingencySvd
         }
         fixAxisSigns(embedding, rightVectors);
 
+        axesShrunk = false;
         axesWeighted = false;
         rowsMassScaled = false;
         return this;
@@ -973,7 +979,7 @@ public class ContingencySvd
         return rightVectors;
     }
 
-    /**
+        /**
      * Scales each full embedding row by the inverse square root of its mass.
      *
      * <p>
@@ -1006,6 +1012,71 @@ public class ContingencySvd
         }
 
         rowsMassScaled = true;
+        return this;
+    }
+
+    /**
+     * Shrinks every full embedding axis by its signal-to-noise weight.
+     *
+     * <p>
+     * Axis {@code j} is multiplied by
+     * {@code sigma[j]^2 / (sigma[j]^2 + scale^2)}, where {@code scale} is the
+     * median singular value of the decomposition, taken as a robust size for
+     * the noise bulk of a residual spectrum. Axes well above that size keep
+     * their weight; axes near it fade out continuously.
+     * </p>
+     * <p>
+     * This is an alternative to a hard truncation rank. A projection that
+     * retains generous dimensions after shrinkage varies smoothly with the
+     * retained count instead of jumping when a single axis enters or leaves,
+     * which matters when a row norm computed over retained axes is displayed.
+     * </p>
+     * <p>
+     * The median is a heuristic scale, not an estimated noise level under a
+     * stated null model. It suits tables whose informative axes are a minority
+     * of the spectrum, and it degrades gracefully otherwise: when every axis
+     * carries signal the weights merely rescale the embedding. This SVD-and-
+     * embedding operation must precede row-mass scaling and may be applied
+     * only once per decomposition.
+     * </p>
+     *
+     * @return this pipeline
+     * @throws IllegalStateException before {@link #decompose()}, after previous
+     *         shrinkage, or after row-mass scaling
+     */
+    public ContingencySvd shrinkAxes()
+    {
+        requireEmbedding();
+        if (axesShrunk) {
+            throw new IllegalStateException("axes are already shrunk");
+        }
+        if (rowsMassScaled) {
+            throw new IllegalStateException(
+                "shrinkAxes() must precede row-mass scaling");
+        }
+        if (rank < 1) {
+            axesShrunk = true;
+            return this;
+        }
+
+        final double[] sorted = new double[rank];
+        System.arraycopy(singularValues, 0, sorted, 0, rank);
+        Arrays.sort(sorted);
+        final double scale = rank % 2 == 1
+                ? sorted[rank / 2]
+                : 0.5d * (sorted[rank / 2 - 1] + sorted[rank / 2]);
+        final double noise = scale * scale;
+        for (int axis = 0; axis < rank; axis++) {
+            final double signal = singularValues[axis] * singularValues[axis];
+            final double weight = signal + noise > 0d
+                    ? signal / (signal + noise)
+                    : 0d;
+            for (int row = 0; row < embedding.length; row++) {
+                embedding[row][axis] *= weight;
+            }
+        }
+
+        axesShrunk = true;
         return this;
     }
 
@@ -1409,6 +1480,7 @@ public class ContingencySvd
         embedding = null;
         rightVectors = null;
         rank = 0;
+        axesShrunk = false;
         axesWeighted = false;
         rowsMassScaled = false;
     }

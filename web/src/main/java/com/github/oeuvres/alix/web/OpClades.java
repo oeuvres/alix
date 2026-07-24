@@ -5,7 +5,6 @@ import java.io.Writer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
@@ -26,7 +25,6 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.maths.ContingencySvd;
 import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
 import com.github.oeuvres.alix.maths.ContingencySvd.SvdLayout;
-import com.github.oeuvres.alix.maths.Distances;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
@@ -49,9 +47,14 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * analysis: Pearson residuals, chi-square row geometry, and the first factorial
  * plane. The optional {@code minDocTerms} parameter retains only documents
  * containing at least that many distinct selected terms; its default is 1.
- * The radial view defaults to G² residuals in chi-square-scaled row
- * geometry before soft radial stress. Its radius remains mass-corrected
- * source-space distinctiveness.
+ * The radial view is a polar reading of the same projection: the angle is the
+ * position of the row in the first factorial plane, the radius is its norm
+ * over every retained axis. At {@code dims=2} the two views are therefore the
+ * same figure in different coordinates; beyond, the radius adds the length the
+ * plane cannot show, and each node carries {@code planeCos2}, the share of its
+ * squared norm the plane accounts for. {@code spectrum=SHRINK} damps axes near
+ * the noise scale of the spectrum, so the layout varies smoothly with the
+ * retained rank instead of jumping when one axis enters or leaves.
  * The {@code .csv} extension emits the raw term-by-document contingency table.
  * </p>
  *
@@ -87,21 +90,6 @@ import static com.github.oeuvres.alix.web.Pars.*;
  */
 public class OpClades extends Op
 {
-    /** Adam learning rate for the D2 radial stress optimizer. */
-    private static final double RADIAL_LEARNING_RATE = 0.045d;
-    
-    /** Number of Adam iterations used by the D2 radial stress optimizer. */
-    private static final int RADIAL_OPTIMIZER_ITERATIONS = 3500;
-    
-    /** Soft penalty retaining the source-space radial norm. */
-    private static final double RADIAL_RADIUS_WEIGHT = 0.18d;
-    
-    /** Deterministic seed used for the radial angular initialization. */
-    private static final long RADIAL_SEED = 7L;
-    
-    /** Standard deviation of the deterministic angular initialization jitter. */
-    private static final double RADIAL_THETA_JITTER = 0.12d;
-    
     /** Default number of principal coordinates retained by D2. */
     private static final int RADIAL_SVD_DIMS = 6;
     
@@ -123,6 +111,24 @@ public class OpClades extends Op
         RADIAL;
     }
     
+    /** Expectation model fitted before residuals. */
+    private enum Expect
+    {
+        /**
+         * Multiplicative row-column expectation fitted by iterative
+         * proportional fitting, which is plain independence when the table
+         * holds no structural cell.
+         */
+        IPF,
+        /**
+         * Additive row-column expectation fitted in logarithmic space, the
+         * double centring of the Lewi spectral map. It removes row and column
+         * size effects by construction, so a leading axis that merely ranks
+         * long documents against short ones cannot survive it.
+         */
+        LOG;
+    }
+    
     /** Row geometry applied to retained principal coordinates. */
     private enum Geometry
     {
@@ -134,6 +140,19 @@ public class OpClades extends Op
         G2;
     }
     
+    /** Row weighting applied to the contingency table before analysis. */
+    private enum Mass
+    {
+        /** Keep observed row margins, so frequent rows weigh more. */
+        OBSERVED,
+        /**
+         * Rescale every row to a common margin while preserving the grand
+         * total. A rare distinctive term then counts as much as a frequent
+         * one, and the leading axes stop being dominated by the heaviest rows.
+         */
+        UNIFORM;
+    }
+    
     /** Residual family applied before singular value decomposition. */
     private enum Residual
     {
@@ -143,6 +162,15 @@ public class OpClades extends Op
         G2,
         /** Pearson standardized residual. */
         PEARSON;
+    }
+    
+    /** Axis weighting applied to the embedding before truncation. */
+    private enum Spectrum
+    {
+        /** Keep every retained axis at full weight. */
+        HARD,
+        /** Damp axes near the noise scale of the singular spectrum. */
+        SHRINK;
     }
     
     /** Raw term frequencies with document mapping. */
@@ -165,6 +193,8 @@ public class OpClades extends Op
      *
      * @param angles                      angular coordinates in radians
      * @param radii                       selected radial coordinates in {@code [0, 1]}
+     * @param planeCos2                   share of each row's retained squared
+     *                                    norm carried by axes 1 and 2
      * @param massPercent                 selected-table row mass, in percent
      * @param retainedContributionPercent share of the retained residual
      *                                    geometry carried by each row, in percent
@@ -177,6 +207,7 @@ public class OpClades extends Op
     private record RadialMap(
             double[] angles,
             double[] radii,
+            double[] planeCos2,
             double[] massPercent,
             double[] retainedContributionPercent,
             int svdRank,
@@ -460,7 +491,9 @@ public class OpClades extends Op
                         filtered.matrix(),
                         view,
                         residual,
-                        geometry);
+                        geometry,
+                        pars.getEnum("mass", Mass.OBSERVED),
+                        pars.getEnum("expect", Expect.IPF));
             }
         }
     }
@@ -563,6 +596,16 @@ public class OpClades extends Op
         final Geometry geometry = pars.getEnum(
                 "geometry",
                 view == JsonView.RADIAL ? Geometry.G2 : Geometry.CHI2);
+        final Mass mass = pars.getEnum("mass", Mass.OBSERVED);
+        final Expect expect = pars.getEnum("expect", Expect.IPF);
+        meta.put("mass", mass.toString());
+        meta.put("expect", expect.toString());
+        meta.put("rowWeighting", mass == Mass.UNIFORM
+                ? "rows rescaled to a common margin, grand total preserved"
+                : "observed row margins");
+        meta.put("expectation", expect == Expect.LOG
+                ? "additive row-column fit in log space (double centring)"
+                : "multiplicative row-column fit by IPF");
         
         if (rowIds.length < 2 || filtered.retainedDocuments() < 2) {
             response.setStatus(400);
@@ -575,7 +618,10 @@ public class OpClades extends Op
                     meta,
                     pars.getInt("dims", new int[] { 2, 50 }, RADIAL_SVD_DIMS),
                     residual,
-                    geometry);
+                    geometry,
+                    pars.getEnum("spectrum", Spectrum.HARD),
+                    mass,
+                    expect);
             meta.put("size", "mass_pct");
             meta.put(
                     "sizeMethod",
@@ -591,7 +637,9 @@ public class OpClades extends Op
                     pars,
                     meta,
                     residual,
-                    geometry);
+                    geometry,
+                    mass,
+                    expect);
         }
         
         try (JsonWriter jw = new JsonWriter(response.getWriter())) {
@@ -716,6 +764,9 @@ public class OpClades extends Op
      * @param requestedDims number of source dimensions requested
      * @param residual      residual family applied before decomposition
      * @param geometry      row geometry applied after dimensional truncation
+     * @param spectrum      axis weighting applied before truncation
+     * @param mass          row weighting of the contingency table
+     * @param expect        expectation model fitted before residuals
      * @return final radial coordinates aligned with the table rows
      */
     private static RadialMap radialMap(
@@ -723,22 +774,24 @@ public class OpClades extends Op
         final MetaUtil meta,
         final int requestedDims,
         final Residual residual,
-        final Geometry geometry)
+        final Geometry geometry,
+        final Spectrum spectrum,
+        final Mass mass,
+        final Expect expect)
     {
-        final double[][] table = toDoubleTable(matrix.frequencies());
-        final ContingencySvd model = new ContingencySvd(table, null)
-                .residual(association(residual))
-                .decompose()
+        final double[][] table = contingency(matrix, mass);
+        final ContingencySvd model = decomposition(table, expect, residual)
                 .weightAxes(1d);
-        final SvdLayout rawLayout = model.project(requestedDims);
-        final double[][] rawSource = rawLayout.coords();
+        if (spectrum == Spectrum.SHRINK) {
+            model.shrinkAxes();
+        }
         final double[][] source = switch (geometry) {
             case CHI2 -> {
                 model.scaleRowsByMass();
                 yield model.project(requestedDims).coords();
             }
             case COSINE -> model.projectNormalized(requestedDims).coords();
-            case G2 -> rawSource;
+            case G2 -> model.project(requestedDims).coords();
         };
         final int size = source.length;
         final int sourceDims = size == 0 ? 0 : source[0].length;
@@ -750,7 +803,7 @@ public class OpClades extends Op
         final int svdRank = spectrumPercent.length;
         
         meta.put("view", "RADIAL");
-        meta.put("radialMethod", "RESIDUAL_SVD_SOFT_RADIAL_D2_V3");
+        meta.put("radialMethod", "RESIDUAL_SVD_POLAR_V4");
         meta.put("profile", residualLabel(residual));
         meta.put("residual", residual.toString());
         meta.put("decomposition", "SVD");
@@ -766,21 +819,20 @@ public class OpClades extends Op
             case COSINE -> "unit length after dimensional truncation";
             case G2 -> "none";
         });
-        meta.put("distance", switch (geometry) {
-            case CHI2 -> residual == Residual.PEARSON
-                    ? "chi-square distance between retained term profiles"
-                    : "chi-square-scaled distance in retained residual coordinates";
-            case COSINE -> "cosine chord distance in retained principal coordinates";
-            case G2 -> residual == Residual.G2
-                    ? "Euclidean distance in retained signed sqrt G2 residual coordinates"
-                    : "Euclidean distance in retained unscaled residual coordinates";
-        });
-        meta.put("distanceNormalization", "mean pairwise");
-        meta.put("projection", "soft radial stress");
-        meta.put("radiusMethod", "mass-corrected source norm");
-        meta.put("radiusSourceGeometry", "unnormalized truncated U Sigma");
-        meta.put("radiusMassCorrection", "inverse sqrt row mass");
+        meta.put("spectrum", spectrum.toString());
+        meta.put("axisWeighting", spectrum == Spectrum.SHRINK
+                ? "sigma^2 / (sigma^2 + median sigma^2)"
+                : "hard truncation at dims");
+        meta.put("projection", "polar reading of the first factorial plane");
+        meta.put("angleMethod", "atan2 on axes 1 and 2");
+        meta.put("radiusMethod", "row norm over retained axes");
         meta.put("radiusNormalization", "maximum");
+        meta.put(
+                "radiusNote",
+                "at dims=2 the polar view is the first factorial plane itself;"
+                + " beyond, the radius adds what the plane does not show");
+        meta.put("planeCos2Method",
+                "share of the retained squared norm carried by axes 1 and 2");
         meta.put("lens", "none");
         meta.put("angleUnit", "radian");
         meta.put("angleRange", "[-pi,pi]");
@@ -789,194 +841,36 @@ public class OpClades extends Op
         
         final double[] angles = new double[size];
         final double[] radii = new double[size];
-        
-        final double[] sourceRadii = new double[size];
-        double sourceRadiusMax = 0d;
-        for (int row = 0; row < size; row++) {
-            double squared = 0d;
-            for (final double coordinate : rawSource[row]) {
-                squared += coordinate * coordinate;
-            }
-            sourceRadii[row] = Math.sqrt(squared);
-            sourceRadiusMax = Math.max(sourceRadiusMax, sourceRadii[row]);
-        }
+        final double[] planeCos2 = new double[size];
         final double[] masses = rowMasses(table);
         final double[] massesPercent = massPercent(masses);
         final double[] retainedContributions = retainedContributionPercent(
-                rawSource);
-        double distinctivenessMax = 0d;
-        for (int row = 0; row < size; row++) {
-            radii[row] = sourceRadii[row] / Math.sqrt(masses[row]);
-            distinctivenessMax = Math.max(distinctivenessMax, radii[row]);
-        }
-        if (distinctivenessMax > 0d) {
-            for (int row = 0; row < size; row++) {
-                radii[row] /= distinctivenessMax;
-            }
-        }
-        if (size < 2 || sourceDims == 0) {
-            return new RadialMap(
-                    angles,
-                    radii,
-                    massesPercent,
-                    retainedContributions,
-                    svdRank,
-                    sourceDims,
-                    retainedInertiaPercent,
-                    spectrumPercent);
-        }
-        if (!(sourceRadiusMax > 0d)) {
-            return new RadialMap(
-                    angles,
-                    radii,
-                    massesPercent,
-                    retainedContributions,
-                    svdRank,
-                    sourceDims,
-                    retainedInertiaPercent,
-                    spectrumPercent);
-        }
-        for (int row = 0; row < size; row++) {
-            sourceRadii[row] /= sourceRadiusMax;
-        }
+                source);
         
-        final double[][] distances = Distances.euclidean(source);
-        double distanceSum = 0d;
-        int distanceCount = 0;
+        double radiusMax = 0d;
         for (int row = 0; row < size; row++) {
-            for (int col = 0; col < row; col++) {
-                distanceSum += distances[row][col];
-                distanceCount++;
+            final double first = sourceDims > 0 ? source[row][0] : 0d;
+            final double second = sourceDims > 1 ? source[row][1] : 0d;
+            double squared = 0d;
+            for (final double coordinate : source[row]) {
+                squared += coordinate * coordinate;
             }
-        }
-        final double distanceMean = distanceCount > 0
-                ? distanceSum / distanceCount
-                : 0d;
-        if (!(distanceMean > 0d)) {
-            return new RadialMap(
-                    angles,
-                    radii,
-                    massesPercent,
-                    retainedContributions,
-                    svdRank,
-                    sourceDims,
-                    retainedInertiaPercent,
-                    spectrumPercent);
-        }
-        
-        double distanceSquaredSum = 0d;
-        for (int row = 0; row < size; row++) {
-            for (int col = 0; col < row; col++) {
-                distances[row][col] /= distanceMean;
-                distances[col][row] = distances[row][col];
-                distanceSquaredSum += distances[row][col] * distances[row][col];
-            }
-        }
-        if (!(distanceSquaredSum > 0d)) {
-            return new RadialMap(
-                    angles,
-                    radii,
-                    massesPercent,
-                    retainedContributions,
-                    svdRank,
-                    sourceDims,
-                    retainedInertiaPercent,
-                    spectrumPercent);
-        }
-        
-        final Random random = new Random(RADIAL_SEED);
-        final double[][] positions = new double[size][2];
-        for (int row = 0; row < size; row++) {
-            final double sourceX = sourceDims > 0 ? source[row][0] : 0d;
-            final double sourceY = sourceDims > 1 ? source[row][1] : 0d;
-            final double theta = Math.atan2(sourceY, sourceX)
-                    + random.nextGaussian() * RADIAL_THETA_JITTER;
-            positions[row][0] = sourceRadii[row] * Math.cos(theta);
-            positions[row][1] = sourceRadii[row] * Math.sin(theta);
-        }
-        
-        final double[][] firstMoment = new double[size][2];
-        final double[][] secondMoment = new double[size][2];
-        final double[][] bestPositions = new double[size][2];
-        for (int row = 0; row < size; row++) {
-            System.arraycopy(positions[row], 0, bestPositions[row], 0, 2);
-        }
-        
-        double bestObjective = Double.POSITIVE_INFINITY;
-        for (int iteration = 1; iteration <= RADIAL_OPTIMIZER_ITERATIONS; iteration++) {
-            final double[][] gradient = new double[size][2];
-            double stress = 0d;
-            
-            for (int row = 0; row < size; row++) {
-                for (int col = 0; col < row; col++) {
-                    final double deltaX = positions[row][0] - positions[col][0];
-                    final double deltaY = positions[row][1] - positions[col][1];
-                    final double projectedDistance = Math.max(
-                            1e-9d,
-                            Math.hypot(deltaX, deltaY));
-                    final double error = projectedDistance - distances[row][col];
-                    final double coefficient = 2d * error / (projectedDistance * distanceSquaredSum);
-                    
-                    stress += error * error;
-                    gradient[row][0] += coefficient * deltaX;
-                    gradient[row][1] += coefficient * deltaY;
-                    gradient[col][0] -= coefficient * deltaX;
-                    gradient[col][1] -= coefficient * deltaY;
-                }
-            }
-            stress /= distanceSquaredSum;
-            
-            double radiusPenalty = 0d;
-            for (int row = 0; row < size; row++) {
-                final double radius = Math.max(
-                        1e-9d,
-                        Math.hypot(positions[row][0], positions[row][1]));
-                final double error = radius - sourceRadii[row];
-                final double coefficient = 2d * RADIAL_RADIUS_WEIGHT * error / (size * radius);
-                
-                radiusPenalty += error * error;
-                gradient[row][0] += coefficient * positions[row][0];
-                gradient[row][1] += coefficient * positions[row][1];
-            }
-            
-            final double objective = stress
-                    + RADIAL_RADIUS_WEIGHT * radiusPenalty / size;
-            if (objective < bestObjective) {
-                bestObjective = objective;
-                for (int row = 0; row < size; row++) {
-                    System.arraycopy(positions[row], 0, bestPositions[row], 0, 2);
-                }
-            }
-            
-            final double beta1Power = Math.pow(0.9d, iteration);
-            final double beta2Power = Math.pow(0.999d, iteration);
-            for (int row = 0; row < size; row++) {
-                for (int axis = 0; axis < 2; axis++) {
-                    firstMoment[row][axis] = 0.9d * firstMoment[row][axis]
-                            + 0.1d * gradient[row][axis];
-                    secondMoment[row][axis] = 0.999d * secondMoment[row][axis]
-                            + 0.001d * gradient[row][axis] * gradient[row][axis];
-                    
-                    final double correctedFirst = firstMoment[row][axis] / (1d - beta1Power);
-                    final double correctedSecond = secondMoment[row][axis] / (1d - beta2Power);
-                    positions[row][axis] -= RADIAL_LEARNING_RATE
-                            * correctedFirst
-                            / (Math.sqrt(correctedSecond) + 1e-8d);
-                }
-            }
-        }
-        
-        for (int row = 0; row < size; row++) {
-            final double modelRadius = Math.hypot(
-                    bestPositions[row][0],
-                    bestPositions[row][1]);
-            angles[row] = modelRadius > 0d
-                    ? Math.atan2(bestPositions[row][1], bestPositions[row][0])
+            angles[row] = Math.atan2(second, first);
+            radii[row] = Math.sqrt(squared);
+            planeCos2[row] = squared > 0d
+                    ? (first * first + second * second) / squared
                     : 0d;
+            radiusMax = Math.max(radiusMax, radii[row]);
+        }
+        if (radiusMax > 0d) {
+            for (int row = 0; row < size; row++) {
+                radii[row] /= radiusMax;
+            }
         }
         return new RadialMap(
                 angles,
                 radii,
+                planeCos2,
                 massesPercent,
                 retainedContributions,
                 svdRank,
@@ -1161,13 +1055,12 @@ public class OpClades extends Op
         final HttpPars pars,
         final MetaUtil meta,
         final Residual residual,
-        final Geometry geometry)
+        final Geometry geometry,
+        final Mass mass,
+        final Expect expect)
     {
-        final Assoc association = association(residual);
-        final double[][] table = toDoubleTable(matrix.frequencies());
-        final ContingencySvd model = new ContingencySvd(table, null)
-                .residual(association)
-                .decompose()
+        final double[][] table = contingency(matrix, mass);
+        final ContingencySvd model = decomposition(table, expect, residual)
                 .weightAxes(1d);
         
         final int requestedDims = pars.getInt("dims", new int[] { 2, 50 }, 2);
@@ -1240,7 +1133,7 @@ public class OpClades extends Op
         meta.put("coordinateNormalization", classical
                 ? "classical CA"
                 : "none");
-        meta.put("association", association.toString());
+        meta.put("association", association(residual).toString());
         meta.put("rotation", "NONE");
         meta.put("svdAxisWeight", 1d);
         meta.put("svdRank", embedding.length == 0 ? 0 : embedding[0].length);
@@ -1262,6 +1155,75 @@ public class OpClades extends Op
                 trace,
                 chiSquare,
                 degreesFreedom);
+    }
+    
+    /**
+     * Builds the contingency table to analyse, applying the row weighting.
+     *
+     * <p>
+     * Under {@link Mass#UNIFORM} every row is rescaled to a common margin and
+     * the grand total is preserved, so the table describes rates rather than
+     * counts while staying on its original scale. This is a modelling decision
+     * taken before any expectation is fitted: it changes what the
+     * decomposition sees, not how the result is displayed.
+     * </p>
+     *
+     * @param matrix selected term-document frequencies
+     * @param mass   row weighting
+     * @return a fresh table aligned with the matrix rows
+     */
+    private static double[][] contingency(
+        final TermDocMatrix matrix,
+        final Mass mass)
+    {
+        final double[][] table = toDoubleTable(matrix.frequencies());
+        if (mass != Mass.UNIFORM || table.length == 0) {
+            return table;
+        }
+        double total = 0d;
+        final double[] sums = new double[table.length];
+        for (int row = 0; row < table.length; row++) {
+            for (final double cell : table[row]) {
+                sums[row] += cell;
+            }
+            total += sums[row];
+        }
+        if (!(total > 0d)) {
+            return table;
+        }
+        final double target = total / table.length;
+        for (int row = 0; row < table.length; row++) {
+            if (!(sums[row] > 0d)) {
+                continue;
+            }
+            final double factor = target / sums[row];
+            for (int col = 0; col < table[row].length; col++) {
+                table[row][col] *= factor;
+            }
+        }
+        return table;
+    }
+    
+    /**
+     * Fits the expectation, builds residuals and decomposes.
+     *
+     * @param table    contingency table to analyse
+     * @param expect   expectation model fitted before residuals
+     * @param residual residual family
+     * @return a decomposed pipeline, before any embedding transformation
+     */
+    private static ContingencySvd decomposition(
+        final double[][] table,
+        final Expect expect,
+        final Residual residual)
+    {
+        final ContingencySvd model = new ContingencySvd(table, null);
+        if (expect == Expect.LOG) {
+            model.expectLog();
+        }
+        return model
+                .residual(association(residual))
+                .decompose();
     }
     
     /** Copies raw selected-term frequencies into a double contingency table. */
@@ -1348,24 +1310,27 @@ public class OpClades extends Op
         final TermDocMatrix matrix,
         final JsonView view,
         final Residual residual,
-        final Geometry geometry) throws IOException
+        final Geometry geometry,
+        final Mass mass,
+        final Expect expect) throws IOException
     {
-        final double[][] table = toDoubleTable(matrix.frequencies());
-        final ContingencySvd model = new ContingencySvd(table, null)
-                .residual(association(residual))
-                .decompose()
+        final double[][] table = contingency(matrix, mass);
+        final ContingencySvd model = decomposition(table, expect, residual)
                 .weightAxes(1d);
         final double[] spectrum = inertiaPercent(model.singularValues());
         final int rank = spectrum.length;
         double retained = 0d;
         
         writer.append(
-                "view,residual,geometry,rank,dims,axisInertia_pct,retainedInertia_pct\n");
+                "view,residual,geometry,mass,expect,rank,dims,"
+                + "axisInertia_pct,retainedInertia_pct\n");
         for (int axis = 0; axis < rank; axis++) {
             retained += spectrum[axis];
             writer.append(view.toString()).append(',')
                     .append(residual.toString()).append(',')
                     .append(geometry.toString()).append(',')
+                    .append(mass.toString()).append(',')
+                    .append(expect.toString()).append(',')
                     .append(Integer.toString(rank)).append(',')
                     .append(Integer.toString(axis + 1)).append(',')
                     .append(Double.toString(round(spectrum[axis], 6))).append(',')
@@ -1539,6 +1504,7 @@ public class OpClades extends Op
             jw.name("retainedContrib_pct").value(round(
                     map.retainedContributionPercent()[node],
                     6));
+            jw.name("planeCos2").value(round(map.planeCos2()[node], 6));
             jw.name("radius").value(round(map.radii()[node], 6));
             jw.name("angle").value(round(map.angles()[node], 8));
             jw.endObject();
