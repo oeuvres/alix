@@ -223,9 +223,8 @@ public class MetaUtil
         }
         jw.endObject();
         if (log.size() > 0) {
-            jw.name("log").beginObject();
-            jw.beginArray();
-            for (String message: log) {
+            jw.name("log").beginArray();
+            for (final String message : log) {
                 jw.value(message);
             }
             jw.endArray();
