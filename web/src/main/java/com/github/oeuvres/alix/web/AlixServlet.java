@@ -543,7 +543,6 @@ public class AlixServlet extends HttpServlet
     {
         ops.put("chrono", new OpChrono());
         ops.put("clades", new OpClades());
-        ops.put("cooc-map", new OpCoocMap());
         ops.put("cooc-profile", new OpCoocProfile());
         ops.put("doc", new OpDoc());
         ops.put("freqlist", new OpFreqlist());

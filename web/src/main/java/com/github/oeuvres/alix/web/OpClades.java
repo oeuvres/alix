@@ -98,7 +98,7 @@ public class OpClades extends Op
         INERTIA;
     }
     
-    /** JSON representations exposed by the endpoint. */
+
     /** Row geometry applied to retained principal coordinates. */
     private enum Geometry
     {
