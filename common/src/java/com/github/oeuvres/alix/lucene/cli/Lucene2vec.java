@@ -135,10 +135,10 @@ public final class Lucene2vec
             final ContingencySvd svd = new ContingencySvd(table.cells(), null)
                 .residual(Assoc.G2);
 
-            log("decomposing %d x %d residual matrix (dense SVD, dominant cost)",
-                termCount, docCount);
-            svd.decompose();
-            log("decomposition done");
+            log("decomposing %d x %d residual matrix to top %d dims (randomized SVD)",
+                termCount, docCount, dims);
+            svd.decompose(dims);
+            log("decomposition done, rank %d", svd.singularValues().length);
 
             if (power > 0d) {
                 log("weighting axes by sigma^%.3f", power);

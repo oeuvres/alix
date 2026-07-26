@@ -127,6 +127,9 @@ public class ContingencySvd
     /** Structural-cell mask. */
     private final boolean[][] structural;
 
+    /** Total residual energy (Frobenius squared), the inertia denominator. */
+    private double totalInertia;
+
     /**
      * Constructs a pipeline from a plain rectangular table.
      *
@@ -257,6 +260,72 @@ public class ContingencySvd
     }
 
     /**
+     * Decomposes the residual matrix to its leading dimensions only, by
+     * randomized SVD.
+     *
+     * <p>
+     * Equivalent in role to {@link #decompose()} followed by a projection to
+     * {@code dims}, but computes only the top singular triplets, so its cost is
+     * governed by {@code dims} rather than by the full rank. Use it when the
+     * matrix is large and only the leading axes are wanted. The retained axis
+     * count is at most {@code dims} and cannot exceed the numerical rank. Signs
+     * are fixed as in {@link #decompose()}. Because only the leading axes are
+     * computed, inertia percentages are taken against the full residual energy
+     * held from {@link #residual(Assoc)}, so they remain comparable with the
+     * full decomposition.
+     * </p>
+     *
+     * @param dims number of leading dimensions to compute
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code dims < 1}
+     * @throws IllegalStateException before {@link #residual(Assoc)}
+     */
+    public ContingencySvd decompose(
+        final int dims
+    ) {
+        if (residuals == null) {
+            throw new IllegalStateException("call residual() before decompose()");
+        }
+        if (dims < 1) {
+            throw new IllegalArgumentException("dims must be at least 1, got " + dims);
+        }
+        return absorb(new RandomizedSvd(residuals, dims));
+    }
+
+    /**
+     * Decomposes the residual matrix to its leading dimensions by randomized
+     * SVD, controlling the accuracy of the range approximation.
+     *
+     * <p>
+     * Higher oversampling and power iterations sharpen the recovered subspace
+     * where the spectrum is near-degenerate, at proportional cost. The defaults
+     * of {@link #decompose(int)} suit a spectrum that decays; a flat plateau at
+     * the truncation boundary is where the extra effort matters.
+     * </p>
+     *
+     * @param dims number of leading dimensions to compute
+     * @param oversamples extra Gaussian samples beyond {@code dims}
+     * @param powerIterations subspace-iteration refinement steps
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code dims < 1} or a parameter is
+     *         negative
+     * @throws IllegalStateException before {@link #residual(Assoc)}
+     */
+    public ContingencySvd decompose(
+        final int dims,
+        final int oversamples,
+        final int powerIterations
+    ) {
+        if (residuals == null) {
+            throw new IllegalStateException("call residual() before decompose()");
+        }
+        if (dims < 1) {
+            throw new IllegalArgumentException("dims must be at least 1, got " + dims);
+        }
+        return absorb(new RandomizedSvd(residuals, dims, oversamples, powerIterations));
+    }
+
+    /**
      * Returns the current full row embedding.
      *
      * <p>
@@ -372,6 +441,7 @@ public class ContingencySvd
         final double[][] expected = expectationIpf();
 
         final double[][] matrix = new double[observed.length][observed[0].length];
+        double energy = 0d;
         for (int row = 0; row < observed.length; row++) {
             for (int col = 0; col < observed[row].length; col++) {
                 if (structural[row][col]) {
@@ -386,12 +456,30 @@ public class ContingencySvd
                         "non-finite residual at [" + row + "][" + col + "]");
                 }
                 matrix[row][col] = value;
+                energy += value * value;
             }
         }
 
         residuals = matrix;
+        totalInertia = energy;
         invalidateDecomposition();
         return this;
+    }
+
+    /**
+     * Returns the residual matrix used by the decomposition.
+     *
+     * <p>
+     * The returned array is live and must be treated as read-only. It lets a
+     * caller run an alternative decomposition, such as a truncated top-k SVD,
+     * on the same residuals this class prepared.
+     * </p>
+     *
+     * @return live residual matrix, or {@code null} before {@link #residual(Assoc)}
+     */
+    public double[][] residuals()
+    {
+        return residuals;
     }
 
     /**
@@ -482,6 +570,23 @@ public class ContingencySvd
         }
 
         axesWeighted = true;
+        return this;
+    }
+
+    /**
+     * Adopts a truncated decomposition as the current embedding, fixing axis
+     * signs and clearing prior embedding transformations.
+     */
+    private ContingencySvd absorb(
+        final RandomizedSvd decomposition
+    ) {
+        singularValues = decomposition.singularValues();
+        rank = decomposition.rank();
+        embedding = decomposition.u();
+        fixAxisSigns(embedding);
+
+        axesWeighted = false;
+        rowsMassScaled = false;
         return this;
     }
 
@@ -637,9 +742,11 @@ public class ContingencySvd
      */
     private double[] inertiaSpectrum()
     {
-        double total = 0d;
-        for (int axis = 0; axis < rank; axis++) {
-            total += singularValues[axis] * singularValues[axis];
+        double total = totalInertia;
+        if (total <= 0d) {
+            for (int axis = 0; axis < rank; axis++) {
+                total += singularValues[axis] * singularValues[axis];
+            }
         }
         final double[] inertia = new double[rank];
         if (total > 0d) {
