@@ -4,23 +4,27 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.Report;
-import com.github.oeuvres.alix.util.WordTokenizer;
 
 import opennlp.tools.postag.POSModel;
 
@@ -109,42 +113,55 @@ public final class LexiconHelper
     }
     
     /**
-     * Load one column of expressions
+     * Loads multi-word expressions from a CSV file.
      *
-     * @param lexicon
-     * @param anchor       class used to resolve the resource path
-     * @param resourcePath classpath resource path
-     * @throws UncheckedIOException on read error
-     * @throws NullPointerException if {@code lexicon}, {@code anchor}, or
-     *                              {@code resourcePath} is null
+     * <p>Column 0 contains the expression to analyze. Column 1 contains the
+     * canonical form emitted by {@link MweFilter}; when empty, column 0 is used.
+     * Each expression is analyzed into a normalized-form sequence and a
+     * lemma-or-form sequence. Both sequences are registered when they differ.</p>
+     *
+     * @param lexicon target MWE lexicon
+     * @param analyzer analyzer producing normalized forms in
+     *                 {@link CharTermAttribute} and optional lemmas in
+     *                 {@link LemmaAttribute}
+     * @param file CSV file
+     * @throws UncheckedIOException on read or analysis error
+     * @throws NullPointerException if an argument is null
      */
     public static void loadExpressions(
         final MweLexicon lexicon,
-        final WordTokenizer tokenizer,
+        final Analyzer analyzer,
         final Path file)
     {
         Objects.requireNonNull(file, "file");
         try (CSVReader csv = new CSVReader(file)) {
             csv.cellMax(2);
-            loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
+            loadExpressions(lexicon, analyzer, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
-    
+
     /**
-     * Load one column of expressions
+     * Loads multi-word expressions from a classpath CSV resource.
      *
-     * @param lexicon
-     * @param anchor       class used to resolve the resource path
+     * <p>Column 0 contains the expression to analyze. Column 1 contains the
+     * canonical form emitted by {@link MweFilter}; when empty, column 0 is used.
+     * Each expression is analyzed into a normalized-form sequence and a
+     * lemma-or-form sequence. Both sequences are registered when they differ.</p>
+     *
+     * @param lexicon target MWE lexicon
+     * @param analyzer analyzer producing normalized forms in
+     *                 {@link CharTermAttribute} and optional lemmas in
+     *                 {@link LemmaAttribute}
+     * @param anchor class used to resolve the resource path
      * @param resourcePath classpath resource path
-     * @throws UncheckedIOException on read error
-     * @throws NullPointerException if {@code lexicon}, {@code anchor}, or
-     *                              {@code resourcePath} is null
+     * @throws UncheckedIOException on read or analysis error
+     * @throws NullPointerException if an argument is null
      */
     public static void loadExpressions(
         final MweLexicon lexicon,
-        final WordTokenizer tokenizer,
+        final Analyzer analyzer,
         final Class<?> anchor,
         final String resourcePath)
     {
@@ -152,59 +169,143 @@ public final class LexiconHelper
         Objects.requireNonNull(resourcePath, "resourcePath");
         try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
             csv.cellMax(2);
-            loadExpressions(lexicon, tokenizer, csv, 0, 1, CsvHeader.SKIP);
+            loadExpressions(lexicon, analyzer, csv, 0, 1, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
-    
+
     /**
-     * Load a CSV reader into a {@link MweLexicon}.
+     * Loads multi-word expressions from a CSV reader.
      *
-     * @param lexicon
-     * @param csv        CSV reader
-     * @param col        column index containing the form to add
-     * @param skipHeader if {@code true}, the first row is skipped
-     * @throws UncheckedIOException     on read error
-     * @throws NullPointerException     if {@code lexicon} or {@code csv} is null
-     * @throws IllegalArgumentException if {@code col < 0}
+     * <p>The analyzer is the authority for tokenization, filtering,
+     * normalization, and lemma annotation. For every accepted row, the
+     * normalized surface sequence is registered first. A second sequence using each
+     * non-empty {@link LemmaAttribute}, with fallback to the normalized form, is
+     * registered only when at least one component differs.</p>
+     *
+     * @param lexicon target MWE lexicon
+     * @param analyzer analyzer producing normalized forms and optional lemmas
+     * @param csv CSV reader
+     * @param colExpression column containing the expression to analyze
+     * @param colCanonical column containing the canonical output form
+     * @param csvHeader header policy
+     * @throws UncheckedIOException on analysis error
+     * @throws NullPointerException if an argument is null
+     * @throws IllegalArgumentException if a column index is negative
      */
     public static void loadExpressions(
         final MweLexicon lexicon,
-        final WordTokenizer tokenizer,
+        final Analyzer analyzer,
         final CSVReader csv,
         final int colExpression,
         final int colCanonical,
         final CsvHeader csvHeader)
     {
         Objects.requireNonNull(lexicon, "lexicon");
+        Objects.requireNonNull(analyzer, "analyzer");
         Objects.requireNonNull(csv, "csv");
+        Objects.requireNonNull(csvHeader, "csvHeader");
         checkColumnIndex(colExpression, "colExpression");
         checkColumnIndex(colCanonical, "colCanonical");
-        
+
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
             protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
                 final StringBuilder expression = row.getCell(colExpression);
-                if (expression.length() == 0)
-                    return false;
                 Char.trim(expression);
-                List<String> words = tokenizer.tokenize(expression);
-                final StringBuilder canonical = row.getCell(colCanonical).length() > 0?
-                    row.getCell(colCanonical):
-                    expression;
+                if (expression.length() == 0) {
+                    return false;
+                }
+
+                final StringBuilder canonical = row.getCell(colCanonical).length() > 0
+                    ? row.getCell(colCanonical)
+                    : expression;
                 Char.trim(canonical);
-                for (int i = 0; i < canonical.length(); i++) canonical.setCharAt(i, tokenizer.normalizeChar(canonical.charAt(i)));
-                lexicon.addExpression(words, canonical);
-                return true;
+                if (canonical.length() == 0) {
+                    return false;
+                }
+                Char.translate(
+                    canonical,
+                    "\u2019\u2018\u02BC\u2010\u2011\u00AD",
+                    "'''---"
+                );
+
+                try {
+                    return addAnalyzedExpression(lexicon, analyzer, expression, canonical);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(
+                        row.getSpec() + ":" + row.getLineNo() + " cannot analyze MWE: " + expression,
+                        e
+                    );
+                }
             }
         };
-        
-        forEachDataRow(csv, csvHeader, maxRequiredCol(colExpression, colCanonical), Report.ReportNull.INSTANCE, handler);
+
+        forEachDataRow(
+            csv,
+            csvHeader,
+            maxRequiredCol(colExpression, colCanonical),
+            Report.ReportNull.INSTANCE,
+            handler
+        );
     }
-    
+
+    /**
+     * Analyzes and registers one expression under its normalized-form and
+     * lemma-or-form token sequences.
+     *
+     * @param lexicon target MWE lexicon
+     * @param analyzer analyzer used to compile the expression
+     * @param expression source expression
+     * @param canonical canonical form emitted for either accepted sequence
+     * @return {@code true} when the normalized-form sequence contains at least
+     *         two tokens and was therefore eligible for insertion
+     * @throws IOException if token-stream consumption fails
+     */
+    private static boolean addAnalyzedExpression(
+        final MweLexicon lexicon,
+        final Analyzer analyzer,
+        final CharSequence expression,
+        final CharSequence canonical)
+        throws IOException
+    {
+        final List<String> forms = new ArrayList<>();
+        final List<String> lemmas = new ArrayList<>();
+        boolean lemmaDiffers = false;
+
+        try (TokenStream stream = analyzer.tokenStream("mwe", expression.toString())) {
+            final CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
+            final LemmaAttribute lemmaAtt = stream.addAttribute(LemmaAttribute.class);
+
+            stream.reset();
+            while (stream.incrementToken()) {
+                if (termAtt.length() == 0) {
+                    continue;
+                }
+
+                final String form = termAtt.toString();
+                final String lemma = lemmaAtt.length() > 0 ? lemmaAtt.toString() : form;
+                forms.add(form);
+                lemmas.add(lemma);
+                lemmaDiffers |= !form.equals(lemma);
+            }
+            stream.end();
+        }
+
+        if (forms.size() < 2) {
+            return false;
+        }
+
+        lexicon.addExpression(forms, canonical);
+        if (lemmaDiffers) {
+            lexicon.addExpression(lemmas, canonical);
+        }
+        return true;
+    }
+
     /**
      * Load a 2-column CSV reader into a {@link CharArrayMap}.
      * <p>

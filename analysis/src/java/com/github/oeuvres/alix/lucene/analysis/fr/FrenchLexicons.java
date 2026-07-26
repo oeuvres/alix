@@ -35,6 +35,7 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.util.Map;
 
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
@@ -42,26 +43,45 @@ import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
-import com.github.oeuvres.alix.util.WordTokenizer;
-import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 
-public class FrenchLexicons
+/**
+ * Factory for the default French lexical resources.
+ */
+public final class FrenchLexicons
 {
+    /**
+     * Utility class; no instance.
+     */
     private FrenchLexicons()
     {
     }
 
+    /**
+     * Builds the default abbreviation set.
+     *
+     * @return case-insensitive abbreviation set
+     */
     public static CharArraySet buildBrevidots()
     {
-        // ignore case, so Mm. == mm.
-        CharArraySet set = new CharArraySet(300, true);
-        LexiconHelper.loadSet(set, LexiconHelper.class, "/com/github/oeuvres/alix/fr/brevidots.csv", 0, LexiconHelper.CsvHeader.SKIP);
+        final CharArraySet set = new CharArraySet(300, true);
+        LexiconHelper.loadSet(
+            set,
+            LexiconHelper.class,
+            "/com/github/oeuvres/alix/fr/brevidots.csv",
+            0,
+            LexiconHelper.CsvHeader.SKIP
+        );
         return set;
     }
 
+    /**
+     * Builds the default French lemma lexicon.
+     *
+     * @return populated lemma lexicon
+     */
     public static LemmaLexicon buildLemmaLexicon()
     {
-        LemmaLexicon lexicon = new LemmaLexicon(500_000);
+        final LemmaLexicon lexicon = new LemmaLexicon(500_000);
         final Map<String, String> posList = Map.ofEntries(
             Map.entry("VERB", "VERB"), // 305193
             Map.entry("NOUN", "NOUN"), // 110474
@@ -103,14 +123,22 @@ public class FrenchLexicons
             Map.entry("DET", "DET"), // 1
             Map.entry("", "")
         );
-    
-        PosResolver posResolver = new PosResolver() {
-            protected String posRewrite(String posName)
+
+        final PosResolver posResolver = new PosResolver()
+        {
+            /**
+             * Rewrites a source POS label to its supported target label.
+             *
+             * @param posName source POS label
+             * @return target POS label, or {@code null} when unsupported
+             */
+            @Override
+            protected String posRewrite(final String posName)
             {
                 return posList.get(posName);
             }
         };
-        // for main dic, ignore on duplicate
+
         lexicon.onDuplicate(LemmaLexicon.OnDuplicate.IGNORE);
         LexiconHelper.loadLemma(
             lexicon,
@@ -125,51 +153,123 @@ public class FrenchLexicons
         );
         return lexicon;
     }
-    
-    public static MweLexicon buildMweLexicon()
+
+    /**
+     * Builds the default MWE lexicon with the supplied entry analyzer.
+     *
+     * @param analyzer analyzer used to compile expression keys
+     * @return mutable MWE lexicon populated with the default resources
+     */
+    public static MweLexicon buildMweLexicon(final Analyzer analyzer)
     {
-        MweLexicon lexicon = new MweLexicon(2000);
-        WordTokenizer tokenizer = new FrenchCliticTokenizer();
-        LexiconHelper.loadExpressions(lexicon, tokenizer, LexiconHelper.class, "/com/github/oeuvres/alix/fr/mwe-words.csv");
-        LexiconHelper.loadExpressions(lexicon, tokenizer, LexiconHelper.class, "/com/github/oeuvres/alix/fr/mwe-propn.csv");
+        final MweLexicon lexicon = new MweLexicon(2000);
+        LexiconHelper.loadExpressions(
+            lexicon,
+            analyzer,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/mwe-words.csv"
+        );
+        LexiconHelper.loadExpressions(
+            lexicon,
+            analyzer,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/mwe-propn.csv"
+        );
         return lexicon;
     }
 
-
+    /**
+     * Builds the default French normalization map.
+     *
+     * @return populated normalization map
+     */
     public static CharsMap buildNormalizer()
     {
-        CharsMap map = new CharsMap(2000, false); // KEEP case! problems of caps to normalize
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-variants.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-aeoe.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-forenames.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-names.csv", LexiconHelper.OnDuplicate.REPLACE);
-        LexiconHelper.loadMap(map, LexiconHelper.class, "/com/github/oeuvres/alix/fr/norm-misc.csv", LexiconHelper.OnDuplicate.REPLACE);
+        final CharsMap map = new CharsMap(2000, false);
+        LexiconHelper.loadMap(
+            map,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/norm-variants.csv",
+            LexiconHelper.OnDuplicate.REPLACE
+        );
+        LexiconHelper.loadMap(
+            map,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/norm-aeoe.csv",
+            LexiconHelper.OnDuplicate.REPLACE
+        );
+        LexiconHelper.loadMap(
+            map,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv",
+            LexiconHelper.OnDuplicate.REPLACE
+        );
+        LexiconHelper.loadMap(
+            map,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/norm-forenames.csv",
+            LexiconHelper.OnDuplicate.REPLACE
+        );
+        LexiconHelper.loadMap(
+            map,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/norm-names.csv",
+            LexiconHelper.OnDuplicate.REPLACE
+        );
+        LexiconHelper.loadMap(
+            map,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/norm-misc.csv",
+            LexiconHelper.OnDuplicate.REPLACE
+        );
         return map;
     }
 
-    public static CharArraySet buildStopwords()
-    {
-        // set ignore case
-        CharArraySet set = new CharArraySet(1500, true);
-        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/stopwords.csv");
-        return set;
-    }
-    
-    public static CharArraySet buildUcwords()
-    {
-        // keep case
-        CharArraySet set = new CharArraySet(200, false);
-        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/ucwords.csv");
-        return set;
-    }
-    
+    /**
+     * Builds the default proper-name set.
+     *
+     * @return case-insensitive proper-name set
+     */
     public static CharArraySet buildPropn()
     {
-        // set ignore case
-        CharArraySet set = new CharArraySet(2000, true);
-        LexiconHelper.loadSet(set, FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-words.csv");
+        final CharArraySet set = new CharArraySet(2000, true);
+        LexiconHelper.loadSet(
+            set,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/propn-words.csv"
+        );
         return set;
     }
 
+    /**
+     * Builds the default stop-word set.
+     *
+     * @return case-insensitive stop-word set
+     */
+    public static CharArraySet buildStopwords()
+    {
+        final CharArraySet set = new CharArraySet(1500, true);
+        LexiconHelper.loadSet(
+            set,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/stopwords.csv"
+        );
+        return set;
+    }
+
+    /**
+     * Builds the default protected-uppercase set.
+     *
+     * @return case-sensitive uppercase-word set
+     */
+    public static CharArraySet buildUcwords()
+    {
+        final CharArraySet set = new CharArraySet(200, false);
+        LexiconHelper.loadSet(
+            set,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/ucwords.csv"
+        );
+        return set;
+    }
 }
