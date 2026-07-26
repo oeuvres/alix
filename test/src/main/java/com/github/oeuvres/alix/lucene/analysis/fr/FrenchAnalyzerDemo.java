@@ -27,6 +27,7 @@ public class FrenchAnalyzerDemo
         WordTokenizer tokfr = new FrenchCliticTokenizer();
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
         """
+            abstraction réfléchissant,abstraction réfléchissante
             Larguier des Bancels,Larguier des Bancels
             R. Laffont,R. Laffont
             les Creusaz,les Creusaz
@@ -53,6 +54,15 @@ public class FrenchAnalyzerDemo
     
     
     static final List<Case> CASES = List.of(
+        new Case(
+            "",
+            """
+            En troisième lieu, une question essentielle demeure : celle du degré de conscience
+            des abstractions réfléchissantes intervenant dans ou résultant de la construction des
+            coordinations elles-mêmes
+            """,
+            ""
+        ),
         new Case(
             "",
             """

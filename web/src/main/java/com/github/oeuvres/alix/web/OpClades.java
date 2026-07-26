@@ -61,8 +61,6 @@ public class OpClades extends Op
     {
         /** Apply inverse-square-root row-mass scaling. */
         CHI2,
-        /** Normalize each displayed row to unit Euclidean length. */
-        COSINE,
         /** Preserve unscaled residual principal coordinates. */
         G2;
     }
@@ -559,7 +557,12 @@ public class OpClades extends Op
             && geometry == Geometry.CHI2;
 
         if (geometry == Geometry.CHI2) {
-            model.scaleRowsByMass();
+            double power=pars.getDouble("scalemass", 0.5);
+            if (power > 0) model.scaleRowsByMass(power);
+        }
+        else if (geometry == Geometry.G2) {
+            double power=pars.getDouble("scalemass", 0);
+            if (power > 0) model.scaleRowsByMass(power);
         }
         final SvdLayout layout = model.project(MAP_DIMS);
         final double[][] coordinates = layout.coords();
@@ -568,9 +571,6 @@ public class OpClades extends Op
         }
 
         final ContributionData contributions = contributions(masses, coordinates);
-        if (geometry == Geometry.COSINE) {
-            normalizeRows(coordinates);
-        }
 
         final double[] inertia = new double[MAP_DIMS];
         for (int axis = 0;

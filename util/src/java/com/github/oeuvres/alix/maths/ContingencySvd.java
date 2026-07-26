@@ -483,32 +483,43 @@ public class ContingencySvd
     }
 
     /**
-     * Scales each full embedding row by the inverse square root of its mass.
+     * Scales each embedding row by an inverse power of its observed mass.
      *
      * <p>
-     * Applies the correspondence-analysis row factor {@code 1 / sqrt(rowMass)}
-     * using admissible observed row margins, over all numerical-rank dimensions
-     * before projection.
+     * For row mass {@code mass}, the applied factor is
+     * {@code mass^-power}. A power of {@code 0.5} gives the usual
+     * correspondence-analysis row scaling.
      * </p>
      *
+     * @param power positive finite inverse-mass exponent
      * @return this pipeline
-     * @throws IllegalStateException before {@link #decompose()} or after
-     *         previous mass scaling
+     * @throws IllegalArgumentException if {@code power} is not positive and finite
+     * @throws IllegalStateException before decomposition or after previous mass scaling
      */
-    public ContingencySvd scaleRowsByMass()
-    {
+    public ContingencySvd scaleRowsByMass(
+        final double power
+    ) {
         requireEmbedding();
+        if (!Double.isFinite(power) || power <= 0d) {
+            throw new IllegalArgumentException(
+                "power must be positive and finite, got " + power);
+        }
         if (rowsMassScaled) {
             throw new IllegalStateException("rows are already scaled by mass");
         }
+
         final double[] margins = rowSums();
         double total = 0d;
         for (final double margin : margins) {
             total += margin;
         }
+
         for (int row = 0; row < embedding.length; row++) {
             final double mass = total > 0d ? margins[row] / total : 0d;
-            final double factor = mass > 0d ? 1d / Math.sqrt(mass) : 0d;
+            final double factor = mass > 0d
+                ? Math.pow(mass, -power)
+                : 0d;
+
             for (int axis = 0; axis < embedding[row].length; axis++) {
                 embedding[row][axis] *= factor;
             }
@@ -516,6 +527,17 @@ public class ContingencySvd
 
         rowsMassScaled = true;
         return this;
+    }
+
+    /**
+     * Scales each embedding row by the inverse square root of its observed mass.
+     *
+     * @return this pipeline
+     * @throws IllegalStateException before decomposition or after previous mass scaling
+     */
+    public ContingencySvd scaleRowsByMass()
+    {
+        return scaleRowsByMass(0.5d);
     }
 
     /**

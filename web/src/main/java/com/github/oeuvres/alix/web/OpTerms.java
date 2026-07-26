@@ -75,10 +75,10 @@ public final class OpTerms extends Op
         TermLexicon contentLexicon = contentFluc.termLexicon();
         TopTerms topTerms = contentFluc.topTerms();
         String include = pars.getString("include", null);
+        int[] incIds = null; // set include after exclusion of pivots from population
         if (include != null) {
             String[] incs = include.split(",");
-            int[] termIds = contentLexicon.termIds(incs);
-            if (termIds.length > 0) topTerms.include(termIds);
+            incIds = contentLexicon.termIds(incs);
         }
         String exclude = pars.getString("exclude", null);
         if (exclude != null) {
@@ -170,6 +170,7 @@ public final class OpTerms extends Op
             walker.walk(consumer);
             consumer.complete(); // update TopTerms population
             topTerms.populationExclude(pivotIds);
+            topTerms.include(incIds);
             meta.put("pivotIds", pivotIds);
             meta.put("fieldDocs", contentFluc.termStats().fieldDocs());
             meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
