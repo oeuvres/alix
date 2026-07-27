@@ -39,13 +39,11 @@ import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
-import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
-import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
 import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
@@ -56,7 +54,6 @@ import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
@@ -154,6 +151,44 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
                 LexiconHelper.CsvHeader.SKIP
             );
         }
+    }
+
+    /**
+     * Adds one MWE whose declared form is also its canonical output.
+     *
+     * <p>The expression is compiled with the normalization and lemma resources
+     * present when this method is called.</p>
+     *
+     * @param expression expression to analyze and register
+     * @return {@code true} if the analyzed expression contains at least two tokens
+     * @throws IOException if analysis fails
+     */
+    public boolean addExpression(final CharSequence expression) throws IOException
+    {
+        return addExpression(expression, expression);
+    }
+
+    /**
+     * Adds one MWE with an explicit canonical output.
+     *
+     * <p>The expression is compiled with the normalization and lemma resources
+     * present when this method is called.</p>
+     *
+     * @param expression expression to analyze and register
+     * @param canonical canonical form emitted when the expression is matched
+     * @return {@code true} if the analyzed expression contains at least two tokens
+     * @throws IOException if analysis fails
+     */
+    public boolean addExpression(
+        final CharSequence expression,
+        final CharSequence canonical)
+    {
+        return LexiconHelper.addExpression(
+            expressions,
+            mweEntryAnalyzer,
+            expression,
+            canonical
+        );
     }
 
     /**
@@ -342,6 +377,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
             return new TokenStreamComponents(tokenizer, ts);
         }
     }
+
 
     /**
      * Analyzer restricted to TEI observation zones.

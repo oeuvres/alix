@@ -6,9 +6,6 @@ import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
-import com.github.oeuvres.alix.util.Char;
-import com.github.oeuvres.alix.util.WordTokenizer;
-import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 
 
@@ -24,10 +21,9 @@ public class FrenchAnalyzerDemo
      * @throws IOException */
     private static Analyzer buildAnalyzer() throws IOException
     {
-        WordTokenizer tokfr = new FrenchCliticTokenizer();
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
         """
-            abstraction réfléchissant,abstraction réfléchissante
+            abstraction réfléchissante,abstraction réfléchissante
             Larguier des Bancels,Larguier des Bancels
             R. Laffont,R. Laffont
             les Creusaz,les Creusaz
@@ -37,7 +33,8 @@ public class FrenchAnalyzerDemo
             final String key = line.substring(0, comma);
             if (key.isBlank()) return;
             final String value = line.substring(comma + 1);
-            analyzer.expressions.addExpression(tokfr.tokenize(key), value);
+            // TODO, add just an expression 
+            analyzer.addExpression(key, value);
         });
         """
             Stud.

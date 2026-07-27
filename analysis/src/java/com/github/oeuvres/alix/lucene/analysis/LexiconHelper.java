@@ -113,6 +113,85 @@ public final class LexiconHelper
     }
     
     /**
+     * Analyzes and registers one expression under its normalized-form and
+     * lemma-or-form token sequences.
+     *
+     * @param lexicon target MWE lexicon
+     * @param analyzer analyzer used to compile the expression
+     * @param expression source expression
+     * @param canonical canonical form emitted for either accepted sequence
+     * @return {@code true} when the normalized-form sequence contains at least
+     *         two tokens and was therefore eligible for insertion
+     * @throws IOException if token-stream consumption fails
+     * @throws NullPointerException if an argument is null
+     */
+    public static boolean addExpression(
+        final MweLexicon lexicon,
+        final Analyzer analyzer,
+        final CharSequence expression,
+        final CharSequence canonical)
+        throws UncheckedIOException
+    {
+        Objects.requireNonNull(lexicon, "lexicon");
+        Objects.requireNonNull(analyzer, "analyzer");
+        Objects.requireNonNull(expression, "expression");
+        Objects.requireNonNull(canonical, "canonical");
+
+        final StringBuilder analyzedExpression = new StringBuilder(expression);
+        Char.trim(analyzedExpression);
+        if (analyzedExpression.length() == 0) {
+            return false;
+        }
+
+        final StringBuilder canonicalForm = new StringBuilder(canonical);
+        Char.trim(canonicalForm);
+        if (canonicalForm.length() == 0) {
+            return false;
+        }
+        Char.translate(
+            canonicalForm,
+            "\u2019\u2018\u02BC\u2010\u2011\u00AD",
+            "'''---"
+        );
+
+        final List<String> forms = new ArrayList<>();
+        final List<String> lemmas = new ArrayList<>();
+        boolean lemmaDiffers = false;
+
+        try (TokenStream stream = analyzer.tokenStream("mwe", analyzedExpression.toString())) {
+            final CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
+            final LemmaAttribute lemmaAtt = stream.addAttribute(LemmaAttribute.class);
+
+            stream.reset();
+            while (stream.incrementToken()) {
+                if (termAtt.length() == 0) {
+                    continue;
+                }
+
+                final String form = termAtt.toString();
+                final String lemma = lemmaAtt.length() > 0 ? lemmaAtt.toString() : form;
+                forms.add(form);
+                lemmas.add(lemma);
+                lemmaDiffers |= !form.equals(lemma);
+            }
+            stream.end();
+        }
+        catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+
+        if (forms.size() < 2) {
+            return false;
+        }
+
+        lexicon.addExpression(forms, canonicalForm);
+        if (lemmaDiffers) {
+            lexicon.addExpression(lemmas, canonicalForm);
+        }
+        return true;
+    }
+
+    /**
      * Loads multi-word expressions from a CSV file.
      *
      * <p>Column 0 contains the expression to analyze. Column 1 contains the
@@ -215,28 +294,14 @@ public final class LexiconHelper
             protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
                 final StringBuilder expression = row.getCell(colExpression);
-                Char.trim(expression);
-                if (expression.length() == 0) {
-                    return false;
-                }
-
-                final StringBuilder canonical = row.getCell(colCanonical).length() > 0
+                final CharSequence canonical = row.getCell(colCanonical).length() > 0
                     ? row.getCell(colCanonical)
                     : expression;
-                Char.trim(canonical);
-                if (canonical.length() == 0) {
-                    return false;
-                }
-                Char.translate(
-                    canonical,
-                    "\u2019\u2018\u02BC\u2010\u2011\u00AD",
-                    "'''---"
-                );
 
                 try {
-                    return addAnalyzedExpression(lexicon, analyzer, expression, canonical);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(
+                    return addExpression(lexicon, analyzer, expression, canonical);
+                } catch (UncheckedIOException e) {
+                    throw new RuntimeException (
                         row.getSpec() + ":" + row.getLineNo() + " cannot analyze MWE: " + expression,
                         e
                     );
@@ -251,59 +316,6 @@ public final class LexiconHelper
             Report.ReportNull.INSTANCE,
             handler
         );
-    }
-
-    /**
-     * Analyzes and registers one expression under its normalized-form and
-     * lemma-or-form token sequences.
-     *
-     * @param lexicon target MWE lexicon
-     * @param analyzer analyzer used to compile the expression
-     * @param expression source expression
-     * @param canonical canonical form emitted for either accepted sequence
-     * @return {@code true} when the normalized-form sequence contains at least
-     *         two tokens and was therefore eligible for insertion
-     * @throws IOException if token-stream consumption fails
-     */
-    private static boolean addAnalyzedExpression(
-        final MweLexicon lexicon,
-        final Analyzer analyzer,
-        final CharSequence expression,
-        final CharSequence canonical)
-        throws IOException
-    {
-        final List<String> forms = new ArrayList<>();
-        final List<String> lemmas = new ArrayList<>();
-        boolean lemmaDiffers = false;
-
-        try (TokenStream stream = analyzer.tokenStream("mwe", expression.toString())) {
-            final CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
-            final LemmaAttribute lemmaAtt = stream.addAttribute(LemmaAttribute.class);
-
-            stream.reset();
-            while (stream.incrementToken()) {
-                if (termAtt.length() == 0) {
-                    continue;
-                }
-
-                final String form = termAtt.toString();
-                final String lemma = lemmaAtt.length() > 0 ? lemmaAtt.toString() : form;
-                forms.add(form);
-                lemmas.add(lemma);
-                lemmaDiffers |= !form.equals(lemma);
-            }
-            stream.end();
-        }
-
-        if (forms.size() < 2) {
-            return false;
-        }
-
-        lexicon.addExpression(forms, canonical);
-        if (lemmaDiffers) {
-            lexicon.addExpression(lemmas, canonical);
-        }
-        return true;
     }
 
     /**
