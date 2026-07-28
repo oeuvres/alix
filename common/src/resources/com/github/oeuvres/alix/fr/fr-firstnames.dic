@@ -2035,7 +2035,7 @@ Braidy	po:PROPN ne:pers
 Braith	po:PROPN ne:pers
 Bram	po:PROPN ne:persm
 Bran	po:PROPN ne:persm
-Brand	po:PROPN ne:persm
+*Brand	po:PROPN ne:persm
 Branda	po:PROPN ne:persf
 Brande	po:PROPN ne:persf
 Branden	po:PROPN ne:persm
@@ -3232,7 +3232,7 @@ Demon	po:PROPN ne:persm
 Demosthenes	po:PROPN ne:persm
 Demostrate	po:PROPN ne:persf
 Demyan	po:PROPN ne:persm
-Den	po:PROPN ne:persm
+*Den	po:PROPN ne:persm
 Dena	po:PROPN ne:persf
 Dene	po:PROPN ne:persm
 Dénes	po:PROPN ne:persm
@@ -6883,7 +6883,7 @@ Jurij	po:PROPN ne:persm
 Juro	po:PROPN ne:persm
 Jurt	po:PROPN ne:persm
 Jussi	po:PROPN ne:persm
-Just	po:PROPN ne:persm
+*Just	po:PROPN ne:persm
 *Juste	po:PROPN ne:persm
 Justin	po:PROPN ne:persm
 Justina	po:PROPN ne:persf
@@ -10697,7 +10697,7 @@ Ramona	po:PROPN ne:persf
 Ramsay	po:PROPN ne:persm
 Ramses	po:PROPN ne:persm
 Ramsey	po:PROPN ne:persm
-Ran	po:PROPN ne:persf
+*Ran	po:PROPN ne:persf
 Rana	po:PROPN ne:persf
 Ranald	po:PROPN ne:persm
 Randa	po:PROPN ne:persf

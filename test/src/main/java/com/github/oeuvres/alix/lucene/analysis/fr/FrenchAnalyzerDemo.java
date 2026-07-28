@@ -51,7 +51,17 @@ public class FrenchAnalyzerDemo
     
     
     static final List<Case> CASES = List.of(
-        new Case(
+            new Case(
+                "",
+                """
+                Les jours suivants, mêmes réactions mais appliquées à des situations toujours nouvelles.
+                Elle se cambre ainsi devant des objets nouveaux, en manière d’expérience pour voir, devant
+                des objets qu’elle cherche à saisir, devant moi pour me faire continuer les gestes
+                que j’exécute, etc., etc.
+                """,
+                ""
+            ),
+            new Case(
             "",
             """
             En troisième lieu, une question essentielle demeure : celle du degré de conscience

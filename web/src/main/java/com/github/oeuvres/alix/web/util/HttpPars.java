@@ -507,6 +507,54 @@ public class HttpPars
     }
 
     /**
+     * Collect an enum parameter given as comma-separated values and/or repeated
+     * parameters, deduplicated while preserving first-seen order. Matching is
+     * case-insensitive; blank and unknown values are silently skipped.
+     *
+     * <p>If the request contains no valid value, the returned array contains
+     * only the fallback.</p>
+     *
+     * @param <E>      enum type, inferred from {@code fallback}
+     * @param name     parameter name
+     * @param fallback value returned as the sole element when no valid value is found;
+     *                 must not be null
+     * @return ordered array of unique enum constants, or an array containing only
+     *         {@code fallback}
+     * @throws IllegalArgumentException if fallback is null
+     */
+    public <E extends Enum<E>> E[] getEnums(final String name, final E fallback)
+    {
+        if (fallback == null) {
+            throw new IllegalArgumentException(
+                    "fallback can't be null, a value is needed to get the declaring class of the Enum");
+        }
+        final Class<E> enumClass = fallback.getDeclaringClass();
+        final E[] constants = enumClass.getEnumConstants();
+        final String[] values = request.getParameterValues(name);
+        if (values != null) {
+            final List<E> list = new ArrayList<>();
+            final Set<E> seen = new HashSet<>();
+            for (final String value : values) {
+                if (value == null)
+                    continue;
+                for (final String token : value.split(",")) {
+                    final E parsed = parseEnum(token, enumClass);
+                    if (parsed != null && seen.add(parsed)) {
+                        list.add(parsed);
+                    }
+                }
+            }
+            if (!list.isEmpty()) {
+                final E[] out = list.toArray(Arrays.copyOf(constants, list.size()));
+                return record(name, out, Source.HTTP);
+            }
+        }
+        final E[] out = Arrays.copyOf(constants, 1);
+        out[0] = fallback;
+        return record(name, out, Source.FALLBACK);
+    }
+
+    /**
      * Resolve a request parameter as an int.
      *
      * @param name     parameter name.

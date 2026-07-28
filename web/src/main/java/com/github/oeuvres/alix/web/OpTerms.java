@@ -88,14 +88,7 @@ public final class OpTerms extends Op
         }
 
         
-        final TermFlag tflag = pars.getEnum(TFLAG, TermFlag.NULL);
-        final BitSet flagBits = contentLexicon.bits(tflag);
-        meta.put(
-            "flagTerms",
-            flagBits == null
-                ? contentLexicon.vocabSize() - 1
-                : flagBits.cardinality()
-        );
+        final TermFlag[] tflags = pars.getEnums(TFLAG, TermFlag.NULL);
 
         final KeynessScorer scorer = tsort(pars);
         
@@ -115,7 +108,7 @@ public final class OpTerms extends Op
             // The weights for full field are cached if same idfExp is requested
             final double[] weights = contentFluc.termStats().termWeights(index.reader(), idf);
             // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
-            return topTerms.ranking(weights, terms, tflag);
+            return topTerms.ranking(weights, terms, tflags);
         }
         // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
@@ -143,7 +136,7 @@ public final class OpTerms extends Op
             
             // focus % all rest
             final FixedBitSet focusDocs = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
-            return topTerms.select(index.reader(), focusDocs).rank(scorer, terms, tflag);
+            return topTerms.select(index.reader(), focusDocs).rank(scorer, terms, tflags);
         }
         else {
             meta.put("spanQuery", spanQuery.toString());
@@ -178,7 +171,7 @@ public final class OpTerms extends Op
             meta.put("focusDocs", consumer.documentCount());
             meta.put("focusTokens", consumer.tokenCount());
             meta.put("focusSnippets", consumer.contextCount());
-            return topTerms.rank(scorer, terms, tflag);
+            return topTerms.rank(scorer, terms, tflags);
         }
     }
     

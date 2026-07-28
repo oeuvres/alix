@@ -547,17 +547,18 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Ranks flag-matching terms by a caller-supplied score vector.
      *
      * <p>
-     * The flag restricts ordinary ranking candidates only. Stored exclusions are
-     * omitted. Stored inclusions bypass the flag filter, consume places within
+     * The flags restrict ordinary ranking candidates only. A term is eligible
+     * when it carries at least one supplied flag. Stored exclusions are omitted.
+     * Stored inclusions bypass the flag filter, consume places within
      * {@code topK}, and displace the lowest-scoring ordinary terms. If
      * inclusions alone exceed {@code topK}, only their highest-scoring terms are
-     * retained. The supplied vector is not modified. {@link TermFlag#NULL}
-     * selects all ordinary terms.
+     * retained. The supplied vector is not modified. No flags, or
+     * {@link TermFlag#NULL}, select all ordinary terms.
      * </p>
      *
      * @param weights score vector indexed by dense term id
      * @param topK    maximum number of ranked terms to retain
-     * @param flag    required term flag, or {@link TermFlag#NULL} for all terms
+     * @param flags   accepted term flags
      * @return this instance
      * @throws IllegalArgumentException if {@code weights.length != vocabSize()}
      *                                  or if {@code topK < 1}
@@ -566,10 +567,10 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     public TopTerms ranking(
         final double[] weights,
         final int topK,
-        final TermFlag flag)
+        final TermFlag... flags)
     {
         final double[] w = Objects.requireNonNull(weights, "weights");
-        final BitSet filter = rankingFilter(flag);
+        final BitSet filter = rankingFilter(flags);
         checkTopK(topK);
         checkVectorLength(w.length, "weights.length");
 
@@ -713,29 +714,30 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Sets a flag-filtered ranking produced by an external component.
      *
      * <p>
-     * Every ordinary source term must carry {@code flag}. Stored exclusions are
-     * omitted. Stored inclusions bypass the flag, may be inserted even when they
-     * are absent from the source ranking, and consume places within the source
-     * ranking length. {@link TermFlag#NULL} accepts all ordinary source terms.
+     * Every ordinary source term must carry at least one supplied flag. Stored
+     * exclusions are omitted. Stored inclusions bypass the flag filter, may be
+     * inserted even when they are absent from the source ranking, and consume
+     * places within the source ranking length. No flags, or
+     * {@link TermFlag#NULL}, accept all ordinary source terms.
      * </p>
      *
      * @param rank2termId ranked dense term ids
      * @param scores      score vector indexed by dense term id, or {@code null}
      * @param hilites     optional per-rank highlight strings, or {@code null}
-     * @param flag        required term flag, or {@link TermFlag#NULL} for all terms
+     * @param flags       accepted term flags
      * @return this instance
      * @throws IllegalArgumentException if arrays are not aligned with this field
-     *                                  or a ranked term does not carry the flag
+     *                                  or a ranked term carries none of the flags
      * @throws NullPointerException     if {@code rank2termId == null}
      */
     public TopTerms setRanking(
         final int[] rank2termId,
         final double[] scores,
         final String[] hilites,
-        final TermFlag flag)
+        final TermFlag... flags)
     {
         final int[] ranks = Objects.requireNonNull(rank2termId, "rank2termId");
-        final BitSet filter = rankingFilter(flag);
+        final BitSet filter = rankingFilter(flags);
         checkRankIds(ranks, filter);
 
         if (scores != null) {
@@ -1012,7 +1014,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                     && !filter.get(termId)
                     && !rankingInclude.get(termId)) {
                 throw new IllegalArgumentException(
-                    name + "=" + termId + " is excluded by the ranking flag");
+                    name + "=" + termId + " is excluded by the ranking flags");
             }
         }
     }
