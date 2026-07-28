@@ -8,13 +8,18 @@ import com.github.oeuvres.alix.util.Report.ReportConsole;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -56,6 +61,9 @@ public final class TeiIngesterDemo
         TeiIngester ingester = new TeiIngester(report);
         ingester.ingest(cfg, iwc);
         hunspell(cfg, report);
+        String field = cfg.props.getProperty("content", "content");
+        Path indexPath = cfg.luceneRoot.resolve(cfg.name);
+        stopwords(analyzer.stopwords(), indexPath, field, report);
     }
     
     /**
@@ -93,6 +101,74 @@ public final class TeiIngesterDemo
         }
     }
  
+
+    /**
+     * Writes the effective analyzer stopword set beside the Lucene index.
+     *
+     * <p>
+     * Output is {@code <field>.stop}, encoded as UTF-8 with one stopword per
+     * line. Entries are sorted to make the sidecar deterministic. A temporary
+     * sibling file is replaced atomically when the file system supports it.
+     * </p>
+     *
+     * @param stopwords effective stopword set used by the analyzer
+     * @param indexPath Lucene index directory
+     * @param field indexed field name
+     * @param report reporter for the written count
+     * @throws IOException if the sidecar cannot be written or replaced
+     */
+    private static void stopwords(
+        final CharArraySet stopwords,
+        final Path indexPath,
+        final String field,
+        final Report report
+    ) throws IOException
+    {
+        final List<String> words = new ArrayList<>(stopwords.size());
+        for (final Object value : stopwords) {
+            words.add(
+                value instanceof char[] chars
+                    ? new String(chars)
+                    : value.toString()
+            );
+        }
+        words.sort(String::compareTo);
+
+        final String content = words.isEmpty()
+            ? ""
+            : String.join("\n", words) + "\n";
+        final Path path = indexPath.resolve(field + ".stop");
+        final Path temp = Files.createTempFile(
+            indexPath,
+            field + ".",
+            ".stop.tmp"
+        );
+
+        try {
+            Files.writeString(temp, content, StandardCharsets.UTF_8);
+            try {
+                Files.move(
+                    temp,
+                    path,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING
+                );
+            }
+            catch (AtomicMoveNotSupportedException e) {
+                Files.move(
+                    temp,
+                    path,
+                    StandardCopyOption.REPLACE_EXISTING
+                );
+            }
+        }
+        finally {
+            Files.deleteIfExists(temp);
+        }
+
+        report.info(field + ".stop: " + words.size() + " entries written");
+    }
+
     /**
      * Opens a classpath resource, failing loudly rather than returning null.
      *
