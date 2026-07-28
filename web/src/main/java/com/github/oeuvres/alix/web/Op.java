@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
@@ -318,7 +319,7 @@ public abstract class Op
      * @return a filter query, or {@code null} if no parameter narrows the corpus
      * @throws IOException if reading field metadata fails
      */
-    static Query filterQuery(LuceneIndex index, HttpPars pars) throws IOException
+    static Query filterQuery(LuceneIndex index, HttpPars pars, MetaUtil meta) throws IOException
     {
         Builder builder = new BooleanQuery.Builder();
         Query q = yearQuery(index, pars);
@@ -348,17 +349,21 @@ public abstract class Op
      * @return the parsed query, or {@code null} when no {@code q} is given
      * @throws IOException if query parsing fails
      */
-    static SpanQuery spanQuery(LuceneIndex index, HttpPars pars) throws IOException
+    static SpanQuery spanQuery(LuceneIndex index, HttpPars pars, MetaUtil meta) throws IOException
     {
         final String q = pars.getString(Q, null);
         if (q == null)
             return null;
-        final String content = pars.getString(FTEXT, index.content());
+        final FlucText fluc = contentFluc(index, pars, meta);
+        if (fluc == null) return null; // logged upper
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
-        SpanQuery spanQuery = new SpanQueryParser(content, slop, new FrenchCliticTokenizer()).parse(q);
+        SpanQueryParser parser = fluc.spanQueryParser();
+        if (parser == null) return null; // should not arrive, except for IOException?
+        SpanQuery spanQuery = parser.parse(q, slop);
         if (spanQuery == null) return null;
         // rewrite to have multiple terms
         spanQuery = (SpanQuery) index.searcher().rewrite(spanQuery);
+        meta.put("spanQuery", spanQuery.toString(fluc.name()));
         return spanQuery;
     }
 
@@ -471,12 +476,22 @@ public abstract class Op
         String textField = pars.getString(FTEXT, index.content());
         meta.put("textField", textField);
         final FlucText flucText = index.flucText(textField);
-        if (flucText == null) {
-            pars.response().setStatus(404);
-            meta.put("error", "field '" + textField + "' not found or not a text field");
-            return null;
+        if (flucText != null) return flucText;
+        pars.response().setStatus(404);
+        meta.put("error", "field '" + textField + "' not found or not a text field");
+        Fluc ofluc = index.fluc(textField);
+        if (ofluc == null) {
+            meta.log("“" + textField + "” doesn’t exist.");
         }
-        return flucText;
+        else {
+            meta.log(ofluc.toString());
+        }
+        for (Fluc f : index.flucs().values()) {
+            if (!(f instanceof FlucText))
+                continue;
+            meta.log(f.toString());
+        }
+        return null;
     }
     
     /**

@@ -111,8 +111,8 @@ public final class OpSuggest extends Op
         }
         meta.put("textField", ftext);
 
-        final Query filterQuery = filterQuery(index, pars);
-        final SpanQuery spanQuery = spanQuery(index, pars);
+        final Query filterQuery = filterQuery(index, pars, meta);
+        final SpanQuery spanQuery = spanQuery(index, pars, meta);
         final TopTerms topTerms = contentFluc.topTerms();
 
         if (filterQuery == null && spanQuery == null) {
@@ -125,8 +125,6 @@ public final class OpSuggest extends Op
             );
             return topTerms.select(index.reader(), focusDocs);
         }
-        // span query
-        meta.put("spanQuery", spanQuery.toString());
         final int[] pivotIds = contentFluc.termLexicon().termIds(spanQuery);
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanWalker walker = new SpanWalker(

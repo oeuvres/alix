@@ -100,7 +100,7 @@ public final class OpCoocProfile extends Op
         final HttpPars pars,
         final MetaUtil meta
     ) throws IOException {
-        final SpanQuery spanQuery = spanQuery(index, pars);
+        final SpanQuery spanQuery = spanQuery(index, pars, meta);
         if (spanQuery == null) {
             pars.response().setStatus(400);
             meta.put("error", "parameter 'q' (pivot span query) is required");
@@ -134,7 +134,7 @@ public final class OpCoocProfile extends Op
 
         // one walk at the widest radius fills every tick
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
-        final Query filterQuery = filterQuery(index, pars);
+        final Query filterQuery = filterQuery(index, pars, meta);
         final SpanWalker walker = new SpanWalker(
             index.searcher(),
             spanQuery,

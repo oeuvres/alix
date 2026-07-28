@@ -3,6 +3,7 @@ package com.github.oeuvres.alix.web;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Writer;
+import java.util.ResourceBundle;
 import java.util.Set;
 
 import org.apache.lucene.document.Document;
@@ -18,7 +19,6 @@ import com.github.oeuvres.alix.common.Names;
 import com.github.oeuvres.alix.office.Docx;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.snippets.DocxResults;
-import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.ResultsSnippets;
@@ -51,38 +51,24 @@ public class OpResults extends Op {
     @Override
     protected void html(LuceneIndex index, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
+        ResourceBundle messages = ResourceBundle.getBundle("com.github.oeuvres.alix.common.messages", index.locale());
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
 
         final long t0 = System.currentTimeMillis();
 
-        final Query filterQuery = filterQuery(index, pars);
+        final Query filterQuery = filterQuery(index, pars, meta);
         final Writer writer = response.getWriter();
 
-        
-        
-        final String contentFname = pars.getString(FTEXT, index.content());
-        final FlucText contentFluc = index.flucText(contentFname);
-
+        FlucText contentFluc = contentFluc(index, pars, meta);
         // field not found
         if (contentFluc == null) {
-            response.setStatus(404);
-            writer.append("<p class=\"error\">Field ");
-            Fluc ofluc = index.fluc(contentFname);
-            if (ofluc == null)
-                writer.append(contentFname + " doesn’t exist.");
-            else
-                writer.append(ofluc.toString());
-            writer.append("\n<br>Choose among:");
-            for (Fluc f : index.flucs().values()) {
-                if (!(f instanceof FlucText))
-                    continue;
-                writer.append("<br/><a href=\"?").append(pars.queryString(CTX, DOCLINE, DOCS, END, Q, SLOP, START))
-                        .append("&amp;f=").append(f.name()).append("\">").append(f.name()).append("</a>\n");
-            }
-            writer.append("</p>");
+            meta.toHtml(writer, pars);
             return;
         }
+        
+        final String contentFname = pars.getString(FTEXT, index.content());
+
 
         final int ctx = pars.getInt(CTX, CTX_RANGE, CTX_DEFAULT, CTX);
         final String docline = pars.getString(DOCLINE, index.docline());
@@ -95,7 +81,7 @@ public class OpResults extends Op {
         if (filterQuery != null) {
             bits = index.searcher().search(filterQuery, new BitsCollectorManager(index.searcher()));
         }
-        final SpanQuery spanQuery = spanQuery(index, pars);
+        final SpanQuery spanQuery = spanQuery(index, pars, meta);
 
 
 
@@ -109,7 +95,6 @@ public class OpResults extends Op {
             termWeights = new double[0];
             snipLimit = 0;
         } else {
-            meta.put("spanQuery", spanQuery.toString(contentFname));
             final TermStats fieldStats = contentFluc.termStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
             termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
@@ -210,10 +195,26 @@ public class OpResults extends Op {
             writer.append("<p class=\"statshits\">");
             writer.append(String.valueOf(topSnips.hits().length()));
             writer.append(" / ");
-            writer.append(String.valueOf(topSnips.snippetCount()));
-            writer.append(" snippets in ");
-            writer.append(String.valueOf(topSnips.docCount()));
-            writer.append(" textes</p>\n");
+            final int snipCount = topSnips.snippetCount();
+            writer.append(String.valueOf(snipCount));
+            writer.append(" ");
+            if (snipCount < 2) {
+                writer.append(messages.getString("results.snippets.one"));
+            }
+            else {
+                writer.append(messages.getString("results.snippets"));
+            }
+            final int docCount = topSnips.docCount();
+            writer.append(" (").append(String.valueOf(docCount)).append(" ");
+            if (docCount < 2) {
+                writer.append(messages.getString("results.docs.one"));
+            }
+            else {
+                writer.append(messages.getString("results.docs"));
+            }
+            writer.append(")</p>\n");
+            writer.append("<p class=\"query\">" + meta.get("spanQuery") + "</p>");
+            writer.flush();
             
             int rank = 0;
 
@@ -287,7 +288,8 @@ public class OpResults extends Op {
             writer.append("<p class=\"statshits\">");
             if (docs < hitsCount)
                 writer.append(String.valueOf(docs)).append("/");
-            writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
+            writer.append(String.valueOf(hitsCount)).append(" ").append(messages.getString("results.docs")).append("</p>\n");
+            writer.append("<p class=\"query\">" + meta.get("spanQuery") + "</p>");
             writer.flush();
 
             for (ScoreDoc sd : hits) {
@@ -496,7 +498,7 @@ public class OpResults extends Op {
             response.sendError(404, "unknown text field: " + contentFname);
             return;
         }
-        final SpanQuery spanQuery = spanQuery(index, pars);
+        final SpanQuery spanQuery = spanQuery(index, pars, meta);
         if (spanQuery == null) {
             response.sendError(400, "a query is required for docx export");
             return;
@@ -506,7 +508,7 @@ public class OpResults extends Op {
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final String docline = pars.getString(DOCLINE, index.docline());
         final int docs = pars.getInt(DOCS, DOCS_RANGE, DOCS_DEFAULT, DOCS);
-        final Query filterQuery = filterQuery(index, pars);
+        final Query filterQuery = filterQuery(index, pars, meta);
 
         final Query query;
         if (filterQuery != null) {

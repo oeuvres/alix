@@ -65,7 +65,7 @@ public class Fluc implements Closeable
 {
     
     /** Field name as declared in the index. */
-    private final String name;
+    protected final String name;
     /** Whether the field has stored values. */
     private final boolean stored;
     /** Number of documents with at least one value in this field, or {@code -1} when unknown. */

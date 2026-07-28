@@ -55,7 +55,7 @@ public class OpDoc extends Op
             ;
             return;
         }
-        SpanQuery spanQuery = spanQuery(index, pars);
+        SpanQuery spanQuery = spanQuery(index, pars, meta);
         // highlight
         if (spanQuery != null) {
             // same as for the span query parser

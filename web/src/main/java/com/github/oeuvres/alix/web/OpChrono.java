@@ -49,11 +49,10 @@ public class OpChrono extends Op
         final Query filterQuery = typeQuery(index, pars);
         // TODO here, filter 
         histo.distribute(flucText.termStats(), null);
-        final SpanQuery spanQuery = spanQuery(index, pars);
+        final SpanQuery spanQuery = spanQuery(index, pars, meta);
         if (spanQuery == null) {
             return histo;
         }
-        meta.put("spanQuery", spanQuery.toString());
         // same as for the span query parser
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanWalker walker = new SpanWalker(

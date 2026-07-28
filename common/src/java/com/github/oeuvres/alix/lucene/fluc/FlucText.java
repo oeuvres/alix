@@ -6,7 +6,12 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.ParseException;
+import java.util.List;
 
+import org.apache.lucene.analysis.hunspell.Dictionary;
+import org.apache.lucene.analysis.hunspell.Hunspell;
+import org.apache.lucene.analysis.hunspell.SortingStrategy;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -14,11 +19,14 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Terms;
 
 import com.github.oeuvres.alix.lucene.terms.TermStats;
+import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermSuggest;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.util.Report;
+import com.github.oeuvres.alix.util.WordTokenizer;
+import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 
 /**
  * Tokenized Lucene field with positional resources used by Alix operations.
@@ -68,6 +76,12 @@ public final class FlucText extends Fluc
     /** Directory where sidecar resources are stored. */
     private final Path sideDir;
 
+    /** An hunspell dictionary compiled from the lemma indexed */
+    private Hunspell hunspell;
+    
+    /** SpanQueryPrser, built lazily from the Hunspell lemmatizer an indexReader. */
+    private SpanQueryParser spanQueryParser;
+
     /** Dense term lexicon, loaded lazily. */
     private TermLexicon termLexicon;
 
@@ -76,7 +90,7 @@ public final class FlucText extends Fluc
 
     /** Field statistics, loaded lazily. */
     private TermStats termStats;
-    
+
     /** Term suggester, built lazily from the lexicon and field statistics. */
     private TermSuggest termSuggest;
 
@@ -199,6 +213,72 @@ public final class FlucText extends Fluc
     {
         return hasTermVectors;
     }
+    
+    /**
+     * Returns the optional Hunspell lemmatizer for this field.
+     *
+     * <p>
+     * The dictionary is loaded lazily from {@code <field>.dic} and
+     * {@code <field>.aff} in the sidecar directory. When neither file exists,
+     * this method returns {@code null}. When only one file exists, the dictionary
+     * configuration is considered invalid.
+     * </p>
+     *
+     * @return cached Hunspell lemmatizer, or {@code null} when no dictionary is
+     *         configured for the field
+     * @throws IllegalStateException if only one dictionary file exists or if the
+     *         Hunspell files are malformed
+     * @throws UncheckedIOException if the dictionary files cannot be read
+     */
+    public synchronized Hunspell hunspell() throws IOException
+    {
+        if (hunspell != null) {
+            return hunspell;
+        }
+        final Path dicPath = sideDir.resolve(name() + ".dic");
+        final Path affPath = sideDir.resolve(name() + ".aff");
+        final boolean dicExists = Files.isRegularFile(dicPath);
+        final boolean affExists = Files.isRegularFile(affPath);
+
+        if (!dicExists && !affExists) {
+            return null;
+        }
+
+        if (!dicExists || !affExists) {
+            throw new IllegalStateException(
+                "Incomplete Hunspell dictionary for field '" + name()
+                + "': expected both " + dicPath.getFileName()
+                + " and " + affPath.getFileName()
+            );
+        }
+
+        try (
+            InputStream aff = Files.newInputStream(affPath);
+            InputStream dic = Files.newInputStream(dicPath)
+        ) {
+            final Dictionary dictionary = new Dictionary(
+                aff,
+                List.of(dic),
+                false,
+                SortingStrategy.inMemory()
+            );
+            hunspell = new Hunspell(dictionary);
+            return hunspell;
+        }
+        catch (ParseException e) {
+            throw new IllegalStateException(
+                "Malformed Hunspell dictionary for field '" + name() + "'",
+                e
+            );
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(
+                "Cannot load Hunspell dictionary for field '" + name() + "'",
+                e
+            );
+        }
+    }
+
 
     /**
      * Returns the sidecar directory.
@@ -208,6 +288,24 @@ public final class FlucText extends Fluc
     public Path sideDir()
     {
         return sideDir;
+    }
+    
+    
+    /**
+     * Returns a SpanQuery parser 
+     *
+     * @return term suggester
+     * @throws UncheckedIOException if loading the lexicon or statistics fails
+     */
+    public synchronized SpanQueryParser spanQueryParser() throws IOException
+    {
+        if (spanQueryParser != null) {
+            return spanQueryParser;
+        }
+        // too hard coded
+        WordTokenizer tokenizer = new FrenchCliticTokenizer();
+        spanQueryParser = new SpanQueryParser(name, reader, tokenizer, hunspell());
+        return spanQueryParser;
     }
 
     /**

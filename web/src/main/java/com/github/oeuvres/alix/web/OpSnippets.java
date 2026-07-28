@@ -74,7 +74,7 @@ public class OpSnippets extends Op
             ;
             return;
         }
-        SpanQuery spanQuery = spanQuery(index, pars);
+        SpanQuery spanQuery = spanQuery(index, pars, meta);
         if (spanQuery == null) {
             writer
             .append("<p class=\"error\">")

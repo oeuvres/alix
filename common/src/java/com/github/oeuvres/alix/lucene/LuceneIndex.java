@@ -112,7 +112,7 @@ public final class LuceneIndex implements Closeable
         this.content = content;
         this.docline = docline;
         this.year = year;
-        this.locale = locale;
+        this.locale = (locale == null)?Locale.getDefault():locale;
         this.indexDir = indexDir;
         this.reader = reader;
         this.searcher = searcher;

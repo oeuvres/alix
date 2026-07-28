@@ -70,8 +70,8 @@ public final class OpTerms extends Op
     protected static TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final int terms = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
-        
         FlucText contentFluc = contentFluc(index, pars, meta);
+        if (contentFluc == null) return null;
         TermLexicon contentLexicon = contentFluc.termLexicon();
         TopTerms topTerms = contentFluc.topTerms();
         String include = pars.getString("include", null);
@@ -94,8 +94,8 @@ public final class OpTerms extends Op
         
         
         // Build a filter query from years and tags
-        final Query filterQuery = filterQuery(index, pars);
-        final SpanQuery spanQuery = spanQuery(index, pars);
+        final Query filterQuery = filterQuery(index, pars, meta);
+        final SpanQuery spanQuery = spanQuery(index, pars, meta);
         
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
