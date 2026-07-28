@@ -169,6 +169,7 @@ public class OpResults extends Op {
                 writer.append(String.valueOf(docs)).append("/");
             }
             writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
+            writer.append("<p class=\"query\">" + meta.get("spanQuery") + "</p>");
             writer.flush();
             nextDoc = walker.walk(from, docs, results);
         }

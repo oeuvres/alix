@@ -251,6 +251,15 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
             LexiconHelper.loadSet(ucwords, path);
         }
     }
+    
+    /**
+     * Returns the current stopwords for this analyzer.
+     * @return
+     */
+    public CharArraySet stopwords()
+    {
+        return stopwords;
+    }
 
     /**
      * Selects the analyzer used for a field.
@@ -290,8 +299,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         );
         ts = new LemmaFilter(ts, lemmaLexicon, propn);
         ts = new MweFilter(ts, expressions);
+        ts = new StopFilter(ts, stopwords); // remove surface form before lemma becomes term
         ts = new CleanupFilter(ts);
-        ts = new StopFilter(ts, stopwords);
         return ts;
     }
 

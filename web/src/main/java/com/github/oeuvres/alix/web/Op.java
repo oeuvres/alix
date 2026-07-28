@@ -21,6 +21,7 @@ import com.github.oeuvres.alix.lucene.fluc.Fluc;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
+import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser.ParseResult;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -359,11 +360,11 @@ public abstract class Op
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         SpanQueryParser parser = fluc.spanQueryParser();
         if (parser == null) return null; // should not arrive, except for IOException?
-        SpanQuery spanQuery = parser.parse(q, slop);
-        if (spanQuery == null) return null;
+        ParseResult res = parser.parse(q, slop);
+        if (res.spanQuery() == null) return null;
         // rewrite to have multiple terms
-        spanQuery = (SpanQuery) index.searcher().rewrite(spanQuery);
-        meta.put("spanQuery", spanQuery.toString(fluc.name()));
+        SpanQuery spanQuery = (SpanQuery) index.searcher().rewrite(res.spanQuery());
+        meta.put("spanQuery", res);
         return spanQuery;
     }
 
