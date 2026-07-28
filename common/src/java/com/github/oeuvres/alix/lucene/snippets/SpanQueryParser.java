@@ -1,9 +1,13 @@
 package com.github.oeuvres.alix.lucene.snippets;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
+import org.apache.lucene.analysis.hunspell.Hunspell;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper;
 import org.apache.lucene.queries.spans.SpanNearQuery;
@@ -30,9 +34,14 @@ public class SpanQueryParser {
 
     private static final int MAX_EXPANSIONS = 256;
 
+    /** field name */
     private final String field;
-    private final int slop;
+    /** A simple word tokenizer that keep jokers */
     private final WordTokenizer tokenizer;
+    /** pointer to the lucene indexReader to remove absent terms */
+    final IndexReader reader;
+    /** Optional hunspell dictionary for the indexed terms to lemmatize forms */
+    private final Hunspell hunspell;
 
     /**
      * Creates a parser for the given field and slop.
@@ -47,18 +56,17 @@ public class SpanQueryParser {
      */
     public SpanQueryParser(
         final String field,
-        final int slop,
-        final WordTokenizer tokenizer
+        final IndexReader reader,
+        final WordTokenizer tokenizer,
+        final Hunspell hunspell
     ) {
         if (field == null || field.isBlank()) {
             throw new IllegalArgumentException("field must not be blank");
         }
-        if (slop < 0) {
-            throw new IllegalArgumentException("slop must be >= 0, got " + slop);
-        }
         this.field = field;
-        this.slop = slop;
         this.tokenizer = Objects.requireNonNull(tokenizer, "tokenizer");
+        this.reader = Objects.requireNonNull(reader, "reader");
+        this.hunspell = hunspell;
     }
 
     /**
@@ -72,7 +80,7 @@ public class SpanQueryParser {
      * @return assembled span query, or {@code null} if the input is blank or
      *         yields no usable term
      */
-    public SpanQuery parse(final String queryText) {
+    public SpanQuery parse(final String queryText, final int slop) throws IOException {
         if (queryText == null || queryText.isBlank()) {
             return null;
         }
@@ -101,7 +109,7 @@ public class SpanQueryParser {
                     break;
 
                 case TERM:
-                    final SpanQuery clause = spanFor(token.text());
+                    final SpanQuery clause = spanTerm(token.text());
                     if (clause == null) {
                         break;
                     }
@@ -118,7 +126,14 @@ public class SpanQueryParser {
         if (orClauses != null) {
             addCombinedOr(clauses, orClauses);
         }
-        return combineNear(clauses);
+        if (clauses.isEmpty()) {
+            return null;
+        }
+        if (clauses.size() == 1) {
+            return clauses.get(0);
+        }
+        
+        return new SpanNearQuery(clauses.toArray(new SpanQuery[0]), slop, false);
     }
 
     /**
@@ -185,21 +200,7 @@ public class SpanQueryParser {
         }
     }
 
-    /**
-     * Combines main clauses as the final span query.
-     *
-     * @param clauses main query clauses
-     * @return {@code null}, the sole clause, or an unordered near query
-     */
-    private SpanQuery combineNear(final List<SpanQuery> clauses) {
-        if (clauses.isEmpty()) {
-            return null;
-        }
-        if (clauses.size() == 1) {
-            return clauses.get(0);
-        }
-        return new SpanNearQuery(clauses.toArray(new SpanQuery[0]), slop, false);
-    }
+
 
     /**
      * Returns the token with the case of its first Unicode code point inverted.
@@ -247,38 +248,70 @@ public class SpanQueryParser {
         return wrap(new WildcardQuery(new Term(field, text)));
     }
 
+    
     /**
-     * Builds a span clause for one ordinary or multiword term.
+     * Builds a span clause for one query term.
      *
-     * <p>A plain term becomes an exact, case-sensitive
-     * {@link SpanTermQuery}. A term carrying {@code *} or {@code ?} is matched
-     * with both the typed leading-letter case and its opposite case.</p>
+     * <p>Wildcard and prefix terms retain their existing behaviour. For an exact
+     * term, the indexed surface form is preferred. When the surface form is absent
+     * and Hunspell is configured, indexed Hunspell roots are used instead. The
+     * method returns {@code null} when neither the surface form nor any root exists
+     * in the indexed field.</p>
      *
-     * @param word token or quoted multiword term
-     * @return span query, or {@code null} for a degenerate bare joker
+     * @param word normalized token or quoted multiword term
+     * @return an exact term query, a root disjunction, a multi-term query, or
+     *         {@code null} when no indexed term can be produced
+     * @throws IOException if the index term dictionary cannot be read
      */
-    private SpanQuery spanFor(final String word) {
+    private SpanQuery spanTerm(final String word) throws IOException {
         final String text = word.replace('_', ' ');
-        final boolean hasJoker = text.indexOf('*') >= 0 || text.indexOf('?') >= 0;
+        final boolean hasJoker =
+            text.indexOf('*') >= 0 || text.indexOf('?') >= 0;
 
-        if (!hasJoker) {
-            return new SpanTermQuery(new Term(field, text));
+        if (hasJoker) {
+            final SpanQuery asTyped = jokerFor(text);
+            final String flippedText = flipLeadingCase(text);
+
+            if (flippedText == null) {
+                return asTyped;
+            }
+
+            final SpanQuery flipped = jokerFor(flippedText);
+            if (asTyped == null) {
+                return flipped;
+            }
+            if (flipped == null) {
+                return asTyped;
+            }
+
+            return new SpanOrQuery(asTyped, flipped);
         }
 
-        final SpanQuery asTyped = jokerFor(text);
-        final String flippedText = flipLeadingCase(text);
-        if (flippedText == null) {
-            return asTyped;
+        final Term surface = new Term(field, text);
+        if (reader.docFreq(surface) > 0) {
+            return new SpanTermQuery(surface);
         }
 
-        final SpanQuery flipped = jokerFor(flippedText);
-        if (asTyped == null) {
-            return flipped;
+        if (hunspell == null || text.indexOf(' ') >= 0) {
+            return null;
         }
-        if (flipped == null) {
-            return asTyped;
+
+        final List<SpanQuery> roots = new ArrayList<>();
+        for (final String root : new LinkedHashSet<>(hunspell.getRoots(text))) {
+            final Term term = new Term(field, root);
+            if (reader.docFreq(term) > 0) {
+                roots.add(new SpanTermQuery(term));
+            }
         }
-        return new SpanOrQuery(asTyped, flipped);
+
+        if (roots.isEmpty()) {
+            return null;
+        }
+        if (roots.size() == 1) {
+            return roots.get(0);
+        }
+
+        return new SpanOrQuery(roots.toArray(new SpanQuery[0]));
     }
 
     /**
