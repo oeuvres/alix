@@ -223,20 +223,20 @@ public class OpResults extends Op {
                 rank++;
 
                 final SnippetHit hit = entry.value();
-                final Document doc = storedFields.document(
-                    hit.docId(),
-                    Set.of(Names.ALIX_ID, contentFname, docline)
-                );
+                // get all fields, heavy content is needed
+                final Document doc = storedFields.document(hit.docId());
 
                 final String content = doc.get(contentFname);
                 final String docname = doc.get(Names.ALIX_ID);
                 final String title = doc.get(docline);
+                final String year = doc.get(YEAR);
 
-                final int snipAnchor = hit.snipOrd() + 1;
-                final String url = docname + "?"
+                final String docUrl = docname + "?"
                     + pars.queryString(FTEXT, Q, CTX)
                     + "&amp;slop=" + slop;
-
+                final int snipAnchor = hit.snipOrd() + 1;
+                final String snipUrl = docUrl + "#snippet-" + snipAnchor;
+                
                 writer
                     .append("\n<article class=\"result result-snippet\"")
                     .append(" data-docid=\"").append(Integer.toString(hit.docId())).append("\"")
@@ -244,7 +244,7 @@ public class OpResults extends Op {
 
                 writer
                     .append("<h4 class=\"result-title\">")
-                    .append("<a href=\"").append(url).append("\">")
+                    .append("<a href=\"").append(docUrl).append("\">")
                     .append("<span class=\"no\">")
                     .append(Integer.toString(rank))
                     .append(") </span>")
@@ -252,8 +252,11 @@ public class OpResults extends Op {
                     .append("</a>")
                     .append("</h4>\n");
 
+                writer.append("<div class=\"snippet\"");
+                if (year != null) writer.append(" data-year=\"").append(year).append("\"");
                 writer
-                    .append("<div class=\"snippet\">");
+                    .append(" data-href=\"").append(snipUrl).append("\"")
+                    .append(">");
 
                 hit.write(
                     writer,
@@ -264,8 +267,7 @@ public class OpResults extends Op {
 
                 writer
                     .append("<a")
-                    .append(" href=\"").append(url)
-                    .append("#snippet-").append(Integer.toString(snipAnchor)).append("\"")
+                    .append(" href=\"").append(snipUrl).append("\"")
                     .append(" class=\"snippet-open\"")
                     .append(">")
                     .append("→</a>\n")

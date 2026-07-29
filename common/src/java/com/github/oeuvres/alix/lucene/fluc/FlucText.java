@@ -4,11 +4,15 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.hunspell.Dictionary;
 import org.apache.lucene.analysis.hunspell.Hunspell;
 import org.apache.lucene.analysis.hunspell.SortingStrategy;
@@ -40,7 +44,8 @@ import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
  *   <li>{@link TermStats}: field-level term and document statistics;</li>
  *   <li>{@link TermLexicon}: dense term-id mapping and term display strings;</li>
  *   <li>{@link TermRail}: forward positional rail for spans and co-occurrences;</li>
- *   <li>{@link TermSuggest}: folded term-suggestion index.</li>
+ *   <li>{@link TermSuggest}: folded term-suggestion index;</li>
+ *   <li>field stopwords stored in {@code <field>.stop}.</li>
  * </ul>
  *
  * <p>
@@ -76,11 +81,14 @@ public final class FlucText extends Fluc
     /** Directory where sidecar resources are stored. */
     private final Path sideDir;
 
-    /** An hunspell dictionary compiled from the lemma indexed */
+    /** Hunspell dictionary compiled from the indexed field vocabulary. */
     private Hunspell hunspell;
-    
-    /** SpanQueryPrser, built lazily from the Hunspell lemmatizer an indexReader. */
+
+    /** Span query parser built from the field tokenizer and cached resources. */
     private SpanQueryParser spanQueryParser;
+
+    /** Immutable stopword set loaded lazily from the field sidecar. */
+    private CharArraySet stopwords;
 
     /** Dense term lexicon, loaded lazily. */
     private TermLexicon termLexicon;
@@ -159,6 +167,8 @@ public final class FlucText extends Fluc
             failure = closeResource(termLexicon, failure);
         }
         finally {
+            spanQueryParser = null;
+            stopwords = null;
             termSuggest = null;
             termRail = null;
             termLexicon = null;
@@ -292,20 +302,72 @@ public final class FlucText extends Fluc
     
     
     /**
-     * Returns a SpanQuery parser 
+     * Returns the shared span-query parser for this field.
      *
-     * @return term suggester
-     * @throws UncheckedIOException if loading the lexicon or statistics fails
+     * <p>
+     * The parser receives the field's frozen reader, optional Hunspell
+     * dictionary, and stopword sidecar. The tokenizer remains field-specific
+     * configuration and is currently French.
+     * </p>
+     *
+     * @return cached span-query parser
+     * @throws IOException if a field sidecar cannot be read
      */
     public synchronized SpanQueryParser spanQueryParser() throws IOException
     {
         if (spanQueryParser != null) {
             return spanQueryParser;
         }
-        // too hard coded
-        WordTokenizer tokenizer = new FrenchCliticTokenizer();
-        spanQueryParser = new SpanQueryParser(name, reader, tokenizer, hunspell());
+
+        final WordTokenizer tokenizer = new FrenchCliticTokenizer();
+        spanQueryParser = new SpanQueryParser(
+            name,
+            reader,
+            tokenizer,
+            hunspell(),
+            stopwords()
+        );
         return spanQueryParser;
+    }
+
+    /**
+     * Returns the stopwords used when indexing this field.
+     *
+     * <p>
+     * The set is loaded lazily from {@code <field>.stop} in the sidecar
+     * directory. A missing sidecar represents an empty set, preserving
+     * compatibility with indexes created before stopword serialization was
+     * introduced. Empty lines are ignored.
+     * </p>
+     *
+     * @return cached immutable stopword set
+     * @throws IOException if the sidecar exists but cannot be read
+     */
+    public synchronized CharArraySet stopwords() throws IOException
+    {
+        if (stopwords != null) {
+            return stopwords;
+        }
+
+        final Path path = sideDir.resolve(name() + ".stop");
+        if (!Files.isRegularFile(path)) {
+            return null;
+        }
+        stopwords = new CharArraySet(1500, true);
+        boolean first=true;
+        for (
+            String line : Files.readAllLines(path, StandardCharsets.UTF_8)
+        ) {
+            if (line.isBlank()) continue;
+            line = line.trim();
+            if (line.charAt(0) == '#') continue;
+            if (first) {
+                first = false;
+                continue;
+            }
+            stopwords.add(line);
+        }
+        return stopwords;
     }
 
     /**

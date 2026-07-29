@@ -6,6 +6,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.hunspell.Hunspell;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
@@ -60,6 +61,9 @@ public class SpanQueryParser
     /** Frozen index reader used to test exact term existence. */
     private final IndexReader reader;
 
+    /** optional stopwords to filter from query */
+    private final CharArraySet stopwords;
+    
     /** Tokenizer used to normalize user text. */
     private final WordTokenizer tokenizer;
 
@@ -78,7 +82,8 @@ public class SpanQueryParser
         final String field,
         final IndexReader reader,
         final WordTokenizer tokenizer,
-        final Hunspell hunspell
+        final Hunspell hunspell,
+        final CharArraySet stopwords
     ) {
         if (field == null || field.isBlank()) {
             throw new IllegalArgumentException("field must not be blank");
@@ -88,6 +93,7 @@ public class SpanQueryParser
         this.reader = Objects.requireNonNull(reader, "reader");
         this.tokenizer = Objects.requireNonNull(tokenizer, "tokenizer");
         this.hunspell = hunspell;
+        this.stopwords = stopwords;
     }
 
     /**
@@ -468,6 +474,11 @@ public class SpanQueryParser
             return new ResolvedTerm(query, List.of(text));
         }
 
+        if (stopwords != null && stopwords.contains(text)) {
+            return null;
+        }
+        
+        // TODO MWE
         if (hunspell != null && text.indexOf(' ') < 0) {
             final List<SpanQuery> rootClauses = new ArrayList<>();
             final List<String> rootTerms = new ArrayList<>();

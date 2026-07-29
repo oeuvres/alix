@@ -18,6 +18,7 @@ import com.github.oeuvres.alix.util.Markup;
 import com.github.oeuvres.alix.util.TopArray;
 
 import static com.github.oeuvres.alix.common.Names.*;
+import static com.github.oeuvres.alix.web.Pars.YEAR;
 
 /**
  * A {@link SnippetsConsumer} that writes span search results as an HTML
@@ -424,10 +425,14 @@ public class ResultsSnippets implements SnippetsConsumer
         final int rightMatchEndOffset = snippets.matchEndOffset(rightMatchOrd);
 
         final int snipAnchor = snipOrd + 1;
-        final String url = docUrl();
+        final String year = doc.get(YEAR);
+
+        final String url = docUrl() + "#snippet-" + snipAnchor;
+        
+        writer.append("\n<li class=\"snippet\"");
+        if (year != null) writer.append(" data-year=\"").append(year).append("\"");
         writer
-            .append("\n<li class=\"snippet\"")
-            .append(" data-href=\"").append(url).append("#snippet-").append(Integer.toString(snipAnchor)).append("\"")
+            .append(" data-href=\"").append(url).append("\"")
             .append(">\n");
         writer.append("<span class=\"snippet-no\">").append(Integer.toString(snipAnchor)).append("</span>");
 
@@ -451,7 +456,7 @@ public class ResultsSnippets implements SnippetsConsumer
         writer
             .append("</p>\n")
             .append("<a")
-            .append(" href=\"").append(url).append("#snippet-").append(Integer.toString(snipAnchor)).append("\"")
+            .append(" href=\"").append(url).append("\"")
             .append(" class=\"snippet-open\"")
             .append(">")
             .append("→</a>\n");
@@ -470,9 +475,9 @@ public class ResultsSnippets implements SnippetsConsumer
     {
         final boolean wantContent = (snipLimit != 0);
         final boolean wantDocline = (fieldDocline != null);
-        if (wantContent && wantDocline) return Set.of(ALIX_ID, contentField, fieldDocline);
-        if (wantContent) return Set.of(ALIX_ID, contentField);
-        if (wantDocline) return Set.of(ALIX_ID, fieldDocline);
+        if (wantContent && wantDocline) return Set.of(ALIX_ID, contentField, fieldDocline, YEAR);
+        if (wantContent) return Set.of(ALIX_ID, contentField, YEAR);
+        if (wantDocline) return Set.of(ALIX_ID, fieldDocline, YEAR);
         return Set.of(ALIX_ID);
     }
 }
