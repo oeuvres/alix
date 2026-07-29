@@ -169,7 +169,7 @@ public class OpResults extends Op {
                 writer.append(String.valueOf(docs)).append("/");
             }
             writer.append(String.valueOf(hitsCount)).append(" textes ").append("</p>\n");
-            writer.append("<p class=\"query\">" + meta.get("spanQuery") + "</p>");
+            writer.append("<p class=\"query\">" + meta.get("queryString") + "</p>");
             writer.flush();
             nextDoc = walker.walk(from, docs, results);
         }
@@ -214,7 +214,7 @@ public class OpResults extends Op {
                 writer.append(messages.getString("results.docs"));
             }
             writer.append(")</p>\n");
-            writer.append("<p class=\"query\">" + meta.get("spanQuery") + "</p>");
+            writer.append("<p class=\"query\">" + meta.get("queryString") + "</p>");
             writer.flush();
             
             int rank = 0;
@@ -255,6 +255,7 @@ public class OpResults extends Op {
                 writer.append("<div class=\"snippet\"");
                 if (year != null) writer.append(" data-year=\"").append(year).append("\"");
                 writer
+                    .append(" data-slug=\"").append(docname).append("\"")
                     .append(" data-href=\"").append(snipUrl).append("\"")
                     .append(">");
 
@@ -292,7 +293,7 @@ public class OpResults extends Op {
             if (docs < hitsCount)
                 writer.append(String.valueOf(docs)).append("/");
             writer.append(String.valueOf(hitsCount)).append(" ").append(messages.getString("results.docs")).append("</p>\n");
-            writer.append("<p class=\"query\">" + meta.get("spanQuery") + "</p>");
+            writer.append("<p class=\"query\">" + meta.get("queryString") + "</p>");
             writer.flush();
 
             for (ScoreDoc sd : hits) {

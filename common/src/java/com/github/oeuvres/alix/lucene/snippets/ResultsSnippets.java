@@ -18,7 +18,6 @@ import com.github.oeuvres.alix.util.Markup;
 import com.github.oeuvres.alix.util.TopArray;
 
 import static com.github.oeuvres.alix.common.Names.*;
-import static com.github.oeuvres.alix.web.Pars.YEAR;
 
 /**
  * A {@link SnippetsConsumer} that writes span search results as an HTML
@@ -432,6 +431,7 @@ public class ResultsSnippets implements SnippetsConsumer
         writer.append("\n<li class=\"snippet\"");
         if (year != null) writer.append(" data-year=\"").append(year).append("\"");
         writer
+            .append(" data-slug=\"").append(docname).append("\"")
             .append(" data-href=\"").append(url).append("\"")
             .append(">\n");
         writer.append("<span class=\"snippet-no\">").append(Integer.toString(snipAnchor)).append("</span>");

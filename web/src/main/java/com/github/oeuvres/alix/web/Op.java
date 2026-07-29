@@ -364,7 +364,8 @@ public abstract class Op
         if (res.spanQuery() == null) return null;
         // rewrite to have multiple terms
         SpanQuery spanQuery = (SpanQuery) index.searcher().rewrite(res.spanQuery());
-        meta.put("spanQuery", res);
+        meta.put("spanQuery", spanQuery.toString(fluc.name()));
+        meta.put("queryString", res.queryString());
         return spanQuery;
     }
 

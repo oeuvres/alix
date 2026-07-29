@@ -97,6 +97,25 @@ public final class DocSnippets implements SpanCollector
     private long[] matches;
     /** matchOffsets[matchOffsetsIndex] = (startOffset, endOffset) */
     private long[] matchOffsets;
+    /** diagnostic capture of raw spans in Lucene emission order, before merge */
+    private final boolean diagnose;
+    /** (spanStartPos, spanEndPos) as fed to commitSpan, pre-merge; diagnostic only */
+    private long[] rawSpans;
+    /** count of raw spans captured for current doc */
+    private int rawSpanCount;
+
+    /**
+     * Creates a snippet collector with default capacities and no diagnostic capture.
+     *
+     * @param usage    collection level
+     * @param mergeGap maximum accepted gap, in token positions, between the current snippet end
+     *                 and the next span start. {@code 0} merges only touching or overlapping
+     *                 spans; positive values fuse spans separated by up to that many positions.
+     */
+    public DocSnippets(final Usage usage, final int mergeGap)
+    {
+        this(usage, mergeGap, false);
+    }
 
     /**
      * Creates a snippet collector with default capacities.
@@ -105,8 +124,11 @@ public final class DocSnippets implements SpanCollector
      * @param mergeGap maximum accepted gap, in token positions, between the current snippet end
      *                 and the next span start. {@code 0} merges only touching or overlapping
      *                 spans; positive values fuse spans separated by up to that many positions.
+     * @param diagnose when {@code true}, captures every span passed to {@link #commitSpan(int, int)}
+     *                 in Lucene emission order, before merging, for inspection via
+     *                 {@link #rawSpanStart(int)} / {@link #rawSpanEnd(int)}. Adds no other behavior.
      */
-    public DocSnippets(final Usage usage, final int mergeGap)
+    public DocSnippets(final Usage usage, final int mergeGap, final boolean diagnose)
     {
         if (usage == null) {
             throw new IllegalArgumentException("usage must not be null");
@@ -117,6 +139,7 @@ public final class DocSnippets implements SpanCollector
 
         this.usage = usage;
         this.mergeGap = mergeGap;
+        this.diagnose = diagnose;
 
         if (usage != Usage.FREQS) {
             snippets = new long[DEFAULT_SNIPPET_CAPACITY];
@@ -124,6 +147,9 @@ public final class DocSnippets implements SpanCollector
         if (usage == Usage.OFFSETS) {
             matches = new long[DEFAULT_MATCH_CAPACITY];
             matchOffsets = new long[DEFAULT_MATCH_CAPACITY];
+        }
+        if (diagnose) {
+            rawSpans = new long[DEFAULT_SNIPPET_CAPACITY];
         }
     }
 
@@ -204,6 +230,11 @@ public final class DocSnippets implements SpanCollector
         if (spanStartPos < 0 || spanEndPos < spanStartPos) {
             throw new IllegalArgumentException(
                     "invalid span range: " + spanStartPos + ", " + spanEndPos);
+        }
+
+        if (diagnose) {
+            ensureRawSpanCapacity(rawSpanCount + 1);
+            rawSpans[rawSpanCount++] = pack(spanStartPos, spanEndPos);
         }
 
         if (!snipIsOpen) {
@@ -339,6 +370,58 @@ public final class DocSnippets implements SpanCollector
         this.snipIsOpen = false;
         this.matchCount = 0;
         this.count = 0;
+        this.rawSpanCount = 0;
+    }
+
+    /**
+     * Returns the count of raw spans captured for the current document, in Lucene emission order,
+     * before merging. Diagnostic only.
+     *
+     * @return raw span count
+     * @throws IllegalStateException if called before {@link #closeDoc()} or when diagnostics were
+     *                               not enabled at construction
+     */
+    public int rawSpanCount()
+    {
+        requireFinished();
+        requireDiagnose();
+        return rawSpanCount;
+    }
+
+    /**
+     * Returns the end position (exclusive) of the {@code rawOrd}-th captured raw span, in Lucene
+     * emission order. Diagnostic only.
+     *
+     * @param rawOrd raw span ordinal
+     * @return raw span end position
+     * @throws IllegalStateException     if called before {@link #closeDoc()} or when diagnostics
+     *                                   were not enabled at construction
+     * @throws IndexOutOfBoundsException if {@code rawOrd} is outside {@code [0, rawSpanCount())}
+     */
+    public int rawSpanEnd(final int rawOrd)
+    {
+        requireFinished();
+        requireDiagnose();
+        checkIndex(rawOrd, rawSpanCount, "raw span");
+        return unpackLow(rawSpans[rawOrd]);
+    }
+
+    /**
+     * Returns the start position (inclusive) of the {@code rawOrd}-th captured raw span, in Lucene
+     * emission order. Diagnostic only.
+     *
+     * @param rawOrd raw span ordinal
+     * @return raw span start position
+     * @throws IllegalStateException     if called before {@link #closeDoc()} or when diagnostics
+     *                                   were not enabled at construction
+     * @throws IndexOutOfBoundsException if {@code rawOrd} is outside {@code [0, rawSpanCount())}
+     */
+    public int rawSpanStart(final int rawOrd)
+    {
+        requireFinished();
+        requireDiagnose();
+        checkIndex(rawOrd, rawSpanCount, "raw span");
+        return unpackHigh(rawSpans[rawOrd]);
     }
 
     /**
@@ -544,6 +627,22 @@ public final class DocSnippets implements SpanCollector
     }
 
     /**
+     * Ensures the raw span array can hold {@code required} records.
+     */
+    private void ensureRawSpanCapacity(final int required)
+    {
+        if (rawSpans.length >= required) {
+            return;
+        }
+
+        int length = rawSpans.length << 1;
+        while (length < required) {
+            length <<= 1;
+        }
+        rawSpans = Arrays.copyOf(rawSpans, length);
+    }
+
+    /**
      * Ensures snippet array can hold {@code required} records.
      */
     private void ensureSnippetCapacity(final int required)
@@ -587,6 +686,16 @@ public final class DocSnippets implements SpanCollector
     private static long pack(final int high, final int low)
     {
         return ((long) high << 32) | (low & 0xFFFFFFFFL);
+    }
+
+    /**
+     * Requires diagnostic capture mode.
+     */
+    private void requireDiagnose()
+    {
+        if (!diagnose) {
+            throw new IllegalStateException("raw spans not collected");
+        }
     }
 
     /**
