@@ -187,35 +187,11 @@ Gobal TEI parameters and variables are divided in different categories
   </xsl:template>
   <!-- A byline with multiple authors -->
   <xsl:param name="byline">
-    <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt[1]">
-      <xsl:variable name="names" select="tei:author|tei:principal"/>
-      <xsl:choose>
-        <xsl:when test="not($names)"/>
-        <xsl:when test="count($names) &gt; 3">
-            <xsl:for-each select="$names[1]">
-              <span class="persName">
-                <xsl:call-template name="key"/>
-              </span>
-            </xsl:for-each>
-            <xsl:text> </xsl:text>
-            <i>et al.</i>
-        </xsl:when>
-        <xsl:otherwise>
-          <xsl:for-each select="$names">
-            <xsl:if test="position() &gt; 1"> ; </xsl:if>
-            <xsl:variable name="html">
-              <xsl:call-template name="key"/>
-            </xsl:variable>
-            <span class="persName">
-              <xsl:copy-of select="$html"/>
-            </span>
-            <xsl:variable name="norm" select="normalize-space($html)"/>
-            <xsl:variable name="last" select="substring($norm, string-length($norm))"/>
-            <xsl:if test="position() = last() and $last != '.'">.</xsl:if>
-          </xsl:for-each>
-        </xsl:otherwise>
-      </xsl:choose>
-    </xsl:for-each>
+    <xsl:choose>
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt[tei:author|tei:editor]">
+        <xsl:apply-templates select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt" mode="byline"/>
+      </xsl:when>
+    </xsl:choose>
   </xsl:param>
   <!-- Referenced date -->
   <xsl:param name="docdate">
@@ -1854,6 +1830,52 @@ dégrossi le travail, mais du reste à faire  -->
         <xsl:value-of select="$string"/>
       </xsl:otherwise>
     </xsl:choose>
+  </xsl:template>
+  
+  <!-- Get a short byline from different contexts -->
+  <xsl:template match="*" mode="byline"/>
+  <xsl:template match="tei:biblStruct" mode="byline">
+    <xsl:choose>
+      <xsl:when test="tei:analytic[tei:author|tei:editor]">
+        <xsl:apply-templates select="tei:analytic" mode="byline"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates select="tei:monogr" mode="byline"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
+  <xsl:template match="tei:titleStmt | tei:analytic | tei:monogr" mode="byline">
+    <xsl:variable name="names" select="tei:author|tei:principal"/>
+    <xsl:choose>
+      <xsl:when test="not($names)"/>
+      <xsl:when test="count($names) = 1">
+        <xsl:apply-templates select="$names[1]" mode="byline"/>
+      </xsl:when>
+      <xsl:when test="count($names) = 2">
+        <xsl:apply-templates select="$names[1]" mode="byline"/>
+        <xsl:text> &amp; </xsl:text>
+        <xsl:apply-templates select="$names[2]" mode="byline"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates select="$names[1]" mode="byline"/>
+        <xsl:text> et al.</xsl:text>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
+  <xsl:template match="tei:author|tei:editor" mode="byline">
+    <xsl:variable name="name">
+      <xsl:choose>
+        <xsl:when test="tei:surname">
+            <xsl:apply-templates select="tei:surname"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:apply-templates/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <xsl:value-of select="normalize-space($name)"/>
   </xsl:template>
   
 </xsl:transform>

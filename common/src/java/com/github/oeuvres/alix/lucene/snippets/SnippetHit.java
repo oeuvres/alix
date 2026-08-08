@@ -183,9 +183,6 @@ public final class SnippetHit
 
         final int firstMatchStartOffset = matchStartOffset(0);
         final int lastMatchEndOffset = matchEndOffset(matchCount - 1);
-
-        writer.append("<p>");
-
         final int leftOffset = Markup.leftBoundary(
             content,
             firstMatchStartOffset,
@@ -229,8 +226,6 @@ public final class SnippetHit
             lastMatchEndOffset,
             rightOffset
         );
-
-        writer.append("</p>\n");
     }
 
     /**

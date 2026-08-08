@@ -2235,38 +2235,6 @@ Elements block or inline level
     </xsl:choose>
   </xsl:template>
   
-  <xsl:template match="*" mode="byline">
-    <xsl:message>
-      <xsl:value-of select="name()"/>
-      <xsl:text> not implemeted for mode="byline"</xsl:text>
-    </xsl:message>
-  </xsl:template>
-  
-  <xsl:template match="tei:biblStruct" mode="byline">
-    <xsl:choose>
-      <xsl:when test="tei:analytic">
-        <xsl:for-each select="tei:analytic/tei:editor 
-            | tei:analytic/tei:author">
-          <xsl:apply-templates select="."/>
-          <xsl:choose>
-            <xsl:when test="position() = last()"/>
-            <xsl:otherwise>, </xsl:otherwise>
-          </xsl:choose>
-        </xsl:for-each>
-      </xsl:when>
-      <xsl:when test="tei:monogr">
-        <xsl:for-each select="tei:monogr/tei:editor 
-            | tei:monogr/tei:author">
-          <xsl:apply-templates select="."/>
-          <xsl:choose>
-            <xsl:when test="position() = last()"/>
-            <xsl:otherwise>, </xsl:otherwise>
-          </xsl:choose>
-        </xsl:for-each>
-      </xsl:when>
-    </xsl:choose>
-  </xsl:template>
-
   <xsl:template match="tei:biblStruct" mode="year">
     <xsl:variable name="year">
       <xsl:choose>

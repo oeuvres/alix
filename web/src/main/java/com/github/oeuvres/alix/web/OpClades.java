@@ -169,7 +169,7 @@ public class OpClades extends Op
             return;
         }
 
-        final Assoc association = pars.getEnum("residual", Assoc.PEARSON);
+        final Assoc association = pars.getEnum("residual", Assoc.G2);
         final Geometry geometry = pars.getEnum("geometry", Geometry.CHI2);
         final TermMap map = termMap(frequencies, pars, association, geometry);
 

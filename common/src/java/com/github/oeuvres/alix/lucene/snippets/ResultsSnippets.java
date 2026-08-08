@@ -76,7 +76,6 @@ public class ResultsSnippets implements SnippetsConsumer
     private String contentField = "content";
     private String urlTemplate = "";
     private int cachedDocId = -1;
-    private Set<String> storedFieldNames;
     private Document doc;
     private String content;
     private String docname;
@@ -149,6 +148,14 @@ public class ResultsSnippets implements SnippetsConsumer
     public void docClose(
         final int docId
     ) throws IOException {
+        
+        final String source = doc.get("source");
+        if (source != null) {
+            writer
+                .append("<div class=\"source\">")
+                .append(source)
+                .append("</div>");
+        }
         writer.append("</article>\n\n");
         writer.flush();
     }
@@ -166,6 +173,7 @@ public class ResultsSnippets implements SnippetsConsumer
      */
     public void docOpen(
         final int docId,
+        final int rank,
         String css
     ) throws IOException {
         ensureDoc(docId);
@@ -174,11 +182,18 @@ public class ResultsSnippets implements SnippetsConsumer
         } else {
             css = " " + css;
         }
+    
+        
+        writer.append("<article");
+        final String year = doc.get(YEAR);
+        final String byline = doc.get("byline");
+        if (year != null) writer.append(" data-year=\"").append(year).append("\"");
+        if (byline != null) writer.append(" data-byline=\"").append(byline).append("\"");
         writer
-            .append("<article")
             .append(" id=\"").append(docname).append("\"")
             .append(" data-docid=\"").append(String.valueOf(docId)).append("\"")
             .append(" class=\"result").append(css).append("\"")
+            .append(" data-slug=\"").append(docname).append("\"")
             .append(">\n");
         if (fieldDocline != null) {
             final String docline = doc.get(fieldDocline);
@@ -190,7 +205,14 @@ public class ResultsSnippets implements SnippetsConsumer
                     .append(" href=\"").append(url).append("\"")
                     .append(" draggable=\"false\"")
                     .append(" class=\"selectable\"")
-                    .append(">")
+                    .append(">");
+                if (rank > 0) {
+                    writer
+                        .append("<span class=\"no\">")
+                        .append(Integer.toString(rank))
+                        .append(") </span>");
+                }
+                writer
                     .append(docline)
                     .append("</a>\n")
                     .append("</h4>\n");
@@ -214,7 +236,7 @@ public class ResultsSnippets implements SnippetsConsumer
         final int docId,
         final DocSnippets snippets
     ) throws IOException {
-        docOpen(docId, "hassnippets");
+        docOpen(docId, -1, "hassnippets");
         final int snipCount = snippets.count();
         if (snipCount > snipLimit) {
             final String url = docUrl();
@@ -278,6 +300,29 @@ public class ResultsSnippets implements SnippetsConsumer
     {
         return snipLimit;
     }
+    
+    public void snippetOpen(final int snipOrd) throws IOException
+    {
+        final int snipAnchor = snipOrd + 1;
+        writer.append("\n<li class=\"snippet\"");
+        writer.append(">\n");
+        writer.append("<span class=\"snippet-no\">").append(Integer.toString(snipAnchor)).append("</span>");
+    }
+    
+    public void snippetClose(final int snipOrd) throws IOException
+    {
+        final int snipAnchor = snipOrd + 1;
+        final String snipUrl = docUrl() + "#snippet-" + snipAnchor;
+        writer
+            .append("<a")
+            .append(" href=\"").append(snipUrl).append("\"")
+            .append(" class=\"snippet-open\"")
+            .append(">")
+            .append("→</a>\n");
+        writer.append("</li>\n");
+
+    }
+
 
     /**
      * Emits the snippet list for a document, without article shell. Loads
@@ -390,14 +435,13 @@ public class ResultsSnippets implements SnippetsConsumer
         final int docId
     ) throws IOException {
         if (cachedDocId == docId) return;
-        if (storedFieldNames == null) {
-            storedFieldNames = storedFieldNames();
-        }
-        this.doc = storedFields.document(docId, storedFieldNames);
+        this.doc = storedFields.document(docId);
         this.docname = doc.get(ALIX_ID);
         this.content = (snipLimit == 0) ? null : doc.get(contentField);
         this.cachedDocId = docId;
     }
+    
+    
 
     /**
      * Emits one concordance line as an {@code <li>}: left context, pivot
@@ -418,25 +462,13 @@ public class ResultsSnippets implements SnippetsConsumer
         final DocSnippets snippets,
         final int snipOrd
     ) throws IOException {
+
+        snippetOpen(snipOrd);
+        writer.append("<p>");
         final int leftMatchOrd = snippets.snipStartMatch(snipOrd);
         final int rightMatchOrd = snippets.snipEndMatch(snipOrd);
         final int leftMatchStartOffset = snippets.matchStartOffset(leftMatchOrd);
         final int rightMatchEndOffset = snippets.matchEndOffset(rightMatchOrd);
-
-        final int snipAnchor = snipOrd + 1;
-        final String year = doc.get(YEAR);
-
-        final String url = docUrl() + "#snippet-" + snipAnchor;
-        
-        writer.append("\n<li class=\"snippet\"");
-        if (year != null) writer.append(" data-year=\"").append(year).append("\"");
-        writer
-            .append(" data-slug=\"").append(docname).append("\"")
-            .append(" data-href=\"").append(url).append("\"")
-            .append(">\n");
-        writer.append("<span class=\"snippet-no\">").append(Integer.toString(snipAnchor)).append("</span>");
-
-        writer.append("<p>");
         final int leftOffset = Markup.leftBoundary(content, leftMatchStartOffset, ctx, -1);
         detagger.detag(writer, content, leftOffset, leftMatchStartOffset);
         for (int matchOrd = leftMatchOrd; matchOrd <= rightMatchOrd; matchOrd++) {
@@ -453,31 +485,8 @@ public class ResultsSnippets implements SnippetsConsumer
         }
         final int rightOffset = Markup.rightBoundary(content, rightMatchEndOffset, ctx, -1);
         detagger.detag(writer, content, rightMatchEndOffset, rightOffset);
-        writer
-            .append("</p>\n")
-            .append("<a")
-            .append(" href=\"").append(url).append("\"")
-            .append(" class=\"snippet-open\"")
-            .append(">")
-            .append("→</a>\n");
-        writer.append("</li>\n");
+        writer.append("</p>\n");
+        snippetClose(snipOrd);
     }
 
-    /**
-     * Builds the stored-field set to load in {@link #ensureDoc(int)}.
-     * Always includes {@code ALIX_ID}; includes the content field only
-     * when {@code snipLimit != 0}; includes the docline field only when
-     * {@link #fieldDocline} is non-null at the time of first cache load.
-     *
-     * @return immutable set of stored field names to load
-     */
-    private Set<String> storedFieldNames()
-    {
-        final boolean wantContent = (snipLimit != 0);
-        final boolean wantDocline = (fieldDocline != null);
-        if (wantContent && wantDocline) return Set.of(ALIX_ID, contentField, fieldDocline, YEAR);
-        if (wantContent) return Set.of(ALIX_ID, contentField, YEAR);
-        if (wantDocline) return Set.of(ALIX_ID, fieldDocline, YEAR);
-        return Set.of(ALIX_ID);
-    }
 }

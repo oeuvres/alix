@@ -111,6 +111,8 @@ public final class AlixSaxHandler extends DefaultHandler2
     private final Deque<Scope> scopes = new ArrayDeque<>();
     private OpenDoc openDoc = OpenDoc.NONE;
     private FieldMode fieldMode = FieldMode.NONE;
+    /** Name of the currently open field, or {@code null} outside a field. */
+    private String fieldName = null;
     
     /** True once the book-level document has been emitted (before or at {@code </alix:book>}). */
     private boolean bookEmitted = false;
@@ -150,6 +152,7 @@ public final class AlixSaxHandler extends DefaultHandler2
         scopes.push(Scope.ROOT);
         openDoc = OpenDoc.NONE;
         fieldMode = FieldMode.NONE;
+        fieldName = null;
         bookEmitted = false;
         currentBookId = null;
         chapterOrd = 0;
@@ -167,7 +170,7 @@ public final class AlixSaxHandler extends DefaultHandler2
     public void endDocument() throws SAXException
     {
         if (fieldMode != FieldMode.NONE) {
-            throw new SAXException("Unclosed alix:field at end of input");
+            throw new SAXException("Unclosed " + fieldLabel(fieldName) + " at end of input");
         }
         if (openDoc != OpenDoc.NONE) {
             throw new SAXException("Unclosed logical document at end of input: " + openDoc);
@@ -272,7 +275,8 @@ public final class AlixSaxHandler extends DefaultHandler2
             case SCALAR, DERIVED -> {
                 if (!isAllWhitespace(ch, start, length)) {
                     throw new SAXException(
-                            "Field with " + (fieldMode == FieldMode.SCALAR ? "@value" : "@source")
+                            fieldLabel(fieldName) + " with "
+                                    + (fieldMode == FieldMode.SCALAR ? "@value" : "@source")
                                     + " must not have inline content");
                 }
             }
@@ -585,8 +589,6 @@ public final class AlixSaxHandler extends DefaultHandler2
         consumer.accept(doc);
     }
     
-    // ──────────────────────────────── field handling ────────────────────────────────
-    
     /**
      * Opens an {@code <alix:field>} and determines the field mode.
      *
@@ -606,7 +608,7 @@ public final class AlixSaxHandler extends DefaultHandler2
     private void startField(Attributes atts) throws SAXException
     {
         if (fieldMode != FieldMode.NONE) {
-            throw new SAXException("Nested alix:field");
+            throw new SAXException("Nested alix:field inside " + fieldLabel(fieldName));
         }
         
         Scope scope = currentScope();
@@ -617,16 +619,23 @@ public final class AlixSaxHandler extends DefaultHandler2
             throw new SAXException("alix:field outside any logical document");
         }
         
-        String name = requiredAttr(atts, "name");
-        AlixDocument.FieldType type = AlixDocument.FieldType.fromXml(requiredAttr(atts, "type"));
+        String name = requiredAttr(atts, "name", "alix:field");
+        String typeValue = requiredAttr(atts, "type", fieldLabel(name));
+        AlixDocument.FieldType type;
+        try {
+            type = AlixDocument.FieldType.fromXml(typeValue);
+        } catch (IllegalArgumentException e) {
+            throw new SAXException(fieldLabel(name) + ": invalid @type=\"" + typeValue + "\"", e);
+        }
         String value = blankToNull(attr(atts, "value"));
         String source = blankToNull(attr(atts, "source"));
         
         if (value != null && source != null) {
-            throw new SAXException("Field '" + name + "': cannot have both value= and source=");
+            throw new SAXException(fieldLabel(name) + ": cannot have both @value and @source");
         }
         
         doc.openField(name, type, source);
+        fieldName = name;
         
         if (value != null) {
             fieldMode = FieldMode.SCALAR;
@@ -652,6 +661,7 @@ public final class AlixSaxHandler extends DefaultHandler2
         }
         doc.closeField();
         fieldMode = FieldMode.NONE;
+        fieldName = null;
         payloadDepth = 0;
         tagBuf.setLength(0);
     }
@@ -670,8 +680,6 @@ public final class AlixSaxHandler extends DefaultHandler2
         doc.closeField();
     }
     
-    // ──────────────────────────────── state checks ────────────────────────────────
-    
     /** Returns the current structural scope (top of stack). */
     private Scope currentScope()
     {
@@ -682,7 +690,7 @@ public final class AlixSaxHandler extends DefaultHandler2
     private void ensureNoField(String where) throws SAXException
     {
         if (fieldMode != FieldMode.NONE) {
-            throw new SAXException(where + " inside alix:field");
+            throw new SAXException(where + " inside " + fieldLabel(fieldName));
         }
     }
     
@@ -712,8 +720,19 @@ public final class AlixSaxHandler extends DefaultHandler2
         return (qName != null && !qName.isEmpty()) ? qName : localName;
     }
     
-    // ──────────────────────────────── attribute access ────────────────────────────────
-    
+    /**
+     * Formats an {@code alix:field} reference for diagnostics.
+     *
+     * @param name field name, or {@code null} when unavailable
+     * @return {@code alix:field}, optionally followed by its {@code name} attribute
+     */
+    private static String fieldLabel(String name)
+    {
+        if (name == null || name.isBlank())
+            return "alix:field";
+        return "alix:field name=\"" + name + "\"";
+    }
+
     /**
      * Retrieves a no-namespace attribute value by local name.
      *
@@ -750,13 +769,17 @@ public final class AlixSaxHandler extends DefaultHandler2
     /**
      * Like {@link #attr(Attributes, String)} but throws if the value is absent or blank.
      *
+     * @param atts      SAX attributes
+     * @param localName required attribute local name
+     * @param context   element or object description prepended to the diagnostic
+     * @return the non-blank attribute value
      * @throws SAXException if the attribute is missing or blank
      */
-    private static String requiredAttr(Attributes atts, String localName) throws SAXException
+    private static String requiredAttr(Attributes atts, String localName, String context) throws SAXException
     {
         String v = attr(atts, localName);
         if (v == null || v.isBlank()) {
-            throw new SAXException("Missing required attribute @" + localName);
+            throw new SAXException(context + ": missing required attribute @" + localName);
         }
         return v;
     }
@@ -800,8 +823,6 @@ public final class AlixSaxHandler extends DefaultHandler2
         }
         return id;
     }
-    
-    // ──────────────────────────────── utilities ────────────────────────────────
     
     /** Returns {@code null} if the string is null or blank, the string otherwise. */
     private static String blankToNull(String s)

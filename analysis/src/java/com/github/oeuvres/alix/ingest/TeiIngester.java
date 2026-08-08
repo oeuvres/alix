@@ -10,12 +10,15 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.FSDirectory;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.ErrorListener;
 import javax.xml.transform.Source;
+import javax.xml.transform.SourceLocator;
 import javax.xml.transform.Templates;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -52,7 +55,30 @@ public final class TeiIngester
 {
     
     private static final String ALIX_XSL_CLASSPATH = "/com/github/oeuvres/alix/xml/alix.xsl";
-    
+    /** JVM property enabling full stack traces after concise ingestion diagnostics. */
+    private static final String DEBUG_PROPERTY = "alix.debug";
+    /** Error listener that avoids duplicate default XSLT error output while preserving warnings. */
+    private static final ErrorListener XSLT_ERROR_LISTENER = new ErrorListener()
+    {
+        @Override
+        public void error(TransformerException exception) throws TransformerException
+        {
+            throw exception;
+        }
+
+        @Override
+        public void fatalError(TransformerException exception) throws TransformerException
+        {
+            throw exception;
+        }
+
+        @Override
+        public void warning(TransformerException exception)
+        {
+            System.err.println("XSLT warning: " + exception.getMessageAndLocation());
+        }
+    };
+
     private final Report rep;
     private final SAXTransformerFactory stf;
     private final XsltJarResolver resolver;
@@ -66,6 +92,7 @@ public final class TeiIngester
         this.stf = (SAXTransformerFactory) new TransformerFactoryImpl();
         this.resolver = new XsltJarResolver(TeiIngester.class);
         this.stf.setURIResolver(resolver);
+        this.stf.setErrorListener(XSLT_ERROR_LISTENER);
         
         // Compile required alix.xsl from classpath with correct systemId
         Source alixSrc = resolver.source(ALIX_XSL_CLASSPATH);
@@ -114,9 +141,11 @@ public final class TeiIngester
                     ingestOneFile(tei, preTpl, indexer);
                 }
                 catch(Exception e) {
-                    // any error in a file should not break indexation
-                    // use Report should be better
-                    e.printStackTrace(System.err);
+                    // An error in one file must not stop ingestion of the remaining corpus.
+                    rep.error(formatError(tei, e));
+                    if (Boolean.getBoolean(DEBUG_PROPERTY)) {
+                        e.printStackTrace(System.err);
+                    }
                 }
             }
             
@@ -134,6 +163,79 @@ public final class TeiIngester
         rep.info("Indexed and merged: " + config.name + " -> " + current);
     }
     
+    /**
+     * Formats a concise per-file diagnostic while avoiding repeated wrapper messages.
+     *
+     * <p>
+     * A {@link SAXParseException} contributes its genuine input line and column. A
+     * plain {@link SAXException} that is not merely the outer transformation wrapper
+     * is treated as a downstream validation error and preferred over lower-level
+     * causes it may wrap. Otherwise, a genuine
+     * transformation location is retained when available.
+     * </p>
+     *
+     * @param tei   TEI input path being ingested
+     * @param error caught ingestion error
+     * @return concise diagnostic containing the input path and the most useful message
+     */
+    private static String formatError(Path tei, Exception error)
+    {
+        Throwable current = error;
+        Throwable deepestMessage = error;
+        SAXException deepestSax = null;
+        SAXParseException parse = null;
+        TransformerException transform = null;
+
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && !message.isBlank()) {
+                deepestMessage = current;
+            }
+            if (current instanceof SAXParseException saxParse) {
+                parse = saxParse;
+            } else if (current instanceof SAXException sax) {
+                deepestSax = sax;
+            }
+            if (current instanceof TransformerException transformer && transformer.getLocator() != null) {
+                transform = transformer;
+            }
+            Throwable next = current.getCause();
+            if (next == current)
+                break;
+            current = next;
+        }
+
+        boolean validationSax = deepestSax != null && !(deepestSax == error && transform != null);
+        Throwable best = (parse != null) ? parse : (validationSax ? deepestSax : deepestMessage);
+        String message = best.getMessage();
+        if (message == null || message.isBlank()) {
+            message = best.getClass().getSimpleName();
+        }
+
+        StringBuilder out = new StringBuilder(tei.toString());
+        if (parse != null && parse.getLineNumber() > 0) {
+            out.append(':').append(parse.getLineNumber());
+            if (parse.getColumnNumber() > 0) {
+                out.append(':').append(parse.getColumnNumber());
+            }
+        } else if (!validationSax && transform != null) {
+            SourceLocator locator = transform.getLocator();
+            if (locator.getLineNumber() > 0) {
+                out.append(": ");
+                String systemId = locator.getSystemId();
+                if (systemId != null && !systemId.isBlank()) {
+                    out.append(systemId).append(':');
+                }
+                out.append(locator.getLineNumber());
+                if (locator.getColumnNumber() > 0) {
+                    out.append(':').append(locator.getColumnNumber());
+                }
+            }
+        }
+        out.append(": ").append(message);
+        return out.toString();
+    }
+
     private Templates compilePre(Path prexslt) throws TransformerConfigurationException
     {
         if (prexslt == null)
@@ -176,12 +278,14 @@ public final class TeiIngester
     private TransformerHandler buildXsltChain(Templates preTpl, org.xml.sax.ContentHandler sink) throws TransformerConfigurationException 
     {
         TransformerHandler hAlix = stf.newTransformerHandler(alixTpl);
+        hAlix.getTransformer().setErrorListener(XSLT_ERROR_LISTENER);
         hAlix.setResult(new SAXResult(sink));
         
         if (preTpl == null)
             return hAlix;
         
         TransformerHandler hPre = stf.newTransformerHandler(preTpl);
+        hPre.getTransformer().setErrorListener(XSLT_ERROR_LISTENER);
         hPre.setResult(new SAXResult(hAlix));
         return hPre;
     }

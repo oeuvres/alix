@@ -139,7 +139,7 @@ public class OpResults extends Op {
                     break;
                 }
                 docCount++;
-                results.docOpen(docId, "result-row");
+                results.docOpen(docId, docCount, "result-row");
                 results.docClose(docId);
             }
             if (more) {
@@ -221,59 +221,26 @@ public class OpResults extends Op {
 
             for (TopSlot.Entry<SnippetHit> entry : topSnips.hits()) {
                 rank++;
-
                 final SnippetHit hit = entry.value();
+                final int docId = hit.docId();
+                results.docOpen(docId, rank, "result-snippet");
+                results.snippetOpen(hit.snipOrd());
+                
                 // get all fields, heavy content is needed
                 final Document doc = storedFields.document(hit.docId());
-
                 final String content = doc.get(contentFname);
-                final String docname = doc.get(Names.ALIX_ID);
-                final String title = doc.get(docline);
-                final String year = doc.get(YEAR);
 
-                final String docUrl = docname + "?"
-                    + pars.queryString(FTEXT, Q, CTX)
-                    + "&amp;slop=" + slop;
-                final int snipAnchor = hit.snipOrd() + 1;
-                final String snipUrl = docUrl + "#snippet-" + snipAnchor;
-                
-                writer
-                    .append("\n<article class=\"result result-snippet\"")
-                    .append(" data-docid=\"").append(Integer.toString(hit.docId())).append("\"")
-                    .append(">\n");
-
-                writer
-                    .append("<h4 class=\"result-title\">")
-                    .append("<a href=\"").append(docUrl).append("\">")
-                    .append("<span class=\"no\">")
-                    .append(Integer.toString(rank))
-                    .append(") </span>")
-                    .append(title)
-                    .append("</a>")
-                    .append("</h4>\n");
-
-                writer.append("<div class=\"snippet\"");
-                if (year != null) writer.append(" data-year=\"").append(year).append("\"");
-                writer
-                    .append(" data-slug=\"").append(docname).append("\"")
-                    .append(" data-href=\"").append(snipUrl).append("\"")
-                    .append(">");
-
+                writer.append("<p>");
                 hit.write(
                     writer,
                     detagger,
                     content,
                     ctx
                 );
+                writer.append("</p>\n");
 
-                writer
-                    .append("<a")
-                    .append(" href=\"").append(snipUrl).append("\"")
-                    .append(" class=\"snippet-open\"")
-                    .append(">")
-                    .append("→</a>\n")
-                    .append("</div>\n")
-                    .append("</article>\n");
+                results.snippetClose(hit.snipOrd());
+                results.docClose(docCount);
             }
         }
         // document relevance

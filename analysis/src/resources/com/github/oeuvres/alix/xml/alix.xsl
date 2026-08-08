@@ -99,6 +99,17 @@
       </xsl:choose>
     </xsl:for-each>
   </xsl:variable>
+  
+  <xsl:variable name="byline">
+    <xsl:choose>
+      <xsl:when test="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblStruct">
+        <xsl:apply-templates select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblStruct" mode="byline"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt" mode="byline"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:variable>
 
   <!-- an html bibliographic line -->
   <xsl:variable name="bibl-book">
@@ -240,6 +251,14 @@
         <xsl:with-param name="class"/>
       </xsl:call-template>
     </alix:field>
+    <alix:field name="byline" type="store">
+      <xsl:copy-of select="$byline"/>
+    </alix:field>
+    <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[1]">
+      <alix:field name="source" type="store">
+        <xsl:apply-templates/>
+      </alix:field>
+    </xsl:for-each>
     <xsl:call-template name="links"/>
     <xsl:choose>
       <xsl:when test="$doctype = 'book'">
@@ -491,6 +510,13 @@
       </xsl:choose>
       <!-- Todo, chapter authors -->
       <xsl:copy-of select="$author-fields"/>
+      <!-- If source -->
+      <xsl:for-each select="(tei:head/tei:note/tei:bibl[@type = 'source'])[1]">
+        <alix:field name="source" type="store">
+          <xsl:apply-templates/>
+        </alix:field>
+      </xsl:for-each>
+      
       <xsl:call-template name="note-bibl"/>
       <!-- replication of tags from parent -->
       <xsl:copy-of select="$tags"/>
@@ -674,6 +700,16 @@
           <xsl:apply-templates/>
         </alix:field>
       </xsl:for-each>
+      <alix:field name="byline" type="store">
+        <xsl:choose>
+          <xsl:when test="tei:biblStruct">
+            <xsl:apply-templates select="tei:biblStruct" mode="byline"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:copy-of select="$byline"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </alix:field>
     </xsl:for-each>
   </xsl:template>
 
