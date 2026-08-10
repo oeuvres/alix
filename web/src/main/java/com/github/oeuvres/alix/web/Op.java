@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.Fluc;
+import com.github.oeuvres.alix.lucene.fluc.FlucFacet;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
@@ -68,10 +69,10 @@ import static com.github.oeuvres.alix.common.Names.*;
  *
  * <h2>Filters</h2>
  * <p>
- * The package-private helpers {@link #yearQuery}, {@link #typeQuery} and
- * {@link #filterQuery} build the corpus-level filters common to every
- * operation from a shared set of parameters
- * ({@code fyear}, {@code start}, {@code end}, {@code type}).
+ * The package-private helpers {@link #yearQuery}, {@link #typeQuery},
+ * {@link #tagQuery} and {@link #filterQuery} build the corpus-level
+ * filters common to every operation from a shared set of parameters
+ * ({@code fyear}, {@code start}, {@code end}, {@code type}, {@code t}).
  * </p>
  */
 public abstract class Op
@@ -309,10 +310,10 @@ public abstract class Op
 
     /**
      * Builds the corpus-level filter as a single Query, composed of
-     * {@link #yearQuery} and {@link #typeQuery} joined with
-     * {@link BooleanClause.Occur#MUST}. The result collapses to its
+     * {@link #yearQuery}, {@link #typeQuery} and {@link #tagQuery} joined
+     * with {@link BooleanClause.Occur#MUST}. The result collapses to its
      * single clause when only one applies, and is {@code null} when
-     * neither does — letting callers branch on absence without
+     * none does — letting callers branch on absence without
      * wrapping every search in an empty boolean.
      *
      * @param index target Lucene index
@@ -327,6 +328,9 @@ public abstract class Op
         if (q != null)
             builder.add(q, BooleanClause.Occur.MUST);
         q = typeQuery(index, pars);
+        if (q != null)
+            builder.add(q, BooleanClause.Occur.MUST);
+        q = tagQuery(index, pars, meta);
         if (q != null)
             builder.add(q, BooleanClause.Occur.MUST);
         BooleanQuery filterQuery = builder.build();
@@ -367,6 +371,50 @@ public abstract class Op
         meta.put("spanQuery", spanQuery.toString(fluc.name()));
         meta.put("queryString", res.queryString());
         return spanQuery;
+    }
+
+    /**
+     * Builds a tag filter from the repeated {@code t} parameter against the
+     * {@code tag} facet. Multiple tags are joined with
+     * {@link BooleanClause.Occur#SHOULD}, so a document matches when it carries
+     * at least one selected tag.
+     *
+     * <p>Unknown tag values are left in the query rather than silently dropped:
+     * a request containing only unknown tags therefore matches no document,
+     * instead of accidentally removing the filter.</p>
+     *
+     * @param index target Lucene index
+     * @param pars  resolved parameters
+     * @param meta  response metadata collector
+     * @return a tag query, or {@code null} if no tag is selected or the index
+     *         has no {@code tag} facet
+     * @throws IOException reserved for symmetry with the other filter helpers
+     */
+    static Query tagQuery(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
+    {
+        final String[] tags = pars.getStringSet("t");
+        if (tags.length == 0)
+            return null;
+
+        final FlucFacet facet = index.flucFacet("tag");
+        if (facet == null) {
+            meta.log("tag filter ignored: facet field 'tag' not found");
+            return null;
+        }
+
+        if (tags.length == 1) {
+            final Query query = new TermQuery(new Term(facet.name(), tags[0]));
+            meta.put("tagQuery", query.toString(facet.name()));
+            return query;
+        }
+
+        final Builder builder = new BooleanQuery.Builder();
+        for (final String tag : tags) {
+            builder.add(new TermQuery(new Term(facet.name(), tag)), BooleanClause.Occur.SHOULD);
+        }
+        final Query query = builder.build();
+        meta.put("tagQuery", query.toString(facet.name()));
+        return query;
     }
 
     /**
