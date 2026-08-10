@@ -41,8 +41,7 @@ public class OpChrono extends Op
         if (flucText == null || flucYear == null) {
             return null;
         }
-        meta.put("yearField", textName);
-        meta.put("textField", yearName);
+        meta.put("yearField", yearName);
         
         HistoNum histo = flucYear.histo();
         // Build a document filter query from tags or types (but not years?)

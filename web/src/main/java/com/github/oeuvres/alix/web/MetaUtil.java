@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
@@ -137,7 +138,7 @@ public class MetaUtil
     {
         entries.put(key, value);
     }
-    
+
     /**
      * Records a generic {@code Object} meta entry.
      *
@@ -210,11 +211,13 @@ public class MetaUtil
      */
     public void toJson(final JsonWriter jw, final HttpPars pars) throws IOException
     {
+
         jw.name("status").value(pars.response().getStatus());
         jw.name("params").beginObject();
         for (Map.Entry<String, HttpPars.Resolved> e : pars.resolvedParams().entrySet()) {
             jw.name(e.getKey());
-            jsonObject(jw, e.getValue().value());
+            Object value = e.getValue().value();
+            jsonObject(jw, value);
         }
         jw.endObject();
         jw.name("paramsSource").beginObject();
@@ -266,10 +269,6 @@ public class MetaUtil
      */
     protected static void jsonObject(final JsonWriter jw, final Object v) throws IOException
     {
-        if (v == null) {
-            jw.nullValue();
-            return;
-        }
         if (v instanceof Integer i) {
             jw.value(i);
             return;
@@ -291,6 +290,10 @@ public class MetaUtil
             jw.value(s);
             return;
         }
+        if (v == null) {
+            jw.nullValue();
+            return;
+        }
         if (v instanceof Enum<?> e) {
             jw.value(e.name());
             return;
@@ -302,10 +305,10 @@ public class MetaUtil
             jw.endArray();
             return;
         }
-        if (v instanceof String[] arr) {
+        if (v instanceof Object[] arr) {
             jw.beginArray();
-            for (String s : arr)
-                jw.value(s);
+            for (Object o : arr)
+                jsonObject(jw, o);
             jw.endArray();
             return;
         }

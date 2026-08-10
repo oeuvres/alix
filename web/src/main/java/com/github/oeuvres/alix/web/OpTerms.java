@@ -165,9 +165,6 @@ public final class OpTerms extends Op
             topTerms.populationExclude(pivotIds);
             topTerms.include(incIds);
             meta.put("pivotIds", pivotIds);
-            meta.put("fieldDocs", contentFluc.termStats().fieldDocs());
-            meta.put("fieldWidth", contentFluc.termStats().fieldWidth());
-            meta.put("fieldTokens", contentFluc.termStats().fieldTokens());
             meta.put("focusDocs", consumer.documentCount());
             meta.put("focusTokens", consumer.tokenCount());
             meta.put("focusSnippets", consumer.contextCount());

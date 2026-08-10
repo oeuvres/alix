@@ -478,7 +478,12 @@ public abstract class Op
         String textField = pars.getString(FTEXT, index.content());
         meta.put("textField", textField);
         final FlucText flucText = index.flucText(textField);
-        if (flucText != null) return flucText;
+        if (flucText != null) {
+            meta.put(textField + " width", flucText.termStats().fieldWidth());
+            meta.put(textField + " tokens", flucText.termStats().fieldTokens());
+            meta.put(textField + " docs", flucText.termStats().fieldDocs());
+            return flucText;
+        }
         pars.response().setStatus(404);
         meta.put("error", "field '" + textField + "' not found or not a text field");
         Fluc ofluc = index.fluc(textField);

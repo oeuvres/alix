@@ -152,7 +152,7 @@ public class ResultsSnippets implements SnippetsConsumer
         final String source = doc.get("source");
         if (source != null) {
             writer
-                .append("<div class=\"source\">")
+                .append("<div class=\"bibl source\">")
                 .append(source)
                 .append("</div>");
         }

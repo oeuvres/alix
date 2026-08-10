@@ -33,7 +33,7 @@
   <xsl:param name="filename"/>
   <!--  clean url -->
   <xsl:variable name="_ext"/>
-
+  
   <!-- Root authors, maybe replicated at chapter level -->
   <xsl:variable name="author-fields">
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:titleStmt">
@@ -232,6 +232,7 @@
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:notesStmt">
       <xsl:call-template name="note-bibl"/>
     </xsl:for-each>
+    
     <xsl:copy-of select="$author-fields"/>
     <xsl:copy-of select="$info"/>
     <!-- Date of global book -->
@@ -251,9 +252,11 @@
         <xsl:with-param name="class"/>
       </xsl:call-template>
     </alix:field>
-    <alix:field name="byline" type="store">
-      <xsl:copy-of select="$byline"/>
-    </alix:field>
+    <xsl:if test="normalize-space($byline) != ''">
+      <alix:field name="byline" type="store">
+        <xsl:copy-of select="$byline"/>
+      </alix:field>
+    </xsl:if>
     <xsl:for-each select="/tei:TEI/tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:bibl[1]">
       <alix:field name="source" type="store">
         <xsl:apply-templates/>
@@ -286,7 +289,17 @@
             [not(self::tei:salute)]
             [not(self::tei:signed)])[1]
             "/>
-            <div class="{$doctype}-flow{$hourglass}">
+            <div class="{$doctype}-flow{$hourglass}" data-slug="{@xml:id}">
+              <xsl:if test="normalize-space($byline) != ''">
+                <xsl:attribute name="data-byline">
+                  <xsl:value-of select="normalize-space($byline)"/>
+                </xsl:attribute>
+              </xsl:if>
+              <xsl:if test="normalize-space($year) != ''">
+                <xsl:attribute name="data-year">
+                  <xsl:value-of select="normalize-space($year)"/>
+                </xsl:attribute>
+              </xsl:if>
               <header class="{$doctype}-header">
                 <xsl:apply-templates select="$first-non-header/preceding-sibling::node()">
                   <xsl:with-param name="level" select="1"/>
@@ -478,6 +491,21 @@
           <xsl:value-of select="@xml:id"/>
         </xsl:attribute>
       </xsl:if>
+      <xsl:variable name="byline">
+        <xsl:choose>
+          <xsl:when test="tei:note[@type = 'bibl']/tei:biblStruct">
+            <xsl:apply-templates select="tei:note[@type = 'bibl']/tei:biblStruct" mode="byline"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:copy-of select="$byline"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
+      <xsl:if test="normalize-space($byline) != ''">
+        <alix:field name="byline" type="store">
+          <xsl:value-of select="normalize-space($byline)"/>
+        </alix:field>
+      </xsl:if>
       <xsl:if test="/*/@type and normalize-space(/*/@xml:id) != ''">
         <alix:field name="bookid" type="category" value="{normalize-space(/*/@xml:id)}"/>
       </xsl:if>
@@ -500,15 +528,19 @@
       <!-- local date or replicate book date ? -->
       <xsl:variable name="chapyear" select="substring(@when, 1, 4)"/>
       <xsl:variable name="bookyear" select="substring($docdate, 1, 4)"/>
-      <xsl:choose>
-        <xsl:when test="string(number($chapyear)) != 'NaN'">
-          <alix:field name="year" type="int" value="{$chapyear}"/>
-        </xsl:when>
-        <xsl:when test="string(number($bookyear)) != 'NaN'">
-          <alix:field name="year" type="int" value="{$bookyear}"/>
-        </xsl:when>
-      </xsl:choose>
-      <!-- Todo, chapter authors -->
+      <xsl:variable name="year">
+        <xsl:choose>
+          <xsl:when test="string(number($chapyear)) != 'NaN'">
+            <xsl:value-of select="$chapyear"/>
+          </xsl:when>
+          <xsl:when test="string(number($bookyear)) != 'NaN'">
+            <xsl:value-of select="$bookyear"/>
+          </xsl:when>
+        </xsl:choose>
+      </xsl:variable>
+      <xsl:if test="$year != ''">
+        <alix:field name="year" type="int" value="{$year}"/>
+      </xsl:if>
       <xsl:copy-of select="$author-fields"/>
       <!-- If source -->
       <xsl:for-each select="(tei:head/tei:note/tei:bibl[@type = 'source'])[1]">
@@ -543,12 +575,22 @@
             [not(self::tei:salute)]
             [not(self::tei:signed)])[1]
             "/>
-        <div class="chapter-flow{$hourglass}">
-            <header class="chapter-header">
-              <xsl:apply-templates select="$first-non-header/preceding-sibling::node()">
-                <xsl:with-param name="level" select="1"/>
-              </xsl:apply-templates>
-            </header>
+        <div class="chapter-flow{$hourglass}" data-slug="{@xml:id}">
+          <xsl:if test="normalize-space($byline) != ''">
+            <xsl:attribute name="data-byline">
+              <xsl:value-of select="normalize-space($byline)"/>
+            </xsl:attribute>
+          </xsl:if>
+          <xsl:if test="normalize-space($year) != ''">
+            <xsl:attribute name="data-year">
+              <xsl:value-of select="normalize-space($year)"/>
+            </xsl:attribute>
+          </xsl:if>
+          <header class="chapter-header">
+            <xsl:apply-templates select="$first-non-header/preceding-sibling::node()">
+              <xsl:with-param name="level" select="1"/>
+            </xsl:apply-templates>
+          </header>
           <div>
             <xsl:attribute name="class">
               <xsl:text>col2</xsl:text>
@@ -700,16 +742,6 @@
           <xsl:apply-templates/>
         </alix:field>
       </xsl:for-each>
-      <alix:field name="byline" type="store">
-        <xsl:choose>
-          <xsl:when test="tei:biblStruct">
-            <xsl:apply-templates select="tei:biblStruct" mode="byline"/>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:copy-of select="$byline"/>
-          </xsl:otherwise>
-        </xsl:choose>
-      </alix:field>
     </xsl:for-each>
   </xsl:template>
 
