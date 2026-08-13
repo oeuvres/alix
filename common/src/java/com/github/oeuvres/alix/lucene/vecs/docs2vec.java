@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.cli;
+package com.github.oeuvres.alix.lucene.vecs;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -57,7 +57,7 @@ import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
  *     [--out vectors.bin]
  * }</pre>
  */
-public final class Lucene2vec
+public final class docs2vec
 {
     /** Selected vocabulary and its raw term-by-document count table. */
     private record Table(
@@ -73,7 +73,7 @@ public final class Lucene2vec
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
 
-    private Lucene2vec()
+    private docs2vec()
     {
     }
 
