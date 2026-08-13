@@ -1,17 +1,9 @@
 package com.github.oeuvres.alix.lucene.vecs;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -23,8 +15,8 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
+import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
 import com.github.oeuvres.alix.maths.ContingencySvd;
 import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
 
@@ -37,27 +29,16 @@ import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
  * selects the most frequent terms of one field passing a minimum document
  * frequency, fills a raw term-by-document count table, hands it to
  * {@link ContingencySvd} for a G² residual decomposition, weights the axes by
- * {@code sigma^power}, and exports the leading coordinates. A word2vec reader
- * (the historical C tool, gensim, or a Java port) normalises each row on load
- * and ranks by dot product, so the two knobs that shape the result are the
- * retained dimension count and the singular-value power: {@code 0} keeps plain
- * {@code U}, {@code 0.5} keeps {@code U sqrt(Sigma)}, {@code 1} keeps
- * {@code U Sigma}. The retained width cannot exceed the number of documents.
- * </p>
- *
- * <p>
- * Progress is written to standard error with an elapsed-milliseconds stamp; the
- * dense decomposition is the dominant cost and is bracketed by explicit start
- * and end lines. The final one-line summary is written to standard output.
+ * {@code sigma^power}, and exports the leading coordinates.
  * </p>
  *
  * <pre>{@code
- * java com.github.oeuvres.alix.lucene.cli.Lucene2vec <indexDir> <field> \
+ * java com.github.oeuvres.alix.lucene.vecs.docs2vec <indexDir> <field> \
  *     [--dims 100] [--power 0.5] [--minDocFreq 3] [--maxTerms 10000] \
  *     [--out vectors.bin]
  * }</pre>
  */
-public final class docs2vec
+public final class Docs2vec
 {
     /** Selected vocabulary and its raw term-by-document count table. */
     private record Table(
@@ -67,13 +48,13 @@ public final class docs2vec
     ) {}
 
     private static final String USAGE =
-        "usage: Lucene2vec <indexDir> <field>"
+        "usage: docs2vec <indexDir> <field>"
             + " [--dims N] [--power P] [--minDocFreq N] [--maxTerms N] [--out FILE]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
 
-    private docs2vec()
+    private Docs2vec()
     {
     }
 
@@ -117,7 +98,10 @@ public final class docs2vec
 
         log("opening index %s", indexDir);
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
-            final Table table = termDocTable(reader, field, minDocFreq, maxTerms);
+            log("selecting terms (minDocFreq=%d, cap=%d)", minDocFreq, maxTerms);
+            final SelectedTerm[] selected = VecUtil.selectTerms(
+                reader, field, minDocFreq, maxTerms);
+            final Table table = termDocTable(reader, field, selected);
             final int termCount = table.words().length;
             final int docCount = termCount == 0 ? 0 : table.cells()[0].length;
             if (termCount < 2 || docCount < 2) {
@@ -149,7 +133,7 @@ public final class docs2vec
             log("projected to %d dimensions (requested %d)", outDim, dims);
 
             log("writing %d vectors to %s", termCount, out);
-            writeWord2vec(out, table.words(), coords, outDim);
+            VecUtil.writeWord2vec(out, table.words(), coords, outDim);
             log("done");
 
             System.out.printf(
@@ -162,6 +146,9 @@ public final class docs2vec
 
     /**
      * Prints one elapsed-stamped progress line to standard error.
+     *
+     * @param format printf-style format string
+     * @param args format arguments
      */
     private static void log(
         final String format,
@@ -174,14 +161,18 @@ public final class docs2vec
     }
 
     /**
-     * Selects the most frequent qualifying terms of a field and fills their raw
-     * term-by-document count table over the live documents.
+     * Fills the raw term-by-document count table for a selected vocabulary.
+     *
+     * @param reader index reader
+     * @param field indexed field name
+     * @param selected selected vocabulary
+     * @return vocabulary forms and raw count table
+     * @throws IOException if postings cannot be read
      */
     private static Table termDocTable(
         final IndexReader reader,
         final String field,
-        final int minDocFreq,
-        final int maxTerms
+        final SelectedTerm[] selected
     ) throws IOException {
         final Terms terms = MultiTerms.getTerms(reader, field);
         if (terms == null) {
@@ -200,30 +191,7 @@ public final class docs2vec
         }
         log("index has %,d documents (%,d live)", maxDoc, docCount);
 
-        log("scanning term dictionary of field '%s' (minDocFreq=%d)", field, minDocFreq);
-        record Selected(BytesRef bytes, String word, long totalFreq) {}
-        final List<Selected> kept = new ArrayList<>();
-        final TermsEnum scan = terms.iterator();
-        BytesRef term;
-        long scanned = 0L;
-        while ((term = scan.next()) != null) {
-            scanned++;
-            if (scanned % 500_000L == 0L) {
-                log("  scanned %,d terms, %,d kept", scanned, kept.size());
-            }
-            if (scan.docFreq() < minDocFreq) {
-                continue;
-            }
-            kept.add(new Selected(
-                BytesRef.deepCopyOf(term),
-                term.utf8ToString(),
-                scan.totalTermFreq()));
-        }
-        kept.sort((a, b) -> Long.compare(b.totalFreq(), a.totalFreq()));
-        final int termCount = Math.min(kept.size(), maxTerms);
-        log("scanned %,d terms, %,d passed minDocFreq, keeping %,d (cap %,d)",
-            scanned, kept.size(), termCount, maxTerms);
-
+        final int termCount = selected.length;
         log("filling %d x %d count matrix", termCount, docCount);
         final String[] words = new String[termCount];
         final double[][] cells = new double[termCount][docCount];
@@ -232,9 +200,9 @@ public final class docs2vec
         long nonZero = 0L;
         final int logStep = Math.max(1, termCount / 20);
         for (int row = 0; row < termCount; row++) {
-            final Selected selected = kept.get(row);
-            words[row] = selected.word();
-            if (seek.seekExact(selected.bytes())) {
+            final SelectedTerm term = selected[row];
+            words[row] = term.word();
+            if (seek.seekExact(term.bytes())) {
                 postings = seek.postings(postings, PostingsEnum.FREQS);
                 for (int doc = postings.nextDoc();
                         doc != DocIdSetIterator.NO_MORE_DOCS;
@@ -251,35 +219,5 @@ public final class docs2vec
             }
         }
         return new Table(words, cells, nonZero);
-    }
-
-    /**
-     * Writes term vectors in the word2vec binary format: an ASCII header line
-     * {@code "count dim\n"}, then per term its UTF-8 form, a space, {@code dim}
-     * little-endian float32 values, and a newline. Whitespace inside a term is
-     * replaced by an underscore so the space-delimited format stays parseable.
-     */
-    private static void writeWord2vec(
-        final Path out,
-        final String[] words,
-        final double[][] coords,
-        final int dim
-    ) throws IOException {
-        try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(out))) {
-            os.write((words.length + " " + dim + "\n").getBytes(StandardCharsets.US_ASCII));
-            final ByteBuffer buffer = ByteBuffer
-                .allocate(Math.max(1, dim) * Float.BYTES)
-                .order(ByteOrder.LITTLE_ENDIAN);
-            for (int row = 0; row < words.length; row++) {
-                os.write(words[row].replaceAll("\\s", "_").getBytes(StandardCharsets.UTF_8));
-                os.write(' ');
-                buffer.clear();
-                for (int axis = 0; axis < dim; axis++) {
-                    buffer.putFloat((float) coords[row][axis]);
-                }
-                os.write(buffer.array(), 0, dim * Float.BYTES);
-                os.write('\n');
-            }
-        }
     }
 }
