@@ -247,7 +247,7 @@
     <xsl:if test="@type">
       <alix:field name="type" type="category" value="{@type}"/>
     </xsl:if>
-    <alix:field name="toc" type="store">
+    <alix:field name="toc" type="text">
       <xsl:call-template name="toc">
         <xsl:with-param name="class"/>
       </xsl:call-template>
@@ -555,7 +555,7 @@
       <xsl:copy-of select="$info"/>
       <!-- by chapter metadata -->
 
-      <alix:field name="toc" type="store">
+      <alix:field name="toclocal" type="store">
         <xsl:call-template name="toclocal"/>
       </alix:field>
       <alix:field name="content" type="text">
