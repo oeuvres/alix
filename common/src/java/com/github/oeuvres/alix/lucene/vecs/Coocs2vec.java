@@ -86,9 +86,11 @@ public final class Coocs2vec
         int minDocFreq = 3;
         int maxTerms = 10_000;
         Path out = Paths.get("vectors.bin");
+        boolean ppmi = false;
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
+                case "--ppmi" -> ppmi = true;
                 case "--sideDir" -> sideDir = Paths.get(args[++i]);
                 case "--distance" -> distance = Integer.parseInt(args[++i]);
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
@@ -147,9 +149,15 @@ public final class Coocs2vec
                 "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs",
                 table.nonZero(), 100d * table.nonZero() / cellCount, table.pairs());
 
-            log("computing G2 residuals against IPF independence expectation");
-            final ContingencySvd svd = new ContingencySvd(table.cells(), null)
-                .residual(Assoc.G2);
+            final ContingencySvd svd = new ContingencySvd(table.cells(), null);
+            if (ppmi) {
+                log("computing ppmi");
+                svd.ppmi(0.75d);
+            }
+            else {
+                log("computing G2 residuals against IPF independence expectation");
+                svd.residual(Assoc.G2);
+            }
 
             log(
                 "decomposing %,d x %,d residual matrix to top %d dims (randomized SVD)",

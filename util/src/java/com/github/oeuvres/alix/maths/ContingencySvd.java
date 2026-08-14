@@ -115,8 +115,8 @@ public class ContingencySvd
     /** Numerical rank of the latest decomposition. */
     private int rank;
 
-    /** Residual matrix, or {@code null}. */
-    private double[][] residuals;
+    /** Matrix after residual or ppmi, or {@code null}. */
+    private double[][] prepared;
 
     /** Whether row-mass scaling has been applied to the current embedding. */
     private boolean rowsMassScaled;
@@ -239,11 +239,11 @@ public class ContingencySvd
      */
     public ContingencySvd decompose()
     {
-        if (residuals == null) {
+        if (prepared == null) {
             throw new IllegalStateException("call residual() before decompose()");
         }
         final SingularValueDecomposition decomposition =
-            new SingularValueDecomposition(new Array2DRowRealMatrix(residuals, false));
+            new SingularValueDecomposition(new Array2DRowRealMatrix(prepared, false));
         singularValues = decomposition.getSingularValues();
         rank = decomposition.getRank();
 
@@ -283,13 +283,13 @@ public class ContingencySvd
     public ContingencySvd decompose(
         final int dims
     ) {
-        if (residuals == null) {
+        if (prepared == null) {
             throw new IllegalStateException("call residual() before decompose()");
         }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
         }
-        return absorb(new RandomizedSvd(residuals, dims));
+        return absorb(new RandomizedSvd(prepared, dims));
     }
 
     /**
@@ -316,13 +316,13 @@ public class ContingencySvd
         final int oversamples,
         final int powerIterations
     ) {
-        if (residuals == null) {
+        if (prepared == null) {
             throw new IllegalStateException("call residual() before decompose()");
         }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
         }
-        return absorb(new RandomizedSvd(residuals, dims, oversamples, powerIterations));
+        return absorb(new RandomizedSvd(prepared, dims, oversamples, powerIterations));
     }
 
     /**
@@ -369,6 +369,111 @@ public class ContingencySvd
     public int fitIterations()
     {
         return fitIterations;
+    }
+    
+    /**
+     * Computes a positive-PMI matrix with context-distribution smoothing.
+     *
+     * <p>
+     * For observed count {@code x[row][col]}, row margin {@code r[row]},
+     * column margin {@code c[col]}, and smoothing exponent {@code alpha},
+     * the prepared value is:
+     * </p>
+     *
+     * <pre>
+     * max(0, log(x[row][col] * Z / (r[row] * c[col]^alpha)))
+     * </pre>
+     *
+     * <p>
+     * where {@code Z = sum(c[col]^alpha)}. Zero observed cells remain zero.
+     * The smoothing is applied to context (column) marginals only, so for
+     * {@code alpha != 1} the resulting matrix is generally asymmetric even when
+     * the observed matrix is symmetric.
+     * </p>
+     *
+     * <p>
+     * This preparation does not use the IPF independence model. It is an
+     * alternative to {@link #residual(Assoc)} and invalidates any previous
+     * decomposition.
+     * </p>
+     *
+     * @param alpha context-distribution smoothing exponent, in {@code (0, 1]}
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code alpha} is not finite or is outside
+     *         {@code (0, 1]}
+     * @throws IllegalStateException if structural cells are present
+     */
+    public ContingencySvd ppmi(
+        final double alpha
+    ) {
+        if (!Double.isFinite(alpha) || alpha <= 0d || alpha > 1d) {
+            throw new IllegalArgumentException(
+                "alpha must be finite and in (0, 1], got " + alpha);
+        }
+
+        /*
+         * PPMI-CDS assumes an ordinary rectangular word-context table.
+         * A structural-cell/quasi-independence model is a different statistical
+         * problem and should not silently be mixed with this calculation.
+         */
+        for (int row = 0; row < structural.length; row++) {
+            for (int col = 0; col < structural[row].length; col++) {
+                if (structural[row][col]) {
+                    throw new IllegalStateException(
+                        "PPMI-CDS does not support structural cells");
+                }
+            }
+        }
+
+        final double[] rowSums = rowSums();
+        final double[] colSums = colSums();
+
+        final double[] colSmoothed = new double[colSums.length];
+        double z = 0d;
+        for (int col = 0; col < colSums.length; col++) {
+            final double value = Math.pow(colSums[col], alpha);
+            colSmoothed[col] = value;
+            z += value;
+        }
+
+        final double[][] matrix =
+            new double[observed.length][observed[0].length];
+
+        double energy = 0d;
+
+        for (int row = 0; row < observed.length; row++) {
+            final double rowSum = rowSums[row];
+            if (rowSum <= 0d) {
+                continue;
+            }
+
+            for (int col = 0; col < observed[row].length; col++) {
+                final double count = observed[row][col];
+                if (count <= 0d || colSmoothed[col] <= 0d) {
+                    continue;
+                }
+
+                final double value = Math.log(
+                    count * z / (rowSum * colSmoothed[col]));
+
+                if (value <= 0d) {
+                    continue;
+                }
+                if (!Double.isFinite(value)) {
+                    throw new IllegalStateException(
+                        "non-finite PPMI at [" + row + "][" + col + "]");
+                }
+
+                matrix[row][col] = value;
+                energy += value * value;
+            }
+        }
+
+        prepared = matrix;
+        totalInertia = energy;
+        resetFitDiagnostics();
+        invalidateDecomposition();
+        return this;
     }
 
     /**
@@ -460,14 +565,14 @@ public class ContingencySvd
             }
         }
 
-        residuals = matrix;
+        prepared = matrix;
         totalInertia = energy;
         invalidateDecomposition();
         return this;
     }
 
     /**
-     * Returns the residual matrix used by the decomposition.
+     * Returns the prepared matrix (residuals or ppmi) used by the decomposition.
      *
      * <p>
      * The returned array is live and must be treated as read-only. It lets a
@@ -477,9 +582,9 @@ public class ContingencySvd
      *
      * @return live residual matrix, or {@code null} before {@link #residual(Assoc)}
      */
-    public double[][] residuals()
+    public double[][] prepared()
     {
-        return residuals;
+        return prepared;
     }
 
     /**
