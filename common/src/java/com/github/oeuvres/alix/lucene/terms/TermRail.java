@@ -5,13 +5,8 @@ import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
-import java.nio.ByteOrder;
-import java.nio.LongBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
@@ -81,11 +76,10 @@ import com.github.oeuvres.alix.util.Report;
  * </ol>
  * <h2>Memory mapping and I/O</h2>
  * <p>
- * On {@link #open}, both files are memory-mapped via {@code mmap(2)}. Pages are demand-faulted by
- * the OS virtual memory subsystem; no data is loaded eagerly. For sparse access (cooccurrence on a
- * filtered doc set) only the touched pages ever become resident. The {@code .dat} file is mapped
- * through a {@link MemorySegment} backed by an {@link Arena#ofShared() shared Arena}, which
- * supports files larger than 2&nbsp;GB and is safe for concurrent reads.
+ * On {@link #open}, both files are mapped as {@link MemorySegment}s owned by one
+ * {@link Arena#ofShared() shared Arena}. Pages are demand-faulted by the operating system; no data
+ * is loaded eagerly. The shared arena makes concurrent reads valid and, when closed, deterministically
+ * unmaps both files without reflective cleaner access.
  * </p>
  * <h2>Lifecycle</h2>
  * <p>
@@ -99,47 +93,40 @@ public final class TermRail implements Closeable
     /** Sentinel value stored at position gaps and unfilled slots. */
     public static final int NO_TERM = 0;
 
-    /** Maximum tolerated mtime difference between the two rail files, in milliseconds. */
-    private static final long MTIME_TOLERANCE_MS = 5_000L;
-
-    private final Path sideDir;
-    private final String field;
-    private final int docCount;
-    private final long totalPositions;
-    private final Arena datArena;
+    private final Arena arena;
     private final MemorySegment dat;
-    private final LongBuffer off;
-    private final MappedByteBuffer offBuf;
+    private final int docCount;
+    private final String field;
+    private final MemorySegment off;
+    private final Path sideDir;
+    private final long totalPositions;
 
     /**
-     * Private constructor. Use {@link #open(Path, String)} to obtain an instance.
+     * Creates an opened rail backed by arena-owned mapped segments.
      *
      * @param sideDir directory containing the rail files
      * @param field indexed field name covered by this rail
      * @param docCount number of documents represented
      * @param totalPositions total number of position slots across all documents
-     * @param datArena arena owning the {@code dat} mapping; closed on {@link #close()}
-     * @param dat memory-mapped view of {@code <field>.rail.dat}
-     * @param offBuf memory-mapped view of {@code <field>.rail.off}, retained for explicit unmap
-     * @param off long view over {@code offBuf}
+     * @param arena shared arena owning both mappings
+     * @param dat mapped {@code <field>.rail.dat} segment
+     * @param off mapped {@code <field>.rail.off} segment
      */
     private TermRail(
         final Path sideDir,
         final String field,
         final int docCount,
         final long totalPositions,
-        final Arena datArena,
+        final Arena arena,
         final MemorySegment dat,
-        final MappedByteBuffer offBuf,
-        final LongBuffer off
+        final MemorySegment off
     ) {
         this.sideDir = sideDir;
         this.field = field;
         this.docCount = docCount;
         this.totalPositions = totalPositions;
-        this.datArena = datArena;
+        this.arena = arena;
         this.dat = dat;
-        this.offBuf = offBuf;
         this.off = off;
     }
 
@@ -274,13 +261,51 @@ public final class TermRail implements Closeable
     }
 
     /**
-     * Releases the memory-mapped regions. After close, all accessors produce undefined results.
-     * Idempotency is not guaranteed.
+     * Releases both memory-mapped rail files by closing their shared arena.
+     * <p>
+     * After this method returns, all accessors on this instance are invalid. Idempotency is not
+     * guaranteed.
+     * </p>
      */
     @Override
-    public void close() {
-        datArena.close();
-        IOUtil.unmap(offBuf);
+    public void close()
+    {
+        arena.close();
+    }
+
+    /**
+     * Copies all position slots of one document into a caller-provided array.
+     * <p>
+     * The copy preserves {@link #NO_TERM} gap slots. The destination may be larger than the document;
+     * only indices {@code [0, docLength)} are written. This method resolves the document base offset
+     * once, making it suitable for algorithms that need a complete positional document rail in a tight
+     * loop.
+     * </p>
+     *
+     * @param docId Lucene doc id in {@code [0, docCount)}
+     * @param destination destination array with capacity at least {@link #docLength(int)}
+     * @return number of copied position slots
+     * @throws IllegalArgumentException if {@code docId} is out of range or the destination is too small
+     * @throws NullPointerException if {@code destination} is {@code null}
+     */
+    public int copyDocument(
+        final int docId,
+        final int[] destination
+    ) {
+        Objects.requireNonNull(destination, "destination");
+        checkDocId(docId);
+        final long base = offset(docId);
+        final int docLen = (int) ((offset(docId + 1) - base) / Integer.BYTES);
+        if (destination.length < docLen) {
+            throw new IllegalArgumentException(
+                "destination too small: length=" + destination.length + ", docLen=" + docLen);
+        }
+        for (int position = 0; position < docLen; position++) {
+            destination[position] = dat.get(
+                ValueLayout.JAVA_INT_UNALIGNED,
+                base + (long) position * Integer.BYTES);
+        }
+        return docLen;
     }
 
     /**
@@ -303,7 +328,7 @@ public final class TermRail implements Closeable
         final int docId
     ) {
         checkDocId(docId);
-        return (int) ((off.get(docId + 1) - off.get(docId)) / Integer.BYTES);
+        return (int) ((offset(docId + 1) - offset(docId)) / Integer.BYTES);
     }
 
     /**
@@ -334,32 +359,33 @@ public final class TermRail implements Closeable
     }
 
     /**
-     * Opens an existing rail from disk and validates structural consistency. No data is loaded eagerly;
-     * pages of the {@code dat} file are demand-faulted by the OS on first access.
+     * Opens an existing rail from disk and validates structural consistency.
+     * <p>
+     * Both rail files are mapped read-only into one shared arena. Closing the returned rail closes
+     * that arena and unmaps both files. No data is loaded eagerly.
+     * </p>
      * <p>
      * Checks performed:
      * </p>
      * <ul>
      * <li>both files exist as regular files</li>
-     * <li>modification times agree within {@value #MTIME_TOLERANCE_MS}&nbsp;ms</li>
-     * <li>{@code off} file size is a multiple of 8</li>
+     * <li>{@code off} file size is a multiple of 8 and contains at least two entries</li>
      * <li>{@code dat} file size is a multiple of 4</li>
      * <li>{@code off[0] == 0}</li>
      * <li>{@code off[last] == dat byte size}</li>
-     * <li>offsets are monotonically non-decreasing (sampled for large corpora)</li>
+     * <li>offsets are monotonically non-decreasing, sampled for very large corpora</li>
      * </ul>
      *
      * @param sideDir directory containing the rail files
      * @param field indexed field name
-     * @return opened rail; caller must {@link #close()} when done
+     * @return opened rail; caller must {@link #close()} it when done
      * @throws IOException if files are missing or structurally inconsistent
      * @throws NullPointerException if {@code sideDir} or {@code field} is {@code null}
      */
     public static TermRail open(
         final Path sideDir,
         final String field
-    )
-        throws IOException {
+    ) throws IOException {
         Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
 
@@ -367,48 +393,47 @@ public final class TermRail implements Closeable
         final Path offPath = offPath(sideDir, field);
         IOUtil.ensureRegularFile(datPath);
         IOUtil.ensureRegularFile(offPath);
-        // do not check mtime, will not work if index is copied in server
-        // IOUtil.checkMtimeCoherence(MTIME_TOLERANCE_MS, datPath, offPath);
 
-        final MappedByteBuffer offBuf = IOUtil.mapReadOnly(offPath);
-        offBuf.order(ByteOrder.nativeOrder());
+        final long offBytes = Files.size(offPath);
+        if ((offBytes & 7L) != 0L) {
+            throw new IOException("off file size not a multiple of 8: " + offPath);
+        }
+        if (offBytes < 2L * Long.BYTES) {
+            throw new IOException("off file too small (need at least 2 entries): " + offPath);
+        }
+        final long offsetCountLong = offBytes / Long.BYTES;
+        if (offsetCountLong > Integer.MAX_VALUE) {
+            throw new IOException("too many rail offsets for int doc ids: " + offsetCountLong);
+        }
+        final int offsetCount = (int) offsetCountLong;
 
-        Arena datArena = null;
+        final long datBytes = Files.size(datPath);
+        if ((datBytes & 3L) != 0L) {
+            throw new IOException("dat file size not a multiple of 4: " + datPath);
+        }
+
+        final Arena arena = Arena.ofShared();
         try {
-            final long offBytes = offBuf.remaining();
-            if ((offBytes & 7L) != 0)
-                throw new IOException("off file size not a multiple of 8: " + offPath);
-            if (offBytes < 16L)
-                throw new IOException("off file too small (need at least 2 entries): " + offPath);
+            final MemorySegment off = IOUtil.mapReadOnly(offPath, arena);
+            final MemorySegment dat = IOUtil.mapReadOnly(datPath, arena);
 
-            final LongBuffer off = offBuf.asLongBuffer();
-            if (off.get(0) != 0L)
+            if (offset(off, 0) != 0L) {
                 throw new IOException("off[0] != 0 in " + offPath);
-
-            final long datBytes = Files.size(datPath);
-            if ((datBytes & 3L) != 0)
-                throw new IOException("dat file size not a multiple of 4: " + datPath);
-            if (off.get(off.capacity() - 1) != datBytes)
-                throw new IOException(
-                        "off/dat mismatch: last offset=" + off.get(off.capacity() - 1) + ", dat bytes=" + datBytes
-                                + " in " + datPath);
-
-            validateMonotonic(off, offPath);
-
-            datArena = Arena.ofShared();
-            final MemorySegment dat;
-            try (FileChannel fc = FileChannel.open(datPath, StandardOpenOption.READ)) {
-                dat = fc.map(FileChannel.MapMode.READ_ONLY, 0L, datBytes, datArena);
             }
+            final long lastOffset = offset(off, offsetCount - 1);
+            if (lastOffset != datBytes) {
+                throw new IOException(
+                    "off/dat mismatch: last offset=" + lastOffset + ", dat bytes=" + datBytes
+                        + " in " + datPath);
+            }
+            validateMonotonic(off, offsetCount, offPath);
 
-            final int docCount = off.capacity() - 1;
+            final int docCount = offsetCount - 1;
             final long totalPositions = datBytes / Integer.BYTES;
-            return new TermRail(sideDir, field, docCount, totalPositions, datArena, dat, offBuf, off);
-
-        } catch (IOException | RuntimeException e) {
-            if (datArena != null)
-                datArena.close();
-            IOUtil.unmap(offBuf);
+            return new TermRail(sideDir, field, docCount, totalPositions, arena, dat, off);
+        }
+        catch (IOException | RuntimeException e) {
+            arena.close();
             throw e;
         }
     }
@@ -438,8 +463,8 @@ public final class TermRail implements Closeable
         Objects.requireNonNull(positions, "positions");
         Objects.requireNonNull(sink, "sink");
         checkDocId(docId);
-        final long base = off.get(docId);
-        final int docLen = (int) ((off.get(docId + 1) - base) / Integer.BYTES);
+        final long base = offset(docId);
+        final int docLen = (int) ((offset(docId + 1) - base) / Integer.BYTES);
         if (docLen == 0)
             return;
         for (int p = positions.nextSetBit(0); p >= 0 && p < docLen; p = positions.nextSetBit(p + 1)) {
@@ -475,8 +500,8 @@ public final class TermRail implements Closeable
     ) {
         Objects.requireNonNull(sink, "sink");
         checkDocId(docId);
-        final long base = off.get(docId);
-        final int docLen = (int) ((off.get(docId + 1) - base) / Integer.BYTES);
+        final long base = offset(docId);
+        final int docLen = (int) ((offset(docId + 1) - base) / Integer.BYTES);
         final int lo = Math.max(0, startPosition);
         final int hi = Math.min(docLen, endPosition);
         for (int p = lo; p < hi; p++) {
@@ -508,8 +533,8 @@ public final class TermRail implements Closeable
         final int position
     ) {
         checkDocId(docId);
-        final long base = off.get(docId);
-        final int docLen = (int) ((off.get(docId + 1) - base) / Integer.BYTES);
+        final long base = offset(docId);
+        final int docLen = (int) ((offset(docId + 1) - base) / Integer.BYTES);
         if (position < 0 || position >= docLen) {
             throw new IllegalArgumentException(
                     "position " + position + " out of range (docLen=" + docLen + ", docId=" + docId + ")");
@@ -528,7 +553,7 @@ public final class TermRail implements Closeable
     }
 
     /**
-     * Validates a Lucene doc id against this rail's {@link #docCount}.
+     * Validates a Lucene doc id against this rail's document count.
      *
      * @param docId doc id to validate
      * @throws IllegalArgumentException if {@code docId} is out of range
@@ -538,7 +563,7 @@ public final class TermRail implements Closeable
     ) {
         if (docId < 0 || docId >= docCount) {
             throw new IllegalArgumentException(
-                    "docId " + docId + " out of range (docCount=" + docCount + ")");
+                "docId " + docId + " out of range (docCount=" + docCount + ")");
         }
     }
 
@@ -557,6 +582,32 @@ public final class TermRail implements Closeable
     }
 
     /**
+     * Reads one byte offset from this rail's offset segment.
+     *
+     * @param index offset-table index
+     * @return byte offset into the data segment
+     */
+    private long offset(
+        final int index
+    ) {
+        return offset(off, index);
+    }
+
+    /**
+     * Reads one native-endian long value from an offset segment.
+     *
+     * @param off offset segment
+     * @param index long-value index
+     * @return stored long value
+     */
+    private static long offset(
+        final MemorySegment off,
+        final int index
+    ) {
+        return off.get(ValueLayout.JAVA_LONG_UNALIGNED, (long) index * Long.BYTES);
+    }
+
+    /**
      * Resolves the path of the offset file for one field.
      *
      * @param dir side directory
@@ -571,28 +622,43 @@ public final class TermRail implements Closeable
     }
 
     /**
-     * Verifies the offset buffer is monotonically non-decreasing. For corpora with more than 1&nbsp;M
-     * offset entries, only every 4096th entry is checked to keep {@link #open} O(1) amortised.
+     * Verifies that sampled offsets are monotonically non-decreasing.
+     * <p>
+     * Every entry is checked up to one million offsets. Above that size, every 4096th entry plus
+     * the final entry is checked to keep opening cost bounded.
+     * </p>
      *
-     * @param off long view over the offset file
-     * @param offPath path of the offset file, used only for error messages
-     * @throws IOException if a non-monotonic offset is detected
+     * @param off mapped offset segment
+     * @param offsetCount number of long offsets stored in the segment
+     * @param offPath offset-file path used in error messages
+     * @throws IOException if a sampled offset decreases
      */
     private static void validateMonotonic(
-        final LongBuffer off,
+        final MemorySegment off,
+        final int offsetCount,
         final Path offPath
-    )
-        throws IOException {
-        final int cap = off.capacity();
-        final int stride = cap > 1_048_576 ? 4096 : 1;
-        long prev = 0L;
-        for (int i = 1; i < cap; i += stride) {
-            final long cur = off.get(i);
-            if (cur < prev) {
+    ) throws IOException {
+        final int stride = offsetCount > 1_048_576 ? 4096 : 1;
+        int previousIndex = 0;
+        long previous = offset(off, 0);
+        for (int index = stride; index < offsetCount; index += stride) {
+            final long current = offset(off, index);
+            if (current < previous) {
                 throw new IOException(
-                        "Rail offsets not monotonic at index " + i + ": " + prev + " → " + cur + " in " + offPath);
+                    "rail offsets not monotonic between indices " + previousIndex + " and " + index
+                        + ": " + previous + " -> " + current + " in " + offPath);
             }
-            prev = cur;
+            previousIndex = index;
+            previous = current;
+        }
+        final int last = offsetCount - 1;
+        if (previousIndex != last) {
+            final long current = offset(off, last);
+            if (current < previous) {
+                throw new IOException(
+                    "rail offsets not monotonic between indices " + previousIndex + " and " + last
+                        + ": " + previous + " -> " + current + " in " + offPath);
+            }
         }
     }
 }

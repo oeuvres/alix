@@ -15,24 +15,19 @@ import com.github.oeuvres.alix.maths.ContingencySvd;
 import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
 
 /**
- * Reduces a Lucene term-by-cooccurring-term table to dense term vectors by
- * signed G² residual SVD, and writes them in the word2vec binary format.
- *
+ * Reduces a Lucene term-by-cooccurring-term table to dense term vectors by signed G² residual SVD
+ * and writes them in the word2vec binary format.
  * <p>
- * The vocabulary is selected by minimum document frequency, then by decreasing
- * total term frequency. Rows and columns use the same selected vocabulary. For
- * each occurrence of a selected term, selected terms at positional distance
- * {@code 1..distance} on either side contribute one count. Equivalently, each
- * unordered positional pair is visited once and written symmetrically into the
- * matrix. For two occurrences of the same term, the diagonal receives two
- * counts, one for each pivot/cooc direction.
+ * The vocabulary is selected by minimum document frequency, then by decreasing total term
+ * frequency. Rows and columns use the same selected vocabulary. Each unordered pair of selected
+ * token occurrences whose positional distance is in {@code [1, distance]} is visited once and
+ * contributes symmetrically to the contingency table. For two occurrences of the same selected
+ * term, the diagonal receives two counts, corresponding to the two pivot/cooc directions.
  * </p>
- *
  * <p>
- * The positional source is a {@link TermRail}. Each document rail is copied
- * once into a reusable row-id buffer, preserving {@link TermRail#NO_TERM} gaps
- * as unselected positions. Pair counting then runs only on primitive arrays;
- * no rail lookup occurs in the inner cooccurrence loop.
+ * Position gaps represented by {@link TermRail#NO_TERM} remain part of positional distance. Each
+ * document is copied from {@link TermRail} once into a reusable {@code int[]} and converted in place
+ * from rail term ids to selected matrix-row ids before pair counting.
  * </p>
  *
  * <pre>{@code
@@ -59,14 +54,17 @@ public final class Coocs2vec
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
 
+    /**
+     * Non-instantiable command-line experiment.
+     */
     private Coocs2vec()
     {
     }
 
     /**
-     * Runs the export.
+     * Runs the cooccurrence-vector export.
      *
-     * @param args index directory, field, then options
+     * @param args index directory, field, then command-line options
      * @throws IOException if the index, rail, or output file cannot be accessed
      */
     public static void main(
@@ -138,20 +136,23 @@ public final class Coocs2vec
             }
             log("selected %,d terms", termCount);
 
-            final long cells = (long) termCount * termCount;
-            log("allocating %,d x %,d matrix: %,d cells, about %.1f MiB raw doubles",
-                termCount, termCount, cells, cells * Double.BYTES / 1048576d);
-
+            final long cellCount = (long) termCount * termCount;
+            log(
+                "building %,d x %,d cooccurrence matrix, distance +/-%,d"
+                    + " (%,d cells, %.1f MiB raw doubles)",
+                termCount, termCount, distance, cellCount,
+                cellCount * Double.BYTES / 1048576d);
             final Table table = coocTable(rail, lexicon, selected, distance);
-            log("matrix %,d x %,d, %,d non-zero cells (%.2f%% dense), %,d positional pairs",
-                termCount, termCount, table.nonZero(),
-                100d * table.nonZero() / cells, table.pairs());
+            log(
+                "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs",
+                table.nonZero(), 100d * table.nonZero() / cellCount, table.pairs());
 
             log("computing G2 residuals against IPF independence expectation");
             final ContingencySvd svd = new ContingencySvd(table.cells(), null)
                 .residual(Assoc.G2);
 
-            log("decomposing %,d x %,d residual matrix to top %d dims (randomized SVD)",
+            log(
+                "decomposing %,d x %,d residual matrix to top %d dims (randomized SVD)",
                 termCount, termCount, dims);
             svd.decompose(dims);
             log("decomposition done, rank %d", svd.singularValues().length);
@@ -177,7 +178,7 @@ public final class Coocs2vec
     }
 
     /**
-     * Builds the symmetric selected-term cooccurrence table from the rail.
+     * Builds the symmetric selected-term cooccurrence table from the positional rail.
      *
      * @param rail positional term rail
      * @param lexicon term-id lexicon corresponding to the rail
@@ -201,7 +202,8 @@ public final class Coocs2vec
             final SelectedTerm term = selected[row];
             final int termId = lexicon.id(term.bytes());
             if (termId < 1) {
-                throw new IllegalStateException("selected term absent from lexicon: " + term.word());
+                throw new IllegalStateException(
+                    "selected term absent from lexicon: " + term.word());
             }
             words[row] = term.word();
             rowByTermId[termId] = row;
@@ -211,28 +213,28 @@ public final class Coocs2vec
         long nonZero = 0L;
         long pairs = 0L;
         final int docCount = rail.docCount();
-        final int logStep = Math.max(1, docCount / 20);
 
         for (int docId = 0; docId < docCount; docId++) {
             final int docLen = rail.docLength(docId);
             if (docLen > rows.length) {
                 rows = new int[docLen];
             }
-            for (int pos = 0; pos < docLen; pos++) {
-                final int termId = rail.termId(docId, pos);
-                rows[pos] = (termId >= 0 && termId < rowByTermId.length)
+            rail.copyDocument(docId, rows);
+            for (int position = 0; position < docLen; position++) {
+                final int termId = rows[position];
+                rows[position] = (termId >= 0 && termId < rowByTermId.length)
                     ? rowByTermId[termId]
                     : -1;
             }
 
-            for (int pos = 0; pos < docLen; pos++) {
-                final int row = rows[pos];
+            for (int position = 0; position < docLen; position++) {
+                final int row = rows[position];
                 if (row < 0) {
                     continue;
                 }
-                final int hi = Math.min(docLen, pos + distance + 1);
-                for (int q = pos + 1; q < hi; q++) {
-                    final int col = rows[q];
+                final int end = Math.min(docLen, position + distance + 1);
+                for (int next = position + 1; next < end; next++) {
+                    final int col = rows[next];
                     if (col < 0) {
                         continue;
                     }
@@ -243,7 +245,8 @@ public final class Coocs2vec
                     cells[row][col]++;
                     if (row == col) {
                         cells[row][row]++;
-                    } else {
+                    }
+                    else {
                         if (cells[col][row] == 0d) {
                             nonZero++;
                         }
@@ -251,17 +254,12 @@ public final class Coocs2vec
                     }
                 }
             }
-
-            if ((docId + 1) % logStep == 0 || docId + 1 == docCount) {
-                log("  scanned %,d / %,d documents, %,d selected pairs",
-                    docId + 1, docCount, pairs);
-            }
         }
         return new Table(words, cells, nonZero, pairs);
     }
 
     /**
-     * Prints one elapsed-stamped progress line to standard error.
+     * Prints one elapsed-time-stamped progress line to standard error.
      *
      * @param format printf-style format string
      * @param args format arguments

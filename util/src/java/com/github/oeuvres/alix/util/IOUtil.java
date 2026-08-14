@@ -4,11 +4,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
@@ -22,48 +19,28 @@ import java.util.Objects;
 /**
  * Static file-handling primitives that complement {@link java.nio.file.Files}.
  * <p>
- * Every method addresses a recurring safety gap in the JDK's NIO file API:
+ * The class provides recurring guards and I/O patterns used by Alix: precondition checks,
+ * atomic-write-via-temp helpers, multi-file modification-time coherence checks, arena-owned
+ * read-only memory mappings, and a compact length-prefixed UTF-8 encoding.
  * </p>
- * <ul>
- *   <li><b>Precondition guards</b> — {@link #ensureAbsent(Path)},
- *       {@link #ensureRegularFile(Path)} — fail fast before a write or open begins.</li>
- *   <li><b>Atomic-write-via-temp</b> — {@link #tmpPath(Path)}, {@link #moveTemp(Path, Path)},
- *       {@link #deleteIfExists(Path)} — write to a temporary sibling, rename into place,
- *       clean up on failure.</li>
- *   <li><b>Multi-file coherence</b> — {@link #checkMtimeCoherence(long, Path...)} — cheap
- *       startup guard against files produced by different write operations.</li>
- *   <li><b>Memory-mapping lifecycle</b> — {@link #mapReadOnly(Path)},
- *       {@link #unmap(MappedByteBuffer)} — map a file and release the mapping deterministically
- *       without waiting for garbage collection.</li>
- *   <li><b>Length-prefixed UTF-8 encoding</b> — {@link #readUtf8(DataInputStream)},
- *       {@link #writeUtf8(DataOutputStream, String)} — a compact wire format for embedding
- *       a string field (file header, field name, label) in a binary stream.</li>
- * </ul>
+ * <h2>Memory mapping</h2>
  * <p>
- * All methods are stateless. The class cannot be instantiated.
+ * {@link #mapReadOnly(Path, Arena)} uses the supported foreign-memory mapping API introduced in
+ * Java 22. The returned {@link MemorySegment} is owned by the supplied {@link Arena}; closing a
+ * closeable arena deterministically unmaps all segments mapped through it. No reflective
+ * {@code sun.misc.Unsafe} cleaner is used.
  * </p>
- *
- * <h2>Unmap strategy</h2>
- * <p>
- * {@link #unmap(MappedByteBuffer)} uses the same reflective
- * {@code sun.misc.Unsafe.invokeCleaner()} path that Lucene's {@code MMapDirectory} relies on.
- * The {@link MethodHandle} is resolved once at class-load time. If the JDK does not expose
- * the entry point (or removes it in a future release), unmap becomes a silent no-op and the
- * buffer is left for garbage collection — safe on Linux, but may delay file-lock release on
- * Windows until GC runs.
- * </p>
- *
  * <h2>Typical write sequence</h2>
  * <pre>{@code
  * Path target = dir.resolve("data.bin");
- * SideFiles.ensureAbsent(target);
- * Path tmp = SideFiles.tmpPath(target);
- * SideFiles.deleteIfExists(tmp);       // clean stale temp from previous crash
+ * IOUtil.ensureAbsent(target);
+ * Path tmp = IOUtil.tmpPath(target);
+ * IOUtil.deleteIfExists(tmp);
  * try {
  *     // ... write to tmp ...
- *     SideFiles.moveTemp(tmp, target);
+ *     IOUtil.moveTemp(tmp, target);
  * } catch (IOException | RuntimeException e) {
- *     SideFiles.deleteIfExists(tmp);
+ *     IOUtil.deleteIfExists(tmp);
  *     throw e;
  * }
  * }</pre>
@@ -71,100 +48,46 @@ import java.util.Objects;
 public final class IOUtil
 {
     /**
-     * {@link MethodHandle} for {@code sun.misc.Unsafe.invokeCleaner(ByteBuffer)}.
-     * <p>
-     * Resolved once at class load; {@code null} if the current JDK does not expose the entry
-     * point. This is the same approach Lucene uses in {@code MMapDirectory}.
-     * </p>
+     * Non-instantiable utility class.
      */
-    private static final MethodHandle INVOKE_CLEANER;
-
-    static {
-        MethodHandle mh = null;
-        try {
-            final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-            final java.lang.reflect.Field f = unsafeClass.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            final Object unsafe = f.get(null);
-            mh = MethodHandles.lookup()
-                .findVirtual(unsafeClass, "invokeCleaner", MethodType.methodType(void.class, ByteBuffer.class))
-                .bindTo(unsafe);
-        }
-        catch (Exception ignored) {
-            // JDK does not expose invokeCleaner — fall back to GC-based reclaim.
-        }
-        INVOKE_CLEANER = mh;
-    }
-
-    /** Non-instantiable utility class. */
     private IOUtil()
     {
     }
-    
+
     /**
      * Checks that the modification times of several files are within a given tolerance.
      * <p>
      * This is a cheap startup guard against opening a set of files that were produced by
      * different write operations, partially copied, or mixed from different snapshots. It does
-     * not guarantee logical consistency — the caller's own format validation (magic bytes,
-     * version fields, cross-file size checks) provides the hard guarantee.
+     * not guarantee logical consistency; callers must still validate their own file formats.
      * </p>
      *
      * @param toleranceMs maximum tolerated mtime spread, in milliseconds
-     * @param paths       files that should have been produced together (at least two)
-     * @throws IOException              if the mtime spread exceeds {@code toleranceMs}
+     * @param paths files that should have been produced together
+     * @throws IOException if reading a modification time fails or the spread exceeds the tolerance
      * @throws IllegalArgumentException if {@code toleranceMs} is negative
+     * @throws NullPointerException if {@code paths} or one of its elements is {@code null}
      */
-    public static void checkMtimeCoherence(final long toleranceMs, final Path... paths) throws IOException
-    {
+    public static void checkMtimeCoherence(
+        final long toleranceMs,
+        final Path... paths
+    ) throws IOException {
         if (toleranceMs < 0) {
             throw new IllegalArgumentException("toleranceMs must be >= 0: " + toleranceMs);
         }
+        Objects.requireNonNull(paths, "paths");
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
         for (final Path path : paths) {
-            final long t = Files.getLastModifiedTime(path).toMillis();
-            min = Math.min(min, t);
-            max = Math.max(max, t);
+            Objects.requireNonNull(path, "path");
+            final long time = Files.getLastModifiedTime(path).toMillis();
+            min = Math.min(min, time);
+            max = Math.max(max, time);
         }
         if ((max - min) > toleranceMs) {
             throw new IOException(
                 "File mtimes differ by " + (max - min) + "ms (tolerance " + toleranceMs + "ms);"
                     + " possible partial copy or mixed versions");
-        }
-    }
-
-    /**
-     * Ensures that a path does not already exist.
-     * <p>
-     * Intended as a precondition check before writing a new file, to prevent silent overwrite
-     * of data that was produced by a previous successful build.
-     * </p>
-     *
-     * @param path target path that must not exist
-     * @throws FileAlreadyExistsException if the path already exists (as file, directory, or symlink)
-     */
-    public static void ensureAbsent(final Path path) throws FileAlreadyExistsException
-    {
-        if (Files.exists(path)) {
-            throw new FileAlreadyExistsException(path.toString());
-        }
-    }
-
-    /**
-     * Ensures that a path points to an existing regular file.
-     * <p>
-     * Intended as a precondition check before opening a file for reading or memory-mapping.
-     * Rejects directories, symlinks to directories, and absent paths.
-     * </p>
-     *
-     * @param path path to check
-     * @throws NoSuchFileException if the file does not exist or is not a regular file
-     */
-    public static void ensureRegularFile(final Path path) throws IOException
-    {
-        if (!Files.isRegularFile(path)) {
-            throw new NoSuchFileException(path.toString());
         }
     }
 
@@ -176,10 +99,11 @@ public final class IOUtil
      * {@link Files#deleteIfExists(Path)} directly.
      * </p>
      *
-     * @param path path to delete; may be {@code null} (no-op)
+     * @param path path to delete; {@code null} is accepted as a no-op
      */
-    public static void deleteIfExists(final Path path)
-    {
+    public static void deleteIfExists(
+        final Path path
+    ) {
         if (path == null) {
             return;
         }
@@ -187,24 +111,86 @@ public final class IOUtil
             Files.deleteIfExists(path);
         }
         catch (IOException ignored) {
-            // best-effort cleanup only
+            // Best-effort cleanup only.
         }
     }
 
     /**
-     * Atomically moves a temporary file to its final location.
+     * Ensures that a path does not already exist.
+     *
+     * @param path target path that must not exist
+     * @throws FileAlreadyExistsException if the path already exists
+     * @throws NullPointerException if {@code path} is {@code null}
+     */
+    public static void ensureAbsent(
+        final Path path
+    ) throws FileAlreadyExistsException {
+        Objects.requireNonNull(path, "path");
+        if (Files.exists(path)) {
+            throw new FileAlreadyExistsException(path.toString());
+        }
+    }
+
+    /**
+     * Ensures that a path points to an existing regular file.
+     *
+     * @param path path to check
+     * @throws IOException if the file does not exist or is not a regular file
+     * @throws NullPointerException if {@code path} is {@code null}
+     */
+    public static void ensureRegularFile(
+        final Path path
+    ) throws IOException {
+        Objects.requireNonNull(path, "path");
+        if (!Files.isRegularFile(path)) {
+            throw new NoSuchFileException(path.toString());
+        }
+    }
+
+    /**
+     * Memory-maps an entire file read-only into the supplied arena.
      * <p>
-     * Attempts {@link StandardCopyOption#ATOMIC_MOVE} first. If the file system does not
-     * support atomic moves (e.g. cross-device, or certain NFS configurations), falls back to
-     * a plain move. The caller is responsible for cleanup if the fallback also fails.
+     * The returned segment remains valid while the arena is alive. If the arena is closeable,
+     * closing it unmaps the segment deterministically. The channel itself is closed before this
+     * method returns; that does not invalidate the mapping.
      * </p>
      *
-     * @param source temporary file path (must exist)
-     * @param target final file path (must not exist)
-     * @throws IOException if the move fails even with fallback
+     * @param path file to map
+     * @param arena arena that owns the mapping lifetime
+     * @return read-only memory segment covering the complete file
+     * @throws IOException if the file cannot be opened or mapped
+     * @throws IllegalStateException if the arena is not alive
+     * @throws NullPointerException if {@code path} or {@code arena} is {@code null}
      */
-    public static void moveTemp(final Path source, final Path target) throws IOException
-    {
+    public static MemorySegment mapReadOnly(
+        final Path path,
+        final Arena arena
+    ) throws IOException {
+        Objects.requireNonNull(path, "path");
+        Objects.requireNonNull(arena, "arena");
+        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.READ)) {
+            return channel.map(FileChannel.MapMode.READ_ONLY, 0L, channel.size(), arena);
+        }
+    }
+
+    /**
+     * Atomically moves a temporary file to its final location when supported by the file system.
+     * <p>
+     * If {@link StandardCopyOption#ATOMIC_MOVE} is not supported, the method falls back to a
+     * regular move. The target is never replaced explicitly.
+     * </p>
+     *
+     * @param source temporary file path
+     * @param target final file path
+     * @throws IOException if both the atomic and fallback moves fail
+     * @throws NullPointerException if {@code source} or {@code target} is {@code null}
+     */
+    public static void moveTemp(
+        final Path source,
+        final Path target
+    ) throws IOException {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(target, "target");
         try {
             Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
         }
@@ -214,56 +200,39 @@ public final class IOUtil
     }
 
     /**
-     * Memory-maps one file in read-only mode, covering its entire content.
-     * <p>
-     * The returned buffer should be released via {@link #unmap(MappedByteBuffer)} when no
-     * longer needed. If the file is empty, the returned buffer has zero remaining bytes.
-     * </p>
+     * Resolves and opens a classpath resource as an input stream.
      *
-     * @param path file path
-     * @return read-only memory-mapped byte buffer covering the entire file
-     * @throws IOException if the file cannot be opened or mapped
-     */
-    public static MappedByteBuffer mapReadOnly(final Path path) throws IOException
-    {
-        try (FileChannel ch = FileChannel.open(path, StandardOpenOption.READ)) {
-            return ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
-        }
-    }
-
-    /**
-     * Resolve and open a classpath resource as an {@link InputStream}.
-     *
-     * @param anchor       anchor class used to resolve the resource
+     * @param anchor anchor class used to resolve the resource
      * @param resourcePath classpath resource path
-     * @return an open {@link InputStream} for the resource
+     * @return open input stream for the resource
      * @throws IOException if the resource cannot be found
+     * @throws NullPointerException if {@code anchor} or {@code resourcePath} is {@code null}
      */
-    public static InputStream openResource(final Class<?> anchor, final String resourcePath) throws IOException
-    {
-        Objects.requireNonNull(anchor);
-        Objects.requireNonNull(resourcePath);
-
+    public static InputStream openResource(
+        final Class<?> anchor,
+        final String resourcePath
+    ) throws IOException {
+        Objects.requireNonNull(anchor, "anchor");
+        Objects.requireNonNull(resourcePath, "resourcePath");
         final InputStream is = anchor.getResourceAsStream(resourcePath);
         if (is == null) {
             throw new IOException("Resource not found: " + resourcePath);
         }
         return is;
     }
-    
+
     /**
      * Reads one UTF-8 string preceded by its 4-byte big-endian byte length.
-     * <p>
-     * Wire format: {@code int32 n} then {@code n} UTF-8 bytes.
-     * This is the encoding written by {@link #writeUtf8(DataOutputStream, String)}.
-     * </p>
      *
-     * @param in source stream, positioned just before the 4-byte length prefix
-     * @return decoded string, never {@code null}
-     * @throws IOException if reading fails or if the encoded length is negative
+     * @param in source stream positioned before the length prefix
+     * @return decoded string
+     * @throws IOException if reading fails or the encoded length is negative
+     * @throws NullPointerException if {@code in} is {@code null}
      */
-    public static String readUtf8(final DataInputStream in) throws IOException
-    {
+    public static String readUtf8(
+        final DataInputStream in
+    ) throws IOException {
+        Objects.requireNonNull(in, "in");
         final int length = in.readInt();
         if (length < 0) {
             throw new IOException("Negative UTF-8 byte length: " + length);
@@ -272,63 +241,35 @@ public final class IOUtil
         in.readFully(bytes);
         return new String(bytes, StandardCharsets.UTF_8);
     }
-    
+
     /**
-     * Returns a temporary sibling path for use during atomic write.
-     * <p>
-     * The returned path has the same parent and file name as {@code path} with a {@code .tmp}
-     * suffix appended. This convention allows stale temporaries from a previous crash to be
-     * recognised and cleaned up before a new write begins.
-     * </p>
+     * Returns a temporary sibling path with a {@code .tmp} suffix.
      *
      * @param path final target path
-     * @return sibling path with {@code .tmp} suffix
+     * @return sibling path whose file name is the target file name plus {@code .tmp}
+     * @throws NullPointerException if {@code path} is {@code null}
      */
-    public static Path tmpPath(final Path path)
-    {
+    public static Path tmpPath(
+        final Path path
+    ) {
+        Objects.requireNonNull(path, "path");
         return path.resolveSibling(path.getFileName().toString() + ".tmp");
     }
 
     /**
-     * Attempts to release a {@link MappedByteBuffer} immediately via
-     * {@code sun.misc.Unsafe.invokeCleaner()}.
-     * <p>
-     * This is a best-effort operation. If the reflective call is unavailable or fails at
-     * invocation time, the buffer is silently left for garbage collection.
-     * </p>
-     * <p>
-     * After a successful unmap the buffer must not be accessed — any read or write through it
-     * will throw an {@link java.lang.InternalError}.
-     * </p>
-     *
-     * @param buf the mapped buffer to unmap, or {@code null} (no-op)
-     */
-    public static void unmap(final MappedByteBuffer buf)
-    {
-        if (buf == null || INVOKE_CLEANER == null) {
-            return;
-        }
-        try {
-            INVOKE_CLEANER.invokeExact((ByteBuffer) buf);
-        }
-        catch (Throwable ignored) {
-            // best-effort — buffer will be reclaimed by GC
-        }
-    }
-
-    /**
      * Writes one UTF-8 string preceded by its 4-byte big-endian byte length.
-     * <p>
-     * Wire format: {@code int32 n} then {@code n} UTF-8 bytes.
-     * Readable by {@link #readUtf8(DataInputStream)}.
-     * </p>
      *
      * @param out destination stream
-     * @param s   string to write, must not be {@code null}
+     * @param s string to write
      * @throws IOException if writing fails
+     * @throws NullPointerException if {@code out} or {@code s} is {@code null}
      */
-    public static void writeUtf8(final DataOutputStream out, final String s) throws IOException
-    {
+    public static void writeUtf8(
+        final DataOutputStream out,
+        final String s
+    ) throws IOException {
+        Objects.requireNonNull(out, "out");
+        Objects.requireNonNull(s, "s");
         final byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
         out.writeInt(bytes.length);
         out.write(bytes);
