@@ -54,10 +54,22 @@ import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
  * <p>
  * If {@code --vectors FILE} is supplied, the existing word2vec binary file is
  * read and normalised in memory. The report then adds cosine similarities and
- * ranks without recomputing the SVD. The report is one UTF-8 text file with
- * tab-separated sections: metadata, requested term statistics, pivot/target
- * pairs, distance histograms, and the top raw, G2, and vector neighbours of
- * every requested diagnostic term.
+ * ranks without recomputing the SVD.
+ * </p>
+ * <p>
+ * The same rail pass also accumulates three disjoint positional bands:
+ * {@code 1..5}, {@code 6..15}, and {@code 16..30}. Each band gets its own
+ * directed marginals and PPMI-CDS preparation with {@code alpha=0.75}. The
+ * report gives pivot/target PPMI row cosine by band and ranks the context
+ * columns contributing most to each cosine numerator. Band PPMI uses only the
+ * counts and marginals of that band; no corpus-frequency marginals are mixed
+ * into the calculation.
+ * </p>
+ * <p>
+ * The report is one UTF-8 text file with tab-separated sections: metadata,
+ * requested term statistics, pivot/target pairs, exact distance histograms,
+ * band statistics, band PPMI diagnostics, context contributions, and the top
+ * raw, G2, and vector neighbours of every requested diagnostic term.
  * </p>
  *
  * <pre>{@code
@@ -74,8 +86,21 @@ public final class Coocs2vecDiag
         long[][] focusCounts,
         long[][] distances,
         long[] masses,
-        long pairs
+        long pairs,
+        long[][][] bandFocusCounts,
+        long[][] bandMasses,
+        long[] bandPairs
     ) {}
+
+    /** Inclusive absolute-position bands used by the multiscale diagnostic. */
+    private static final int[][] BANDS = {
+        {1, 5},
+        {6, 15},
+        {16, 30}
+    };
+
+    /** Context-distribution smoothing exponent used for band PPMI. */
+    private static final double PPMI_ALPHA = 0.75d;
 
     /** Term statistics from the Lucene term dictionary. */
     private record TermStats(
@@ -294,6 +319,10 @@ public final class Coocs2vecDiag
         final long[] masses = new long[termCount];
         final long[][] focusCounts = new long[focusRows.length][termCount];
         final long[][] distances = new long[Math.max(0, focusRows.length - 1)][distance + 1];
+        final long[][][] bandFocusCounts =
+            new long[BANDS.length][focusRows.length][termCount];
+        final long[][] bandMasses = new long[BANDS.length][termCount];
+        final long[] bandPairs = new long[BANDS.length];
 
         final int[] focusByRow = new int[termCount];
         Arrays.fill(focusByRow, -1);
@@ -353,6 +382,20 @@ public final class Coocs2vecDiag
                     }
 
                     final int delta = next - position;
+                    final int band = band(delta);
+                    if (band >= 0) {
+                        bandPairs[band]++;
+                        bandMasses[band][row]++;
+                        bandMasses[band][col]++;
+
+                        if (rowFocus >= 0) {
+                            bandFocusCounts[band][rowFocus][col]++;
+                        }
+                        if (colFocus >= 0) {
+                            bandFocusCounts[band][colFocus][row]++;
+                        }
+                    }
+
                     if (row == pivotRow) {
                         final int target = targetByRow[col];
                         if (target >= 0) {
@@ -368,7 +411,59 @@ public final class Coocs2vecDiag
                 }
             }
         }
-        return new Counts(focusCounts, distances, masses, pairs);
+        return new Counts(
+            focusCounts,
+            distances,
+            masses,
+            pairs,
+            bandFocusCounts,
+            bandMasses,
+            bandPairs);
+    }
+
+    /**
+     * Returns the configured band containing one absolute positional distance.
+     *
+     * @param distance absolute token distance
+     * @return band index, or {@code -1} if no configured band contains the distance
+     */
+    private static int band(
+        final int distance
+    ) {
+        for (int band = 0; band < BANDS.length; band++) {
+            if (distance >= BANDS[band][0] && distance <= BANDS[band][1]) {
+                return band;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Computes cosine similarity between two dense double vectors.
+     *
+     * @param a first vector
+     * @param b second vector
+     * @return cosine similarity, or {@code NaN} if dimensions differ or either norm is zero
+     */
+    private static double cosine(
+        final double[] a,
+        final double[] b
+    ) {
+        if (a == null || b == null || a.length != b.length) {
+            return Double.NaN;
+        }
+        double dot = 0d;
+        double normA = 0d;
+        double normB = 0d;
+        for (int i = 0; i < a.length; i++) {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        if (normA <= 0d || normB <= 0d) {
+            return Double.NaN;
+        }
+        return dot / Math.sqrt(normA * normB);
     }
 
     /**
@@ -491,6 +586,90 @@ public final class Coocs2vecDiag
             }
         }
         return new ArrayList<>(unique);
+    }
+
+    /**
+     * Computes one PPMI-CDS row from raw counts and the context marginals of one
+     * distance band.
+     *
+     * <p>
+     * For count {@code x}, row marginal {@code r}, context marginal {@code c},
+     * and smoothing exponent {@code alpha}, the value is
+     * {@code max(0, log(x) + log(Z) - log(r) - alpha * log(c))}, where
+     * {@code Z = sum(c^alpha)}.
+     * </p>
+     *
+     * @param counts raw focus-to-context counts for one band
+     * @param contextMasses directed context marginals for the same band
+     * @param rowMass directed marginal of the focus term in the same band
+     * @param alpha context-distribution smoothing exponent
+     * @return dense PPMI-CDS row
+     */
+    private static double[] ppmi(
+        final long[] counts,
+        final long[] contextMasses,
+        final long rowMass,
+        final double alpha
+    ) {
+        final double[] values = new double[counts.length];
+        if (rowMass <= 0L) {
+            return values;
+        }
+
+        double z = 0d;
+        for (final long mass : contextMasses) {
+            if (mass > 0L) {
+                z += Math.pow(mass, alpha);
+            }
+        }
+        if (z <= 0d) {
+            return values;
+        }
+
+        final double logZ = Math.log(z);
+        final double logRow = Math.log(rowMass);
+
+        for (int col = 0; col < counts.length; col++) {
+            final long observed = counts[col];
+            final long contextMass = contextMasses[col];
+            if (observed <= 0L || contextMass <= 0L) {
+                continue;
+            }
+
+            final double value =
+                Math.log(observed)
+                    + logZ
+                    - logRow
+                    - alpha * Math.log(contextMass);
+
+            if (value > 0d) {
+                values[col] = value;
+            }
+        }
+        return values;
+    }
+
+    /**
+     * Counts contexts having positive PPMI in both vectors.
+     *
+     * @param a first PPMI row
+     * @param b second PPMI row
+     * @return number of context columns positive in both rows
+     */
+    private static int positiveOverlap(
+        final double[] a,
+        final double[] b
+    ) {
+        if (a == null || b == null || a.length != b.length) {
+            return 0;
+        }
+        int count = 0;
+        for (int i = 0; i < a.length; i++) {
+            if (a[i] > 0d && b[i] > 0d) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
@@ -864,6 +1043,106 @@ public final class Coocs2vecDiag
             }
             writer.write("\n");
 
+            writer.write("# BANDS\n");
+            writer.write("band\tfrom\tto\tpositional_pairs\tdirected_mass\n");
+            for (int band = 0; band < BANDS.length; band++) {
+                writer.write(Integer.toString(band));
+                writer.write('\t');
+                writer.write(Integer.toString(BANDS[band][0]));
+                writer.write('\t');
+                writer.write(Integer.toString(BANDS[band][1]));
+                writer.write('\t');
+                writer.write(Long.toString(counts.bandPairs()[band]));
+                writer.write('\t');
+                writer.write(Long.toString(counts.bandPairs()[band] * 2L));
+                writer.write('\n');
+            }
+            writer.write("\n");
+
+            final double[][][] bandPpmi =
+                new double[BANDS.length][focusWords.size()][];
+            for (int band = 0; band < BANDS.length; band++) {
+                for (int focus = 0; focus < focusWords.size(); focus++) {
+                    final int focusRow = focusRows[focus];
+                    if (focusRow < 0) {
+                        continue;
+                    }
+                    bandPpmi[band][focus] = ppmi(
+                        counts.bandFocusCounts()[band][focus],
+                        counts.bandMasses()[band],
+                        counts.bandMasses()[band][focusRow],
+                        PPMI_ALPHA);
+                }
+            }
+
+            writer.write("# BAND_PAIRS\n");
+            writer.write(
+                "pivot\tterm\tband\tfrom\tto\traw_count\tpivot_mass\ttarget_mass"
+                    + "\tppmi_pivot_target\tppmi_target_pivot\tppmi_cosine"
+                    + "\tpositive_context_overlap\n");
+            for (int target = 0; target < targets.size(); target++) {
+                final int targetRow = focusRows[target + 1];
+                for (int band = 0; band < BANDS.length; band++) {
+                    writer.write(pivot);
+                    writer.write('\t');
+                    writer.write(targets.get(target));
+                    writer.write('\t');
+                    writer.write(Integer.toString(band));
+                    writer.write('\t');
+                    writer.write(Integer.toString(BANDS[band][0]));
+                    writer.write('\t');
+                    writer.write(Integer.toString(BANDS[band][1]));
+
+                    if (targetRow >= 0) {
+                        final double[] pivotPpmi = bandPpmi[band][0];
+                        final double[] targetPpmi = bandPpmi[band][target + 1];
+
+                        writer.write('\t');
+                        writer.write(Long.toString(
+                            counts.bandFocusCounts()[band][0][targetRow]));
+                        writer.write('\t');
+                        writer.write(Long.toString(
+                            counts.bandMasses()[band][pivotRow]));
+                        writer.write('\t');
+                        writer.write(Long.toString(
+                            counts.bandMasses()[band][targetRow]));
+                        writer.write('\t');
+                        writer.write(Double.toString(pivotPpmi[targetRow]));
+                        writer.write('\t');
+                        writer.write(Double.toString(targetPpmi[pivotRow]));
+                        writer.write('\t');
+                        writer.write(Double.toString(cosine(pivotPpmi, targetPpmi)));
+                        writer.write('\t');
+                        writer.write(Integer.toString(
+                            positiveOverlap(pivotPpmi, targetPpmi)));
+                    }
+                    else {
+                        writer.write("\t\t\t\t\t\t\t");
+                    }
+                    writer.write('\n');
+                }
+            }
+            writer.write("\n");
+
+            for (int target = 0; target < targets.size(); target++) {
+                if (focusRows[target + 1] < 0) {
+                    continue;
+                }
+                for (int band = 0; band < BANDS.length; band++) {
+                    writeBandContributions(
+                        writer,
+                        pivot,
+                        targets.get(target),
+                        band,
+                        bandPpmi[band][0],
+                        bandPpmi[band][target + 1],
+                        counts.bandFocusCounts()[band][0],
+                        counts.bandFocusCounts()[band][target + 1],
+                        words,
+                        top);
+                }
+            }
+
             for (int focus = 0; focus < focusWords.size(); focus++) {
                 final int focusRow = focusRows[focus];
                 if (focusRow < 0) {
@@ -904,6 +1183,95 @@ public final class Coocs2vecDiag
                 }
             }
         }
+    }
+
+    /**
+     * Writes the contexts contributing most to the pre-SVD PPMI-CDS cosine of
+     * one pivot/target pair in one distance band.
+     *
+     * <p>
+     * The contribution of context {@code c} is the product of the two PPMI
+     * coordinates. The cosine denominator is common to all contexts, so sorting
+     * by this product is equivalent to sorting by contribution to the cosine
+     * numerator.
+     * </p>
+     *
+     * @param writer report writer
+     * @param pivot pivot term
+     * @param target target term
+     * @param band distance-band index
+     * @param pivotPpmi pivot PPMI-CDS row for the band
+     * @param targetPpmi target PPMI-CDS row for the band
+     * @param pivotRaw pivot raw context counts for the band
+     * @param targetRaw target raw context counts for the band
+     * @param words selected context forms
+     * @param top maximum number of positive contributions to write
+     * @throws IOException if writing fails
+     */
+    private static void writeBandContributions(
+        final BufferedWriter writer,
+        final String pivot,
+        final String target,
+        final int band,
+        final double[] pivotPpmi,
+        final double[] targetPpmi,
+        final long[] pivotRaw,
+        final long[] targetRaw,
+        final String[] words,
+        final int top
+    ) throws IOException {
+        final Integer[] order = new Integer[words.length];
+        for (int row = 0; row < words.length; row++) {
+            order[row] = row;
+        }
+        Arrays.sort(order, (a, b) -> {
+            final double av = pivotPpmi[a] * targetPpmi[a];
+            final double bv = pivotPpmi[b] * targetPpmi[b];
+            final int cmp = Double.compare(bv, av);
+            if (cmp != 0) {
+                return cmp;
+            }
+            return words[a].compareTo(words[b]);
+        });
+
+        writer.write(
+            "# BAND_CONTRIB\tpivot=" + pivot
+                + "\ttarget=" + target
+                + "\tband=" + band
+                + "\tfrom=" + BANDS[band][0]
+                + "\tto=" + BANDS[band][1]
+                + "\talpha=" + PPMI_ALPHA
+                + "\n");
+        writer.write(
+            "rank\tcontext\tpivot_raw\ttarget_raw\tpivot_ppmi\ttarget_ppmi\tcontribution\n");
+
+        int rank = 0;
+        for (final int row : order) {
+            final double contribution = pivotPpmi[row] * targetPpmi[row];
+            if (contribution <= 0d) {
+                break;
+            }
+            rank++;
+            writer.write(Integer.toString(rank));
+            writer.write('\t');
+            writer.write(words[row]);
+            writer.write('\t');
+            writer.write(Long.toString(pivotRaw[row]));
+            writer.write('\t');
+            writer.write(Long.toString(targetRaw[row]));
+            writer.write('\t');
+            writer.write(Double.toString(pivotPpmi[row]));
+            writer.write('\t');
+            writer.write(Double.toString(targetPpmi[row]));
+            writer.write('\t');
+            writer.write(Double.toString(contribution));
+            writer.write('\n');
+
+            if (rank >= top) {
+                break;
+            }
+        }
+        writer.write("\n");
     }
 
     /**

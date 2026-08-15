@@ -17,13 +17,13 @@ import org.hipparchus.linear.SingularValueDecomposition;
 import com.github.oeuvres.alix.util.IntMatrixById;
 
 /**
- * Builds signed row coordinates from a contingency table by residual SVD.
+ * Builds dense row coordinates from a contingency table by prepared-matrix SVD.
  *
  * <p>
- * The pipeline has two phases. First, {@link #residual(Assoc)} fits the
- * independence expectation by iterative proportional fitting and turns each
- * observed cell into a signed association residual. Second, {@link #decompose()}
- * takes the singular value decomposition of that residual matrix and initialises
+ * The pipeline has two phases. First, either {@link #residual(Assoc)} prepares
+ * signed residuals against an IPF independence expectation, or {@link #ppmi(double)}
+ * prepares a PPMI-CDS word-context matrix. Second, {@link #decompose()} takes
+ * the singular value decomposition of that prepared matrix and initialises
  * the row embedding with the left singular vectors {@code U};
  * {@link #weightAxes(double)} raises each axis to a power of its singular value
  * ({@code U}, {@code U sqrt(Sigma)}, or {@code U Sigma}); the optional
@@ -47,7 +47,7 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * <p>
  * The expectation is the row-by-column independence model. A cell whose row and
  * column ids are equal in an {@link IntMatrixById} is marked structural, held at
- * zero throughout, and excluded from the fit, the residuals, and the
+ * zero throughout, and excluded from the IPF fit, residual preparation, and the
  * decomposition; iterative proportional fitting then yields the
  * quasi-independence model over the remaining cells. Input identifiers, labels,
  * and display metadata remain the responsibility of the caller. Output rows
@@ -109,6 +109,9 @@ public class ContingencySvd
     /** Iterations used by the latest expectation fit. */
     private int fitIterations;
 
+    /** Whether at least one structural cell is present. */
+    private final boolean hasStructural;
+
     /** Observed admissible cells. */
     private final double[][] observed;
 
@@ -124,10 +127,10 @@ public class ContingencySvd
     /** Singular values, or {@code null}. */
     private double[] singularValues;
 
-    /** Structural-cell mask. */
+    /** Structural-cell mask, or {@code null} when every cell is admissible. */
     private final boolean[][] structural;
 
-    /** Total residual energy (Frobenius squared), the inertia denominator. */
+    /** Total prepared-matrix energy (Frobenius squared), the inertia denominator. */
     private double totalInertia;
 
     /**
@@ -159,7 +162,8 @@ public class ContingencySvd
         }
 
         this.observed = new double[rowCount][colCount];
-        this.structural = new boolean[rowCount][colCount];
+        this.structural = structural == null ? null : new boolean[rowCount][colCount];
+        boolean structuralFound = false;
         for (int row = 0; row < rowCount; row++) {
             Objects.requireNonNull(cells[row], "cells[" + row + "]");
             if (cells[row].length != colCount) {
@@ -175,9 +179,13 @@ public class ContingencySvd
                 final double value = cells[row][col];
                 checkObserved(value, row, col);
                 this.observed[row][col] = value;
-                this.structural[row][col] = structural != null && structural[row][col];
+                if (structural != null && structural[row][col]) {
+                    this.structural[row][col] = true;
+                    structuralFound = true;
+                }
             }
         }
+        this.hasStructural = structuralFound;
     }
 
     /**
@@ -205,6 +213,7 @@ public class ContingencySvd
 
         this.observed = new double[rowCount][colCount];
         this.structural = new boolean[rowCount][colCount];
+        boolean structuralFound = false;
         for (int row = 0; row < rowCount; row++) {
             final int id = counts.rowId(row);
             for (int col = 0; col < colCount; col++) {
@@ -215,19 +224,21 @@ public class ContingencySvd
                 }
                 if (id == counts.colId(col)) {
                     structural[row][col] = true;
+                    structuralFound = true;
                 }
                 else {
                     observed[row][col] = count;
                 }
             }
         }
+        this.hasStructural = structuralFound;
     }
 
     /**
-     * Decomposes the residual matrix and initialises the full row embedding.
+     * Decomposes the prepared matrix and initialises the full row embedding.
      *
      * <p>
-     * Computes {@code residuals = U Sigma V^T}, stores the singular values, and
+     * Computes {@code prepared = U Sigma V^T}, stores the singular values, and
      * initialises the row embedding with the numerical-rank columns of
      * {@code U}, their axis signs fixed deterministically. It does not apply
      * singular-value weighting, mass scaling, row normalisation, or dimensional
@@ -240,7 +251,7 @@ public class ContingencySvd
     public ContingencySvd decompose()
     {
         if (prepared == null) {
-            throw new IllegalStateException("call residual() before decompose()");
+            throw new IllegalStateException("call residual() or ppmi() before decompose()");
         }
         final SingularValueDecomposition decomposition =
             new SingularValueDecomposition(new Array2DRowRealMatrix(prepared, false));
@@ -260,7 +271,7 @@ public class ContingencySvd
     }
 
     /**
-     * Decomposes the residual matrix to its leading dimensions only, by
+     * Decomposes the prepared matrix to its leading dimensions only, by
      * randomized SVD.
      *
      * <p>
@@ -284,7 +295,7 @@ public class ContingencySvd
         final int dims
     ) {
         if (prepared == null) {
-            throw new IllegalStateException("call residual() before decompose()");
+            throw new IllegalStateException("call residual() or ppmi() before decompose()");
         }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
@@ -293,7 +304,7 @@ public class ContingencySvd
     }
 
     /**
-     * Decomposes the residual matrix to its leading dimensions by randomized
+     * Decomposes the prepared matrix to its leading dimensions by randomized
      * SVD, controlling the accuracy of the range approximation.
      *
      * <p>
@@ -317,7 +328,7 @@ public class ContingencySvd
         final int powerIterations
     ) {
         if (prepared == null) {
-            throw new IllegalStateException("call residual() before decompose()");
+            throw new IllegalStateException("call residual() or ppmi() before decompose()");
         }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
@@ -381,25 +392,26 @@ public class ContingencySvd
      * </p>
      *
      * <pre>
-     * max(0, log(x[row][col] * Z / (r[row] * c[col]^alpha)))
+     * max(0, log(x[row][col]) + log(Z)
+     *     - log(r[row]) - alpha * log(c[col]))
      * </pre>
      *
      * <p>
-     * where {@code Z = sum(c[col]^alpha)}. Zero observed cells remain zero.
-     * The smoothing is applied to context (column) marginals only, so for
-     * {@code alpha != 1} the resulting matrix is generally asymmetric even when
-     * the observed matrix is symmetric.
+     * where {@code Z = sum(c[col]^alpha)}. Row and column margins are computed
+     * from this instance's observed co-occurrence table; no external corpus
+     * frequencies are used. Zero observed cells remain zero. Context smoothing
+     * applies to columns only, so the prepared matrix is generally asymmetric
+     * when {@code alpha != 1}.
      * </p>
      *
      * <p>
-     * This preparation does not use the IPF independence model. It is an
-     * alternative to {@link #residual(Assoc)} and invalidates any previous
-     * decomposition.
+     * PPMI-CDS is an alternative to {@link #residual(Assoc)}. It does not use
+     * the IPF expectation and rejects structural cells.
      * </p>
      *
-     * @param alpha context-distribution smoothing exponent, in {@code (0, 1]}
+     * @param alpha context-distribution smoothing exponent in {@code (0, 1]}
      * @return this pipeline
-     * @throws IllegalArgumentException if {@code alpha} is not finite or is outside
+     * @throws IllegalArgumentException if {@code alpha} is not finite or outside
      *         {@code (0, 1]}
      * @throws IllegalStateException if structural cells are present
      */
@@ -410,51 +422,59 @@ public class ContingencySvd
             throw new IllegalArgumentException(
                 "alpha must be finite and in (0, 1], got " + alpha);
         }
-
-        /*
-         * PPMI-CDS assumes an ordinary rectangular word-context table.
-         * A structural-cell/quasi-independence model is a different statistical
-         * problem and should not silently be mixed with this calculation.
-         */
-        for (int row = 0; row < structural.length; row++) {
-            for (int col = 0; col < structural[row].length; col++) {
-                if (structural[row][col]) {
-                    throw new IllegalStateException(
-                        "PPMI-CDS does not support structural cells");
-                }
-            }
+        if (hasStructural) {
+            throw new IllegalStateException(
+                "PPMI-CDS does not support structural cells");
         }
 
         final double[] rowSums = rowSums();
         final double[] colSums = colSums();
 
-        final double[] colSmoothed = new double[colSums.length];
         double z = 0d;
-        for (int col = 0; col < colSums.length; col++) {
-            final double value = Math.pow(colSums[col], alpha);
-            colSmoothed[col] = value;
-            z += value;
+        for (final double colSum : colSums) {
+            if (colSum > 0d) {
+                z += Math.pow(colSum, alpha);
+            }
         }
 
         final double[][] matrix =
             new double[observed.length][observed[0].length];
 
-        double energy = 0d;
+        if (z <= 0d) {
+            prepared = matrix;
+            totalInertia = 0d;
+            resetFitDiagnostics();
+            invalidateDecomposition();
+            return this;
+        }
 
+        final double logZ = Math.log(z);
+        final double[] logContexts = new double[colSums.length];
+        for (int col = 0; col < colSums.length; col++) {
+            if (colSums[col] > 0d) {
+                logContexts[col] = alpha * Math.log(colSums[col]);
+            }
+        }
+
+        double energy = 0d;
         for (int row = 0; row < observed.length; row++) {
             final double rowSum = rowSums[row];
             if (rowSum <= 0d) {
                 continue;
             }
+            final double logRow = Math.log(rowSum);
 
             for (int col = 0; col < observed[row].length; col++) {
                 final double count = observed[row][col];
-                if (count <= 0d || colSmoothed[col] <= 0d) {
+                if (count <= 0d || colSums[col] <= 0d) {
                     continue;
                 }
 
-                final double value = Math.log(
-                    count * z / (rowSum * colSmoothed[col]));
+                final double value =
+                    Math.log(count)
+                    + logZ
+                    - logRow
+                    - logContexts[col];
 
                 if (value <= 0d) {
                     continue;
@@ -477,6 +497,22 @@ public class ContingencySvd
     }
 
     /**
+     * Returns the prepared matrix (residuals or PPMI-CDS) used by the decomposition.
+     *
+     * <p>
+     * The returned array is live and must be treated as read-only. It lets a
+     * caller run an alternative decomposition, such as a truncated top-k SVD,
+     * on the same matrix this class prepared.
+     * </p>
+     *
+     * @return live prepared matrix, or {@code null} before preparation
+     */
+    public double[][] prepared()
+    {
+        return prepared;
+    }
+
+    /**
      * Projects the current full embedding onto its leading dimensions.
      *
      * <p>
@@ -490,7 +526,7 @@ public class ContingencySvd
      * @return layout containing newly allocated coordinate and metadata arrays
      * @throws IllegalArgumentException if {@code dims < 1}
      * @throws IllegalStateException before {@link #decompose()} or for a
-     *         rank-zero residual matrix
+     *         rank-zero prepared matrix
      */
     public SvdLayout project(
         final int dims
@@ -513,7 +549,7 @@ public class ContingencySvd
      * @return layout containing unit-length projected rows
      * @throws IllegalArgumentException if {@code dims < 1}
      * @throws IllegalStateException before {@link #decompose()}, after
-     *         {@link #scaleRowsByMass()}, or for a rank-zero residual matrix
+     *         {@link #scaleRowsByMass()}, or for a rank-zero prepared matrix
      */
     public SvdLayout projectNormalized(
         final int dims
@@ -549,7 +585,7 @@ public class ContingencySvd
         double energy = 0d;
         for (int row = 0; row < observed.length; row++) {
             for (int col = 0; col < observed[row].length; col++) {
-                if (structural[row][col]) {
+                if (isStructural(row, col)) {
                     continue;
                 }
                 final double value = association(
@@ -569,22 +605,6 @@ public class ContingencySvd
         totalInertia = energy;
         invalidateDecomposition();
         return this;
-    }
-
-    /**
-     * Returns the prepared matrix (residuals or ppmi) used by the decomposition.
-     *
-     * <p>
-     * The returned array is live and must be treated as read-only. It lets a
-     * caller run an alternative decomposition, such as a truncated top-k SVD,
-     * on the same residuals this class prepared.
-     * </p>
-     *
-     * @return live residual matrix, or {@code null} before {@link #residual(Assoc)}
-     */
-    public double[][] prepared()
-    {
-        return prepared;
     }
 
     /**
@@ -701,6 +721,99 @@ public class ContingencySvd
     }
 
     /**
+     * Caps the magnitude of prepared-matrix cells at a quantile of their own
+     * distribution.
+     *
+     * <p>
+     * A plain singular value decomposition weights every cell of the prepared
+     * matrix by the square of its value, so a few very large cells dominate the
+     * fit and can bend the leading axes toward a handful of high-frequency,
+     * strongly associated pairs. This is the correspondence of the capped
+     * weighting function used by count-based embedding models: the deviance and
+     * Freeman-Tukey residuals already grow with frequency, but without bound.
+     * Winsorising clips each admissible cell to {@code +/- cap}, where
+     * {@code cap} is the {@code quantile} of the absolute values over admissible
+     * cells, bounding the loss any single cell contributes while leaving the
+     * many moderate cells untouched. Structural cells are left at zero.
+     * </p>
+     *
+     * <p>
+     * This operates on the prepared matrix from {@link #residual(Assoc)} or
+     * {@link #ppmi(double)} and must be called after one of them and before
+     * {@link #decompose()}. The total inertia is recomputed so that inertia
+     * percentages stay consistent, and any prior decomposition is invalidated.
+     * A {@code quantile} of {@code 1} leaves the matrix unchanged.
+     * </p>
+     *
+     * @param quantile absolute-value quantile in {@code (0, 1]} used as the cap
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code quantile} is not in {@code (0, 1]}
+     * @throws IllegalStateException before {@link #residual(Assoc)} or
+     *         {@link #ppmi(double)}
+     */
+    public ContingencySvd winsorize(
+        final double quantile
+    ) {
+        if (prepared == null) {
+            throw new IllegalStateException(
+                "call residual() or ppmi() before winsorize()");
+        }
+        if (!(quantile > 0d) || quantile > 1d) {
+            throw new IllegalArgumentException(
+                "quantile must be in (0, 1], got " + quantile);
+        }
+
+        int count = 0;
+        for (int row = 0; row < prepared.length; row++) {
+            for (int col = 0; col < prepared[row].length; col++) {
+                if (!isStructural(row, col)) {
+                    count++;
+                }
+            }
+        }
+        if (count == 0) {
+            return this;
+        }
+
+        final double[] magnitudes = new double[count];
+        int index = 0;
+        for (int row = 0; row < prepared.length; row++) {
+            for (int col = 0; col < prepared[row].length; col++) {
+                if (!isStructural(row, col)) {
+                    magnitudes[index++] = Math.abs(prepared[row][col]);
+                }
+            }
+        }
+        java.util.Arrays.sort(magnitudes);
+        final int position = (int) Math.min(
+            count - 1L,
+            Math.round(quantile * (count - 1L)));
+        final double cap = magnitudes[position];
+
+        double energy = 0d;
+        for (int row = 0; row < prepared.length; row++) {
+            for (int col = 0; col < prepared[row].length; col++) {
+                if (isStructural(row, col)) {
+                    continue;
+                }
+                double value = prepared[row][col];
+                if (value > cap) {
+                    value = cap;
+                }
+                else if (value < -cap) {
+                    value = -cap;
+                }
+                prepared[row][col] = value;
+                energy += value * value;
+            }
+        }
+
+        totalInertia = energy;
+        invalidateDecomposition();
+        return this;
+    }
+
+    /**
      * Adopts a truncated decomposition as the current embedding, fixing axis
      * signs and clearing prior embedding transformations.
      */
@@ -790,7 +903,7 @@ public class ContingencySvd
         final double[] sums = new double[observed[0].length];
         for (int row = 0; row < observed.length; row++) {
             for (int col = 0; col < observed[row].length; col++) {
-                if (!structural[row][col]) {
+                if (!isStructural(row, col)) {
                     sums[col] += observed[row][col];
                 }
             }
@@ -814,7 +927,7 @@ public class ContingencySvd
 
         for (int row = 0; row < rowCount; row++) {
             for (int col = 0; col < colCount; col++) {
-                if (!structural[row][col]) {
+                if (!isStructural(row, col)) {
                     fit[row][col] = 1d;
                 }
             }
@@ -900,6 +1013,20 @@ public class ContingencySvd
     }
 
     /**
+     * Tests whether one observed cell is structural.
+     *
+     * @param row row rank
+     * @param col column rank
+     * @return {@code true} if the cell is structural
+     */
+    private boolean isStructural(
+        final int row,
+        final int col
+    ) {
+        return structural != null && structural[row][col];
+    }
+
+    /**
      * Returns the maximum relative row or column margin error.
      */
     private static double marginError(
@@ -950,7 +1077,7 @@ public class ContingencySvd
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
         }
         if (rank == 0) {
-            throw new IllegalStateException("residual matrix has numerical rank 0");
+            throw new IllegalStateException("prepared matrix has numerical rank 0");
         }
 
         final int axes = Math.min(dims, rank);
@@ -1035,7 +1162,7 @@ public class ContingencySvd
         final double[] sums = new double[observed.length];
         for (int row = 0; row < observed.length; row++) {
             for (int col = 0; col < observed[row].length; col++) {
-                if (!structural[row][col]) {
+                if (!isStructural(row, col)) {
                     sums[row] += observed[row][col];
                 }
             }

@@ -21,3 +21,4 @@ buildNumber.properties
 common/src/java/com/github/oeuvres/alix/lucene/terms/*.html
 common/src/resources/com/github/oeuvres/alix/fr/*.zip
 common/src/resources/com/github/oeuvres/alix/fr/*.txt
+*.bin

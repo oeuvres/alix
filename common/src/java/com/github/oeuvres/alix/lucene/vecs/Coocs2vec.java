@@ -15,8 +15,8 @@ import com.github.oeuvres.alix.maths.ContingencySvd;
 import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
 
 /**
- * Reduces a Lucene term-by-cooccurring-term table to dense term vectors by signed G² residual SVD
- * and writes them in the word2vec binary format.
+ * Reduces a Lucene term-by-cooccurring-term table to dense term vectors by either signed G²
+ * residual SVD or PPMI-CDS SVD, and writes them in the word2vec binary format.
  * <p>
  * The vocabulary is selected by minimum document frequency, then by decreasing total term
  * frequency. Rows and columns use the same selected vocabulary. Each unordered pair of selected
@@ -31,9 +31,9 @@ import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
  * </p>
  *
  * <pre>{@code
- * java com.github.oeuvres.alix.lucene.vecs.coocs2vec <indexDir> <field> \
+ * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--sideDir DIR] [--distance 30] [--dims 100] [--power 0.5] \
- *     [--minDocFreq 3] [--maxTerms 10000] [--out vectors.bin]
+ *     [--ppmi] [--winsorize Q] [--minDocFreq 3] [--maxTerms 10000] [--out vectors.bin]
  * }</pre>
  */
 public final class Coocs2vec
@@ -46,10 +46,12 @@ public final class Coocs2vec
         long pairs
     ) {}
 
+    private static final double PPMI_ALPHA = 0.75d;
+
     private static final String USAGE =
-        "usage: coocs2vec <indexDir> <field>"
+        "usage: Coocs2vec <indexDir> <field>"
             + " [--sideDir DIR] [--distance N] [--dims N] [--power P]"
-            + " [--minDocFreq N] [--maxTerms N] [--out FILE]";
+            + " [--ppmi] [--winsorize Q] [--minDocFreq N] [--maxTerms N] [--out FILE]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
@@ -81,23 +83,23 @@ public final class Coocs2vec
         final String field = args[1];
         Path sideDir = indexDir;
         int distance = 30;
-        int dims = 100;
+        int dims = 300;
         double power = 0.5d;
         int minDocFreq = 3;
         int maxTerms = 10_000;
-        Path out = Paths.get("vectors.bin");
         boolean ppmi = false;
+        double winsorize = 0d;
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
                 case "--ppmi" -> ppmi = true;
+                case "--winsorize" -> winsorize = Double.parseDouble(args[++i]);
                 case "--sideDir" -> sideDir = Paths.get(args[++i]);
                 case "--distance" -> distance = Integer.parseInt(args[++i]);
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
                 case "--power" -> power = Double.parseDouble(args[++i]);
                 case "--minDocFreq" -> minDocFreq = Integer.parseInt(args[++i]);
                 case "--maxTerms" -> maxTerms = Integer.parseInt(args[++i]);
-                case "--out" -> out = Paths.get(args[++i]);
                 default -> {
                     System.err.println("unknown option: " + args[i]);
                     System.err.println(USAGE);
@@ -112,6 +114,10 @@ public final class Coocs2vec
         if (maxTerms < 2) {
             throw new IllegalArgumentException("maxTerms must be >= 2: " + maxTerms);
         }
+        // build out name
+        String outName = indexDir.getFileName() + "-" + field + "-coocs" + distance + "-power" + power;
+        if (ppmi) outName += "-ppmi";
+        if (winsorize > 0d) outName += "-win" + winsorize;
 
         log("opening index %s", indexDir);
         try (
@@ -150,17 +156,25 @@ public final class Coocs2vec
                 table.nonZero(), 100d * table.nonZero() / cellCount, table.pairs());
 
             final ContingencySvd svd = new ContingencySvd(table.cells(), null);
+            final String preparation;
             if (ppmi) {
-                log("computing ppmi");
-                svd.ppmi(0.75d);
+                preparation = String.format("PPMI-CDS(alpha=%.3f)", PPMI_ALPHA);
+                log("computing %s from cooccurrence marginals", preparation);
+                svd.ppmi(PPMI_ALPHA);
             }
             else {
+                preparation = "G2 residual";
                 log("computing G2 residuals against IPF independence expectation");
                 svd.residual(Assoc.G2);
             }
 
+            if (winsorize > 0d && winsorize < 1d) {
+                log("winsorising prepared matrix at quantile %.4f", winsorize);
+                svd.winsorize(winsorize);
+            }
+
             log(
-                "decomposing %,d x %,d residual matrix to top %d dims (randomized SVD)",
+                "decomposing %,d x %,d prepared matrix to top %d dims (randomized SVD)",
                 termCount, termCount, dims);
             svd.decompose(dims);
             log("decomposition done, rank %d", svd.singularValues().length);
@@ -169,19 +183,15 @@ public final class Coocs2vec
                 log("weighting axes by sigma^%.3f", power);
                 svd.weightAxes(power);
             }
-            final double[][] coords = svd.project(dims).coords();
-            final int outDim = coords[0].length;
-            log("projected to %d dimensions (requested %d)", outDim, dims);
+            for (int pdims : new int[] {1, 2, 5, 10, 50, 100, 200, 300}) {
+                final double[][] coords = svd.project(pdims).coords();
+                Path out = Paths.get(outName + "-dims" + pdims + ".bin");
+                final int outDim = coords[0].length;                
+                log("writing %,d vectors to %s", termCount, out);
+                VecUtil.writeWord2vec(out, table.words(), coords, outDim);
+            }
 
-            log("writing %,d vectors to %s", termCount, out);
-            VecUtil.writeWord2vec(out, table.words(), coords, outDim);
             log("done");
-
-            System.out.printf(
-                "%d terms x %d terms, distance=+/- %d -> %d-dim vectors (requested %d)%n"
-                    + "G2 residual, power=%.3f, written to %s in %d ms%n",
-                termCount, termCount, distance, outDim, dims, power, out,
-                System.currentTimeMillis() - started);
         }
     }
 
