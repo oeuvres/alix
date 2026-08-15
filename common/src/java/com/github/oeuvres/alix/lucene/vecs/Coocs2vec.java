@@ -14,6 +14,8 @@ import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
 import com.github.oeuvres.alix.maths.ContingencySvd;
 import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
 
+import org.hipparchus.stat.projection.PCA;
+
 /**
  * Reduces a Lucene term-by-cooccurring-term table to dense term vectors by either signed G²
  * residual SVD or PPMI-CDS SVD, and writes them in the word2vec binary format.
@@ -33,7 +35,7 @@ import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--sideDir DIR] [--distance 30] [--dims 100] [--power 0.5] \
- *     [--ppmi] [--winsorize Q] [--minDocFreq 3] [--maxTerms 10000] [--out vectors.bin]
+ *     [--ppmi] [--winsorize Q] [--abtt D] [--minDocFreq 3] [--maxTerms 10000] [--out vectors.bin]
  * }</pre>
  */
 public final class Coocs2vec
@@ -51,7 +53,7 @@ public final class Coocs2vec
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
             + " [--sideDir DIR] [--distance N] [--dims N] [--power P]"
-            + " [--ppmi] [--winsorize Q] [--minDocFreq N] [--maxTerms N] [--out FILE]";
+            + " [--ppmi] [--winsorize Q] [--abtt D] [--minDocFreq N] [--maxTerms N] [--out FILE]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
@@ -83,17 +85,19 @@ public final class Coocs2vec
         final String field = args[1];
         Path sideDir = indexDir;
         int distance = 30;
-        int dims = 300;
+        int dims = 500;
         double power = 0.5d;
         int minDocFreq = 3;
         int maxTerms = 10_000;
         boolean ppmi = false;
         double winsorize = 0d;
+        int abtt = 0;
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
                 case "--ppmi" -> ppmi = true;
                 case "--winsorize" -> winsorize = Double.parseDouble(args[++i]);
+                case "--abtt" -> abtt = Integer.parseInt(args[++i]);
                 case "--sideDir" -> sideDir = Paths.get(args[++i]);
                 case "--distance" -> distance = Integer.parseInt(args[++i]);
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
@@ -118,6 +122,7 @@ public final class Coocs2vec
         String outName = indexDir.getFileName() + "-" + field + "-coocs" + distance + "-power" + power;
         if (ppmi) outName += "-ppmi";
         if (winsorize > 0d) outName += "-win" + winsorize;
+        if (abtt > 0) outName += "-abtt" + abtt;
 
         log("opening index %s", indexDir);
         try (
@@ -183,15 +188,64 @@ public final class Coocs2vec
                 log("weighting axes by sigma^%.3f", power);
                 svd.weightAxes(power);
             }
-            for (int pdims : new int[] {1, 2, 5, 10, 50, 100, 200, 300}) {
+            for (int pdims : new int[] {1, 2, 5, 10, 50, 100, 200, 300, 500}) {
                 final double[][] coords = svd.project(pdims).coords();
                 Path out = Paths.get(outName + "-dims" + pdims + ".bin");
-                final int outDim = coords[0].length;                
+                final int outDim = coords[0].length;
+                if (abtt > 0 && abtt < outDim) {
+                    log("all-but-the-top: removing %d common directions (Hipparchus PCA)", abtt);
+                    allButTheTop(coords, abtt);
+                }
                 log("writing %,d vectors to %s", termCount, out);
                 VecUtil.writeWord2vec(out, table.words(), coords, outDim);
             }
 
             log("done");
+        }
+    }
+
+    /**
+     * Applies the all-but-the-top postprocessing (Mu and Viswanath, ICLR 2018)
+     * to a set of vectors in place, using a Hipparchus principal component
+     * analysis.
+     *
+     * <p>
+     * The vectors are centred on their common mean and the leading
+     * {@code components} principal directions of the centred cloud are projected
+     * out; the mean is not added back. A word cloud's common mean and few
+     * dominant directions encode mostly frequency and dilute cosine similarity,
+     * so removing them sharpens it. The centre and the principal directions come
+     * from {@link PCA} (covariance, no scaling); its {@code getComponents}
+     * returns one direction per column, matching the projection below.
+     * </p>
+     *
+     * @param vectors dense vectors, one row per word, modified in place
+     * @param components number of leading common directions to remove
+     */
+    private static void allButTheTop(
+        final double[][] vectors,
+        final int components
+    ) {
+        final int dim = vectors[0].length;
+        final PCA pca = new PCA(components).fit(vectors);
+        final double[] center = pca.getCenter();
+        final double[][] directions = pca.getComponents();
+        final int found = directions.length == 0 ? 0 : directions[0].length;
+        for (final double[] vector : vectors) {
+            for (int axis = 0; axis < dim; axis++) {
+                vector[axis] -= center[axis];
+            }
+        }
+        for (final double[] vector : vectors) {
+            for (int direction = 0; direction < found; direction++) {
+                double dot = 0d;
+                for (int axis = 0; axis < dim; axis++) {
+                    dot += vector[axis] * directions[axis][direction];
+                }
+                for (int axis = 0; axis < dim; axis++) {
+                    vector[axis] -= dot * directions[axis][direction];
+                }
+            }
         }
     }
 

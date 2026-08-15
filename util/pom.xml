@@ -16,11 +16,10 @@
         <sourceDirectory>src/java</sourceDirectory>
     </build>
     <dependencies>
-        <!-- Pearson SVD -->
         <dependency>
-            <groupId>org.hipparchus</groupId>
-            <artifactId>hipparchus-core</artifactId>
-            <version>4.0.3</version>
+          <groupId>com.github.haifengl</groupId>
+          <artifactId>smile-core</artifactId>
+          <version>6.2.5</version>
         </dependency>
     </dependencies>
 </project>
