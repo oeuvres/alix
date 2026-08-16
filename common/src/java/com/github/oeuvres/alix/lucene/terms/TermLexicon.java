@@ -64,31 +64,31 @@ import java.util.Objects;
  * normalization, stemming or lower-casing is applied here.
  * </p>
  * <p>
- * <b>Optional enrichment.</b> Two further artifacts may be cached, both derived from the field's own
- * Hunspell sidecar — the {@code <field>.dic} that {@link HunspellCompiler} emits, already pruned to this
- * field's vocabulary and written in the index's apostrophe form:
+ * <b>Optional enrichment.</b> The enriching constructor accepts three independent sidecar streams and
+ * caches the artifacts they yield. Every artifact is heap state, so the instance stays frozen and
+ * concurrent-safe once it escapes; each source is read once and never closed (the caller keeps ownership).
  * </p>
  * <ul>
- *   <li>a field-restricted {@link Dictionary} (Hunspell), when both a {@code dic} and an {@code aff} stream
- *       are supplied: the {@code dic} filtered to the entries whose headword is indexed in this field, paired
- *       with the unchanged {@code aff}. Retrieve it with {@link #hunspell()}; this class never spells or
- *       suggests on its own. The {@link Dictionary} is immutable and concurrent-safe; the non-thread-safe
- *       {@code Hunspell} runtime is the caller's to create per thread.</li>
- *   <li>term-flag membership: one {@link BitSet} of term ids per {@link TermFlag} actually set. Each
- *       {@link TermFlag} declares the {@code key:value} tokens that set it (for example {@code po:ADJ} or
- *       {@code ne:pers}); the dictionary scan gives {@code po:} tokens primary-POS semantics: only the first
- *       {@code po:} token of a kept line may set a POS flag. Other morphological tags remain cumulative. A term
- *       may therefore carry one modelled POS flag and several non-POS flags. Query with {@link #flags(int)},
- *       {@link #bits(TermFlag)} or {@link #has(int, TermFlag)}.</li>
+ *   <li><b>Hunspell dictionary</b> — from a {@code dic} plus an {@code aff}. The {@code dic} is the
+ *       {@code <field>.dic} that {@link HunspellCompiler} emits, already pruned to this field's vocabulary
+ *       and written in the index's apostrophe form; it is filtered again to the entries whose headword is
+ *       actually indexed here and paired with the unchanged {@code aff}. Retrieve it with {@link #hunspell()};
+ *       this class never spells or suggests on its own. The {@link Dictionary} is immutable and
+ *       concurrent-safe; the non-thread-safe {@code Hunspell} runtime is the caller's to create per thread.</li>
+ *   <li><b>Term-flag membership</b> — one {@link BitSet} of term ids per {@link TermFlag} actually set,
+ *       drawn from two sources. Most flags come from the {@code dic}'s Hunspell morphological tags: each
+ *       {@link TermFlag} declares the {@code key:value} tags that set it (for example {@code po:ADJ} or
+ *       {@code ne:place}); {@code po:} tags carry primary-POS semantics, so only the first {@code po:} tag of
+ *       a resolved term id may set a POS flag, while other tags remain cumulative. One flag instead comes
+ *       from a plain stop-word list: {@link TermFlag#STOPWORD} is set for every listed word indexed in this
+ *       field. Query with {@link #flags(int)}, {@link #bits(TermFlag)} or {@link #has(int, TermFlag)}; the
+ *       query surface is uniform and does not expose which source set a flag.</li>
  * </ul>
  * <p>
- * The enrichment preserves every guarantee above: the cached {@link Dictionary} is heap state (its
- * build-time temporary {@link Directory} is in-memory and closed during construction) and the BitSets are
- * heap state, so the instance is frozen once it escapes. The join between a dictionary headword and an
- * indexed term is a raw byte match through {@link #id(String)}; the headword is parsed exactly as
- * {@link HunspellCompiler} parses it, so multi-word headwords survive intact and producer and consumer agree
- * on which lines match. Supply a sidecar in the apostrophe form the analyzer produced, or coverage silently
- * drops.
+ * The join between a dictionary headword (or a stop-word line) and an indexed term is a raw byte match
+ * through {@link #id(String)}: no analysis or normalization runs here, so supply forms in exactly the shape
+ * the analyzer produced or coverage silently drops. Dictionary headwords are parsed as {@link HunspellCompiler}
+ * parses them, so multi-word headwords survive intact and producer and consumer agree on which lines match.
  * </p>
  *
  * @see TermRail
@@ -98,33 +98,35 @@ import java.util.Objects;
 public final class TermLexicon {
 
     /**
-     * Membership flags attachable to the term ids of a {@link TermLexicon}, each harvested from the Hunspell
-     * morphological fields of the field's dictionary.
+     * Membership flags attachable to the term ids of a {@link TermLexicon}.
      * <p>
-     * These are independent membership bits, but {@code po:} triggers are treated as one ordered POS axis: only
-     * the first {@code po:} token encountered for one resolved term id may set a POS flag. A term may still carry
-     * several flags at once, for example one POS flag and one named-entity flag. Each constant declares the
-     * {@code key:value}
-     * tokens that set it — part of speech through {@code po:} (e.g. {@code po:ADJ}), named-entity type through
-     * {@code ne:} (e.g. {@code ne:pers}). The model extends by a local edit: add a constant with its trigger
-     * tokens, or add a token to an existing constant. Tokens present in the dictionary but declared by no
-     * constant (for example {@code po:ADV}, {@code ne:org}, {@code ne:taxon}) are ignored. {@link #NULL} is a
-     * special no-flag sentinel: it has no triggers, is never set, and is the value for which
-     * {@link TermLexicon#bits(TermFlag)} returns {@code null}.
+     * Most flags are harvested from the Hunspell morphological tags of the field's dictionary and declare
+     * the {@code key:value} tags that set them — part of speech through {@code po:} (e.g. {@code po:ADJ}),
+     * named-entity type through {@code ne:} (e.g. {@code ne:place}). These are independent membership bits,
+     * except that {@code po:} forms a single ordered POS axis: only the first {@code po:} tag encountered for
+     * one resolved term id may set a POS flag. A term may still carry several flags at once, for example one
+     * POS flag and one named-entity flag. The tag-driven model extends by a local edit: add a constant with
+     * its tags, or add a tag to an existing constant. Tags present in the dictionary but declared by no
+     * constant (for example {@code po:ADV}, {@code ne:org}) are ignored.
+     * </p>
+     * <p>
+     * A flag may instead be set by a mechanism other than the dictionary scan, in which case it declares no
+     * tags. {@link #STOPWORD} is such a flag, set from an external word list; {@link #NULL} is the no-flag
+     * sentinel, never set. Both declare no tags and so are never touched by the dictionary scan.
      * </p>
      */
     public static enum TermFlag {
         /**
-         * No-flag sentinel. It declares no trigger tokens, so it is never set on any term, and it is the one
-         * value for which {@link TermLexicon#bits(TermFlag)} returns {@code null} rather than a BitSet. It is a
-         * usable "no axis selected" marker that, unlike a {@code null} reference, passes
-         * {@code Objects.requireNonNull} and compares with {@code ==}. Placed first, ordinal 0, paralleling the
-         * reserved term id 0 of {@link TermLexicon}.
+         * No-flag sentinel. It declares no tags, so it is never set on any term, and it is the one value for
+         * which {@link TermLexicon#bits(TermFlag)} returns {@code null} rather than a BitSet. It is a usable
+         * "no axis selected" marker that, unlike a {@code null} reference, passes
+         * {@code Objects.requireNonNull} and compares with {@code ==}. Placed first, ordinal 0, paralleling
+         * the reserved term id 0 of {@link TermLexicon}.
          */
         NULL,
         /** Adjective; set by {@code po:ADJ}. */
         ADJ("po:ADJ"),
-        /** Dictionary of auctors */
+        /** Dictionary of auctors; set by {@code ne:auctor}. */
         AUCTOR("ne:auctor"),
         /** Common noun; set by {@code po:NOUN}. */
         NOUN("po:NOUN"),
@@ -132,28 +134,35 @@ public final class TermLexicon {
         PLACE("ne:place"),
         /** Proper noun; set by {@code po:PROPN}. */
         PROPN("po:PROPN"),
+        /**
+         * Stop word. Declares no tags: it is not harvested from the dictionary but set from the external
+         * stop-word list passed to the enriching constructor (one word per line, UTF-8). Each listed word is
+         * resolved through {@link TermLexicon#id(String)} and, when indexed in this field, its id gets the
+         * flag; words absent from the field are dropped.
+         */
+        STOPWORD,
         /** Verb; set by {@code po:VERB}. */
         VERB("po:VERB");
 
-        /** Hunspell morphological tokens that set this flag; harvested by {@link TermLexicon}. */
-        private final String[] triggers;
+        /** Hunspell morphological tags that set this flag; harvested by {@link TermLexicon}. */
+        private final String[] tags;
 
-        TermFlag(final String... triggers) {
-            this.triggers = triggers;
+        TermFlag(final String... tags) {
+            this.tags = tags;
         }
 
         /**
-         * Returns the {@code key:value} morphological tokens that set this flag.
+         * Returns the {@code key:value} morphological tags that set this flag.
          *
-         * @return trigger tokens, never null; empty for a flag set by no dictionary token
+         * @return tags, never null; empty for a flag not set by any dictionary tag
          */
-        String[] triggers() {
-            return triggers;
+        String[] tags() {
+            return tags;
         }
     }
 
-    /** Reverse index from a Hunspell morphological token to the flags it sets; built from {@link TermFlag}. */
-    private static final Map<String, List<TermFlag>> FLAG_TRIGGERS = flagTriggers();
+    /** Reverse index from a Hunspell morphological tag to the flags it sets; built from {@link TermFlag}. */
+    private static final Map<String, List<TermFlag>> FLAGS_BY_TAG = flagsByTag();
 
     /** Indexed field for which this lexicon was built. */
     private final String field;
@@ -192,28 +201,13 @@ public final class TermLexicon {
      * @throws NullPointerException     if {@code reader} or {@code field} is null
      */
     public TermLexicon(final IndexReader reader, final String field) throws IOException {
-        this(reader, field, null, null);
+        this(reader, field, null, null, null);
     }
 
     /**
      * Builds the lexicon for one field, optionally enriched with a field-restricted Hunspell dictionary and
-     * the {@link TermFlag} BitSets harvested from that dictionary. The reader and both streams are consulted
-     * only here and not retained; the streams are read once and not closed (the caller keeps ownership).
-     * <p>
-     * Effect of the nullable Hunspell sources:
-     * </p>
-     * <ul>
-     *   <li>{@code dic == null}: no dictionary, no flags; an {@code aff} alone is ignored.</li>
-     *   <li>{@code dic != null}, {@code aff == null}: flags harvested from the {@code dic}'s morphological
-     *       fields; {@link #hunspell()} is {@code null}.</li>
-     *   <li>{@code dic != null}, {@code aff != null}: flags harvested and {@link #hunspell()} returns the
-     *       restricted dictionary (or {@code null} if no headword is indexed here).</li>
-     * </ul>
-     * <p>
-     * The {@code dic} is expected to be the field sidecar {@link HunspellCompiler} emits: already pruned to the
-     * field and already apostrophe-folded, so no apostrophe logic runs here. A line's headword is located with
-     * the same rule the compiler uses, so multi-word headwords are matched whole, not at their first space.
-     * </p>
+     * the tag-driven {@link TermFlag} BitSets harvested from it. Equivalent to the five-argument constructor
+     * with no stop-word list.
      *
      * @param reader snapshot reader
      * @param field  indexed field name
@@ -225,6 +219,43 @@ public final class TermLexicon {
      */
     public TermLexicon(final IndexReader reader, final String field,
             final InputStream dic, final InputStream aff) throws IOException {
+        this(reader, field, dic, aff, null);
+    }
+
+    /**
+     * Builds the lexicon for one field with the full set of optional sidecars. The reader and all streams are
+     * consulted only here and not retained; each stream is read once and not closed (the caller keeps
+     * ownership). The three sources are independent, so any subset may be {@code null}.
+     * <p>
+     * Effect of the nullable sources:
+     * </p>
+     * <ul>
+     *   <li>{@code dic == null}: no dictionary and no tag-driven flags; an {@code aff} alone is ignored.</li>
+     *   <li>{@code dic != null}, {@code aff == null}: tag-driven flags harvested from the {@code dic}'s
+     *       morphological fields; {@link #hunspell()} is {@code null}.</li>
+     *   <li>{@code dic != null}, {@code aff != null}: flags harvested and {@link #hunspell()} returns the
+     *       restricted dictionary (or {@code null} if no headword is indexed here).</li>
+     *   <li>{@code stopwords != null}: each line is resolved through {@link #id(String)} and, when indexed in
+     *       this field, its id gets {@link TermFlag#STOPWORD}. Independent of the dictionary; the list is
+     *       headerless, so its first line is a word, not a count.</li>
+     * </ul>
+     * <p>
+     * The {@code dic} is expected to be the field sidecar {@link HunspellCompiler} emits: already pruned to the
+     * field and already apostrophe-folded, so no apostrophe logic runs here. A line's headword is located with
+     * the same rule the compiler uses, so multi-word headwords are matched whole, not at their first space.
+     * </p>
+     *
+     * @param reader    snapshot reader
+     * @param field     indexed field name
+     * @param dic       field Hunspell {@code .dic}, or {@code null}
+     * @param aff       Hunspell {@code .aff}, or {@code null}
+     * @param stopwords UTF-8 stop-word list, one word per line, or {@code null}
+     * @throws IOException              on read or parse failure, or if 32-bit limits are exceeded
+     * @throws IllegalArgumentException if the field has no terms in the reader
+     * @throws NullPointerException     if {@code reader} or {@code field} is null
+     */
+    public TermLexicon(final IndexReader reader, final String field,
+            final InputStream dic, final InputStream aff, final InputStream stopwords) throws IOException {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
         this.field = field;
@@ -264,49 +295,10 @@ public final class TermLexicon {
         this.vocabSize = off.length - 1;
 
         final EnumMap<TermFlag, BitSet> bits = new EnumMap<>(TermFlag.class);
-        final BitSet posTerms = new BitSet(vocabSize);
-
-        Dictionary dict = null;
-        if (dic != null) {
-            final StringBuilder body = (aff != null) ? new StringBuilder(1 << 20) : null;
-            final BytesRefBuilder probe = new BytesRefBuilder();
-            final BufferedReader in = new BufferedReader(new InputStreamReader(dic, StandardCharsets.UTF_8));
-            int kept = 0;
-            in.readLine();                     // discard the dic count header (line 1)
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (line.isEmpty()) {
-                    continue;
-                }
-                final int cut = headwordEnd(line);
-                if (cut == 0) {
-                    continue;
-                }
-                probe.copyChars(line, 0, cut);
-                final int tid = id(probe.get());
-                if (tid < 1) {
-                    continue;          // headword not indexed in this field
-                }
-                kept++;
-                if (body != null) {
-                    body.append(line).append('\n');
-                }
-                harvestFlags(line, cut, tid, bits, posTerms);
-            }
-            if (aff != null && kept > 0) {
-                final ByteArrayInputStream filtered = new ByteArrayInputStream(
-                    (kept + "\n" + body).getBytes(StandardCharsets.UTF_8));
-                final Directory tmp = new ByteBuffersDirectory();
-                try {
-                    dict = new Dictionary(tmp, "hunspell", aff, filtered);
-                } catch (final ParseException e) {
-                    throw new IOException("Hunspell dictionary parse failed for field: " + field, e);
-                } finally {
-                    tmp.close();
-                }
-            }
+        this.hunspell = (dic != null) ? harvestDictionary(dic, aff, bits) : null;
+        if (stopwords != null) {
+            harvestStopwords(stopwords, bits);
         }
-        this.hunspell = dict;
         this.flagBits = bits;
     }
 
@@ -316,8 +308,8 @@ public final class TermLexicon {
      * The result is a defensive copy: the caller may read, iterate or mutate it without affecting the
      * lexicon. An empty BitSet is returned when a real flag was never set. {@link TermFlag#NULL} alone returns
      * {@code null} — the "no axis selected" marker, distinct from the empty BitSet an unset real flag yields.
-     * For pivot queries, intersect this with a co-occurrence candidate set (e.g. {@code bits(TermFlag.PERS)}
-     * AND the cooc terms of a pivot).
+     * For pivot queries, intersect this with a co-occurrence candidate set (e.g. {@code bits(TermFlag.PLACE)}
+     * AND the cooc terms of a pivot), or subtract {@code bits(TermFlag.STOPWORD)} to drop function words.
      * </p>
      *
      * @param flag membership flag
@@ -498,17 +490,17 @@ public final class TermLexicon {
         });
         return ids.toUniq();
     }
-    
+
     /**
      * Resolves the terms to their term ids, restricted to this lexicon's field. Terms the
      * lexicon does not know are silently dropped.
      *
-     * @param terms 
+     * @param terms terms to resolve
      * @return term ids sorted with no duplicates; unknown terms omitted
      */
     public int[] termIds(final String[] terms) {
         final IntList ids = new IntList();
-        for (String t: terms) {
+        for (String t : terms) {
             t = t.strip();
             if (t.isBlank()) continue;
             final int termId = id(t);
@@ -560,68 +552,156 @@ public final class TermLexicon {
     }
 
     /**
-     * Builds the reverse index from each {@link TermFlag}'s declared {@code key:value} tokens to the flag, so
-     * a dictionary token can be dispatched to the flags it sets in one map lookup. A token may set more than
-     * one flag.
+     * Builds the reverse index from each {@link TermFlag}'s declared {@code key:value} tags to the flag, so a
+     * dictionary tag can be dispatched to the flags it sets in one map lookup. A tag may set more than one
+     * flag. Flags declaring no tags (for example {@link TermFlag#STOPWORD}, {@link TermFlag#NULL}) contribute
+     * nothing here and are never reached by the dictionary scan.
      *
-     * @return token-to-flags index
+     * @return tag-to-flags index
      */
-    private static Map<String, List<TermFlag>> flagTriggers() {
+    private static Map<String, List<TermFlag>> flagsByTag() {
         final Map<String, List<TermFlag>> index = new HashMap<>();
         for (final TermFlag flag : TermFlag.values()) {
-            for (final String token : flag.triggers()) {
-                index.computeIfAbsent(token, k -> new ArrayList<>()).add(flag);
+            for (final String tag : flag.tags()) {
+                index.computeIfAbsent(tag, k -> new ArrayList<>()).add(flag);
             }
         }
         return index;
     }
 
     /**
-     * Sets every flag triggered by one kept dictionary line, scanning its Hunspell morphological tokens from
-     * the end of the headword. Whitespace-delimited non-POS tokens are cumulative. POS tokens are ordered: only
-     * the first {@code po:} token encountered for one resolved term id is allowed to set a POS flag. Later
-     * {@code po:} tokens for the same term id, even from another dictionary line, are ignored. Tokens that match
-     * no flag (affix codes, {@code fr:}, unmodelled tags) are ignored, but an unmodelled primary {@code po:}
-     * still consumes the term's POS slot.
+     * Scans the field {@code dic}, harvesting the tag-driven {@link TermFlag} BitSets and, when an {@code aff}
+     * is supplied, building the field-restricted Hunspell {@link Dictionary} from the lines whose headword is
+     * indexed here. The count header on line 1 is discarded (the {@code dic} carries one); the join with the
+     * index is a raw byte match via {@link #id(BytesRef)} on the headword.
      *
-     * @param line     raw dictionary line
-     * @param from     index where the morphological fields begin (the headword end)
-     * @param termId   resolved term id for the line's headword
-     * @param bits     flag sets being filled
-     * @param posTerms term ids whose primary POS token has already been consumed
+     * @param dic  field Hunspell {@code .dic}
+     * @param aff  Hunspell {@code .aff}, or {@code null} to harvest flags without building a dictionary
+     * @param bits flag sets being filled
+     * @return the restricted dictionary, or {@code null} when {@code aff} is null or no headword matched
+     * @throws IOException on read or parse failure
+     */
+    private Dictionary harvestDictionary(final InputStream dic, final InputStream aff,
+            final EnumMap<TermFlag, BitSet> bits) throws IOException {
+        final StringBuilder body = (aff != null) ? new StringBuilder(1 << 20) : null;
+        final BytesRefBuilder probe = new BytesRefBuilder();
+        final BitSet posClaimed = new BitSet(vocabSize);
+        final BufferedReader in = new BufferedReader(new InputStreamReader(dic, StandardCharsets.UTF_8));
+        int kept = 0;
+        in.readLine();                         // discard the dic count header (line 1)
+        String line;
+        while ((line = in.readLine()) != null) {
+            if (line.isEmpty()) {
+                continue;
+            }
+            final int cut = headwordEnd(line);
+            if (cut == 0) {
+                continue;
+            }
+            probe.copyChars(line, 0, cut);
+            final int tid = id(probe.get());
+            if (tid < 1) {
+                continue;                      // headword not indexed in this field
+            }
+            kept++;
+            if (body != null) {
+                body.append(line).append('\n');
+            }
+            harvestFlags(line, cut, tid, bits, posClaimed);
+        }
+        if (aff == null || kept == 0) {
+            return null;
+        }
+        final ByteArrayInputStream filtered = new ByteArrayInputStream(
+            (kept + "\n" + body).getBytes(StandardCharsets.UTF_8));
+        final Directory tmp = new ByteBuffersDirectory();
+        try {
+            return new Dictionary(tmp, "hunspell", aff, filtered);
+        } catch (final ParseException e) {
+            throw new IOException("Hunspell dictionary parse failed for field: " + field, e);
+        } finally {
+            tmp.close();
+        }
+    }
+
+    /**
+     * Sets every flag declared by one kept dictionary line, scanning its Hunspell morphological tags from the
+     * headword end. Whitespace-delimited non-POS tags are cumulative. POS is a single axis: only the first
+     * {@code po:} tag seen for one resolved term id may set a POS flag, and once that slot is claimed later
+     * {@code po:} tags for the same id — even on another line — are ignored. Tags matching no flag (affix
+     * codes, {@code fr:}, unmodelled tags) are ignored, but an unmodelled primary {@code po:} still claims the
+     * term's POS slot.
+     *
+     * @param line       raw dictionary line
+     * @param from       index where the morphological fields begin (the headword end)
+     * @param termId     resolved term id for the line's headword
+     * @param bits       flag sets being filled
+     * @param posClaimed term ids whose primary POS tag has already been consumed
      */
     private void harvestFlags(final String line, final int from, final int termId,
-            final EnumMap<TermFlag, BitSet> bits, final BitSet posTerms) {
+            final EnumMap<TermFlag, BitSet> bits, final BitSet posClaimed) {
         final int n = line.length();
-        boolean posSeenInLine = false;
         int i = from;
         while (i < n) {
-            while (i < n && (line.charAt(i) == ' ' || line.charAt(i) == '	')) {
+            while (i < n && (line.charAt(i) == ' ' || line.charAt(i) == '\t')) {
                 i++;
             }
             final int start = i;
-            while (i < n && line.charAt(i) != ' ' && line.charAt(i) != '	') {
+            while (i < n && line.charAt(i) != ' ' && line.charAt(i) != '\t') {
                 i++;
             }
             if (i <= start) {
                 continue;
             }
 
-            final String token = line.substring(start, i);
-            if (token.startsWith("po:")) {
-                if (posSeenInLine || posTerms.get(termId)) {
+            final String tag = line.substring(start, i);
+            if (tag.startsWith("po:")) {
+                if (posClaimed.get(termId)) {
                     continue;
                 }
-                posSeenInLine = true;
-                posTerms.set(termId);
+                posClaimed.set(termId);
             }
 
-            final List<TermFlag> flags = FLAG_TRIGGERS.get(token);
+            final List<TermFlag> flags = FLAGS_BY_TAG.get(tag);
             if (flags != null) {
                 for (final TermFlag flag : flags) {
                     bits.computeIfAbsent(flag, k -> new BitSet(vocabSize)).set(termId);
                 }
             }
+        }
+    }
+
+    /**
+     * Sets {@link TermFlag#STOPWORD} for every word of a UTF-8 stop-word list that is indexed in this field.
+     * The list is headerless — one word per line, read from line 1 — each line stripped; blank lines and
+     * words absent from the field are dropped. The {@link BitSet} is allocated only if at least one word
+     * matches, so an empty or wholly-unknown list leaves the flag unset (and {@link #bits(TermFlag)} empty),
+     * consistent with tag-driven flags.
+     *
+     * @param stopwords UTF-8 stop-word list, one word per line
+     * @param bits      flag sets being filled
+     * @throws IOException on read failure
+     */
+    private void harvestStopwords(final InputStream stopwords,
+            final EnumMap<TermFlag, BitSet> bits) throws IOException {
+        final BytesRefBuilder probe = new BytesRefBuilder();
+        final BufferedReader in = new BufferedReader(new InputStreamReader(stopwords, StandardCharsets.UTF_8));
+        BitSet bs = null;
+        String line;
+        while ((line = in.readLine()) != null) {
+            final String word = line.strip();
+            if (word.isEmpty()) {
+                continue;
+            }
+            probe.copyChars(word);
+            final int tid = id(probe.get());
+            if (tid < 1) {
+                continue;                      // stop word not indexed in this field
+            }
+            if (bs == null) {
+                bs = bits.computeIfAbsent(TermFlag.STOPWORD, k -> new BitSet(vocabSize));
+            }
+            bs.set(tid);
         }
     }
 

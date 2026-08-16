@@ -64,6 +64,7 @@ public final class TeiIngesterDemo
         String field = cfg.props.getProperty("content", "content");
         Path indexPath = cfg.luceneRoot.resolve(cfg.name);
         stopwords(analyzer.stopwords(), indexPath, field, report);
+        stopwords(analyzer.stopwords(), indexPath, "word2vec", report);
     }
     
     /**

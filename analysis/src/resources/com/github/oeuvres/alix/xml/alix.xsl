@@ -322,6 +322,7 @@
               </div>
             </div>
         </alix:field>
+        <alix:field name="word2vec" type="text" source="content"/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
@@ -640,9 +641,7 @@
           </div>
           </div>
       </alix:field>
-      <xsl:if test=".//*[@type = 'observation']">
-        <alix:field name="observations" type="text" source="content"/>
-      </xsl:if>
+      <alix:field name="word2vec" type="text" source="content"/>
       <!--
       <alix:field name="analytic" type="meta">
         <xsl:call-template name="analytic"/>

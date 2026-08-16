@@ -78,8 +78,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     private static final POSModel POS_MODEL =
         LexiconHelper.loadPosModel(FrenchAnalyzer.class, POS_PATH);
 
-    /** ASCII-folding analyzer. */
-    private final Analyzer ascii;
+    /** Word2vec analyzer. */
+    private final Analyzer word2vec;
 
     /** Canonical indexing analyzer. */
     private final Analyzer canonic;
@@ -131,7 +131,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         expressions = FrenchLexicons.buildMweLexicon(mweEntryAnalyzer);
 
         canonic = new CanonicAnalyzer();
-        ascii = new AsciiAnalyzer();
+        word2vec = new Word2vecAnalyzer();
         observation = new ObservationAnalyzer();
     }
 
@@ -273,8 +273,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         if (fieldName.startsWith("obs")) {
             return observation;
         }
-        if (fieldName.endsWith("_ascii")) {
-            return ascii;
+        if (fieldName.startsWith("word2vec")) {
+            return word2vec;
         }
         return canonic;
     }
@@ -299,36 +299,26 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         );
         ts = new LemmaFilter(ts, lemmaLexicon, propn);
         ts = new MweFilter(ts, expressions);
-        ts = new StopFilter(ts, stopwords); // remove surface form before lemma becomes term
-        ts = new CleanupFilter(ts);
         return ts;
     }
 
     /**
-     * Analyzer for the ASCII-folded canonical field.
+     * Analyzer for word2vec, lemmatize, but keep function words
+     * (useful to separate words by pos)
      */
-    public class AsciiAnalyzer extends Analyzer
+    public class Word2vecAnalyzer extends Analyzer
     {
-        /**
-         * Builds an ASCII analyzer.
-         */
-        public AsciiAnalyzer()
+        public Word2vecAnalyzer()
         {
             super();
         }
 
-        /**
-         * Creates the ASCII analysis chain.
-         *
-         * @param fieldName field name
-         * @return reusable token-stream components
-         */
         @Override
         protected TokenStreamComponents createComponents(final String fieldName)
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = canonicChain(tokenizer);
-            ts = new ASCIIFoldingFilter(ts);
+            ts = new CleanupFilter(ts);
             return new TokenStreamComponents(tokenizer, ts);
         }
     }
@@ -356,7 +346,10 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         protected TokenStreamComponents createComponents(final String fieldName)
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
-            return new TokenStreamComponents(tokenizer, canonicChain(tokenizer));
+            TokenStream ts = canonicChain(tokenizer);
+            ts = new StopFilter(ts, stopwords); // remove surface form before lemma becomes term
+            ts = new CleanupFilter(ts);
+            return new TokenStreamComponents(tokenizer, ts);
         }
     }
 

@@ -1,17 +1,22 @@
 package com.github.oeuvres.alix.lucene.vecs;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.BitSet;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
 
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
 import com.github.oeuvres.alix.maths.SparseG2Svd;
+import com.github.oeuvres.alix.util.Report;
 
 import smile.tensor.ARPACK;
 import smile.tensor.DenseMatrix;
@@ -228,20 +233,23 @@ public final class Coocs2vec
         if (abtt > 0) {
             outName += "-abtt" + abtt;
         }
-
-        log("opening index %s", indexDir);
+        
+        final Path stopPath = sideDir.resolve(field + ".stop");
         try (
             DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir));
-            TermRail rail = TermRail.open(sideDir, field)
+            InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
         ) {
+            TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
+            if (!TermRail.exists(sideDir, field)) {
+                TermRail.build(reader, sideDir, field, lexicon, Report.ReportNull.INSTANCE);
+            }
+            TermRail rail = TermRail.open(sideDir, field);
             if (rail.docCount() != reader.maxDoc()) {
                 throw new IllegalArgumentException(
                     "rail/index document mismatch: rail=" + rail.docCount()
                         + ", index=" + reader.maxDoc());
             }
 
-            log("building term lexicon for field '%s'", field);
-            final TermLexicon lexicon = new TermLexicon(reader, field);
 
             log("selecting terms (minDocFreq=%d, cap=%d)", minDocFreq, maxTerms);
             final SelectedTerm[] selected = VecUtil.selectTerms(
@@ -258,6 +266,7 @@ public final class Coocs2vec
             log(
                 "building sparse %,d x %,d cooccurrence matrix, distance +/-%,d",
                 termCount, termCount, distance);
+            
             final Table table = coocTable(rail, lexicon, selected, distance);
             log(
                 "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs",
@@ -358,6 +367,9 @@ public final class Coocs2vec
         final SelectedTerm[] selected,
         final int distance
     ) {
+        // Here, how to count stopwords only at +/- 5 distance and not longer?
+        BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
+
         final int termCount = selected.length;
         final String[] words = new String[termCount];
         final SparseCounts counts = new SparseCounts(termCount);

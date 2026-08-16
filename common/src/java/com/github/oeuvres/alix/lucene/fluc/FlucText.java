@@ -389,31 +389,20 @@ public final class FlucText extends Fluc
         if (termLexicon != null) {
             return termLexicon;
         }
-
-        final Path dicPath = sideDir.resolve(name() + ".dic");
-
-        try {
-            if (!Files.exists(dicPath)) {
-                termLexicon = new TermLexicon(reader, name());
-                return termLexicon;
-            }
-
-            final Path affPath = sideDir.resolve(name() + ".aff");
-            try (
-                InputStream dic = Files.newInputStream(dicPath);
-                InputStream aff = Files.exists(affPath)
-                    ? Files.newInputStream(affPath)
-                    : null
-            ) {
-                termLexicon = new TermLexicon(reader, name(), dic, aff);
-            }
+        final Path dicPath  = sideDir.resolve(name() + ".dic");
+        final Path affPath  = sideDir.resolve(name() + ".aff");
+        final Path stopPath = sideDir.resolve(name() + ".stop");
+        try (
+            InputStream dic  = Files.exists(dicPath)  ? Files.newInputStream(dicPath)  : null;
+            InputStream aff  = Files.exists(affPath)  ? Files.newInputStream(affPath)  : null;
+            InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
+        ) {
+            termLexicon = new TermLexicon(reader, name(), dic, aff, stop);
             return termLexicon;
         }
         catch (IOException e) {
             throw new UncheckedIOException(
-                "Cannot load term lexicon for field '" + name() + "'",
-                e
-            );
+                "Cannot load term lexicon for field '" + name() + "'", e);
         }
     }
 
