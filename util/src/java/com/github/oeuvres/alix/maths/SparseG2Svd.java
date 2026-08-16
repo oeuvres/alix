@@ -397,11 +397,18 @@ public final class SparseG2Svd
     /**
      * Loads ARPACK from an explicit file or directory.
      *
+     * <p>On Windows, {@code libopenblas.dll} is loaded first when it is present
+     * beside {@code arpack.dll}. Windows does not reliably search the directory
+     * of a DLL loaded by absolute path when resolving that DLL's dependencies,
+     * whereas an already loaded OpenBLAS module can satisfy ARPACK's dependency.
+     * On other platforms no dependency is preloaded and the native linker keeps
+     * its normal system-library behaviour.</p>
+     *
      * @param configured file path or containing directory
      * @param library platform-mapped library filename
      * @param required whether a missing configured path is an error
-     * @throws IllegalStateException if a required path is missing or the library
-     *         exists but cannot be loaded
+     * @throws IllegalStateException if a required path is missing or a native
+     *         library exists but cannot be loaded
      */
     private static void loadArpack(
         final Path configured,
@@ -422,15 +429,73 @@ public final class SparseG2Svd
         }
 
         final Path absolute = path.toAbsolutePath().normalize();
+        loadArpackDependencies(absolute.getParent());
+        loadNative(absolute, "ARPACK");
+    }
+
+    /**
+     * Loads project-local native dependencies required by ARPACK.
+     *
+     * <p>Smile's Windows ARPACK distribution depends on OpenBLAS. If a local
+     * {@code libopenblas.dll} is present in the same directory as
+     * {@code arpack.dll}, it is loaded first. Missing optional local
+     * dependencies are ignored so that system-installed dependencies may still
+     * satisfy the native linker.</p>
+     *
+     * @param directory directory containing the local ARPACK library
+     */
+    private static void loadArpackDependencies(final Path directory)
+    {
+        if (directory == null || !isWindows()) {
+            return;
+        }
+        loadNativeIfPresent(directory.resolve("libopenblas.dll"), "OpenBLAS");
+    }
+
+    /**
+     * Loads one native library by absolute path.
+     *
+     * @param path native-library path
+     * @param name human-readable library name used in diagnostics
+     * @throws IllegalStateException if the library cannot be loaded
+     */
+    private static void loadNative(final Path path, final String name)
+    {
+        final Path absolute = path.toAbsolutePath().normalize();
         try {
             System.load(absolute.toString());
         }
         catch (final UnsatisfiedLinkError error) {
             throw new IllegalStateException(
-                "Cannot load ARPACK native library " + absolute
-                    + "; check that its native dependencies are also available.",
+                "Cannot load " + name + " native library " + absolute
+                    + "; one of its native dependencies may be missing.",
                 error);
         }
+    }
+
+    /**
+     * Loads one native library when the file is present.
+     *
+     * @param path native-library path
+     * @param name human-readable library name used in diagnostics
+     */
+    private static void loadNativeIfPresent(final Path path, final String name)
+    {
+        if (Files.isRegularFile(path)) {
+            loadNative(path, name);
+        }
+    }
+
+    /**
+     * Returns whether the current operating system is Windows.
+     *
+     * @return {@code true} on Windows
+     */
+    private static boolean isWindows()
+    {
+        return System.getProperty("os.name", "")
+            .toLowerCase(Locale.ROOT)
+            .contains("win");
     }
 
     /**

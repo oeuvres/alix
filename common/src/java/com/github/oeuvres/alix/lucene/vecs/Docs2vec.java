@@ -17,8 +17,9 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
 
 import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
-import com.github.oeuvres.alix.maths.ContingencySvd;
-import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
+import com.github.oeuvres.alix.maths.SparseG2Svd;
+
+import smile.util.SparseArray;
 
 /**
  * Reduces a Lucene term-by-document table to dense term vectors by signed G²
@@ -27,8 +28,8 @@ import com.github.oeuvres.alix.maths.ContingencySvd.Assoc;
  * <p>
  * This is a single-run experiment, not a library. It opens an on-disk index,
  * selects the most frequent terms of one field passing a minimum document
- * frequency, fills a raw term-by-document count table, hands it to
- * {@link ContingencySvd} for a G² residual decomposition, weights the axes by
+ * frequency, fills a sparse raw term-by-document count table, hands it to
+ * {@link SparseG2Svd} for a G² residual decomposition, weights the axes by
  * {@code sigma^power}, and exports the leading coordinates.
  * </p>
  *
@@ -43,7 +44,8 @@ public final class Docs2vec
     /** Selected vocabulary and its raw term-by-document count table. */
     private record Table(
         String[] words,
-        double[][] cells,
+        SparseArray[] cells,
+        int docCount,
         long nonZero
     ) {}
 
@@ -103,7 +105,7 @@ public final class Docs2vec
                 reader, field, minDocFreq, maxTerms);
             final Table table = termDocTable(reader, field, selected);
             final int termCount = table.words().length;
-            final int docCount = termCount == 0 ? 0 : table.cells()[0].length;
+            final int docCount = table.docCount();
             if (termCount < 2 || docCount < 2) {
                 System.err.println(
                     "too few terms or documents after selection: "
@@ -115,11 +117,11 @@ public final class Docs2vec
                 termCount, docCount, table.nonZero(),
                 100d * table.nonZero() / ((long) termCount * docCount));
 
-            log("computing G2 residuals against IPF independence expectation");
-            final ContingencySvd svd = new ContingencySvd(table.cells(), null)
-                .residual(Assoc.G2);
+            log("preparing sparse G2 residual operator against independence expectation");
+            final SparseG2Svd svd = new SparseG2Svd(table.cells(), docCount);
+            svd.residual();
 
-            log("decomposing %d x %d residual matrix to top %d dims (randomized SVD)",
+            log("decomposing %d x %d G2 operator to top %d dims (Smile ARPACK)",
                 termCount, docCount, dims);
             svd.decompose(dims);
             log("decomposition done, rank %d", svd.singularValues().length);
@@ -192,15 +194,17 @@ public final class Docs2vec
         log("index has %,d documents (%,d live)", maxDoc, docCount);
 
         final int termCount = selected.length;
-        log("filling %d x %d count matrix", termCount, docCount);
+        log("filling sparse %d x %d count matrix", termCount, docCount);
         final String[] words = new String[termCount];
-        final double[][] cells = new double[termCount][docCount];
+        final SparseArray[] cells = new SparseArray[termCount];
         final TermsEnum seek = terms.iterator();
         PostingsEnum postings = null;
         long nonZero = 0L;
         final int logStep = Math.max(1, termCount / 20);
         for (int row = 0; row < termCount; row++) {
             final SelectedTerm term = selected[row];
+            final SparseArray sparseRow = new SparseArray();
+            cells[row] = sparseRow;
             words[row] = term.word();
             if (seek.seekExact(term.bytes())) {
                 postings = seek.postings(postings, PostingsEnum.FREQS);
@@ -209,7 +213,7 @@ public final class Docs2vec
                         doc = postings.nextDoc()) {
                     final int col = column[doc];
                     if (col >= 0) {
-                        cells[row][col] = postings.freq();
+                        sparseRow.append(col, postings.freq());
                         nonZero++;
                     }
                 }
@@ -218,6 +222,6 @@ public final class Docs2vec
                 log("  filled %,d / %,d terms", row + 1, termCount);
             }
         }
-        return new Table(words, cells, nonZero);
+        return new Table(words, cells, docCount, nonZero);
     }
 }

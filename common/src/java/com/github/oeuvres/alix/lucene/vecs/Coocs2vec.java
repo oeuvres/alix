@@ -221,8 +221,10 @@ public final class Coocs2vec
             throw new IllegalArgumentException("maxTerms must be >= 2: " + maxTerms);
         }
 
-        String outName = indexDir.getFileName() + "-" + field
-            + "-coocs" + distance + "-power" + power;
+        String outName = indexDir.getFileName() + "-" + field + "-coocs" + distance;
+        if (power > 0) {
+            outName += "-power" + power;
+        }
         if (abtt > 0) {
             outName += "-abtt" + abtt;
         }
@@ -277,20 +279,16 @@ public final class Coocs2vec
                 svd.weightAxes(power);
             }
 
-            for (final int pdims : new int[] {1, 2, 5, 10, 50, 100, 200, 300, 500}) {
-                if (pdims > retained) {
-                    break;
-                }
-                final double[][] coords = svd.project(pdims).coords();
-                final Path out = Paths.get(outName + "-dims" + pdims + ".bin");
-                final int outDim = coords[0].length;
-                if (abtt > 0 && abtt < outDim) {
-                    log("all-but-the-top: removing %d common directions (Smile ARPACK)", abtt);
-                    allButTheTop(coords, abtt);
-                }
-                log("writing %,d vectors to %s", termCount, out);
-                VecUtil.writeWord2vec(out, table.words(), coords, outDim);
+
+            final double[][] coords = svd.project(retained).coords();
+            final Path out = Paths.get(outName + "-dims" + retained + ".bin");
+            final int outDim = coords[0].length;
+            if (abtt > 0 && abtt < outDim) {
+                log("all-but-the-top: removing %d common directions (Smile ARPACK)", abtt);
+                allButTheTop(coords, abtt);
             }
+            log("writing %,d vectors to %s", termCount, out);
+            VecUtil.writeWord2vec(out, table.words(), coords, outDim);
 
             log("done");
         }
