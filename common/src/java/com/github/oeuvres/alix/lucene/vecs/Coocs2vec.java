@@ -48,6 +48,20 @@ import smile.util.SparseArray;
  * a reusable {@code int[]} and converted in place from rail term ids to
  * selected matrix-row ids before pair counting.</p>
  *
+ * <p><b>Stopword distance gate.</b> Terms flagged {@link TermFlag#STOPWORD} in
+ * the lexicon (loaded from an optional {@code <field>.stop} list) are function
+ * words: informative as immediate syntactic neighbours but topical noise at
+ * range. A pair is therefore counted only when its positional distance is at
+ * most {@link #STOP_DIST} <em>or</em> neither endpoint is a stopword; a pair in
+ * which either endpoint is a stopword and whose distance exceeds
+ * {@link #STOP_DIST} is dropped. Stopwords keep their own rows and so still
+ * receive vectors, but those vectors are built from short-range context, which
+ * sharpens the part-of-speech contrast (noun vs verb/adjective) that shared
+ * long-range function-word context would otherwise blur. The gate is symmetric
+ * in the two endpoints and leaves content–content pairs untouched up to the full
+ * {@code distance}. When no term is flagged the gate is inert and counting is
+ * identical to a plain window.</p>
+ *
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--sideDir DIR] [--distance 30] [--dims 500] [--power 0.5] \
@@ -158,6 +172,14 @@ public final class Coocs2vec
         }
     }
 
+    /**
+     * Maximum positional distance, inclusive, at which a pair involving a
+     * {@link TermFlag#STOPWORD} term is still counted. Beyond this distance a
+     * pair is kept only when neither endpoint is a stopword. Content–content
+     * pairs are unaffected and count up to the full {@code distance}.
+     */
+    private static final int STOP_DIST = 2;
+
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
@@ -240,6 +262,10 @@ public final class Coocs2vec
             InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
         ) {
             TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
+            if (!lexicon.bits(TermFlag.STOPWORD).isEmpty()) {
+                outName += "-stop" + STOP_DIST;
+                log("stopword gate active: pairs with a stopword counted only within +/-%d", STOP_DIST);
+            }
             if (!TermRail.exists(sideDir, field)) {
                 TermRail.build(reader, sideDir, field, lexicon, Report.ReportNull.INSTANCE);
             }
@@ -269,7 +295,7 @@ public final class Coocs2vec
             
             final Table table = coocTable(rail, lexicon, selected, distance);
             log(
-                "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs",
+                "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs counted",
                 table.nonZero(), 100d * table.nonZero() / cellCount, table.pairs());
 
             final SparseG2Svd svd = new SparseG2Svd(table.cells(), termCount);
@@ -352,8 +378,37 @@ public final class Coocs2vec
     }
 
     /**
+     * Adds one unordered positional pair to the symmetric count table. A pair of
+     * distinct rows contributes one count to each of the two mirrored cells; a
+     * self-pair contributes two counts to the diagonal, so every pair adds total
+     * mass two regardless of direction.
+     *
+     * @param counts sparse count table being filled
+     * @param row matrix row of the earlier occurrence
+     * @param col matrix row of the later occurrence
+     */
+    private static void bump(
+        final SparseCounts counts,
+        final int row,
+        final int col
+    ) {
+        if (row == col) {
+            counts.add(row, row, 2d);
+        }
+        else {
+            counts.add(row, col, 1d);
+            counts.add(col, row, 1d);
+        }
+    }
+
+    /**
      * Builds the symmetric selected-term cooccurrence table from the positional
      * rail without allocating a dense vocabulary-square matrix.
+     *
+     * <p>Pairs involving a {@link TermFlag#STOPWORD} term are counted only within
+     * {@link #STOP_DIST} positions; see the class comment. Stopword membership is
+     * resolved once into a per-row {@code boolean[]} so the hot loop never touches
+     * the lexicon or a bitset.</p>
      *
      * @param rail positional term rail
      * @param lexicon term-id lexicon corresponding to the rail
@@ -367,11 +422,12 @@ public final class Coocs2vec
         final SelectedTerm[] selected,
         final int distance
     ) {
-        // Here, how to count stopwords only at +/- 5 distance and not longer?
-        BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
+        final BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
+        final boolean hasStopwords = stopwords != null && !stopwords.isEmpty() && STOP_DIST>0;
 
         final int termCount = selected.length;
         final String[] words = new String[termCount];
+        final boolean[] rowIsStop = new boolean[termCount];
         final SparseCounts counts = new SparseCounts(termCount);
 
         final int[] rowByTermId = new int[lexicon.vocabSize()];
@@ -385,6 +441,7 @@ public final class Coocs2vec
             }
             words[row] = term.word();
             rowByTermId[termId] = row;
+            rowIsStop[row] = hasStopwords && stopwords.get(termId);
         }
 
         int[] rows = new int[0];
@@ -409,20 +466,31 @@ public final class Coocs2vec
                 if (row < 0) {
                     continue;
                 }
-                final int end = Math.min(docLen, position + distance + 1);
-                for (int next = position + 1; next < end; next++) {
+                final int fullEnd = Math.min(docLen, position + distance + 1);
+                final int nearEnd = hasStopwords
+                    ? Math.min(fullEnd, position + STOP_DIST + 1)
+                    : fullEnd;
+
+                // near range [1, STOP_DIST]: every co-occurrence counts
+                for (int next = position + 1; next < nearEnd; next++) {
                     final int col = rows[next];
                     if (col < 0) {
                         continue;
                     }
-
+                    bump(counts, row, col);
                     pairs++;
-                    if (row == col) {
-                        counts.add(row, row, 2d);
-                    }
-                    else {
-                        counts.add(row, col, 1d);
-                        counts.add(col, row, 1d);
+                }
+
+                // far range (STOP_DIST, distance]: only when the pivot is content,
+                // and stopword columns are dropped as long-range noise
+                if (!rowIsStop[row]) {
+                    for (int next = nearEnd; next < fullEnd; next++) {
+                        final int col = rows[next];
+                        if (col < 0 || rowIsStop[col]) {
+                            continue;
+                        }
+                        bump(counts, row, col);
+                        pairs++;
                     }
                 }
             }
