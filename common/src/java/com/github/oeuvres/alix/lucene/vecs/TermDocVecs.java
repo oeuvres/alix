@@ -47,7 +47,7 @@ import smile.util.SparseArray;
  *
  * <p>This class is mutable and not thread-safe.</p>
  */
-public final class TermDocSvd
+public final class TermDocVecs
 {
     /** Largest background rank accepted by the cross approximation. */
     private static final int BACKGROUND_RANK_MAX = 16;
@@ -110,7 +110,7 @@ public final class TermDocSvd
      *         outside the logical table, or an observed value is invalid
      * @throws NullPointerException if an argument or one of the rows is null
      */
-    public TermDocSvd(
+    public TermDocVecs(
         final SparseArray[] cells,
         final int colCount,
         final Residual residual
@@ -274,7 +274,7 @@ public final class TermDocSvd
      * @return this pipeline
      * @throws IllegalArgumentException if {@code dims < 1}
      */
-    public TermDocSvd decompose(final int dims)
+    public TermDocVecs decompose(final int dims)
     {
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
@@ -352,7 +352,7 @@ public final class TermDocSvd
                 }
                 simulated[row] = sparseRow;
             }
-            final double[] values = new TermDocSvd(simulated, colCount, residual)
+            final double[] values = new TermDocVecs(simulated, colCount, residual)
                 .decompose(dims).singularValues();
             if (average == null) {
                 average = new double[values.length];

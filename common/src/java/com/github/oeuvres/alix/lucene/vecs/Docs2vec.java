@@ -28,7 +28,7 @@ import smile.util.SparseArray;
  * This is a single-run experiment, not a library. It opens an on-disk index,
  * selects the most frequent terms of one field passing a minimum document
  * frequency, fills a sparse raw term-by-document count table, hands it to
- * {@link TermDocSvd} for a signed G² deviance-residual decomposition, weights
+ * {@link TermDocVecs} for a signed G² deviance-residual decomposition, weights
  * the axes by {@code sigma^power}, and exports the leading coordinates.
  * </p>
  *
@@ -126,8 +126,8 @@ public final class Docs2vec
                 100d * table.nonZero() / ((long) termCount * docCount));
 
             log("preparing signed G2 deviance residuals against independence expectation");
-            final TermDocSvd svd = new TermDocSvd(
-                table.cells(), docCount, TermDocSvd.Residual.DEVIANCE);
+            final TermDocVecs svd = new TermDocVecs(
+                table.cells(), docCount, TermDocVecs.Residual.DEVIANCE);
 
             log("decomposing %d x %d residual matrix to top %d dims (dense column Gram EVD)",
                 termCount, docCount, dims);
