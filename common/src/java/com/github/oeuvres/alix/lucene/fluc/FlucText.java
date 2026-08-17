@@ -8,9 +8,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.hunspell.Dictionary;
@@ -22,12 +21,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Terms;
 
-import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TermSuggest;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
+import com.github.oeuvres.alix.lucene.vecs.VecModel;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.WordTokenizer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
@@ -45,14 +45,21 @@ import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
  *   <li>{@link TermLexicon}: dense term-id mapping and term display strings;</li>
  *   <li>{@link TermRail}: forward positional rail for spans and co-occurrences;</li>
  *   <li>{@link TermSuggest}: folded term-suggestion index;</li>
- *   <li>field stopwords stored in {@code <field>.stop}.</li>
+ *   <li>field stopwords stored in {@code <field>.stop};</li>
+ *   <li>an optional word2vec model stored in {@code <field>.bin}.</li>
  * </ul>
  *
  * <p>
- * Sidecar-backed resources are built on first access if their sidecar files are
- * absent, then opened and cached. Failed builds or opens do not poison the
- * object; a later call retries because the corresponding field remains
- * {@code null}.
+ * Required lazy resources use {@code null} to mean "not loaded yet". Optional
+ * lazy resources use a nullable {@link Optional}: {@code null} means
+ * "unresolved", {@link Optional#empty()} means "resolved and unavailable", and
+ * a present value means "resolved and loaded". This prevents repeated
+ * filesystem probes when an optional sidecar does not exist.
+ * </p>
+ *
+ * <p>
+ * Failed builds or opens do not poison the object: the corresponding lazy state
+ * remains unresolved, so a later call may retry.
  * </p>
  *
  * <p>
@@ -65,7 +72,6 @@ import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
  */
 public final class FlucText extends Fluc
 {
-
     /** Whether norms are available for this field. */
     private final boolean hasNorms;
 
@@ -81,14 +87,26 @@ public final class FlucText extends Fluc
     /** Directory where sidecar resources are stored. */
     private final Path sideDir;
 
-    /** Hunspell dictionary compiled from the indexed field vocabulary. */
-    private Hunspell hunspell;
+    /**
+     * Optional Hunspell dictionary.
+     *
+     * <p>
+     * {@code null} = unresolved, empty = unavailable, present = loaded.
+     * </p>
+     */
+    private Optional<Hunspell> hunspell;
 
     /** Span query parser built from the field tokenizer and cached resources. */
     private SpanQueryParser spanQueryParser;
 
-    /** Immutable stopword set loaded lazily from the field sidecar. */
-    private CharArraySet stopwords;
+    /**
+     * Optional field stopwords.
+     *
+     * <p>
+     * {@code null} = unresolved, empty = unavailable, present = loaded.
+     * </p>
+     */
+    private Optional<CharArraySet> stopwords;
 
     /** Dense term lexicon, loaded lazily. */
     private TermLexicon termLexicon;
@@ -101,6 +119,15 @@ public final class FlucText extends Fluc
 
     /** Term suggester, built lazily from the lexicon and field statistics. */
     private TermSuggest termSuggest;
+
+    /**
+     * Optional in-memory word2vec model.
+     *
+     * <p>
+     * {@code null} = unresolved, empty = unavailable, present = loaded.
+     * </p>
+     */
+    private Optional<VecModel> vecModel;
 
     /**
      * Creates a text-field handle.
@@ -151,8 +178,8 @@ public final class FlucText extends Fluc
      *
      * <p>
      * {@link TermRail} and {@link TermLexicon} may hold closeable resources.
-     * {@link TermSuggest} is cleared because it depends on the current lexicon
-     * and statistics handles.
+     * Other cached objects are cleared so all lazy resources return to their
+     * unresolved state.
      * </p>
      *
      * @throws IOException if closing a loaded resource fails
@@ -167,12 +194,14 @@ public final class FlucText extends Fluc
             failure = closeResource(termLexicon, failure);
         }
         finally {
+            hunspell = null;
             spanQueryParser = null;
             stopwords = null;
             termSuggest = null;
             termRail = null;
             termLexicon = null;
             termStats = null;
+            vecModel = null;
         }
 
         if (failure != null) {
@@ -223,42 +252,44 @@ public final class FlucText extends Fluc
     {
         return hasTermVectors;
     }
-    
+
     /**
      * Returns the optional Hunspell lemmatizer for this field.
      *
      * <p>
-     * The dictionary is loaded lazily from {@code <field>.dic} and
-     * {@code <field>.aff} in the sidecar directory. When neither file exists,
-     * this method returns {@code null}. When only one file exists, the dictionary
-     * configuration is considered invalid.
+     * The dictionary is resolved lazily from {@code <field>.dic} and
+     * {@code <field>.aff}. Absence of both files is cached. When only one file
+     * exists, the configuration is considered invalid. A failed load is not
+     * cached and may be retried by a later call.
      * </p>
      *
      * @return cached Hunspell lemmatizer, or {@code null} when no dictionary is
      *         configured for the field
-     * @throws IllegalStateException if only one dictionary file exists or if the
-     *         Hunspell files are malformed
+     * @throws IllegalStateException if only one dictionary file exists or if
+     *         the Hunspell files are malformed
      * @throws UncheckedIOException if the dictionary files cannot be read
      */
     public synchronized Hunspell hunspell() throws IOException
     {
         if (hunspell != null) {
-            return hunspell;
+            return hunspell.orElse(null);
         }
+
         final Path dicPath = sideDir.resolve(name() + ".dic");
         final Path affPath = sideDir.resolve(name() + ".aff");
         final boolean dicExists = Files.isRegularFile(dicPath);
         final boolean affExists = Files.isRegularFile(affPath);
 
         if (!dicExists && !affExists) {
+            hunspell = Optional.empty();
             return null;
         }
 
         if (!dicExists || !affExists) {
             throw new IllegalStateException(
                 "Incomplete Hunspell dictionary for field '" + name()
-                + "': expected both " + dicPath.getFileName()
-                + " and " + affPath.getFileName()
+                    + "': expected both " + dicPath.getFileName()
+                    + " and " + affPath.getFileName()
             );
         }
 
@@ -272,8 +303,9 @@ public final class FlucText extends Fluc
                 false,
                 SortingStrategy.inMemory()
             );
-            hunspell = new Hunspell(dictionary);
-            return hunspell;
+            final Hunspell loaded = new Hunspell(dictionary);
+            hunspell = Optional.of(loaded);
+            return loaded;
         }
         catch (ParseException e) {
             throw new IllegalStateException(
@@ -289,7 +321,6 @@ public final class FlucText extends Fluc
         }
     }
 
-
     /**
      * Returns the sidecar directory.
      *
@@ -299,15 +330,14 @@ public final class FlucText extends Fluc
     {
         return sideDir;
     }
-    
-    
+
     /**
      * Returns the shared span-query parser for this field.
      *
      * <p>
      * The parser receives the field's frozen reader, optional Hunspell
-     * dictionary, and stopword sidecar. The tokenizer remains field-specific
-     * configuration and is currently French.
+     * dictionary, and optional stopword sidecar. The tokenizer remains
+     * field-specific configuration and is currently French.
      * </p>
      *
      * @return cached span-query parser
@@ -334,40 +364,46 @@ public final class FlucText extends Fluc
      * Returns the stopwords used when indexing this field.
      *
      * <p>
-     * The set is loaded lazily from {@code <field>.stop} in the sidecar
-     * directory. A missing sidecar represents an empty set, preserving
-     * compatibility with indexes created before stopword serialization was
-     * introduced. Empty lines are ignored.
+     * The set is resolved lazily from {@code <field>.stop}. Absence is cached
+     * and represented to callers by {@code null}. Empty lines and comment lines
+     * are ignored. The first non-comment, non-blank line is treated as the
+     * sidecar header and skipped, preserving the existing file format.
      * </p>
      *
-     * @return cached immutable stopword set
+     * @return cached stopword set, or {@code null} when no sidecar exists
      * @throws IOException if the sidecar exists but cannot be read
      */
     public synchronized CharArraySet stopwords() throws IOException
     {
         if (stopwords != null) {
-            return stopwords;
+            return stopwords.orElse(null);
         }
 
         final Path path = sideDir.resolve(name() + ".stop");
         if (!Files.isRegularFile(path)) {
+            stopwords = Optional.empty();
             return null;
         }
-        stopwords = new CharArraySet(1500, true);
-        boolean first=true;
-        for (
-            String line : Files.readAllLines(path, StandardCharsets.UTF_8)
-        ) {
-            if (line.isBlank()) continue;
+
+        final CharArraySet loaded = new CharArraySet(1500, true);
+        boolean first = true;
+        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
+            if (line.isBlank()) {
+                continue;
+            }
             line = line.trim();
-            if (line.charAt(0) == '#') continue;
+            if (line.charAt(0) == '#') {
+                continue;
+            }
             if (first) {
                 first = false;
                 continue;
             }
-            stopwords.add(line);
+            loaded.add(line);
         }
-        return stopwords;
+
+        stopwords = Optional.of(loaded);
+        return loaded;
     }
 
     /**
@@ -389,20 +425,24 @@ public final class FlucText extends Fluc
         if (termLexicon != null) {
             return termLexicon;
         }
-        final Path dicPath  = sideDir.resolve(name() + ".dic");
-        final Path affPath  = sideDir.resolve(name() + ".aff");
+
+        final Path dicPath = sideDir.resolve(name() + ".dic");
+        final Path affPath = sideDir.resolve(name() + ".aff");
         final Path stopPath = sideDir.resolve(name() + ".stop");
+
         try (
-            InputStream dic  = Files.exists(dicPath)  ? Files.newInputStream(dicPath)  : null;
-            InputStream aff  = Files.exists(affPath)  ? Files.newInputStream(affPath)  : null;
-            InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
+            InputStream dic = Files.exists(dicPath) ? Files.newInputStream(dicPath) : null;
+            InputStream aff = Files.exists(affPath) ? Files.newInputStream(affPath) : null;
+            InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null
         ) {
             termLexicon = new TermLexicon(reader, name(), dic, aff, stop);
             return termLexicon;
         }
         catch (IOException e) {
             throw new UncheckedIOException(
-                "Cannot load term lexicon for field '" + name() + "'", e);
+                "Cannot load term lexicon for field '" + name() + "'",
+                e
+            );
         }
     }
 
@@ -427,7 +467,13 @@ public final class FlucText extends Fluc
 
         try {
             if (!TermRail.exists(sideDir, name())) {
-                TermRail.build(reader, sideDir, name(), lexicon, Report.ReportNull.INSTANCE);
+                TermRail.build(
+                    reader,
+                    sideDir,
+                    name(),
+                    lexicon,
+                    Report.ReportNull.INSTANCE
+                );
             }
             termRail = TermRail.open(sideDir, name());
             return termRail;
@@ -453,10 +499,15 @@ public final class FlucText extends Fluc
         if (termStats != null) {
             return termStats;
         }
-    
+
         try {
             if (!TermStats.exists(sideDir, name())) {
-                TermStats.build(reader, sideDir, name(), Report.ReportNull.INSTANCE);
+                TermStats.build(
+                    reader,
+                    sideDir,
+                    name(),
+                    Report.ReportNull.INSTANCE
+                );
             }
             termStats = TermStats.open(reader, sideDir, name(), null);
             return termStats;
@@ -493,8 +544,9 @@ public final class FlucText extends Fluc
      * Creates a fresh ranked-term container for this field.
      *
      * <p>
-     * The returned object is not cached. It is mutable and belongs to the caller.
-     * It is initialized with this field's shared statistics and lexicon.
+     * The returned object is not cached. It is mutable and belongs to the
+     * caller. It is initialized with this field's shared statistics and
+     * lexicon.
      * </p>
      *
      * @return fresh term-list container
@@ -503,6 +555,35 @@ public final class FlucText extends Fluc
     public TopTerms topTerms()
     {
         return new TopTerms(termStats(), termLexicon());
+    }
+
+    /**
+     * Returns the optional in-memory word2vec model for this field.
+     *
+     * <p>
+     * The model is resolved lazily from {@code <field>.bin}. Absence is cached,
+     * so the filesystem is probed at most once until {@link #close()} resets
+     * the lazy state. A failed load is not cached and may be retried later.
+     * </p>
+     *
+     * @return cached vector model, or {@code null} when no model sidecar exists
+     * @throws IOException if an existing model cannot be loaded
+     */
+    public synchronized VecModel vecModel() throws IOException
+    {
+        if (vecModel != null) {
+            return vecModel.orElse(null);
+        }
+
+        final Path path = sideDir.resolve(name() + ".bin");
+        if (!Files.isRegularFile(path)) {
+            vecModel = Optional.empty();
+            return null;
+        }
+
+        final VecModel loaded = VecModel.load(path);
+        vecModel = Optional.of(loaded);
+        return loaded;
     }
 
     /**

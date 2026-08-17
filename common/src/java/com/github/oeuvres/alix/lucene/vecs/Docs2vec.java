@@ -77,11 +77,11 @@ public final class Docs2vec
         }
         final Path indexDir = Paths.get(args[0]);
         final String field = args[1];
-        int dims = 300;
+        int dims = 500;
         double power = 0.5d;
         int minDocFreq = 3;
         int maxTerms = 10_000;
-        Path out = Paths.get("vectors.bin");
+        Path out = null;
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
@@ -96,6 +96,15 @@ public final class Docs2vec
                     return;
                 }
             }
+        }
+        
+        if (out == null) {
+            String name = indexDir.getFileName().toString();
+            name += "-docs";
+            name += "-" + field;
+            name += "-dims" + dims;
+            name += ".bin";
+            out = Paths.get(name);
         }
 
         log("opening index %s", indexDir);
