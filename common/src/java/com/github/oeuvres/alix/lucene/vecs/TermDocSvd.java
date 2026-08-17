@@ -8,9 +8,9 @@ package com.github.oeuvres.alix.lucene.vecs;
 import java.util.Objects;
 import java.util.Random;
 
+import smile.linalg.UPLO;
 import smile.tensor.DenseMatrix;
 import smile.tensor.EVD;
-import smile.linalg.UPLO;
 import smile.util.SparseArray;
 
 /**
@@ -18,12 +18,11 @@ import smile.util.SparseArray;
  * short-and-wide case where the number of columns is small (a few thousand
  * documents) and many dimensions are requested.
  *
- * <p>{@link SparseG2Svd} reaches the singular triplets through Lanczos
- * iteration. That is the right choice when both dimensions are large, but it
- * degrades badly once {@code dims} approaches the column count: the Krylov
- * basis grows to fill the whole column space and restarts multiply. For a
- * 10&nbsp;000&nbsp;&times;&nbsp;1&nbsp;400 table truncated to 500 axes it is
- * the dominant cost.</p>
+ * <p>A Lanczos decomposition is the right choice when both dimensions are
+ * large, but it degrades badly once {@code dims} approaches the column count:
+ * the Krylov basis grows to fill the whole column space and restarts multiply.
+ * For a 10&nbsp;000&nbsp;&times;&nbsp;1&nbsp;400 table truncated to 500 axes it
+ * is the dominant cost.</p>
  *
  * <p>This class instead forms the Gram matrix explicitly and decomposes it
  * densely. Writing the residual matrix as {@code R = B + S}, with {@code B} a
@@ -172,7 +171,44 @@ public final class TermDocSvd
     }
 
     /**
-     * Returns weighted coordinates for the retained axes.
+     * Returns weighted coordinates for all retained axes.
+     *
+     * <p>Axis {@code k} is scaled by {@code singularValue[k]^power}. Use
+     * {@code power = 0.5} for the symmetric convention, {@code 1.0} for
+     * principal coordinates.</p>
+     *
+     * @param power singular-value exponent
+     * @return coordinates, {@code rowCount x rank}
+     * @throws IllegalStateException before {@link #decompose(int)}
+     */
+    public double[][] coords(final double power)
+    {
+        requireDecomposition();
+        if (rank == 0) {
+            return new double[rowCount][0];
+        }
+        return coords(rank, power, null);
+    }
+
+    /**
+     * Returns noise-floor weighted coordinates for all retained axes.
+     *
+     * @param power singular-value exponent
+     * @param noiseFloor per-axis null singular values, or null
+     * @return coordinates, {@code rowCount x rank}
+     * @throws IllegalStateException before {@link #decompose(int)}
+     */
+    public double[][] coords(final double power, final double[] noiseFloor)
+    {
+        requireDecomposition();
+        if (rank == 0) {
+            return new double[rowCount][0];
+        }
+        return coords(rank, power, noiseFloor);
+    }
+
+    /**
+     * Returns weighted coordinates for the leading retained axes.
      *
      * <p>Axis {@code k} is scaled by {@code singularValue[k]^power}. Use
      * {@code power = 0.5} for the symmetric convention, {@code 1.0} for
@@ -326,6 +362,18 @@ public final class TermDocSvd
             }
         }
         return average;
+    }
+
+    /**
+     * Returns the number of retained axes.
+     *
+     * @return retained rank
+     * @throws IllegalStateException before {@link #decompose(int)}
+     */
+    public int rank()
+    {
+        requireDecomposition();
+        return rank;
     }
 
     /**

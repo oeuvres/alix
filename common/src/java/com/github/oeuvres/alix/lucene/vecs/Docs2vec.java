@@ -28,12 +28,12 @@ import smile.util.SparseArray;
  * This is a single-run experiment, not a library. It opens an on-disk index,
  * selects the most frequent terms of one field passing a minimum document
  * frequency, fills a sparse raw term-by-document count table, hands it to
- * {@link SparseG2Svd} for a G² residual decomposition, weights the axes by
- * {@code sigma^power}, and exports the leading coordinates.
+ * {@link TermDocSvd} for a signed G² deviance-residual decomposition, weights
+ * the axes by {@code sigma^power}, and exports the leading coordinates.
  * </p>
  *
  * <pre>{@code
- * java com.github.oeuvres.alix.lucene.vecs.docs2vec <indexDir> <field> \
+ * java com.github.oeuvres.alix.lucene.vecs.Docs2vec <indexDir> <field> \
  *     [--dims 100] [--power 0.5] [--minDocFreq 3] [--maxTerms 10000] \
  *     [--out vectors.bin]
  * }</pre>
@@ -125,20 +125,19 @@ public final class Docs2vec
                 termCount, docCount, table.nonZero(),
                 100d * table.nonZero() / ((long) termCount * docCount));
 
-            log("preparing sparse G2 residual operator against independence expectation");
-            final SparseG2Svd svd = new SparseG2Svd(table.cells(), docCount);
-            svd.residual();
+            log("preparing signed G2 deviance residuals against independence expectation");
+            final TermDocSvd svd = new TermDocSvd(
+                table.cells(), docCount, TermDocSvd.Residual.DEVIANCE);
 
-            log("decomposing %d x %d G2 operator to top %d dims (Smile ARPACK)",
+            log("decomposing %d x %d residual matrix to top %d dims (dense column Gram EVD)",
                 termCount, docCount, dims);
             svd.decompose(dims);
-            log("decomposition done, rank %d", svd.singularValues().length);
+            log("decomposition done, rank %d", svd.rank());
 
-            if (power > 0d) {
+            if (power != 0d) {
                 log("weighting axes by sigma^%.3f", power);
-                svd.weightAxes(power);
             }
-            final double[][] coords = svd.project(dims).coords();
+            final double[][] coords = svd.coords(power);
             final int outDim = coords[0].length;
             log("projected to %d dimensions (requested %d)", outDim, dims);
 
@@ -148,7 +147,7 @@ public final class Docs2vec
 
             System.out.printf(
                 "%d terms x %d documents -> %d-dim vectors (requested %d)%n"
-                    + "G2 residual, power=%.3f, written to %s in %d ms%n",
+                    + "signed G2 deviance residual, power=%.3f, written to %s in %d ms%n",
                 termCount, docCount, outDim, dims, power, out,
                 System.currentTimeMillis() - started);
         }
