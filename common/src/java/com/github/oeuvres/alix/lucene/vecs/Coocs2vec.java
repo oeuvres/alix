@@ -15,7 +15,6 @@ import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
-import com.github.oeuvres.alix.maths.SparseG2Svd;
 import com.github.oeuvres.alix.util.Report;
 
 import smile.tensor.ARPACK;

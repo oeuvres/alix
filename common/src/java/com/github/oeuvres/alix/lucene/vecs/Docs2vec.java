@@ -17,7 +17,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
 
 import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
-import com.github.oeuvres.alix.maths.SparseG2Svd;
 
 import smile.util.SparseArray;
 

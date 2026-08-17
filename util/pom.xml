@@ -15,11 +15,4 @@
     <build>
         <sourceDirectory>src/java</sourceDirectory>
     </build>
-    <dependencies>
-        <dependency>
-          <groupId>com.github.haifengl</groupId>
-          <artifactId>smile-core</artifactId>
-          <version>6.2.5</version>
-        </dependency>
-    </dependencies>
 </project>

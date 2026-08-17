@@ -33,6 +33,12 @@
             <artifactId>alix-util</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- for vecs matrix reduction -->
+        <dependency>
+          <groupId>com.github.haifengl</groupId>
+          <artifactId>smile-core</artifactId>
+          <version>6.2.5</version>
+        </dependency>
     </dependencies>
     <build>
         <sourceDirectory>src/java</sourceDirectory>

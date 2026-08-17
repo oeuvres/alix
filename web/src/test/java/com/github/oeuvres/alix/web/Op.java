@@ -25,6 +25,8 @@ import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser.ParseResult;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
+import com.github.oeuvres.alix.web.AlixServlet;
+import com.github.oeuvres.alix.web.MetaUtil;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.web.Pars.*;

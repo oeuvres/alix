@@ -7,7 +7,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-package com.github.oeuvres.alix.maths;
+package com.github.oeuvres.alix.lucene.vecs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
