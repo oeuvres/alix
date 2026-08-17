@@ -9,9 +9,6 @@
  */
 package com.github.oeuvres.alix.lucene.vecs;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Locale;
 import java.util.Objects;
 
 import smile.linalg.Transpose;
@@ -50,15 +47,6 @@ import smile.util.SparseArray;
  */
 public final class SparseG2Svd
 {
-    /** Native ARPACK library base name. */
-    private static final String ARPACK_LIBRARY = "arpack";
-
-    /** Optional native ARPACK file or directory override. */
-    private static final String ARPACK_PATH_PROPERTY = "alix.arpack.path";
-
-    /** Whether application-side ARPACK lookup has already been attempted. */
-    private static volatile boolean arpackLookupPrepared;
-
     /** Whether singular-value weighting has been applied. */
     private boolean axesWeighted;
 
@@ -189,12 +177,12 @@ public final class SparseG2Svd
         if (limit < 2) {
             throw new IllegalStateException("ARPACK SVD requires both matrix dimensions to exceed 1");
         }
-        ensureArpackLoaded();
+        SmileUtil.ensureArpackLoaded();
         try {
             absorb(ARPACK.svd(prepared, Math.min(dims, limit - 1)));
         }
-        catch (final ExceptionInInitializerError | NoClassDefFoundError error) {
-            throw arpackInitializationFailure(error);
+        catch (final ExceptionInInitializerError | NoClassDefFoundError | UnsatisfiedLinkError error) {
+            throw SmileUtil.arpackInitializationFailure(error);
         }
         return this;
     }
@@ -309,234 +297,6 @@ public final class SparseG2Svd
      *        residual energy
      */
     public record SvdLayout(double[][] coords, double[] cos2, double[] inertia) {}
-
-    /**
-     * Builds a descriptive failure for Smile ARPACK native initialisation.
-     *
-     * @param cause native-binding initialisation failure
-     * @return exception describing supported native-library locations
-     */
-    private static IllegalStateException arpackInitializationFailure(final Throwable cause)
-    {
-        final String library = System.mapLibraryName(ARPACK_LIBRARY);
-        final String platform = nativePlatform();
-        return new IllegalStateException(
-            "Smile ARPACK native library '" + library + "' could not be loaded for "
-                + platform + ". Put it in lib/native/" + platform + "/" + library
-                + ", set -D" + ARPACK_PATH_PROPERTY + "=/path/to/" + library
-                + " (or to its directory), or install ARPACK in the system library path. "
-                + "Java 25 also requires --enable-native-access=ALL-UNNAMED.",
-            cause);
-    }
-
-    /**
-     * Prepares native ARPACK loading before Smile initialises its FFM binding.
-     *
-     * <p>The lookup order is:</p>
-     *
-     * <ol>
-     *   <li>{@code -Dalix.arpack.path=...}, accepting either the library file or
-     *       its containing directory;</li>
-     *   <li>{@code lib/native/<os>-<arch>/<mapped-library-name>} relative to the
-     *       current working directory;</li>
-     *   <li>{@code lib/native/<mapped-library-name>} as a platform-neutral local
-     *       fallback;</li>
-     *   <li>{@link System#loadLibrary(String)}, which honours the JVM native
-     *       library configuration;</li>
-     *   <li>Smile's own operating-system lookup when none of the preceding
-     *       mechanisms finds the library.</li>
-     * </ol>
-     *
-     * <p>This method must run before the first active use of
-     * {@link ARPACK}. Merely importing or referencing the class in JavaDoc does
-     * not initialise its native binding.</p>
-     */
-    private static void ensureArpackLoaded()
-    {
-        if (arpackLookupPrepared) {
-            return;
-        }
-
-        synchronized (SparseG2Svd.class) {
-            if (arpackLookupPrepared) {
-                return;
-            }
-
-            final String library = System.mapLibraryName(ARPACK_LIBRARY);
-            final String configured = System.getProperty(ARPACK_PATH_PROPERTY);
-            if (configured != null && !configured.isBlank()) {
-                loadArpack(Path.of(configured), library, true);
-                arpackLookupPrepared = true;
-                return;
-            }
-
-            final String platform = nativePlatform();
-            final Path[] localCandidates = {
-                Path.of("lib", "native", platform, library),
-                Path.of("lib", "native", library)
-            };
-            for (final Path candidate : localCandidates) {
-                if (Files.isRegularFile(candidate)) {
-                    loadArpack(candidate, library, false);
-                    arpackLookupPrepared = true;
-                    return;
-                }
-            }
-
-            try {
-                System.loadLibrary(ARPACK_LIBRARY);
-            }
-            catch (final UnsatisfiedLinkError error) {
-                // Smile's libraryLookup() still gets the final OS-level attempt.
-            }
-
-            arpackLookupPrepared = true;
-        }
-    }
-
-    /**
-     * Loads ARPACK from an explicit file or directory.
-     *
-     * <p>On Windows, {@code libopenblas.dll} is loaded first when it is present
-     * beside {@code arpack.dll}. Windows does not reliably search the directory
-     * of a DLL loaded by absolute path when resolving that DLL's dependencies,
-     * whereas an already loaded OpenBLAS module can satisfy ARPACK's dependency.
-     * On other platforms no dependency is preloaded and the native linker keeps
-     * its normal system-library behaviour.</p>
-     *
-     * @param configured file path or containing directory
-     * @param library platform-mapped library filename
-     * @param required whether a missing configured path is an error
-     * @throws IllegalStateException if a required path is missing or a native
-     *         library exists but cannot be loaded
-     */
-    private static void loadArpack(
-        final Path configured,
-        final String library,
-        final boolean required
-    ) {
-        final Path path = Files.isDirectory(configured)
-            ? configured.resolve(library)
-            : configured;
-
-        if (!Files.isRegularFile(path)) {
-            if (required) {
-                throw new IllegalStateException(
-                    "ARPACK native library not found: "
-                        + path.toAbsolutePath().normalize());
-            }
-            return;
-        }
-
-        final Path absolute = path.toAbsolutePath().normalize();
-        loadArpackDependencies(absolute.getParent());
-        loadNative(absolute, "ARPACK");
-    }
-
-    /**
-     * Loads project-local native dependencies required by ARPACK.
-     *
-     * <p>Smile's Windows ARPACK distribution depends on OpenBLAS. If a local
-     * {@code libopenblas.dll} is present in the same directory as
-     * {@code arpack.dll}, it is loaded first. Missing optional local
-     * dependencies are ignored so that system-installed dependencies may still
-     * satisfy the native linker.</p>
-     *
-     * @param directory directory containing the local ARPACK library
-     */
-    private static void loadArpackDependencies(final Path directory)
-    {
-        if (directory == null || !isWindows()) {
-            return;
-        }
-        loadNativeIfPresent(directory.resolve("libopenblas.dll"), "OpenBLAS");
-    }
-
-    /**
-     * Loads one native library by absolute path.
-     *
-     * @param path native-library path
-     * @param name human-readable library name used in diagnostics
-     * @throws IllegalStateException if the library cannot be loaded
-     */
-    private static void loadNative(final Path path, final String name)
-    {
-        final Path absolute = path.toAbsolutePath().normalize();
-        try {
-            System.load(absolute.toString());
-        }
-        catch (final UnsatisfiedLinkError error) {
-            throw new IllegalStateException(
-                "Cannot load " + name + " native library " + absolute
-                    + "; one of its native dependencies may be missing.",
-                error);
-        }
-    }
-
-    /**
-     * Loads one native library when the file is present.
-     *
-     * @param path native-library path
-     * @param name human-readable library name used in diagnostics
-     */
-    private static void loadNativeIfPresent(final Path path, final String name)
-    {
-        if (Files.isRegularFile(path)) {
-            loadNative(path, name);
-        }
-    }
-
-    /**
-     * Returns whether the current operating system is Windows.
-     *
-     * @return {@code true} on Windows
-     */
-    private static boolean isWindows()
-    {
-        return System.getProperty("os.name", "")
-            .toLowerCase(Locale.ROOT)
-            .contains("win");
-    }
-
-    /**
-     * Returns the local native-library platform directory name.
-     *
-     * @return normalized {@code <os>-<arch>} identifier
-     */
-    private static String nativePlatform()
-    {
-        final String os = System.getProperty("os.name", "unknown")
-            .toLowerCase(Locale.ROOT);
-        final String arch = System.getProperty("os.arch", "unknown")
-            .toLowerCase(Locale.ROOT);
-
-        final String osName;
-        if (os.contains("win")) {
-            osName = "windows";
-        }
-        else if (os.contains("linux")) {
-            osName = "linux";
-        }
-        else if (os.contains("mac") || os.contains("darwin")) {
-            osName = "macos";
-        }
-        else {
-            osName = os.replaceAll("[^a-z0-9]+", "_");
-        }
-
-        final String archName;
-        if (arch.equals("amd64") || arch.equals("x86_64")) {
-            archName = "x86_64";
-        }
-        else if (arch.equals("aarch64") || arch.equals("arm64")) {
-            archName = "aarch64";
-        }
-        else {
-            archName = arch.replaceAll("[^a-z0-9]+", "_");
-        }
-
-        return osName + "-" + archName;
-    }
 
     /**
      * Adopts a Smile truncated decomposition as the current embedding.

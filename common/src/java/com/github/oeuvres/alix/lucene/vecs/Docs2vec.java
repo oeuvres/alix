@@ -76,7 +76,7 @@ public final class Docs2vec
         }
         final Path indexDir = Paths.get(args[0]);
         final String field = args[1];
-        int dims = 500;
+        int dims = 100;
         double power = 0.5d;
         int minDocFreq = 3;
         int maxTerms = 10_000;

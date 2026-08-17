@@ -586,7 +586,13 @@ public final class TermDocSvd
      */
     private static EVD eigenSymmetric(final double[][] matrix)
     {
-        return DenseMatrix.of(matrix).withUplo(UPLO.LOWER).eigen(false, true).sort();
+        SmileUtil.ensureOpenBlasLoaded();
+        try {
+            return DenseMatrix.of(matrix).withUplo(UPLO.LOWER).eigen(false, true).sort();
+        }
+        catch (final ExceptionInInitializerError | NoClassDefFoundError | UnsatisfiedLinkError error) {
+            throw SmileUtil.openBlasInitializationFailure(error);
+        }
     }
 
     /**
