@@ -76,7 +76,7 @@ public final class Docs2vec
         }
         final Path indexDir = Paths.get(args[0]);
         final String field = args[1];
-        int dims = 100;
+        int dims = 500;
         double power = 0.5d;
         int minDocFreq = 3;
         int maxTerms = 10_000;
@@ -126,18 +126,18 @@ public final class Docs2vec
                 100d * table.nonZero() / ((long) termCount * docCount));
 
             log("preparing signed G2 deviance residuals against independence expectation");
-            final TermDocVecs svd = new TermDocVecs(
+            final TermDocVecs vecs = new TermDocVecs(
                 table.cells(), docCount, TermDocVecs.Residual.DEVIANCE);
 
             log("decomposing %d x %d residual matrix to top %d dims (dense column Gram EVD)",
                 termCount, docCount, dims);
-            svd.decompose(dims);
-            log("decomposition done, rank %d", svd.rank());
+            vecs.decompose(dims);
+            log("decomposition done, rank %d", vecs.rank());
 
             if (power != 0d) {
                 log("weighting axes by sigma^%.3f", power);
             }
-            final double[][] coords = svd.coords(power);
+            final double[][] coords = vecs.coords(power);
             final int outDim = coords[0].length;
             log("projected to %d dimensions (requested %d)", outDim, dims);
 
