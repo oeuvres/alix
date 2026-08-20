@@ -54,6 +54,8 @@ public final class VecModel
     /** Term forms in vector-id order. */
     private final String[] words;
 
+    /** Cache of models for {@link #get(Path)} */
+    private static final Map<Path, VecModel> MODELS = new HashMap<>();
     /**
      * Constructs an already validated model.
      */
@@ -115,6 +117,28 @@ public final class VecModel
     public int dim()
     {
         return dim;
+    }
+    
+    /**
+     * Get a model from cache or build it not availbale.
+     */
+    public static synchronized VecModel get(final Path path) throws IOException
+    {
+        final Path key = path.toAbsolutePath().normalize();
+
+        if (MODELS.containsKey(key)) {
+            return MODELS.get(key);
+        }
+
+        try {
+            final VecModel model = load(key);
+            MODELS.put(key, model);
+            return model;
+        }
+        catch (IOException e) {
+            MODELS.put(key, null);
+            throw e;
+        }
     }
 
     /**

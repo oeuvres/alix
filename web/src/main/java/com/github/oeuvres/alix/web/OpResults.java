@@ -511,4 +511,24 @@ public class OpResults extends Op {
             renderer.close();
         }
     }
+    
+    protected void txt(
+        final LuceneIndex index,
+        final HttpServletRequest request,
+        final HttpServletResponse response
+    ) throws IOException {
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
+        final SpanQuery spanQuery = spanQuery(index, pars, meta);
+        if (spanQuery == null) {
+            response.sendError(400, "a query is required for txt list");
+            return;
+        }
+        final Writer writer = response.getWriter();
+        final ScoreDoc[] hits = index.searcher().search(spanQuery, 10_000).scoreDocs;
+        writer.append(spanQuery.toString());
+        for (ScoreDoc sd : hits) {
+            writer.append(",").append(String.valueOf(sd.doc));
+        }
+    }
 }
