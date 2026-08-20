@@ -30,29 +30,32 @@ import org.apache.lucene.store.FSDirectory;
 import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
 
 /**
- * Experimental lexical similarity from BM25-ranked document profiles.
+ * Experimental lexical similarities from a Lucene one-term BM25 matrix.
  *
- * <p>For every selected term, this class executes the exact one-term Lucene
- * BM25 query and stores both:</p>
+ * <p>The source matrix is kept unchanged:</p>
+ *
+ * <pre>
+ * B(term, doc) = Lucene BM25 score for the one-term query
+ * </pre>
+ *
+ * <p>Three full-dimensional cosine comparisons are exposed, with no SVD:</p>
  *
  * <ul>
- *   <li>the dense {@code term x Lucene-docId} BM25 score matrix, with zero for
- *       documents where the term is absent;</li>
- *   <li>the corresponding positive document ranking.</li>
+ *   <li>{@link Mode#RAW}: cosine directly between BM25 rows.</li>
+ *   <li>{@link Mode#PEARSON}: cosine between standardized independence
+ *       residuals {@code (B-E)/sqrt(E)}.</li>
+ *   <li>{@link Mode#DEV}: cosine between signed Poisson-deviance-form
+ *       residuals of BM25 mass.</li>
  * </ul>
  *
- * <p>Two terms are compared with extrapolated Rank-Biased Overlap (RBO), which
- * is designed for non-conjoint rankings of unequal length and weights agreement
- * near the head of the rankings more strongly. No SVD, cosine, Pearson or
- * pairwise term co-occurrence statistic is involved.</p>
+ * <p>For the two residual modes, the independence expectation is:</p>
  *
- * <p>The BM25 scores are computed by Lucene itself rather than by duplicating
- * the BM25 formula here. Consequently the scores use the norms and collection
- * statistics actually stored in the index. Parameters {@code k1} and {@code b}
- * are configurable; their Lucene defaults are 1.2 and 0.75.</p>
+ * <pre>
+ * E(term, doc) = rowMass(term) * columnMass(doc) / totalMass
+ * </pre>
  *
- * <p>This class is an experiment and is not thread-safe after entering the
- * interactive console.</p>
+ * <p>BM25 values are scores, not event counts. Consequently {@code DEV} is a
+ * diagnostic deviance transform, not a formal G² likelihood-ratio test.</p>
  */
 public final class LatentBM25
 {
@@ -68,9 +71,6 @@ public final class LatentBM25
     /** Default minimum document frequency. */
     private static final int DEFAULT_MIN_DOC_FREQ = 3;
 
-    /** Default RBO persistence. */
-    private static final double DEFAULT_P = 0.95d;
-
     /** Default number of neighbours printed. */
     private static final int DEFAULT_TOP = 30;
 
@@ -78,13 +78,25 @@ public final class LatentBM25
     private static final String USAGE =
         "usage: LatentBM25 <indexDir> <field>"
             + " [--minDocFreq N] [--maxTerms N] [--k1 K] [--b B]"
-            + " [--p P] [--top N]";
+            + " [--mode raw|pearson|dev] [--top N]";
 
-    /** Dense BM25 score matrix: selected term x Lucene docId. */
+    /** Dense raw BM25 score matrix: selected term x Lucene docId. */
     private final float[][] bm25;
 
     /** BM25 b parameter. */
     private final float b;
+
+    /** BM25 mass of every document column. */
+    private final double[] colMass;
+
+    /** Norm of every deviance-residual row. */
+    private final double[] devNorm;
+
+    /** Rank-one background coefficient sqrt(2 * rowMass / totalMass). */
+    private final double[] devScale;
+
+    /** Sum sqrt(colMass[d]) * correction(term,d) over observed cells. */
+    private final double[] devWeightedCorrection;
 
     /** Live BM25 document frequency for each selected term. */
     private final int[] docFreq;
@@ -98,14 +110,20 @@ public final class LatentBM25
     /** Maximum Lucene document id plus one. */
     private final int maxDoc;
 
-    /** Current RBO persistence. */
-    private double persistence;
+    /** Current matrix view. */
+    private Mode mode;
 
-    /** Rank by Lucene docId, 1-based; zero means absent. */
-    private final short[][] rankByDoc;
+    /** Norm of every Pearson-residual row. */
+    private final double[] pearsonNorm;
 
     /** BM25-ranked positive Lucene document ids for each selected term. */
     private final int[][] rankings;
+
+    /** Norm of every raw BM25 row. */
+    private final double[] rawNorm;
+
+    /** BM25 mass of every term row. */
+    private final double[] rowMass;
 
     /** Selected vocabulary lookup. */
     private final Map<String, Integer> rowByWord;
@@ -113,18 +131,50 @@ public final class LatentBM25
     /** Wall-clock start for progress logging. */
     private static long started;
 
+    /** Total BM25 mass in the selected term-document table. */
+    private double totalMass;
+
     /** Selected vocabulary. */
     private final String[] words;
 
+    /** Available full-dimensional matrix views. */
+    public enum Mode
+    {
+        /** Signed Poisson-deviance-form residuals of BM25 mass. */
+        DEV,
+
+        /** Standardized Pearson independence residuals of BM25 mass. */
+        PEARSON,
+
+        /** Raw Lucene BM25 rows. */
+        RAW;
+
+        /** Parses a mode name, accepting the former "cos" name as RAW. */
+        private static Mode parse(final String value)
+        {
+            final String normalized = value.trim().toUpperCase(Locale.ROOT);
+            if ("COS".equals(normalized)) {
+                return RAW;
+            }
+            if ("DEVIANCE".equals(normalized) || "G2".equals(normalized)) {
+                return DEV;
+            }
+            return Mode.valueOf(normalized);
+        }
+    }
+
+    /** One nearest-neighbour result. */
+    private record Hit(int row, double score) {}
+
     /**
-     * Builds all one-term BM25 document profiles.
+     * Builds the complete one-term BM25 matrix and residual statistics.
      *
      * @param reader Lucene index reader
      * @param field indexed field
      * @param selected selected vocabulary
      * @param k1 BM25 term-frequency saturation parameter
      * @param b BM25 document-length normalization parameter
-     * @param persistence initial RBO persistence, strictly between zero and one
+     * @param mode initial matrix view
      * @throws IOException if Lucene scoring fails
      */
     public LatentBM25(
@@ -133,7 +183,7 @@ public final class LatentBM25
         final SelectedTerm[] selected,
         final float k1,
         final float b,
-        final double persistence
+        final Mode mode
     ) throws IOException {
         if (selected.length < 2) {
             throw new IllegalArgumentException("at least two selected terms are required");
@@ -144,12 +194,11 @@ public final class LatentBM25
         if (!(b >= 0f && b <= 1f) || !Float.isFinite(b)) {
             throw new IllegalArgumentException("b must be in [0,1]: " + b);
         }
-        requirePersistence(persistence);
 
         this.field = field;
         this.k1 = k1;
         this.b = b;
-        this.persistence = persistence;
+        this.mode = mode;
         maxDoc = reader.maxDoc();
 
         words = new String[selected.length];
@@ -162,19 +211,63 @@ public final class LatentBM25
 
         bm25 = new float[selected.length][maxDoc];
         rankings = new int[selected.length][];
-        rankByDoc = new short[selected.length][maxDoc];
+        rawNorm = new double[selected.length];
+        rowMass = new double[selected.length];
+        colMass = new double[maxDoc];
+        pearsonNorm = new double[selected.length];
+        devNorm = new double[selected.length];
+        devScale = new double[selected.length];
+        devWeightedCorrection = new double[selected.length];
 
         build(reader, selected);
+        prepareResiduals();
     }
 
-    /**
-     * Returns the live BM25 score matrix.
-     *
-     * @return term x Lucene-docId BM25 scores
-     */
+    /** Returns the live raw BM25 score matrix. */
     public float[][] bm25()
     {
         return bm25;
+    }
+
+    /**
+     * Returns cosine between two deviance-residual BM25 rows.
+     *
+     * @param rowA first term row
+     * @param rowB second term row
+     * @return cosine similarity
+     */
+    public double devianceCosine(final int rowA, final int rowB)
+    {
+        if (rowA == rowB) {
+            return 1d;
+        }
+        final double denominator = devNorm[rowA] * devNorm[rowB];
+        if (!(denominator > 0d)) {
+            return 0d;
+        }
+
+        double dot = 2d * Math.sqrt(rowMass[rowA] * rowMass[rowB]);
+        dot -= devScale[rowA] * devWeightedCorrection[rowB];
+        dot -= devScale[rowB] * devWeightedCorrection[rowA];
+
+        final int source;
+        final int other;
+        if (rankings[rowA].length <= rankings[rowB].length) {
+            source = rowA;
+            other = rowB;
+        }
+        else {
+            source = rowB;
+            other = rowA;
+        }
+        final float[] otherScores = bm25[other];
+        for (final int doc : rankings[source]) {
+            if (otherScores[doc] == 0f) {
+                continue;
+            }
+            dot += devianceCorrection(source, doc) * devianceCorrection(other, doc);
+        }
+        return clampCosine(dot / denominator);
     }
 
     /**
@@ -198,7 +291,7 @@ public final class LatentBM25
         int maxTerms = DEFAULT_MAX_TERMS;
         float k1 = DEFAULT_K1;
         float b = DEFAULT_B;
-        double p = DEFAULT_P;
+        Mode mode = Mode.RAW;
         int top = DEFAULT_TOP;
 
         for (int i = 2; i < args.length; i++) {
@@ -207,7 +300,7 @@ public final class LatentBM25
                 case "--maxTerms" -> maxTerms = Integer.parseInt(args[++i]);
                 case "--k1" -> k1 = Float.parseFloat(args[++i]);
                 case "--b" -> b = Float.parseFloat(args[++i]);
-                case "--p" -> p = Double.parseDouble(args[++i]);
+                case "--mode" -> mode = Mode.parse(args[++i]);
                 case "--top" -> top = Integer.parseInt(args[++i]);
                 default -> {
                     System.err.println("unknown option: " + args[i]);
@@ -217,59 +310,120 @@ public final class LatentBM25
                 }
             }
         }
-        requirePersistence(p);
+
+        top = Math.max(1, top);
 
         log("opening index %s", indexDir);
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
             log("selecting terms (minDocFreq=%d, cap=%d)", minDocFreq, maxTerms);
             final SelectedTerm[] selected = VecUtil.selectTerms(
                 reader, field, minDocFreq, maxTerms);
-
             final LatentBM25 model = new LatentBM25(
-                reader, field, selected, k1, b, p);
+                reader, field, selected, k1, b, mode);
             model.console(top);
         }
     }
 
     /**
-     * Returns the BM25-ranked Lucene document ids for one selected term.
+     * Returns cosine between two Pearson-residual BM25 rows.
      *
-     * @param row selected-term row
-     * @return live ranking array
+     * @param rowA first term row
+     * @param rowB second term row
+     * @return cosine similarity
      */
+    public double pearsonCosine(final int rowA, final int rowB)
+    {
+        if (rowA == rowB) {
+            return 1d;
+        }
+        final double denominator = pearsonNorm[rowA] * pearsonNorm[rowB];
+        if (!(denominator > 0d)) {
+            return 0d;
+        }
+
+        final int source;
+        final int other;
+        if (rankings[rowA].length <= rankings[rowB].length) {
+            source = rowA;
+            other = rowB;
+        }
+        else {
+            source = rowB;
+            other = rowA;
+        }
+
+        double sharedWeighted = 0d;
+        final float[] sourceScores = bm25[source];
+        final float[] otherScores = bm25[other];
+        for (final int doc : rankings[source]) {
+            final float otherValue = otherScores[doc];
+            if (otherValue == 0f || !(colMass[doc] > 0d)) {
+                continue;
+            }
+            sharedWeighted += (double) sourceScores[doc] * otherValue / colMass[doc];
+        }
+
+        final double rootRows = Math.sqrt(rowMass[rowA] * rowMass[rowB]);
+        if (!(rootRows > 0d)) {
+            return 0d;
+        }
+        final double dot = totalMass * sharedWeighted / rootRows - rootRows;
+        return clampCosine(dot / denominator);
+    }
+
+    /** Returns the BM25-ranked positive document ids for one term. */
     public int[] ranking(final int row)
     {
         return rankings[row];
     }
 
     /**
-     * Returns extrapolated RBO between two selected terms.
+     * Returns cosine between two raw BM25 term-document rows.
      *
-     * @param rowA first selected-term row
-     * @param rowB second selected-term row
-     * @return similarity in [0,1]
+     * @param rowA first term row
+     * @param rowB second term row
+     * @return cosine similarity
      */
-    public double rbo(final int rowA, final int rowB)
+    public double rawCosine(final int rowA, final int rowB)
     {
-        return rbo(rowA, rowB, persistence);
+        if (rowA == rowB) {
+            return 1d;
+        }
+        final double denominator = rawNorm[rowA] * rawNorm[rowB];
+        if (!(denominator > 0d)) {
+            return 0d;
+        }
+
+        final int source;
+        final int other;
+        if (rankings[rowA].length <= rankings[rowB].length) {
+            source = rowA;
+            other = rowB;
+        }
+        else {
+            source = rowB;
+            other = rowA;
+        }
+
+        double dot = 0d;
+        final float[] a = bm25[source];
+        final float[] bRow = bm25[other];
+        for (final int doc : rankings[source]) {
+            final float bv = bRow[doc];
+            if (bv != 0f) {
+                dot += (double) a[doc] * bv;
+            }
+        }
+        return clampCosine(dot / denominator);
     }
 
-    /**
-     * Returns the selected vocabulary.
-     *
-     * @return live selected-term array
-     */
+    /** Returns the selected vocabulary. */
     public String[] words()
     {
         return words;
     }
 
-    /** One nearest-neighbour result. */
-    private record Hit(int row, double score) {}
-
-    /**
-     * Computes all single-term BM25 rows with Lucene's own scorer.
-     */
+    /** Computes all one-term BM25 rows with Lucene's own scorer. */
     private void build(
         final IndexReader reader,
         final SelectedTerm[] selected
@@ -277,7 +431,7 @@ public final class LatentBM25
         final IndexSearcher searcher = new IndexSearcher(reader);
         searcher.setSimilarity(new BM25Similarity(k1, b));
 
-        log("building %,d x %,d BM25 matrix with Lucene (k1=%.3f, b=%.3f)",
+        log("building %,d x %,d raw BM25 matrix with Lucene (k1=%.3f, b=%.3f)",
             selected.length, maxDoc, k1, b);
 
         final int step = Math.max(1, selected.length / 20);
@@ -292,25 +446,45 @@ public final class LatentBM25
             final int[] order = new int[hits.length];
             rankings[row] = order;
             final float[] scoreRow = bm25[row];
-            final short[] rankRow = rankByDoc[row];
+            double sum = 0d;
+            double squareSum = 0d;
             for (int rank = 0; rank < hits.length; rank++) {
                 final ScoreDoc hit = hits[rank];
                 final int doc = hit.doc;
+                final float score = hit.score;
                 order[rank] = doc;
-                scoreRow[doc] = hit.score;
-                rankRow[doc] = (short) (rank + 1);
+                scoreRow[doc] = score;
+                sum += score;
+                squareSum += (double) score * score;
+                colMass[doc] += score;
             }
+            rowMass[row] = sum;
+            rawNorm[row] = Math.sqrt(squareSum);
+            totalMass += sum;
 
             if ((row + 1) % step == 0 || row + 1 == selected.length) {
                 log("  BM25 rows %,d / %,d", row + 1, selected.length);
             }
         }
 
-        log("BM25 matrix ready: %,d positive cells (%.2f%% dense), about %.1f MiB scores + %.1f MiB ranks",
+        log("BM25 matrix ready: %,d positive cells (%.2f%% dense), about %.1f MiB",
             nonZero,
             100d * nonZero / ((long) selected.length * maxDoc),
-            (double) selected.length * maxDoc * Float.BYTES / 1048576d,
-            (double) selected.length * maxDoc * Short.BYTES / 1048576d);
+            (double) selected.length * maxDoc * Float.BYTES / 1048576d);
+        log("BM25 mass %.6g over %,d non-empty document columns",
+            totalMass, nonEmptyColumns());
+    }
+
+    /** Restricts floating-point noise to the mathematical cosine interval. */
+    private static double clampCosine(final double value)
+    {
+        if (value > 1d && value < 1d + 1e-10) {
+            return 1d;
+        }
+        if (value < -1d && value > -1d - 1e-10) {
+            return -1d;
+        }
+        return value;
     }
 
     /** Runs the interactive console. */
@@ -318,14 +492,14 @@ public final class LatentBM25
     {
         System.out.printf(
             Locale.ROOT,
-            "%,d terms x %,d Lucene docIds; BM25(k1=%.3f,b=%.3f), RBO p=%.3f%n",
-            words.length, maxDoc, k1, b, persistence);
+            "%,d terms x %,d Lucene docIds; BM25(k1=%.3f,b=%.3f); mode=%s%n",
+            words.length, maxDoc, k1, b, mode.name().toLowerCase(Locale.ROOT));
         printHelp();
 
         final BufferedReader input = new BufferedReader(
             new InputStreamReader(System.in, StandardCharsets.UTF_8));
         while (true) {
-            System.out.printf(Locale.ROOT, "bm25/rbo%.3f> ", persistence);
+            System.out.print(prompt());
             final String raw = input.readLine();
             if (raw == null) {
                 return;
@@ -346,26 +520,37 @@ public final class LatentBM25
             switch (command) {
                 case ":docs" -> printDocs(arg, top);
                 case ":help" -> printHelp();
-                case ":p" -> {
-                    final double value = Double.parseDouble(arg);
-                    requirePersistence(value);
-                    persistence = value;
-                    System.out.printf(Locale.ROOT, "RBO persistence p=%.6f%n", persistence);
+                case ":mode" -> {
+                    mode = Mode.parse(arg);
+                    System.out.println("mode=" + mode.name().toLowerCase(Locale.ROOT));
                 }
                 case ":pair" -> printPair(arg);
                 case ":quit", ":exit" -> {
                     return;
                 }
                 case ":top" -> {
-                    top = Integer.parseInt(arg);
-                    if (top < 1) {
-                        top = 1;
-                    }
+                    top = Math.max(1, Integer.parseInt(arg));
                     System.out.println("top=" + top);
                 }
                 default -> System.out.println("unknown command: " + command);
             }
         }
+    }
+
+    /** Returns one observed-cell correction over the rank-one deviance background. */
+    private double devianceCorrection(final int row, final int doc)
+    {
+        final double observed = bm25[row][doc];
+        if (!(observed > 0d) || !(colMass[doc] > 0d) || !(rowMass[row] > 0d)) {
+            return 0d;
+        }
+        final double expected = rowMass[row] * colMass[doc] / totalMass;
+        final double deviance = 2d * (
+            observed * Math.log(observed / expected) - observed + expected);
+        final double residual = Math.copySign(
+            Math.sqrt(Math.max(0d, deviance)), observed - expected);
+        final double background = -devScale[row] * Math.sqrt(colMass[doc]);
+        return residual - background;
     }
 
     /** Logs one elapsed-time progress message. */
@@ -378,6 +563,75 @@ public final class LatentBM25
             String.format(Locale.ROOT, format, args));
     }
 
+    /** Returns the number of document columns carrying selected-term BM25 mass. */
+    private int nonEmptyColumns()
+    {
+        int count = 0;
+        for (final double value : colMass) {
+            if (value > 0d) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** Precomputes exact row norms for both independence-residual transforms. */
+    private void prepareResiduals()
+    {
+        if (!(totalMass > 0d)) {
+            throw new IllegalStateException("BM25 matrix has no positive mass");
+        }
+        log("preparing Pearson and deviance residual row norms against BM25 independence");
+
+        final int step = Math.max(1, words.length / 20);
+        for (int row = 0; row < words.length; row++) {
+            final double mass = rowMass[row];
+            if (!(mass > 0d)) {
+                continue;
+            }
+
+            double pearsonPositive = 0d;
+            final double scale = Math.sqrt(2d * mass / totalMass);
+            devScale[row] = scale;
+            double weightedCorrection = 0d;
+            double correctionSquare = 0d;
+
+            final float[] scores = bm25[row];
+            for (final int doc : rankings[row]) {
+                final double column = colMass[doc];
+                if (!(column > 0d)) {
+                    continue;
+                }
+                final double observed = scores[doc];
+                pearsonPositive += observed * observed / column;
+
+                final double correction = devianceCorrection(row, doc);
+                weightedCorrection += Math.sqrt(column) * correction;
+                correctionSquare += correction * correction;
+            }
+
+            double pearsonSquare = totalMass * pearsonPositive / mass - mass;
+            if (pearsonSquare < 0d && pearsonSquare > -1e-10) {
+                pearsonSquare = 0d;
+            }
+            pearsonNorm[row] = Math.sqrt(Math.max(0d, pearsonSquare));
+
+            devWeightedCorrection[row] = weightedCorrection;
+            double devSquare = 2d * mass
+                - 2d * scale * weightedCorrection
+                + correctionSquare;
+            if (devSquare < 0d && devSquare > -1e-10) {
+                devSquare = 0d;
+            }
+            devNorm[row] = Math.sqrt(Math.max(0d, devSquare));
+
+            if ((row + 1) % step == 0 || row + 1 == words.length) {
+                log("  residual rows %,d / %,d", row + 1, words.length);
+            }
+        }
+        log("residual statistics ready");
+    }
+
     /** Prints the BM25 document ranking for one term. */
     private void printDocs(final String word, final int top)
     {
@@ -386,13 +640,19 @@ public final class LatentBM25
             System.out.println("unknown selected term: " + word);
             return;
         }
-        System.out.printf(Locale.ROOT, "%s\tdf=%d%n", word, docFreq[row]);
+        System.out.printf(
+            Locale.ROOT,
+            "%s\tdf=%d\tBM25mass=%.6f%n",
+            word, docFreq[row], rowMass[row]);
         final int[] order = rankings[row];
         final float[] scores = bm25[row];
         final int limit = Math.min(top, order.length);
         for (int rank = 0; rank < limit; rank++) {
             final int doc = order[rank];
-            System.out.printf(Locale.ROOT, "%d.\tdoc=%d\t%.6f%n", rank, doc, scores[doc]);
+            System.out.printf(
+                Locale.ROOT,
+                "%d.\tdoc=%d\tBM25=%.6f\tcolMass=%.6f%n",
+                rank, doc, scores[doc], colMass[doc]);
         }
     }
 
@@ -400,15 +660,15 @@ public final class LatentBM25
     private static void printHelp()
     {
         System.out.println("commands:");
-        System.out.println("  TERM                 rank lexical neighbours by BM25-document RBO");
-        System.out.println("  :docs TERM           print TERM's BM25-ranked Lucene docIds");
-        System.out.println("  :pair A | B          inspect one lexical pair");
-        System.out.println("  :p P                 set RBO persistence, 0 < P < 1");
-        System.out.println("  :top N               number of rows to print");
+        System.out.println("  TERM                 rank neighbours by current full-row cosine");
+        System.out.println("  :mode raw|pearson|dev");
+        System.out.println("  :docs TERM           print TERM's Lucene BM25 document ranking");
+        System.out.println("  :pair A | B          compare RAW / PEARSON / DEV for one pair");
+        System.out.println("  :top N               number of neighbours/documents to print");
         System.out.println("  :quit                 exit");
     }
 
-    /** Prints diagnostics for one pair. */
+    /** Prints diagnostics for one lexical pair. */
     private void printPair(final String arg)
     {
         final String[] parts = arg.split("\\|", 2);
@@ -425,22 +685,18 @@ public final class LatentBM25
             return;
         }
 
-        final int shared = sharedDocuments(a, bRow);
         System.out.printf(
             Locale.ROOT,
-            "%s | %s%ndf=%d/%d shared=%d%n",
-            aWord, bWord, docFreq[a], docFreq[bRow], shared);
-        System.out.printf(Locale.ROOT, "RBO p=.900  %.9f%n", rbo(a, bRow, 0.90d));
-        System.out.printf(Locale.ROOT, "RBO p=.950  %.9f%n", rbo(a, bRow, 0.95d));
-        System.out.printf(Locale.ROOT, "RBO p=.980  %.9f%n", rbo(a, bRow, 0.98d));
-        System.out.printf(Locale.ROOT, "RBO current %.9f%n", rbo(a, bRow, persistence));
-        System.out.printf(Locale.ROOT, "top10 overlap=%d, top20=%d, top50=%d%n",
-            prefixOverlap(a, bRow, 10),
-            prefixOverlap(a, bRow, 20),
-            prefixOverlap(a, bRow, 50));
+            "%s | %s%ndf=%d/%d shared=%d mass=%.6f/%.6f%n",
+            aWord, bWord,
+            docFreq[a], docFreq[bRow], sharedDocuments(a, bRow),
+            rowMass[a], rowMass[bRow]);
+        System.out.printf(Locale.ROOT, "raw      %.9f%n", rawCosine(a, bRow));
+        System.out.printf(Locale.ROOT, "pearson  %.9f%n", pearsonCosine(a, bRow));
+        System.out.printf(Locale.ROOT, "dev      %.9f%n", devianceCosine(a, bRow));
     }
 
-    /** Prints nearest terms for one query term. */
+    /** Prints nearest terms for one query word. */
     private void printQuery(final String word, final int top)
     {
         final Integer query = rowByWord.get(word);
@@ -455,14 +711,14 @@ public final class LatentBM25
             if (row == query) {
                 continue;
             }
-            hits[at++] = new Hit(row, rbo(query, row, persistence));
+            hits[at++] = new Hit(row, similarity(query, row));
         }
         Arrays.sort(hits, Comparator.comparingDouble(Hit::score).reversed());
 
         System.out.printf(
             Locale.ROOT,
-            "%s\tdf=%d\tBM25(k1=%.2f,b=%.2f) RBO p=%.3f%n",
-            word, docFreq[query], k1, b, persistence);
+            "%s\tdf=%d\tmode=%s%n",
+            word, docFreq[query], mode.name().toLowerCase(Locale.ROOT));
         final int limit = Math.min(top, hits.length);
         for (int rank = 0; rank < limit; rank++) {
             final Hit hit = hits[rank];
@@ -474,141 +730,42 @@ public final class LatentBM25
         }
     }
 
-    /** Returns overlap between two ranking prefixes at the same depth. */
-    private int prefixOverlap(final int rowA, final int rowB, final int depth)
+    /** Returns current console prompt. */
+    private String prompt()
     {
-        final int[] a = rankings[rowA];
-        final int[] bOrder = rankings[rowB];
-        final int aDepth = Math.min(depth, a.length);
-        final int bDepth = Math.min(depth, bOrder.length);
-        if (aDepth == 0 || bDepth == 0) {
-            return 0;
-        }
-
-        int overlap = 0;
-        if (aDepth <= bDepth) {
-            final short[] bRanks = rankByDoc[rowB];
-            for (int i = 0; i < aDepth; i++) {
-                final int rank = bRanks[a[i]] & 0xffff;
-                if (rank > 0 && rank <= bDepth) {
-                    overlap++;
-                }
-            }
-        }
-        else {
-            final short[] aRanks = rankByDoc[rowA];
-            for (int i = 0; i < bDepth; i++) {
-                final int rank = aRanks[bOrder[i]] & 0xffff;
-                if (rank > 0 && rank <= aDepth) {
-                    overlap++;
-                }
-            }
-        }
-        return overlap;
-    }
-
-    /**
-     * Computes extrapolated RBO for possibly unequal finite rankings.
-     *
-     * <p>This is the unequal-ranking extrapolation of Webber, Moffat and Zobel.
-     * The shorter ranking is denoted S (length s), the longer L (length l).
-     * Prefix overlap X_d is updated exactly from the precomputed document ranks.
-     * The final term extrapolates the agreement beyond the observed prefixes.</p>
-     */
-    private double rbo(final int rowA, final int rowB, final double p)
-    {
-        if (rowA == rowB) {
-            return 1d;
-        }
-        final int lenA = rankings[rowA].length;
-        final int lenB = rankings[rowB].length;
-        if (lenA == 0 || lenB == 0) {
-            return 0d;
-        }
-
-        final int shortRow;
-        final int longRow;
-        if (lenA <= lenB) {
-            shortRow = rowA;
-            longRow = rowB;
-        }
-        else {
-            shortRow = rowB;
-            longRow = rowA;
-        }
-
-        final int[] shorter = rankings[shortRow];
-        final int[] longer = rankings[longRow];
-        final short[] shortRanks = rankByDoc[shortRow];
-        final short[] longRanks = rankByDoc[longRow];
-        final int s = shorter.length;
-        final int l = longer.length;
-
-        int overlap = 0;
-        int overlapAtS = 0;
-        double observed = 0d;
-        double unequalCorrection = 0d;
-        double pToD = p;
-
-        for (int d = 1; d <= l; d++) {
-            if (d <= s) {
-                final int shortDoc = shorter[d - 1];
-                final int rankInLong = longRanks[shortDoc] & 0xffff;
-                if (rankInLong > 0 && rankInLong <= d) {
-                    overlap++;
-                }
-
-                final int longDoc = longer[d - 1];
-                final int rankInShort = shortRanks[longDoc] & 0xffff;
-                if (rankInShort > 0 && rankInShort < d) {
-                    overlap++;
-                }
-
-                if (d == s) {
-                    overlapAtS = overlap;
-                }
-            }
-            else {
-                final int longDoc = longer[d - 1];
-                if ((shortRanks[longDoc] & 0xffff) > 0) {
-                    overlap++;
-                }
-                unequalCorrection += overlapAtS * (d - s) / ((double) s * d) * pToD;
-            }
-
-            observed += overlap / (double) d * pToD;
-            pToD *= p;
-        }
-
-        final int overlapAtL = overlap;
-        final double pToL = Math.pow(p, l);
-        final double extrapolatedTail =
-            ((overlapAtL - overlapAtS) / (double) l + overlapAtS / (double) s) * pToL;
-        final double value = (1d - p) / p * (observed + unequalCorrection) + extrapolatedTail;
-
-        // Floating-point roundoff can exceed the mathematical range by a few ulps.
-        return Math.max(0d, Math.min(1d, value));
-    }
-
-    /** Requires a legal RBO persistence. */
-    private static void requirePersistence(final double p)
-    {
-        if (!(p > 0d && p < 1d) || !Double.isFinite(p)) {
-            throw new IllegalArgumentException("RBO persistence must be in (0,1): " + p);
-        }
+        return "bm25/" + mode.name().toLowerCase(Locale.ROOT) + "> ";
     }
 
     /** Returns total positive-document overlap between two selected terms. */
     private int sharedDocuments(final int rowA, final int rowB)
     {
-        final int[] a = rankings[rowA];
-        final short[] bRanks = rankByDoc[rowB];
+        final int source;
+        final int other;
+        if (rankings[rowA].length <= rankings[rowB].length) {
+            source = rowA;
+            other = rowB;
+        }
+        else {
+            source = rowB;
+            other = rowA;
+        }
+        final float[] otherScores = bm25[other];
         int shared = 0;
-        for (final int doc : a) {
-            if ((bRanks[doc] & 0xffff) > 0) {
+        for (final int doc : rankings[source]) {
+            if (otherScores[doc] != 0f) {
                 shared++;
             }
         }
         return shared;
+    }
+
+    /** Returns current-mode similarity. */
+    private double similarity(final int rowA, final int rowB)
+    {
+        return switch (mode) {
+            case DEV -> devianceCosine(rowA, rowB);
+            case PEARSON -> pearsonCosine(rowA, rowB);
+            case RAW -> rawCosine(rowA, rowB);
+        };
     }
 }
