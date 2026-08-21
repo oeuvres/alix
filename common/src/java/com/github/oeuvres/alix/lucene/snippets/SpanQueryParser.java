@@ -451,9 +451,10 @@ public class SpanQueryParser
      *
      * <p>
      * Wildcard and prefix terms retain their existing behaviour. For an exact
-     * term, indexed Hunspell roots are preferred when available. Otherwise, the
-     * indexed surface form is retained. The method returns {@code null} when no
-     * indexed exact term can be produced.
+     * term, a form that Hunspell itself reports as a root is kept unchanged.
+     * Otherwise, indexed Hunspell roots are preferred when available, then the
+     * indexed surface form is retained as a fallback. The method returns
+     * {@code null} when no indexed exact term can be produced.
      * </p>
      *
      * @param word normalized token or quoted multiword term
@@ -478,15 +479,26 @@ public class SpanQueryParser
             return null;
         }
         
+        final Term exactTerm = new Term(field, text);
+
         // TODO MWE
         if (hunspell != null && text.indexOf(' ') < 0) {
+            final LinkedHashSet<String> roots =
+                new LinkedHashSet<>(hunspell.getRoots(text));
+
+            // If the typed form is itself a lemma, do not broaden it with
+            // alternative analyses returned by Hunspell.
+            if (roots.contains(text) && reader.docFreq(exactTerm) > 0) {
+                return new ResolvedTerm(
+                    new SpanTermQuery(exactTerm),
+                    List.of(text)
+                );
+            }
+
             final List<SpanQuery> rootClauses = new ArrayList<>();
             final List<String> rootTerms = new ArrayList<>();
 
-            for (
-                final String root
-                    : new LinkedHashSet<>(hunspell.getRoots(text))
-            ) {
+            for (final String root : roots) {
                 final Term term = new Term(field, root);
                 if (reader.docFreq(term) <= 0) {
                     continue;
@@ -507,13 +519,12 @@ public class SpanQueryParser
             }
         }
 
-        final Term term = new Term(field, text);
-        if (reader.docFreq(term) <= 0) {
+        if (reader.docFreq(exactTerm) <= 0) {
             return null;
         }
 
         return new ResolvedTerm(
-            new SpanTermQuery(term),
+            new SpanTermQuery(exactTerm),
             List.of(text)
         );
     }
