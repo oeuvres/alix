@@ -15,7 +15,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.FixedBitSet;
 
-import com.github.oeuvres.alix.common.Names;
 import com.github.oeuvres.alix.office.Docx;
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.snippets.DocxResults;
@@ -39,6 +38,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import static com.github.oeuvres.alix.web.Pars.*;
+import static com.github.oeuvres.alix.common.Names.ALIX_ID;
 
 
 /**
@@ -435,7 +435,7 @@ public class OpResults extends Op {
      */
     protected String citationHtml(final Document doc, final String doclineField) {
         final String title = doc.get(doclineField);
-        final String name = doc.get(Names.ALIX_ID);
+        final String name = doc.get(ALIX_ID);
         final StringBuilder sb = new StringBuilder();
         if (title != null) sb.append("<i>").append(title).append("</i>");
         if (name != null) sb.append(" [").append(name).append("]");
@@ -512,7 +512,7 @@ public class OpResults extends Op {
         }
     }
     
-    protected void txt(
+    protected void csv(
         final LuceneIndex index,
         final HttpServletRequest request,
         final HttpServletResponse response
@@ -520,15 +520,63 @@ public class OpResults extends Op {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final SpanQuery spanQuery = spanQuery(index, pars, meta);
-        if (spanQuery == null) {
-            response.sendError(400, "a query is required for txt list");
+        FlucText contentFluc = contentFluc(index, pars, meta);
+        TermStats contentStats = contentFluc.termStats();
+        StoredFields contentStored = index.reader().storedFields();
+        Set<String> contentFields = Set.of("source", ALIX_ID);
+        final Writer writer = response.getWriter();
+        if (spanQuery == null) { // list all docs
+            writer.append("#no\tscore\tdocId\twidth\ttokens\tname\tsource\n");
+            int docCount=0;
+            for (int docId = 0; docId < contentStats.maxDoc(); docId++) {
+                if (contentStats.docWidth(docId) == 0)
+                    continue;
+                docCount++;
+                Document doc = contentStored.document(docId, contentFields);
+                writer
+                    .append('#')
+                    .append(String.valueOf(docCount))
+                    .append("\t")
+                    .append(String.valueOf(1))
+                    .append("\t")
+                    .append(String.valueOf(docId))
+                    .append("\t")
+                    .append(String.valueOf(contentStats.docWidth(docId)))
+                    .append("\t")
+                    .append(String.valueOf(contentStats.docTokens(docId)))
+                    .append("\t")
+                    .append(doc.get(ALIX_ID))
+                    .append("\t")
+                    .append(doc.get("source"))
+                    .append("\n")
+                ;
+            }
             return;
         }
-        final Writer writer = response.getWriter();
+        writer.append(spanQuery.toString()).append("\tscore\tdocId\twidth\ttokens\tname\tsource\n");
         final ScoreDoc[] hits = index.searcher().search(spanQuery, 10_000).scoreDocs;
-        writer.append(spanQuery.toString());
+        int docCount=0;
         for (ScoreDoc sd : hits) {
-            writer.append(",").append(String.valueOf(sd.doc));
+            docCount++;
+            final int docId = sd.doc;
+            Document doc = contentStored.document(docId, contentFields);
+            writer
+                .append('#')
+                .append(String.valueOf(docCount))
+                .append("\t")
+                .append(String.valueOf(sd.score))
+                .append("\t")
+                .append(String.valueOf(docId))
+                .append("\t")
+                .append(String.valueOf(contentStats.docWidth(docId)))
+                .append("\t")
+                .append(String.valueOf(contentStats.docTokens(docId)))
+                .append("\t")
+                .append(doc.get(ALIX_ID))
+                .append("\t")
+                .append(doc.get("source"))
+                .append("\n")
+            ;
         }
     }
 }
