@@ -38,10 +38,12 @@ import org.apache.lucene.util.BytesRef;
  * as a geometric factor. {@link NormMode#NONE} uses the scored matrix directly.
  * The original, unnormalized scorer row is always retained as the query signal.</p>
  *
- * <p>Two latent rescoring modes are available:</p>
+ * <p>Three term-vector modes are available:</p>
  * <ul>
  *   <li>{@link Mode#CONTRAST}: contrastive document centroid;</li>
- *   <li>{@link Mode#SVD}: low-rank projection in document space.</li>
+ *   <li>{@link Mode#SVD}: low-rank projection in document space;</li>
+ *   <li>{@link Mode#ASSOC}: cosine between complete signed-G² profiles of
+ *       document-presence association with every retained term.</li>
  * </ul>
  *
  * <p>{@code alpha} has a simple meaning in this branch: the latent result is
@@ -55,7 +57,7 @@ import org.apache.lucene.util.BytesRef;
 public final class LatentSim {
 
     /** Default lexical-anchor weight. */
-    public static final double DEFAULT_ALPHA = 1.0;
+    public static final double DEFAULT_ALPHA = 0.0;
 
     /** Default number of latent document dimensions. */
     public static final int DEFAULT_DIMS = 300;
@@ -79,6 +81,7 @@ public final class LatentSim {
     private static final long RANDOM_SEED = 0x4c6174656e745369L;
 
     private final double alpha;
+    private volatile AssocSpace assocSpace;
     private final int contentDocCount;
     private final int dims;
     private final int[] docFreqs;
@@ -203,6 +206,10 @@ public final class LatentSim {
             throw new IllegalArgumentException("topN must be >= 1");
         }
 
+        if (mode == Mode.ASSOC) {
+            return distanceAssoc(query, topN);
+        }
+
         final ScoredSpace space = ensureBuilt(mode, scoreMode, normMode);
         final float[][] vectors = vectors(space, mode);
         final float[] norms = norms(space, mode);
@@ -318,7 +325,7 @@ public final class LatentSim {
             "# Geometry normalization: doc (default) or none; no final vector transform."
         );
         System.out.println(
-            "# Commands: mode contrast|svd, score bm25|g2|g2root, norm doc|none, top N, params, help, quit"
+            "# Commands: mode contrast|svd|assoc, assocraw TERM, score bm25|g2|g2root, norm doc|none, top N, params, help, quit"
         );
 
         Mode currentMode = Mode.SVD;
@@ -330,14 +337,19 @@ public final class LatentSim {
         );
 
         while (true) {
-            System.out.printf(
-                Locale.ROOT,
-                "%s/%s/%s[%d]> ",
-                currentMode.name().toLowerCase(Locale.ROOT),
-                scoreName(currentScoreMode),
-                normName(currentNormMode),
-                topN
-            );
+            if (currentMode == Mode.ASSOC) {
+                System.out.printf(Locale.ROOT, "assoc[%d]> ", topN);
+            }
+            else {
+                System.out.printf(
+                    Locale.ROOT,
+                    "%s/%s/%s[%d]> ",
+                    currentMode.name().toLowerCase(Locale.ROOT),
+                    scoreName(currentScoreMode),
+                    normName(currentNormMode),
+                    topN
+                );
+            }
             System.out.flush();
 
             final String input = reader.readLine();
@@ -369,6 +381,44 @@ public final class LatentSim {
                     dims,
                     svdIterations
                 );
+                continue;
+            }
+            if (line.regionMatches(true, 0, "assocraw ", 0, 9)) {
+                final String term = line.substring(9).trim();
+                if (term.isEmpty()) {
+                    System.err.println("Missing term");
+                    continue;
+                }
+                try {
+                    final long queryStart = System.nanoTime();
+                    final List<Neighbor> neighbors = model.assocRaw(term, topN);
+                    final double querySeconds =
+                        (System.nanoTime() - queryStart) / 1_000_000_000.0;
+                    System.out.printf(
+                        Locale.ROOT,
+                        "# mode=assocraw query=%s df=%d profileTerms=%d time=%.3fs%n",
+                        term,
+                        model.docFreq(term),
+                        model.terms.length,
+                        querySeconds
+                    );
+                    System.out.println("# rank\tscore\tdf\tcf\tterm");
+                    int rank = 1;
+                    for (Neighbor neighbor : neighbors) {
+                        System.out.printf(
+                            Locale.ROOT,
+                            "%d\t%.7f\t%d\t%d\t%s%n",
+                            rank++,
+                            neighbor.score,
+                            neighbor.docFreq,
+                            neighbor.totalTermFreq,
+                            neighbor.term
+                        );
+                    }
+                }
+                catch (IllegalArgumentException e) {
+                    System.err.println(e.getMessage());
+                }
                 continue;
             }
             if (line.regionMatches(true, 0, "mode ", 0, 5)) {
@@ -425,6 +475,10 @@ public final class LatentSim {
                 queryMode = Mode.SVD;
                 term = line.substring(4).trim();
             }
+            else if (line.regionMatches(true, 0, "assoc ", 0, 6)) {
+                queryMode = Mode.ASSOC;
+                term = line.substring(6).trim();
+            }
 
             if (term.isEmpty()) {
                 System.err.println("Missing term");
@@ -442,20 +496,32 @@ public final class LatentSim {
                 );
                 final double querySeconds =
                     (System.nanoTime() - queryStart) / 1_000_000_000.0;
-                System.out.printf(
-                    Locale.ROOT,
-                    "# mode=%s score=%s norm=%s query=%s df=%d alpha=%.4f dims=%d "
-                    + "svdIterations=%d time=%.3fs%n",
-                    queryMode.name().toLowerCase(Locale.ROOT),
-                    scoreName(currentScoreMode),
-                    normName(currentNormMode),
-                    term,
-                    model.docFreq(term),
-                    alpha,
-                    dims,
-                    svdIterations,
-                    querySeconds
-                );
+                if (queryMode == Mode.ASSOC) {
+                    System.out.printf(
+                        Locale.ROOT,
+                        "# mode=assoc query=%s df=%d profileTerms=%d time=%.3fs%n",
+                        term,
+                        model.docFreq(term),
+                        model.terms.length,
+                        querySeconds
+                    );
+                }
+                else {
+                    System.out.printf(
+                        Locale.ROOT,
+                        "# mode=%s score=%s norm=%s query=%s df=%d alpha=%.4f dims=%d "
+                        + "svdIterations=%d time=%.3fs%n",
+                        queryMode.name().toLowerCase(Locale.ROOT),
+                        scoreName(currentScoreMode),
+                        normName(currentNormMode),
+                        term,
+                        model.docFreq(term),
+                        alpha,
+                        dims,
+                        svdIterations,
+                        querySeconds
+                    );
+                }
                 System.out.println("# rank\tscore\tdf\tcf\tterm");
                 int rank = 1;
                 for (Neighbor neighbor : neighbors) {
@@ -477,12 +543,13 @@ public final class LatentSim {
     }
 
     /**
-     * Returns one dense document vector.
+     * Returns one dense term vector. CONTRAST and SVD vectors are indexed by
+     * Lucene doc ID; ASSOC vectors are indexed by retained vocabulary term.
      *
      * @param term vocabulary term
-     * @param mode latent rescoring mode
-     * @param scoreMode matrix scorer
-     * @return a newly allocated vector indexed by Lucene doc ID
+     * @param mode term-vector mode
+     * @param scoreMode matrix scorer, ignored by ASSOC
+     * @return a newly allocated dense vector
      */
     public float[] vector(
             final String term,
@@ -492,7 +559,8 @@ public final class LatentSim {
     }
 
     /**
-     * Returns one dense latent document vector with explicit geometry normalization.
+     * Returns one dense term vector with explicit geometry normalization. The
+     * normalization parameter is ignored by ASSOC.
      */
     public float[] vector(
             final String term,
@@ -504,6 +572,9 @@ public final class LatentSim {
             throw new IllegalArgumentException(
                 "Term is not in the retained vocabulary: " + term
             );
+        }
+        if (mode == Mode.ASSOC) {
+            return associationVector(index);
         }
         final ScoredSpace space = ensureBuilt(mode, scoreMode, normMode);
         return vectors(space, mode)[index].clone();
@@ -735,7 +806,9 @@ public final class LatentSim {
         /** Contrastive centroid in document-similarity space. */
         CONTRAST,
         /** Randomized low-rank document projection. */
-        SVD
+        SVD,
+        /** Signed document-presence G² association profile over retained terms. */
+        ASSOC
     }
 
     /**
@@ -1121,6 +1194,266 @@ public final class LatentSim {
         return basis;
     }
 
+
+    /**
+     * Returns nearest terms by cosine between complete signed-G² document-
+     * presence association profiles.
+     *
+     * @param query query term row
+     * @param topN maximum number of neighbours
+     * @return neighbours ordered by decreasing profile cosine
+     */
+    private List<Neighbor> distanceAssoc(final int query, final int topN) {
+        final AssocSpace space = ensureAssocBuilt();
+        final double queryNorm = space.norms[query];
+        final PriorityQueue<Neighbor> heap = new PriorityQueue<>(
+            Comparator.comparingDouble(neighbor -> neighbor.score)
+        );
+
+        for (int candidate = 0; candidate < terms.length; candidate++) {
+            if (candidate == query) {
+                continue;
+            }
+            final double denominator = queryNorm * space.norms[candidate];
+            if (!(denominator > 0.0)) {
+                continue;
+            }
+            final double score = assocDot(space.lower, query, candidate) / denominator;
+            if (!Double.isFinite(score)) {
+                continue;
+            }
+            final Neighbor neighbor = new Neighbor(
+                terms[candidate],
+                score,
+                docFreqs[candidate],
+                totalTermFreqs[candidate]
+            );
+            if (heap.size() < topN) {
+                heap.add(neighbor);
+            }
+            else if (score > heap.peek().score) {
+                heap.poll();
+                heap.add(neighbor);
+            }
+        }
+
+        final List<Neighbor> result = new ArrayList<>(heap);
+        result.sort(Comparator.comparingDouble((Neighbor n) -> n.score).reversed());
+        return result;
+    }
+
+    /**
+     * Returns the strongest direct signed-G² document-presence associations.
+     * This is a diagnostic for the unvectorized pairwise measure.
+     *
+     * @param term query term
+     * @param topN maximum number of results
+     * @return directly associated terms
+     */
+    public List<Neighbor> assocRaw(final String term, final int topN) {
+        final Integer query = termIndex.get(term);
+        if (query == null) {
+            throw new IllegalArgumentException(
+                "Term is not in the retained vocabulary: " + term
+            );
+        }
+        if (topN < 1) {
+            throw new IllegalArgumentException("topN must be >= 1");
+        }
+        final AssocSpace space = ensureAssocBuilt();
+        final PriorityQueue<Neighbor> heap = new PriorityQueue<>(
+            Comparator.comparingDouble(neighbor -> neighbor.score)
+        );
+        for (int candidate = 0; candidate < terms.length; candidate++) {
+            if (candidate == query) {
+                continue;
+            }
+            final double score = assocValue(space.lower, query, candidate);
+            final Neighbor neighbor = new Neighbor(
+                terms[candidate],
+                score,
+                docFreqs[candidate],
+                totalTermFreqs[candidate]
+            );
+            if (heap.size() < topN) {
+                heap.add(neighbor);
+            }
+            else if (score > heap.peek().score) {
+                heap.poll();
+                heap.add(neighbor);
+            }
+        }
+        final List<Neighbor> result = new ArrayList<>(heap);
+        result.sort(Comparator.comparingDouble((Neighbor n) -> n.score).reversed());
+        return result;
+    }
+
+    /** Materializes one signed-G² association profile. */
+    private float[] associationVector(final int term) {
+        final AssocSpace space = ensureAssocBuilt();
+        final float[] vector = new float[terms.length];
+        for (int other = 0; other < terms.length; other++) {
+            if (other != term) {
+                vector[other] = assocValue(space.lower, term, other);
+            }
+        }
+        return vector;
+    }
+
+    /** Builds the symmetric signed-G² association matrix lazily. */
+    private AssocSpace ensureAssocBuilt() {
+        AssocSpace result = assocSpace;
+        if (result != null) {
+            return result;
+        }
+        synchronized (this) {
+            result = assocSpace;
+            if (result != null) {
+                return result;
+            }
+            final int termCount = terms.length;
+            final int words = (maxDoc + Long.SIZE - 1) / Long.SIZE;
+            final long[][] bits = new long[termCount][words];
+            IntStream.range(0, termCount).parallel().forEach(term -> {
+                final long[] row = bits[term];
+                final int[] frequencies = termFreqs[term];
+                for (int doc = 0; doc < maxDoc; doc++) {
+                    if (frequencies[doc] > 0) {
+                        row[doc >>> 6] |= 1L << (doc & 63);
+                    }
+                }
+            });
+
+            final double[] xLogX = new double[contentDocCount + 1];
+            for (int i = 1; i <= contentDocCount; i++) {
+                xLogX[i] = i * Math.log(i);
+            }
+
+            final float[][] lower = new float[termCount][];
+            IntStream.range(0, termCount).parallel().forEach(left -> {
+                final float[] row = new float[left];
+                lower[left] = row;
+                final long[] leftBits = bits[left];
+                final int leftDf = docFreqs[left];
+                for (int right = 0; right < left; right++) {
+                    final long[] rightBits = bits[right];
+                    int shared = 0;
+                    for (int word = 0; word < words; word++) {
+                        shared += Long.bitCount(leftBits[word] & rightBits[word]);
+                    }
+                    row[right] = signedDocumentG2(
+                        shared,
+                        leftDf,
+                        docFreqs[right],
+                        contentDocCount,
+                        xLogX
+                    );
+                }
+            });
+
+            final double[] norm2 = new double[termCount];
+            for (int left = 1; left < termCount; left++) {
+                final float[] row = lower[left];
+                double leftNorm2 = 0.0;
+                for (int right = 0; right < left; right++) {
+                    final double value = row[right];
+                    final double square = value * value;
+                    leftNorm2 += square;
+                    norm2[right] += square;
+                }
+                norm2[left] += leftNorm2;
+            }
+            final float[] norms = new float[termCount];
+            for (int term = 0; term < termCount; term++) {
+                norms[term] = (float) Math.sqrt(Math.max(0.0, norm2[term]));
+            }
+            result = new AssocSpace(lower, norms);
+            assocSpace = result;
+            return result;
+        }
+    }
+
+    /** Returns one symmetric association-matrix value; diagonal is zero. */
+    private static float assocValue(
+            final float[][] lower,
+            final int left,
+            final int right) {
+        if (left == right) {
+            return 0.0f;
+        }
+        return left > right ? lower[left][right] : lower[right][left];
+    }
+
+    /** Dot product of two rows in a symmetric zero-diagonal lower triangle. */
+    private static double assocDot(
+            final float[][] lower,
+            int left,
+            int right) {
+        if (left == right) {
+            double norm2 = 0.0;
+            for (int k = 0; k < lower.length; k++) {
+                final double value = assocValue(lower, left, k);
+                norm2 += value * value;
+            }
+            return norm2;
+        }
+        if (left > right) {
+            final int swap = left;
+            left = right;
+            right = swap;
+        }
+        double dot = 0.0;
+        final float[] leftRow = lower[left];
+        final float[] rightRow = lower[right];
+
+        for (int k = 0; k < left; k++) {
+            dot += leftRow[k] * (double) rightRow[k];
+        }
+        for (int k = left + 1; k < right; k++) {
+            dot += lower[k][left] * (double) rightRow[k];
+        }
+        for (int k = right + 1; k < lower.length; k++) {
+            dot += lower[k][left] * (double) lower[k][right];
+        }
+        return dot;
+    }
+
+    /**
+     * Signed G² for a 2×2 document-presence table.
+     * Positive sign means more shared documents than expected; negative means
+     * fewer. The magnitude is the ordinary likelihood-ratio G² statistic.
+     */
+    private static float signedDocumentG2(
+            final int shared,
+            final int leftDf,
+            final int rightDf,
+            final int docCount,
+            final double[] xLogX) {
+        final int a = shared;
+        final int b = leftDf - a;
+        final int c = rightDf - a;
+        final int d = docCount - leftDf - rightDf + a;
+        if (a < 0 || b < 0 || c < 0 || d < 0) {
+            return 0.0f;
+        }
+
+        final double g2 = 2.0 * (
+            xLogX[a] + xLogX[b] + xLogX[c] + xLogX[d] + xLogX[docCount]
+            - xLogX[leftDf] - xLogX[docCount - leftDf]
+            - xLogX[rightDf] - xLogX[docCount - rightDf]
+        );
+        final double magnitude = Math.max(0.0, g2);
+        final long observedScaled = (long) a * docCount;
+        final long expectedScaled = (long) leftDf * rightDf;
+        if (observedScaled > expectedScaled) {
+            return (float) magnitude;
+        }
+        if (observedScaled < expectedScaled) {
+            return (float) -magnitude;
+        }
+        return 0.0f;
+    }
+
     /**
      * Returns a dense-vector dot product.
      *
@@ -1336,8 +1669,14 @@ public final class LatentSim {
         if ("svd".equalsIgnoreCase(value) || "3".equals(value)) {
             return Mode.SVD;
         }
+        if ("assoc".equalsIgnoreCase(value)
+                || "association".equalsIgnoreCase(value)
+                || "g2assoc".equalsIgnoreCase(value)
+                || "4".equals(value)) {
+            return Mode.ASSOC;
+        }
         throw new IllegalArgumentException(
-            "Unknown mode '" + value + "', expected contrast or svd"
+            "Unknown mode '" + value + "', expected contrast, svd, or assoc"
         );
     }
 
@@ -1401,7 +1740,9 @@ public final class LatentSim {
         System.out.println("  <term>             query using current mode and scorer");
         System.out.println("  contrast <term>    query once with contrast mode");
         System.out.println("  svd <term>         query once with SVD mode");
-        System.out.println("  mode contrast|svd  change latent mode");
+        System.out.println("  assoc <term>       cosine of signed-G² association profiles");
+        System.out.println("  assocraw <term>    direct signed-G² association ranking");
+        System.out.println("  mode contrast|svd|assoc  change term-vector mode");
         System.out.println("  score bm25|g2|g2root  change matrix scorer");
         System.out.println("  norm doc|none      change geometry normalization");
         System.out.println("  top N              change number of neighbours");
@@ -1450,12 +1791,35 @@ public final class LatentSim {
      * @return dense term × document vectors
      */
     private static float[][] vectors(final ScoredSpace space, final Mode mode) {
-        return mode == Mode.CONTRAST ? space.contrastVectors : space.svdVectors;
+        if (mode == Mode.CONTRAST) {
+            return space.contrastVectors;
+        }
+        if (mode == Mode.SVD) {
+            return space.svdVectors;
+        }
+        throw new IllegalArgumentException("ASSOC vectors use the association space");
     }
 
     /** Returns cached vector norms for cosine. */
     private static float[] norms(final ScoredSpace space, final Mode mode) {
-        return mode == Mode.CONTRAST ? space.contrastNorms : space.svdNorms;
+        if (mode == Mode.CONTRAST) {
+            return space.contrastNorms;
+        }
+        if (mode == Mode.SVD) {
+            return space.svdNorms;
+        }
+        throw new IllegalArgumentException("ASSOC norms use the association space");
+    }
+
+    /** Compact symmetric signed-G² association space. */
+    private static final class AssocSpace {
+        private final float[][] lower;
+        private final float[] norms;
+
+        private AssocSpace(final float[][] lower, final float[] norms) {
+            this.lower = lower;
+            this.norms = norms;
+        }
     }
 
     /**
