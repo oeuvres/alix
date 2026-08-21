@@ -1,10 +1,13 @@
 package com.github.oeuvres.alix.lucene.vecs;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -23,122 +26,102 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Builds latent document-relevance vectors for Lucene terms and compares terms
- * by cosine similarity between those vectors.
+ * Builds dense latent document-relevance vectors for Lucene terms and compares
+ * terms by cosine after centering each final term vector across documents.
  *
- * <p>The class first selects the {@code maxTerms} terms having the highest
- * document frequency in one indexed field. It then collects an in-memory dense
- * term × document frequency matrix, converts it to a scored matrix through a
- * {@link MatrixSimilarity}, and L2-normalizes document columns.</p>
- *
- * <p>Two rescoring models are implemented:</p>
+ * <p>The class retains the {@code maxTerms} terms with the highest document
+ * frequency, collects a term × document-frequency matrix, applies a selectable
+ * matrix scorer, and L2-normalizes the resulting document columns. Two latent
+ * rescoring modes are available:</p>
  * <ul>
- *   <li>{@link Mode#CONTRAST}: a BM25-weighted positive document centroid
- *       contrasted against the corpus background;</li>
- *   <li>{@link Mode#SVD}: projection of each sparse BM25 term signal into a
- *       low-rank document subspace estimated from the scored matrix.</li>
+ *   <li>{@link Mode#CONTRAST}: contrastive document centroid;</li>
+ *   <li>{@link Mode#SVD}: low-rank projection in document space.</li>
  * </ul>
  *
- * <p>Both models retain direct lexical evidence through {@code alpha}. The
- * default {@code alpha=2} adds one direct copy of the query signal to the
- * propagated signal. This keeps exact term occurrences privileged without
- * combining an unrelated external ranking score after the vector model.</p>
+ * <p>After either latent transformation, every term's dense document vector is
+ * centered on its mean over live field documents and L2-normalized. Cosine
+ * similarity between two such vectors is therefore the correlation-like
+ * similarity of their relative document-relevance profiles rather than their
+ * absolute positive baselines.</p>
  *
- * <p>The SVD mode represents each mathematically dense document vector
- * compactly by its low-rank coordinates plus its sparse BM25 row. Cosine
- * similarity on the implied dense vectors is computed exactly from that
- * representation.</p>
+ * <p>Two matrix scorers are supplied: BM25 and raw unsigned token-contingency
+ * G². G² remains sparse: a term absent from a document receives zero matrix
+ * score.</p>
  */
 public final class LatentSim {
 
     /** Default lexical-anchor weight. */
-    public static final double DEFAULT_ALPHA = 2.0;
+    public static final double DEFAULT_ALPHA = 1.0;
 
-    /** Default number of latent document dimensions for SVD mode. */
+    /** Default number of latent document dimensions. */
     public static final int DEFAULT_DIMS = 300;
 
-    /** Default maximum number of vocabulary terms retained by document frequency. */
+    /** Default maximum vocabulary size. */
     public static final int DEFAULT_MAX_TERMS = 10_000;
 
-    /** Default number of neighbours printed by the command-line client. */
+    /** Default matrix scorer. */
+    public static final ScoreMode DEFAULT_SCORE_MODE = ScoreMode.G2;
+
+    /** Default number of randomized subspace power iterations. */
+    public static final int DEFAULT_SVD_ITERATIONS = 5;
+
+    /** Default number of neighbours shown by the CLI. */
     public static final int DEFAULT_TOP_N = 30;
 
-    /** Default number of power iterations used by the randomized document subspace. */
-    public static final int DEFAULT_SVD_ITERATIONS = 2;
-
-    /** Fixed seed used to make the randomized subspace reproducible. */
+    /** Fixed random seed for reproducible SVD subspaces. */
     private static final long RANDOM_SEED = 0x4c6174656e745369L;
 
     private final double alpha;
-    private final float[][] bm25;
     private final int contentDocCount;
     private final int dims;
-    private final int[] docLengths;
     private final int[] docFreqs;
+    private final int[] docLengths;
+    private final long fieldTokenCount;
     private final int maxDoc;
     private final int maxTerms;
-    private final Mode mode;
-    private final float[][] normalized;
-    private final MatrixSimilarity similarity;
+    private final Map<ScoreMode, ScoredSpace> spaces = new EnumMap<>(ScoreMode.class);
+    private final int svdIterations;
     private final Map<String, Integer> termIndex;
-    private final String[] terms;
     private final int[][] termFreqs;
+    private final String[] terms;
     private final long[] totalTermFreqs;
 
-    private float[][] contrastVectors;
-    private float[][] svdBasis;
-    private float[][] svdCoordinates;
-    private float[] svdNorms;
-
     /**
-     * Creates a latent term-similarity model using BM25 weighting.
+     * Creates a model with default parameters.
      *
      * @param indexPath Lucene index path
      * @param field indexed field containing term frequencies
-     * @param mode rescoring model
-     * @param maxTerms maximum vocabulary size, retaining terms with highest df
-     * @param alpha lexical-anchor weight; {@code 1} means no added direct anchor
-     * @param dims SVD document dimensions, ignored by contrastive mode
      * @throws IOException if the Lucene index cannot be read
      */
-    public LatentSim(
-            final Path indexPath,
-            final String field,
-            final Mode mode,
-            final int maxTerms,
-            final double alpha,
-            final int dims) throws IOException {
+    public LatentSim(final Path indexPath, final String field) throws IOException {
         this(
             indexPath,
             field,
-            mode,
-            maxTerms,
-            alpha,
-            dims,
-            new Bm25MatrixSimilarity(1.2, 0.75)
+            DEFAULT_MAX_TERMS,
+            DEFAULT_ALPHA,
+            DEFAULT_DIMS,
+            DEFAULT_SVD_ITERATIONS
         );
     }
 
     /**
-     * Creates a latent term-similarity model using a supplied matrix scorer.
+     * Creates a model with explicit experimental parameters.
      *
      * @param indexPath Lucene index path
      * @param field indexed field containing term frequencies
-     * @param mode rescoring model
-     * @param maxTerms maximum vocabulary size, retaining terms with highest df
-     * @param alpha lexical-anchor weight; {@code 1} means no added direct anchor
-     * @param dims SVD document dimensions, ignored by contrastive mode
-     * @param similarity scorer used to convert term frequencies to matrix scores
+     * @param maxTerms maximum vocabulary size, retaining highest document frequencies
+     * @param alpha lexical-anchor weight; {@code 1} means pure latent projection
+     * @param dims requested SVD document dimensions
+     * @param svdIterations randomized subspace power iterations
      * @throws IOException if the Lucene index cannot be read
      */
     public LatentSim(
             final Path indexPath,
             final String field,
-            final Mode mode,
             final int maxTerms,
             final double alpha,
             final int dims,
-            final MatrixSimilarity similarity) throws IOException {
+            final int svdIterations) throws IOException {
         if (maxTerms < 2) {
             throw new IllegalArgumentException("maxTerms must be >= 2");
         }
@@ -148,44 +131,42 @@ public final class LatentSim {
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be >= 1");
         }
-        if (similarity == null) {
-            throw new NullPointerException("similarity");
+        if (svdIterations < 0) {
+            throw new IllegalArgumentException("svdIterations must be >= 0");
         }
 
         this.alpha = alpha;
         this.dims = dims;
         this.maxTerms = maxTerms;
-        this.mode = mode;
-        this.similarity = similarity;
+        this.svdIterations = svdIterations;
 
         final RawMatrix raw = collect(indexPath, field, maxTerms);
         this.contentDocCount = raw.contentDocCount;
-        this.docLengths = raw.docLengths;
         this.docFreqs = raw.docFreqs;
+        this.docLengths = raw.docLengths;
+        this.fieldTokenCount = raw.fieldTokenCount;
         this.maxDoc = raw.maxDoc;
         this.termFreqs = raw.termFreqs;
         this.terms = raw.terms;
         this.totalTermFreqs = raw.totalTermFreqs;
         this.termIndex = indexTerms(terms);
-        this.bm25 = scoreMatrix();
-        this.normalized = normalizeDocuments(bm25);
-
-        if (mode == Mode.CONTRAST) {
-            buildContrastVectors();
-        }
-        else {
-            buildSvdVectors();
-        }
     }
 
     /**
-     * Returns the nearest vocabulary terms to a query term.
+     * Returns the nearest vocabulary terms using the requested latent mode and
+     * matrix scorer.
      *
      * @param term query term
+     * @param mode latent rescoring mode
+     * @param scoreMode matrix scorer
      * @param topN maximum number of neighbours
-     * @return neighbours ordered by decreasing cosine similarity
+     * @return neighbours ordered by decreasing centered cosine similarity
      */
-    public List<Neighbor> distance(final String term, final int topN) {
+    public List<Neighbor> distance(
+            final String term,
+            final Mode mode,
+            final ScoreMode scoreMode,
+            final int topN) {
         final Integer query = termIndex.get(term);
         if (query == null) {
             throw new IllegalArgumentException(
@@ -196,6 +177,9 @@ public final class LatentSim {
             throw new IllegalArgumentException("topN must be >= 1");
         }
 
+        final ScoredSpace space = ensureBuilt(mode, scoreMode);
+        final float[][] vectors = vectors(space, mode);
+        final float[] queryVector = vectors[query];
         final PriorityQueue<Neighbor> heap = new PriorityQueue<>(
             Comparator.comparingDouble(neighbor -> neighbor.score)
         );
@@ -204,7 +188,7 @@ public final class LatentSim {
             if (candidate == query) {
                 continue;
             }
-            final double score = cosine(query, candidate);
+            final double score = dot(queryVector, vectors[candidate]);
             if (!Double.isFinite(score)) {
                 continue;
             }
@@ -229,199 +213,289 @@ public final class LatentSim {
     }
 
     /**
-     * Runs the command-line nearest-term client.
-     *
-     * <p>Usage:</p>
-     * <pre>
-     * LatentSim indexPath field contrast|svd term [topN] [maxTerms] [alpha] [dims]
-     * </pre>
-     *
-     * <p>Examples:</p>
-     * <pre>
-     * LatentSim ../web/lucene/piaget content contrast outil
-     * LatentSim ../web/lucene/piaget content svd outil 30 10000 2 300
-     * </pre>
-     *
-     * @param args command-line arguments
-     * @throws Exception if the model cannot be built or queried
-     */
-    public static void main(final String[] args) throws Exception {
-        if (args.length < 4 || args.length > 8) {
-            System.err.println(
-                "Usage: LatentSim <indexPath> <field> <contrast|svd> <term> "
-                + "[topN] [maxTerms] [alpha] [dims]"
-            );
-            System.exit(2);
-        }
-
-        final Path indexPath = Path.of(args[0]);
-        final String field = args[1];
-        final Mode mode = parseMode(args[2]);
-        final String term = args[3];
-        final int topN = args.length > 4 ? Integer.parseInt(args[4]) : DEFAULT_TOP_N;
-        final int maxTerms = args.length > 5
-            ? Integer.parseInt(args[5])
-            : DEFAULT_MAX_TERMS;
-        final double alpha = args.length > 6
-            ? Double.parseDouble(args[6])
-            : DEFAULT_ALPHA;
-        final int dims = args.length > 7
-            ? Integer.parseInt(args[7])
-            : DEFAULT_DIMS;
-
-        final long start = System.nanoTime();
-        final LatentSim model = new LatentSim(
-            indexPath,
-            field,
-            mode,
-            maxTerms,
-            alpha,
-            dims
-        );
-        final double seconds = (System.nanoTime() - start) / 1_000_000_000.0;
-
-        System.out.printf(
-            Locale.ROOT,
-            "# mode=%s terms=%d docs=%d alpha=%.4f dims=%d build=%.3fs%n",
-            mode.name().toLowerCase(Locale.ROOT),
-            model.terms.length,
-            model.contentDocCount,
-            alpha,
-            mode == Mode.SVD ? Math.min(dims, model.contentDocCount) : 0,
-            seconds
-        );
-        System.out.printf("# query=%s df=%d%n", term, model.docFreq(term));
-        System.out.println("# rank\tscore\tdf\tcf\tterm");
-
-        int rank = 1;
-        for (Neighbor neighbor : model.distance(term, topN)) {
-            System.out.printf(
-                Locale.ROOT,
-                "%d\t%.7f\t%d\t%d\t%s%n",
-                rank++,
-                neighbor.score,
-                neighbor.docFreq,
-                neighbor.totalTermFreq,
-                neighbor.term
-            );
-        }
-    }
-
-    /**
-     * Returns the dense, L2-normalized document-relevance vector implied by the
-     * selected model for one term.
-     *
-     * <p>Contrastive vectors are already materialized. SVD vectors are expanded
-     * on demand from their compact low-rank representation.</p>
+     * Returns the retained document frequency of a vocabulary term.
      *
      * @param term vocabulary term
-     * @return a newly allocated dense vector indexed by Lucene docId
+     * @return document frequency
      */
-    public float[] vector(final String term) {
+    public int docFreq(final String term) {
         final Integer index = termIndex.get(term);
         if (index == null) {
             throw new IllegalArgumentException(
                 "Term is not in the retained vocabulary: " + term
             );
         }
-        if (mode == Mode.CONTRAST) {
-            return Arrays.copyOf(contrastVectors[index], maxDoc);
-        }
-
-        final float[] vector = new float[maxDoc];
-        final float[] coordinates = svdCoordinates[index];
-        final double beta = alpha - 1.0;
-
-        for (int doc = 0; doc < maxDoc; doc++) {
-            double value = beta * bm25[index][doc];
-            final float[] basisRow = svdBasis[doc];
-            for (int k = 0; k < coordinates.length; k++) {
-                value += basisRow[k] * coordinates[k];
-            }
-            vector[doc] = (float) (value / svdNorms[index]);
-        }
-        return vector;
+        return docFreqs[index];
     }
 
     /**
-     * Converts raw term frequency into a scored matrix value.
+     * Runs the interactive nearest-term client.
+     *
+     * <p>Usage:</p>
+     * <pre>
+     * LatentSimCentered indexPath field [maxTerms] [alpha] [dims] [svdIterations]
+     * </pre>
+     *
+     * @param args command-line arguments
+     * @throws Exception if the model cannot be built or queried
+     */
+    public static void main(final String[] args) throws Exception {
+        if (args.length < 2 || args.length > 6) {
+            System.err.println(
+                "Usage: LatentSimCentered <indexPath> <field> "
+                + "[maxTerms] [alpha] [dims] [svdIterations]"
+            );
+            System.exit(2);
+        }
+
+        final Path indexPath = Path.of(args[0]);
+        final String field = args[1];
+        final int maxTerms = args.length > 2
+            ? Integer.parseInt(args[2])
+            : DEFAULT_MAX_TERMS;
+        final double alpha = args.length > 3
+            ? Double.parseDouble(args[3])
+            : DEFAULT_ALPHA;
+        final int dims = args.length > 4
+            ? Integer.parseInt(args[4])
+            : DEFAULT_DIMS;
+        final int svdIterations = args.length > 5
+            ? Integer.parseInt(args[5])
+            : DEFAULT_SVD_ITERATIONS;
+
+        final long start = System.nanoTime();
+        final LatentSim model = new LatentSim(
+            indexPath,
+            field,
+            maxTerms,
+            alpha,
+            dims,
+            svdIterations
+        );
+        final double seconds = (System.nanoTime() - start) / 1_000_000_000.0;
+
+        System.out.printf(
+            Locale.ROOT,
+            "# terms=%d docs=%d maxTerms=%d alpha=%.4f dims=%d "
+            + "svdIterations=%d load=%.3fs%n",
+            model.terms.length,
+            model.contentDocCount,
+            maxTerms,
+            alpha,
+            dims,
+            svdIterations,
+            seconds
+        );
+        System.out.println(
+            "# Final term vectors are row-centered over documents before cosine."
+        );
+        System.out.println(
+            "# Commands: mode contrast|svd, score bm25|g2, top N, params, help, quit"
+        );
+
+        Mode currentMode = Mode.SVD;
+        ScoreMode currentScoreMode = DEFAULT_SCORE_MODE;
+        int topN = DEFAULT_TOP_N;
+        final BufferedReader reader = new BufferedReader(
+            new InputStreamReader(System.in, StandardCharsets.UTF_8)
+        );
+
+        while (true) {
+            System.out.printf(
+                Locale.ROOT,
+                "%s/%s[%d]> ",
+                currentMode.name().toLowerCase(Locale.ROOT),
+                currentScoreMode.name().toLowerCase(Locale.ROOT),
+                topN
+            );
+            System.out.flush();
+
+            final String input = reader.readLine();
+            if (input == null) {
+                break;
+            }
+            final String line = input.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            if ("quit".equalsIgnoreCase(line) || "exit".equalsIgnoreCase(line)) {
+                break;
+            }
+            if ("help".equalsIgnoreCase(line) || "?".equals(line)) {
+                printHelp();
+                continue;
+            }
+            if ("params".equalsIgnoreCase(line)) {
+                System.out.printf(
+                    Locale.ROOT,
+                    "# mode=%s score=%s top=%d maxTerms=%d alpha=%.4f "
+                    + "dims=%d svdIterations=%d center=latent-row%n",
+                    currentMode.name().toLowerCase(Locale.ROOT),
+                    currentScoreMode.name().toLowerCase(Locale.ROOT),
+                    topN,
+                    maxTerms,
+                    alpha,
+                    dims,
+                    svdIterations
+                );
+                continue;
+            }
+            if (line.regionMatches(true, 0, "mode ", 0, 5)) {
+                try {
+                    currentMode = parseMode(line.substring(5).trim());
+                }
+                catch (IllegalArgumentException e) {
+                    System.err.println(e.getMessage());
+                }
+                continue;
+            }
+            if (line.regionMatches(true, 0, "score ", 0, 6)) {
+                try {
+                    currentScoreMode = parseScoreMode(line.substring(6).trim());
+                }
+                catch (IllegalArgumentException e) {
+                    System.err.println(e.getMessage());
+                }
+                continue;
+            }
+            if (line.regionMatches(true, 0, "top ", 0, 4)) {
+                try {
+                    final int value = Integer.parseInt(line.substring(4).trim());
+                    if (value < 1) {
+                        throw new IllegalArgumentException("top must be >= 1");
+                    }
+                    topN = value;
+                }
+                catch (NumberFormatException e) {
+                    System.err.println("Invalid top value: " + line.substring(4).trim());
+                }
+                catch (IllegalArgumentException e) {
+                    System.err.println(e.getMessage());
+                }
+                continue;
+            }
+
+            Mode queryMode = currentMode;
+            String term = line;
+            if (line.regionMatches(true, 0, "contrast ", 0, 9)) {
+                queryMode = Mode.CONTRAST;
+                term = line.substring(9).trim();
+            }
+            else if (line.regionMatches(true, 0, "svd ", 0, 4)) {
+                queryMode = Mode.SVD;
+                term = line.substring(4).trim();
+            }
+
+            if (term.isEmpty()) {
+                System.err.println("Missing term");
+                continue;
+            }
+
+            try {
+                final long queryStart = System.nanoTime();
+                final List<Neighbor> neighbors = model.distance(
+                    term,
+                    queryMode,
+                    currentScoreMode,
+                    topN
+                );
+                final double querySeconds =
+                    (System.nanoTime() - queryStart) / 1_000_000_000.0;
+                System.out.printf(
+                    Locale.ROOT,
+                    "# mode=%s score=%s query=%s df=%d time=%.3fs%n",
+                    queryMode.name().toLowerCase(Locale.ROOT),
+                    currentScoreMode.name().toLowerCase(Locale.ROOT),
+                    term,
+                    model.docFreq(term),
+                    querySeconds
+                );
+                System.out.println("# rank\tscore\tdf\tcf\tterm");
+                int rank = 1;
+                for (Neighbor neighbor : neighbors) {
+                    System.out.printf(
+                        Locale.ROOT,
+                        "%d\t%.7f\t%d\t%d\t%s%n",
+                        rank++,
+                        neighbor.score,
+                        neighbor.docFreq,
+                        neighbor.totalTermFreq,
+                        neighbor.term
+                    );
+                }
+            }
+            catch (IllegalArgumentException e) {
+                System.err.println(e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Returns one centered and L2-normalized dense document vector.
+     *
+     * @param term vocabulary term
+     * @param mode latent rescoring mode
+     * @param scoreMode matrix scorer
+     * @return a newly allocated vector indexed by Lucene doc ID
+     */
+    public float[] vector(
+            final String term,
+            final Mode mode,
+            final ScoreMode scoreMode) {
+        final Integer index = termIndex.get(term);
+        if (index == null) {
+            throw new IllegalArgumentException(
+                "Term is not in the retained vocabulary: " + term
+            );
+        }
+        final ScoredSpace space = ensureBuilt(mode, scoreMode);
+        return vectors(space, mode)[index].clone();
+    }
+
+    /**
+     * Converts one observed term-document cell to a matrix weight.
      */
     public interface MatrixSimilarity {
 
         /**
-         * Scores one term occurrence count in one document.
+         * Returns the scorer name used by the CLI.
+         *
+         * @return scorer name
+         */
+        String name();
+
+        /**
+         * Scores one observed term-document frequency.
          *
          * @param termFreq term frequency in the document
          * @param docFreq number of field documents containing the term
+         * @param totalTermFreq total corpus frequency of the term
          * @param docLength total number of field tokens in the document
          * @param docCount number of documents containing at least one field token
+         * @param totalTokenCount total number of field tokens in the corpus
          * @param avgDocLength average field length over {@code docCount}
-         * @return matrix score, or zero when {@code termFreq == 0}
+         * @return matrix score, or zero when the term is absent
          */
         float score(
             int termFreq,
             int docFreq,
+            long totalTermFreq,
             int docLength,
             int docCount,
+            long totalTokenCount,
             double avgDocLength
         );
     }
 
     /**
-     * Rescoring model used to derive dense document-relevance vectors.
-     */
-    public enum Mode {
-        /** Contrastive BM25-weighted document centroid. */
-        CONTRAST,
-        /** Randomized low-rank SVD document projection. */
-        SVD
-    }
-
-    /**
-     * One nearest-term result.
-     */
-    public static final class Neighbor {
-        /** Corpus document frequency of the neighbour term. */
-        public final int docFreq;
-        /** Cosine similarity on rescored document vectors. */
-        public final double score;
-        /** Neighbour term text. */
-        public final String term;
-        /** Corpus total term frequency of the neighbour term. */
-        public final long totalTermFreq;
-
-        /**
-         * Creates an immutable neighbour result.
-         *
-         * @param term neighbour term
-         * @param score cosine similarity
-         * @param docFreq document frequency
-         * @param totalTermFreq total term frequency
-         */
-        private Neighbor(
-                final String term,
-                final double score,
-                final int docFreq,
-                final long totalTermFreq) {
-            this.term = term;
-            this.score = score;
-            this.docFreq = docFreq;
-            this.totalTermFreq = totalTermFreq;
-        }
-    }
-
-    /**
-     * BM25 scorer for the term × document matrix.
-     *
-     * <p>This intentionally uses exact document lengths derived from postings;
-     * it does not reproduce Lucene's compressed norm byte.</p>
+     * BM25 matrix scorer using exact posting-derived document lengths.
      */
     public static final class Bm25MatrixSimilarity implements MatrixSimilarity {
         private final double b;
         private final double k1;
 
         /**
-         * Creates a BM25 matrix scorer.
+         * Creates a BM25 scorer.
          *
          * @param k1 term-frequency saturation parameter
          * @param b document-length normalization parameter
@@ -438,21 +512,35 @@ public final class LatentSim {
         }
 
         /**
-         * Scores one term frequency with BM25.
+         * Returns the scorer name.
+         *
+         * @return {@code bm25}
+         */
+        @Override
+        public String name() {
+            return "bm25";
+        }
+
+        /**
+         * Scores one observed cell with BM25.
          *
          * @param termFreq term frequency in the document
          * @param docFreq number of field documents containing the term
-         * @param docLength total number of field tokens in the document
-         * @param docCount number of documents containing at least one field token
-         * @param avgDocLength average field length over {@code docCount}
-         * @return BM25 score
+         * @param totalTermFreq total corpus frequency of the term
+         * @param docLength field length of the document
+         * @param docCount number of documents containing the field
+         * @param totalTokenCount total number of field tokens
+         * @param avgDocLength average field length
+         * @return BM25 matrix score
          */
         @Override
         public float score(
                 final int termFreq,
                 final int docFreq,
+                final long totalTermFreq,
                 final int docLength,
                 final int docCount,
+                final long totalTokenCount,
                 final double avgDocLength) {
             if (termFreq <= 0 || docFreq <= 0 || docCount <= 0) {
                 return 0.0f;
@@ -461,19 +549,157 @@ public final class LatentSim {
                 1.0 + (docCount - docFreq + 0.5) / (docFreq + 0.5)
             );
             final double lengthNorm = 1.0 - b + b * docLength / avgDocLength;
-            final double score = idf * termFreq / (termFreq + k1 * lengthNorm);
-            return (float) score;
+            return (float) (
+                idf * termFreq / (termFreq + k1 * lengthNorm)
+            );
         }
     }
 
     /**
-     * Builds and L2-normalizes all contrastive term vectors.
+     * Raw unsigned likelihood-ratio G² matrix scorer.
+     *
+     * <p>For an observed term occurrence, G² is computed from the token
+     * contingency table {@code document/rest × term/other}. No sign, square
+     * root, clipping, or positive-association filter is applied. Absent terms
+     * remain zero so the source matrix remains sparse.</p>
      */
-    private void buildContrastVectors() {
-        final float[][] gram = buildGram();
+    public static final class G2MatrixSimilarity implements MatrixSimilarity {
+
+        /**
+         * Returns the scorer name.
+         *
+         * @return {@code g2}
+         */
+        @Override
+        public String name() {
+            return "g2";
+        }
+
+        /**
+         * Scores one observed cell with raw unsigned G².
+         *
+         * @param termFreq term frequency in the document
+         * @param docFreq number of field documents containing the term
+         * @param totalTermFreq total corpus frequency of the term
+         * @param docLength field length of the document
+         * @param docCount number of documents containing the field
+         * @param totalTokenCount total number of field tokens
+         * @param avgDocLength average field length
+         * @return raw G² value
+         */
+        @Override
+        public float score(
+                final int termFreq,
+                final int docFreq,
+                final long totalTermFreq,
+                final int docLength,
+                final int docCount,
+                final long totalTokenCount,
+                final double avgDocLength) {
+            if (termFreq <= 0
+                    || totalTermFreq <= 0
+                    || docLength <= 0
+                    || totalTokenCount <= 0) {
+                return 0.0f;
+            }
+
+            final double a = termFreq;
+            final double b = docLength - a;
+            final double c = totalTermFreq - a;
+            final double d = totalTokenCount - docLength - c;
+            if (b < 0.0 || c < 0.0 || d < 0.0) {
+                return 0.0f;
+            }
+
+            final double row1 = a + b;
+            final double row2 = c + d;
+            final double col1 = a + c;
+            final double col2 = b + d;
+            final double total = row1 + row2;
+            if (!(row1 > 0.0 && row2 > 0.0 && col1 > 0.0 && col2 > 0.0)) {
+                return 0.0f;
+            }
+
+            final double eA = row1 * col1 / total;
+            final double eB = row1 * col2 / total;
+            final double eC = row2 * col1 / total;
+            final double eD = row2 * col2 / total;
+            final double g2 = 2.0 * (
+                g2Contribution(a, eA)
+                + g2Contribution(b, eB)
+                + g2Contribution(c, eC)
+                + g2Contribution(d, eD)
+            );
+            return (float) Math.max(0.0, g2);
+        }
+    }
+
+    /**
+     * Latent rescoring mode.
+     */
+    public enum Mode {
+        /** Contrastive centroid in document-similarity space. */
+        CONTRAST,
+        /** Randomized low-rank document projection. */
+        SVD
+    }
+
+    /**
+     * One nearest-term result.
+     */
+    public static final class Neighbor {
+        /** Corpus document frequency. */
+        public final int docFreq;
+        /** Centered cosine similarity. */
+        public final double score;
+        /** Term text. */
+        public final String term;
+        /** Corpus total term frequency. */
+        public final long totalTermFreq;
+
+        /**
+         * Creates an immutable neighbour result.
+         *
+         * @param term term text
+         * @param score centered cosine similarity
+         * @param docFreq document frequency
+         * @param totalTermFreq corpus term frequency
+         */
+        private Neighbor(
+                final String term,
+                final double score,
+                final int docFreq,
+                final long totalTermFreq) {
+            this.docFreq = docFreq;
+            this.score = score;
+            this.term = term;
+            this.totalTermFreq = totalTermFreq;
+        }
+    }
+
+    /**
+     * Matrix scoring mode available to the interactive client.
+     */
+    public enum ScoreMode {
+        /** BM25 matrix weighting. */
+        BM25,
+        /** Raw unsigned token-contingency G² weighting. */
+        G2
+    }
+
+    /**
+     * Builds and centers all contrastive term vectors for one scored space.
+     *
+     * @param space scored document space
+     */
+    private void buildContrastVectors(final ScoredSpace space) {
+        final float[][] gram = buildGram(space);
         final float[] background = new float[maxDoc];
 
         for (int doc = 0; doc < maxDoc; doc++) {
+            if (docLengths[doc] <= 0) {
+                continue;
+            }
             double sum = 0.0;
             final float[] gramRow = gram[doc];
             for (int other = 0; other < maxDoc; other++) {
@@ -484,20 +710,23 @@ public final class LatentSim {
             background[doc] = (float) (sum / contentDocCount);
         }
 
-        contrastVectors = new float[terms.length][maxDoc];
+        space.contrastVectors = new float[terms.length][maxDoc];
         IntStream.range(0, terms.length).parallel().forEach(term -> {
             final float[] result = new float[maxDoc];
+            space.contrastVectors[term] = result;
             for (int doc = 0; doc < maxDoc; doc++) {
-                result[doc] = -background[doc];
+                if (docLengths[doc] > 0) {
+                    result[doc] = -background[doc];
+                }
             }
 
             double scoreSum = 0.0;
-            final float[] queryScores = bm25[term];
-            for (int doc = 0; doc < maxDoc; doc++) {
-                scoreSum += queryScores[doc];
+            final float[] queryScores = space.scored[term];
+            for (float queryScore : queryScores) {
+                scoreSum += queryScore;
             }
             if (!(scoreSum > 0.0)) {
-                contrastVectors[term] = result;
+                centerAndNormalize(result);
                 return;
             }
 
@@ -510,67 +739,149 @@ public final class LatentSim {
                 final double weight = queryScore / scoreSum;
                 final float[] gramRow = gram[hitDoc];
                 for (int doc = 0; doc < maxDoc; doc++) {
-                    result[doc] += gramRow[doc] * weight;
+                    if (docLengths[doc] > 0) {
+                        result[doc] += gramRow[doc] * weight;
+                    }
                 }
                 result[hitDoc] += beta * weight;
             }
-            normalize(result);
-            contrastVectors[term] = result;
+
+            centerAndNormalize(result);
         });
     }
 
     /**
-     * Builds the compact low-rank representation used by SVD mode.
+     * Builds the document Gram matrix for one matrix scorer.
+     *
+     * @param space scored document space
+     * @return symmetric document × document Gram matrix
      */
-    private void buildSvdVectors() {
-        final float[][] gram = buildGram();
+    private float[][] buildGram(final ScoredSpace space) {
+        if (space.gram != null) {
+            return space.gram;
+        }
+        final float[][] gram = new float[maxDoc][maxDoc];
+        final int[] docs = new int[maxDoc];
+
+        for (int term = 0; term < terms.length; term++) {
+            final float[] row = space.normalized[term];
+            int count = 0;
+            for (int doc = 0; doc < maxDoc; doc++) {
+                if (row[doc] != 0.0f) {
+                    docs[count++] = doc;
+                }
+            }
+
+            for (int i = 0; i < count; i++) {
+                final int left = docs[i];
+                final float leftValue = row[left];
+                final float[] gramRow = gram[left];
+                for (int j = 0; j <= i; j++) {
+                    final int right = docs[j];
+                    gramRow[right] += leftValue * row[right];
+                }
+            }
+        }
+
+        for (int left = 0; left < maxDoc; left++) {
+            for (int right = 0; right < left; right++) {
+                gram[right][left] = gram[left][right];
+            }
+        }
+        space.gram = gram;
+        return gram;
+    }
+
+    /**
+     * Builds centered dense SVD term vectors for one scored space.
+     *
+     * @param space scored document space
+     */
+    private void buildSvdVectors(final ScoredSpace space) {
+        final float[][] gram = buildGram(space);
         final int rank = Math.min(
             Math.min(dims, contentDocCount),
             Math.min(maxDoc, terms.length)
         );
-        svdBasis = dominantSubspace(
+        final float[][] basis = dominantSubspace(
             gram,
             rank,
-            DEFAULT_SVD_ITERATIONS,
+            svdIterations,
             RANDOM_SEED
         );
-        svdCoordinates = new float[terms.length][rank];
-        svdNorms = new float[terms.length];
-
+        space.svdVectors = new float[terms.length][maxDoc];
         final double beta = alpha - 1.0;
-        final double projectedFactor = 1.0 + 2.0 * beta;
-        final double directFactor = beta * beta;
 
         IntStream.range(0, terms.length).parallel().forEach(term -> {
-            final float[] y = bm25[term];
-            final float[] coordinates = svdCoordinates[term];
-            double yNorm2 = 0.0;
+            final float[] y = space.scored[term];
+            final float[] coordinates = new float[rank];
 
             for (int doc = 0; doc < maxDoc; doc++) {
                 final float value = y[doc];
                 if (value == 0.0f) {
                     continue;
                 }
-                yNorm2 += value * (double) value;
-                final float[] basisRow = svdBasis[doc];
+                final float[] basisRow = basis[doc];
                 for (int k = 0; k < rank; k++) {
                     coordinates[k] += basisRow[k] * value;
                 }
             }
 
-            double projectedNorm2 = 0.0;
-            for (float coordinate : coordinates) {
-                projectedNorm2 += coordinate * (double) coordinate;
+            final float[] result = space.svdVectors[term];
+            for (int doc = 0; doc < maxDoc; doc++) {
+                if (docLengths[doc] <= 0) {
+                    continue;
+                }
+                double value = beta * y[doc];
+                final float[] basisRow = basis[doc];
+                for (int k = 0; k < rank; k++) {
+                    value += basisRow[k] * coordinates[k];
+                }
+                result[doc] = (float) value;
             }
-            final double norm2 = projectedFactor * projectedNorm2
-                + directFactor * yNorm2;
-            svdNorms[term] = (float) Math.sqrt(Math.max(0.0, norm2));
+            centerAndNormalize(result);
         });
     }
 
     /**
-     * Collects document lengths, selects terms by live document frequency, and
-     * builds the dense raw frequency matrix for those terms.
+     * Centers a final term vector over live field documents and L2-normalizes it.
+     *
+     * @param vector vector indexed by Lucene doc ID
+     */
+    private void centerAndNormalize(final float[] vector) {
+        double sum = 0.0;
+        for (int doc = 0; doc < maxDoc; doc++) {
+            if (docLengths[doc] > 0) {
+                sum += vector[doc];
+            }
+        }
+        final double mean = sum / contentDocCount;
+        double norm2 = 0.0;
+
+        for (int doc = 0; doc < maxDoc; doc++) {
+            if (docLengths[doc] <= 0) {
+                vector[doc] = 0.0f;
+                continue;
+            }
+            final float centered = (float) (vector[doc] - mean);
+            vector[doc] = centered;
+            norm2 += centered * (double) centered;
+        }
+
+        if (!(norm2 > 0.0)) {
+            return;
+        }
+        final double inverse = 1.0 / Math.sqrt(norm2);
+        for (int doc = 0; doc < maxDoc; doc++) {
+            if (docLengths[doc] > 0) {
+                vector[doc] *= inverse;
+            }
+        }
+    }
+
+    /**
+     * Collects document lengths, selects vocabulary by document frequency, and
+     * builds the raw term × document-frequency matrix.
      *
      * @param indexPath Lucene index path
      * @param field indexed field
@@ -631,9 +942,11 @@ public final class LatentSim {
             }
 
             int contentDocCount = 0;
+            long fieldTokenCount = 0L;
             for (int length : docLengths) {
                 if (length > 0) {
                     contentDocCount++;
+                    fieldTokenCount += length;
                 }
             }
 
@@ -678,8 +991,9 @@ public final class LatentSim {
 
             return new RawMatrix(
                 contentDocCount,
-                docLengths,
                 docFreqs,
+                docLengths,
+                fieldTokenCount,
                 maxDoc,
                 termFreqs,
                 terms,
@@ -689,74 +1003,14 @@ public final class LatentSim {
     }
 
     /**
-     * Computes cosine similarity between two retained terms.
+     * Estimates a dominant orthonormal document subspace by randomized power
+     * iteration on the symmetric document Gram matrix.
      *
-     * @param left first term index
-     * @param right second term index
-     * @return cosine similarity
-     */
-    private double cosine(final int left, final int right) {
-        if (mode == Mode.CONTRAST) {
-            double dot = 0.0;
-            final float[] a = contrastVectors[left];
-            final float[] b = contrastVectors[right];
-            for (int doc = 0; doc < maxDoc; doc++) {
-                dot += a[doc] * (double) b[doc];
-            }
-            return dot;
-        }
-
-        final double beta = alpha - 1.0;
-        final double projectedFactor = 1.0 + 2.0 * beta;
-        final double directFactor = beta * beta;
-        double projectedDot = 0.0;
-        final float[] leftCoordinates = svdCoordinates[left];
-        final float[] rightCoordinates = svdCoordinates[right];
-        for (int k = 0; k < leftCoordinates.length; k++) {
-            projectedDot += leftCoordinates[k] * (double) rightCoordinates[k];
-        }
-
-        double directDot = 0.0;
-        final float[] leftScores = bm25[left];
-        final float[] rightScores = bm25[right];
-        for (int doc = 0; doc < maxDoc; doc++) {
-            directDot += leftScores[doc] * (double) rightScores[doc];
-        }
-
-        final double denominator = svdNorms[left] * (double) svdNorms[right];
-        if (!(denominator > 0.0)) {
-            return Double.NaN;
-        }
-        return (
-            projectedFactor * projectedDot + directFactor * directDot
-        ) / denominator;
-    }
-
-    /**
-     * Returns the retained document frequency for a term.
-     *
-     * @param term vocabulary term
-     * @return document frequency
-     */
-    private int docFreq(final String term) {
-        final Integer index = termIndex.get(term);
-        if (index == null) {
-            throw new IllegalArgumentException(
-                "Term is not in the retained vocabulary: " + term
-            );
-        }
-        return docFreqs[index];
-    }
-
-    /**
-     * Estimates a dominant orthonormal document subspace of a symmetric
-     * positive semidefinite Gram matrix by randomized range iteration.
-     *
-     * @param gram document × document Gram matrix
+     * @param gram symmetric positive-semidefinite document Gram matrix
      * @param rank requested subspace rank
-     * @param iterations number of additional power iterations
+     * @param iterations additional power iterations
      * @param seed random seed
-     * @return row-major matrix whose columns are orthonormal basis vectors
+     * @return row-major matrix whose columns span the estimated subspace
      */
     private static float[][] dominantSubspace(
             final float[][] gram,
@@ -783,48 +1037,82 @@ public final class LatentSim {
     }
 
     /**
-     * Builds the document × document Gram matrix from L2-normalized document
-     * vectors.
+     * Returns a dense-vector dot product.
      *
-     * @return symmetric Gram matrix
+     * @param left first vector
+     * @param right second vector
+     * @return dot product
      */
-    private float[][] buildGram() {
-        final float[][] gram = new float[maxDoc][maxDoc];
-        final int[] docs = new int[maxDoc];
-
-        for (int term = 0; term < terms.length; term++) {
-            final float[] row = normalized[term];
-            int count = 0;
-            for (int doc = 0; doc < maxDoc; doc++) {
-                if (row[doc] != 0.0f) {
-                    docs[count++] = doc;
-                }
-            }
-
-            for (int i = 0; i < count; i++) {
-                final int left = docs[i];
-                final float leftValue = row[left];
-                final float[] gramRow = gram[left];
-                for (int j = 0; j <= i; j++) {
-                    final int right = docs[j];
-                    gramRow[right] += leftValue * row[right];
-                }
-            }
+    private static double dot(final float[] left, final float[] right) {
+        double sum = 0.0;
+        for (int i = 0; i < left.length; i++) {
+            sum += left[i] * (double) right[i];
         }
-
-        for (int left = 0; left < maxDoc; left++) {
-            for (int right = 0; right < left; right++) {
-                gram[right][left] = gram[left][right];
-            }
-        }
-        return gram;
+        return sum;
     }
 
     /**
-     * Builds an exact term lookup table for the retained vocabulary.
+     * Ensures one latent model is built for one matrix-scoring space.
      *
-     * @param terms retained terms
-     * @return term-to-row map
+     * @param mode latent mode
+     * @param scoreMode matrix scorer
+     * @return scored space containing the requested model
+     */
+    private ScoredSpace ensureBuilt(final Mode mode, final ScoreMode scoreMode) {
+        final ScoredSpace space = spaces.computeIfAbsent(
+            scoreMode,
+            key -> createScoredSpace(key)
+        );
+        if (mode == Mode.CONTRAST) {
+            if (space.contrastVectors == null) {
+                buildContrastVectors(space);
+            }
+        }
+        else if (space.svdVectors == null) {
+            buildSvdVectors(space);
+        }
+        return space;
+    }
+
+    /**
+     * Creates and normalizes a scored term × document matrix.
+     *
+     * @param scoreMode requested scorer
+     * @return initialized scored space
+     */
+    private ScoredSpace createScoredSpace(final ScoreMode scoreMode) {
+        final MatrixSimilarity similarity;
+        if (scoreMode == ScoreMode.BM25) {
+            similarity = new Bm25MatrixSimilarity(1.2, 0.75);
+        }
+        else {
+            similarity = new G2MatrixSimilarity();
+        }
+        final float[][] scored = scoreMatrix(similarity);
+        return new ScoredSpace(scored, normalizeDocuments(scored));
+    }
+
+    /**
+     * Returns one likelihood-ratio contribution.
+     *
+     * @param observed observed count
+     * @param expected expected count
+     * @return {@code observed * log(observed / expected)}, or zero for zero count
+     */
+    private static double g2Contribution(
+            final double observed,
+            final double expected) {
+        if (!(observed > 0.0) || !(expected > 0.0)) {
+            return 0.0;
+        }
+        return observed * Math.log(observed / expected);
+    }
+
+    /**
+     * Builds an exact term lookup map.
+     *
+     * @param terms retained vocabulary
+     * @return term-to-row index
      */
     private static Map<String, Integer> indexTerms(final String[] terms) {
         final Map<String, Integer> index = new HashMap<>(terms.length * 2);
@@ -866,25 +1154,6 @@ public final class LatentSim {
     }
 
     /**
-     * L2-normalizes one dense vector in place.
-     *
-     * @param vector vector to normalize
-     */
-    private static void normalize(final float[] vector) {
-        double norm2 = 0.0;
-        for (float value : vector) {
-            norm2 += value * (double) value;
-        }
-        if (!(norm2 > 0.0)) {
-            return;
-        }
-        final double inverse = 1.0 / Math.sqrt(norm2);
-        for (int i = 0; i < vector.length; i++) {
-            vector[i] *= inverse;
-        }
-    }
-
-    /**
      * L2-normalizes every document column of a scored term × document matrix.
      *
      * @param scored source matrix
@@ -918,7 +1187,7 @@ public final class LatentSim {
     /**
      * Orthonormalizes matrix columns in place with modified Gram-Schmidt.
      *
-     * @param matrix row-major matrix whose columns are to be orthonormalized
+     * @param matrix row-major matrix whose columns are orthonormalized
      */
     private static void orthonormalize(final float[][] matrix) {
         final int rows = matrix.length;
@@ -953,7 +1222,7 @@ public final class LatentSim {
     }
 
     /**
-     * Parses a command-line mode name.
+     * Parses a latent mode name.
      *
      * @param value mode text
      * @return parsed mode
@@ -973,16 +1242,47 @@ public final class LatentSim {
     }
 
     /**
-     * Converts the raw frequency matrix to the configured scored matrix.
+     * Parses a matrix scorer name.
      *
+     * @param value scorer text
+     * @return parsed scorer mode
+     */
+    private static ScoreMode parseScoreMode(final String value) {
+        if ("bm25".equalsIgnoreCase(value)) {
+            return ScoreMode.BM25;
+        }
+        if ("g2".equalsIgnoreCase(value) || "g²".equalsIgnoreCase(value)) {
+            return ScoreMode.G2;
+        }
+        throw new IllegalArgumentException(
+            "Unknown score '" + value + "', expected bm25 or g2"
+        );
+    }
+
+    /**
+     * Prints interactive command help.
+     */
+    private static void printHelp() {
+        System.out.println("Commands:");
+        System.out.println("  <term>             query using current mode and scorer");
+        System.out.println("  contrast <term>    query once with contrast mode");
+        System.out.println("  svd <term>         query once with SVD mode");
+        System.out.println("  mode contrast|svd  change latent mode");
+        System.out.println("  score bm25|g2      change matrix scorer");
+        System.out.println("  top N              change number of neighbours");
+        System.out.println("  params             print current parameters");
+        System.out.println("  help | ?           print this help");
+        System.out.println("  quit | exit        stop");
+    }
+
+    /**
+     * Converts the raw term-frequency matrix to one scored matrix.
+     *
+     * @param similarity matrix scorer
      * @return scored term × document matrix
      */
-    private float[][] scoreMatrix() {
-        long totalLength = 0L;
-        for (int length : docLengths) {
-            totalLength += length;
-        }
-        final double avgDocLength = totalLength / (double) contentDocCount;
+    private float[][] scoreMatrix(final MatrixSimilarity similarity) {
+        final double avgDocLength = fieldTokenCount / (double) contentDocCount;
         final float[][] scored = new float[terms.length][maxDoc];
 
         IntStream.range(0, terms.length).parallel().forEach(term -> {
@@ -996,8 +1296,10 @@ public final class LatentSim {
                 row[doc] = similarity.score(
                     frequency,
                     docFreqs[term],
+                    totalTermFreqs[term],
                     docLengths[doc],
                     contentDocCount,
+                    fieldTokenCount,
                     avgDocLength
                 );
             }
@@ -1006,23 +1308,36 @@ public final class LatentSim {
     }
 
     /**
-     * Immutable raw matrix data collected from Lucene.
+     * Returns the vectors belonging to one latent mode.
+     *
+     * @param space scored space
+     * @param mode latent mode
+     * @return dense centered term × document vectors
+     */
+    private static float[][] vectors(final ScoredSpace space, final Mode mode) {
+        return mode == Mode.CONTRAST ? space.contrastVectors : space.svdVectors;
+    }
+
+    /**
+     * Raw matrix data collected from Lucene.
      */
     private static final class RawMatrix {
         private final int contentDocCount;
-        private final int[] docLengths;
         private final int[] docFreqs;
+        private final int[] docLengths;
+        private final long fieldTokenCount;
         private final int maxDoc;
         private final int[][] termFreqs;
         private final String[] terms;
         private final long[] totalTermFreqs;
 
         /**
-         * Creates collected matrix data.
+         * Creates immutable raw matrix data.
          *
-         * @param contentDocCount number of documents containing the field
-         * @param docLengths exact field token counts by Lucene docId
+         * @param contentDocCount documents containing the field
          * @param docFreqs selected term document frequencies
+         * @param docLengths field token counts by Lucene doc ID
+         * @param fieldTokenCount total field token count
          * @param maxDoc Lucene reader maxDoc
          * @param termFreqs selected term × document frequencies
          * @param terms selected vocabulary
@@ -1030,15 +1345,17 @@ public final class LatentSim {
          */
         private RawMatrix(
                 final int contentDocCount,
-                final int[] docLengths,
                 final int[] docFreqs,
+                final int[] docLengths,
+                final long fieldTokenCount,
                 final int maxDoc,
                 final int[][] termFreqs,
                 final String[] terms,
                 final long[] totalTermFreqs) {
             this.contentDocCount = contentDocCount;
-            this.docLengths = docLengths;
             this.docFreqs = docFreqs;
+            this.docLengths = docLengths;
+            this.fieldTokenCount = fieldTokenCount;
             this.maxDoc = maxDoc;
             this.termFreqs = termFreqs;
             this.terms = terms;
@@ -1047,7 +1364,31 @@ public final class LatentSim {
     }
 
     /**
-     * Immutable term statistics used during vocabulary selection.
+     * Matrices derived from one matrix scorer and cached for the CLI run.
+     */
+    private static final class ScoredSpace {
+        private float[][] contrastVectors;
+        private float[][] gram;
+        private final float[][] normalized;
+        private final float[][] scored;
+        private float[][] svdVectors;
+
+        /**
+         * Creates a scored space.
+         *
+         * @param scored sparse-valued scored term × document matrix
+         * @param normalized document-column-normalized matrix
+         */
+        private ScoredSpace(
+                final float[][] scored,
+                final float[][] normalized) {
+            this.normalized = normalized;
+            this.scored = scored;
+        }
+    }
+
+    /**
+     * Term statistics used for vocabulary selection.
      */
     private static final class TermStat {
         private final int docFreq;
@@ -1055,18 +1396,18 @@ public final class LatentSim {
         private final long totalTermFreq;
 
         /**
-         * Creates term statistics.
+         * Creates immutable term statistics.
          *
          * @param term term text
-         * @param docFreq live document frequency
-         * @param totalTermFreq live total term frequency
+         * @param docFreq document frequency
+         * @param totalTermFreq corpus term frequency
          */
         private TermStat(
                 final String term,
                 final int docFreq,
                 final long totalTermFreq) {
-            this.term = term;
             this.docFreq = docFreq;
+            this.term = term;
             this.totalTermFreq = totalTermFreq;
         }
     }
