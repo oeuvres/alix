@@ -26,32 +26,35 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Builds dense latent document-relevance vectors for Lucene terms and compares
- * terms by cosine after centering each final term vector across documents.
+ * Builds latent document-relevance vectors for Lucene terms and compares terms
+ * by cosine similarity between those vectors.
  *
  * <p>The class retains the {@code maxTerms} terms with the highest document
- * frequency, collects a term × document-frequency matrix, applies a selectable
- * matrix scorer, and L2-normalizes the resulting document columns. Two latent
- * rescoring modes are available:</p>
+ * frequency, collects a term × document-frequency matrix, and applies a
+ * selectable matrix scorer. For the document geometry, scored columns are
+ * first L2-normalized by document and then every term row is L2-normalized.
+ * Thus each retained term contributes the same total energy to the document
+ * Gram matrix, while the original unnormalized scorer row remains the query
+ * signal used by the contrastive and SVD models.</p>
+ *
+ * <p>Two latent rescoring modes are available:</p>
  * <ul>
  *   <li>{@link Mode#CONTRAST}: contrastive document centroid;</li>
  *   <li>{@link Mode#SVD}: low-rank projection in document space.</li>
  * </ul>
  *
- * <p>After either latent transformation, every term's dense document vector is
- * centered on its mean over live field documents and L2-normalized. Cosine
- * similarity between two such vectors is therefore the correlation-like
- * similarity of their relative document-relevance profiles rather than their
- * absolute positive baselines.</p>
+ * <p>Final dense term vectors are L2-normalized before cosine. They are not
+ * mean-centered: this branch isolates the effect of row-normalizing the source
+ * geometry.</p>
  *
- * <p>Two matrix scorers are supplied: BM25 and raw unsigned token-contingency
- * G². G² remains sparse: a term absent from a document receives zero matrix
- * score.</p>
+ * <p>Matrix scorers supplied are BM25, raw unsigned token-contingency G², and
+ * Williams-corrected G² ({@code g2w}) for an optional small-count comparison.
+ * Absent term-document cells remain zero.</p>
  */
 public final class LatentSim {
 
     /** Default lexical-anchor weight. */
-    public static final double DEFAULT_ALPHA = 1.0;
+    public static final double DEFAULT_ALPHA = 0.4;
 
     /** Default number of latent document dimensions. */
     public static final int DEFAULT_DIMS = 300;
@@ -60,10 +63,10 @@ public final class LatentSim {
     public static final int DEFAULT_MAX_TERMS = 10_000;
 
     /** Default matrix scorer. */
-    public static final ScoreMode DEFAULT_SCORE_MODE = ScoreMode.G2;
+    public static final ScoreMode DEFAULT_SCORE_MODE = ScoreMode.BM25;
 
     /** Default number of randomized subspace power iterations. */
-    public static final int DEFAULT_SVD_ITERATIONS = 5;
+    public static final int DEFAULT_SVD_ITERATIONS = 2;
 
     /** Default number of neighbours shown by the CLI. */
     public static final int DEFAULT_TOP_N = 30;
@@ -160,7 +163,7 @@ public final class LatentSim {
      * @param mode latent rescoring mode
      * @param scoreMode matrix scorer
      * @param topN maximum number of neighbours
-     * @return neighbours ordered by decreasing centered cosine similarity
+     * @return neighbours ordered by decreasing cosine similarity
      */
     public List<Neighbor> distance(
             final String term,
@@ -233,7 +236,7 @@ public final class LatentSim {
      *
      * <p>Usage:</p>
      * <pre>
-     * LatentSimCentered indexPath field [maxTerms] [alpha] [dims] [svdIterations]
+     * LatentSim indexPath field [maxTerms] [alpha] [dims] [svdIterations]
      * </pre>
      *
      * @param args command-line arguments
@@ -242,7 +245,7 @@ public final class LatentSim {
     public static void main(final String[] args) throws Exception {
         if (args.length < 2 || args.length > 6) {
             System.err.println(
-                "Usage: LatentSimCentered <indexPath> <field> "
+                "Usage: LatentSim <indexPath> <field> "
                 + "[maxTerms] [alpha] [dims] [svdIterations]"
             );
             System.exit(2);
@@ -287,10 +290,10 @@ public final class LatentSim {
             seconds
         );
         System.out.println(
-            "# Final term vectors are row-centered over documents before cosine."
+            "# Geometry: document-column L2, then term-row L2; final vectors L2 only."
         );
         System.out.println(
-            "# Commands: mode contrast|svd, score bm25|g2, top N, params, help, quit"
+            "# Commands: mode contrast|svd, score bm25|g2|g2w, top N, params, help, quit"
         );
 
         Mode currentMode = Mode.SVD;
@@ -329,7 +332,7 @@ public final class LatentSim {
                 System.out.printf(
                     Locale.ROOT,
                     "# mode=%s score=%s top=%d maxTerms=%d alpha=%.4f "
-                    + "dims=%d svdIterations=%d center=latent-row%n",
+                    + "dims=%d svdIterations=%d geometry=row-l2%n",
                     currentMode.name().toLowerCase(Locale.ROOT),
                     currentScoreMode.name().toLowerCase(Locale.ROOT),
                     topN,
@@ -403,11 +406,15 @@ public final class LatentSim {
                     (System.nanoTime() - queryStart) / 1_000_000_000.0;
                 System.out.printf(
                     Locale.ROOT,
-                    "# mode=%s score=%s query=%s df=%d time=%.3fs%n",
+                    "# mode=%s score=%s query=%s df=%d alpha=%.4f dims=%d "
+                    + "svdIterations=%d time=%.3fs%n",
                     queryMode.name().toLowerCase(Locale.ROOT),
                     currentScoreMode.name().toLowerCase(Locale.ROOT),
                     term,
                     model.docFreq(term),
+                    alpha,
+                    dims,
+                    svdIterations,
                     querySeconds
                 );
                 System.out.println("# rank\tscore\tdf\tcf\tterm");
@@ -431,7 +438,7 @@ public final class LatentSim {
     }
 
     /**
-     * Returns one centered and L2-normalized dense document vector.
+     * Returns one L2-normalized dense document vector.
      *
      * @param term vocabulary term
      * @param mode latent rescoring mode
@@ -637,6 +644,76 @@ public final class LatentSim {
     /**
      * Latent rescoring mode.
      */
+    /**
+     * Williams-corrected unsigned G² scorer.
+     *
+     * <p>The correction divides raw G² by the standard small-sample factor
+     * {@code q}. It is provided as an experimental alternative for sparse terms;
+     * raw {@code g2} remains available unchanged.</p>
+     */
+    public static final class G2WilliamsMatrixSimilarity implements MatrixSimilarity {
+
+        /** {@inheritDoc} */
+        @Override
+        public String name() {
+            return "g2w";
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public float score(
+                final int termFreq,
+                final int docFreq,
+                final long totalTermFreq,
+                final int docLength,
+                final int docCount,
+                final long totalTokenCount,
+                final double avgDocLength) {
+            if (termFreq <= 0
+                    || totalTermFreq <= 0
+                    || docLength <= 0
+                    || totalTokenCount <= 0) {
+                return 0.0f;
+            }
+
+            final double a = termFreq;
+            final double b = docLength - a;
+            final double c = totalTermFreq - a;
+            final double d = totalTokenCount - docLength - c;
+            if (b < 0.0 || c < 0.0 || d < 0.0) {
+                return 0.0f;
+            }
+
+            final double row1 = a + b;
+            final double row2 = c + d;
+            final double col1 = a + c;
+            final double col2 = b + d;
+            final double total = row1 + row2;
+            if (!(row1 > 0.0 && row2 > 0.0 && col1 > 0.0 && col2 > 0.0)) {
+                return 0.0f;
+            }
+
+            final double eA = row1 * col1 / total;
+            final double eB = row1 * col2 / total;
+            final double eC = row2 * col1 / total;
+            final double eD = row2 * col2 / total;
+            final double raw = 2.0 * (
+                g2Contribution(a, eA)
+                + g2Contribution(b, eB)
+                + g2Contribution(c, eC)
+                + g2Contribution(d, eD)
+            );
+            if (!(raw > 0.0)) {
+                return 0.0f;
+            }
+
+            final double rowFactor = total * (1.0 / row1 + 1.0 / row2) - 1.0;
+            final double colFactor = total * (1.0 / col1 + 1.0 / col2) - 1.0;
+            final double q = 1.0 + rowFactor * colFactor / (6.0 * total);
+            return (float) (raw / Math.max(1.0, q));
+        }
+    }
+
     public enum Mode {
         /** Contrastive centroid in document-similarity space. */
         CONTRAST,
@@ -650,7 +727,7 @@ public final class LatentSim {
     public static final class Neighbor {
         /** Corpus document frequency. */
         public final int docFreq;
-        /** Centered cosine similarity. */
+        /** Cosine similarity. */
         public final double score;
         /** Term text. */
         public final String term;
@@ -684,11 +761,13 @@ public final class LatentSim {
         /** BM25 matrix weighting. */
         BM25,
         /** Raw unsigned token-contingency G² weighting. */
-        G2
+        G2,
+        /** Williams-corrected unsigned G² weighting. */
+        G2W
     }
 
     /**
-     * Builds and centers all contrastive term vectors for one scored space.
+     * Builds all contrastive term vectors for one scored space.
      *
      * @param space scored document space
      */
@@ -726,7 +805,7 @@ public final class LatentSim {
                 scoreSum += queryScore;
             }
             if (!(scoreSum > 0.0)) {
-                centerAndNormalize(result);
+                normalize(result);
                 return;
             }
 
@@ -746,7 +825,7 @@ public final class LatentSim {
                 result[hitDoc] += beta * weight;
             }
 
-            centerAndNormalize(result);
+            normalize(result);
         });
     }
 
@@ -764,7 +843,7 @@ public final class LatentSim {
         final int[] docs = new int[maxDoc];
 
         for (int term = 0; term < terms.length; term++) {
-            final float[] row = space.normalized[term];
+            final float[] row = space.geometry[term];
             int count = 0;
             for (int doc = 0; doc < maxDoc; doc++) {
                 if (row[doc] != 0.0f) {
@@ -793,7 +872,7 @@ public final class LatentSim {
     }
 
     /**
-     * Builds centered dense SVD term vectors for one scored space.
+     * Builds dense SVD term vectors for one scored space.
      *
      * @param space scored document space
      */
@@ -839,35 +918,25 @@ public final class LatentSim {
                 }
                 result[doc] = (float) value;
             }
-            centerAndNormalize(result);
+            normalize(result);
         });
     }
 
     /**
-     * Centers a final term vector over live field documents and L2-normalizes it.
+     * L2-normalizes one final term vector over live field documents.
      *
      * @param vector vector indexed by Lucene doc ID
      */
-    private void centerAndNormalize(final float[] vector) {
-        double sum = 0.0;
-        for (int doc = 0; doc < maxDoc; doc++) {
-            if (docLengths[doc] > 0) {
-                sum += vector[doc];
-            }
-        }
-        final double mean = sum / contentDocCount;
+    private void normalize(final float[] vector) {
         double norm2 = 0.0;
-
         for (int doc = 0; doc < maxDoc; doc++) {
             if (docLengths[doc] <= 0) {
                 vector[doc] = 0.0f;
                 continue;
             }
-            final float centered = (float) (vector[doc] - mean);
-            vector[doc] = centered;
-            norm2 += centered * (double) centered;
+            final float value = vector[doc];
+            norm2 += value * (double) value;
         }
-
         if (!(norm2 > 0.0)) {
             return;
         }
@@ -1085,11 +1154,16 @@ public final class LatentSim {
         if (scoreMode == ScoreMode.BM25) {
             similarity = new Bm25MatrixSimilarity(1.2, 0.75);
         }
-        else {
+        else if (scoreMode == ScoreMode.G2) {
             similarity = new G2MatrixSimilarity();
         }
+        else {
+            similarity = new G2WilliamsMatrixSimilarity();
+        }
         final float[][] scored = scoreMatrix(similarity);
-        return new ScoredSpace(scored, normalizeDocuments(scored));
+        final float[][] documentNormalized = normalizeDocuments(scored);
+        final float[][] geometry = normalizeRows(documentNormalized);
+        return new ScoredSpace(scored, geometry);
     }
 
     /**
@@ -1185,6 +1259,38 @@ public final class LatentSim {
     }
 
     /**
+     * L2-normalizes every term row used to build document geometry.
+     *
+     * <p>This is applied after document-column normalization, so document length
+     * control is retained while each vocabulary term contributes unit total
+     * energy to the Gram matrix.</p>
+     *
+     * @param source document-normalized term × document matrix
+     * @return row-normalized geometry matrix
+     */
+    private static float[][] normalizeRows(final float[][] source) {
+        final float[][] result = new float[source.length][source[0].length];
+        IntStream.range(0, source.length).parallel().forEach(term -> {
+            final float[] input = source[term];
+            final float[] output = result[term];
+            double norm2 = 0.0;
+            for (float value : input) {
+                norm2 += value * (double) value;
+            }
+            if (!(norm2 > 0.0)) {
+                return;
+            }
+            final double inverse = 1.0 / Math.sqrt(norm2);
+            for (int doc = 0; doc < input.length; doc++) {
+                if (input[doc] != 0.0f) {
+                    output[doc] = (float) (input[doc] * inverse);
+                }
+            }
+        });
+        return result;
+    }
+
+    /**
      * Orthonormalizes matrix columns in place with modified Gram-Schmidt.
      *
      * @param matrix row-major matrix whose columns are orthonormalized
@@ -1254,8 +1360,11 @@ public final class LatentSim {
         if ("g2".equalsIgnoreCase(value) || "g²".equalsIgnoreCase(value)) {
             return ScoreMode.G2;
         }
+        if ("g2w".equalsIgnoreCase(value) || "g²w".equalsIgnoreCase(value)) {
+            return ScoreMode.G2W;
+        }
         throw new IllegalArgumentException(
-            "Unknown score '" + value + "', expected bm25 or g2"
+            "Unknown score '" + value + "', expected bm25, g2, or g2w"
         );
     }
 
@@ -1268,7 +1377,7 @@ public final class LatentSim {
         System.out.println("  contrast <term>    query once with contrast mode");
         System.out.println("  svd <term>         query once with SVD mode");
         System.out.println("  mode contrast|svd  change latent mode");
-        System.out.println("  score bm25|g2      change matrix scorer");
+        System.out.println("  score bm25|g2|g2w  change matrix scorer");
         System.out.println("  top N              change number of neighbours");
         System.out.println("  params             print current parameters");
         System.out.println("  help | ?           print this help");
@@ -1312,7 +1421,7 @@ public final class LatentSim {
      *
      * @param space scored space
      * @param mode latent mode
-     * @return dense centered term × document vectors
+     * @return dense term × document vectors
      */
     private static float[][] vectors(final ScoredSpace space, final Mode mode) {
         return mode == Mode.CONTRAST ? space.contrastVectors : space.svdVectors;
@@ -1369,7 +1478,7 @@ public final class LatentSim {
     private static final class ScoredSpace {
         private float[][] contrastVectors;
         private float[][] gram;
-        private final float[][] normalized;
+        private final float[][] geometry;
         private final float[][] scored;
         private float[][] svdVectors;
 
@@ -1377,12 +1486,12 @@ public final class LatentSim {
          * Creates a scored space.
          *
          * @param scored sparse-valued scored term × document matrix
-         * @param normalized document-column-normalized matrix
+         * @param geometry document-column then term-row normalized matrix
          */
         private ScoredSpace(
                 final float[][] scored,
-                final float[][] normalized) {
-            this.normalized = normalized;
+                final float[][] geometry) {
+            this.geometry = geometry;
             this.scored = scored;
         }
     }
