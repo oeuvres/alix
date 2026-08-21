@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.nio.file.Path;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
@@ -48,7 +49,9 @@ public class OpVecMap extends Op
             return;
         }
         FlucText contentFluc = contentFluc(lucene, pars, meta);
-        VecModel vecModel = contentFluc.vecModel();
+        // Path path = Path.of("models/piaget,dims300,window30,iter20,negative10,alpha0.025.bin");
+        Path path = Path.of("models/piaget-word2vec-coocs50-power0.5-stop2-dims300.bin");
+        VecModel vecModel = VecModel.get(path);
         if (vecModel == null) {
             response.setStatus(400);
             meta.log("[no model for this field]");
