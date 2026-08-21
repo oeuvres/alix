@@ -6,9 +6,11 @@
 package com.github.oeuvres.alix.lucene.vecs;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -520,6 +522,7 @@ public final class LatentBM25
             switch (command) {
                 case ":docs" -> printDocs(arg, top);
                 case ":help" -> printHelp();
+                case ":matrix" -> writeMatrix(arg);
                 case ":mode" -> {
                     mode = Mode.parse(arg);
                     System.out.println("mode=" + mode.name().toLowerCase(Locale.ROOT));
@@ -662,6 +665,7 @@ public final class LatentBM25
         System.out.println("commands:");
         System.out.println("  TERM                 rank neighbours by current full-row cosine");
         System.out.println("  :mode raw|pearson|dev");
+        System.out.println("  :matrix FILE         write the raw term x Lucene-docId BM25 matrix as TSV");
         System.out.println("  :docs TERM           print TERM's Lucene BM25 document ranking");
         System.out.println("  :pair A | B          compare RAW / PEARSON / DEV for one pair");
         System.out.println("  :top N               number of neighbours/documents to print");
@@ -728,6 +732,37 @@ public final class LatentBM25
                 "%d.\t%-24s\t%.9f\tdf=%d\tshared=%d%n",
                 rank, words[row], hit.score(), docFreq[row], sharedDocuments(query, row));
         }
+    }
+
+
+    /** Writes the untouched raw BM25 term-by-document matrix as TSV. */
+    private void writeMatrix(final String filename) throws IOException
+    {
+        if (filename.isBlank()) {
+            System.out.println("usage: :matrix FILE");
+            return;
+        }
+        final Path path = Paths.get(filename);
+        log("writing raw BM25 matrix to %s", path);
+        try (BufferedWriter out = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+            out.write("term");
+            for (int doc = 0; doc < maxDoc; doc++) {
+                out.write('\t');
+                out.write(Integer.toString(doc));
+            }
+            out.newLine();
+
+            for (int row = 0; row < words.length; row++) {
+                out.write(words[row]);
+                final float[] scores = bm25[row];
+                for (int doc = 0; doc < maxDoc; doc++) {
+                    out.write('\t');
+                    out.write(Float.toString(scores[doc]));
+                }
+                out.newLine();
+            }
+        }
+        log("raw BM25 matrix written: %,d terms x %,d Lucene docIds", words.length, maxDoc);
     }
 
     /** Returns current console prompt. */
