@@ -29,7 +29,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
 
-import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
+import com.github.oeuvres.alix.lucene.vecs.LuceneData.SelectedTerm;
 
 /**
  * Experimental lexical similarities from a Lucene one-term BM25 matrix.
@@ -318,7 +318,7 @@ public final class LatentBM25
         log("opening index %s", indexDir);
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
             log("selecting terms (minDocFreq=%d, cap=%d)", minDocFreq, maxTerms);
-            final SelectedTerm[] selected = VecUtil.selectTerms(
+            final SelectedTerm[] selected = LuceneData.selectTerms(
                 reader, field, minDocFreq, maxTerms);
             final LatentBM25 model = new LatentBM25(
                 reader, field, selected, k1, b, mode);

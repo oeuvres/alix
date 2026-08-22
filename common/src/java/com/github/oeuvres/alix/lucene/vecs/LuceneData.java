@@ -20,7 +20,7 @@ import org.apache.lucene.util.BytesRef;
 /**
  * Shared utilities for experimental Lucene-to-vector exporters.
  */
-public final class VecUtil
+public final class LuceneData
 {
     /**
      * One selected indexed term.
@@ -36,7 +36,7 @@ public final class VecUtil
     ) {}
 
     /** Utility class. */
-    private VecUtil()
+    private LuceneData()
     {
     }
 

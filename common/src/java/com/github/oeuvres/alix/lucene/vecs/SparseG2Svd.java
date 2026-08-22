@@ -68,8 +68,8 @@ public final class SparseG2Svd
     /** Sparse positive observed values. */
     private final double[] observedValues;
 
-    /** Exact implicit G² residual matrix. */
-    private G2Matrix prepared;
+    /** Prepared matrix operator used by the latest decomposition. */
+    private Matrix prepared;
 
     /** Number of retained non-negligible singular components. */
     private int rank;
@@ -153,13 +153,13 @@ public final class SparseG2Svd
      * @param dims number of leading dimensions to compute
      * @return this pipeline
      * @throws IllegalArgumentException if {@code dims < 1}
-     * @throws IllegalStateException before {@link #residual()} or if ARPACK
+     * @throws IllegalStateException before {@link #residual()} or {@link #raw()}, or if ARPACK
      *         cannot operate on the matrix dimensions
      */
     public SparseG2Svd decompose(final int dims)
     {
         if (prepared == null) {
-            throw new IllegalStateException("call residual() before decompose()");
+            throw new IllegalStateException("call residual() or raw() before decompose()");
         }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
@@ -212,7 +212,7 @@ public final class SparseG2Svd
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
         }
         if (rank == 0) {
-            throw new IllegalStateException("G2 residual matrix has numerical rank 0");
+            throw new IllegalStateException("prepared matrix has numerical rank 0");
         }
 
         final int axes = Math.min(dims, rank);
@@ -245,6 +245,23 @@ public final class SparseG2Svd
     {
         prepared = g2Matrix();
         totalInertia = g2Inertia();
+        invalidateDecomposition();
+        return this;
+    }
+
+    /**
+     * Prepares the sparse observed matrix itself, without G² residualisation.
+     *
+     * <p>This mode is useful when the sparse positive values are already weighted
+     * observations rather than literal contingency counts. Unobserved cells remain
+     * exact zeroes.</p>
+     *
+     * @return this pipeline
+     */
+    public SparseG2Svd raw()
+    {
+        prepared = rawMatrix();
+        totalInertia = rawInertia();
         invalidateDecomposition();
         return this;
     }
@@ -386,6 +403,35 @@ public final class SparseG2Svd
                 left[row][axis] = -left[row][axis];
             }
         }
+    }
+
+    /**
+     * Builds the sparse observed-value matrix used by {@link #raw()}.
+     *
+     * @return sparse matrix-vector operator
+     */
+    private Matrix rawMatrix()
+    {
+        return new SparseObservedMatrix(
+            rowCount,
+            colCount,
+            observedRows,
+            observedCols,
+            observedValues);
+    }
+
+    /**
+     * Returns the squared Frobenius norm of the sparse observed matrix.
+     *
+     * @return raw matrix inertia
+     */
+    private double rawInertia()
+    {
+        double sum = 0d;
+        for (final double value : observedValues) {
+            sum += value * value;
+        }
+        return sum;
     }
 
     /**
@@ -533,6 +579,134 @@ public final class SparseG2Svd
         if (singularValues == null || embedding == null) {
             throw new IllegalStateException(
                 "call decompose(int) before requesting or transforming coordinates");
+        }
+    }
+
+    /** Sparse read-only matrix containing only the positive observed cells. */
+    private static final class SparseObservedMatrix implements Matrix
+    {
+        private final int colCount;
+        private final int rowCount;
+        private final int[] rows;
+        private final int[] cols;
+        private final double[] values;
+
+        private SparseObservedMatrix(
+            final int rowCount,
+            final int colCount,
+            final int[] rows,
+            final int[] cols,
+            final double[] values
+        ) {
+            this.rowCount = rowCount;
+            this.colCount = colCount;
+            this.rows = rows;
+            this.cols = cols;
+            this.values = values;
+        }
+
+        @Override
+        public void add(final int i, final int j, final double x)
+        {
+            throw new UnsupportedOperationException("read-only sparse matrix");
+        }
+
+        @Override
+        public Matrix copy()
+        {
+            throw new UnsupportedOperationException("implicit matrix cannot be copied generically");
+        }
+
+        @Override
+        public void div(final int i, final int j, final double x)
+        {
+            throw new UnsupportedOperationException("read-only sparse matrix");
+        }
+
+        @Override
+        public double get(final int i, final int j)
+        {
+            throw new UnsupportedOperationException("random access is intentionally unsupported");
+        }
+
+        @Override
+        public long length()
+        {
+            return (long) rowCount * colCount;
+        }
+
+        @Override
+        public void mul(final int i, final int j, final double x)
+        {
+            throw new UnsupportedOperationException("read-only sparse matrix");
+        }
+
+        @Override
+        public void mv(
+            final Transpose trans,
+            final double alpha,
+            final Vector x,
+            final double beta,
+            final Vector y
+        ) {
+            final int out = trans == Transpose.NO_TRANSPOSE ? rowCount : colCount;
+            for (int i = 0; i < out; i++) {
+                y.set(i, beta == 0d ? 0d : beta * y.get(i));
+            }
+            if (trans == Transpose.NO_TRANSPOSE) {
+                for (int k = 0; k < values.length; k++) {
+                    final int row = rows[k];
+                    y.set(row, y.get(row) + alpha * values[k] * x.get(cols[k]));
+                }
+            }
+            else {
+                for (int k = 0; k < values.length; k++) {
+                    final int col = cols[k];
+                    y.set(col, y.get(col) + alpha * values[k] * x.get(rows[k]));
+                }
+            }
+        }
+
+        @Override
+        public int ncol()
+        {
+            return colCount;
+        }
+
+        @Override
+        public int nrow()
+        {
+            return rowCount;
+        }
+
+        @Override
+        public ScalarType scalarType()
+        {
+            return ScalarType.Float64;
+        }
+
+        @Override
+        public Matrix scale(final double alpha)
+        {
+            throw new UnsupportedOperationException("read-only sparse matrix");
+        }
+
+        @Override
+        public void set(final int i, final int j, final double x)
+        {
+            throw new UnsupportedOperationException("read-only sparse matrix");
+        }
+
+        @Override
+        public void sub(final int i, final int j, final double x)
+        {
+            throw new UnsupportedOperationException("read-only sparse matrix");
+        }
+
+        @Override
+        public Matrix transpose()
+        {
+            throw new UnsupportedOperationException("use tv() for transpose multiplication");
         }
     }
 

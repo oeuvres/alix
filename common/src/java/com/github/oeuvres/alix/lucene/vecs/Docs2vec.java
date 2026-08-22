@@ -16,7 +16,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
 
-import com.github.oeuvres.alix.lucene.vecs.VecUtil.SelectedTerm;
+import com.github.oeuvres.alix.lucene.vecs.LuceneData.SelectedTerm;
 
 import smile.util.SparseArray;
 
@@ -109,7 +109,7 @@ public final class Docs2vec
         log("opening index %s", indexDir);
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
             log("selecting terms (minDocFreq=%d, cap=%d)", minDocFreq, maxTerms);
-            final SelectedTerm[] selected = VecUtil.selectTerms(
+            final SelectedTerm[] selected = LuceneData.selectTerms(
                 reader, field, minDocFreq, maxTerms);
             final Table table = termDocTable(reader, field, selected);
             final int termCount = table.words().length;
@@ -142,7 +142,7 @@ public final class Docs2vec
             log("projected to %d dimensions (requested %d)", outDim, dims);
 
             log("writing %d vectors to %s", termCount, out);
-            VecUtil.writeWord2vec(out, table.words(), coords, outDim);
+            LuceneData.writeWord2vec(out, table.words(), coords, outDim);
             log("done");
 
             System.out.printf(
