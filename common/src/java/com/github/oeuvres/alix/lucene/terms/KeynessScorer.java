@@ -204,7 +204,13 @@ public interface KeynessScorer {
                 g2 += 2d * (double) otherNonTermCount
                     * Math.log((double) otherNonTermCount / expectedOtherNonTerm);
             }
-            return ((double) focusTermCount / focusTokens >= (double) otherTermCount / otherTokens) ? g2 : -g2;
+            // correction to demote too much frequent words like "de"
+            // double score = g2 /  Math.pow(Math.max(1L, focusTermCount), 0.25d);
+            double score = g2 / Math.sqrt(focusTermCount + 20d);
+            // double score = g2;
+            return ((double) focusTermCount / focusTokens >= (double) otherTermCount / otherTokens)
+                ? score
+                : -score;
         }
     }
 
