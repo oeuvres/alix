@@ -171,77 +171,112 @@ public interface KeynessScorer
     }
 
     /**
-     * Signed Log-Likelihood G² (Dunning 1993) with an optional specificity
-     * parameter in {@code [-1, +1]}.
+     * Log-Likelihood G² (Dunning 1993) with a specificity control in
+     * {@code [0, 2]}.
      *
      * <p>
-     * At specificity {@code 0}, the score is ordinary G². Positive specificity
-     * progressively discounts terms with a high expected focus frequency:
+     * The scale has three exact landmarks:
+     * </p>
+     *
+     * <ul>
+     *   <li>{@code 0}: raw focus frequency;</li>
+     *   <li>{@code 1}: ordinary G²;</li>
+     *   <li>{@code 2}: G² divided once by the regularized expected focus
+     *       frequency.</li>
+     * </ul>
+     *
+     * <p>
+     * Between {@code 0} and {@code 1}, raw frequency and G² are interpolated
+     * geometrically:
      * </p>
      *
      * <pre>{@code
-     * score = G² / (expectedFocusTerm + 20)^specificity
+     * score = focusCount^(1 - specificity) * G²^specificity
      * }</pre>
      *
      * <p>
-     * Negative specificity geometrically interpolates between G² and raw focus
-     * frequency. For positively associated terms: {@code -1} is raw focus
-     * frequency, {@code -0.5} is the geometric mean of raw frequency and G²,
-     * and {@code 0} is ordinary G². The association sign is retained, so an
-     * under-represented term remains negative even at {@code -1}.
+     * Between {@code 1} and {@code 2}, increasingly general terms are
+     * discounted by their expected focus frequency:
+     * </p>
+     *
+     * <pre>{@code
+     * score = G² / (expectedFocusTerm + 20)^(specificity - 1)
+     * }</pre>
+     *
+     * <p>
+     * The upper bound {@code 2} is deliberate. For a fixed relative
+     * enrichment, G² grows approximately linearly with the amount of expected
+     * evidence. Dividing once by expected frequency therefore approximately
+     * removes this first-order frequency dependence. Values above {@code 2}
+     * would increasingly reward rarity in its own right rather than merely
+     * discounting frequency.
+     * </p>
+     *
+     * <p>
+     * G² itself is non-negative. No enrichment/depletion sign is added here.
+     * This lets the ranking experiment determine whether directionality is
+     * needed rather than building that policy into the statistic.
      * </p>
      */
     class G2 implements KeynessScorer
     {
-        /** Regularizes the rare-term tail for positive specificity. */
+        /** Regularizes the rare-term tail above ordinary G². */
         private static final double REGULARIZER = 20d;
 
-        /** Frequency-specificity control in [-1, +1]. */
+        /** Specificity control in [0, 2]. */
         private final double specificity;
 
         /**
-         * Creates an ordinary G² scorer with specificity {@code 0}.
+         * Creates an ordinary G² scorer with specificity {@code 1}.
          */
         public G2()
         {
-            this(0d);
+            this(1d);
         }
 
         /**
          * Creates a G² scorer with frequency-specificity control.
          *
-         * @param specificity value in {@code [-1, +1]}; negative values favor
-         *                    frequent/general terms, positive values favor
-         *                    rarer/more specific terms
+         * @param specificity value in {@code [0, 2]}; {@code 0} gives raw
+         *                    focus frequency, {@code 1} ordinary G², and
+         *                    {@code 2} the strongest supported frequency
+         *                    normalization
          * @throws IllegalArgumentException if the value is non-finite or outside
-         *                                  {@code [-1, +1]}
+         *                                  {@code [0, 2]}
          */
         public G2(final double specificity)
         {
-            if (!Double.isFinite(specificity) || specificity < -1d || specificity > 1d) {
+            if (!Double.isFinite(specificity) || specificity < 0d ) {
                 throw new IllegalArgumentException(
-                    "specificity must be finite and in [-1, 1]: " + specificity);
+                    "specificity must be finite and > 0: " + specificity);
             }
             this.specificity = specificity;
         }
 
         /**
-         * Computes signed G² with the configured specificity transformation.
+         * Computes G² with the configured frequency-specificity transformation.
          *
          * @param stats focus and active-corpus statistics
-         * @return signed transformed G², {@link Double#NaN} for invalid counts,
-         *         or {@code 0} for degenerate marginals
+         * @return transformed non-negative score, {@link Double#NaN} for invalid
+         *         counts, or {@code 0} for degenerate marginals
          */
         @Override
         public double score(final Stats stats)
         {
             final long focusTermCount = stats.focusTermCount();
+            if (focusTermCount < 0L) return Double.NaN;
+
+            // Exact UX endpoint: specificity 0 is raw focus frequency.
+            if (specificity == 0d) {
+                return focusTermCount;
+            }
+
             final long focusTokens = stats.focusTokens();
             final long otherTermCount = stats.otherTermCount();
             final long otherTokens = stats.otherTokens();
 
             if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
-            if (focusTermCount < 0L || otherTermCount < 0L) return Double.NaN;
+            if (otherTermCount < 0L) return Double.NaN;
             if (focusTermCount > focusTokens || otherTermCount > otherTokens) return Double.NaN;
 
             final long focusNonTermCount = focusTokens - focusTermCount;
@@ -250,6 +285,8 @@ public interface KeynessScorer
             final long allTokens = focusTokens + otherTokens;
             final long allTermCount = focusTermCount + otherTermCount;
             final long allNonTermCount = focusNonTermCount + otherNonTermCount;
+
+            if (allTermCount == 0L || allNonTermCount == 0L) return 0d;
 
             final double expectedFocusTerm = (double) focusTokens * allTermCount / allTokens;
             final double expectedOtherTerm = (double) otherTokens * allTermCount / allTokens;
@@ -274,28 +311,23 @@ public interface KeynessScorer
                     * Math.log((double) otherNonTermCount / expectedOtherNonTerm);
             }
 
-            final double magnitude;
-            if (specificity < 0d) {
-                magnitude = Math.pow((double) focusTermCount, -specificity)
-                    * Math.pow(g2, 1d + specificity);
+            if (specificity < 1d) {
+                if (!(g2 > 0d)) return 0d;
+                return Math.pow((double) focusTermCount, 1d - specificity)
+                    * Math.pow(g2, specificity);
             }
-            else if (specificity > 0d) {
-                magnitude = g2 / Math.pow(
+            if (specificity > 1d) {
+                return g2 / Math.pow(
                     expectedFocusTerm + REGULARIZER,
-                    specificity);
+                    specificity - 1d);
             }
-            else {
-                magnitude = g2;
-            }
-
-            return ((double) focusTermCount / focusTokens
-                    >= (double) otherTermCount / otherTokens) ? magnitude : -magnitude;
+            return g2;
         }
 
         /**
          * Returns the configured specificity.
          *
-         * @return specificity in {@code [-1, +1]}
+         * @return specificity in {@code [0, 2]}
          */
         public double specificity()
         {

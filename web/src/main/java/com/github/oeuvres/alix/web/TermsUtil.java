@@ -41,6 +41,7 @@ public class TermsUtil
         TopTerms terms
     ) throws IOException {
         JsonWriter jw = new JsonWriter(response.getWriter());
+        jw.setIndent("  ");
         MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
         boolean hasContexts = meta.get("spanQuery") != null;
         jw.beginObject();

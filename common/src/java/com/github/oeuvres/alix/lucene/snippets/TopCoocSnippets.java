@@ -7,6 +7,7 @@ import java.util.Objects;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker.SnippetsConsumer;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
+import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.Population;
 
 /**
@@ -62,6 +63,12 @@ public final class TopCoocSnippets implements SnippetsConsumer
 
     /** Number of merged snippet contexts processed. */
     private int contextCount;
+
+    /** Optional active corpus supplying scorer marginals; {@code null} means the whole field. */
+    private TopTerms corpus;
+
+    /** Number of raw query spans seen across all walked documents. */
+    private long pivotCount;
 
     /** Number of Lucene documents containing at least one merged snippet. */
     private int documentCount;
@@ -129,12 +136,7 @@ public final class TopCoocSnippets implements SnippetsConsumer
     }
 
     /**
-     * Binds a writable population and resets accumulated totals.
-     *
-     * <p>
-     * After the walk and any pivot subtraction, call {@link #complete()} to
-     * publish all totals to the bound population.
-     * </p>
+     * Binds a writable population using the whole field as scoring corpus.
      *
      * @param population population obtained from
      * {@link com.github.oeuvres.alix.lucene.terms.TopTerms#beginPopulation()}
@@ -144,16 +146,40 @@ public final class TopCoocSnippets implements SnippetsConsumer
      */
     public TopCoocSnippets bindTo(final Population population)
     {
+        return bindTo(population, null);
+    }
+
+    /**
+     * Binds a writable population and an optional active scoring corpus.
+     *
+     * <p>
+     * The corpus is not the co-occurrence focus. It supplies corpus-level
+     * candidate frequencies and token totals to scorers after
+     * {@link #complete()}. A null value means the immutable whole field.
+     * </p>
+     *
+     * @param population population obtained from
+     * {@link com.github.oeuvres.alix.lucene.terms.TopTerms#beginPopulation()}
+     * @param corpus active corpus population, or {@code null} for the whole field
+     * @return this consumer
+     * @throws IllegalArgumentException if a vector length differs from the vocabulary size
+     * @throws NullPointerException if {@code population} is {@code null}
+     */
+    public TopCoocSnippets bindTo(
+        final Population population,
+        final TopTerms corpus
+    ) {
         final Population target = Objects.requireNonNull(population, "population");
         bindVectors(target.termFreq(), target.termDocs(), target.termContexts());
         this.population = target;
+        this.corpus = corpus;
         reset();
         return this;
     }
 
     /**
-     * Publishes accumulated totals to the population bound through
-     * {@link #bindTo(Population)}.
+     * Publishes accumulated totals, active corpus, and raw pivot count to the
+     * bound population.
      *
      * @throws IllegalStateException if no population was bound or it was already completed
      */
@@ -166,7 +192,13 @@ public final class TopCoocSnippets implements SnippetsConsumer
             throw new IllegalStateException(
                 "bindTo(TopTerms.Population) must be called before complete()");
         }
-        population.complete(tokenCount, documentCount, contextCount);
+        population.complete(
+            tokenCount,
+            documentCount,
+            contextCount,
+            corpus,
+            pivotCount
+        );
         completed = true;
     }
 
@@ -197,6 +229,7 @@ public final class TopCoocSnippets implements SnippetsConsumer
     {
         requireCollecting();
 
+        pivotCount += snippets.spanCount();
         final int count = snippets.count();
         if (count == 0) {
             return;
@@ -241,6 +274,21 @@ public final class TopCoocSnippets implements SnippetsConsumer
     }
 
     /**
+     * Returns the number of raw query spans seen across all walked documents.
+     *
+     * <p>
+     * This count is independent of snippet merging and is suitable as the pivot
+     * marginal for collocation scorers.
+     * </p>
+     *
+     * @return raw query-span count
+     */
+    public long pivotCount()
+    {
+        return pivotCount;
+    }
+
+    /**
      * Clears totals accumulated by this consumer.
      *
      * <p>
@@ -253,6 +301,7 @@ public final class TopCoocSnippets implements SnippetsConsumer
         completed = false;
         contextCount = 0;
         documentCount = 0;
+        pivotCount = 0L;
         tokenCount = 0L;
         termSeenInContext.clear();
         termSeenInDocument.clear();

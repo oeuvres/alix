@@ -45,7 +45,7 @@ public class Pars
     public static final String   SMOOTH           = "smooth";
     public static final String   SPECIF           = "specif";
     public static final double   SPECIF_DEFAULT   = 0;
-    public static final double[] SPECIF_RANGE     = {-1.0, +1.0};
+    public static final double[] SPECIF_RANGE     = {-1.0, +10.0};
     public static final String   SNIPPETS         = "snippets";
     public static final int      SNIPPETS_DEFAULT = 3;
     public static final int[]    SNIPPETS_RANGE   = {-1, 100};

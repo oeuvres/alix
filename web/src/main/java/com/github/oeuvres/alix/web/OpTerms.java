@@ -142,6 +142,18 @@ public final class OpTerms extends Op
             meta.put("spanQuery", spanQuery.toString());
             // pivotsIds
             final int[] pivotIds = contentFluc.termLexicon().termIds(spanQuery);
+
+            // A filtered co-occurrence focus must be scored against the same
+            // filtered corpus. Null means the immutable whole field.
+            TopTerms corpus = null;
+            if (filterQuery != null) {
+                final FixedBitSet corpusDocs = index.searcher().search(
+                    filterQuery,
+                    new BitsCollectorManager(index.searcher())
+                );
+                corpus = contentFluc.topTerms().select(index.reader(), corpusDocs);
+            }
+
             // same as for the span query parser
             final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
             final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
@@ -159,7 +171,7 @@ public final class OpTerms extends Op
                 contentFluc.termRail(),
                 left,
                 right
-            ).bindTo(population);
+            ).bindTo(population, corpus);
             walker.walk(consumer);
             consumer.complete(); // update TopTerms population
             topTerms.populationExclude(pivotIds);
@@ -168,6 +180,7 @@ public final class OpTerms extends Op
             meta.put("focusDocs", consumer.documentCount());
             meta.put("focusTokens", consumer.tokenCount());
             meta.put("focusSnippets", consumer.contextCount());
+            meta.put("pivotCount", consumer.pivotCount());
             return topTerms.rank(scorer, terms, tflags);
         }
     }

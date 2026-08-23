@@ -11,6 +11,7 @@ import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
+import com.github.oeuvres.alix.lucene.terms.TopTerms;
 
 /**
  * Cooccurrence counts of context terms around a pivot at several nested distances, held through two
@@ -29,11 +30,12 @@ import com.github.oeuvres.alix.lucene.terms.TermStats;
  * the row from {@link #entryRank(int)} without recomputing rankings client-side.
  * </p>
  * <p>
- * Scoring and display are answered by the field's own sources: {@link TermStats} supplies the
- * per-term field frequency and token total that a {@link KeynessScorer} needs as its reference side,
- * while {@link TermLexicon} maps ids to forms and supplies the flag mask. Because the reference side
- * is retained, {@link #score} is computed on demand and a renderer may apply a different measure than
- * the one used for selection.
+ * Scoring uses the focus counts collected at each tick together with an active corpus and a
+ * pivot-event marginal. By default the active corpus is the whole field from {@link TermStats};
+ * {@link #corpus(TopTerms)} may replace it with a filtered population built from the same statistics.
+ * {@link CoocProfileSnippets} accumulates the raw pivot-query match count independently of snippet
+ * merging. Because these marginals are retained, {@link #score} is computed on demand and a renderer
+ * may apply a different {@link KeynessScorer} than the one used for selection.
  * </p>
  * <p>
  * This class is not thread-safe.
@@ -43,6 +45,9 @@ public final class CoocProfile
 {
     /** {@code true} once {@link #cumulate()} has prefix-summed the bands. */
     private boolean cumulated;
+
+    /** Optional active corpus supplying scorer marginals; {@code null} means the whole field. */
+    private TopTerms corpus;
 
     /** Per-tick cumulative document totals, documents contributing within the radius. */
     private final int[] docsTotalByTick;
@@ -76,6 +81,9 @@ public final class CoocProfile
 
     /** Field statistics; source of the keyness reference side. */
     private final TermStats stats;
+
+    /** Number of raw pivot-query matches collected in the active corpus. */
+    private long pivotCount;
 
     /** Distance radii, ascending. */
     private final int[] ticks;
@@ -135,6 +143,35 @@ public final class CoocProfile
     {
         requireSelected();
         return rowFreq[row][tick];
+    }
+
+    /**
+     * Sets the active corpus supplying scorer marginals.
+     *
+     * <p>
+     * A {@code null} corpus restores the whole indexed field as the active
+     * corpus. A non-null corpus must have been built from the same
+     * {@link TermStats}, so dense term ids and corpus frequencies are aligned.
+     * This method changes scoring metadata only; collected co-occurrence counts
+     * are unchanged.
+     * </p>
+     *
+     * @param corpus active corpus population, or {@code null} for the whole field
+     * @return this profile
+     * @throws IllegalArgumentException if the corpus does not share this profile's term statistics
+     * @throws IllegalStateException if selection has already been performed
+     */
+    public CoocProfile corpus(final TopTerms corpus)
+    {
+        if (selected) {
+            throw new IllegalStateException("select() already called");
+        }
+        if (corpus != null && corpus.termStats() != stats) {
+            throw new IllegalArgumentException(
+                "corpus must use the same TermStats instance as this profile");
+        }
+        this.corpus = corpus;
+        return this;
     }
 
     /**
@@ -245,6 +282,17 @@ public final class CoocProfile
     }
 
     /**
+     * Returns the number of raw pivot-query matches accumulated by the
+     * co-occurrence consumer.
+     *
+     * @return pivot-event count
+     */
+    public long pivotCount()
+    {
+        return pivotCount;
+    }
+
+    /**
      * Returns the number of selected rows.
      *
      * @return row count
@@ -257,9 +305,9 @@ public final class CoocProfile
     }
 
     /**
-     * Computes the keyness of a selected term at a tick, using the field frequency as reference and
-     * the tick's cumulative totals as the focus denominators. Computed on demand so a renderer may
-     * pass a measure different from the one used for {@link #select}.
+     * Computes the keyness of a selected term at a tick from the tick's cumulative focus counts,
+     * active-corpus marginals, and accumulated pivot-event count. Computed on demand so a renderer
+     * may pass a measure different from the one used for {@link #select}.
      *
      * @param row    row index in {@code [0, rows())}
      * @param tick   tick index in {@code [0, ticks().length)}
@@ -274,7 +322,7 @@ public final class CoocProfile
         Objects.requireNonNull(scorer, "scorer");
         final int termId = rowIds[row];
         final long focusCount = rowFreq[row][tick];
-        return applyScore(scorer, focusCount, tokensByTick[tick], stats.termFreq(termId), stats.fieldTokens());
+        return applyScore(scorer, termId, focusCount, tokensByTick[tick]);
     }
 
     /**
@@ -309,7 +357,6 @@ public final class CoocProfile
 
         final int n = ticks.length;
         final int vocab = stats.vocabSize();
-        final long fieldTokens = stats.fieldTokens();
         final BitSet flagBits = (flag == null) ? null : lexicon.bits(flag);
         final BitSet pivotBits = pivotBits(vocab, pivotIds);
         final int[] entryTickByTerm = new int[vocab];
@@ -319,7 +366,7 @@ public final class CoocProfile
         Arrays.fill(entryTickByTerm, -1);
 
         for (int i = 0; i < n; i++) {
-            final Cand[] winners = topCandidates(scorer, topK, i, flagBits, pivotBits, fieldTokens);
+            final Cand[] winners = topCandidates(scorer, topK, i, flagBits, pivotBits);
             for (int rank = 0; rank < winners.length; rank++) {
                 final int termId = winners[rank].termId();
                 union.add(termId);
@@ -331,7 +378,7 @@ public final class CoocProfile
         }
 
         final int rows = union.size();
-        final Cand[] order = finalOrder(scorer, union, fieldTokens);
+        final Cand[] order = finalOrder(scorer, union);
 
         rowIds = new int[rows];
         rowEntryTick = new int[rows];
@@ -390,6 +437,20 @@ public final class CoocProfile
     }
 
     /**
+     * Adds raw pivot-query matches to the profile's pivot marginal.
+     *
+     * @param count number of raw query matches to add
+     * @throws IllegalArgumentException if {@code count < 0}
+     */
+    void addPivotCount(final long count)
+    {
+        if (count < 0L) {
+            throw new IllegalArgumentException("count must be >= 0: " + count);
+        }
+        pivotCount += count;
+    }
+
+    /**
      * Adds occurrence tokens to a band's token total.
      *
      * @param tick band index
@@ -423,24 +484,34 @@ public final class CoocProfile
     }
 
     /**
-     * Applies a scorer with the field as reference: {@code refCount = fieldFreq - focusCount},
-     * {@code refTotal = fieldTokens - focusTokens}.
+     * Applies a scorer to one candidate using the profile focus, active-corpus
+     * marginals, and pivot-event count.
      *
-     * @param scorer      keyness measure
-     * @param focusCount  term occurrences in the focus window
+     * @param scorer keyness measure
+     * @param termId dense candidate term id
+     * @param focusCount candidate occurrences in the focus window
      * @param focusTokens total tokens in the focus window
-     * @param fieldFreq   term occurrences in the whole field
-     * @param fieldTokens total tokens in the whole field
      * @return the score
      */
-    private static double applyScore(
+    private double applyScore(
         final KeynessScorer scorer,
+        final int termId,
         final long focusCount,
-        final long focusTokens,
-        final long fieldFreq,
-        final long fieldTokens
+        final long focusTokens
     ) {
-        return scorer.score(focusCount, focusTokens, fieldFreq - focusCount, fieldTokens - focusTokens);
+        final long corpusTermCount = corpus == null
+            ? stats.termFreq(termId)
+            : corpus.termFreq(termId);
+        final long corpusTokens = corpus == null
+            ? stats.fieldTokens()
+            : corpus.tokens();
+        return scorer.score(new KeynessScorer.Stats(
+            focusCount,
+            focusTokens,
+            corpusTermCount,
+            corpusTokens,
+            pivotCount
+        ));
     }
 
     /**
@@ -478,20 +549,18 @@ public final class CoocProfile
      *
      * @param scorer      keyness measure
      * @param union       selected term ids
-     * @param fieldTokens total field token count
      * @return ordered candidates
      */
     private Cand[] finalOrder(
         final KeynessScorer scorer,
-        final LinkedHashSet<Integer> union,
-        final long fieldTokens
+        final LinkedHashSet<Integer> union
     ) {
         final int last = ticks.length - 1;
         final long lastTokens = tokensByTick[last];
         final Cand[] order = new Cand[union.size()];
         int k = 0;
         for (final int id : union) {
-            final double score = applyScore(scorer, freqWide[last][id], lastTokens, stats.termFreq(id), fieldTokens);
+            final double score = applyScore(scorer, id, freqWide[last][id], lastTokens);
             order[k++] = new Cand(id, finiteScore(score));
         }
         Arrays.sort(order, CoocProfile::compareBestFirst);
@@ -563,7 +632,6 @@ public final class CoocProfile
      * @param tick        tick index
      * @param flagBits    candidate filter bits; may be {@code null}
      * @param pivotBits   pivot exclusion bits
-     * @param fieldTokens total field token count
      * @return candidates sorted by descending score, then ascending term id
      */
     private Cand[] topCandidates(
@@ -571,8 +639,7 @@ public final class CoocProfile
         final int topK,
         final int tick,
         final BitSet flagBits,
-        final BitSet pivotBits,
-        final long fieldTokens
+        final BitSet pivotBits
     ) {
         if (topK == 0) {
             return new Cand[0];
@@ -595,7 +662,7 @@ public final class CoocProfile
                 continue;
             }
 
-            final double score = applyScore(scorer, c, focusTokens, stats.termFreq(termId), fieldTokens);
+            final double score = applyScore(scorer, termId, c, focusTokens);
             final Cand cand = new Cand(termId, finiteScore(score));
             if (heap.size() < topK) {
                 heap.add(cand);
