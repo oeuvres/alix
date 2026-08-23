@@ -1,10 +1,12 @@
 package com.github.oeuvres.alix.lucene.vecs;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.CharacterCodingException;
@@ -54,7 +56,12 @@ public final class VecModel
     /** Term forms in vector-id order. */
     private final String[] words;
 
-    /** Cache of models for {@link #get(Path)} */
+    /**
+     * Successfully loaded models, keyed by normalised absolute path.
+     *
+     * <p>Failures are deliberately not cached: experimental model files may be
+     * created or replaced while the JVM is alive.</p>
+     */
     private static final Map<Path, VecModel> MODELS = new HashMap<>();
     /**
      * Constructs an already validated model.
@@ -120,26 +127,40 @@ public final class VecModel
     }
     
     /**
-     * Get a model from cache or build it not availbale.
+     * Returns a cached model, loading it on the first successful request.
+     *
+     * <p>Failed loads are not cached. Use {@link #load(Path)} to bypass the
+     * cache, or {@link #uncache(Path)} before {@code get(path)} after replacing
+     * a model file.</p>
+     *
+     * @param path word2vec binary model
+     * @return cached or newly loaded model
+     * @throws IOException if the model cannot be loaded
      */
     public static synchronized VecModel get(final Path path) throws IOException
     {
-        final Path key = path.toAbsolutePath().normalize();
-
-        if (MODELS.containsKey(key)) {
-            return MODELS.get(key);
+        final Path key = cacheKey(path);
+        final VecModel cached = MODELS.get(key);
+        if (cached != null) {
+            return cached;
         }
 
-        try {
-            final VecModel model = load(key);
-            MODELS.put(key, model);
-            return model;
-        }
-        catch (IOException e) {
-            MODELS.put(key, null);
-            throw e;
-        }
+        final VecModel model = load(key);
+        MODELS.put(key, model);
+        return model;
     }
+
+    /**
+     * Removes one path from the model cache.
+     *
+     * @param path model path
+     * @return the previously cached model, or {@code null}
+     */
+    public static synchronized VecModel uncache(final Path path)
+    {
+        return MODELS.remove(cacheKey(path));
+    }
+
 
     /**
      * Copies one normalised vector into a caller-owned buffer.
@@ -182,6 +203,89 @@ public final class VecModel
         Objects.requireNonNull(word, "word");
         final Integer id = idByWord.get(word);
         return id == null ? -1 : id;
+    }
+
+    /**
+     * Writes dense vectors in the classical word2vec binary format.
+     *
+     * <p>The vector dimension is inferred from the first row. Rows must be
+     * rectangular, finite, and non-zero so a file written here is guaranteed
+     * to satisfy this class's {@link #load(Path)} invariants. Coordinates are
+     * written unchanged; normalisation is performed when a model is loaded.</p>
+     *
+     * @param path output file
+     * @param words words in vector-row order
+     * @param vectors dense vectors in row-major order
+     * @throws IOException if the file cannot be written
+     * @throws IllegalArgumentException if words/vectors are inconsistent
+     */
+    public static void write(
+        final Path path,
+        final String[] words,
+        final double[][] vectors
+    ) throws IOException {
+        Objects.requireNonNull(path, "path");
+        Objects.requireNonNull(words, "words");
+        Objects.requireNonNull(vectors, "vectors");
+
+        if (words.length == 0 || vectors.length == 0) {
+            throw new IllegalArgumentException("empty vector model");
+        }
+        if (words.length != vectors.length) {
+            throw new IllegalArgumentException(
+                "word/vector count mismatch: " + words.length + " != " + vectors.length);
+        }
+
+        final double[] first = Objects.requireNonNull(vectors[0], "vectors[0]");
+        final int dim = first.length;
+        if (dim < 1) {
+            throw new IllegalArgumentException("vector dimension must be positive");
+        }
+
+        final ByteBuffer buffer = ByteBuffer
+            .allocate(Math.multiplyExact(dim, Float.BYTES))
+            .order(ByteOrder.LITTLE_ENDIAN);
+
+        try (
+            OutputStream raw = Files.newOutputStream(path);
+            BufferedOutputStream out = new BufferedOutputStream(raw, 1 << 16)
+        ) {
+            out.write((words.length + " " + dim + "\n")
+                .getBytes(StandardCharsets.US_ASCII));
+
+            for (int id = 0; id < words.length; id++) {
+                final String word = Objects.requireNonNull(words[id], "words[" + id + "]");
+                if (word.isEmpty()) {
+                    throw new IllegalArgumentException("empty word at row " + id);
+                }
+                final double[] vector =
+                    Objects.requireNonNull(vectors[id], "vectors[" + id + "]");
+                if (vector.length != dim) {
+                    throw new IllegalArgumentException(
+                        "ragged vector row " + id + ": " + vector.length + " != " + dim);
+                }
+
+                double norm2 = 0d;
+                buffer.clear();
+                for (int axis = 0; axis < dim; axis++) {
+                    final double value = vector[axis];
+                    if (!Double.isFinite(value) || Math.abs(value) > Float.MAX_VALUE) {
+                        throw new IllegalArgumentException(
+                            "invalid coordinate at row " + id + ", axis " + axis + ": " + value);
+                    }
+                    norm2 += value * value;
+                    buffer.putFloat((float) value);
+                }
+                if (!Double.isFinite(norm2) || norm2 <= 0d) {
+                    throw new IllegalArgumentException("zero or invalid vector at row " + id);
+                }
+
+                out.write(word.replaceAll("\\s", "_").getBytes(StandardCharsets.UTF_8));
+                out.write(' ');
+                out.write(buffer.array(), 0, dim * Float.BYTES);
+                out.write('\n');
+            }
+        }
     }
 
     /**
@@ -331,6 +435,15 @@ public final class VecModel
     ) {
         checkId(id);
         return words[id];
+    }
+
+    /**
+     * Canonical cache key without filesystem I/O.
+     */
+    private static Path cacheKey(final Path path)
+    {
+        Objects.requireNonNull(path, "path");
+        return path.toAbsolutePath().normalize();
     }
 
     /**
