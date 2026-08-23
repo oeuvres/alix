@@ -423,22 +423,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Ranks the current population with a keyness scorer.
+     * Ranks the current population with a keyness scorer against the whole field.
      *
      * <p>
-     * The current population is used as the scorer's focus part. The reference
-     * part is the rest of the field:
-     * </p>
-     *
-     * <pre>{@code
-     * otherTermCount = fieldTermCount - currentTermCount;
-     * otherTokens = fieldTokens - currentTokens;
-     * }</pre>
-     *
-     * <p>
-     * With {@link KeynessScorer.Count}, this method ranks by raw current-population
-     * occurrence count. Since {@code Count} ignores the reference part, it is also
-     * valid when the current population is the whole field.
+     * The current population is the scorer focus. Candidate corpus frequencies and
+     * the corpus token total come from the immutable whole-field {@link TermStats}.
+     * The pivot marginal is {@code 0}; use an overload accepting {@code pivotCount}
+     * for scorers such as {@link KeynessScorer.LogDice}.
      * </p>
      *
      * @param scorer scorer used to rank terms
@@ -448,21 +439,16 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     public TopTerms rank(final KeynessScorer scorer, final int topK)
     {
-        return rank(scorer, topK, TermFlag.NULL);
+        return rank(scorer, topK, 0L, TermFlag.NULL);
     }
 
     /**
-     * Ranks flag-matching terms with a keyness scorer.
+     * Ranks flag-matching terms with a keyness scorer against the whole field.
      *
      * <p>
-     * The flags restrict ordinary ranking candidates only. A term is eligible
-     * when it carries at least one supplied flag. The scorer still receives the
-     * complete current-population and field token totals, so filtering does not
-     * change a term's score. Stored exclusions are omitted. Stored inclusions
-     * bypass the flag filter, consume places within {@code topK}, and displace
-     * the lowest-scoring ordinary terms. If inclusions alone exceed
-     * {@code topK}, only their highest-scoring terms are retained. No flags, or
-     * {@link TermFlag#NULL}, select all ordinary terms.
+     * The flags restrict ordinary ranking candidates only. Candidate corpus
+     * frequencies and the corpus token total come from the immutable whole-field
+     * {@link TermStats}. The pivot marginal is {@code 0}.
      * </p>
      *
      * @param scorer scorer used to rank terms
@@ -472,23 +458,94 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * @throws IllegalArgumentException if {@code topK < 1}
      */
     public TopTerms rank(
-        KeynessScorer scorer,
+        final KeynessScorer scorer,
         final int topK,
         final TermFlag... flags)
     {
+        return rank(scorer, topK, 0L, flags);
+    }
+
+    /**
+     * Ranks flag-matching terms with a keyness scorer against the whole field,
+     * supplying an optional pivot marginal.
+     *
+     * <p>
+     * This overload is suitable when the active corpus is the whole field and a
+     * scorer such as {@link KeynessScorer.LogDice} needs the frequency of the pivot
+     * query. The pivot count is an event count defined by the caller; this class
+     * does not assume that pivots are terms, spans, snippets, or documents.
+     * </p>
+     *
+     * @param scorer scorer used to rank terms
+     * @param topK maximum number of ranked terms to retain
+     * @param pivotCount occurrences of the pivot event in the whole field
+     * @param flags accepted term flags
+     * @return this instance
+     * @throws IllegalArgumentException if {@code topK < 1} or {@code pivotCount < 0}
+     */
+    public TopTerms rank(
+        final KeynessScorer scorer,
+        final int topK,
+        final long pivotCount,
+        final TermFlag... flags)
+    {
+        return rank(scorer, topK, null, pivotCount, flags);
+    }
+
+    /**
+     * Ranks flag-matching terms against an explicit active corpus population.
+     *
+     * <p>
+     * The current instance is the scorer focus. When {@code corpus} is non-null,
+     * its occurrence vector and token total supply the active-corpus marginals;
+     * this is intended for date, type, or other document filters. A null corpus
+     * uses the whole field from {@link TermStats}. The supplied corpus must be
+     * aligned to the same field and dense vocabulary as this instance.
+     * </p>
+     *
+     * <p>
+     * The flags restrict ranking candidates only and never change focus or corpus
+     * totals. Stored exclusions are omitted. Stored inclusions bypass the flag
+     * filter and consume places within {@code topK}.
+     * </p>
+     *
+     * @param scorer scorer used to rank terms; {@code null} means raw count
+     * @param topK maximum number of ranked terms to retain
+     * @param corpus active corpus population, or {@code null} for the whole field
+     * @param pivotCount occurrences of the caller-defined pivot event in the active corpus
+     * @param flags accepted term flags
+     * @return this instance
+     * @throws IllegalArgumentException if {@code topK < 1}, {@code pivotCount < 0},
+     *                                  or the corpus is not aligned with this instance
+     */
+    public TopTerms rank(
+        KeynessScorer scorer,
+        final int topK,
+        final TopTerms corpus,
+        final long pivotCount,
+        final TermFlag... flags)
+    {
         if (scorer == null) scorer = new KeynessScorer.Count();
+        if (pivotCount < 0L) {
+            throw new IllegalArgumentException("pivotCount must be >= 0: " + pivotCount);
+        }
+        if (corpus != null) {
+            checkCorpus(corpus);
+        }
+
         final BitSet filter = rankingFilter(flags);
         checkTopK(topK);
 
         final int vocabSize = termStats.vocabSize();
-        final long otherTokens = termStats.fieldTokens() - tokens;
+        final long corpusTokens = corpus == null ? termStats.fieldTokens() : corpus.tokens;
         final double[] scoreVec = new double[vocabSize];
         final TopArray included = new TopArray(topK);
 
         for (int termId = rankingInclude.nextSetBit(1);
                 termId >= 0;
                 termId = rankingInclude.nextSetBit(termId + 1)) {
-            final double score = scorerScore(scorer, termId, otherTokens);
+            final double score = scorerScore(
+                scorer, termId, corpus, corpusTokens, pivotCount);
             scoreVec[termId] = rankingScore(score);
             included.push(termId, scoreVec[termId]);
         }
@@ -509,7 +566,8 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                     continue;
                 }
 
-                final double score = scorerScore(scorer, termId, otherTokens);
+                final double score = scorerScore(
+                    scorer, termId, corpus, corpusTokens, pivotCount);
                 if (Double.isNaN(score)) {
                     continue;
                 }
@@ -1036,6 +1094,29 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Checks that an explicit active corpus is aligned with this instance.
+     *
+     * @param corpus active corpus population
+     * @throws IllegalArgumentException if field, vocabulary size, or backing term statistics differ
+     */
+    private void checkCorpus(final TopTerms corpus)
+    {
+        if (!field.equals(corpus.field)) {
+            throw new IllegalArgumentException(
+                "Corpus field mismatch: focus=" + field + ", corpus=" + corpus.field);
+        }
+        if (termStats.vocabSize() != corpus.termStats.vocabSize()) {
+            throw new IllegalArgumentException(
+                "Corpus vocabulary mismatch: focus=" + termStats.vocabSize()
+                    + ", corpus=" + corpus.termStats.vocabSize());
+        }
+        if (termStats != corpus.termStats) {
+            throw new IllegalArgumentException(
+                "Corpus must share the same TermStats instance as the focus");
+        }
+    }
+
+    /**
      * Checks a top-list capacity.
      *
      * @param topK maximum retained term count
@@ -1230,21 +1311,32 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
-     * Computes one term's score against the current population.
+     * Computes one term's score from the current focus and active corpus.
      *
      * @param scorer scorer to apply
      * @param termId dense term id
-     * @param otherTokens token count outside the current population
+     * @param corpus explicit active corpus, or {@code null} for the whole field
+     * @param corpusTokens active-corpus token total
+     * @param pivotCount occurrences of the caller-defined pivot event in the active corpus
      * @return scorer value
      */
     private double scorerScore(
         final KeynessScorer scorer,
         final int termId,
-        final long otherTokens)
+        final TopTerms corpus,
+        final long corpusTokens,
+        final long pivotCount)
     {
-        final long localTermCount = termFreq[termId];
-        final long otherTermCount = termStats.termFreq(termId) - localTermCount;
-        return scorer.score(localTermCount, tokens, otherTermCount, otherTokens);
+        final long corpusTermCount = corpus == null
+            ? termStats.termFreq(termId)
+            : corpus.termFreq[termId];
+        final KeynessScorer.Stats stats = new KeynessScorer.Stats(
+            termFreq[termId],
+            tokens,
+            corpusTermCount,
+            corpusTokens,
+            pivotCount);
+        return scorer.score(stats);
     }
 
     /**

@@ -388,15 +388,7 @@ public class HttpPars
      */
     public double getDouble(final String name, final double fallback)
     {
-        String value = request.getParameter(name);
-        if (hasValue(value)) {
-            try {
-                return record(name, Double.parseDouble(value), Source.HTTP);
-            } catch (NumberFormatException e) {
-                // fall through
-            }
-        }
-        return record(name, fallback, Source.FALLBACK);
+        return getDouble(name, null, fallback, null);
     }
 
     /**
@@ -405,36 +397,90 @@ public class HttpPars
      * An empty (non-null) parameter resets the cookie.
      *
      * @param name     parameter name.
-     * @param fallback value returned when neither parameter nor cookie yield a valid double.
+     * @param fallback value returned when neither parameter nor cookie yields a valid double.
      * @param cookie   cookie name for persistence.
      * @return resolved double.
      */
     public double getDouble(final String name, final double fallback, final String cookie)
     {
-        String value = request.getParameter(name);
-        if (hasValue(value)) {
-            try {
-                double ret = Double.parseDouble(value);
-                cookie(cookie, "" + ret);
-                return record(name, ret, Source.HTTP);
-            } catch (NumberFormatException e) {
-                // fall through
+        return getDouble(name, null, fallback, cookie);
+    }
+
+    /**
+     * Resolve a request parameter as a double, clamped to a range.
+     *
+     * @param name     parameter name.
+     * @param range    {@code [min, max]} bounds (inclusive), or null for unclamped.
+     * @param fallback default value.
+     * @return resolved double, clamped to range if provided.
+     */
+    public double getDouble(final String name, final double[] range, final double fallback)
+    {
+        return getDouble(name, range, fallback, null);
+    }
+
+    /**
+     * Resolve a request parameter as a double, clamped to a range,
+     * with optional cookie persistence.
+     * Priority: request parameter → cookie → fallback.
+     * The resolved value is clamped to [{@code range[0]}, {@code range[1]}].
+     * An empty (non-null) parameter resets the cookie and returns the fallback.
+     * An out-of-range parameter is clamped; the cookie is not updated.
+     * An invalid or out-of-range cookie is cleared and the fallback is returned.
+     *
+     * @param name     parameter name.
+     * @param range    {@code [min, max]} bounds (inclusive), or null for unclamped.
+     * @param fallback default value when no source yields a result.
+     * @param cookie   cookie name for persistence, or null to disable.
+     * @return resolved double, clamped to range.
+     */
+    public double getDouble(final String name, final double[] range, final double fallback, final String cookie)
+    {
+        final double min, max;
+        if (range != null && range.length >= 2) {
+            min = Math.min(range[0], range[1]);
+            max = Math.max(range[0], range[1]);
+        } else {
+            min = -Double.MAX_VALUE;
+            max = Double.MAX_VALUE;
+        }
+
+        final String parString = request.getParameter(name);
+
+        if (parString != null && !hasValue(parString)) {
+            cookie(cookie, null);
+            return record(name, fallback, Source.FALLBACK);
+        }
+
+        final Double fromPar = parseDouble(parString);
+        if (fromPar != null) {
+            if (fromPar >= min && fromPar <= max && cookie != null) {
+                cookie(cookie, String.valueOf(fromPar));
             }
+            final double clamped = fromPar < min ? min : fromPar > max ? max : fromPar;
+            return record(name, clamped, Source.HTTP);
         }
-        // present but blank or unparseable: suppress the cookie, like getString()
-        if (value != null) {
+
+        // Present but unparseable: suppress lower-priority sources, like getString().
+        if (parString != null) {
             cookie(cookie, null);
             return record(name, fallback, Source.FALLBACK);
         }
-        value = cookie(cookie);
-        if (value == null)
-            return record(name, fallback, Source.FALLBACK);
-        try {
-            return record(name, Double.parseDouble(value), Source.COOKIE);
-        } catch (NumberFormatException e) {
-            cookie(cookie, null);
-            return record(name, fallback, Source.FALLBACK);
+
+        final String cookieString = cookie(cookie);
+        final Double fromCookie = parseDouble(cookieString);
+        if (fromCookie != null) {
+            if (fromCookie < min || fromCookie > max) {
+                cookie(cookie, null);
+                return record(name, fallback, Source.FALLBACK);
+            }
+            return record(name, fromCookie, Source.COOKIE);
         }
+        if (cookieString != null) {
+            cookie(cookie, null);
+        }
+
+        return record(name, fallback, Source.FALLBACK);
     }
 
     /**
@@ -599,6 +645,7 @@ public class HttpPars
      * The resolved value is clamped to [{@code range[0]}, {@code range[1]}].
      * An empty (non-null) parameter resets the cookie and returns the fallback.
      * An out-of-range parameter is clamped; the cookie is not updated.
+     * An invalid or out-of-range cookie is cleared and the fallback is returned.
      *
      * @param name     parameter name.
      * @param range    {@code [min, max]} bounds (inclusive), or null for unclamped.
@@ -645,13 +692,17 @@ public class HttpPars
             return record(name, clamped, Source.ATTRIBUTE);
         }
 
-        final Integer fromCookie = parseInt(cookie(cookie));
+        final String cookieString = cookie(cookie);
+        final Integer fromCookie = parseInt(cookieString);
         if (fromCookie != null) {
             if (fromCookie < min || fromCookie > max) {
                 cookie(cookie, null);
                 return record(name, fallback, Source.FALLBACK);
             }
-            return record(name, (int) fromCookie, Source.COOKIE);
+            return record(name, fromCookie, Source.COOKIE);
+        }
+        if (cookieString != null) {
+            cookie(cookie, null);
         }
 
         return record(name, fallback, Source.FALLBACK);
@@ -1043,6 +1094,23 @@ public class HttpPars
     public HttpServletResponse response()
     {
         return response;
+    }
+
+    /**
+     * Parse a string as a finite Double, returning null on failure.
+     *
+     * @param value string to parse.
+     * @return parsed finite Double, or null if blank, null, non-finite, or not a valid double.
+     */
+    private Double parseDouble(final String value)
+    {
+        if (!hasValue(value)) return null;
+        try {
+            final double parsed = Double.parseDouble(value.trim());
+            return Double.isFinite(parsed) ? parsed : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**

@@ -11,9 +11,9 @@ import org.apache.lucene.queries.spans.SpanCollector;
  * Collects Lucene spans into merged snippets.
  *
  * <p>
- * Raw Lucene spans are folded online. They are not stored. A new span continues the current
- * snippet when its start position is less than or equal to the current snippet end plus the
- * configured merge gap.
+ * Raw Lucene spans are counted and folded online. They are only stored when diagnostic capture is
+ * enabled. A new span continues the current snippet when its start position is less than or equal
+ * to the current snippet end plus the configured merge gap.
  * </p>
  *
  * <p>
@@ -101,8 +101,8 @@ public final class DocSnippets implements SpanCollector
     private final boolean diagnose;
     /** (spanStartPos, spanEndPos) as fed to commitSpan, pre-merge; diagnostic only */
     private long[] rawSpans;
-    /** count of raw spans captured for current doc */
-    private int rawSpanCount;
+    /** Count of raw Lucene spans committed for the current document before snippet merging. */
+    private int spanCount;
 
     /**
      * Creates a snippet collector with default capacities and no diagnostic capture.
@@ -233,9 +233,10 @@ public final class DocSnippets implements SpanCollector
         }
 
         if (diagnose) {
-            ensureRawSpanCapacity(rawSpanCount + 1);
-            rawSpans[rawSpanCount++] = pack(spanStartPos, spanEndPos);
+            ensureRawSpanCapacity(spanCount + 1);
+            rawSpans[spanCount] = pack(spanStartPos, spanEndPos);
         }
+        spanCount++;
 
         if (!snipIsOpen) {
             snipStartPos = spanStartPos;
@@ -370,12 +371,13 @@ public final class DocSnippets implements SpanCollector
         this.snipIsOpen = false;
         this.matchCount = 0;
         this.count = 0;
-        this.rawSpanCount = 0;
+        this.spanCount = 0;
     }
 
     /**
      * Returns the count of raw spans captured for the current document, in Lucene emission order,
-     * before merging. Diagnostic only.
+     * before merging. Diagnostic access to the raw-span array; for the count alone use
+     * {@link #spanCount()}.
      *
      * @return raw span count
      * @throws IllegalStateException if called before {@link #closeDoc()} or when diagnostics were
@@ -385,7 +387,7 @@ public final class DocSnippets implements SpanCollector
     {
         requireFinished();
         requireDiagnose();
-        return rawSpanCount;
+        return spanCount;
     }
 
     /**
@@ -402,7 +404,7 @@ public final class DocSnippets implements SpanCollector
     {
         requireFinished();
         requireDiagnose();
-        checkIndex(rawOrd, rawSpanCount, "raw span");
+        checkIndex(rawOrd, spanCount, "raw span");
         return unpackLow(rawSpans[rawOrd]);
     }
 
@@ -420,7 +422,7 @@ public final class DocSnippets implements SpanCollector
     {
         requireFinished();
         requireDiagnose();
-        checkIndex(rawOrd, rawSpanCount, "raw span");
+        checkIndex(rawOrd, spanCount, "raw span");
         return unpackHigh(rawSpans[rawOrd]);
     }
 
@@ -435,6 +437,20 @@ public final class DocSnippets implements SpanCollector
     @Override
     public void reset()
     {
+    }
+
+    /**
+     * Returns the number of raw Lucene spans committed for the current document before snippet
+     * merging. Unlike {@link #rawSpanCount()}, this count is always available and does not require
+     * diagnostic capture.
+     *
+     * @return raw span count for the current document
+     * @throws IllegalStateException if called before {@link #closeDoc()}
+     */
+    public int spanCount()
+    {
+        requireFinished();
+        return spanCount;
     }
 
     /**
