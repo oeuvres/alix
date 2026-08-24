@@ -21,12 +21,18 @@ import smile.tensor.Vector;
 import smile.util.SparseArray;
 
 /**
- * Builds truncated row embeddings from a sparse contingency table using exact
- * signed G² residuals and Smile ARPACK.
+ * Builds truncated row embeddings from a sparse contingency table using Smile
+ * ARPACK.
  *
- * <p>The input table contains ordinary observations only; there are no
- * structural cells. The independence expectation is therefore available in
- * closed form:</p>
+ * <p>The input table contains ordinary positive observations only; there are no
+ * structural cells. It can be prepared in four ways: as the raw sparse
+ * observations ({@link #raw()}), as exact signed G² deviance residuals
+ * ({@link #residual()}), as a sparse positive-association G² matrix with a
+ * continuous specificity control ({@link #g2Specif(double)}), or as the same
+ * sparse specificity matrix with the sign of observed minus expected retained
+ * ({@link #g2SpecifSigned(double)}).</p>
+ *
+ * <p>The independence expectation is available in closed form:</p>
  *
  * <pre>
  * e[i][j] = rowMargin[i] * colMargin[j] / total
@@ -39,14 +45,32 @@ import smile.util.SparseArray;
  * materialised.</p>
  *
  * <p>{@link ARPACK#svd(Matrix, int)} then computes only the requested leading
- * singular triplets through matrix-vector multiplication. One multiplication
- * costs O(nnz + rows + columns), where nnz is the number of positive observed
- * cells.</p>
+ * singular triplets through matrix-vector multiplication. The raw and both
+ * specificity matrices are genuinely sparse. The exact signed residual matrix
+ * keeps its dense zero-cell contribution as a rank-one background plus sparse
+ * corrections. By contrast, {@link #g2SpecifSigned(double)} signs only observed
+ * cells; unobserved cells remain zero so that specificity preparation stays
+ * O(nnz) and ARPACK multiplication stays sparse.</p>
  *
  * <p>This class is mutable and not thread-safe.</p>
  */
 public final class SparseG2Svd
 {
+    /** Matrix transformation currently prepared for decomposition. */
+    private enum Preparation { NONE, G2, G2_SPECIF, G2_SPECIF_SIGNED, RAW }
+
+    /** Current matrix transformation, used only by diagnostics. */
+    private Preparation preparation = Preparation.NONE;
+
+    /** Specificity of the current specificity matrix, or NaN otherwise. */
+    private double preparedSpecificity = Double.NaN;
+
+    /**
+     * Additive expectation regularizer used by {@link #g2Specif(double)} above
+     * ordinary G² ({@code specificity > 1}).
+     */
+    private static final double SPECIF_REGULARIZER = 20d;
+
     /** Whether singular-value weighting has been applied. */
     private boolean axesWeighted;
 
@@ -83,7 +107,7 @@ public final class SparseG2Svd
     /** Retained singular values. */
     private double[] singularValues;
 
-    /** Complete G² residual energy. */
+    /** Squared Frobenius norm of the currently prepared matrix. */
     private double totalInertia;
 
     /** Total observed mass. */
@@ -153,13 +177,14 @@ public final class SparseG2Svd
      * @param dims number of leading dimensions to compute
      * @return this pipeline
      * @throws IllegalArgumentException if {@code dims < 1}
-     * @throws IllegalStateException before {@link #residual()} or {@link #raw()}, or if ARPACK
-     *         cannot operate on the matrix dimensions
+     * @throws IllegalStateException before {@link #g2Specif(double)},
+     *         {@link #residual()}, or {@link #raw()}, or if ARPACK cannot
+     *         operate on the matrix dimensions
      */
     public SparseG2Svd decompose(final int dims)
     {
         if (prepared == null) {
-            throw new IllegalStateException("call residual() or raw() before decompose()");
+            throw new IllegalStateException("prepare a matrix before decompose()");
         }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
@@ -195,6 +220,167 @@ public final class SparseG2Svd
     public double[][] embedding()
     {
         return embedding;
+    }
+
+    /**
+     * Prepares a sparse positive-association G² matrix with continuous
+     * specificity.
+     *
+     * <p>The matrix value is the square root of the ranking score so that its
+     * squared contribution to SVD inertia equals that score. The scale is:</p>
+     *
+     * <pre>
+     * specificity = 0: sqrt(observed)
+     * 0 < s < 1  : sqrt(observed^(1-s) * G2^s)
+     * s = 1      : sqrt(G2)
+     * s > 1      : sqrt(G2) / (expected + 20)^((s-1)/2)
+     * </pre>
+     *
+     * <p>For every {@code specificity > 0}, only positive associations
+     * ({@code observed > expected}) are retained. Underrepresented and
+     * unobserved cells are exact zeroes, so the prepared matrix remains
+     * sparse. At {@code specificity == 0}, no G² test is applied and every
+     * observed cell is retained as {@code sqrt(observed)}.</p>
+     *
+     * <p>G² is the complete 2x2 likelihood-ratio statistic for one matrix cell
+     * against its row margin, column margin, and the grand total. This differs
+     * from {@link #residual()}, which uses signed single-cell deviance
+     * residuals and represents negative zero-cell evidence explicitly.</p>
+     *
+     * @param specificity non-negative finite specificity
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code specificity} is negative or
+     *         non-finite
+     */
+    public SparseG2Svd g2Specif(final double specificity)
+    {
+        checkSpecificity(specificity);
+        final SpecifPrepared result = g2SpecifMatrix(specificity, false);
+        prepared = result.matrix();
+        totalInertia = result.inertia();
+        preparation = Preparation.G2_SPECIF;
+        preparedSpecificity = specificity;
+        invalidateDecomposition();
+        return this;
+    }
+
+    /**
+     * Prepares the signed counterpart of {@link #g2Specif(double)}.
+     *
+     * <p>The magnitude is exactly the same as {@code g2Specif(s)}. For every
+     * observed cell and every {@code specificity > 0}, the sign is the sign of
+     * {@code observed - expected}. Thus overrepresented observed pairs are
+     * positive and underrepresented observed pairs are negative. At
+     * {@code specificity == 0}, no G² direction exists and the endpoint remains
+     * {@code sqrt(observed)}, identical to {@link #g2Specif(double)}.</p>
+     *
+     * <p>Only observed cells are represented. In particular, an unobserved cell
+     * remains zero rather than receiving the negative deviance residual used by
+     * {@link #residual()}. This is intentional: with the additive
+     * {@value #SPECIF_REGULARIZER} expectation regularizer, the zero-cell
+     * specificity background no longer factorises into rank one, so representing
+     * it exactly would make matrix-vector multiplication dense. This method is
+     * therefore the efficient signed test of the same G² specificity weighting,
+     * not an exact specificity-scaled version of {@link #residual()}.</p>
+     *
+     * @param specificity non-negative finite specificity
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code specificity} is negative or
+     *         non-finite
+     */
+    public SparseG2Svd g2SpecifSigned(final double specificity)
+    {
+        checkSpecificity(specificity);
+        final SpecifPrepared result = g2SpecifMatrix(specificity, true);
+        prepared = result.matrix();
+        totalInertia = result.inertia();
+        preparation = Preparation.G2_SPECIF_SIGNED;
+        preparedSpecificity = specificity;
+        invalidateDecomposition();
+        return this;
+    }
+
+    /**
+     * Materialises one row of the currently prepared matrix for diagnostics.
+     *
+     * <p>This is intentionally not used by ARPACK. It is an O(nnz + columns)
+     * inspection helper for comparing matrix transformations before SVD. For
+     * the exact signed G² residual mode, unobserved cells receive their true
+     * negative residual. For the sparse specificity modes, unobserved cells
+     * remain zero, matching the matrix actually decomposed.</p>
+     *
+     * @param row row rank
+     * @return prepared values for every column
+     * @throws IllegalArgumentException if {@code row} is outside the matrix
+     * @throws IllegalStateException if no matrix has been prepared
+     */
+    public double[] preparedRow(final int row)
+    {
+        if (row < 0 || row >= rowCount) {
+            throw new IllegalArgumentException("row outside matrix: " + row);
+        }
+        if (preparation == Preparation.NONE) {
+            throw new IllegalStateException("prepare a matrix before inspecting rows");
+        }
+
+        final double[] observed = new double[colCount];
+        for (int i = 0; i < observedValues.length; i++) {
+            if (observedRows[i] == row) {
+                observed[observedCols[i]] = observedValues[i];
+            }
+        }
+
+        final double[] values = new double[colCount];
+        final double rowTotal = rowMargins[row];
+        for (int col = 0; col < colCount; col++) {
+            final double o = observed[col];
+            switch (preparation) {
+                case RAW -> values[col] = o;
+                case G2 -> values[col] = g2Residual(o, expected(row, col));
+                case G2_SPECIF -> values[col] = g2SpecifValue(
+                    o, rowTotal, colMargins[col], totalObserved,
+                    preparedSpecificity, false);
+                case G2_SPECIF_SIGNED -> values[col] = g2SpecifValue(
+                    o, rowTotal, colMargins[col], totalObserved,
+                    preparedSpecificity, true);
+                case NONE -> throw new AssertionError();
+            }
+        }
+        return values;
+    }
+
+    /**
+     * Computes cosine similarities between one row and every row of the currently
+     * prepared matrix, before SVD.
+     *
+     * <p>The calculation uses the exact prepared operator. Consequently negative
+     * cells participate in both dot products and row norms for {@link #residual()}
+     * and {@link #g2SpecifSigned(double)}, while {@link #g2Specif(double)} contains
+     * only its retained positive cells. The implementation is O(nnz + rows +
+     * columns) and does not materialise the complete matrix.</p>
+     *
+     * @param queryRow row rank used as the cosine query
+     * @return cosine with every row; the query row itself is normally 1
+     * @throws IllegalArgumentException if {@code queryRow} is outside the matrix
+     * @throws IllegalStateException if no matrix has been prepared
+     */
+    public double[] preparedCosines(final int queryRow)
+    {
+        if (queryRow < 0 || queryRow >= rowCount) {
+            throw new IllegalArgumentException("row outside matrix: " + queryRow);
+        }
+        if (prepared == null) {
+            throw new IllegalStateException("prepare a matrix before computing cosine");
+        }
+
+        if (prepared instanceof SparseObservedMatrix sparse) {
+            return sparse.rowCosines(queryRow);
+        }
+        if (prepared instanceof G2Matrix g2) {
+            return g2.rowCosines(queryRow);
+        }
+        throw new IllegalStateException(
+            "prepared matrix does not support row cosine: " + prepared.getClass().getName());
     }
 
     /**
@@ -245,6 +431,8 @@ public final class SparseG2Svd
     {
         prepared = g2Matrix();
         totalInertia = g2Inertia();
+        preparation = Preparation.G2;
+        preparedSpecificity = Double.NaN;
         invalidateDecomposition();
         return this;
     }
@@ -262,6 +450,8 @@ public final class SparseG2Svd
     {
         prepared = rawMatrix();
         totalInertia = rawInertia();
+        preparation = Preparation.RAW;
+        preparedSpecificity = Double.NaN;
         invalidateDecomposition();
         return this;
     }
@@ -310,10 +500,18 @@ public final class SparseG2Svd
      *
      * @param coords row coordinates by axis
      * @param cos2 share of each retained row norm represented by axes 0 and 1
-     * @param inertia retained singular-value inertia in percent of complete G²
-     *        residual energy
+     * @param inertia retained singular-value inertia in percent of the squared
+     *        Frobenius norm of the prepared matrix
      */
     public record SvdLayout(double[][] coords, double[] cos2, double[] inertia) {}
+
+    /**
+     * Sparse specificity matrix and its complete squared Frobenius norm.
+     *
+     * @param matrix prepared sparse matrix operator
+     * @param inertia sum of squared prepared matrix values
+     */
+    private record SpecifPrepared(Matrix matrix, double inertia) {}
 
     /**
      * Adopts a Smile truncated decomposition as the current embedding.
@@ -352,6 +550,20 @@ public final class SparseG2Svd
         rank = retained;
         fixAxisSigns(embedding);
         axesWeighted = false;
+    }
+
+    /**
+     * Checks a specificity parameter.
+     *
+     * @param specificity specificity parameter
+     * @throws IllegalArgumentException if the value is negative or non-finite
+     */
+    private static void checkSpecificity(final double specificity)
+    {
+        if (!Double.isFinite(specificity) || specificity < 0d) {
+            throw new IllegalArgumentException(
+                "specificity must be finite and >= 0: " + specificity);
+        }
     }
 
     /**
@@ -461,7 +673,7 @@ public final class SparseG2Svd
             final int col = observedCols[i];
             final double expected = expected(row, col);
             final double background = -rowBackground[row] * colBackground[col];
-            final double correction = g2(observedValues[i], expected) - background;
+            final double correction = g2Residual(observedValues[i], expected) - background;
             if (correction != 0d) {
                 rows[size] = row;
                 cols[size] = col;
@@ -483,17 +695,173 @@ public final class SparseG2Svd
     /**
      * Computes one signed G² deviance residual.
      *
-     * @param observed positive observed value
+     * @param observed non-negative observed value
      * @param expected positive expected value
      * @return signed residual
      */
-    private static double g2(final double observed, final double expected)
+    private static double g2Residual(final double observed, final double expected)
     {
+        if (!(observed > 0d)) {
+            return -Math.sqrt(2d * expected);
+        }
         final double deviance = 2d * (
             observed * Math.log(observed / expected) - observed + expected);
         return Math.copySign(
             Math.sqrt(Math.max(0d, deviance)),
             observed - expected);
+    }
+
+    /**
+     * Computes the complete 2x2 G² statistic for one observed matrix cell.
+     *
+     * @param observed observed cell value
+     * @param rowTotal observed row margin
+     * @param colTotal observed column margin
+     * @param total grand total
+     * @return non-negative likelihood-ratio statistic
+     */
+    private static double g2Contingency(
+        final double observed,
+        final double rowTotal,
+        final double colTotal,
+        final double total
+    ) {
+        final double rowOther = total - rowTotal;
+        final double colOther = total - colTotal;
+
+        final double a = observed;
+        final double b = Math.max(0d, rowTotal - observed);
+        final double c = Math.max(0d, colTotal - observed);
+        final double d = Math.max(0d, total - rowTotal - colTotal + observed);
+
+        final double ea = rowTotal * colTotal / total;
+        final double eb = rowTotal * colOther / total;
+        final double ec = rowOther * colTotal / total;
+        final double ed = rowOther * colOther / total;
+
+        final double g2 = 2d * (
+            g2Term(a, ea)
+            + g2Term(b, eb)
+            + g2Term(c, ec)
+            + g2Term(d, ed));
+        return Math.max(0d, g2);
+    }
+
+    /** Returns one prepared G²-specificity matrix value. */
+    private static double g2SpecifValue(
+        final double observed,
+        final double rowTotal,
+        final double colTotal,
+        final double total,
+        final double specificity,
+        final boolean signed
+    ) {
+        if (!(observed > 0d)) {
+            return 0d;
+        }
+        if (specificity == 0d) {
+            return Math.sqrt(observed);
+        }
+
+        final double expected = rowTotal * colTotal / total;
+        if (!signed && !(observed > expected)) {
+            return 0d;
+        }
+
+        final double g2 = g2Contingency(observed, rowTotal, colTotal, total);
+        if (!(g2 > 0d) || !Double.isFinite(g2)) {
+            return 0d;
+        }
+
+        final double magnitude;
+        if (specificity == 1d) {
+            magnitude = Math.sqrt(g2);
+        }
+        else if (specificity < 1d) {
+            magnitude = Math.exp(0.5d * (
+                (1d - specificity) * Math.log(observed)
+                + specificity * Math.log(g2)));
+        }
+        else {
+            magnitude = Math.exp(
+                0.5d * Math.log(g2)
+                - 0.5d * (specificity - 1d)
+                    * Math.log(expected + SPECIF_REGULARIZER));
+        }
+
+        return signed
+            ? Math.copySign(magnitude, observed - expected)
+            : magnitude;
+    }
+
+    /**
+     * Builds one sparse G² specificity matrix in one pass.
+     *
+     * @param specificity non-negative finite specificity
+     * @param signed whether underrepresented observed cells retain a negative sign
+     * @return sparse matrix and its squared Frobenius norm
+     */
+    private SpecifPrepared g2SpecifMatrix(
+        final double specificity,
+        final boolean signed
+    ) {
+        final int[] rows = new int[observedValues.length];
+        final int[] cols = new int[observedValues.length];
+        final double[] values = new double[observedValues.length];
+
+        int size = 0;
+        double inertia = 0d;
+        for (int i = 0; i < observedValues.length; i++) {
+            final int row = observedRows[i];
+            final int col = observedCols[i];
+            final double observed = observedValues[i];
+
+            final double value = g2SpecifValue(
+                observed,
+                rowMargins[row],
+                colMargins[col],
+                totalObserved,
+                specificity,
+                signed);
+
+            if (value == 0d || !Double.isFinite(value)) {
+                continue;
+            }
+            rows[size] = row;
+            cols[size] = col;
+            values[size] = value;
+            inertia += value * value;
+            size++;
+        }
+
+        return new SpecifPrepared(
+            new SparseObservedMatrix(
+                rowCount,
+                colCount,
+                rows,
+                cols,
+                values,
+                size),
+            inertia);
+    }
+
+    /**
+     * Returns one {@code observed * log(observed / expected)} contribution.
+     *
+     * @param observed observed cell value
+     * @param expected expected cell value
+     * @return likelihood-ratio contribution, or zero for an observed zero
+     */
+    private static double g2Term(final double observed, final double expected)
+    {
+        if (!(observed > 0d)) {
+            return 0d;
+        }
+        if (!(expected > 0d)) {
+            throw new IllegalStateException(
+                "positive observed cell has non-positive expectation: " + expected);
+        }
+        return observed * Math.log(observed / expected);
     }
 
     /**
@@ -526,7 +894,8 @@ public final class SparseG2Svd
     }
 
     /**
-     * Returns retained inertia percentages relative to complete G² energy.
+     * Returns retained inertia percentages relative to the complete prepared
+     * matrix energy.
      *
      * @return inertia percentages by retained axis
      */
@@ -582,7 +951,7 @@ public final class SparseG2Svd
         }
     }
 
-    /** Sparse read-only matrix containing only the positive observed cells. */
+    /** Sparse read-only matrix containing the active prepared cells. */
     private static final class SparseObservedMatrix implements Matrix
     {
         private final int colCount;
@@ -590,6 +959,7 @@ public final class SparseG2Svd
         private final int[] rows;
         private final int[] cols;
         private final double[] values;
+        private final int size;
 
         private SparseObservedMatrix(
             final int rowCount,
@@ -598,11 +968,26 @@ public final class SparseG2Svd
             final int[] cols,
             final double[] values
         ) {
+            this(rowCount, colCount, rows, cols, values, values.length);
+        }
+
+        private SparseObservedMatrix(
+            final int rowCount,
+            final int colCount,
+            final int[] rows,
+            final int[] cols,
+            final double[] values,
+            final int size
+        ) {
+            if (size < 0 || size > values.length || size > rows.length || size > cols.length) {
+                throw new IllegalArgumentException("invalid sparse size: " + size);
+            }
             this.rowCount = rowCount;
             this.colCount = colCount;
             this.rows = rows;
             this.cols = cols;
             this.values = values;
+            this.size = size;
         }
 
         @Override
@@ -654,17 +1039,50 @@ public final class SparseG2Svd
                 y.set(i, beta == 0d ? 0d : beta * y.get(i));
             }
             if (trans == Transpose.NO_TRANSPOSE) {
-                for (int k = 0; k < values.length; k++) {
+                for (int k = 0; k < size; k++) {
                     final int row = rows[k];
                     y.set(row, y.get(row) + alpha * values[k] * x.get(cols[k]));
                 }
             }
             else {
-                for (int k = 0; k < values.length; k++) {
+                for (int k = 0; k < size; k++) {
                     final int col = cols[k];
                     y.set(col, y.get(col) + alpha * values[k] * x.get(rows[k]));
                 }
             }
+        }
+
+        /** Computes cosine of one sparse row against all sparse rows. */
+        private double[] rowCosines(final int queryRow)
+        {
+            final double[] query = new double[colCount];
+            final double[] norm2 = new double[rowCount];
+            for (int k = 0; k < size; k++) {
+                final int row = rows[k];
+                final double value = values[k];
+                norm2[row] += value * value;
+                if (row == queryRow) {
+                    query[cols[k]] = value;
+                }
+            }
+
+            final double[] dot = new double[rowCount];
+            for (int k = 0; k < size; k++) {
+                dot[rows[k]] += values[k] * query[cols[k]];
+            }
+
+            final double queryNorm2 = norm2[queryRow];
+            final double[] cosine = new double[rowCount];
+            if (!(queryNorm2 > 0d)) {
+                return cosine;
+            }
+            for (int row = 0; row < rowCount; row++) {
+                final double denominator2 = queryNorm2 * norm2[row];
+                if (denominator2 > 0d) {
+                    cosine[row] = dot[row] / Math.sqrt(denominator2);
+                }
+            }
+            return cosine;
         }
 
         @Override
@@ -832,6 +1250,62 @@ public final class SparseG2Svd
         }
 
         /** {@inheritDoc} */
+        /**
+         * Computes exact row cosines for the rank-one negative background plus
+         * sparse corrections without materialising the dense residual matrix.
+         */
+        private double[] rowCosines(final int queryRow)
+        {
+            final double[] query = new double[colCount];
+            final double queryBackground = rowBackground[queryRow];
+            for (int col = 0; col < colCount; col++) {
+                query[col] = -queryBackground * colBackground[col];
+            }
+            for (int k = 0; k < correctionSize; k++) {
+                if (correctionRows[k] == queryRow) {
+                    query[correctionCols[k]] += corrections[k];
+                }
+            }
+
+            double colBackgroundNorm2 = 0d;
+            double backgroundDotQuery = 0d;
+            for (int col = 0; col < colCount; col++) {
+                final double background = colBackground[col];
+                colBackgroundNorm2 += background * background;
+                backgroundDotQuery += background * query[col];
+            }
+
+            final double[] dot = new double[rowCount];
+            final double[] norm2 = new double[rowCount];
+            for (int row = 0; row < rowCount; row++) {
+                final double rowBackgroundValue = rowBackground[row];
+                dot[row] = -rowBackgroundValue * backgroundDotQuery;
+                norm2[row] = rowBackgroundValue * rowBackgroundValue * colBackgroundNorm2;
+            }
+
+            for (int k = 0; k < correctionSize; k++) {
+                final int row = correctionRows[k];
+                final int col = correctionCols[k];
+                final double correction = corrections[k];
+                dot[row] += correction * query[col];
+                norm2[row] += correction * correction
+                    - 2d * rowBackground[row] * colBackground[col] * correction;
+            }
+
+            final double queryNorm2 = norm2[queryRow];
+            final double[] cosine = new double[rowCount];
+            if (!(queryNorm2 > 0d)) {
+                return cosine;
+            }
+            for (int row = 0; row < rowCount; row++) {
+                final double denominator2 = queryNorm2 * norm2[row];
+                if (denominator2 > 0d) {
+                    cosine[row] = dot[row] / Math.sqrt(denominator2);
+                }
+            }
+            return cosine;
+        }
+
         @Override
         public int ncol()
         {

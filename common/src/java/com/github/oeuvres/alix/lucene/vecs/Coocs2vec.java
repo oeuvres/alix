@@ -49,6 +49,18 @@ import smile.util.SparseArray;
  * a reusable {@code int[]} and converted in place from rail term ids to
  * selected matrix-row ids before pair counting.</p>
  *
+ * <p><b>Specificity matrices.</b> In positional window mode,
+ * {@code --matrix g2_specif --specif S} transforms each observed pair through
+ * {@link SparseG2Svd#g2Specif(double)} and keeps only positive associations.
+ * {@code --matrix g2_specif_signed --specif S} uses the same magnitude but
+ * retains a negative sign for observed pairs below independence expectation.
+ * At {@code S=0}, both endpoints reduce to {@code sqrt(observed)} because no
+ * G² direction exists; {@code S=1} uses signed or positive 2x2 G² association;
+ * values above one increasingly discount pairs with a large independence
+ * expectation. Specificity modes are intentionally unavailable for document
+ * mode because LOGOE document cells are continuous weights rather than
+ * contingency counts.</p>
+ *
  * <p><b>Stopword distance gate.</b> Terms flagged {@link TermFlag#STOPWORD} in
  * the lexicon (loaded from an optional {@code <field>.stop} list) are function
  * words: informative as immediate syntactic neighbours but topical noise at
@@ -66,7 +78,8 @@ import smile.util.SparseArray;
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--sideDir DIR] [--context window|doc] [--distance 30] \
- *     [--docWeight binary|logoe] [--beta 0.5] [--matrix g2|raw] \
+ *     [--docWeight binary|logoe] [--beta 0.5] \
+ *     [--matrix g2|g2_specif|g2_specif_signed|raw] [--specif 1.5] \
  *     [--dims 500] [--power 0.5] [--abtt D] [--minDocFreq 3] \
  *     [--maxTerms 10000]
  * }</pre>
@@ -95,7 +108,7 @@ public final class Coocs2vec
     private enum DocWeight { BINARY, LOGOE }
 
     /** Matrix supplied to SVD. */
-    private enum MatrixMode { G2, RAW }
+    private enum MatrixMode { G2_SPECIF, RAW }
 
 
     /** Sparse mutable count table used while scanning positional rails. */
@@ -197,7 +210,8 @@ public final class Coocs2vec
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
             + " [--sideDir DIR] [--context window|doc] [--distance N]"
-            + " [--docWeight binary|logoe] [--beta B] [--matrix g2|raw]"
+            + " [--docWeight binary|logoe] [--beta B]"
+            + " [--matrix g2|g2_specif|g2_specif_signed|raw] [--specif S]"
             + " [--dims N] [--power P] [--abtt D]"
             + " [--minDocFreq N] [--maxTerms N]";
 
@@ -231,11 +245,12 @@ public final class Coocs2vec
         Path sideDir = indexDir;
         ContextMode context = ContextMode.WINDOW;
         DocWeight docWeight = DocWeight.LOGOE;
-        MatrixMode matrixMode = MatrixMode.G2;
+        MatrixMode matrixMode = MatrixMode.G2_SPECIF;
         int distance = 30;
         int dims = 500;
         double power = 0.5d;
         double beta = 0.5d;
+        double specificity = 1.5d;
         int minDocFreq = 3;
         int maxTerms = 10_000;
         int abtt = 0;
@@ -251,6 +266,7 @@ public final class Coocs2vec
                 case "--matrix" -> matrixMode = MatrixMode.valueOf(args[++i].toUpperCase());
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
                 case "--power" -> power = Double.parseDouble(args[++i]);
+                case "--specif" -> specificity = Double.parseDouble(args[++i]);
                 case "--minDocFreq" -> minDocFreq = Integer.parseInt(args[++i]);
                 case "--maxTerms" -> maxTerms = Integer.parseInt(args[++i]);
                 default -> {
@@ -273,6 +289,16 @@ public final class Coocs2vec
         if (!Double.isFinite(beta) || beta <= 0d) {
             throw new IllegalArgumentException("beta must be positive and finite: " + beta);
         }
+        if (!Double.isFinite(specificity) || specificity < 0d) {
+            throw new IllegalArgumentException(
+                "specificity must be finite and >= 0: " + specificity);
+        }
+        if (context == ContextMode.DOC
+                && (matrixMode == MatrixMode.G2_SPECIF)) {
+            throw new IllegalArgumentException(
+                matrixMode.name().toLowerCase()
+                    + " requires --context window; document weights are not contingency counts");
+        }
 
         String outName = indexDir.getFileName() + "-" + field;
         if (context == ContextMode.WINDOW) {
@@ -284,7 +310,13 @@ public final class Coocs2vec
                 outName += "-beta" + beta;
             }
         }
-        outName += "-" + matrixMode.name().toLowerCase();
+        
+        if (matrixMode == MatrixMode.G2_SPECIF) {
+            outName += "-g2specif" + specificity;
+        }
+        else {
+            outName += "-" + matrixMode.name().toLowerCase();
+        }
         if (power > 0) {
             outName += "-power" + power;
         }
@@ -352,7 +384,11 @@ public final class Coocs2vec
                         table.pairs());
                     words = table.words();
                     svd = new SparseG2Svd(table.cells(), termCount);
-                    prepare(svd, matrixMode);
+                    prepare(svd, matrixMode, specificity);
+                    printPreparedCosineTop(svd, words, "instrument", 20);
+                    printPreparedCosineTop(svd, words, "outil", 20);
+                    printPreparedTop(svd, words, "instrument", 20);
+                    printPreparedTop(svd, words, "outil", 20);
                 }
             }
             else {
@@ -445,16 +481,132 @@ public final class Coocs2vec
         }
     }
 
-    /** Prepares either raw observations or signed G² residuals for SVD. */
-    private static void prepare(final SparseG2Svd svd, final MatrixMode matrixMode)
-    {
-        if (matrixMode == MatrixMode.G2) {
-            log("preparing sparse G2 residual operator against independence expectation");
-            svd.residual();
+    /**
+     * Prints the nearest rows by cosine in the prepared matrix before SVD.
+     *
+     * <p>Unlike {@link #printPreparedTop(SparseG2Svd, String[], String, int)},
+     * this compares complete row profiles. Signed matrix modes therefore include
+     * negative cells in both dot products and norms.</p>
+     *
+     * @param svd prepared sparse reduction pipeline
+     * @param words vocabulary in matrix order
+     * @param word query row word
+     * @param topK number of neighbours to print
+     */
+    private static void printPreparedCosineTop(
+        final SparseG2Svd svd,
+        final String[] words,
+        final String word,
+        final int topK
+    ) {
+        int row = -1;
+        for (int i = 0; i < words.length; i++) {
+            if (word.equals(words[i])) {
+                row = i;
+                break;
+            }
         }
-        else {
-            log("preparing raw sparse observed-value operator");
-            svd.raw();
+        if (row < 0) {
+            log("matrix cosine row not in selected vocabulary: %s", word);
+            return;
+        }
+
+        final double[] cosine = svd.preparedCosines(row);
+        final Integer[] order = new Integer[cosine.length];
+        for (int candidate = 0; candidate < cosine.length; candidate++) {
+            order[candidate] = candidate;
+        }
+        Arrays.sort(order, (a, b) -> Double.compare(cosine[b], cosine[a]));
+
+        final StringBuilder out = new StringBuilder();
+        out.append("matrix cosine ").append(word).append(':');
+        int shown = 0;
+        for (final int candidate : order) {
+            if (candidate == row || !Double.isFinite(cosine[candidate])) {
+                continue;
+            }
+            out.append(' ').append(words[candidate])
+                .append('(').append(String.format("%.4f", cosine[candidate])).append(')');
+            if (++shown >= topK) {
+                break;
+            }
+        }
+        System.err.println(out);
+    }
+
+    /**
+     * Prints the strongest positive cells of one prepared matrix row before SVD.
+     *
+     * @param svd prepared sparse reduction pipeline
+     * @param words vocabulary in matrix order
+     * @param word row word to inspect
+     * @param topK number of columns to print
+     */
+    private static void printPreparedTop(
+        final SparseG2Svd svd,
+        final String[] words,
+        final String word,
+        final int topK
+    ) {
+        int row = -1;
+        for (int i = 0; i < words.length; i++) {
+            if (word.equals(words[i])) {
+                row = i;
+                break;
+            }
+        }
+        if (row < 0) {
+            log("matrix row not in selected vocabulary: %s", word);
+            return;
+        }
+
+        final double[] values = svd.preparedRow(row);
+        final Integer[] order = new Integer[values.length];
+        for (int col = 0; col < values.length; col++) {
+            order[col] = col;
+        }
+        final int pivot = row;
+        Arrays.sort(order, (a, b) -> Double.compare(values[b], values[a]));
+
+        final StringBuilder out = new StringBuilder();
+        out.append("matrix ").append(word).append(':');
+        int shown = 0;
+        for (final int col : order) {
+            if (col == pivot || !(values[col] > 0d)) {
+                continue;
+            }
+            out.append(' ').append(words[col])
+                .append('(').append(String.format("%.4f", values[col])).append(')');
+            if (++shown >= topK) {
+                break;
+            }
+        }
+        System.err.println(out);
+    }
+
+    /**
+     * Prepares the selected positional matrix for SVD.
+     *
+     * @param svd sparse reduction pipeline containing the raw pair table
+     * @param matrixMode matrix transformation
+     * @param specificity G² specificity used by the specificity matrix modes
+     */
+    private static void prepare(
+        final SparseG2Svd svd,
+        final MatrixMode matrixMode,
+        final double specificity
+    ) {
+        switch (matrixMode) {
+            case G2_SPECIF -> {
+                log(
+                    "preparing sparse positive G2 specificity matrix (specificity=%.3f)",
+                    specificity);
+                svd.g2Specif(specificity);
+            }
+            case RAW -> {
+                log("preparing raw sparse observed-value operator");
+                svd.raw();
+            }
         }
     }
 

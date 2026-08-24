@@ -50,7 +50,9 @@ public class OpVecMap extends Op
         }
         FlucText contentFluc = contentFluc(lucene, pars, meta);
         // Path path = Path.of("models/piaget,dims300,window30,iter20,negative10,alpha0.025.bin");
-        Path path = Path.of("models/piaget-word2vec-coocs50-power0.5-stop2-dims300.bin");
+        // piaget-word2vec-coocs50-g2_specif-specif0.0-power0.5-stop2-dims500
+        // piaget-word2vec-coocs50-power0.5-stop2-dims300.bin
+        Path path = Path.of("models/piaget-word2vec-coocs50-g2_specif-specif1.5-power0.5-stop2-dims500.bin");
         VecModel vecModel = VecModel.get(path);
         if (vecModel == null) {
             response.setStatus(400);
