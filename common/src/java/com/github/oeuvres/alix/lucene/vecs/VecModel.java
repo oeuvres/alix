@@ -14,9 +14,13 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.PriorityQueue;
 
 /**
  * Immutable in-memory word2vec binary model for cosine comparison.
@@ -44,6 +48,19 @@ import java.util.Objects;
  */
 public final class VecModel
 {
+
+    /**
+     * One nearest vector and its mean cosine distance to the query pivots.
+     *
+     * @param word term form
+     * @param id vector id
+     * @param distance {@code 1 - mean(cosine)} to the pivots
+     */
+    public record Neighbor(
+        String word,
+        int id,
+        double distance
+    ) {}
     /** Flat row-major {@code size x dim} coordinates, each row L2-normalised. */
     private final float[] dat;
 
@@ -125,42 +142,6 @@ public final class VecModel
     {
         return dim;
     }
-    
-    /**
-     * Returns a cached model, loading it on the first successful request.
-     *
-     * <p>Failed loads are not cached. Use {@link #load(Path)} to bypass the
-     * cache, or {@link #uncache(Path)} before {@code get(path)} after replacing
-     * a model file.</p>
-     *
-     * @param path word2vec binary model
-     * @return cached or newly loaded model
-     * @throws IOException if the model cannot be loaded
-     */
-    public static synchronized VecModel get(final Path path) throws IOException
-    {
-        final Path key = cacheKey(path);
-        final VecModel cached = MODELS.get(key);
-        if (cached != null) {
-            return cached;
-        }
-
-        final VecModel model = load(key);
-        MODELS.put(key, model);
-        return model;
-    }
-
-    /**
-     * Removes one path from the model cache.
-     *
-     * @param path model path
-     * @return the previously cached model, or {@code null}
-     */
-    public static synchronized VecModel uncache(final Path path)
-    {
-        return MODELS.remove(cacheKey(path));
-    }
-
 
     /**
      * Copies one normalised vector into a caller-owned buffer.
@@ -191,6 +172,30 @@ public final class VecModel
     }
 
     /**
+     * Returns a cached model, loading it on the first successful request.
+     *
+     * <p>Failed loads are not cached. Use {@link #load(Path)} to bypass the
+     * cache, or {@link #uncache(Path)} before {@code get(path)} after replacing
+     * a model file.</p>
+     *
+     * @param path word2vec binary model
+     * @return cached or newly loaded model
+     * @throws IOException if the model cannot be loaded
+     */
+    public static synchronized VecModel get(final Path path) throws IOException
+    {
+        final Path key = cacheKey(path);
+        final VecModel cached = MODELS.get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        final VecModel model = load(key);
+        MODELS.put(key, model);
+        return model;
+    }
+
+    /**
      * Returns the vector id of a form.
      *
      * @param word term form
@@ -203,89 +208,6 @@ public final class VecModel
         Objects.requireNonNull(word, "word");
         final Integer id = idByWord.get(word);
         return id == null ? -1 : id;
-    }
-
-    /**
-     * Writes dense vectors in the classical word2vec binary format.
-     *
-     * <p>The vector dimension is inferred from the first row. Rows must be
-     * rectangular, finite, and non-zero so a file written here is guaranteed
-     * to satisfy this class's {@link #load(Path)} invariants. Coordinates are
-     * written unchanged; normalisation is performed when a model is loaded.</p>
-     *
-     * @param path output file
-     * @param words words in vector-row order
-     * @param vectors dense vectors in row-major order
-     * @throws IOException if the file cannot be written
-     * @throws IllegalArgumentException if words/vectors are inconsistent
-     */
-    public static void write(
-        final Path path,
-        final String[] words,
-        final double[][] vectors
-    ) throws IOException {
-        Objects.requireNonNull(path, "path");
-        Objects.requireNonNull(words, "words");
-        Objects.requireNonNull(vectors, "vectors");
-
-        if (words.length == 0 || vectors.length == 0) {
-            throw new IllegalArgumentException("empty vector model");
-        }
-        if (words.length != vectors.length) {
-            throw new IllegalArgumentException(
-                "word/vector count mismatch: " + words.length + " != " + vectors.length);
-        }
-
-        final double[] first = Objects.requireNonNull(vectors[0], "vectors[0]");
-        final int dim = first.length;
-        if (dim < 1) {
-            throw new IllegalArgumentException("vector dimension must be positive");
-        }
-
-        final ByteBuffer buffer = ByteBuffer
-            .allocate(Math.multiplyExact(dim, Float.BYTES))
-            .order(ByteOrder.LITTLE_ENDIAN);
-
-        try (
-            OutputStream raw = Files.newOutputStream(path);
-            BufferedOutputStream out = new BufferedOutputStream(raw, 1 << 16)
-        ) {
-            out.write((words.length + " " + dim + "\n")
-                .getBytes(StandardCharsets.US_ASCII));
-
-            for (int id = 0; id < words.length; id++) {
-                final String word = Objects.requireNonNull(words[id], "words[" + id + "]");
-                if (word.isEmpty()) {
-                    throw new IllegalArgumentException("empty word at row " + id);
-                }
-                final double[] vector =
-                    Objects.requireNonNull(vectors[id], "vectors[" + id + "]");
-                if (vector.length != dim) {
-                    throw new IllegalArgumentException(
-                        "ragged vector row " + id + ": " + vector.length + " != " + dim);
-                }
-
-                double norm2 = 0d;
-                buffer.clear();
-                for (int axis = 0; axis < dim; axis++) {
-                    final double value = vector[axis];
-                    if (!Double.isFinite(value) || Math.abs(value) > Float.MAX_VALUE) {
-                        throw new IllegalArgumentException(
-                            "invalid coordinate at row " + id + ", axis " + axis + ": " + value);
-                    }
-                    norm2 += value * value;
-                    buffer.putFloat((float) value);
-                }
-                if (!Double.isFinite(norm2) || norm2 <= 0d) {
-                    throw new IllegalArgumentException("zero or invalid vector at row " + id);
-                }
-
-                out.write(word.replaceAll("\\s", "_").getBytes(StandardCharsets.UTF_8));
-                out.write(' ');
-                out.write(buffer.array(), 0, dim * Float.BYTES);
-                out.write('\n');
-            }
-        }
     }
 
     /**
@@ -413,6 +335,94 @@ public final class VecModel
     }
 
     /**
+     * Returns the closest non-pivot vectors to one or more query pivots.
+     *
+     * <p>Distance is {@code 1 - mean(cosine)} over the supplied pivots. The
+     * result is sorted by increasing distance, then by vector id. Query pivots
+     * themselves are excluded. Exactly {@code min(limit, size - pivots)}
+     * neighbours are returned when available.</p>
+     *
+     * @param pivotIds query pivot vector ids
+     * @param limit maximum number of neighbours to return
+     * @return immutable nearest-neighbour list
+     * @throws IllegalArgumentException if no pivot is supplied or limit is less
+     *         than one
+     * @throws IndexOutOfBoundsException if a pivot id is invalid
+     * @throws NullPointerException if {@code pivotIds} is {@code null}
+     */
+    public List<Neighbor> nearest(
+        final int[] pivotIds,
+        final int limit
+    ) {
+        Objects.requireNonNull(pivotIds, "pivotIds");
+        if (pivotIds.length == 0) {
+            throw new IllegalArgumentException("at least one pivot is required");
+        }
+        if (limit < 1) {
+            throw new IllegalArgumentException("limit must be >= 1: " + limit);
+        }
+
+        final boolean[] excluded = new boolean[words.length];
+        int excludedCount = 0;
+        for (final int pivotId : pivotIds) {
+            checkId(pivotId);
+            if (!excluded[pivotId]) {
+                excluded[pivotId] = true;
+                excludedCount++;
+            }
+        }
+
+        final int capacity = Math.min(limit, words.length - excludedCount);
+        if (capacity == 0) {
+            return List.of();
+        }
+
+        final double[] query = new double[dim];
+        for (final int pivotId : pivotIds) {
+            final int base = pivotId * dim;
+            for (int axis = 0; axis < dim; axis++) {
+                query[axis] += dat[base + axis];
+            }
+        }
+        for (int axis = 0; axis < dim; axis++) {
+            query[axis] /= pivotIds.length;
+        }
+
+        final Comparator<Neighbor> order = Comparator
+            .comparingDouble(Neighbor::distance)
+            .thenComparingInt(Neighbor::id);
+        final PriorityQueue<Neighbor> heap =
+            new PriorityQueue<>(capacity, order.reversed());
+
+        for (int candidate = 0; candidate < words.length; candidate++) {
+            if (excluded[candidate]) {
+                continue;
+            }
+            final int base = candidate * dim;
+            double cosine = 0d;
+            for (int axis = 0; axis < dim; axis++) {
+                cosine += dat[base + axis] * query[axis];
+            }
+            final Neighbor neighbor = new Neighbor(
+                words[candidate],
+                candidate,
+                1d - cosine);
+
+            if (heap.size() < capacity) {
+                heap.add(neighbor);
+            }
+            else if (order.compare(neighbor, heap.peek()) < 0) {
+                heap.poll();
+                heap.add(neighbor);
+            }
+        }
+
+        final List<Neighbor> result = new ArrayList<>(heap);
+        result.sort(order);
+        return List.copyOf(result);
+    }
+
+    /**
      * Returns the number of vectors.
      *
      * @return vector count
@@ -420,6 +430,17 @@ public final class VecModel
     public int size()
     {
         return words.length;
+    }
+
+    /**
+     * Removes one path from the model cache.
+     *
+     * @param path model path
+     * @return the previously cached model, or {@code null}
+     */
+    public static synchronized VecModel uncache(final Path path)
+    {
+        return MODELS.remove(cacheKey(path));
     }
 
     /**
@@ -435,6 +456,89 @@ public final class VecModel
     ) {
         checkId(id);
         return words[id];
+    }
+
+    /**
+     * Writes dense vectors in the classical word2vec binary format.
+     *
+     * <p>The vector dimension is inferred from the first row. Rows must be
+     * rectangular, finite, and non-zero so a file written here is guaranteed
+     * to satisfy this class's {@link #load(Path)} invariants. Coordinates are
+     * written unchanged; normalisation is performed when a model is loaded.</p>
+     *
+     * @param path output file
+     * @param words words in vector-row order
+     * @param vectors dense vectors in row-major order
+     * @throws IOException if the file cannot be written
+     * @throws IllegalArgumentException if words/vectors are inconsistent
+     */
+    public static void write(
+        final Path path,
+        final String[] words,
+        final double[][] vectors
+    ) throws IOException {
+        Objects.requireNonNull(path, "path");
+        Objects.requireNonNull(words, "words");
+        Objects.requireNonNull(vectors, "vectors");
+
+        if (words.length == 0 || vectors.length == 0) {
+            throw new IllegalArgumentException("empty vector model");
+        }
+        if (words.length != vectors.length) {
+            throw new IllegalArgumentException(
+                "word/vector count mismatch: " + words.length + " != " + vectors.length);
+        }
+
+        final double[] first = Objects.requireNonNull(vectors[0], "vectors[0]");
+        final int dim = first.length;
+        if (dim < 1) {
+            throw new IllegalArgumentException("vector dimension must be positive");
+        }
+
+        final ByteBuffer buffer = ByteBuffer
+            .allocate(Math.multiplyExact(dim, Float.BYTES))
+            .order(ByteOrder.LITTLE_ENDIAN);
+
+        try (
+            OutputStream raw = Files.newOutputStream(path);
+            BufferedOutputStream out = new BufferedOutputStream(raw, 1 << 16)
+        ) {
+            out.write((words.length + " " + dim + "\n")
+                .getBytes(StandardCharsets.US_ASCII));
+
+            for (int id = 0; id < words.length; id++) {
+                final String word = Objects.requireNonNull(words[id], "words[" + id + "]");
+                if (word.isEmpty()) {
+                    throw new IllegalArgumentException("empty word at row " + id);
+                }
+                final double[] vector =
+                    Objects.requireNonNull(vectors[id], "vectors[" + id + "]");
+                if (vector.length != dim) {
+                    throw new IllegalArgumentException(
+                        "ragged vector row " + id + ": " + vector.length + " != " + dim);
+                }
+
+                double norm2 = 0d;
+                buffer.clear();
+                for (int axis = 0; axis < dim; axis++) {
+                    final double value = vector[axis];
+                    if (!Double.isFinite(value) || Math.abs(value) > Float.MAX_VALUE) {
+                        throw new IllegalArgumentException(
+                            "invalid coordinate at row " + id + ", axis " + axis + ": " + value);
+                    }
+                    norm2 += value * value;
+                    buffer.putFloat((float) value);
+                }
+                if (!Double.isFinite(norm2) || norm2 <= 0d) {
+                    throw new IllegalArgumentException("zero or invalid vector at row " + id);
+                }
+
+                out.write(word.replaceAll("\\s", "_").getBytes(StandardCharsets.UTF_8));
+                out.write(' ');
+                out.write(buffer.array(), 0, dim * Float.BYTES);
+                out.write('\n');
+            }
+        }
     }
 
     /**

@@ -542,6 +542,7 @@ public class AlixServlet extends HttpServlet
     private void registerOps()
     {
         ops.put("chrono", new OpChrono());
+        ops.put("compass", new OpCompass());
         ops.put("cooc-profile", new OpCoocProfile());
         ops.put("doc", new OpDoc());
         ops.put("freqlist", new OpFreqlist());
