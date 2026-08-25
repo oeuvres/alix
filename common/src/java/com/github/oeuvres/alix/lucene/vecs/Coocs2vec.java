@@ -5,8 +5,11 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Date;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
@@ -300,7 +303,10 @@ public final class Coocs2vec
                     + " requires --context window; document weights are not contingency counts");
         }
 
-        String outName = indexDir.getFileName() + "-" + field;
+        String outName = indexDir.getFileName().toString();
+        DateFormat formatter = new SimpleDateFormat("yyMMdd");
+        outName += "-" + formatter.format(new Date());
+        outName += "-" + field;
         if (context == ContextMode.WINDOW) {
             outName += "-coocs" + distance;
         }
@@ -310,6 +316,7 @@ public final class Coocs2vec
                 outName += "-beta" + beta;
             }
         }
+        
         
         if (matrixMode == MatrixMode.G2_SPECIF) {
             outName += "-g2specif" + specificity;
@@ -519,7 +526,7 @@ public final class Coocs2vec
         Arrays.sort(order, (a, b) -> Double.compare(cosine[b], cosine[a]));
 
         final StringBuilder out = new StringBuilder();
-        out.append("matrix cosine ").append(word).append(':');
+        out.append(" — matrix cosine ").append(word).append(':');
         int shown = 0;
         for (final int candidate : order) {
             if (candidate == row || !Double.isFinite(cosine[candidate])) {
@@ -569,7 +576,7 @@ public final class Coocs2vec
         Arrays.sort(order, (a, b) -> Double.compare(values[b], values[a]));
 
         final StringBuilder out = new StringBuilder();
-        out.append("matrix ").append(word).append(':');
+        out.append(" — matrix ").append(word).append(':');
         int shown = 0;
         for (final int col : order) {
             if (col == pivot || !(values[col] > 0d)) {
