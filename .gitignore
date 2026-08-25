@@ -24,3 +24,4 @@ common/src/resources/com/github/oeuvres/alix/fr/*.txt
 *.bin
 common/*.csv
 common/*.tsv
+common/word2vec*
