@@ -15,42 +15,41 @@ import com.github.oeuvres.alix.lucene.vecs.LuceneData.SelectedTerm;
 import com.github.oeuvres.alix.lucene.vecs.LuceneData.TermDoc;
 
 /**
- * Experimental symmetric GloVe factorisation of same-document term co-presence.
+ * Experimental two-sided GloVe factorisation of same-document term co-presence.
  *
- * <p>The source observation is deliberately minimal. For two distinct selected
- * terms {@code i} and {@code j}:</p>
+ * <p>For two distinct selected terms {@code i} and {@code j}:</p>
  *
  * <pre>
  * X[i,j] = number of documents containing both i and j
  * </pre>
  *
- * <p>Only positive pair cells are trained. The symmetric model is:</p>
+ * <p>Only positive off-diagonal cells are trained. Even though {@code X} is
+ * symmetric, the factorisation keeps independent word and context parameters:</p>
  *
  * <pre>
- * log X[i,j] ~= bias[i] + bias[j] + vector[i] . vector[j]
+ * log X[i,j] ~= wordBias[i] + contextBias[j] + word[i] . context[j]
  * </pre>
  *
- * <p>The weighted least-squares objective uses the GloVe saturation function
- * {@code f(x) = min(1, (x/xMax)^alpha)}. Zero cells are absent from the
- * objective; absence is not negative evidence. The diagonal is also omitted:
- * {@code X[i,i] = df(i)} contains no lexical relation and would otherwise
- * constrain vector norms for a non-semantic reason.</p>
+ * <p>For every unordered observed pair {@code i < j}, both directional equations
+ * {@code (i,j)} and {@code (j,i)} are optimized. This avoids making the arbitrary
+ * matrix row order determine whether a term is mostly a word or a context. The
+ * exported vector is {@code word[i] + context[i]}.</p>
  *
- * <p>Because the co-presence matrix is symmetric, there is one vector and one
- * bias per term rather than separate word/context parameters. Initial biases
- * encode the document-independence expectation:</p>
+ * <p>The weighted least-squares objective uses the standard GloVe saturation
+ * function {@code f(x) = min(1, (x/xMax)^alpha)}. Zero cells and the diagonal are
+ * omitted. Initial word/context biases split the document-independence expectation:</p>
  *
  * <pre>
- * bias[i] = log(df(i)) - 0.5 log(N)
+ * wordBias[i] = contextBias[i] = log(df(i)) - 0.5 * log(N)
  * </pre>
  *
- * <p>so before vector learning, {@code bias[i] + bias[j]} predicts
- * {@code log(df(i) * df(j) / N)}. The vectors therefore begin by modelling
- * departures from ordinary documentary prevalence.</p>
+ * <p>Thus {@code wordBias[i] + contextBias[j]} initially predicts
+ * {@code log(df(i) * df(j) / N)}. Training is then free to separate the two
+ * bias systems.</p>
  *
  * <p>Usage:</p>
  * <pre>{@code
- * java com.github.oeuvres.alix.lucene.vecs.GloveCoocs <indexDir> <field> \
+ * java com.github.oeuvres.alix.lucene.vecs.GloveDocs <indexDir> <field> \
  *     [--sideDir DIR] [--dims 100] [--epochs 30] [--rate 0.05] \
  *     [--xMax 10] [--alpha 0.75] [--minPairDocs 1] \
  *     [--minDocFreq 3] [--maxTerms 10000] [--seed 42] [--out FILE]
@@ -69,7 +68,7 @@ public final class GloveDocs
     private static final long DEFAULT_SEED = 42L;
 
     private static final String USAGE =
-        "usage: GloveCoocs <indexDir> <field>"
+        "usage: GloveDocs <indexDir> <field>"
             + " [--sideDir DIR] [--dims N] [--epochs N] [--rate R]"
             + " [--xMax X] [--alpha A] [--minPairDocs N]"
             + " [--minDocFreq N] [--maxTerms N] [--seed N] [--out FILE]";
@@ -137,7 +136,7 @@ public final class GloveDocs
         if (out == null) {
             final String name = indexDir.getFileName()
                 + "-" + field
-                + "-glove-coocs-dims" + dims
+                + "-glove-docs-dims" + dims
                 + "-epochs" + epochs
                 + (minPairDocs > 1 ? "-minpair" + minPairDocs : "")
                 + ".bin";
@@ -300,7 +299,8 @@ public final class GloveDocs
     }
 
     /**
-     * Fits log X_ij ~= b_i + b_j + v_i.v_j for positive off-diagonal cells.
+     * Fits the genuine two-sided GloVe model on both directions of each observed
+     * symmetric pair, then returns word + context vectors.
      */
     private static double[][] train(
         final CoocTable table,
@@ -317,29 +317,40 @@ public final class GloveDocs
     ) {
         final int termCount = table.termCount();
         final int coordCount = Math.multiplyExact(termCount, dims);
-        final double[] vector = new double[coordCount];
-        final double[] grad2 = new double[coordCount];
-        final double[] bias = new double[termCount];
-        final double[] biasGrad2 = new double[termCount];
 
-        Arrays.fill(grad2, 1d);
-        Arrays.fill(biasGrad2, 1d);
+        final double[] word = new double[coordCount];
+        final double[] context = new double[coordCount];
+        final double[] wordGrad2 = new double[coordCount];
+        final double[] contextGrad2 = new double[coordCount];
+        final double[] wordBias = new double[termCount];
+        final double[] contextBias = new double[termCount];
+        final double[] wordBiasGrad2 = new double[termCount];
+        final double[] contextBiasGrad2 = new double[termCount];
+
+        Arrays.fill(wordGrad2, 1d);
+        Arrays.fill(contextGrad2, 1d);
+        Arrays.fill(wordBiasGrad2, 1d);
+        Arrays.fill(contextBiasGrad2, 1d);
 
         // Independence is the zero-vector starting model:
-        // exp(b_i + b_j) = df_i * df_j / N.
+        // wordBias_i + contextBias_j = log(df_i * df_j / N).
+        // This is only an initialization; the two bias systems train independently.
         final double halfLogDocs = 0.5d * Math.log(fieldDocs);
         for (int term = 0; term < termCount; term++) {
             if (docFreq[term] < 1) {
                 throw new IllegalArgumentException(
                     "selected term has zero document frequency at row " + term);
             }
-            bias[term] = Math.log(docFreq[term]) - halfLogDocs;
+            final double base = Math.log(docFreq[term]) - halfLogDocs;
+            wordBias[term] = base;
+            contextBias[term] = base;
         }
 
         final Random random = new Random(seed);
         final double init = 0.5d / dims;
-        for (int i = 0; i < vector.length; i++) {
-            vector[i] = (2d * random.nextDouble() - 1d) * init;
+        for (int i = 0; i < coordCount; i++) {
+            word[i] = (2d * random.nextDouble() - 1d) * init;
+            context[i] = (2d * random.nextDouble() - 1d) * init;
         }
 
         final int[] rowOrder = sequence(termCount - 1);
@@ -353,50 +364,33 @@ public final class GloveDocs
             long seen = 0L;
 
             for (final int row : rowOrder) {
-                final int rowBase = row * dims;
                 final int cellBase = offsets[row];
                 for (int col = row + 1; col < termCount; col++) {
                     final int x = counts[cellBase + col - row - 1];
                     if (x < minPairDocs) {
                         continue;
                     }
-                    seen++;
 
-                    final int colBase = col * dims;
-                    double prediction = bias[row] + bias[col];
-                    for (int axis = 0; axis < dims; axis++) {
-                        prediction += vector[rowBase + axis]
-                            * vector[colBase + axis];
-                    }
-
-                    final double error = prediction - Math.log(x);
+                    final double logX = Math.log(x);
                     final double weight = x < xMax
                         ? Math.pow(x / xMax, alpha)
                         : 1d;
-                    final double scaledError = weight * error;
-                    loss += weight * error * error;
-                    weightSum += weight;
 
-                    // Symmetric update. Both gradients use pre-update coordinates.
-                    for (int axis = 0; axis < dims; axis++) {
-                        final int ri = rowBase + axis;
-                        final int ci = colBase + axis;
-                        final double rv = vector[ri];
-                        final double cv = vector[ci];
-                        final double gr = scaledError * cv;
-                        final double gc = scaledError * rv;
+                    loss += trainDirectional(
+                        row, col, logX, weight, dims, rate,
+                        word, context,
+                        wordGrad2, contextGrad2,
+                        wordBias, contextBias,
+                        wordBiasGrad2, contextBiasGrad2);
+                    loss += trainDirectional(
+                        col, row, logX, weight, dims, rate,
+                        word, context,
+                        wordGrad2, contextGrad2,
+                        wordBias, contextBias,
+                        wordBiasGrad2, contextBiasGrad2);
 
-                        vector[ri] -= rate * gr / Math.sqrt(grad2[ri]);
-                        vector[ci] -= rate * gc / Math.sqrt(grad2[ci]);
-                        grad2[ri] += gr * gr;
-                        grad2[ci] += gc * gc;
-                    }
-
-                    final double gb = scaledError;
-                    bias[row] -= rate * gb / Math.sqrt(biasGrad2[row]);
-                    bias[col] -= rate * gb / Math.sqrt(biasGrad2[col]);
-                    biasGrad2[row] += gb * gb;
-                    biasGrad2[col] += gb * gb;
+                    weightSum += 2d * weight;
+                    seen++;
                 }
             }
 
@@ -408,15 +402,69 @@ public final class GloveDocs
                 ? Math.sqrt(loss / weightSum)
                 : 0d;
             log(
-                "epoch %d/%d weighted-rmse=%.8f pairs=%,d",
-                epoch, epochs, rmse, seen);
+                "epoch %d/%d weighted-rmse=%.8f unordered-pairs=%,d directional-updates=%,d",
+                epoch, epochs, rmse, seen, 2L * seen);
         }
 
         final double[][] result = new double[termCount][dims];
         for (int term = 0; term < termCount; term++) {
-            System.arraycopy(vector, term * dims, result[term], 0, dims);
+            final int base = term * dims;
+            for (int axis = 0; axis < dims; axis++) {
+                result[term][axis] = word[base + axis] + context[base + axis];
+            }
         }
         return result;
+    }
+
+    /** Performs one directional GloVe SGD/AdaGrad update and returns weighted loss. */
+    private static double trainDirectional(
+        final int wordTerm,
+        final int contextTerm,
+        final double logX,
+        final double weight,
+        final int dims,
+        final double rate,
+        final double[] word,
+        final double[] context,
+        final double[] wordGrad2,
+        final double[] contextGrad2,
+        final double[] wordBias,
+        final double[] contextBias,
+        final double[] wordBiasGrad2,
+        final double[] contextBiasGrad2
+    ) {
+        final int wordBase = wordTerm * dims;
+        final int contextBase = contextTerm * dims;
+        double prediction = wordBias[wordTerm] + contextBias[contextTerm];
+        for (int axis = 0; axis < dims; axis++) {
+            prediction += word[wordBase + axis] * context[contextBase + axis];
+        }
+
+        final double error = prediction - logX;
+        final double scaledError = weight * error;
+
+        // Use pre-update coordinates for both gradients.
+        for (int axis = 0; axis < dims; axis++) {
+            final int wi = wordBase + axis;
+            final int ci = contextBase + axis;
+            final double wv = word[wi];
+            final double cv = context[ci];
+            final double gw = scaledError * cv;
+            final double gc = scaledError * wv;
+
+            word[wi] -= rate * gw / Math.sqrt(wordGrad2[wi]);
+            context[ci] -= rate * gc / Math.sqrt(contextGrad2[ci]);
+            wordGrad2[wi] += gw * gw;
+            contextGrad2[ci] += gc * gc;
+        }
+
+        final double gb = scaledError;
+        wordBias[wordTerm] -= rate * gb / Math.sqrt(wordBiasGrad2[wordTerm]);
+        contextBias[contextTerm] -= rate * gb / Math.sqrt(contextBiasGrad2[contextTerm]);
+        wordBiasGrad2[wordTerm] += gb * gb;
+        contextBiasGrad2[contextTerm] += gb * gb;
+
+        return weight * error * error;
     }
 
     private static int[] selectedDocFreqs(final SelectedTerm[] terms)
