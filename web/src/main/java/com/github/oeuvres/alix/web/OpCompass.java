@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
+import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -19,16 +20,18 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_META;
 import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
 
 /**
- * Produces a query-centred compass map from the nearest vectors of a
- * pregenerated word2vec-like model.
+ * Produces a query-centred two-dimensional map of the {@link TopTerms} selected
+ * for a query, using a stable local compass defined by nearest model vectors.
  *
- * <p>The first experiment deliberately plots only the model neighbours plus the
- * query pivots. It does not cache query or layout results. The existing immutable
- * {@link VecModel} model cache is reused.</p>
+ * <p>The query pivots and {@link TopTerms} are selected exactly as for
+ * {@link OpVecMap}. The nearest model vectors are used only to define and orient
+ * the two-dimensional compass; they are not emitted. The JSON node list contains
+ * the pivots followed by the selected {@link TopTerms}, so the existing map
+ * client can render the response without a compass-specific node format.</p>
  */
 public class OpCompass extends Op
 {
-    /** Number of nearest model vectors plotted by the first experiment. */
+    /** Number of nearest model vectors used to define the compass. */
     private static final int NEIGHBORS = 300;
 
     /** Vector model used by the current experiment. */
@@ -36,7 +39,7 @@ public class OpCompass extends Op
         "models/piaget-260825-word2vec-coocs50-g2specif2.0-power0.5-stop2-dims500.bin");
 
     /**
-     * Writes the nearest-neighbour compass as compact JSON.
+     * Writes the query TopTerms projected into the nearest-neighbour compass.
      *
      * @param lucene Lucene index
      * @param request HTTP request
@@ -51,11 +54,10 @@ public class OpCompass extends Op
     ) throws IOException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-
         final TopTerms topTerms = OpTerms.topTerms(lucene, pars, meta);
         if (topTerms == null) {
             response.setStatus(400);
-            meta.log("[no pivot selection]");
+            meta.log("[no term selection]");
             AlixServlet.jsonError(request, response);
             return;
         }
@@ -108,12 +110,19 @@ public class OpCompass extends Op
                 json.name("type").value("pivot");
                 json.endObject();
             }
-            for (final CompassVec.Point point : compass.points()) {
+
+            for (final TermEntry term : topTerms) {
+                final CompassVec.Point point = compass.point(term.form());
+                if (point == null) {
+                    continue;
+                }
                 json.beginObject();
                 json.name("form").value(point.form());
                 json.name("x").value(round(point.x(), 4));
                 json.name("y").value(round(point.y(), 4));
                 json.name("quality").value(round(point.quality(), 4));
+                json.name("freq").value(term.freq());
+                json.name("score").value(round(term.score(), 4));
                 json.endObject();
             }
             json.endArray();

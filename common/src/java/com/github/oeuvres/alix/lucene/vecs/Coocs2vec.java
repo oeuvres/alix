@@ -19,7 +19,6 @@ import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.vecs.LuceneData.SelectedTerm;
-import com.github.oeuvres.alix.lucene.vecs.LuceneData.TermDoc;
 import com.github.oeuvres.alix.util.Report;
 
 import smile.tensor.ARPACK;
@@ -30,9 +29,8 @@ import smile.util.IntDoubleHashMap;
 import smile.util.SparseArray;
 
 /**
- * Builds dense term vectors from either positional term cooccurrence or
- * same-document term co-presence, using truncated Smile ARPACK SVD, and writes
- * them in the word2vec binary format.
+ * Builds dense term vectors from positional term cooccurrence using truncated
+ * Smile ARPACK SVD, and writes them in the word2vec binary format.
  *
  * <p>The vocabulary is selected by minimum document frequency, then by
  * decreasing total term frequency. Rows and columns use the same selected
@@ -52,17 +50,19 @@ import smile.util.SparseArray;
  * a reusable {@code int[]} and converted in place from rail term ids to
  * selected matrix-row ids before pair counting.</p>
  *
- * <p><b>Specificity matrices.</b> In positional window mode,
- * {@code --matrix g2_specif --specif S} transforms each observed pair through
+ * <p><b>Distance weighting.</b> A positional pair at distance {@code d}
+ * receives weight {@code ((distance - d + 1) / distance)^distancePower}. Thus
+ * {@code --distancePower 0} reproduces flat counting, while
+ * {@code --distancePower 1} reproduces the expected weight of word2vec's
+ * random dynamic window: distance 1 receives 1 and the maximum distance
+ * receives {@code 1 / distance}.</p>
+ *
+ * <p><b>Specificity matrix.</b> {@code --matrix g2_specif --specif S}
+ * transforms each observed weighted pair through
  * {@link SparseG2Svd#g2Specif(double)} and keeps only positive associations.
- * {@code --matrix g2_specif_signed --specif S} uses the same magnitude but
- * retains a negative sign for observed pairs below independence expectation.
- * At {@code S=0}, both endpoints reduce to {@code sqrt(observed)} because no
- * G² direction exists; {@code S=1} uses signed or positive 2x2 G² association;
- * values above one increasingly discount pairs with a large independence
- * expectation. Specificity modes are intentionally unavailable for document
- * mode because LOGOE document cells are continuous weights rather than
- * contingency counts.</p>
+ * At {@code S=0} it reduces to {@code sqrt(observed)}; {@code S=1} uses
+ * positive 2x2 G² association; values above one increasingly discount pairs
+ * with a large independence expectation.</p>
  *
  * <p><b>Stopword distance gate.</b> Terms flagged {@link TermFlag#STOPWORD} in
  * the lexicon (loaded from an optional {@code <field>.stop} list) are function
@@ -80,9 +80,8 @@ import smile.util.SparseArray;
  *
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
- *     [--sideDir DIR] [--context window|doc] [--distance 30] \
- *     [--docWeight binary|logoe] [--beta 0.5] \
- *     [--matrix g2|g2_specif|g2_specif_signed|raw] [--specif 1.5] \
+ *     [--sideDir DIR] [--distance 30] [--distancePower 0.0] \
+ *     [--matrix g2_specif|raw] [--specif 1.5] \
  *     [--dims 500] [--power 0.5] [--abtt D] [--minDocFreq 3] \
  *     [--maxTerms 10000]
  * }</pre>
@@ -103,12 +102,6 @@ public final class Coocs2vec
         long nonZero,
         long pairs
     ) {}
-
-    /** Source context used to build term vectors. */
-    private enum ContextMode { WINDOW, DOC }
-
-    /** Per-term/per-document positive-edge weighting in document mode. */
-    private enum DocWeight { BINARY, LOGOE }
 
     /** Matrix supplied to SVD. */
     private enum MatrixMode { G2_SPECIF, RAW }
@@ -212,9 +205,8 @@ public final class Coocs2vec
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
-            + " [--sideDir DIR] [--context window|doc] [--distance N]"
-            + " [--docWeight binary|logoe] [--beta B]"
-            + " [--matrix g2|g2_specif|g2_specif_signed|raw] [--specif S]"
+            + " [--sideDir DIR] [--distance N] [--distancePower P]"
+            + " [--matrix g2_specif|raw] [--specif S]"
             + " [--dims N] [--power P] [--abtt D]"
             + " [--minDocFreq N] [--maxTerms N]";
 
@@ -246,13 +238,11 @@ public final class Coocs2vec
         final Path indexDir = Paths.get(args[0]);
         final String field = args[1];
         Path sideDir = indexDir;
-        ContextMode context = ContextMode.WINDOW;
-        DocWeight docWeight = DocWeight.LOGOE;
         MatrixMode matrixMode = MatrixMode.G2_SPECIF;
         int distance = 30;
+        double distancePower = 0d;
         int dims = 500;
         double power = 0.5d;
-        double beta = 0.5d;
         double specificity = 1.5d;
         int minDocFreq = 3;
         int maxTerms = 10_000;
@@ -262,10 +252,8 @@ public final class Coocs2vec
             switch (args[i]) {
                 case "--abtt" -> abtt = Integer.parseInt(args[++i]);
                 case "--sideDir" -> sideDir = Paths.get(args[++i]);
-                case "--context" -> context = ContextMode.valueOf(args[++i].toUpperCase());
                 case "--distance" -> distance = Integer.parseInt(args[++i]);
-                case "--docWeight" -> docWeight = DocWeight.valueOf(args[++i].toUpperCase());
-                case "--beta" -> beta = Double.parseDouble(args[++i]);
+                case "--distancePower" -> distancePower = Double.parseDouble(args[++i]);
                 case "--matrix" -> matrixMode = MatrixMode.valueOf(args[++i].toUpperCase());
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
                 case "--power" -> power = Double.parseDouble(args[++i]);
@@ -283,48 +271,36 @@ public final class Coocs2vec
         if (distance < 1) {
             throw new IllegalArgumentException("distance must be >= 1: " + distance);
         }
+        if (!Double.isFinite(distancePower) || distancePower < 0d) {
+            throw new IllegalArgumentException(
+                "distancePower must be finite and >= 0: " + distancePower);
+        }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be >= 1: " + dims);
         }
         if (maxTerms < 2) {
             throw new IllegalArgumentException("maxTerms must be >= 2: " + maxTerms);
         }
-        if (!Double.isFinite(beta) || beta <= 0d) {
-            throw new IllegalArgumentException("beta must be positive and finite: " + beta);
-        }
         if (!Double.isFinite(specificity) || specificity < 0d) {
             throw new IllegalArgumentException(
                 "specificity must be finite and >= 0: " + specificity);
         }
-        if (context == ContextMode.DOC
-                && (matrixMode == MatrixMode.G2_SPECIF)) {
-            throw new IllegalArgumentException(
-                matrixMode.name().toLowerCase()
-                    + " requires --context window; document weights are not contingency counts");
-        }
 
         String outName = indexDir.getFileName().toString();
-        DateFormat formatter = new SimpleDateFormat("yyMMdd");
+        final DateFormat formatter = new SimpleDateFormat("yyMMdd");
         outName += "-" + formatter.format(new Date());
         outName += "-" + field;
-        if (context == ContextMode.WINDOW) {
-            outName += "-coocs" + distance;
+        outName += "-coocs" + distance;
+        if (distancePower > 0d) {
+            outName += "-dweight" + distancePower;
         }
-        else {
-            outName += "-doc-" + docWeight.name().toLowerCase();
-            if (docWeight == DocWeight.LOGOE) {
-                outName += "-beta" + beta;
-            }
-        }
-        
-        
         if (matrixMode == MatrixMode.G2_SPECIF) {
             outName += "-g2specif" + specificity;
         }
         else {
             outName += "-" + matrixMode.name().toLowerCase();
         }
-        if (power > 0) {
+        if (power > 0d) {
             outName += "-power" + power;
         }
         if (abtt > 0) {
@@ -334,121 +310,66 @@ public final class Coocs2vec
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
             final TermStats stats = TermStats.openOrBuild(
                 reader, sideDir, field, Report.ReportNull.INSTANCE);
-
+            final Path stopPath = sideDir.resolve(field + ".stop");
             final String[] words;
             final SparseG2Svd svd;
             final int termCount;
-            double effectivePower = power;
 
-            if (context == ContextMode.WINDOW) {
-                final Path stopPath = sideDir.resolve(field + ".stop");
-                try (InputStream stop = Files.exists(stopPath)
-                        ? Files.newInputStream(stopPath)
-                        : null) {
-                    final TermLexicon lexicon = new TermLexicon(
-                        reader, field, null, null, stop);
-                    if (!lexicon.bits(TermFlag.STOPWORD).isEmpty()) {
-                        outName += "-stop" + STOP_DIST;
-                        log(
-                            "stopword gate active: pairs with a stopword counted only within +/-%d",
-                            STOP_DIST);
-                    }
-
-                    if (!TermRail.exists(sideDir, field)) {
-                        TermRail.build(
-                            reader, sideDir, field, lexicon,
-                            Report.ReportNull.INSTANCE);
-                    }
-                    final TermRail rail = TermRail.open(sideDir, field);
-                    if (rail.docCount() != reader.maxDoc()) {
-                        throw new IllegalArgumentException(
-                            "rail/index document mismatch: rail=" + rail.docCount()
-                                + ", index=" + reader.maxDoc());
-                    }
-
+            try (InputStream stop = Files.exists(stopPath)
+                    ? Files.newInputStream(stopPath)
+                    : null) {
+                final TermLexicon lexicon = new TermLexicon(
+                    reader, field, null, null, stop);
+                if (!lexicon.bits(TermFlag.STOPWORD).isEmpty()) {
+                    outName += "-stop" + STOP_DIST;
                     log(
-                        "selecting terms (minDocFreq=%d, cap=%d)",
-                        minDocFreq, maxTerms);
-                    final SelectedTerm[] selected = LuceneData.selectTerms(
-                        reader, stats, minDocFreq, maxTerms);
-                    termCount = selected.length;
-                    if (termCount < 2) {
-                        throw new IllegalArgumentException(
-                            "too few terms after selection: " + termCount);
-                    }
-                    log("selected %,d terms", termCount);
-
-                    final long cellCount = (long) termCount * termCount;
-                    log(
-                        "building sparse %,d x %,d positional cooccurrence matrix, distance +/-%d",
-                        termCount, termCount, distance);
-                    final Table table = coocTable(
-                        rail, lexicon, selected, distance);
-                    log(
-                        "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs counted",
-                        table.nonZero(),
-                        100d * table.nonZero() / cellCount,
-                        table.pairs());
-                    words = table.words();
-                    svd = new SparseG2Svd(table.cells(), termCount);
-                    prepare(svd, matrixMode, specificity);
-                    printPreparedCosineTop(svd, words, "instrument", 20);
-                    printPreparedCosineTop(svd, words, "outil", 20);
-                    printPreparedTop(svd, words, "instrument", 20);
-                    printPreparedTop(svd, words, "outil", 20);
+                        "stopword gate active: pairs with a stopword counted only within +/-%d",
+                        STOP_DIST);
                 }
-            }
-            else {
+
+                if (!TermRail.exists(sideDir, field)) {
+                    TermRail.build(
+                        reader, sideDir, field, lexicon,
+                        Report.ReportNull.INSTANCE);
+                }
+                final TermRail rail = TermRail.open(sideDir, field);
+                if (rail.docCount() != reader.maxDoc()) {
+                    throw new IllegalArgumentException(
+                        "rail/index document mismatch: rail=" + rail.docCount()
+                            + ", index=" + reader.maxDoc());
+                }
+
                 log(
-                    "document mode: stopword gate disabled; stopwords remain ordinary vocabulary terms");
-                log(
-                    "collecting term x document frequencies (minDocFreq=%d, cap=%d)",
+                    "selecting terms (minDocFreq=%d, cap=%d)",
                     minDocFreq, maxTerms);
-                final TermDoc source = LuceneData.termDoc(
+                final SelectedTerm[] selected = LuceneData.selectTerms(
                     reader, stats, minDocFreq, maxTerms);
-                termCount = source.termCount();
+                termCount = selected.length;
                 if (termCount < 2) {
                     throw new IllegalArgumentException(
                         "too few terms after selection: " + termCount);
                 }
                 log("selected %,d terms", termCount);
+
+                final long cellCount = (long) termCount * termCount;
                 log(
-                    "document lengths: indexed tokens from TermStats; docs=%,d, tokens=%,d",
-                    stats.fieldDocs(), stats.fieldTokens());
-
-                words = source.words();
-
-                if (matrixMode == MatrixMode.RAW) {
-                    final SparseArray[] termDoc = weightedTermDoc(
-                        source, docWeight, beta);
-                    log(
-                        "raw document mode: decomposing weighted term x document matrix directly; "
-                            + "term directions are identical to its term x term Gram matrix");
-                    svd = new SparseG2Svd(termDoc, source.maxDoc());
-                    svd.raw();
-                    // If C = W W', sigma(C) = sigma(W)^2. Doubling the
-                    // exponent reproduces axis weighting on the implicit Gram C.
-                    effectivePower = power > 0d ? 2d * power : 0d;
-                }
-                else {
-                    if (termCount > 5_000) {
-                        log(
-                            "warning: same-document term x term G2 can become very dense at %,d terms",
-                            termCount);
-                    }
-                    log(
-                        "building weighted same-document term x term co-presence matrix");
-                    final Table table = docCoocTable(
-                        source, docWeight, beta);
-                    final long cellCount = (long) termCount * termCount;
-                    log(
-                        "document matrix built: %,d non-zero cells (%.2f%% dense), %,d unordered term pairs visited",
-                        table.nonZero(),
-                        100d * table.nonZero() / cellCount,
-                        table.pairs());
-                    svd = new SparseG2Svd(table.cells(), termCount);
-                    svd.residual();
-                }
+                    "building sparse %,d x %,d positional cooccurrence matrix, "
+                        + "distance +/-%d, distancePower=%.3f",
+                    termCount, termCount, distance, distancePower);
+                final Table table = coocTable(
+                    rail, lexicon, selected, distance, distancePower);
+                log(
+                    "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs counted",
+                    table.nonZero(),
+                    100d * table.nonZero() / cellCount,
+                    table.pairs());
+                words = table.words();
+                svd = new SparseG2Svd(table.cells(), termCount);
+                prepare(svd, matrixMode, specificity);
+                printPreparedCosineTop(svd, words, "instrument", 20);
+                printPreparedCosineTop(svd, words, "outil", 20);
+                printPreparedTop(svd, words, "instrument", 20);
+                printPreparedTop(svd, words, "outil", 20);
             }
 
             log(
@@ -458,18 +379,9 @@ public final class Coocs2vec
             final int retained = svd.singularValues().length;
             log("decomposition done, retained %,d dimensions", retained);
 
-            if (effectivePower > 0d) {
-                if (context == ContextMode.DOC
-                        && matrixMode == MatrixMode.RAW
-                        && power > 0d) {
-                    log(
-                        "weighting axes by sigma(W)^%.3f, equivalent to sigma(W W')^%.3f",
-                        effectivePower, power);
-                }
-                else {
-                    log("weighting axes by sigma^%.3f", effectivePower);
-                }
-                svd.weightAxes(effectivePower);
+            if (power > 0d) {
+                log("weighting axes by sigma^%.3f", power);
+                svd.weightAxes(power);
             }
 
             final double[][] coords = svd.project(retained).coords();
@@ -492,8 +404,7 @@ public final class Coocs2vec
      * Prints the nearest rows by cosine in the prepared matrix before SVD.
      *
      * <p>Unlike {@link #printPreparedTop(SparseG2Svd, String[], String, int)},
-     * this compares complete row profiles. Signed matrix modes therefore include
-     * negative cells in both dot products and norms.</p>
+     * this compares complete row profiles.</p>
      *
      * @param svd prepared sparse reduction pipeline
      * @param words vocabulary in matrix order
@@ -666,172 +577,57 @@ public final class Coocs2vec
     }
 
     /**
-     * Adds one unordered positional pair to the symmetric count table. A pair of
-     * distinct rows contributes one count to each of the two mirrored cells; a
-     * self-pair contributes two counts to the diagonal, so every pair adds total
-     * mass two regardless of direction.
+     * Adds one weighted unordered positional pair to the symmetric count table.
+     * A pair of distinct rows contributes the same amount to the two mirrored
+     * cells; a self-pair contributes twice the amount to the diagonal.
      *
      * @param counts sparse count table being filled
      * @param row matrix row of the earlier occurrence
      * @param col matrix row of the later occurrence
+     * @param amount positive pair weight
      */
     private static void bump(
         final SparseCounts counts,
         final int row,
-        final int col
+        final int col,
+        final double amount
     ) {
         if (row == col) {
-            counts.add(row, row, 2d);
+            counts.add(row, row, 2d * amount);
         }
         else {
-            counts.add(row, col, 1d);
-            counts.add(col, row, 1d);
+            counts.add(row, col, amount);
+            counts.add(col, row, amount);
         }
     }
 
     /**
-     * Builds the weighted positive term x document matrix.
+     * Builds deterministic dynamic-window weights for all positional distances.
+     *
+     * <p>The linear base weight is {@code (W - d + 1) / W}. The exponent allows
+     * the experiment to range from flat counts ({@code power=0}) through the
+     * word2vec expected weight ({@code power=1}) to steeper decay. Index zero is
+     * unused.</p>
+     *
+     * @param maxDistance maximum configured positional distance
+     * @param power non-negative decay exponent
+     * @return weights indexed by positional distance
      */
-    private static SparseArray[] weightedTermDoc(
-        final TermDoc source,
-        final DocWeight weightMode,
-        final double beta
+    private static double[] distanceWeights(
+        final int maxDistance,
+        final double power
     ) {
-        final int termCount = source.termCount();
-        final int docCount = source.maxDoc();
-        final int[][] tfByTerm = source.freqs();
-        final SelectedTerm[] terms = source.terms();
-        final int[] docTokens = source.stats().docTokens();
-        final double[] docScale = documentScale(docTokens, beta);
-        double scaleSum = 0d;
-        for (final double value : docScale) {
-            scaleSum += value;
-        }
-        if (scaleSum <= 0d) {
-            throw new IllegalStateException("no non-empty documents");
-        }
-
-        final SparseArray[] rows = new SparseArray[termCount];
-        long nonZero = 0L;
-        for (int row = 0; row < termCount; row++) {
-            final SparseArray sparse = new SparseArray(terms[row].docFreq());
-            for (int docId = 0; docId < docCount; docId++) {
-                final int tf = tfByTerm[row][docId];
-                if (tf <= 0) {
-                    continue;
-                }
-                sparse.append(
-                    docId,
-                    documentWeight(
-                        weightMode,
-                        tf,
-                        terms[row].totalFreq(),
-                        docScale[docId],
-                        scaleSum));
-                nonZero++;
+        final double[] weights = new double[maxDistance + 1];
+        for (int distance = 1; distance <= maxDistance; distance++) {
+            if (power == 0d) {
+                weights[distance] = 1d;
             }
-            rows[row] = sparse;
-        }
-        log("weighted term x document matrix: %,d positive cells", nonZero);
-        return rows;
-    }
-
-    /**
-     * Builds a weighted symmetric term x term same-document co-presence table.
-     * Each document contributes the outer product of its positive term weights.
-     */
-    private static Table docCoocTable(
-        final TermDoc source,
-        final DocWeight weightMode,
-        final double beta
-    ) {
-        final int termCount = source.termCount();
-        final int docCount = source.maxDoc();
-        final int[][] tfByTerm = source.freqs();
-        final SelectedTerm[] terms = source.terms();
-        final int[] docTokens = source.stats().docTokens();
-        final SparseCounts counts = new SparseCounts(termCount);
-        final double[] docScale = documentScale(docTokens, beta);
-        double scaleSum = 0d;
-        for (final double value : docScale) {
-            scaleSum += value;
-        }
-
-        final int[] touched = new int[termCount];
-        final double[] weights = new double[termCount];
-        long pairs = 0L;
-        for (int docId = 0; docId < docCount; docId++) {
-            if (docTokens[docId] <= 0) {
-                continue;
-            }
-            int size = 0;
-            for (int row = 0; row < termCount; row++) {
-                final int tf = tfByTerm[row][docId];
-                if (tf <= 0) {
-                    continue;
-                }
-                touched[size] = row;
-                weights[size] = documentWeight(
-                    weightMode,
-                    tf,
-                    terms[row].totalFreq(),
-                    docScale[docId],
-                    scaleSum);
-                size++;
-            }
-
-            for (int i = 0; i < size; i++) {
-                final int row = touched[i];
-                final double rowWeight = weights[i];
-                counts.add(row, row, rowWeight * rowWeight);
-                pairs++;
-                for (int j = i + 1; j < size; j++) {
-                    final int col = touched[j];
-                    final double amount = rowWeight * weights[j];
-                    counts.add(row, col, amount);
-                    counts.add(col, row, amount);
-                    pairs++;
-                }
-            }
-
-            if (docId > 0 && docId % 100 == 0) {
-                log(
-                    "document co-presence: %,d / %,d docs, %,d non-zero cells",
-                    docId, docCount, counts.nonZero());
+            else {
+                final double linear = (maxDistance - distance + 1d) / maxDistance;
+                weights[distance] = Math.pow(linear, power);
             }
         }
-        return new Table(source.words(), counts.toSparseRows(), counts.nonZero(), pairs);
-    }
-
-    /** Returns L_d^beta for non-empty documents and zero for empty documents. */
-    private static double[] documentScale(final int[] docLengths, final double beta)
-    {
-        final double[] scale = new double[docLengths.length];
-        for (int docId = 0; docId < docLengths.length; docId++) {
-            final int length = docLengths[docId];
-            scale[docId] = length > 0 ? Math.pow(length, beta) : 0d;
-        }
-        return scale;
-    }
-
-    /**
-     * Positive evidence supplied by one observed term occurrence in one document.
-     */
-    private static double documentWeight(
-        final DocWeight mode,
-        final int tf,
-        final long cf,
-        final double docScale,
-        final double scaleSum
-    ) {
-        if (mode == DocWeight.BINARY) {
-            return 1d;
-        }
-        final double expected = cf * docScale / scaleSum;
-        if (!(expected > 0d)) {
-            throw new IllegalStateException("non-positive expected frequency");
-        }
-        return Math.log1p(tf / expected);
+        return weights;
     }
 
     /**
@@ -847,21 +643,24 @@ public final class Coocs2vec
      * @param lexicon term-id lexicon corresponding to the rail
      * @param selected selected vocabulary
      * @param distance maximum positional distance, inclusive
+     * @param distancePower exponent applied to the linear dynamic-window weight
      * @return selected forms and their sparse raw cooccurrence table
      */
     private static Table coocTable(
         final TermRail rail,
         final TermLexicon lexicon,
         final SelectedTerm[] selected,
-        final int distance
+        final int distance,
+        final double distancePower
     ) {
         final BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
-        final boolean hasStopwords = stopwords != null && !stopwords.isEmpty() && STOP_DIST>0;
+        final boolean hasStopwords = stopwords != null && !stopwords.isEmpty() && STOP_DIST > 0;
 
         final int termCount = selected.length;
         final String[] words = new String[termCount];
         final boolean[] rowIsStop = new boolean[termCount];
         final SparseCounts counts = new SparseCounts(termCount);
+        final double[] distanceWeights = distanceWeights(distance, distancePower);
 
         final int[] rowByTermId = new int[lexicon.vocabSize()];
         Arrays.fill(rowByTermId, -1);
@@ -911,7 +710,9 @@ public final class Coocs2vec
                     if (col < 0) {
                         continue;
                     }
-                    bump(counts, row, col);
+                    bump(
+                        counts, row, col,
+                        distanceWeights[next - position]);
                     pairs++;
                 }
 
@@ -923,7 +724,9 @@ public final class Coocs2vec
                         if (col < 0 || rowIsStop[col]) {
                             continue;
                         }
-                        bump(counts, row, col);
+                        bump(
+                            counts, row, col,
+                            distanceWeights[next - position]);
                         pairs++;
                     }
                 }
