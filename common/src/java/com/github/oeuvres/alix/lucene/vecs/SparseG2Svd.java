@@ -14,6 +14,7 @@ import java.util.Objects;
 import smile.linalg.Transpose;
 import smile.tensor.ARPACK;
 import smile.tensor.DenseMatrix;
+import smile.tensor.EVD;
 import smile.tensor.Matrix;
 import smile.tensor.SVD;
 import smile.tensor.ScalarType;
@@ -25,12 +26,10 @@ import smile.util.SparseArray;
  * ARPACK.
  *
  * <p>The input table contains ordinary positive observations only; there are no
- * structural cells. It can be prepared in four ways: as the raw sparse
+ * structural cells. It can be prepared in three ways: as the raw sparse
  * observations ({@link #raw()}), as exact signed G² deviance residuals
- * ({@link #residual()}), as a sparse positive-association G² matrix with a
- * continuous specificity control ({@link #g2Specif(double)}), or as the same
- * sparse specificity matrix with the sign of observed minus expected retained
- * ({@link #g2SpecifSigned(double)}).</p>
+ * ({@link #residual()}), or as a sparse positive-association G² matrix with a
+ * continuous specificity control ({@link #g2Specif(double)}).</p>
  *
  * <p>The independence expectation is available in closed form:</p>
  *
@@ -44,20 +43,21 @@ import smile.util.SparseArray;
  * corrections to this background. The dense residual matrix is never
  * materialised.</p>
  *
- * <p>{@link ARPACK#svd(Matrix, int)} then computes only the requested leading
- * singular triplets through matrix-vector multiplication. The raw and both
+ * <p>{@link ARPACK#svd(Matrix, int)} computes the requested leading singular
+ * triplets through matrix-vector multiplication. For a square symmetric prepared
+ * matrix, {@link #decomposePositiveEigen(int)} instead uses
+ * {@link ARPACK#syev(Matrix, ARPACK.SymmOption, int)} with
+ * {@link ARPACK.SymmOption#LA} and retains only positive eigenvalues. The raw and
  * specificity matrices are genuinely sparse. The exact signed residual matrix
  * keeps its dense zero-cell contribution as a rank-one background plus sparse
- * corrections. By contrast, {@link #g2SpecifSigned(double)} signs only observed
- * cells; unobserved cells remain zero so that specificity preparation stays
- * O(nnz) and ARPACK multiplication stays sparse.</p>
+ * corrections.</p>
  *
  * <p>This class is mutable and not thread-safe.</p>
  */
 public final class SparseG2Svd
 {
     /** Matrix transformation currently prepared for decomposition. */
-    private enum Preparation { NONE, G2, G2_SPECIF, G2_SPECIF_SIGNED, RAW }
+    private enum Preparation { NONE, G2, G2_SPECIF, RAW }
 
     /** Current matrix transformation, used only by diagnostics. */
     private Preparation preparation = Preparation.NONE;
@@ -213,6 +213,68 @@ public final class SparseG2Svd
     }
 
     /**
+     * Computes the requested leading positive eigenvectors of a square symmetric
+     * prepared matrix with Smile ARPACK.
+     *
+     * <p>Eigenpairs are requested by largest algebraic eigenvalue rather than by
+     * magnitude. Non-positive or numerically negligible returned eigenvalues are
+     * discarded. Consequently the retained rank may be smaller than
+     * {@code dims}. The embedding contains the retained eigenvectors themselves;
+     * eigenvalues are not multiplied into the coordinates.</p>
+     *
+     * <p>This method assumes that the prepared operator is symmetric. The
+     * positional cooccurrence tables used by {@code Coocs2vec} satisfy this
+     * condition, and {@link #g2Specif(double)} preserves that symmetry.</p>
+     *
+     * @param dims maximum number of leading positive eigenvectors to compute
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code dims < 1}
+     * @throws IllegalStateException before matrix preparation, if the prepared
+     *         matrix is not square, or if ARPACK cannot operate on its dimensions
+     */
+    public SparseG2Svd decomposePositiveEigen(final int dims)
+    {
+        if (prepared == null) {
+            throw new IllegalStateException(
+                "prepare a matrix before decomposePositiveEigen()");
+        }
+        if (dims < 1) {
+            throw new IllegalArgumentException(
+                "dims must be at least 1, got " + dims);
+        }
+        if (rowCount != colCount) {
+            throw new IllegalStateException(
+                "positive eigendecomposition requires a square matrix: "
+                    + rowCount + " x " + colCount);
+        }
+
+        if (totalInertia <= 0d) {
+            singularValues = new double[0];
+            embedding = new double[rowCount][0];
+            rank = 0;
+            axesWeighted = false;
+            return this;
+        }
+
+        if (rowCount < 2) {
+            throw new IllegalStateException(
+                "ARPACK eigendecomposition requires matrix dimension to exceed 1");
+        }
+
+        SmileUtil.ensureArpackLoaded();
+        try {
+            absorbPositiveEigen(ARPACK.syev(
+                prepared,
+                ARPACK.SymmOption.LA,
+                Math.min(dims, rowCount - 1)));
+        }
+        catch (final ExceptionInInitializerError | NoClassDefFoundError | UnsatisfiedLinkError error) {
+            throw SmileUtil.arpackInitializationFailure(error);
+        }
+        return this;
+    }
+
+    /**
      * Returns the current retained row embedding.
      *
      * @return live embedding, or {@code null} before decomposition
@@ -255,46 +317,10 @@ public final class SparseG2Svd
     public SparseG2Svd g2Specif(final double specificity)
     {
         checkSpecificity(specificity);
-        final SpecifPrepared result = g2SpecifMatrix(specificity, false);
+        final SpecifPrepared result = g2SpecifMatrix(specificity);
         prepared = result.matrix();
         totalInertia = result.inertia();
         preparation = Preparation.G2_SPECIF;
-        preparedSpecificity = specificity;
-        invalidateDecomposition();
-        return this;
-    }
-
-    /**
-     * Prepares the signed counterpart of {@link #g2Specif(double)}.
-     *
-     * <p>The magnitude is exactly the same as {@code g2Specif(s)}. For every
-     * observed cell and every {@code specificity > 0}, the sign is the sign of
-     * {@code observed - expected}. Thus overrepresented observed pairs are
-     * positive and underrepresented observed pairs are negative. At
-     * {@code specificity == 0}, no G² direction exists and the endpoint remains
-     * {@code sqrt(observed)}, identical to {@link #g2Specif(double)}.</p>
-     *
-     * <p>Only observed cells are represented. In particular, an unobserved cell
-     * remains zero rather than receiving the negative deviance residual used by
-     * {@link #residual()}. This is intentional: with the additive
-     * {@value #SPECIF_REGULARIZER} expectation regularizer, the zero-cell
-     * specificity background no longer factorises into rank one, so representing
-     * it exactly would make matrix-vector multiplication dense. This method is
-     * therefore the efficient signed test of the same G² specificity weighting,
-     * not an exact specificity-scaled version of {@link #residual()}.</p>
-     *
-     * @param specificity non-negative finite specificity
-     * @return this pipeline
-     * @throws IllegalArgumentException if {@code specificity} is negative or
-     *         non-finite
-     */
-    public SparseG2Svd g2SpecifSigned(final double specificity)
-    {
-        checkSpecificity(specificity);
-        final SpecifPrepared result = g2SpecifMatrix(specificity, true);
-        prepared = result.matrix();
-        totalInertia = result.inertia();
-        preparation = Preparation.G2_SPECIF_SIGNED;
         preparedSpecificity = specificity;
         invalidateDecomposition();
         return this;
@@ -306,7 +332,7 @@ public final class SparseG2Svd
      * <p>This is intentionally not used by ARPACK. It is an O(nnz + columns)
      * inspection helper for comparing matrix transformations before SVD. For
      * the exact signed G² residual mode, unobserved cells receive their true
-     * negative residual. For the sparse specificity modes, unobserved cells
+     * negative residual. For the sparse specificity mode, unobserved cells
      * remain zero, matching the matrix actually decomposed.</p>
      *
      * @param row row rank
@@ -339,10 +365,7 @@ public final class SparseG2Svd
                 case G2 -> values[col] = g2Residual(o, expected(row, col));
                 case G2_SPECIF -> values[col] = g2SpecifValue(
                     o, rowTotal, colMargins[col], totalObserved,
-                    preparedSpecificity, false);
-                case G2_SPECIF_SIGNED -> values[col] = g2SpecifValue(
-                    o, rowTotal, colMargins[col], totalObserved,
-                    preparedSpecificity, true);
+                    preparedSpecificity);
                 case NONE -> throw new AssertionError();
             }
         }
@@ -354,10 +377,10 @@ public final class SparseG2Svd
      * prepared matrix, before SVD.
      *
      * <p>The calculation uses the exact prepared operator. Consequently negative
-     * cells participate in both dot products and row norms for {@link #residual()}
-     * and {@link #g2SpecifSigned(double)}, while {@link #g2Specif(double)} contains
-     * only its retained positive cells. The implementation is O(nnz + rows +
-     * columns) and does not materialise the complete matrix.</p>
+     * cells participate in both dot products and row norms for {@link #residual()},
+     * while {@link #g2Specif(double)} contains only its retained positive cells.
+     * The implementation is O(nnz + rows + columns) and does not materialise the
+     * complete matrix.</p>
      *
      * @param queryRow row rank used as the cosine query
      * @return cosine with every row; the query row itself is normally 1
@@ -457,9 +480,13 @@ public final class SparseG2Svd
     }
 
     /**
-     * Returns singular values from the latest truncated decomposition.
+     * Returns spectral values from the latest truncated decomposition.
      *
-     * @return live singular-value vector, or {@code null} before decomposition
+     * <p>For {@link #decompose(int)} these are singular values. For
+     * {@link #decomposePositiveEigen(int)} they are the retained positive
+     * eigenvalues.</p>
+     *
+     * @return live spectral-value vector, or {@code null} before decomposition
      */
     public double[] singularValues()
     {
@@ -496,6 +523,72 @@ public final class SparseG2Svd
     }
 
     /**
+     * Weights every retained embedding axis by the natural logarithm of one plus
+     * its singular value.
+     *
+     * <p>The factor {@code log1p(sigma)} preserves the ordering of singular axes
+     * while compressing ratios between dominant and weaker components much more
+     * strongly than a positive power of {@code sigma}.</p>
+     *
+     * @return this pipeline
+     * @throws IllegalStateException before decomposition or after previous axis
+     *         weighting
+     */
+    public SparseG2Svd weightAxesLog()
+    {
+        requireEmbedding();
+        if (axesWeighted) {
+            throw new IllegalStateException("axes are already weighted");
+        }
+
+        for (int axis = 0; axis < rank; axis++) {
+            final double factor = Math.log1p(singularValues[axis]);
+            for (int row = 0; row < embedding.length; row++) {
+                embedding[row][axis] *= factor;
+            }
+        }
+        axesWeighted = true;
+        return this;
+    }
+
+    /**
+     * Weights every retained embedding axis by a saturating function of its
+     * singular value.
+     *
+     * <p>The factor is {@code sigma / (sigma + lambda)}. Weak axes are therefore
+     * attenuated approximately in proportion to their singular value, while
+     * strong axes asymptotically approach weight one instead of growing without
+     * bound.</p>
+     *
+     * @param lambda positive finite saturation scale, in singular-value units
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code lambda} is invalid
+     * @throws IllegalStateException before decomposition or after previous axis
+     *         weighting
+     */
+    public SparseG2Svd weightAxesSaturating(final double lambda)
+    {
+        requireEmbedding();
+        if (!Double.isFinite(lambda) || lambda <= 0d) {
+            throw new IllegalArgumentException(
+                "lambda must be positive and finite, got " + lambda);
+        }
+        if (axesWeighted) {
+            throw new IllegalStateException("axes are already weighted");
+        }
+
+        for (int axis = 0; axis < rank; axis++) {
+            final double sigma = singularValues[axis];
+            final double factor = sigma / (sigma + lambda);
+            for (int row = 0; row < embedding.length; row++) {
+                embedding[row][axis] *= factor;
+            }
+        }
+        axesWeighted = true;
+        return this;
+    }
+
+    /**
      * Row embedding and diagnostics returned by projection.
      *
      * @param coords row coordinates by axis
@@ -512,6 +605,48 @@ public final class SparseG2Svd
      * @param inertia sum of squared prepared matrix values
      */
     private record SpecifPrepared(Matrix matrix, double inertia) {}
+
+    /**
+     * Adopts the positive part of a symmetric Smile eigendecomposition as the
+     * current embedding.
+     *
+     * @param decomposition symmetric eigenvalue decomposition sorted by
+     *        descending algebraic eigenvalue
+     */
+    private void absorbPositiveEigen(final EVD decomposition)
+    {
+        final Vector values = decomposition.wr();
+        final DenseMatrix vectors = decomposition.Vr();
+        if (vectors == null) {
+            throw new IllegalStateException(
+                "Smile eigendecomposition did not return eigenvectors");
+        }
+        if (values.size() == 0 || !(values.get(0) > 0d)) {
+            singularValues = new double[0];
+            embedding = new double[rowCount][0];
+            rank = 0;
+            axesWeighted = false;
+            return;
+        }
+
+        final double tolerance = numericalRankTolerance(values.get(0));
+        int retained = 0;
+        while (retained < values.size() && values.get(retained) > tolerance) {
+            retained++;
+        }
+
+        singularValues = new double[retained];
+        embedding = new double[rowCount][retained];
+        for (int axis = 0; axis < retained; axis++) {
+            singularValues[axis] = values.get(axis);
+            for (int row = 0; row < rowCount; row++) {
+                embedding[row][axis] = vectors.get(row, axis);
+            }
+        }
+        rank = retained;
+        fixAxisSigns(embedding);
+        axesWeighted = false;
+    }
 
     /**
      * Adopts a Smile truncated decomposition as the current embedding.
@@ -753,8 +888,7 @@ public final class SparseG2Svd
         final double rowTotal,
         final double colTotal,
         final double total,
-        final double specificity,
-        final boolean signed
+        final double specificity
     ) {
         if (!(observed > 0d)) {
             return 0d;
@@ -764,7 +898,7 @@ public final class SparseG2Svd
         }
 
         final double expected = rowTotal * colTotal / total;
-        if (!signed && !(observed > expected)) {
+        if (!(observed > expected)) {
             return 0d;
         }
 
@@ -789,22 +923,17 @@ public final class SparseG2Svd
                     * Math.log(expected + SPECIF_REGULARIZER));
         }
 
-        return signed
-            ? Math.copySign(magnitude, observed - expected)
-            : magnitude;
+        return magnitude;
     }
 
     /**
      * Builds one sparse G² specificity matrix in one pass.
      *
      * @param specificity non-negative finite specificity
-     * @param signed whether underrepresented observed cells retain a negative sign
      * @return sparse matrix and its squared Frobenius norm
      */
-    private SpecifPrepared g2SpecifMatrix(
-        final double specificity,
-        final boolean signed
-    ) {
+    private SpecifPrepared g2SpecifMatrix(final double specificity)
+    {
         final int[] rows = new int[observedValues.length];
         final int[] cols = new int[observedValues.length];
         final double[] values = new double[observedValues.length];
@@ -821,8 +950,7 @@ public final class SparseG2Svd
                 rowMargins[row],
                 colMargins[col],
                 totalObserved,
-                specificity,
-                signed);
+                specificity);
 
             if (value == 0d || !Double.isFinite(value)) {
                 continue;

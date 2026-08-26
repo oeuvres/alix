@@ -188,7 +188,7 @@ public final class Coocs2vec
      * pair is kept only when neither endpoint is a stopword. Content–content
      * pairs are unaffected and count up to the full {@code window}.
      */
-    private static final int STOP_DIST = 2;
+    private static final int STOP_DIST = -1;
 
     /** Command-line usage. */
     private static final String USAGE =
@@ -226,10 +226,12 @@ public final class Coocs2vec
         Path sideDir = indexDir;
         int window = 30;
         int dims = 500;
-        double weightAxes = 0.5d;
+        double weightAxes = 0.5;
+        double saturating = 0.0;
         double specif = 1.5d;
         int maxTerms = 10_000;
         int minDocFreq = 3;
+        String decompose = "evd";
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
@@ -254,10 +256,12 @@ public final class Coocs2vec
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be >= 1: " + dims);
         }
+        /*
         if (!Double.isFinite(weightAxes) || weightAxes < 0d) {
             throw new IllegalArgumentException(
                 "weightAxes must be finite and >= 0: " + weightAxes);
         }
+        */
         if (!Double.isFinite(specif) || specif < 0d) {
             throw new IllegalArgumentException(
                 "specif must be finite and >= 0: " + specif);
@@ -272,7 +276,10 @@ public final class Coocs2vec
         outName += "-" + field;
         outName += "-coocs" + window;
         outName += "-g2specif" + specif;
-        if (weightAxes > 0d) {
+        if ("evd".equalsIgnoreCase(decompose)) {
+            outName += "-evd";
+        }
+        else if (weightAxes > 0d) {
             outName += "-weightAxes" + weightAxes;
         }
 
@@ -289,7 +296,8 @@ public final class Coocs2vec
                     : null) {
                 final TermLexicon lexicon = new TermLexicon(
                     reader, field, null, null, stop);
-                if (!lexicon.bits(TermFlag.STOPWORD).isEmpty()) {
+                final boolean stopwords = (STOP_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
+                if (stopwords) {
                     outName += "-stop" + STOP_DIST;
                     log(
                         "stopword gate active: pairs with a stopword counted only within +/-%d",
@@ -334,21 +342,23 @@ public final class Coocs2vec
                 svd = new SparseG2Svd(table.cells(), termCount);
                 log("preparing sparse positive G2 specificity matrix (specif=%.3f)", specif);
                 svd.g2Specif(specif);
-                printPreparedCosineTop(svd, words, "instrument", 20);
-                printPreparedCosineTop(svd, words, "outil", 20);
-                printPreparedTop(svd, words, "instrument", 20);
-                printPreparedTop(svd, words, "outil", 20);
             }
-
-            log("decomposing G2 specificity operator to top %,d dims (Smile ARPACK)", dims);
-            svd.decompose(dims);
-            final int retained = svd.singularValues().length;
+            final int retained;
+            if ("evd".equalsIgnoreCase(decompose)) {
+                log("EVD decomposing to top %,d dims (Smile ARPACK)", dims);
+                svd.decomposePositiveEigen(dims);
+            }
+            else {
+                log("SVD decomposing to top %,d dims (Smile ARPACK)", dims);
+                svd.decompose(dims);
+                if(weightAxes > 0) {
+                    log("weighting axes by sigma^%.3f", weightAxes);
+                    svd.weightAxes(weightAxes);
+                }
+            }
+            retained = svd.singularValues().length;
             log("decomposition done, retained %,d dimensions", retained);
 
-            if (weightAxes > 0d) {
-                log("weighting axes by sigma^%.3f", weightAxes);
-                svd.weightAxes(weightAxes);
-            }
 
             final double[][] coords = svd.project(retained).coords();
             final Path out = Paths.get(outName + "-dims" + retained + ".bin");
