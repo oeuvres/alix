@@ -29,9 +29,9 @@ import org.apache.lucene.util.BytesRef;
 /**
  * Exports a Lucene field as the three text inputs expected by BIU-NLP/word2vecf.
  *
- * <p>The experiment deliberately uses binary document context: if a selected
- * term occurs at least once in a live document, exactly one positive pair is
- * emitted, irrespective of its term frequency in that document.</p>
+ * <p>The training stream preserves term frequency: if a selected term occurs
+ * {@code tf} times in a live document, its {@code (term, document)} pair is
+ * emitted {@code tf} times. The complete occurrence stream is then shuffled.</p>
  *
  * <p>Outputs:</p>
  * <ul>
@@ -55,7 +55,7 @@ public final class Word2vecfData
     private static final String CONTEXT_PREFIX = "DOC_";
     private static final String DUMMY_CONTEXT = "__DUMMY__";
 
-    private record Word(String text, int docFreq) {}
+    private record Word(String text, long totalFreq) {}
 
     /** Primitive growable long array, avoiding one object per positive pair. */
     private static final class LongList
@@ -173,9 +173,13 @@ public final class Word2vecfData
 
         final BitSet liveDocs = liveDocs(reader);
         final int maxDoc = reader.maxDoc();
-        final int[] contextCounts = new int[maxDoc];
+        final long[] contextCounts = new long[maxDoc];
         final List<Word> words = new ArrayList<>();
-        final LongList pairs = new LongList(1 << 20);
+        final long sumTotalTermFreq = terms.getSumTotalTermFreq();
+        final int expectedPairs = (sumTotalTermFreq > 0 && sumTotalTermFreq < Integer.MAX_VALUE - 8)
+            ? (int) sumTotalTermFreq
+            : (1 << 20);
+        final LongList pairs = new LongList(expectedPairs);
 
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
@@ -185,13 +189,14 @@ public final class Word2vecfData
 
         while ((termBytes = tenum.next()) != null) {
             scannedTerms++;
-            final String word = termBytes.utf8ToString();
-            validateWord2vecfToken(word, "Lucene term");
+            final String word = word2vecfToken(termBytes.utf8ToString(), "Lucene term");
 
             // docFreq may include deleted documents, so collect and count live
             // postings explicitly before applying minDocFreq.
             int[] docs = new int[Math.max(1, tenum.docFreq())];
+            int[] freqs = new int[Math.max(1, tenum.docFreq())];
             int liveDf = 0;
+            long liveTf = 0;
             postings = tenum.postings(postings, PostingsEnum.FREQS);
             for (int docId = postings.nextDoc();
                     docId != DocIdSetIterator.NO_MORE_DOCS;
@@ -200,11 +205,19 @@ public final class Word2vecfData
                     continue;
                 }
                 if (liveDf == docs.length) {
-                    final int[] grown = new int[docs.length + Math.max(16, docs.length >>> 1)];
-                    System.arraycopy(docs, 0, grown, 0, docs.length);
-                    docs = grown;
+                    final int next = docs.length + Math.max(16, docs.length >>> 1);
+                    final int[] grownDocs = new int[next];
+                    final int[] grownFreqs = new int[next];
+                    System.arraycopy(docs, 0, grownDocs, 0, docs.length);
+                    System.arraycopy(freqs, 0, grownFreqs, 0, freqs.length);
+                    docs = grownDocs;
+                    freqs = grownFreqs;
                 }
-                docs[liveDf++] = docId;
+                final int freq = postings.freq();
+                docs[liveDf] = docId;
+                freqs[liveDf] = freq;
+                liveDf++;
+                liveTf += freq;
             }
 
             if (liveDf < minDocFreq) {
@@ -213,11 +226,14 @@ public final class Word2vecfData
             }
 
             final int wordId = words.size();
-            words.add(new Word(word, liveDf));
+            words.add(new Word(word, liveTf));
             for (int i = 0; i < liveDf; i++) {
                 final int docId = docs[i];
-                pairs.add(pack(wordId, docId));
-                contextCounts[docId]++;
+                final int freq = freqs[i];
+                for (int k = 0; k < freq; k++) {
+                    pairs.add(pack(wordId, docId));
+                }
+                contextCounts[docId] += freq;
             }
         }
 
@@ -235,20 +251,20 @@ public final class Word2vecfData
         writeWordVocab(wordVocabPath, words);
         final int contextCount = writeContextVocab(contextVocabPath, contextCounts);
 
-        long degreeSum = 0;
+        long tokenSum = 0;
         int liveFieldDocs = 0;
-        int maxDegree = 0;
+        long maxContextTokens = 0;
         for (int docId = 0; docId < contextCounts.length; docId++) {
-            final int count = contextCounts[docId];
+            final long count = contextCounts[docId];
             if (count <= 0) continue;
             liveFieldDocs++;
-            degreeSum += count;
-            maxDegree = Math.max(maxDegree, count);
+            tokenSum += count;
+            maxContextTokens = Math.max(maxContextTokens, count);
         }
 
-        if (degreeSum != pairs.size()) {
+        if (tokenSum != pairs.size()) {
             throw new IllegalStateException(
-                "Internal count mismatch: context degree sum=" + degreeSum
+                "Internal count mismatch: context token sum=" + tokenSum
                     + " pairs=" + pairs.size());
         }
 
@@ -258,9 +274,9 @@ public final class Word2vecfData
         System.out.printf("terms scanned      %,d%n", scannedTerms);
         System.out.printf("terms selected     %,d%n", words.size());
         System.out.printf("terms below minDF  %,d%n", skippedShortDf);
-        System.out.printf("positive pairs     %,d%n", pairs.size());
+        System.out.printf("training pairs     %,d%n", pairs.size());
         System.out.printf("contexts           %,d (+ dummy)%n", contextCount);
-        System.out.printf("max context degree %,d%n", maxDegree);
+        System.out.printf("max context tokens %,d%n", maxContextTokens);
         System.out.printf("shuffle seed       %d%n", seed);
         System.out.println("pairs              " + pairsPath);
         System.out.println("word vocabulary    " + wordVocabPath);
@@ -292,20 +308,20 @@ public final class Word2vecfData
         // word2vecf re-sorts the loaded vocabulary by count internally. Sorting
         // here merely makes the file easy to inspect.
         final List<Word> sorted = new ArrayList<>(words);
-        sorted.sort(Comparator.comparingInt(Word::docFreq).reversed()
+        sorted.sort(Comparator.comparingLong(Word::totalFreq).reversed()
             .thenComparing(Word::text));
 
         try (BufferedWriter out = writer(path)) {
             for (Word word : sorted) {
                 out.write(word.text());
                 out.write(' ');
-                out.write(Integer.toString(word.docFreq()));
+                out.write(Long.toString(word.totalFreq()));
                 out.newLine();
             }
         }
     }
 
-    private static int writeContextVocab(final Path path, final int[] contextCounts)
+    private static int writeContextVocab(final Path path, final long[] contextCounts)
         throws IOException
     {
         final List<Integer> docs = new ArrayList<>();
@@ -315,7 +331,7 @@ public final class Word2vecfData
             }
         }
         docs.sort(Comparator
-            .<Integer>comparingInt(docId -> contextCounts[docId]).reversed()
+            .<Integer>comparingLong(docId -> contextCounts[docId]).reversed()
             .thenComparingInt(Integer::intValue));
 
         try (BufferedWriter out = writer(path)) {
@@ -330,7 +346,7 @@ public final class Word2vecfData
                 out.write(CONTEXT_PREFIX);
                 out.write(Integer.toString(docId));
                 out.write(' ');
-                out.write(Integer.toString(contextCounts[docId]));
+                out.write(Long.toString(contextCounts[docId]));
                 out.newLine();
             }
         }
@@ -390,14 +406,25 @@ public final class Word2vecfData
         }
     }
 
-    private static void validateWord2vecfToken(String token, final String kind)
+    private static String word2vecfToken(final String token, final String kind)
     {
-        token = token.replace(' ', '_');
-        final int utf8Length = token.getBytes(StandardCharsets.UTF_8).length;
+        if (token.isEmpty()) {
+            throw new IllegalArgumentException(kind + " is empty");
+        }
+        final StringBuilder buf = new StringBuilder(token.length());
+        for (int i = 0; i < token.length();) {
+            final int cp = token.codePointAt(i);
+            buf.appendCodePoint(Character.isWhitespace(cp) ? '_' : cp);
+            i += Character.charCount(cp);
+        }
+        final String normalized = buf.toString();
+        final int utf8Length = normalized.getBytes(StandardCharsets.UTF_8).length;
         if (utf8Length > WORD2VECF_MAX_TOKEN_BYTES) {
             throw new IllegalArgumentException(
-                kind + " exceeds word2vecf's 99-byte token limit (" + utf8Length + "): " + token);
+                kind + " exceeds word2vecf's 99-byte token limit after whitespace replacement ("
+                    + utf8Length + "): " + normalized);
         }
+        return normalized;
     }
 
     private static String safeFilePart(final String value)
@@ -433,8 +460,8 @@ public final class Word2vecfData
         System.out.println("  --seed N           deterministic pair-shuffle seed (default: 13)");
         System.out.println();
         System.out.println("Outputs:");
-        System.out.println("  <prefix>.pairs     shuffled binary term-document positive pairs");
-        System.out.println("  <prefix>.wv        word vocabulary: term liveDocFreq");
-        System.out.println("  <prefix>.cv        context vocabulary: document selectedTermDegree");
+        System.out.println("  <prefix>.pairs     shuffled term-document pairs, repeated by term frequency");
+        System.out.println("  <prefix>.wv        word vocabulary: term totalFrequency");
+        System.out.println("  <prefix>.cv        context vocabulary: document selectedTokenCount");
     }
 }

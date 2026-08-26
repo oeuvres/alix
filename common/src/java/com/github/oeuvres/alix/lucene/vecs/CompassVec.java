@@ -63,11 +63,20 @@ public final class CompassVec
     /** Share of centred neighbour variance represented by the PCA plane. */
     private final double quality;
 
+    /** Number of nearest neighbours used to define this compass. */
+    private final int referenceCount;
+
     /** Total counter-clockwise rotation applied to the initial PCA plane. */
     private final double rotation;
 
     /** Sine of the final rotation. */
     private final double sine;
+
+    /** One-third nearest-rank quantile of absolute reference X coordinates. */
+    private final double xCenter;
+
+    /** One-third nearest-rank quantile of absolute reference Y coordinates. */
+    private final double yCenter;
 
     /**
      * One model term projected into the oriented compass plane.
@@ -187,6 +196,9 @@ public final class CompassVec
         cosine = Math.cos(rotation);
         sine = Math.sin(rotation);
         cardinalCounts = cardinalCounts(raw);
+        referenceCount = size;
+        xCenter = absoluteQuantile(raw, 0, 1d / 3d);
+        yCenter = absoluteQuantile(raw, 1, 1d / 3d);
     }
 
     /**
@@ -271,6 +283,16 @@ public final class CompassVec
     }
 
     /**
+     * Returns the number of nearest neighbours used to define this compass.
+     *
+     * @return reference-neighbour count
+     */
+    public int referenceCount()
+    {
+        return referenceCount;
+    }
+
+    /**
      * Returns the counter-clockwise rotation applied to the initial PCA plane.
      *
      * @return rotation in radians before the optional reflection
@@ -278,6 +300,76 @@ public final class CompassVec
     public double rotation()
     {
         return rotation;
+    }
+
+    /**
+     * Returns the positive X boundary of the central compass band.
+     *
+     * <p>The value is the one-third nearest-rank quantile of {@code |x|} among
+     * the oriented reference neighbours. The corresponding grid boundaries are
+     * therefore {@code -xCenter()} and {@code +xCenter()} in compass projection
+     * units.</p>
+     *
+     * @return positive central-band X boundary in vector-projection units
+     */
+    public double xCenter()
+    {
+        return xCenter;
+    }
+
+    /**
+     * Returns the positive Y boundary of the central compass band.
+     *
+     * <p>The value is the one-third nearest-rank quantile of {@code |y|} among
+     * the oriented reference neighbours. The corresponding grid boundaries are
+     * therefore {@code -yCenter()} and {@code +yCenter()} in compass projection
+     * units.</p>
+     *
+     * @return positive central-band Y boundary in vector-projection units
+     */
+    public double yCenter()
+    {
+        return yCenter;
+    }
+
+    /**
+     * Returns the nearest-rank quantile of absolute coordinates on one axis.
+     *
+     * <p>For {@code n} values and probability {@code p}, this selects sorted
+     * element {@code ceil(p * n) - 1}, clamped to the available range. With
+     * {@code p = 1/3}, about one third of the reference neighbours therefore
+     * lie inside the corresponding central band on that axis.</p>
+     *
+     * @param points oriented two-dimensional reference coordinates
+     * @param axis coordinate axis, 0 for X or 1 for Y
+     * @param probability quantile probability in {@code [0, 1]}
+     * @return quantile of absolute coordinate values
+     */
+    private static double absoluteQuantile(
+        final double[][] points,
+        final int axis,
+        final double probability
+    ) {
+        if (points.length == 0) {
+            throw new IllegalArgumentException("no points for quantile");
+        }
+        if (axis < 0 || axis > 1) {
+            throw new IllegalArgumentException("axis must be 0 or 1: " + axis);
+        }
+        if (!(probability >= 0d && probability <= 1d)) {
+            throw new IllegalArgumentException(
+                "probability must be in [0, 1]: " + probability);
+        }
+
+        final double[] values = new double[points.length];
+        for (int index = 0; index < points.length; index++) {
+            values[index] = Math.abs(points[index][axis]);
+        }
+        Arrays.sort(values);
+
+        int index = (int) Math.ceil(probability * values.length) - 1;
+        index = Math.max(0, Math.min(values.length - 1, index));
+        return values[index];
     }
 
     /**

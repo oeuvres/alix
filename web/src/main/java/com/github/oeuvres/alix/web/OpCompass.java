@@ -87,6 +87,7 @@ public class OpCompass extends Op
         final CompassVec compass = new CompassVec(model, ids, NEIGHBORS);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
+            json.setIndent("  ");
             json.beginObject();
             json.name("meta");
             json.beginObject();
@@ -97,6 +98,10 @@ public class OpCompass extends Op
             json.beginObject();
             json.name("axes");
             json.beginObject();
+            json.name("unit").value("vector-projection");
+            json.name("reference").value(compass.referenceCount());
+            json.name("xCenter").value(round(compass.xCenter(), 4));
+            json.name("yCenter").value(round(compass.yCenter(), 4));
             json.endObject();
 
             json.name("nodes");
