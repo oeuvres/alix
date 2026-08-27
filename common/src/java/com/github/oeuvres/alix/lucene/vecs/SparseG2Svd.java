@@ -9,20 +9,16 @@
  */
 package com.github.oeuvres.alix.lucene.vecs;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.util.Arrays;
 import java.util.Objects;
 
-import smile.linalg.Transpose;
-import smile.tensor.ARPACK;
-import smile.tensor.DenseMatrix;
-import smile.tensor.Matrix;
-import smile.tensor.SVD;
-import smile.tensor.ScalarType;
-import smile.tensor.Vector;
-import smile.util.SparseArray;
+import us.ascendtech.primme.PrimmeSvds;
 
 /**
- * Builds truncated row embeddings from a sparse contingency table using Smile
- * ARPACK.
+ * Builds truncated row embeddings from a sparse contingency table using PRIMME
+ * SVDS.
  *
  * <p>The input table contains ordinary positive observations only; there are no
  * structural cells. It can be prepared in three ways: as the raw sparse
@@ -42,9 +38,9 @@ import smile.util.SparseArray;
  * corrections to this background. The dense residual matrix is never
  * materialised.</p>
  *
- * <p>{@link ARPACK#svd(Matrix, int)} computes the requested leading singular
- * triplets through matrix-vector multiplication. The raw and specificity matrices
- * are genuinely sparse. The exact signed residual matrix keeps its dense zero-cell
+ * <p>PRIMME computes the requested leading singular triplets only through
+ * matrix-vector multiplication callbacks. The raw and specificity matrices are
+ * genuinely sparse. The exact signed residual matrix keeps its dense zero-cell
  * contribution as a rank-one background plus sparse corrections.</p>
  *
  * <p>A positive-eigenvalue decomposition of the symmetric cooccurrence matrix was
@@ -55,6 +51,29 @@ import smile.util.SparseArray;
  */
 public final class SparseG2Svd
 {
+    /** Default relative convergence tolerance used by PRIMME. */
+    private static final double DEFAULT_EPS = 1e-5;
+
+    /** Minimal matrix operations required by PRIMME SVDS. */
+    private interface MatrixOperator
+    {
+        /**
+         * Computes {@code y = A * x}.
+         *
+         * @param x input vector
+         * @param y output vector
+         */
+        void multiply(double[] x, double[] y);
+
+        /**
+         * Computes {@code y = A' * x}.
+         *
+         * @param x input vector
+         * @param y output vector
+         */
+        void transposeMultiply(double[] x, double[] y);
+    }
+
     /** Matrix transformation currently prepared for decomposition. */
     private enum Preparation { NONE, G2, G2_SPECIF, RAW }
 
@@ -95,7 +114,7 @@ public final class SparseG2Svd
     private final double[] observedValues;
 
     /** Prepared matrix operator used by the latest decomposition. */
-    private Matrix prepared;
+    private MatrixOperator prepared;
 
     /** Number of retained non-negligible singular components. */
     private int rank;
@@ -116,74 +135,87 @@ public final class SparseG2Svd
     private final double totalObserved;
 
     /**
-     * Constructs a G² reduction pipeline from sparse rows.
+     * Constructs a G² reduction pipeline from sparse observed cells.
      *
-     * <p>Each sparse row must contain at most one entry for a given column.
-     * Entries must be positive finite observations. Empty rows are accepted.</p>
+     * <p>The three sparse arrays use COO form: entry {@code i} is located at
+     * {@code [rows[i]][cols[i]]} and has value {@code values[i]}. Each logical
+     * cell must occur at most once. The arrays are retained by this object and
+     * must not be modified after construction.</p>
      *
-     * @param cells sparse observed rows
+     * @param rowCount number of rows in the logical contingency table
      * @param colCount number of columns in the logical contingency table
-     * @throws IllegalArgumentException if the table is empty, a column index is
-     *         outside the logical table, or an observed value is invalid
-     * @throws NullPointerException if {@code cells} or one of its rows is null
+     * @param rows observed row ranks
+     * @param cols observed column ranks
+     * @param values positive observed values
+     * @throws IllegalArgumentException if dimensions or sparse arrays are invalid
+     * @throws NullPointerException if one of the sparse arrays is null
      */
-    public SparseG2Svd(final SparseArray[] cells, final int colCount)
-    {
-        Objects.requireNonNull(cells, "cells");
-        if (cells.length == 0) {
-            throw new IllegalArgumentException("empty table");
+    public SparseG2Svd(
+        final int rowCount,
+        final int colCount,
+        final int[] rows,
+        final int[] cols,
+        final double[] values
+    ) {
+        Objects.requireNonNull(rows, "rows");
+        Objects.requireNonNull(cols, "cols");
+        Objects.requireNonNull(values, "values");
+        if (rowCount < 1) {
+            throw new IllegalArgumentException("row count must be positive: " + rowCount);
         }
         if (colCount < 1) {
             throw new IllegalArgumentException("column count must be positive: " + colCount);
         }
+        if (rows.length != cols.length || rows.length != values.length) {
+            throw new IllegalArgumentException(
+                "sparse array lengths differ: rows=" + rows.length
+                    + ", cols=" + cols.length + ", values=" + values.length);
+        }
 
-        rowCount = cells.length;
+        this.rowCount = rowCount;
         this.colCount = colCount;
+        observedRows = rows;
+        observedCols = cols;
+        observedValues = values;
         rowMargins = new double[rowCount];
         colMargins = new double[colCount];
 
-        int observedCount = 0;
         double mass = 0d;
-        for (int row = 0; row < rowCount; row++) {
-            final SparseArray sparseRow = Objects.requireNonNull(cells[row], "cells[" + row + "]");
-            for (final SparseArray.Entry entry : sparseRow) {
-                final int col = entry.index();
-                final double value = entry.value();
-                checkObserved(value, row, col, colCount);
-                observedCount++;
-                rowMargins[row] += value;
-                colMargins[col] += value;
-                mass += value;
-            }
-        }
-
-        observedRows = new int[observedCount];
-        observedCols = new int[observedCount];
-        observedValues = new double[observedCount];
-
-        int index = 0;
-        for (int row = 0; row < rowCount; row++) {
-            for (final SparseArray.Entry entry : cells[row]) {
-                observedRows[index] = row;
-                observedCols[index] = entry.index();
-                observedValues[index] = entry.value();
-                index++;
-            }
+        for (int i = 0; i < values.length; i++) {
+            final int row = rows[i];
+            final int col = cols[i];
+            final double value = values[i];
+            checkObserved(value, row, col, rowCount, colCount);
+            rowMargins[row] += value;
+            colMargins[col] += value;
+            mass += value;
         }
         totalObserved = mass;
     }
 
     /**
-     * Computes the requested leading singular components with Smile ARPACK.
+     * Computes the requested leading singular components with PRIMME SVDS.
      *
      * @param dims number of leading dimensions to compute
      * @return this pipeline
      * @throws IllegalArgumentException if {@code dims < 1}
-     * @throws IllegalStateException before {@link #g2Specif(double, double)},
-     *         {@link #residual()}, or {@link #raw()}, or if ARPACK cannot
-     *         operate on the matrix dimensions
+     * @throws IllegalStateException if no matrix has been prepared
      */
     public SparseG2Svd decompose(final int dims)
+    {
+        return decompose(dims, DEFAULT_EPS);
+    }
+
+    /**
+     * Computes the requested leading singular components with PRIMME SVDS.
+     *
+     * @param dims number of leading dimensions to compute
+     * @param eps relative convergence tolerance
+     * @return this pipeline
+     * @throws IllegalArgumentException if {@code dims < 1} or {@code eps} is invalid
+     * @throws IllegalStateException if no matrix has been prepared
+     */
+    public SparseG2Svd decompose(final int dims, final double eps)
     {
         if (prepared == null) {
             throw new IllegalStateException("prepare a matrix before decompose()");
@@ -191,7 +223,9 @@ public final class SparseG2Svd
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be at least 1, got " + dims);
         }
-
+        if (!Double.isFinite(eps) || eps <= 0d) {
+            throw new IllegalArgumentException("eps must be positive and finite, got " + eps);
+        }
         if (totalInertia <= 0d) {
             singularValues = new double[0];
             embedding = new double[rowCount][0];
@@ -201,15 +235,16 @@ public final class SparseG2Svd
         }
 
         final int limit = Math.min(rowCount, colCount);
-        if (limit < 2) {
-            throw new IllegalStateException("ARPACK SVD requires both matrix dimensions to exceed 1");
-        }
-        SmileUtil.ensureArpackLoaded();
-        try {
-            absorb(ARPACK.svd(prepared, Math.min(dims, limit - 1)));
-        }
-        catch (final ExceptionInInitializerError | NoClassDefFoundError | UnsatisfiedLinkError error) {
-            throw SmileUtil.arpackInitializationFailure(error);
+        final int requested = Math.min(dims, limit);
+        final PrimmeMatvec matvec = new PrimmeMatvec(prepared, rowCount, colCount);
+        try (PrimmeSvds svds = PrimmeSvds.create(rowCount, colCount, requested, matvec)) {
+            final PrimmeSvds.Result result = svds
+                .setMethod(PrimmeSvds.Method.DEFAULT)
+                .setTarget(PrimmeSvds.Target.LARGEST)
+                .setEps(eps)
+                .setPrintLevel(0)
+                .solve();
+            absorb(result);
         }
         return this;
     }
@@ -269,9 +304,43 @@ public final class SparseG2Svd
     }
 
     /**
+     * Computes cosine similarities between one row and every row of the currently
+     * prepared matrix, before SVD.
+     *
+     * <p>The calculation uses the exact prepared operator. Consequently negative
+     * cells participate in both dot products and row norms for {@link #residual()},
+     * while {@link #g2Specif(double, double)} contains only its retained positive cells.
+     * The implementation is O(nnz + rows + columns) and does not materialise the
+     * complete matrix.</p>
+     *
+     * @param queryRow row rank used as the cosine query
+     * @return cosine with every row; the query row itself is normally 1
+     * @throws IllegalArgumentException if {@code queryRow} is outside the matrix
+     * @throws IllegalStateException if no matrix has been prepared
+     */
+    public double[] preparedCosines(final int queryRow)
+    {
+        if (queryRow < 0 || queryRow >= rowCount) {
+            throw new IllegalArgumentException("row outside matrix: " + queryRow);
+        }
+        if (prepared == null) {
+            throw new IllegalStateException("prepare a matrix before computing cosine");
+        }
+
+        if (prepared instanceof SparseObservedMatrix sparse) {
+            return sparse.rowCosines(queryRow);
+        }
+        if (prepared instanceof G2Matrix g2) {
+            return g2.rowCosines(queryRow);
+        }
+        throw new IllegalStateException(
+            "prepared matrix does not support row cosine: " + prepared.getClass().getName());
+    }
+
+    /**
      * Materialises one row of the currently prepared matrix for diagnostics.
      *
-     * <p>This is intentionally not used by ARPACK. It is an O(nnz + columns)
+     * <p>This is intentionally not used by PRIMME. It is an O(nnz + columns)
      * inspection helper for comparing matrix transformations before SVD. For
      * the exact signed G² residual mode, unobserved cells receive their true
      * negative residual. For the sparse specificity mode, unobserved cells
@@ -315,40 +384,6 @@ public final class SparseG2Svd
     }
 
     /**
-     * Computes cosine similarities between one row and every row of the currently
-     * prepared matrix, before SVD.
-     *
-     * <p>The calculation uses the exact prepared operator. Consequently negative
-     * cells participate in both dot products and row norms for {@link #residual()},
-     * while {@link #g2Specif(double, double)} contains only its retained positive cells.
-     * The implementation is O(nnz + rows + columns) and does not materialise the
-     * complete matrix.</p>
-     *
-     * @param queryRow row rank used as the cosine query
-     * @return cosine with every row; the query row itself is normally 1
-     * @throws IllegalArgumentException if {@code queryRow} is outside the matrix
-     * @throws IllegalStateException if no matrix has been prepared
-     */
-    public double[] preparedCosines(final int queryRow)
-    {
-        if (queryRow < 0 || queryRow >= rowCount) {
-            throw new IllegalArgumentException("row outside matrix: " + queryRow);
-        }
-        if (prepared == null) {
-            throw new IllegalStateException("prepare a matrix before computing cosine");
-        }
-
-        if (prepared instanceof SparseObservedMatrix sparse) {
-            return sparse.rowCosines(queryRow);
-        }
-        if (prepared instanceof G2Matrix g2) {
-            return g2.rowCosines(queryRow);
-        }
-        throw new IllegalStateException(
-            "prepared matrix does not support row cosine: " + prepared.getClass().getName());
-    }
-
-    /**
      * Projects the current embedding onto its leading dimensions.
      *
      * @param dims number of leading dimensions to retain
@@ -387,23 +422,6 @@ public final class SparseG2Svd
     }
 
     /**
-     * Prepares the exact signed G² residual operator against the ordinary
-     * independence expectation.
-     *
-     * @return this pipeline
-     */
-    public SparseG2Svd residual()
-    {
-        prepared = g2Matrix();
-        totalInertia = g2Inertia();
-        preparation = Preparation.G2;
-        preparedSpecificity = Double.NaN;
-        preparedCellPower = Double.NaN;
-        invalidateDecomposition();
-        return this;
-    }
-
-    /**
      * Prepares the sparse observed matrix itself, without G² residualisation.
      *
      * <p>This mode is useful when the sparse positive values are already weighted
@@ -417,6 +435,23 @@ public final class SparseG2Svd
         prepared = rawMatrix();
         totalInertia = rawInertia();
         preparation = Preparation.RAW;
+        preparedSpecificity = Double.NaN;
+        preparedCellPower = Double.NaN;
+        invalidateDecomposition();
+        return this;
+    }
+
+    /**
+     * Prepares the exact signed G² residual operator against the ordinary
+     * independence expectation.
+     *
+     * @return this pipeline
+     */
+    public SparseG2Svd residual()
+    {
+        prepared = g2Matrix();
+        totalInertia = g2Inertia();
+        preparation = Preparation.G2;
         preparedSpecificity = Double.NaN;
         preparedCellPower = Double.NaN;
         invalidateDecomposition();
@@ -478,21 +513,23 @@ public final class SparseG2Svd
      * @param matrix prepared sparse matrix operator
      * @param inertia sum of squared prepared matrix values
      */
-    private record SpecifPrepared(Matrix matrix, double inertia) {}
+    private record SpecifPrepared(MatrixOperator matrix, double inertia) {}
 
     /**
-     * Adopts a Smile truncated decomposition as the current embedding.
+     * Adopts a PRIMME truncated decomposition as the current embedding.
      *
-     * @param decomposition Smile decomposition
+     * <p>PRIMME stores all left singular vectors first and all right singular
+     * vectors after them. Version 0.2.0 of the Java binding exposes that native
+     * buffer as equal {@code m+n} chunks; {@link #nativeVectorValue(double[][],
+     * int, long)} reconstructs the native linear indexing before the left
+     * vectors are copied.</p>
+     *
+     * @param decomposition PRIMME decomposition result
      */
-    private void absorb(final SVD decomposition)
+    private void absorb(final PrimmeSvds.Result decomposition)
     {
-        final Vector values = decomposition.s();
-        final DenseMatrix left = decomposition.U();
-        if (left == null) {
-            throw new IllegalStateException("Smile SVD did not return left singular vectors");
-        }
-        if (values.size() == 0) {
+        final double[] values = decomposition.svals();
+        if (values.length == 0) {
             singularValues = new double[0];
             embedding = new double[rowCount][0];
             rank = 0;
@@ -500,18 +537,21 @@ public final class SparseG2Svd
             return;
         }
 
-        final double tolerance = numericalRankTolerance(values.get(0));
+        final double tolerance = numericalRankTolerance(values[0]);
         int retained = 0;
-        while (retained < values.size() && values.get(retained) > tolerance) {
+        while (retained < values.length && values[retained] > tolerance) {
             retained++;
         }
 
-        singularValues = new double[retained];
+        final double[][] vectors = decomposition.svecs();
+        final int nativeChunkLength = rowCount + colCount;
+        singularValues = Arrays.copyOf(values, retained);
         embedding = new double[rowCount][retained];
         for (int axis = 0; axis < retained; axis++) {
-            singularValues[axis] = values.get(axis);
+            final long axisOffset = (long) axis * rowCount;
             for (int row = 0; row < rowCount; row++) {
-                embedding[row][axis] = left.get(row, axis);
+                embedding[row][axis] = nativeVectorValue(
+                    vectors, nativeChunkLength, axisOffset + row);
             }
         }
         rank = retained;
@@ -553,14 +593,20 @@ public final class SparseG2Svd
      * @param value observed value
      * @param row row rank
      * @param col column rank
+     * @param rowCount number of logical rows
      * @param colCount number of logical columns
      */
     private static void checkObserved(
         final double value,
         final int row,
         final int col,
+        final int rowCount,
         final int colCount
     ) {
+        if (row < 0 || row >= rowCount) {
+            throw new IllegalArgumentException(
+                "row outside table at [" + row + "][" + col + "]");
+        }
         if (col < 0 || col >= colCount) {
             throw new IllegalArgumentException(
                 "column outside table at [" + row + "][" + col + "]");
@@ -603,7 +649,7 @@ public final class SparseG2Svd
      *
      * @return sparse matrix-vector operator
      */
-    private Matrix rawMatrix()
+    private MatrixOperator rawMatrix()
     {
         return new SparseObservedMatrix(
             rowCount,
@@ -630,7 +676,7 @@ public final class SparseG2Svd
     /**
      * Builds the exact implicit G² residual matrix.
      *
-     * @return matrix-vector operator for ARPACK
+     * @return matrix-vector operator for PRIMME
      */
     private G2Matrix g2Matrix()
     {
@@ -898,6 +944,29 @@ public final class SparseG2Svd
     }
 
     /**
+     * Reads one value from the native PRIMME singular-vector buffer as exposed
+     * by primme-ffm-java 0.2.0.
+     *
+     * @param chunks equal chunks returned by the binding
+     * @param chunkLength native chunk length, {@code rows + columns}
+     * @param index linear native-buffer index
+     * @return value at the requested native index
+     */
+    private static double nativeVectorValue(
+        final double[][] chunks,
+        final int chunkLength,
+        final long index
+    ) {
+        final int chunk = (int) (index / chunkLength);
+        final int offset = (int) (index % chunkLength);
+        if (chunk < 0 || chunk >= chunks.length || offset >= chunks[chunk].length) {
+            throw new IllegalStateException(
+                "unexpected PRIMME singular-vector layout at native index " + index);
+        }
+        return chunks[chunk][offset];
+    }
+
+    /**
      * Returns the numerical-rank tolerance used for a partial SVD.
      *
      * @param largest largest retained singular value
@@ -934,16 +1003,118 @@ public final class SparseG2Svd
         }
     }
 
-    /** Sparse read-only matrix containing the active prepared cells. */
-    private static final class SparseObservedMatrix implements Matrix
+    /** PRIMME callback adapter using Java arrays in the sparse hot loops. */
+    private static final class PrimmeMatvec implements PrimmeSvds.MatrixMultiply
     {
+        /** Number of columns. */
         private final int colCount;
+
+        /** Reusable Java input buffer. */
+        private final double[] input;
+
+        /** Prepared matrix operator. */
+        private final MatrixOperator matrix;
+
+        /** Reusable Java output buffer. */
+        private final double[] output;
+
+        /** Number of rows. */
         private final int rowCount;
-        private final int[] rows;
+
+        /**
+         * Creates a PRIMME matrix-vector callback.
+         *
+         * @param matrix prepared matrix operator
+         * @param rowCount number of rows
+         * @param colCount number of columns
+         */
+        private PrimmeMatvec(
+            final MatrixOperator matrix,
+            final int rowCount,
+            final int colCount
+        ) {
+            this.matrix = matrix;
+            this.rowCount = rowCount;
+            this.colCount = colCount;
+            final int max = Math.max(rowCount, colCount);
+            input = new double[max];
+            output = new double[max];
+        }
+
+        /**
+         * Computes one or more PRIMME matrix-vector products.
+         *
+         * <p>The foreign-memory vectors are copied once into Java arrays so the
+         * sparse loop performs ordinary array access rather than one FFM access
+         * per non-zero matrix cell.</p>
+         *
+         * @param x input vectors
+         * @param ldx leading dimension of {@code x}
+         * @param y output vectors
+         * @param ldy leading dimension of {@code y}
+         * @param blockSize number of vectors
+         * @param transpose zero for {@code A*x}, one for {@code A'*x}
+         */
+        @Override
+        public void apply(
+            final MemorySegment x,
+            final long ldx,
+            final MemorySegment y,
+            final long ldy,
+            final int blockSize,
+            final int transpose
+        ) {
+            final int inSize = transpose == 0 ? colCount : rowCount;
+            final int outSize = transpose == 0 ? rowCount : colCount;
+            for (int block = 0; block < blockSize; block++) {
+                final long xBase = block * ldx;
+                final long yBase = block * ldy;
+                for (int i = 0; i < inSize; i++) {
+                    input[i] = x.getAtIndex(ValueLayout.JAVA_DOUBLE, xBase + i);
+                }
+                if (transpose == 0) {
+                    matrix.multiply(input, output);
+                }
+                else {
+                    matrix.transposeMultiply(input, output);
+                }
+                for (int i = 0; i < outSize; i++) {
+                    y.setAtIndex(ValueLayout.JAVA_DOUBLE, yBase + i, output[i]);
+                }
+            }
+        }
+    }
+
+    /** Sparse read-only matrix containing the active prepared cells. */
+    private static final class SparseObservedMatrix implements MatrixOperator
+    {
+        /** Number of columns. */
+        private final int colCount;
+
+        /** Sparse column ranks. */
         private final int[] cols;
-        private final double[] values;
+
+        /** Number of rows. */
+        private final int rowCount;
+
+        /** Sparse row ranks. */
+        private final int[] rows;
+
+        /** Number of active sparse cells. */
         private final int size;
 
+        /** Sparse cell values. */
+        private final double[] values;
+
+        /**
+         * Creates a sparse operator using every supplied cell.
+         *
+         * @param rowCount number of rows
+         * @param colCount number of columns
+         * @param rows sparse row ranks
+         * @param cols sparse column ranks
+         * @param values sparse values
+         */
         private SparseObservedMatrix(
             final int rowCount,
             final int colCount,
@@ -954,6 +1125,16 @@ public final class SparseG2Svd
             this(rowCount, colCount, rows, cols, values, values.length);
         }
 
+        /**
+         * Creates a sparse operator using a prefix of the supplied arrays.
+         *
+         * @param rowCount number of rows
+         * @param colCount number of columns
+         * @param rows sparse row ranks
+         * @param cols sparse column ranks
+         * @param values sparse values
+         * @param size number of active sparse cells
+         */
         private SparseObservedMatrix(
             final int rowCount,
             final int colCount,
@@ -973,69 +1154,27 @@ public final class SparseG2Svd
             this.size = size;
         }
 
+        /**
+         * Computes {@code y = A*x}.
+         *
+         * @param x input vector
+         * @param y output vector
+         */
         @Override
-        public void add(final int i, final int j, final double x)
+        public void multiply(final double[] x, final double[] y)
         {
-            throw new UnsupportedOperationException("read-only sparse matrix");
-        }
-
-        @Override
-        public Matrix copy()
-        {
-            throw new UnsupportedOperationException("implicit matrix cannot be copied generically");
-        }
-
-        @Override
-        public void div(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only sparse matrix");
-        }
-
-        @Override
-        public double get(final int i, final int j)
-        {
-            throw new UnsupportedOperationException("random access is intentionally unsupported");
-        }
-
-        @Override
-        public long length()
-        {
-            return (long) rowCount * colCount;
-        }
-
-        @Override
-        public void mul(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only sparse matrix");
-        }
-
-        @Override
-        public void mv(
-            final Transpose trans,
-            final double alpha,
-            final Vector x,
-            final double beta,
-            final Vector y
-        ) {
-            final int out = trans == Transpose.NO_TRANSPOSE ? rowCount : colCount;
-            for (int i = 0; i < out; i++) {
-                y.set(i, beta == 0d ? 0d : beta * y.get(i));
-            }
-            if (trans == Transpose.NO_TRANSPOSE) {
-                for (int k = 0; k < size; k++) {
-                    final int row = rows[k];
-                    y.set(row, y.get(row) + alpha * values[k] * x.get(cols[k]));
-                }
-            }
-            else {
-                for (int k = 0; k < size; k++) {
-                    final int col = cols[k];
-                    y.set(col, y.get(col) + alpha * values[k] * x.get(rows[k]));
-                }
+            Arrays.fill(y, 0, rowCount, 0d);
+            for (int k = 0; k < size; k++) {
+                y[rows[k]] += values[k] * x[cols[k]];
             }
         }
 
-        /** Computes cosine of one sparse row against all sparse rows. */
+        /**
+         * Computes cosine of one sparse row against all sparse rows.
+         *
+         * @param queryRow query row
+         * @return cosine with every row
+         */
         private double[] rowCosines(final int queryRow)
         {
             final double[] query = new double[colCount];
@@ -1068,46 +1207,19 @@ public final class SparseG2Svd
             return cosine;
         }
 
+        /**
+         * Computes {@code y = A'*x}.
+         *
+         * @param x input vector
+         * @param y output vector
+         */
         @Override
-        public int ncol()
+        public void transposeMultiply(final double[] x, final double[] y)
         {
-            return colCount;
-        }
-
-        @Override
-        public int nrow()
-        {
-            return rowCount;
-        }
-
-        @Override
-        public ScalarType scalarType()
-        {
-            return ScalarType.Float64;
-        }
-
-        @Override
-        public Matrix scale(final double alpha)
-        {
-            throw new UnsupportedOperationException("read-only sparse matrix");
-        }
-
-        @Override
-        public void set(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only sparse matrix");
-        }
-
-        @Override
-        public void sub(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only sparse matrix");
-        }
-
-        @Override
-        public Matrix transpose()
-        {
-            throw new UnsupportedOperationException("use tv() for transpose multiplication");
+            Arrays.fill(y, 0, colCount, 0d);
+            for (int k = 0; k < size; k++) {
+                y[cols[k]] += values[k] * x[rows[k]];
+            }
         }
     }
 
@@ -1115,7 +1227,7 @@ public final class SparseG2Svd
      * Exact G² residual operator: negative rank-one background plus sparse
      * corrections.
      */
-    private static final class G2Matrix implements Matrix
+    private static final class G2Matrix implements MatrixOperator
     {
         /** Column factors of the rank-one background. */
         private final double[] colBackground;
@@ -1173,69 +1285,33 @@ public final class SparseG2Svd
             this.correctionSize = correctionSize;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * Computes {@code y = A*x}.
+         *
+         * @param x input vector
+         * @param y output vector
+         */
         @Override
-        public void add(final int i, final int j, final double x)
+        public void multiply(final double[] x, final double[] y)
         {
-            throw new UnsupportedOperationException("read-only implicit matrix");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public Matrix copy()
-        {
-            throw new UnsupportedOperationException("implicit matrix cannot be copied generically");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public void div(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only implicit matrix");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public double get(final int i, final int j)
-        {
-            throw new UnsupportedOperationException("random access is intentionally unsupported");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public long length()
-        {
-            return (long) rowCount * colCount;
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public void mul(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only implicit matrix");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public void mv(
-            final Transpose trans,
-            final double alpha,
-            final Vector x,
-            final double beta,
-            final Vector y
-        ) {
-            if (trans == Transpose.NO_TRANSPOSE) {
-                multiply(alpha, x, beta, y);
+            double dot = 0d;
+            for (int col = 0; col < colCount; col++) {
+                dot += colBackground[col] * x[col];
             }
-            else {
-                transposeMultiply(alpha, x, beta, y);
+            for (int row = 0; row < rowCount; row++) {
+                y[row] = -rowBackground[row] * dot;
+            }
+            for (int i = 0; i < correctionSize; i++) {
+                y[correctionRows[i]] += corrections[i] * x[correctionCols[i]];
             }
         }
 
-        /** {@inheritDoc} */
         /**
          * Computes exact row cosines for the rank-one negative background plus
          * sparse corrections without materialising the dense residual matrix.
+         *
+         * @param queryRow query row
+         * @return cosine with every row
          */
         private double[] rowCosines(final int queryRow)
         {
@@ -1289,111 +1365,24 @@ public final class SparseG2Svd
             return cosine;
         }
 
-        @Override
-        public int ncol()
-        {
-            return colCount;
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public int nrow()
-        {
-            return rowCount;
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public ScalarType scalarType()
-        {
-            return ScalarType.Float64;
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public Matrix scale(final double alpha)
-        {
-            throw new UnsupportedOperationException("read-only implicit matrix");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public void set(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only implicit matrix");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public void sub(final int i, final int j, final double x)
-        {
-            throw new UnsupportedOperationException("read-only implicit matrix");
-        }
-
-        /** {@inheritDoc} */
-        @Override
-        public Matrix transpose()
-        {
-            throw new UnsupportedOperationException("use tv() for transpose multiplication");
-        }
-
         /**
-         * Computes {@code y = alpha * A * x + beta * y}.
+         * Computes {@code y = A'*x}.
          *
-         * @param alpha matrix-product scale
          * @param x input vector
-         * @param beta existing-output scale
          * @param y output vector
          */
-        private void multiply(
-            final double alpha,
-            final Vector x,
-            final double beta,
-            final Vector y
-        ) {
-            double dot = 0d;
-            for (int col = 0; col < colCount; col++) {
-                dot += colBackground[col] * x.get(col);
-            }
-            for (int row = 0; row < rowCount; row++) {
-                final double current = beta == 0d ? 0d : beta * y.get(row);
-                y.set(row, current - alpha * rowBackground[row] * dot);
-            }
-            for (int i = 0; i < correctionSize; i++) {
-                final int row = correctionRows[i];
-                y.set(
-                    row,
-                    y.get(row) + alpha * corrections[i] * x.get(correctionCols[i]));
-            }
-        }
-
-        /**
-         * Computes {@code y = alpha * A' * x + beta * y}.
-         *
-         * @param alpha matrix-product scale
-         * @param x input vector
-         * @param beta existing-output scale
-         * @param y output vector
-         */
-        private void transposeMultiply(
-            final double alpha,
-            final Vector x,
-            final double beta,
-            final Vector y
-        ) {
+        @Override
+        public void transposeMultiply(final double[] x, final double[] y)
+        {
             double dot = 0d;
             for (int row = 0; row < rowCount; row++) {
-                dot += rowBackground[row] * x.get(row);
+                dot += rowBackground[row] * x[row];
             }
             for (int col = 0; col < colCount; col++) {
-                final double current = beta == 0d ? 0d : beta * y.get(col);
-                y.set(col, current - alpha * colBackground[col] * dot);
+                y[col] = -colBackground[col] * dot;
             }
             for (int i = 0; i < correctionSize; i++) {
-                final int col = correctionCols[i];
-                y.set(
-                    col,
-                    y.get(col) + alpha * corrections[i] * x.get(correctionRows[i]));
+                y[correctionCols[i]] += corrections[i] * x[correctionRows[i]];
             }
         }
     }

@@ -16,17 +16,17 @@
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-core</artifactId>
-            <version>10.5.0</version>
+            <version>10.5.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-queries</artifactId>
-            <version>10.5.0</version>
+            <version>10.5.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-analysis-common</artifactId>
-            <version>10.5.0</version>
+            <version>10.5.1</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -35,9 +35,16 @@
         </dependency>
         <!-- for vecs matrix reduction -->
         <dependency>
-          <groupId>com.github.haifengl</groupId>
-          <artifactId>smile-core</artifactId>
-          <version>6.2.5</version>
+            <groupId>us.ascend-tech</groupId>
+            <artifactId>primme-ffm-java</artifactId>
+            <version>0.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>us.ascend-tech</groupId>
+            <artifactId>primme-ffm-java</artifactId>
+            <version>0.2.0</version>
+            <classifier>windows-x86_64</classifier>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
     <build>

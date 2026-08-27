@@ -19,15 +19,12 @@ import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.vecs.LuceneData.SelectedTerm;
+import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.Report;
-
-import smile.util.IntArrayList;
-import smile.util.IntDoubleHashMap;
-import smile.util.SparseArray;
 
 /**
  * Builds dense term vectors from positional term cooccurrence using truncated
- * Smile ARPACK SVD, and writes them in the word2vec binary format.
+ * PRIMME SVD, and writes them in the word2vec binary format.
  *
  * <p>The vocabulary is selected by minimum document frequency, then by
  * decreasing total term frequency. Rows and columns use the same selected
@@ -38,9 +35,9 @@ import smile.util.SparseArray;
  * pivot/cooccurrence directions.</p>
  *
  * <p>Cooccurrence counts remain sparse throughout collection. Each row uses a
- * primitive Smile hash map while counts are accumulated and is compacted to a
- * {@link SparseArray} before the G² pipeline is created. The dense logical
- * {@code vocabulary x vocabulary} count matrix is never allocated.</p>
+ * primitive integer-to-double hash map while counts are accumulated. The table
+ * is flattened to COO arrays before the G² pipeline is created. The dense
+ * logical {@code vocabulary x vocabulary} count matrix is never allocated.</p>
  *
  * <p>Position gaps represented by {@link TermRail#NO_TERM} remain part of
  * positional distance. Each document is copied from {@link TermRail} once into
@@ -61,7 +58,7 @@ import smile.util.SparseArray;
  *   <li>{@code --weightAxes 0.5}: exponent used to weight retained SVD axes by
  *       {@code sigma^weightAxes}; zero leaves projected axes unweighted.</li>
  *   <li>{@code --specif 1.5}: specificity passed to
- *       {@link SparseG2Svd#g2Specif(double)}; zero disables the G² specificity
+ *       {@link SparseG2Svd#g2Specif(double, double)}; zero disables the G² specificity
  *       adjustment and uses that method's zero-specificity endpoint.</li>
  *   <li>{@code --maxTerms 10000}: maximum vocabulary size after frequency
  *       selection.</li>
@@ -84,28 +81,162 @@ public final class Coocs2vec
      * Selected vocabulary and its sparse symmetric cooccurrence count table.
      *
      * @param words selected terms in row order
-     * @param cells sparse cooccurrence rows
-     * @param nonZero number of non-zero matrix cells
+     * @param rows sparse observed row ranks
+     * @param cols sparse observed column ranks
+     * @param values sparse observed counts
      * @param pairs number of unordered positional pairs visited
      */
     private record Table(
         String[] words,
-        SparseArray[] cells,
-        long nonZero,
+        int[] rows,
+        int[] cols,
+        double[] values,
         long pairs
-    ) {}
+    ) {
+        /**
+         * Returns the number of non-zero cells.
+         *
+         * @return non-zero cell count
+         */
+        private int nonZero()
+        {
+            return values.length;
+        }
+    }
+
+    /** Minimal primitive integer-to-double open-addressing map. */
+    private static final class IntDoubleMap
+    {
+        /** Empty-key sentinel; matrix columns are always non-negative. */
+        private static final int EMPTY = -1;
+
+        /** Hash keys. */
+        private int[] keys;
+
+        /** Number of mapped keys. */
+        private int size;
+
+        /** Hash values. */
+        private double[] values;
+
+        /**
+         * Creates a small empty map.
+         */
+        private IntDoubleMap()
+        {
+            keys = new int[16];
+            Arrays.fill(keys, EMPTY);
+            values = new double[keys.length];
+        }
+
+        /**
+         * Adds an amount to one key.
+         *
+         * @param key non-negative key
+         * @param amount amount to add
+         * @return true if the key was inserted, false if it already existed
+         */
+        private boolean add(final int key, final double amount)
+        {
+            if ((size + 1) * 10 >= keys.length * 7) {
+                rehash(keys.length << 1);
+            }
+            final int mask = keys.length - 1;
+            int slot = hash(key) & mask;
+            while (true) {
+                final int present = keys[slot];
+                if (present == EMPTY) {
+                    keys[slot] = key;
+                    values[slot] = amount;
+                    size++;
+                    return true;
+                }
+                if (present == key) {
+                    values[slot] += amount;
+                    return false;
+                }
+                slot = (slot + 1) & mask;
+            }
+        }
+
+        /**
+         * Returns the value mapped to a known key.
+         *
+         * @param key mapped key
+         * @return mapped value
+         * @throws IllegalStateException if the key is absent
+         */
+        private double get(final int key)
+        {
+            final int mask = keys.length - 1;
+            int slot = hash(key) & mask;
+            while (true) {
+                final int present = keys[slot];
+                if (present == key) {
+                    return values[slot];
+                }
+                if (present == EMPTY) {
+                    throw new IllegalStateException("missing sparse key: " + key);
+                }
+                slot = (slot + 1) & mask;
+            }
+        }
+
+        /**
+         * Mixes a non-negative integer key.
+         *
+         * @param key key to hash
+         * @return mixed hash
+         */
+        private static int hash(final int key)
+        {
+            int x = key;
+            x ^= x >>> 16;
+            x *= 0x7feb352d;
+            x ^= x >>> 15;
+            x *= 0x846ca68b;
+            return x ^ (x >>> 16);
+        }
+
+        /**
+         * Rebuilds this map at a larger power-of-two capacity.
+         *
+         * @param capacity new capacity
+         */
+        private void rehash(final int capacity)
+        {
+            final int[] oldKeys = keys;
+            final double[] oldValues = values;
+            keys = new int[capacity];
+            Arrays.fill(keys, EMPTY);
+            values = new double[capacity];
+            final int mask = capacity - 1;
+            for (int i = 0; i < oldKeys.length; i++) {
+                final int key = oldKeys[i];
+                if (key == EMPTY) {
+                    continue;
+                }
+                int slot = hash(key) & mask;
+                while (keys[slot] != EMPTY) {
+                    slot = (slot + 1) & mask;
+                }
+                keys[slot] = key;
+                values[slot] = oldValues[i];
+            }
+        }
+    }
 
     /** Sparse mutable count table used while scanning positional rails. */
     private static final class SparseCounts
     {
         /** Columns first seen in each row, used to enumerate primitive maps. */
-        private final IntArrayList[] columns;
+        private final IntList[] columns;
 
         /** Number of non-zero matrix cells. */
-        private long nonZero;
+        private int nonZero;
 
         /** Primitive column-to-count map for each row. */
-        private final IntDoubleHashMap[] rows;
+        private final IntDoubleMap[] rows;
 
         /**
          * Creates an empty square sparse count table.
@@ -114,8 +245,8 @@ public final class Coocs2vec
          */
         private SparseCounts(final int size)
         {
-            columns = new IntArrayList[size];
-            rows = new IntDoubleHashMap[size];
+            columns = new IntList[size];
+            rows = new IntDoubleMap[size];
         }
 
         /**
@@ -127,60 +258,56 @@ public final class Coocs2vec
          */
         private void add(final int row, final int col, final double amount)
         {
-            IntDoubleHashMap map = rows[row];
+            IntDoubleMap map = rows[row];
             if (map == null) {
-                map = new IntDoubleHashMap();
+                map = new IntDoubleMap();
                 rows[row] = map;
-                columns[row] = new IntArrayList();
+                columns[row] = new IntList();
             }
-
-            final double previous = map.get(col);
-            if (Double.isNaN(previous)) {
-                map.put(col, amount);
-                columns[row].add(col);
+            if (map.add(col, amount)) {
+                columns[row].push(col);
                 nonZero++;
             }
-            else {
-                map.put(col, previous + amount);
-            }
         }
 
         /**
-         * Returns the number of non-zero cells accumulated so far.
+         * Flattens this sparse table into COO arrays ordered by row and first
+         * occurrence within each row.
          *
-         * @return non-zero cell count
+         * @return row ranks, column ranks and values
          */
-        private long nonZero()
+        private SparseCells toSparseCells()
         {
-            return nonZero;
-        }
-
-        /**
-         * Compacts the mutable hash rows into Smile sparse arrays.
-         *
-         * @return sparse rows containing one entry per non-zero cell
-         */
-        private SparseArray[] toSparseRows()
-        {
-            final SparseArray[] sparse = new SparseArray[rows.length];
+            final int[] sparseRows = new int[nonZero];
+            final int[] sparseCols = new int[nonZero];
+            final double[] sparseValues = new double[nonZero];
+            int index = 0;
             for (int row = 0; row < rows.length; row++) {
-                final IntArrayList keys = columns[row];
+                final IntList keys = columns[row];
                 if (keys == null) {
-                    sparse[row] = new SparseArray(0);
                     continue;
                 }
-
-                final IntDoubleHashMap map = rows[row];
-                final SparseArray values = new SparseArray(keys.size());
+                final IntDoubleMap map = rows[row];
                 for (int i = 0; i < keys.size(); i++) {
                     final int col = keys.get(i);
-                    values.append(col, map.get(col));
+                    sparseRows[index] = row;
+                    sparseCols[index] = col;
+                    sparseValues[index] = map.get(col);
+                    index++;
                 }
-                sparse[row] = values;
             }
-            return sparse;
+            return new SparseCells(sparseRows, sparseCols, sparseValues);
         }
     }
+
+    /**
+     * Flattened sparse cells.
+     *
+     * @param rows observed row ranks
+     * @param cols observed column ranks
+     * @param values observed values
+     */
+    private record SparseCells(int[] rows, int[] cols, double[] values) {}
 
     /**
      * Maximum positional distance, inclusive, at which a pair involving a
@@ -189,6 +316,9 @@ public final class Coocs2vec
      * pairs are unaffected and count up to the full {@code window}.
      */
     private static final int STOP_DIST = -1;
+
+    /** PRIMME convergence tolerance for model production. */
+    private static final double SVD_EPS = 1e-5;
 
     /** Command-line usage. */
     private static final String USAGE =
@@ -347,13 +477,14 @@ public final class Coocs2vec
                     100d * table.nonZero() / cellCount,
                     table.pairs());
                 words = table.words();
-                svd = new SparseG2Svd(table.cells(), termCount);
+                svd = new SparseG2Svd(
+                    termCount, termCount, table.rows(), table.cols(), table.values());
                 log("preparing sparse positive G2 specificity matrix (specif=%.3f)", specif);
                 svd.g2Specif(specif, cellpow);
             }
             final int retained;
-            log("SVD decomposing to top %,d dims (Smile ARPACK)", dims);
-            svd.decompose(dims);
+            log("SVD decomposing to top %,d dims (PRIMME, eps=%.1e)", dims, SVD_EPS);
+            svd.decompose(dims, SVD_EPS);
             if(weightAxes > 0) {
                 log("weighting axes by sigma^%.3f", weightAxes);
                 svd.weightAxes(weightAxes);
@@ -592,7 +723,8 @@ public final class Coocs2vec
             }
         }
 
-        return new Table(words, counts.toSparseRows(), counts.nonZero(), pairs);
+        final SparseCells cells = counts.toSparseCells();
+        return new Table(words, cells.rows(), cells.cols(), cells.values(), pairs);
     }
 
     /**
