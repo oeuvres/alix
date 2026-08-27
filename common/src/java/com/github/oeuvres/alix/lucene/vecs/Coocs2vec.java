@@ -224,20 +224,33 @@ public final class Coocs2vec
         final Path indexDir = Paths.get(args[0]);
         final String field = args[1];
         Path sideDir = indexDir;
+        
+
         int window = 30;
-        int dims = 500;
-        double weightAxes = 0.5;
-        double saturating = 0.0;
-        double specif = 1.5d;
+        int dims = 200;
+        // those params have not yet shown improvement to the model
+        final double cellpow = 0.5; 
+        final double weightAxes = 0.5;
+        double specif = 1.0d;
         int maxTerms = 10_000;
         int minDocFreq = 3;
-        String decompose = "evd";
+        // "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // best model
+        // "piaget-260827-content-coocs30-g2specif1.0-dims100.bin" // Good model
+        // "piaget-260827-content-coocs50-g2specif1.0-dims100.bin" // coocs50, too big for dims100
+        // "piaget-260827-content-coocs50-g2specif1.0-dims300.bin" // coocs50, add semantics
+        // "piaget-260827-content-coocs50-g2specif1.0-dims200.bin" // coocs50, add semantics
+        // "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // g2specif1.0, best
+        // "piaget-260827-content-coocs30-g2specif0.5-dims200.bin" // g2specif0.5, over sparse
+        // "piaget-260827-content-coocs30-g2specif2.0-dims200.bin" //specif2.0, over concentrate
+        // "piaget-260827-content-coocs50-g2specif1.5-cellpow0.5-dims500.bin" // cellpow0.5 should stay default
+        // "piaget-260827-content-coocs50-g2specif1.5-cellpow0.25-dims500.bin" // over-flattens association strengths
+        // "piaget-260827-content-coocs50-g2specif1.5-cellpow2.0-dims500.bin" // over-concentrates on strongest association cells
+        // "piaget-260827-content-coocs30-g2specif1.5-dims500.bin" // window 30, bad with dim500
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
                 case "--window" -> window = Integer.parseInt(args[++i]);
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
-                case "--weightAxes" -> weightAxes = Double.parseDouble(args[++i]);
                 case "--specif" -> specif = Double.parseDouble(args[++i]);
                 case "--maxTerms" -> maxTerms = Integer.parseInt(args[++i]);
                 case "--minDocFreq" -> minDocFreq = Integer.parseInt(args[++i]);
@@ -276,12 +289,7 @@ public final class Coocs2vec
         outName += "-" + field;
         outName += "-coocs" + window;
         outName += "-g2specif" + specif;
-        if ("evd".equalsIgnoreCase(decompose)) {
-            outName += "-evd";
-        }
-        else if (weightAxes > 0d) {
-            outName += "-weightAxes" + weightAxes;
-        }
+        // outName += "-cellpow" + cellpow;
 
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
             final TermStats stats = TermStats.openOrBuild(
@@ -341,20 +349,14 @@ public final class Coocs2vec
                 words = table.words();
                 svd = new SparseG2Svd(table.cells(), termCount);
                 log("preparing sparse positive G2 specificity matrix (specif=%.3f)", specif);
-                svd.g2Specif(specif);
+                svd.g2Specif(specif, cellpow);
             }
             final int retained;
-            if ("evd".equalsIgnoreCase(decompose)) {
-                log("EVD decomposing to top %,d dims (Smile ARPACK)", dims);
-                svd.decomposePositiveEigen(dims);
-            }
-            else {
-                log("SVD decomposing to top %,d dims (Smile ARPACK)", dims);
-                svd.decompose(dims);
-                if(weightAxes > 0) {
-                    log("weighting axes by sigma^%.3f", weightAxes);
-                    svd.weightAxes(weightAxes);
-                }
+            log("SVD decomposing to top %,d dims (Smile ARPACK)", dims);
+            svd.decompose(dims);
+            if(weightAxes > 0) {
+                log("weighting axes by sigma^%.3f", weightAxes);
+                svd.weightAxes(weightAxes);
             }
             retained = svd.singularValues().length;
             log("decomposition done, retained %,d dimensions", retained);

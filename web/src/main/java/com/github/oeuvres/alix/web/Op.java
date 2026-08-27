@@ -13,6 +13,7 @@ import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -25,8 +26,6 @@ import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser.ParseResult;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
-import com.github.oeuvres.alix.web.AlixServlet;
-import com.github.oeuvres.alix.web.MetaUtil;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
 import static com.github.oeuvres.alix.web.Pars.*;
@@ -101,12 +100,13 @@ public abstract class Op
      * @param request  servlet request
      * @param response servlet response
      * @throws IOException if response writing fails
+     * @throws ServletException 
      */
     public final void dispatch(
         final LuceneIndex index,
         final String format,
         final HttpServletRequest request,
-        final HttpServletResponse response) throws IOException
+        final HttpServletResponse response) throws IOException, ServletException
     {
         if (format == null) {
             AlixServlet.prepareHtml(response);
@@ -179,11 +179,12 @@ public abstract class Op
      * @param request   servlet request
      * @param response  servlet response
      * @throws IOException if response writing fails
+     * @throws ServletException
      */
     protected void docx(
         LuceneIndex index,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException
+        HttpServletResponse response) throws IOException, ServletException
     {
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": docx not implemented");
@@ -198,11 +199,12 @@ public abstract class Op
      * @param req      servlet request
      * @param resp     servlet response (Content-Type already set to CSV)
      * @throws IOException if response writing fails
+     * @throws ServletException
      */
     protected void csv(
         LuceneIndex index,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException
+        HttpServletResponse response) throws IOException, ServletException
     {
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": csv not implemented");
@@ -219,11 +221,12 @@ public abstract class Op
      * @param req      servlet request
      * @param resp     servlet response (Content-Type already set to HTML)
      * @throws IOException if response writing fails
+     * @throws ServletException
      */
     protected void html(
         LuceneIndex index,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException
+        HttpServletResponse response) throws IOException, ServletException
     {
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": html fragment not implemented");
@@ -239,11 +242,12 @@ public abstract class Op
      * @param req      servlet request
      * @param resp     servlet response (Content-Type already set to JSON)
      * @throws IOException if response writing fails
+     * @throws ServletException
      */
     protected void json(
         LuceneIndex index,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException
+        HttpServletResponse response) throws IOException, ServletException
     {
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": json not implemented");
@@ -259,11 +263,12 @@ public abstract class Op
      * @param req      servlet request
      * @param resp     servlet response (Content-Type already set to NDJSON)
      * @throws IOException if response writing fails
+     * @throws ServletException
      */
     protected void jsonl(
         LuceneIndex index,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException
+        HttpServletResponse response) throws IOException, ServletException
     {
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": csv not implemented");
@@ -280,11 +285,12 @@ public abstract class Op
      * @param req      servlet request
      * @param resp     servlet response (Content-Type already set to HTML)
      * @throws IOException if response writing fails
+     * @throws ServletException
      */
     protected void page(
         LuceneIndex index,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException
+        HttpServletResponse response) throws IOException, ServletException
     {
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": html not implemented");
@@ -299,11 +305,12 @@ public abstract class Op
      * @param req      servlet request
      * @param resp     servlet response (Content-Type already set to CSV)
      * @throws IOException if response writing fails
+     * @throws ServletException
      */
     protected void txt(
         LuceneIndex index,
         HttpServletRequest request,
-        HttpServletResponse response) throws IOException
+        HttpServletResponse response) throws IOException, ServletException
     {
         response.setStatus(406);
         ((MetaUtil)request.getAttribute(ALIX_META)).log(getClass().getSimpleName() + ": txt not implemented");

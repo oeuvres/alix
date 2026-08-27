@@ -1,6 +1,7 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +14,8 @@ import com.github.oeuvres.alix.lucene.vecs.VecModel;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -31,12 +34,38 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
  */
 public class OpCompass extends Op
 {
+    /** Property for the directory of models */
+    private static final String ALIX_MODELS_ROOT="alix.models.root";
     /** Number of nearest model vectors used to define the compass. */
     private static final int NEIGHBORS = 300;
 
     /** Vector model used by the current experiment. */
-    private static final Path MODEL = Path.of(
-        "models/piaget-260825-word2vec-coocs50-g2specif2.0-power0.5-stop2-dims500.bin");
+    private static final String MODEL = "piaget-content-coocs30-g2specif1.0-dims200.bin"; // best model
+    
+    /**
+     * Returns the configured models root directory.
+     *
+     * @param request HTTP request
+     * @return models root directory
+     * @throws IOException if the parameter is missing or does not designate a directory
+     * @throws ServletException 
+     */
+    private static Path modelRoot(final HttpServletRequest request) throws IOException, ServletException
+    {
+        final ServletContext context = request.getServletContext();
+
+        final Object cached = context.getAttribute(ALIX_MODELS_ROOT);
+        if (cached instanceof Path path) {
+            return path;
+        }
+        final String value = HttpPars.requiresInitParameter(context, ALIX_MODELS_ROOT);
+        final Path path = Path.of(value).toAbsolutePath().normalize();
+        if (!Files.isDirectory(path)) {
+            throw new IOException(ALIX_MODELS_ROOT + " is not a directory: " + path);
+        }
+        context.setAttribute(ALIX_MODELS_ROOT, path);
+        return path;
+    }
 
     /**
      * Writes the query TopTerms projected into the nearest-neighbour compass.
@@ -45,13 +74,15 @@ public class OpCompass extends Op
      * @param request HTTP request
      * @param response HTTP response
      * @throws IOException if index access, model loading, or response writing fails
+     * @throws ServletException 
      */
     @Override
     protected void json(
         final LuceneIndex lucene,
         final HttpServletRequest request,
         final HttpServletResponse response
-    ) throws IOException {
+    ) throws IOException, ServletException {
+        
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final TopTerms topTerms = OpTerms.topTerms(lucene, pars, meta);
@@ -61,8 +92,7 @@ public class OpCompass extends Op
             AlixServlet.jsonError(request, response);
             return;
         }
-
-        final VecModel model = VecModel.get(MODEL);
+        final VecModel model = VecModel.get(modelRoot(request).resolve(MODEL));
         final List<TopTerms.ExcludedTerm> pivots = new ArrayList<>();
         final List<Integer> pivotIds = new ArrayList<>();
         for (final TopTerms.ExcludedTerm pivot : topTerms.excludedTerms()) {

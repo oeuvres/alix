@@ -13,16 +13,14 @@ import java.util.Objects;
  * dependency is required. Coordinates are expressed relative to the arithmetic
  * mean of the pivot vectors, so the pivot focus is at {@code (0, 0)}.</p>
  *
- * <p>A rotation within one quarter-turn is selected to maximize Shannon entropy
- * over four 90-degree cardinal sectors. The remaining quarter-turn ambiguity is
- * resolved by putting the sector with the greatest mean reciprocal neighbour
- * rank at the top. A final horizontal reflection puts the stronger horizontal
- * sector, by the same criterion, on the left. These operations preserve all
- * distances inside the displayed PCA plane.</p>
+ * <p>No attempt is made to orient the PCA plane. In particular, this class does
+ * not rotate or reflect the projected points to stabilize cardinal directions.
+ * A caller that needs to align successive maps may do so afterwards, for
+ * example with a Procrustes transform based on shared points.</p>
  *
- * <p>The reference neighbours are used only to define and orient the compass.
- * They do not constrain which terms can later be plotted: any term present in
- * the same {@link VecModel} can be projected with {@link #point(int)} or
+ * <p>The reference neighbours are used only to define the PCA plane. They do
+ * not constrain which terms can later be plotted: any term present in the same
+ * {@link VecModel} can be projected with {@link #point(int)} or
  * {@link #point(String)}.</p>
  */
 public final class CompassVec
@@ -33,18 +31,6 @@ public final class CompassVec
     /** Convergence tolerance for the two-dimensional PCA subspace. */
     private static final double PCA_TOLERANCE = 1e-8;
 
-    /** One quarter-turn in radians. */
-    private static final double QUARTER_TURN = Math.PI / 2d;
-
-    /** Number of rotation candidates within one quarter-turn. */
-    private static final int ROTATION_STEPS = 360;
-
-    /** Final cardinal-sector counts in top, right, bottom, left order. */
-    private final int[] cardinalCounts;
-
-    /** Cosine of the final rotation. */
-    private final double cosine;
-
     /** First orthonormal direction of the local PCA plane. */
     private final double[] directionX;
 
@@ -53,9 +39,6 @@ public final class CompassVec
 
     /** Arithmetic mean of the pivot vectors, used as the plotted origin. */
     private final double[] focus;
-
-    /** Whether the final orientation includes a horizontal reflection. */
-    private final boolean mirrored;
 
     /** Model whose coordinate system defines this compass. */
     private final VecModel model;
@@ -66,12 +49,6 @@ public final class CompassVec
     /** Number of nearest neighbours used to define this compass. */
     private final int referenceCount;
 
-    /** Total counter-clockwise rotation applied to the initial PCA plane. */
-    private final double rotation;
-
-    /** Sine of the final rotation. */
-    private final double sine;
-
     /** One-third nearest-rank quantile of absolute reference X coordinates. */
     private final double xCenter;
 
@@ -79,13 +56,13 @@ public final class CompassVec
     private final double yCenter;
 
     /**
-     * One model term projected into the oriented compass plane.
+     * One model term projected into the local PCA plane.
      *
      * @param form term form
      * @param id vector id in the model
      * @param distance mean cosine distance to the pivot vectors
-     * @param x horizontal coordinate after compass orientation
-     * @param y vertical coordinate after compass orientation
+     * @param x horizontal PCA coordinate
+     * @param y vertical PCA coordinate
      * @param quality share of the pivot-centred vector displacement represented
      *        by the displayed plane
      */
@@ -162,10 +139,10 @@ public final class CompassVec
         directionY = directions[1];
         focus = pivotMean(model, pivotIds);
 
-        final double[][] raw = new double[size][2];
+        final double[][] points = new double[size][2];
         double shownVariance = 0d;
         for (int row = 0; row < size; row++) {
-            raw[row] = coordinates(vectors[row]);
+            points[row] = coordinates(vectors[row]);
 
             double centeredX = 0d;
             double centeredY = 0d;
@@ -175,54 +152,15 @@ public final class CompassVec
             }
             shownVariance += centeredX * centeredX + centeredY * centeredY;
         }
+
         quality = totalVariance > 0d ? shownVariance / totalVariance : 0d;
-
-        double angle = bestRotation(raw);
-        rotate(raw, angle);
-
-        final double[] means = cardinalMeanReciprocalRanks(raw);
-        final int strongest = greatestIndex(means);
-        final double quarterRotation = strongest * QUARTER_TURN;
-        angle += quarterRotation;
-        rotate(raw, quarterRotation);
-
-        final double[] orientedMeans = cardinalMeanReciprocalRanks(raw);
-        mirrored = orientedMeans[1] > orientedMeans[3];
-        if (mirrored) {
-            mirrorHorizontally(raw);
-        }
-
-        rotation = angle;
-        cosine = Math.cos(rotation);
-        sine = Math.sin(rotation);
-        cardinalCounts = cardinalCounts(raw);
         referenceCount = size;
-        xCenter = absoluteQuantile(raw, 0, 1d / 3d);
-        yCenter = absoluteQuantile(raw, 1, 1d / 3d);
+        xCenter = absoluteQuantile(points, 0, 1d / 3d);
+        yCenter = absoluteQuantile(points, 1, 1d / 3d);
     }
 
     /**
-     * Returns the final cardinal-sector counts of the reference neighbours.
-     *
-     * @return defensive copy in top, right, bottom, left order
-     */
-    public int[] cardinalCounts()
-    {
-        return cardinalCounts.clone();
-    }
-
-    /**
-     * Returns whether the final compass uses a horizontal reflection.
-     *
-     * @return {@code true} when left and right were reflected
-     */
-    public boolean mirrored()
-    {
-        return mirrored;
-    }
-
-    /**
-     * Projects one model vector into the oriented compass plane.
+     * Projects one model vector into the local PCA plane.
      *
      * @param id vector id
      * @return projected point
@@ -232,17 +170,15 @@ public final class CompassVec
     {
         final double[] vector = new double[model.dim()];
         model.get(id, vector);
-        final double[] raw = coordinates(vector);
-        final double x = cosine * raw[0] - sine * raw[1];
-        final double y = sine * raw[0] + cosine * raw[1];
-        final double orientedX = mirrored ? -x : x;
+        final double[] coordinates = coordinates(vector);
 
         double total = 0d;
         for (int axis = 0; axis < vector.length; axis++) {
             final double delta = vector[axis] - focus[axis];
             total += delta * delta;
         }
-        final double shown = raw[0] * raw[0] + raw[1] * raw[1];
+        final double shown =
+            coordinates[0] * coordinates[0] + coordinates[1] * coordinates[1];
         final double pointQuality = total > 0d
             ? Math.max(0d, Math.min(1d, shown / total))
             : 1d;
@@ -252,13 +188,13 @@ public final class CompassVec
             model.word(id),
             id,
             distance,
-            orientedX,
-            y,
+            coordinates[0],
+            coordinates[1],
             pointQuality);
     }
 
     /**
-     * Projects one model term into the oriented compass plane.
+     * Projects one model term into the local PCA plane.
      *
      * @param form term form
      * @return projected point, or {@code null} if the form is absent from the model
@@ -293,22 +229,11 @@ public final class CompassVec
     }
 
     /**
-     * Returns the counter-clockwise rotation applied to the initial PCA plane.
-     *
-     * @return rotation in radians before the optional reflection
-     */
-    public double rotation()
-    {
-        return rotation;
-    }
-
-    /**
      * Returns the positive X boundary of the central compass band.
      *
      * <p>The value is the one-third nearest-rank quantile of {@code |x|} among
-     * the oriented reference neighbours. The corresponding grid boundaries are
-     * therefore {@code -xCenter()} and {@code +xCenter()} in compass projection
-     * units.</p>
+     * the reference neighbours. The corresponding grid boundaries are therefore
+     * {@code -xCenter()} and {@code +xCenter()} in projection units.</p>
      *
      * @return positive central-band X boundary in vector-projection units
      */
@@ -321,9 +246,8 @@ public final class CompassVec
      * Returns the positive Y boundary of the central compass band.
      *
      * <p>The value is the one-third nearest-rank quantile of {@code |y|} among
-     * the oriented reference neighbours. The corresponding grid boundaries are
-     * therefore {@code -yCenter()} and {@code +yCenter()} in compass projection
-     * units.</p>
+     * the reference neighbours. The corresponding grid boundaries are therefore
+     * {@code -yCenter()} and {@code +yCenter()} in projection units.</p>
      *
      * @return positive central-band Y boundary in vector-projection units
      */
@@ -340,7 +264,7 @@ public final class CompassVec
      * {@code p = 1/3}, about one third of the reference neighbours therefore
      * lie inside the corresponding central band on that axis.</p>
      *
-     * @param points oriented two-dimensional reference coordinates
+     * @param points two-dimensional reference coordinates
      * @param axis coordinate axis, 0 for X or 1 for Y
      * @param probability quantile probability in {@code [0, 1]}
      * @return quantile of absolute coordinate values
@@ -373,66 +297,10 @@ public final class CompassVec
     }
 
     /**
-     * Returns the rotation within one quarter-turn that maximizes the entropy of
-     * the four cardinal sectors.
-     */
-    private static double bestRotation(final double[][] points)
-    {
-        double bestAngle = 0d;
-        double bestEntropy = Double.NEGATIVE_INFINITY;
-        for (int step = 0; step < ROTATION_STEPS; step++) {
-            final double angle = step * QUARTER_TURN / ROTATION_STEPS;
-            final double cosine = Math.cos(angle);
-            final double sine = Math.sin(angle);
-            final int[] counts = new int[4];
-            for (final double[] point : points) {
-                final double x = cosine * point[0] - sine * point[1];
-                final double y = sine * point[0] + cosine * point[1];
-                counts[sector(x, y)]++;
-            }
-            final double entropy = entropy(counts, points.length);
-            if (entropy > bestEntropy) {
-                bestEntropy = entropy;
-                bestAngle = angle;
-            }
-        }
-        return bestAngle;
-    }
-
-    /**
-     * Counts points in the four cardinal sectors.
-     */
-    private static int[] cardinalCounts(final double[][] points)
-    {
-        final int[] counts = new int[4];
-        for (final double[] point : points) {
-            counts[sector(point[0], point[1])]++;
-        }
-        return counts;
-    }
-
-    /**
-     * Computes mean reciprocal rank in the four cardinal sectors.
-     */
-    private static double[] cardinalMeanReciprocalRanks(final double[][] points)
-    {
-        final int[] counts = new int[4];
-        final double[] means = new double[4];
-        for (int rank = 0; rank < points.length; rank++) {
-            final int sector = sector(points[rank][0], points[rank][1]);
-            counts[sector]++;
-            means[sector] += 1d / (rank + 1d);
-        }
-        for (int sector = 0; sector < means.length; sector++) {
-            if (counts[sector] > 0) {
-                means[sector] /= counts[sector];
-            }
-        }
-        return means;
-    }
-
-    /**
-     * Projects one model vector into the unoriented pivot-centred PCA plane.
+     * Projects one model vector into the pivot-centred PCA plane.
+     *
+     * @param vector model vector
+     * @return X and Y coordinates in the PCA plane
      */
     private double[] coordinates(final double[] vector)
     {
@@ -448,6 +316,10 @@ public final class CompassVec
 
     /**
      * Returns the scalar product of two equal-length vectors.
+     *
+     * @param first first vector
+     * @param second second vector
+     * @return scalar product
      */
     private static double dot(final double[] first, final double[] second)
     {
@@ -459,37 +331,10 @@ public final class CompassVec
     }
 
     /**
-     * Computes Shannon entropy from four population counts.
-     */
-    private static double entropy(final int[] counts, final int total)
-    {
-        double entropy = 0d;
-        for (final int count : counts) {
-            if (count == 0) {
-                continue;
-            }
-            final double probability = (double) count / total;
-            entropy -= probability * Math.log(probability);
-        }
-        return entropy;
-    }
-
-    /**
-     * Returns the index of the greatest value, preferring the first on ties.
-     */
-    private static int greatestIndex(final double[] values)
-    {
-        int greatest = 0;
-        for (int index = 1; index < values.length; index++) {
-            if (values[index] > values[greatest]) {
-                greatest = index;
-            }
-        }
-        return greatest;
-    }
-
-    /**
      * Chooses two deterministic independent starting directions from matrix rows.
+     *
+     * @param matrix centred row matrix
+     * @return two orthonormal starting directions
      */
     private static double[][] initialBasis(final double[][] matrix)
     {
@@ -532,17 +377,9 @@ public final class CompassVec
     }
 
     /**
-     * Reflects all points across the vertical axis.
-     */
-    private static void mirrorHorizontally(final double[][] points)
-    {
-        for (final double[] point : points) {
-            point[0] = -point[0];
-        }
-    }
-
-    /**
      * Normalises one vector in place.
+     *
+     * @param vector vector to normalize
      */
     private static void normalize(final double[] vector)
     {
@@ -558,6 +395,10 @@ public final class CompassVec
 
     /**
      * Computes the arithmetic mean of the pivot vectors.
+     *
+     * @param model loaded vector model
+     * @param pivotIds vector ids of the pivots
+     * @return arithmetic mean vector
      */
     private static double[] pivotMean(
         final VecModel model,
@@ -580,6 +421,9 @@ public final class CompassVec
     /**
      * Computes the leading two-dimensional right-singular subspace of a centred
      * row matrix by pure-Java block power iteration.
+     *
+     * @param matrix centred row matrix
+     * @return first two orthonormal PCA directions
      */
     private static double[][] principalPlane(final double[][] matrix)
     {
@@ -639,38 +483,10 @@ public final class CompassVec
     }
 
     /**
-     * Rotates all points counter-clockwise in place.
-     */
-    private static void rotate(
-        final double[][] points,
-        final double angle
-    ) {
-        if (angle == 0d) {
-            return;
-        }
-        final double cosine = Math.cos(angle);
-        final double sine = Math.sin(angle);
-        for (final double[] point : points) {
-            final double x = point[0];
-            final double y = point[1];
-            point[0] = cosine * x - sine * y;
-            point[1] = sine * x + cosine * y;
-        }
-    }
-
-    /**
-     * Assigns a point to a cardinal 90-degree sector.
-     */
-    private static int sector(final double x, final double y)
-    {
-        if (Math.abs(y) >= Math.abs(x)) {
-            return y >= 0d ? 0 : 2;
-        }
-        return x >= 0d ? 1 : 3;
-    }
-
-    /**
      * Returns the square of one value.
+     *
+     * @param value value to square
+     * @return squared value
      */
     private static double square(final double value)
     {
@@ -679,6 +495,9 @@ public final class CompassVec
 
     /**
      * Removes from one vector its component along a unit direction.
+     *
+     * @param vector vector modified in place
+     * @param direction unit direction to remove
      */
     private static void subtractProjection(
         final double[] vector,

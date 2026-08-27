@@ -81,7 +81,7 @@ public class AlixServlet extends HttpServlet
     private static final long serialVersionUID = 1L;
 
     /** Resolved root directory holding one subdirectory per corpus. */
-    private Path dataDir;
+    private Path luceneRoot;
     /** Live index registry; owns loading, reload-on-swap, and unloading. */
     private IndexRegistry registry;
     /** Registered operations, keyed by URL operation name. */
@@ -120,12 +120,13 @@ public class AlixServlet extends HttpServlet
      * @param request HTTP request
      * @param response HTTP response
      * @throws IOException if writing the response or an operation fails
+     * @throws ServletException 
      */
     @Override
     protected void doGet(
         final HttpServletRequest request,
         final HttpServletResponse response
-    ) throws IOException {
+    ) throws IOException, ServletException {
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setCharacterEncoding("UTF-8");
         response.setHeader("Cache-Control", "no-cache");
@@ -180,19 +181,20 @@ public class AlixServlet extends HttpServlet
     public void init(final ServletConfig config) throws ServletException
     {
         super.init(config);
+        
 
         servletStartedMillis = System.currentTimeMillis();
-        String dir = HttpPars.requiresInitParameter(config, ALIX_LUCENE_ROOT);
-        dataDir = Path.of(dir);
-        if (!Files.isDirectory(dataDir)) {
-            throw new ServletException(ALIX_LUCENE_ROOT + " is not a directory: " + dataDir);
+        String dir = HttpPars.requiresInitParameter(config.getServletContext(), ALIX_LUCENE_ROOT);
+        luceneRoot = Path.of(dir);
+        if (!Files.isDirectory(luceneRoot)) {
+            throw new ServletException(ALIX_LUCENE_ROOT + " is not a directory: " + luceneRoot);
         }
-        registry = new IndexRegistry(dataDir, POLL_MILLIS, GRACE_MILLIS);
+        registry = new IndexRegistry(luceneRoot, POLL_MILLIS, GRACE_MILLIS);
         registry.start();
 
         registerOps();
 
-        LOG.info("Alix started: " + registry.all().size() + " index(es) from " + dataDir);
+        LOG.info("Alix started: " + registry.all().size() + " index(es) from " + luceneRoot);
         for (LuceneIndex index : registry.all()) {
             LOG.info("  " + index);
         }
@@ -364,7 +366,7 @@ public class AlixServlet extends HttpServlet
         final String segment,
         final HttpServletRequest request,
         final HttpServletResponse response
-    ) throws IOException {
+    ) throws IOException, ServletException {
 
         final String[] opFormat = splitOpFormat(segment);
         final String opName = opFormat[0];

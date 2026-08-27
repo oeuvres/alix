@@ -50,12 +50,16 @@ public class DevServer
             "/*",
             EnumSet.of(DispatcherType.REQUEST)
         );
-
-        ServletHolder holder = new ServletHolder(new AlixServlet());
-        holder.setInitParameter(
+        ctx.setInitParameter(
             "alix.lucene.root",
             System.getProperty("alix.lucene.root", "lucene")
         );
+        ctx.setInitParameter(
+            "alix.models.root",
+            System.getProperty("alix.models.root", "models")
+        );
+        
+        ServletHolder holder = new ServletHolder(new AlixServlet());
         ctx.addServlet(holder, "/*");
 
         server.setHandler(ctx);

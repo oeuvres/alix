@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -1178,26 +1179,21 @@ public class HttpPars
     }
     
     /**
-     * Returns a configuration parameter using the following precedence:
-     * system property, servlet initialization parameter, then context
-     * initialization parameter.
+     * Returns a required application parameter.
      *
-     * <p>Blank values are treated as absent: lookup continues to the next
-     * configuration source.</p>
+     * <p>The value is resolved in this order:
+     * system property, then servlet-context initialization parameter.</p>
      *
-     * @param config servlet configuration
+     * @param context servlet context
      * @param name parameter name
-     * @return the trimmed parameter value, never {@code null}
-     * @throws ServletException if no configuration source defines the parameter
-     * @throws NullPointerException if {@code config} or {@code name} is
-     *         {@code null}
+     * @return resolved parameter value
+     * @throws ServletException if the parameter is not defined
      */
     public static String requiresInitParameter(
-        final ServletConfig config,
+        final ServletContext context,
         final String name
-    ) throws ServletException
-    {
-        Objects.requireNonNull(config, "config");
+    ) throws ServletException {
+        Objects.requireNonNull(context, "context");
         Objects.requireNonNull(name, "name");
 
         String value = System.getProperty(name);
@@ -1205,16 +1201,14 @@ public class HttpPars
             return value.trim();
         }
 
-        value = config.getInitParameter(name);
+        value = context.getInitParameter(name);
         if (value != null && !value.isBlank()) {
             return value.trim();
         }
-        
-        value = config.getServletContext().getInitParameter(name);
-        if (value != null && !value.isBlank()) {
-            return value.trim();
-        }
-        throw new ServletException("Required parameter '" + name + "' is not defined; checked in order: "
-                + "System.getProperty, ServletConfig.getInitParameter, ServletContext.getInitParameter");
+
+        throw new ServletException(
+            "Required parameter '" + name + "' is not defined; checked in order: "
+            + "System.getProperty, ServletContext.getInitParameter"
+        );
     }
 }
