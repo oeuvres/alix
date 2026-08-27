@@ -24,7 +24,7 @@ import com.github.oeuvres.alix.util.Report;
 
 /**
  * Builds dense term vectors from positional term cooccurrence using truncated
- * PRIMME SVD, and writes them in the word2vec binary format.
+ * PRIMME symmetric eigendecomposition, and writes them in the word2vec binary format.
  *
  * <p>The vocabulary is selected by minimum document frequency, then by
  * decreasing total term frequency. Rows and columns use the same selected
@@ -35,8 +35,8 @@ import com.github.oeuvres.alix.util.Report;
  * pivot/cooccurrence directions.</p>
  *
  * <p>Cooccurrence counts remain sparse throughout collection. Each row uses a
- * primitive integer-to-double hash map while counts are accumulated. The table
- * is flattened to COO arrays before the G² pipeline is created. The dense
+ * primitive integer-to-double hash map while counts are accumulated. Only the upper triangle is stored during collection, then flattened to COO arrays
+ * before the G² pipeline is created. The dense
  * logical {@code vocabulary x vocabulary} count matrix is never allocated.</p>
  *
  * <p>Position gaps represented by {@link TermRail#NO_TERM} remain part of
@@ -94,11 +94,25 @@ public final class Coocs2vec
         long pairs
     ) {
         /**
-         * Returns the number of non-zero cells.
+         * Returns the logical number of non-zero cells in the full symmetric matrix.
          *
-         * @return non-zero cell count
+         * @return logical non-zero cell count
          */
-        private int nonZero()
+        private long nonZero()
+        {
+            long count = 0L;
+            for (int i = 0; i < values.length; i++) {
+                count += rows[i] == cols[i] ? 1L : 2L;
+            }
+            return count;
+        }
+
+        /**
+         * Returns the number of physically stored upper-triangle cells.
+         *
+         * @return stored cell count
+         */
+        private int storedNonZero()
         {
             return values.length;
         }
@@ -318,7 +332,7 @@ public final class Coocs2vec
     private static final int STOP_DIST = -1;
 
     /** PRIMME convergence tolerance for model production. */
-    private static final double SVD_EPS = 1e-5;
+    private static final double SVD_EPS = 1e-3;
 
     /** Command-line usage. */
     private static final String USAGE =
@@ -472,9 +486,11 @@ public final class Coocs2vec
                     termCount, termCount, window);
                 final Table table = coocTable(rail, lexicon, selected, window);
                 log(
-                    "matrix built: %,d non-zero cells (%.2f%% dense), %,d positional pairs counted",
+                    "matrix built: %,d logical non-zero cells (%.2f%% dense), "
+                        + "%,d upper-triangle cells stored, %,d positional pairs counted",
                     table.nonZero(),
                     100d * table.nonZero() / cellCount,
+                    table.storedNonZero(),
                     table.pairs());
                 words = table.words();
                 svd = new SparseG2Svd(
@@ -483,7 +499,7 @@ public final class Coocs2vec
                 svd.g2Specif(specif, cellpow);
             }
             final int retained;
-            log("SVD decomposing to top %,d dims (PRIMME, eps=%.1e)", dims, SVD_EPS);
+            log("decomposing to top %,d singular axes (PRIMME EIGS, eps=%.1e)", dims, SVD_EPS);
             svd.decompose(dims, SVD_EPS);
             if(weightAxes > 0) {
                 log("weighting axes by sigma^%.3f", weightAxes);
@@ -605,9 +621,9 @@ public final class Coocs2vec
     }
 
     /**
-     * Adds one unordered positional pair to the symmetric count table. A pair
-     * of distinct rows contributes one count to each mirrored cell; a self-pair
-     * contributes two counts to the diagonal.
+     * Adds one unordered positional pair to the upper triangle of the symmetric
+     * count table. A distinct pair is stored once and represents both mirrored
+     * logical cells; a self-pair contributes two counts to the diagonal.
      *
      * @param counts sparse count table being filled
      * @param row matrix row of the earlier occurrence
@@ -621,8 +637,10 @@ public final class Coocs2vec
         if (row == col) {
             counts.add(row, row, 2d);
         }
-        else {
+        else if (row < col) {
             counts.add(row, col, 1d);
+        }
+        else {
             counts.add(col, row, 1d);
         }
     }
