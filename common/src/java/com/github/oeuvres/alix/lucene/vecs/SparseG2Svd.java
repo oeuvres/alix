@@ -14,11 +14,11 @@ import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
 import java.util.Objects;
 
-import us.ascendtech.primme.PrimmeEigs;
+import us.ascendtech.primme.PrimmeSvds;
 
 /**
  * Builds truncated row embeddings from a sparse symmetric contingency table using PRIMME
- * EIGS.
+ * SVDS.
  *
  * <p>The input table contains ordinary positive observations only; there are no
  * structural cells. It can be prepared in three ways: as the raw sparse
@@ -38,11 +38,11 @@ import us.ascendtech.primme.PrimmeEigs;
  * corrections to this background. The dense residual matrix is never
  * materialised.</p>
  *
- * <p>PRIMME computes the requested leading eigenpairs only through
- * matrix-vector multiplication callbacks. Because every prepared matrix is real
- * and symmetric, its eigenvectors are singular axes and its singular values are
- * the absolute eigenvalues. The sparse operators store only the upper triangle
- * and reconstruct mirrored contributions during multiplication.</p>
+ * <p>PRIMME computes the requested leading singular triplets only through
+ * matrix-vector multiplication callbacks. Every prepared matrix is real and
+ * symmetric, so forward and transpose multiplication are identical. The sparse
+ * operators store only the upper triangle and reconstruct mirrored contributions
+ * during multiplication.</p>
  *
  * <p>This class is mutable and not thread-safe.</p>
  */
@@ -51,7 +51,7 @@ public final class SparseG2Svd
     /** Default relative convergence tolerance used by PRIMME. */
     private static final double DEFAULT_EPS = 1e-3;
 
-    /** Minimal matrix operations required by the PRIMME symmetric eigensolver. */
+    /** Minimal matrix operations required by the PRIMME SVD solver. */
     private interface MatrixOperator
     {
         /**
@@ -94,7 +94,7 @@ public final class SparseG2Svd
     private static final double SPECIF_REGULARIZER = 20d;
 
     /** Maximum PRIMME block size used for sparse matrix-vector products. */
-    private static final int MAX_BLOCK_SIZE = 4;
+    private static final int MAX_BLOCK_SIZE = 1;
 
     /** Whether singular-value weighting has been applied. */
     private boolean axesWeighted;
@@ -218,7 +218,7 @@ public final class SparseG2Svd
     }
 
     /**
-     * Computes the requested leading singular components with PRIMME EIGS.
+     * Computes the requested leading singular components with PRIMME SVDS.
      *
      * @param dims number of leading dimensions to compute
      * @return this pipeline
@@ -231,7 +231,7 @@ public final class SparseG2Svd
     }
 
     /**
-     * Computes the requested leading singular components with PRIMME EIGS.
+     * Computes the requested leading singular components with PRIMME SVDS.
      *
      * @param dims number of leading dimensions to compute
      * @param eps relative convergence tolerance
@@ -258,20 +258,15 @@ public final class SparseG2Svd
             return this;
         }
 
-        if (rowCount != colCount) {
-            throw new IllegalStateException(
-                "PRIMME EIGS requires a square prepared matrix: "
-                    + rowCount + " x " + colCount);
-        }
-
-        final int requested = Math.min(dims, rowCount);
-        final PrimmeMatvec matvec = new PrimmeMatvec(prepared, rowCount);
+        final int limit = Math.min(rowCount, colCount);
+        final int requested = Math.min(dims, limit);
+        final PrimmeMatvec matvec = new PrimmeMatvec(prepared, rowCount, colCount);
         final long solveStarted = System.nanoTime();
-        try (PrimmeEigs eigs = PrimmeEigs.create(rowCount, requested, matvec)) {
-            final PrimmeEigs.Result result = eigs
-                .setMethod(PrimmeEigs.Method.DEFAULT_MIN_MATVECS)
-                .setTarget(PrimmeEigs.Target.LARGEST_ABS)
+        try (PrimmeSvds svds = PrimmeSvds.create(rowCount, colCount, requested, matvec)) {
+            final PrimmeSvds.Result result = svds
                 .setMaxBlockSize(MAX_BLOCK_SIZE)
+                .setMethod(PrimmeSvds.Method.NORMAL_EQUATIONS)
+                .setTarget(PrimmeSvds.Target.LARGEST)
                 .setEps(eps)
                 .setPrintLevel(0)
                 .solve();
@@ -565,14 +560,20 @@ public final class SparseG2Svd
     private record SpecifPrepared(MatrixOperator matrix, double inertia) {}
 
     /**
-     * Adopts a PRIMME symmetric eigendecomposition as the current embedding.
+     * Adopts a PRIMME truncated SVD as the current embedding.
      *
-     * @param decomposition PRIMME eigendecomposition result
+     * <p>PRIMME stores all left singular vectors first and all right singular
+     * vectors after them. Version 0.2.0 of the Java binding exposes that native
+     * buffer as equal {@code m+n} chunks; {@link #nativeVectorValue(double[][],
+     * int, long)} reconstructs the native linear indexing before the left
+     * vectors are copied.</p>
+     *
+     * @param decomposition PRIMME SVD result
      */
-    private void absorb(final PrimmeEigs.Result decomposition)
+    private void absorb(final PrimmeSvds.Result decomposition)
     {
-        final double[] eigenvalues = decomposition.evals();
-        if (eigenvalues.length == 0) {
+        final double[] values = decomposition.svals();
+        if (values.length == 0) {
             singularValues = new double[0];
             embedding = new double[rowCount][0];
             rank = 0;
@@ -580,31 +581,21 @@ public final class SparseG2Svd
             return;
         }
 
-        final Integer[] order = new Integer[eigenvalues.length];
-        for (int axis = 0; axis < order.length; axis++) {
-            order[axis] = axis;
-        }
-        Arrays.sort(
-            order,
-            (a, b) -> Double.compare(Math.abs(eigenvalues[b]), Math.abs(eigenvalues[a])));
-
-        final double largest = Math.abs(eigenvalues[order[0]]);
-        final double tolerance = numericalRankTolerance(largest);
+        final double tolerance = numericalRankTolerance(values[0]);
         int retained = 0;
-        while (retained < order.length
-            && Math.abs(eigenvalues[order[retained]]) > tolerance) {
+        while (retained < values.length && values[retained] > tolerance) {
             retained++;
         }
 
-        final double[][] vectors = decomposition.evecs();
-        singularValues = new double[retained];
+        final double[][] vectors = decomposition.svecs();
+        final int nativeChunkLength = rowCount + colCount;
+        singularValues = Arrays.copyOf(values, retained);
         embedding = new double[rowCount][retained];
         for (int axis = 0; axis < retained; axis++) {
-            final int source = order[axis];
-            singularValues[axis] = Math.abs(eigenvalues[source]);
-            final double[] vector = vectors[source];
+            final long axisOffset = (long) axis * rowCount;
             for (int row = 0; row < rowCount; row++) {
-                embedding[row][axis] = vector[row];
+                embedding[row][axis] = nativeVectorValue(
+                    vectors, nativeChunkLength, axisOffset + row);
             }
         }
         rank = retained;
@@ -1002,6 +993,29 @@ public final class SparseG2Svd
     }
 
     /**
+     * Reads one value from the native PRIMME singular-vector buffer as exposed
+     * by primme-ffm-java 0.2.0.
+     *
+     * @param chunks equal chunks returned by the binding
+     * @param chunkLength native chunk length, {@code rows + columns}
+     * @param index linear native-buffer index
+     * @return value at the requested native index
+     */
+    private static double nativeVectorValue(
+        final double[][] chunks,
+        final int chunkLength,
+        final long index
+    ) {
+        final int chunk = (int) (index / chunkLength);
+        final int offset = (int) (index % chunkLength);
+        if (chunk < 0 || chunk >= chunks.length || offset >= chunks[chunk].length) {
+            throw new IllegalStateException(
+                "unexpected PRIMME singular-vector layout at native index " + index);
+        }
+        return chunks[chunk][offset];
+    }
+
+    /**
      * Returns the numerical-rank tolerance used for a partial SVD.
      *
      * @param largest largest retained singular value
@@ -1038,11 +1052,14 @@ public final class SparseG2Svd
         }
     }
 
-    /** PRIMME symmetric-eigenproblem callback adapter. */
-    private static final class PrimmeMatvec implements PrimmeEigs.MatrixMultiply
+    /** PRIMME SVD callback adapter using Java arrays in the sparse hot loop. */
+    private static final class PrimmeMatvec implements PrimmeSvds.MatrixMultiply
     {
         /** Number of callback invocations. */
         private long callbacks;
+
+        /** Number of columns. */
+        private final int colCount;
 
         /** Interleaved Java input buffer. */
         private double[] input = new double[0];
@@ -1070,27 +1087,32 @@ public final class SparseG2Svd
          *
          * @param matrix prepared matrix operator
          * @param rowCount number of rows
+         * @param colCount number of columns
          */
         private PrimmeMatvec(
             final MatrixOperator matrix,
-            final int rowCount
+            final int rowCount,
+            final int colCount
         ) {
             this.matrix = matrix;
             this.rowCount = rowCount;
+            this.colCount = colCount;
         }
 
         /**
          * Computes one or more PRIMME matrix-vector products.
          *
-         * <p>Foreign-memory vectors are copied once into an interleaved Java
-         * buffer. The sparse matrix is then traversed once for the complete
-         * block rather than once per vector.</p>
+         * <p>The prepared matrices are symmetric, therefore {@code A*x} and
+         * {@code A'*x} use the same multiplication. Foreign-memory vectors are
+         * copied once into an interleaved Java buffer; the sparse matrix is then
+         * traversed once for the complete block.</p>
          *
          * @param x input vectors
          * @param ldx leading dimension of {@code x}
          * @param y output vectors
          * @param ldy leading dimension of {@code y}
          * @param blockSize number of vectors
+         * @param transpose zero for {@code A*x}, one for {@code A'*x}
          */
         @Override
         public void apply(
@@ -1098,16 +1120,23 @@ public final class SparseG2Svd
             final long ldx,
             final MemorySegment y,
             final long ldy,
-            final int blockSize
+            final int blockSize,
+            final int transpose
         ) {
             final long started = System.nanoTime();
-            final int length = Math.multiplyExact(rowCount, blockSize);
+            final int inSize = transpose == 0 ? colCount : rowCount;
+            final int outSize = transpose == 0 ? rowCount : colCount;
+            if (inSize != outSize) {
+                throw new IllegalStateException(
+                    "symmetric PRIMME operator must be square: " + rowCount + " x " + colCount);
+            }
+            final int length = Math.multiplyExact(inSize, blockSize);
             if (input.length < length) {
                 input = new double[length];
                 output = new double[length];
             }
 
-            for (int row = 0; row < rowCount; row++) {
+            for (int row = 0; row < inSize; row++) {
                 final int base = row * blockSize;
                 for (int block = 0; block < blockSize; block++) {
                     input[base + block] = x.getAtIndex(
@@ -1118,7 +1147,7 @@ public final class SparseG2Svd
 
             matrix.multiplyBlock(input, output, blockSize);
 
-            for (int row = 0; row < rowCount; row++) {
+            for (int row = 0; row < outSize; row++) {
                 final int base = row * blockSize;
                 for (int block = 0; block < blockSize; block++) {
                     y.setAtIndex(

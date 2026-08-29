@@ -40,7 +40,9 @@ public class OpCompass extends Op
     private static final int NEIGHBORS = 300;
 
     /** Vector model used by the current experiment. */
-    private static final String MODEL = "piaget-content-coocs30-g2specif1.0-dims200.bin"; // best model
+    private static final String MODEL_DEFAULT = "piaget-260828-word2vec-coocs30-g2specif1.0-stop2-dims200.bin";
+    // private static final String MODEL = "piaget-content-coocs30-g2specif1.0-dims200.bin"; // best model
+    // private static final String MODEL = "piaget-260828-word2vec-coocs30-g2specif1.0-stop2-dims300.bin";
     
     /**
      * Returns the configured models root directory.
@@ -50,7 +52,7 @@ public class OpCompass extends Op
      * @throws IOException if the parameter is missing or does not designate a directory
      * @throws ServletException 
      */
-    private static Path modelRoot(final HttpServletRequest request) throws IOException, ServletException
+    private static Path modelsRoot(final HttpServletRequest request) throws IOException, ServletException
     {
         final ServletContext context = request.getServletContext();
 
@@ -92,7 +94,9 @@ public class OpCompass extends Op
             AlixServlet.jsonError(request, response);
             return;
         }
-        final VecModel model = VecModel.get(modelRoot(request).resolve(MODEL));
+        final Path modelsRoot = modelsRoot(request);
+        final String modelName = pars.getString("model", MODEL_DEFAULT);
+        final VecModel model = VecModel.get(modelsRoot.resolve(modelName));
         final List<TopTerms.ExcludedTerm> pivots = new ArrayList<>();
         final List<Integer> pivotIds = new ArrayList<>();
         for (final TopTerms.ExcludedTerm pivot : topTerms.excludedTerms()) {

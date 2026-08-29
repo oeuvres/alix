@@ -24,7 +24,7 @@ import com.github.oeuvres.alix.util.Report;
 
 /**
  * Builds dense term vectors from positional term cooccurrence using truncated
- * PRIMME symmetric eigendecomposition, and writes them in the word2vec binary format.
+ * PRIMME truncated SVD, and writes them in the word2vec binary format.
  *
  * <p>The vocabulary is selected by minimum document frequency, then by
  * decreasing total term frequency. Rows and columns use the same selected
@@ -329,7 +329,7 @@ public final class Coocs2vec
      * pair is kept only when neither endpoint is a stopword. Content–content
      * pairs are unaffected and count up to the full {@code window}.
      */
-    private static final int STOP_DIST = -1;
+    private static final int STOP_DIST = 2;
 
     /** PRIMME convergence tolerance for model production. */
     private static final double SVD_EPS = 1e-3;
@@ -337,7 +337,7 @@ public final class Coocs2vec
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
-            + " [--window 30] [--dims 500] [--weightAxes 0.5] [--specif 1.5]"
+            + " [--window 30] [--dims 200] [--weightAxes 0.5] [--specif 1.5]"
             + " [--maxTerms 10000] [--minDocFreq 3] [--sideDir DIR]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
@@ -371,14 +371,14 @@ public final class Coocs2vec
         
 
         int window = 30;
-        int dims = 200;
+        int dims = 100; // sweet spot between sparse (50) and concentrate (300)
+        int maxTerms = 15_000; // if possible, 15_000 seems to add definition
         // those params have not yet shown improvement to the model
         final double cellpow = 0.5; 
         final double weightAxes = 0.5;
         double specif = 1.0d;
-        int maxTerms = 10_000;
         int minDocFreq = 3;
-        // "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // best model
+        // "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // best model, dims200 enough
         // "piaget-260827-content-coocs30-g2specif1.0-dims100.bin" // Good model
         // "piaget-260827-content-coocs50-g2specif1.0-dims100.bin" // coocs50, too big for dims100
         // "piaget-260827-content-coocs50-g2specif1.0-dims300.bin" // coocs50, add semantics
@@ -429,7 +429,7 @@ public final class Coocs2vec
 
         String outName = indexDir.getFileName().toString();
         final DateFormat formatter = new SimpleDateFormat("yyMMdd");
-        outName += "-" + formatter.format(new Date());
+        // outName += "-" + formatter.format(new Date());
         outName += "-" + field;
         outName += "-coocs" + window;
         outName += "-g2specif" + specif;
@@ -479,6 +479,7 @@ public final class Coocs2vec
                         "too few terms after selection: " + termCount);
                 }
                 log("selected %,d terms", termCount);
+                outName += "-terms" + termCount;
 
                 final long cellCount = (long) termCount * termCount;
                 log(
@@ -499,7 +500,7 @@ public final class Coocs2vec
                 svd.g2Specif(specif, cellpow);
             }
             final int retained;
-            log("decomposing to top %,d singular axes (PRIMME EIGS, eps=%.1e)", dims, SVD_EPS);
+            log("decomposing to top %,d singular axes (PRIMME SVDS, eps=%.1e)", dims, SVD_EPS);
             svd.decompose(dims, SVD_EPS);
             if(weightAxes > 0) {
                 log("weighting axes by sigma^%.3f", weightAxes);
