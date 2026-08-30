@@ -248,14 +248,52 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildStopwords()
     {
+        final CharArraySet set = new CharArraySet(4000, true);
+        LexiconHelper.loadSet(
+            set,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/gramwords.csv"
+        );
+        LexiconHelper.loadSet(
+            set,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/noisetokens.csv"
+        );
+        return set;
+    }
+    
+    /**
+     * Builds the default stop-word set.
+     *
+     * @return case-insensitive stop-word set
+     */
+    public static CharArraySet buildGramwords()
+    {
+        final CharArraySet set = new CharArraySet(600, true);
+        LexiconHelper.loadSet(
+            set,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/gramwords.csv"
+        );
+        return set;
+    }
+
+    /**
+     * Builds the default stop-word set.
+     *
+     * @return case-insensitive stop-word set
+     */
+    public static CharArraySet buildNoisetokens()
+    {
         final CharArraySet set = new CharArraySet(1500, true);
         LexiconHelper.loadSet(
             set,
             FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/stopwords.csv"
+            "/com/github/oeuvres/alix/fr/noisetokens.csv"
         );
         return set;
     }
+
 
     /**
      * Builds the default protected-uppercase set.

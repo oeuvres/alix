@@ -58,7 +58,9 @@ public final class IngestConfig
     {
         BREVIDOTS,
         EXPRESSIONS,
+        GRAMWORDS,
         HUNSPELL,
+        NOISETOKENS,
         NORMALIZATIONS,
         STOPWORDS,
         UCWORDS;

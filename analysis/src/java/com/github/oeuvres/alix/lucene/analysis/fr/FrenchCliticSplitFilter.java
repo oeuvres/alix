@@ -123,6 +123,9 @@ public class FrenchCliticSplitFilter extends TokenFilter
         KEEP_AS_IS.add("quelqu'un");
     }
 
+    /** Expansion of {@code s'} before {@code il} or {@code ils}. */
+    private static final char[] SI = "si".toCharArray();
+
     /** Ellisions prefix (case-insensitive). */
     private static final CharArrayMap<char[]> PREFIX = new CharArrayMap<>(30, true);
     static {
@@ -250,8 +253,15 @@ public class FrenchCliticSplitFilter extends TokenFilter
             // L'Oréal) are split here and must be re-merged by MWEFilter.
             if (aposFirst > 0) {
                 final int prefixLen = aposFirst + 1;
-                final char[] value = PREFIX.get(buf, 0, prefixLen);
+                char[] value = PREFIX.get(buf, 0, prefixLen);
                 if (value != null) {
+                    // French si elides only before il/ils: s'il -> si il, s'ils -> si ils.
+                    // Other s' forms remain reflexive se: s'imagine -> se imagine.
+                    if (prefixLen == 2
+                            && (buf[0] == 's' || buf[0] == 'S')
+                            && isIlOrIls(buf, prefixLen, len - prefixLen)) {
+                        value = SI;
+                    }
                     if (queue.size() >= MAX_SPLITS) {
                         rollbackToOriginal();
                         return true;
@@ -395,6 +405,29 @@ public class FrenchCliticSplitFilter extends TokenFilter
             if (buf[i] == '\'') return i;
         }
         return -1;
+    }
+
+
+    /**
+     * Tests whether a token remainder is the French pronoun {@code il} or {@code ils}.
+     *
+     * <p>This is used to disambiguate the elision {@code s'}: French {@code si}
+     * elides only before {@code il}/{@code ils}, whereas other {@code s'} prefixes
+     * are treated as reflexive {@code se}.</p>
+     *
+     * @param buf token buffer
+     * @param off start of the remainder
+     * @param len remainder length
+     * @return {@code true} for {@code il} or {@code ils}, case-insensitively
+     */
+    private static boolean isIlOrIls(final char[] buf, final int off, final int len)
+    {
+        if (len != 2 && len != 3) return false;
+        if ((buf[off] != 'i' && buf[off] != 'I')
+                || (buf[off + 1] != 'l' && buf[off + 1] != 'L')) {
+            return false;
+        }
+        return len == 2 || buf[off + 2] == 's' || buf[off + 2] == 'S';
     }
 
     /**

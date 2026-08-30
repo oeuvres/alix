@@ -1,6 +1,8 @@
-package com.github.oeuvres.alix.ingest;
+package com.github.oeuvres.alix.cli;
 
 import com.github.oeuvres.alix.common.Names;
+import com.github.oeuvres.alix.ingest.IngestConfig;
+import com.github.oeuvres.alix.ingest.TeiIngester;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.lucene.terms.HunspellCompiler;
 import com.github.oeuvres.alix.util.Report;
@@ -35,21 +37,30 @@ import static com.github.oeuvres.alix.ingest.IngestConfig.KeyGlob.*;
  * Minimal entry point:
  * java ... AlixTeiIndexMain config1.xml config2.xml ...
  */
-public final class TeiIngesterDemo
+public final class CorpusIngester
 {
-    private TeiIngesterDemo()
+    private CorpusIngester()
     {
     }
     
     public static void main(String[] args) throws IOException, TransformerException, SAXException, ParserConfigurationException
     {
+        if(args.length < 1) {
+            System.out.println("Required argument: corpus-properties.xml");
+            System.exit(1);
+        }
+        Path cfgPath = Path.of(args[0]);
         Report report = new ReportConsole();
-        Path cfgPath = Path.of("../../piaget-tools/alix/alix-piaget.xml");
         IngestConfig cfg = IngestConfig.load(cfgPath, report);
         FrenchAnalyzer analyzer = new FrenchAnalyzer();
         analyzer.addNormalizations(cfg.files(NORMALIZATIONS));
         analyzer.addExpressions(cfg.files(EXPRESSIONS));
         analyzer.addStopwords(cfg.files(STOPWORDS));
+        analyzer.addStopwords(cfg.files(GRAMWORDS));
+        analyzer.addStopwords(cfg.files(NOISETOKENS));
+        analyzer.addGramwords(cfg.files(GRAMWORDS));
+        analyzer.addNoisetokens(cfg.files(NOISETOKENS));
+        
         analyzer.addBrevidots(cfg.files(BREVIDOTS));
         analyzer.addUcwords(cfg.files(UCWORDS));
         report.info(cfg.toString());
@@ -179,7 +190,7 @@ public final class TeiIngesterDemo
      */
     private static InputStream resource(String name) throws IOException
     {
-        InputStream in = TeiIngesterDemo.class.getResourceAsStream(name);
+        InputStream in = CorpusIngester.class.getResourceAsStream(name);
         if (in == null) {
             throw new IOException("Classpath resource not found: " + name);
         }

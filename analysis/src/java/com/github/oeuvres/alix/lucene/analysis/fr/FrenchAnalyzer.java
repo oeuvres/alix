@@ -39,10 +39,8 @@ import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
-import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilter;
 
 import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
@@ -54,6 +52,7 @@ import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
@@ -108,6 +107,12 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Stop-word set. */
     public final CharArraySet stopwords;
 
+    /** Function word set. */
+    public final CharArraySet gramwords;
+
+    /** Noise tokens set. */
+    public final CharArraySet noisetokens;
+
     /** Uppercase words protected by the uppercase filter. */
     public final CharArraySet ucwords;
 
@@ -121,6 +126,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         super(PER_FIELD_REUSE_STRATEGY);
 
         stopwords = FrenchLexicons.buildStopwords();
+        gramwords = FrenchLexicons.buildGramwords();
+        noisetokens = FrenchLexicons.buildNoisetokens();
         normalizer = FrenchLexicons.buildNormalizer();
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
         brevidots = FrenchLexicons.buildBrevidots();
@@ -210,6 +217,32 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     }
 
     /**
+     * Adds gram words.
+     *
+     * @param files CSV files to load
+     * @throws IOException if a file cannot be read
+     */
+    public void addGramwords(final List<Path> files) throws IOException
+    {
+        for (Path path : files) {
+            LexiconHelper.loadSet(gramwords, path);
+        }
+    }
+
+    /**
+     * Adds noise tokens.
+     *
+     * @param files CSV files to load
+     * @throws IOException if a file cannot be read
+     */
+    public void addNoisetokens(final List<Path> files) throws IOException
+    {
+        for (Path path : files) {
+            LexiconHelper.loadSet(noisetokens, path);
+        }
+    }
+
+    /**
      * Adds normalization mappings.
      *
      * @param files CSV files to load
@@ -288,6 +321,10 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     private TokenStream canonicChain(final TokenStream stream)
     {
         TokenStream ts = stream;
+        
+        // Must exist before filters such as MweFilter create AttributeSource snapshots.
+        ts.addAttribute(BoundaryAttribute.class);
+        
         ts = new MarkupBoundaryFilter(ts);
         ts = new FrenchCliticSplitFilter(ts);
         ts = new ReplaceFilter(ts, normalizer);
@@ -317,8 +354,14 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         protected TokenStreamComponents createComponents(final String fieldName)
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
-            TokenStream ts = canonicChain(tokenizer);
-            ts = new CleanupFilter(ts);
+            TokenStream ts = tokenizer;
+            ts = new MarkupZoneFilter(
+                ts,
+                "teiHeader | head | note | listBibl | bibl | table",
+                MarkupZoneFilter.Mode.EXCLUDE
+            );
+            ts = canonicChain(ts);
+            ts = new CleanupFilter(ts, noisetokens, null); // keep function words
             return new TokenStreamComponents(tokenizer, ts);
         }
     }
@@ -347,8 +390,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
             TokenStream ts = canonicChain(tokenizer);
-            ts = new StopFilter(ts, stopwords); // remove surface form before lemma becomes term
-            ts = new CleanupFilter(ts);
+            ts = new CleanupFilter(ts, noisetokens, gramwords); // remove noise and function words
             return new TokenStreamComponents(tokenizer, ts);
         }
     }

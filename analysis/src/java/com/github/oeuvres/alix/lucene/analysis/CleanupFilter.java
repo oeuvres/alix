@@ -35,6 +35,7 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -43,6 +44,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import static com.github.oeuvres.alix.common.Upos.*;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
@@ -94,12 +96,17 @@ import com.github.oeuvres.alix.util.Char;
  * <li>{@code FieldInvertState.getLength()} counts words (tokens emitted downstream of this
  * filter).</li>
  * <li>Punctuation boundaries are represented as gaps in positions, not as emitted tokens.</li>
+ * <li>Sentence, paragraph, and section boundaries are carried by {@link BoundaryAttribute}
+ * on the next emitted token.</li>
  * <li>This filter is compatible with "no synonyms / no overlap" canonical fields;
  * {@code getNumOverlap()} is expected to be 0.</li>
  * </ul>
  */
 public class CleanupFilter extends TokenFilter
 {
+    /** Structural boundary preceding the current emitted token. */
+    private final BoundaryAttribute boundaryAtt = addAttribute(BoundaryAttribute.class);
+
     /** The term provided by the upstream TokenStream. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     
@@ -111,6 +118,12 @@ public class CleanupFilter extends TokenFilter
     
     /** Optional lemma override populated by the upstream lemmatizer. */
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
+    
+    /** Function word set. */
+    public final CharArraySet rejected;
+
+    /** Noise tokens set. */
+    public final CharArraySet skipped;
 
     
     /**
@@ -128,6 +141,9 @@ public class CleanupFilter extends TokenFilter
      * </p>
      */
     private int pendingHoles = 0;
+
+    /** Strongest structural boundary waiting for the next emitted token. */
+    private int pendingBoundary = BoundaryAttribute.NONE;
     
     /**
      * Heuristic hook: drop very short tokens (typically non-informative for "terms" fields). Not
@@ -138,12 +154,18 @@ public class CleanupFilter extends TokenFilter
     /** Marker used to normalize all numbers. */
     protected static final String NUMBER_MARKER = "#";
     
+
     /**
-     * @param input upstream token stream (tokenizer or previous filters)
+     * 
+     * @param input Source tokens
+     * @param skipped Tokens to skip (suppress position)
+     * @param rejected Tokens to remove from stream (position kept)
      */
-    public CleanupFilter(TokenStream input)
+    public CleanupFilter(TokenStream input, final CharArraySet skipped, final CharArraySet rejected)
     {
         super(input);
+        this.rejected = rejected;
+        this.skipped = skipped;
     }
     
     /**
@@ -174,32 +196,42 @@ public class CleanupFilter extends TokenFilter
     public final boolean incrementToken() throws IOException
     {
         while (input.incrementToken()) {
-            
-            // Defensive: never emit empty terms; treat as removed token with a positional contribution.
+            boundaryAtt.setBoundary(BoundaryAttribute.NONE);
+
+            final int pos = posAtt.getPos();
+            final int boundary = boundary(pos);
+            if (boundary > pendingBoundary) {
+                pendingBoundary = boundary;
+            }
+
+            // Defensive: never emit empty terms; preserve their positional contribution.
             if (termAtt.length() == 0) {
                 pendingHoles += posIncrAtt.getPositionIncrement();
                 continue;
             }
-            
+
             if (skip()) {
                 // Intentionally collapse positions for this token (no hole propagation).
                 continue;
             }
-            
+
             if (accept()) {
                 if (pendingHoles != 0) {
-                    posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + pendingHoles);
+                    posIncrAtt.setPositionIncrement(
+                        posIncrAtt.getPositionIncrement() + pendingHoles);
                     pendingHoles = 0;
                 }
+                boundaryAtt.setBoundary(pendingBoundary);
+                pendingBoundary = BoundaryAttribute.NONE;
                 return true;
             }
-            
+
             // Token rejected but its position increment must be preserved as a gap.
             pendingHoles += posIncrAtt.getPositionIncrement();
         }
         return false;
     }
-    
+
     /**
      * Resets this stream and clears any pending holes from previous consumption.
      */
@@ -208,6 +240,8 @@ public class CleanupFilter extends TokenFilter
     {
         super.reset();
         pendingHoles = 0;
+        pendingBoundary = BoundaryAttribute.NONE;
+        boundaryAtt.setBoundary(BoundaryAttribute.NONE);
     }
     
     /**
@@ -235,59 +269,8 @@ public class CleanupFilter extends TokenFilter
             posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + pendingHoles);
             pendingHoles = 0;
         }
-    }
-    
-    /**
-     * Drops "noise" tokens <em>without preserving positional gaps</em> (positions collapse).
-     *
-     * <p>
-     * Override this to define what should be removed as non-textual noise for your corpus.
-     * </p>
-     *
-     * @return {@code true} to drop the current token and collapse positions; {@code false} to let
-     *         it be processed
-     *         by {@link #accept()}.
-     */
-    protected boolean skip()
-    {
-        final int pos = posAtt.getPos();
-        final int len = termAtt.length();
-        
-        // Markup / structural artifacts injected by XML processing.
-        if (pos == XML.code)
-            return true;
-        
-        // defensive, should already be handled in incrementToken(), no count
-        if (len == 0)
-            return true;
-        final char last = termAtt.charAt(len - 1);
-        
-        // short function word, OK, not noise
-        if (termAtt.length() == 1) {
-            switch (Upos.get(pos)) {
-                case ADP:
-                case AUX:
-                case PRON:
-                case VERB:
-                    return false;
-                default:
-                    return true;
-            }
-        }
-        
-        if (termAtt.length() == 2) {
-            // a’ a', C. variables or initials not resolved to name
-            if (last == '\'' || last == '’' || last == '.') {
-                return true;
-            }
-        }
-        
-        // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
-        if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2)))
-            return true;
-        
-        // keep stop words (do not drop them here)
-        return false;
+        boundaryAtt.setBoundary(pendingBoundary);
+        pendingBoundary = BoundaryAttribute.NONE;
     }
     
     /**
@@ -321,6 +304,10 @@ public class CleanupFilter extends TokenFilter
             return false;
         }
         
+        // known stop words, reject
+        if (rejected != null && rejected.contains(termAtt.buffer(), 0, termAtt.length())) {
+            return false;
+        }
         
         char first = termAtt.charAt(0);
         // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
@@ -359,5 +346,86 @@ public class CleanupFilter extends TokenFilter
         
         // Default: keep token as-is (or rewritten by upstream filters).
         return true;
+    }
+
+    /**
+     * Maps punctuation POS codes to structural boundary strength.
+     *
+     * @param pos POS code
+     * @return boundary strength, or {@link BoundaryAttribute#NONE}
+     */
+    private static int boundary(final int pos)
+    {
+        if (pos == PUNCTsection.code) return BoundaryAttribute.SECTION;
+        if (pos == PUNCTpara.code) return BoundaryAttribute.PARAGRAPH;
+        if (pos == PUNCTsent.code) return BoundaryAttribute.SENTENCE;
+        return BoundaryAttribute.NONE;
+    }
+
+    /**
+     * Drops "noise" tokens <em>without preserving positional gaps</em> (positions collapse).
+     *
+     * <p>
+     * Override this to define what should be removed as non-textual noise for your corpus.
+     * </p>
+     *
+     * @return {@code true} to drop the current token and collapse positions; {@code false} to let
+     *         it be processed
+     *         by {@link #accept()}.
+     */
+    protected boolean skip()
+    {
+        final int pos = posAtt.getPos();
+        final int len = termAtt.length();
+        
+        // Punctuation is rejected by accept(); do not collapse its position here.
+        if (Upos.isPunct(pos)) {
+            return false;
+        }
+        
+        // Markup / structural artifacts injected by XML processing.
+        if (pos == XML.code) {
+            return true;
+        }
+        
+        // defensive, should already be handled in incrementToken(), no count
+        if (len == 0) {
+            return true;
+        }
+        
+        // known noise tokens, resorb position, but keep punctuation
+        if (skipped != null && !Upos.isPunct(pos) && skipped.contains(termAtt.buffer(), 0, termAtt.length())) {
+            // System.out.println(termAtt + " " + Upos.name(pos));
+            return true;
+        }
+       
+        
+        // short function word, OK, not noise
+        if (termAtt.length() == 1) {
+            switch (Upos.get(pos)) {
+                case ADP:
+                case AUX:
+                case PRON:
+                case VERB:
+                    return false;
+                default:
+                    return true;
+            }
+        }
+        
+        final char last = termAtt.charAt(len - 1);
+        if (termAtt.length() == 2) {
+            // a’ a', C. variables or initials not resolved to name
+            if (last == '\'' || last == '’' || last == '.') {
+                return true;
+            }
+        }
+        
+        // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
+        if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2)))
+            return true;
+        
+        // keep stop words (do not drop them here)
+        return false;
     }
 }

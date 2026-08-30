@@ -372,11 +372,11 @@ public final class Coocs2vec
 
         int window = 30;
         int dims = 100; // sweet spot between sparse (50) and concentrate (300)
-        int maxTerms = 15_000; // if possible, 15_000 seems to add definition
+        int maxTerms = 15_000; // seems the right level
         // those params have not yet shown improvement to the model
         final double cellpow = 0.5; 
         final double weightAxes = 0.5;
-        double specif = 1.0d;
+        double specif = 1.5d;
         int minDocFreq = 3;
         // "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // best model, dims200 enough
         // "piaget-260827-content-coocs30-g2specif1.0-dims100.bin" // Good model
@@ -428,11 +428,10 @@ public final class Coocs2vec
         }
 
         String outName = indexDir.getFileName().toString();
-        final DateFormat formatter = new SimpleDateFormat("yyMMdd");
+        // final DateFormat formatter = new SimpleDateFormat("yyMMdd");
         // outName += "-" + formatter.format(new Date());
         outName += "-" + field;
-        outName += "-coocs" + window;
-        outName += "-g2specif" + specif;
+        outName += "-win" + window;
         // outName += "-cellpow" + cellpow;
 
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
@@ -442,63 +441,60 @@ public final class Coocs2vec
             final String[] words;
             final SparseG2Svd svd;
             final int termCount;
-
-            try (InputStream stop = Files.exists(stopPath)
-                    ? Files.newInputStream(stopPath)
-                    : null) {
-                final TermLexicon lexicon = new TermLexicon(
-                    reader, field, null, null, stop);
-                final boolean stopwords = (STOP_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
-                if (stopwords) {
-                    outName += "-stop" + STOP_DIST;
-                    log(
-                        "stopword gate active: pairs with a stopword counted only within +/-%d",
-                        STOP_DIST);
-                }
-
-                if (!TermRail.exists(sideDir, field)) {
-                    TermRail.build(
-                        reader, sideDir, field, lexicon,
-                        Report.ReportNull.INSTANCE);
-                }
-                final TermRail rail = TermRail.open(sideDir, field);
-                if (rail.docCount() != reader.maxDoc()) {
-                    throw new IllegalArgumentException(
-                        "rail/index document mismatch: rail=" + rail.docCount()
-                            + ", index=" + reader.maxDoc());
-                }
-
+            InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
+            final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
+            final boolean stopwords = (STOP_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
+            if (stopwords) {
+                outName += "-stop" + STOP_DIST;
                 log(
-                    "selecting terms (minDocFreq=%d, cap=%d)",
-                    minDocFreq, maxTerms);
-                final SelectedTerm[] selected = LuceneData.selectTerms(
-                    reader, stats, minDocFreq, maxTerms);
-                termCount = selected.length;
-                if (termCount < 2) {
-                    throw new IllegalArgumentException(
-                        "too few terms after selection: " + termCount);
-                }
-                log("selected %,d terms", termCount);
-                outName += "-terms" + termCount;
-
-                final long cellCount = (long) termCount * termCount;
-                log(
-                    "building sparse %,d x %,d positional cooccurrence matrix, window +/-%d",
-                    termCount, termCount, window);
-                final Table table = coocTable(rail, lexicon, selected, window);
-                log(
-                    "matrix built: %,d logical non-zero cells (%.2f%% dense), "
-                        + "%,d upper-triangle cells stored, %,d positional pairs counted",
-                    table.nonZero(),
-                    100d * table.nonZero() / cellCount,
-                    table.storedNonZero(),
-                    table.pairs());
-                words = table.words();
-                svd = new SparseG2Svd(
-                    termCount, termCount, table.rows(), table.cols(), table.values());
-                log("preparing sparse positive G2 specificity matrix (specif=%.3f)", specif);
-                svd.g2Specif(specif, cellpow);
+                    "stopword gate active: pairs with a stopword counted only within +/-%d",
+                    STOP_DIST);
             }
+            outName += "-g2specif" + specif;
+            outName += "-dims" + dims;
+
+            if (!TermRail.exists(sideDir, field)) {
+                TermRail.build(
+                    reader, sideDir, field, lexicon,
+                    Report.ReportNull.INSTANCE);
+            }
+            final TermRail rail = TermRail.open(sideDir, field);
+            if (rail.docCount() != reader.maxDoc()) {
+                throw new IllegalArgumentException(
+                    "rail/index document mismatch: rail=" + rail.docCount()
+                        + ", index=" + reader.maxDoc());
+            }
+
+            log(
+                "selecting terms (minDocFreq=%d, cap=%d)",
+                minDocFreq, maxTerms);
+            final SelectedTerm[] selected = LuceneData.selectTerms(
+                reader, stats, minDocFreq, maxTerms);
+            termCount = selected.length;
+            if (termCount < 2) {
+                throw new IllegalArgumentException(
+                    "too few terms after selection: " + termCount);
+            }
+            log("selected %,d terms", termCount);
+            outName += "-terms" + termCount;
+
+            final long cellCount = (long) termCount * termCount;
+            log(
+                "building sparse %,d x %,d positional cooccurrence matrix, window +/-%d",
+                termCount, termCount, window);
+            final Table table = coocTable(rail, lexicon, selected, window);
+            log(
+                "matrix built: %,d logical non-zero cells (%.2f%% dense), "
+                    + "%,d upper-triangle cells stored, %,d positional pairs counted",
+                table.nonZero(),
+                100d * table.nonZero() / cellCount,
+                table.storedNonZero(),
+                table.pairs());
+            words = table.words();
+            svd = new SparseG2Svd(
+                termCount, termCount, table.rows(), table.cols(), table.values());
+            log("preparing sparse positive G2 specificity matrix (specif=%.3f)", specif);
+            svd.g2Specif(specif, cellpow);
             final int retained;
             log("decomposing to top %,d singular axes (PRIMME SVDS, eps=%.1e)", dims, SVD_EPS);
             svd.decompose(dims, SVD_EPS);
@@ -511,7 +507,7 @@ public final class Coocs2vec
 
 
             final double[][] coords = svd.project(retained).coords();
-            final Path out = Paths.get(outName + "-dims" + retained + ".bin");
+            final Path out = Paths.get(outName + ".bin");
             log("writing %,d vectors to %s", termCount, out);
             VecModel.write(out, words, coords);
 

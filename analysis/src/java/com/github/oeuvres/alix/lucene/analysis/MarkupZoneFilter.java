@@ -316,10 +316,6 @@ public final class MarkupZoneFilter extends TokenFilter
         if (matched) matchDepth--;
     }
 
-    // -------------------------
-    // Attribute scanning / helpers
-    // -------------------------
-
     private static boolean isSpace(char c) {
         return c == ' ' || c == '\t' || c == '\n' || c == '\r';
     }

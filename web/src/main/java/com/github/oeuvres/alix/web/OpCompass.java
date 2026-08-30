@@ -40,9 +40,7 @@ public class OpCompass extends Op
     private static final int NEIGHBORS = 300;
 
     /** Vector model used by the current experiment. */
-    private static final String MODEL_DEFAULT = "piaget-260828-word2vec-coocs30-g2specif1.0-stop2-dims200.bin";
-    // private static final String MODEL = "piaget-content-coocs30-g2specif1.0-dims200.bin"; // best model
-    // private static final String MODEL = "piaget-260828-word2vec-coocs30-g2specif1.0-stop2-dims300.bin";
+    private static final String MODEL_DEFAULT = "piaget-word2vec-win30-stop2-g2specif1.0-dims100-terms15000.bin";
     
     /**
      * Returns the configured models root directory.
