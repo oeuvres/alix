@@ -56,8 +56,9 @@ import com.github.oeuvres.alix.util.Char;
 /**
  * Tokenizer for Latin-script languages and markup-oriented lexical events. Keeps XML-like tags
  * as tokens (flags XML), clause punctuation as tokens (flags PUNCTclause), sentence punctuation
- * runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT), and runs containing at least
- * one blank line as the normalized token {@value #BLANK_LINES_TERM} (flags TOKEN).
+ * runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT), and runs of two or more
+ * logical line endings as one token containing one {@value #LINE_BREAK_MARK} per line ending
+ * (flags TOKEN).
  *
  * <p>An attached trailing dot is always retained by the raw character pass. Configured or
  * structurally recognized brevidots keep it unconditionally. Other dotted tokens are buffered
@@ -94,8 +95,8 @@ import com.github.oeuvres.alix.util.Char;
  */
 public class MarkupTokenizer extends Tokenizer
 {
-    /** Normalized token emitted for one or more blank lines. */
-    public static final String BLANK_LINES_TERM = "↵↵+";
+    /** Normalized character used to represent one logical line ending in a line-break event. */
+    public static final char LINE_BREAK_MARK = '↵';
 
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
@@ -406,14 +407,19 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Test whether the current token is the normalized blank-line event.
+     * Test whether the current token is a normalized run of at least two logical line endings.
      *
-     * @return {@code true} for {@link #BLANK_LINES_TERM}
+     * @return {@code true} for tokens such as {@code ↵↵} or {@code ↵↵↵}
      */
-    private boolean isBlankLineEvent()
+    private boolean isLineBreakEvent()
     {
-        return termAtt.length() == BLANK_LINES_TERM.length()
-            && BLANK_LINES_TERM.contentEquals(termAtt);
+        final int length = termAtt.length();
+        if (length < 2) return false;
+        for (int i = 0; i < length; i++) {
+            if (termAtt.charAt(i) != LINE_BREAK_MARK) return false;
+        }
+        posAtt.setPos(PUNCTstruct.code);
+        return true;
     }
 
     /**
@@ -642,24 +648,29 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Consume a line-ending run and emit a normalized event when it contains at least one blank
-     * line. In LF-normalized input this recognizes {@code \n(?:[ \t]*\n)+}. CRLF and lone CR
-     * are treated as equivalent logical line endings.
+     * Consume a run of logical line endings separated only by spaces or tabs. In LF-normalized
+     * input this recognizes {@code \n(?:[ \t]*\n)+}. CRLF and lone CR are treated as equivalent
+     * logical line endings.
+     *
+     * <p>A single line ending is discarded as ordinary whitespace. A run of two or more is
+     * emitted as one token containing one {@link #LINE_BREAK_MARK} per logical line ending:
+     * {@code ↵↵}, {@code ↵↵↵}, and so on. Spaces and tabs between line endings are normalized
+     * away.</p>
      *
      * <p>Horizontal whitespace after the last qualifying line ending is consumed as ordinary
-     * discarded whitespace but excluded from the event offset. This tokenizer records only the
-     * physical blank-line event; a format-aware filter may later interpret it.</p>
+     * discarded whitespace but excluded from the event offset. The tokenizer records only the
+     * physical line-ending run; a format-aware filter may later interpret it.</p>
      *
-     * @return {@code true} if a blank-line event was emitted, otherwise {@code false}
+     * @return {@code true} if a run of at least two logical line endings was emitted
      * @throws IOException if the input cannot be read
      */
     private boolean readLineBreakRun() throws IOException
     {
         final int start = offset;
+        int count = 1;
         readLineBreak();
-
-        boolean blankLine = false;
         int end = offset;
+
         while (true) {
             int c;
             while ((c = peek()) == ' ' || c == '\t') {
@@ -667,13 +678,15 @@ public class MarkupTokenizer extends Tokenizer
             }
             if (!isLineBreak(c)) break;
             readLineBreak();
-            blankLine = true;
+            count++;
             end = offset;
         }
 
-        if (!blankLine) return false;
+        if (count < 2) return false;
 
-        termAtt.append(BLANK_LINES_TERM);
+        for (int i = 0; i < count; i++) {
+            termAtt.append(LINE_BREAK_MARK);
+        }
         posAtt.setPos(TOKEN.code);
         offsetAtt.setOffset(correctOffset(start), correctOffset(end));
         return true;
@@ -1004,7 +1017,7 @@ public class MarkupTokenizer extends Tokenizer
                 detachDots(lookahead.peekLast());
                 return;
             }
-            if (isBlankLineEvent()) {
+            if (isLineBreakEvent()) {
                 continue; // lexical event only; format semantics belong to a later filter
             }
             if (startsSentence(this)) {

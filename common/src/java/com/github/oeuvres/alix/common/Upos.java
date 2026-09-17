@@ -35,6 +35,8 @@ public enum Upos implements Tag
     PUNCTsent(0x0B),
     /** [,;…] clause punctuation */
     PUNCTclause(0x0C),
+    /** ↵↵ or other structural events, without semantic interpretation */
+    PUNCTstruct(0x0D),
     /** https://universaldependencies.org/u/pos/X.html */
     X(0x0F),
     
