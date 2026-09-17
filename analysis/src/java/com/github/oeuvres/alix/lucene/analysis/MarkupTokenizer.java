@@ -54,9 +54,10 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
 
 /**
- * Tokenizer for Latin-script languages and XML-like tags. Keeps tags as tokens (flags XML),
- * clause punctuation as tokens (flags PUNCTclause), sentence punctuation runs as tokens
- * (flags PUNCTsent), numbers as tokens (flags DIGIT).
+ * Tokenizer for Latin-script languages and markup-oriented lexical events. Keeps XML-like tags
+ * as tokens (flags XML), clause punctuation as tokens (flags PUNCTclause), sentence punctuation
+ * runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT), and runs containing at least
+ * one blank line as the normalized token {@value #BLANK_LINES_TERM} (flags TOKEN).
  *
  * <p>An attached trailing dot is always retained by the raw character pass. Configured or
  * structurally recognized brevidots keep it unconditionally. Other dotted tokens are buffered
@@ -93,6 +94,9 @@ import com.github.oeuvres.alix.util.Char;
  */
 public class MarkupTokenizer extends Tokenizer
 {
+    /** Normalized token emitted for one or more blank lines. */
+    public static final String BLANK_LINES_TERM = "↵↵+";
+
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
 
@@ -402,6 +406,17 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
+     * Test whether the current token is the normalized blank-line event.
+     *
+     * @return {@code true} for {@link #BLANK_LINES_TERM}
+     */
+    private boolean isBlankLineEvent()
+    {
+        return termAtt.length() == BLANK_LINES_TERM.length()
+            && BLANK_LINES_TERM.contentEquals(termAtt);
+    }
+
+    /**
      * Test whether a dotted token is a brevidot whose final dot must remain attached.
      * Recognized forms are configured entries, single-letter initials, dotted short-segment
      * abbreviations, and hyphenated initial chains. An elision prefix such as {@code l'} is
@@ -599,6 +614,72 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
+     * Test whether a character starts a logical line ending.
+     *
+     * @param c character to test
+     * @return {@code true} for LF or CR
+     */
+    private static boolean isLineBreak(final int c)
+    {
+        return c == '\n' || c == '\r';
+    }
+
+    /**
+     * Consume one logical line ending from the current cursor. CRLF is consumed as one ending;
+     * lone CR and lone LF are also accepted.
+     *
+     * @throws IOException if the input cannot be read
+     */
+    private void readLineBreak() throws IOException
+    {
+        final int c = peek();
+        if (c == '\r') {
+            skip();
+            if (peek() == '\n') skip();
+            return;
+        }
+        if (c == '\n') skip();
+    }
+
+    /**
+     * Consume a line-ending run and emit a normalized event when it contains at least one blank
+     * line. In LF-normalized input this recognizes {@code \n(?:[ \t]*\n)+}. CRLF and lone CR
+     * are treated as equivalent logical line endings.
+     *
+     * <p>Horizontal whitespace after the last qualifying line ending is consumed as ordinary
+     * discarded whitespace but excluded from the event offset. This tokenizer records only the
+     * physical blank-line event; a format-aware filter may later interpret it.</p>
+     *
+     * @return {@code true} if a blank-line event was emitted, otherwise {@code false}
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readLineBreakRun() throws IOException
+    {
+        final int start = offset;
+        readLineBreak();
+
+        boolean blankLine = false;
+        int end = offset;
+        while (true) {
+            int c;
+            while ((c = peek()) == ' ' || c == '\t') {
+                skip();
+            }
+            if (!isLineBreak(c)) break;
+            readLineBreak();
+            blankLine = true;
+            end = offset;
+        }
+
+        if (!blankLine) return false;
+
+        termAtt.append(BLANK_LINES_TERM);
+        posAtt.setPos(TOKEN.code);
+        offsetAtt.setOffset(correctOffset(start), correctOffset(end));
+        return true;
+    }
+
+    /**
      * Read a number: digits with at most one {@code '.'} or {@code ','} between digit runs.
      * A separator left dangling at the end of the number is stripped and re-emitted as
      * punctuation by the next call, except at end of input where it stays attached.
@@ -700,6 +781,10 @@ public class MarkupTokenizer extends Tokenizer
         int c;
         while ((c = peek()) >= 0) {
             final char ch = (char) c;
+            if (isLineBreak(c)) {
+                if (readLineBreakRun()) return true;
+                continue;
+            }
             if (ch == '<') {
                 return readTag();
             }
@@ -918,6 +1003,9 @@ public class MarkupTokenizer extends Tokenizer
             if (pos == PUNCTsent.code) {
                 detachDots(lookahead.peekLast());
                 return;
+            }
+            if (isBlankLineEvent()) {
+                continue; // lexical event only; format semantics belong to a later filter
             }
             if (startsSentence(this)) {
                 detachDots(null);

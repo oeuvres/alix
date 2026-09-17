@@ -80,6 +80,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Word2vec analyzer. */
     private final Analyzer word2vec;
 
+    /** Tsv analyzer. */
+    private final Analyzer tsv;
+
     /** Canonical indexing analyzer. */
     private final Analyzer canonic;
 
@@ -139,6 +142,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
 
         canonic = new CanonicAnalyzer();
         word2vec = new Word2vecAnalyzer();
+        tsv = new TsvAnalyzer();
         observation = new ObservationAnalyzer();
     }
 
@@ -303,6 +307,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     @Override
     protected Analyzer getWrappedAnalyzer(final String fieldName)
     {
+        if (fieldName.equals("tsv")) {
+            return tsv;
+        }
         if (fieldName.startsWith("obs")) {
             return observation;
         }
@@ -339,6 +346,31 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         return ts;
     }
 
+    /**
+     * Analyzer for vertical lemmatisation, lemmatize, but keep function words.
+     */
+    public class TsvAnalyzer extends Analyzer
+    {
+        public TsvAnalyzer()
+        {
+            super();
+        }
+
+        @Override
+        protected TokenStreamComponents createComponents(final String fieldName)
+        {
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
+            TokenStream ts = tokenizer;
+            ts = new MarkupZoneFilter(
+                ts,
+                "teiHeader | head | note | listBibl | bibl | table",
+                MarkupZoneFilter.Mode.EXCLUDE
+            );
+            ts = canonicChain(ts);
+            return new TokenStreamComponents(tokenizer, ts);
+        }
+    }
+    
     /**
      * Analyzer for word2vec, lemmatize, but keep function words
      * (useful to separate words by pos)

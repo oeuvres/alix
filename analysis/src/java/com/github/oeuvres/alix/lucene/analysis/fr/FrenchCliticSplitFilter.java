@@ -144,6 +144,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
         PREFIX.put("quoiqu'", "quoique".toCharArray());
         PREFIX.put("s'", "se".toCharArray());
         PREFIX.put("t'", "te".toCharArray());
+        PREFIX.put("très-", "très".toCharArray());
     }
 
     /**
