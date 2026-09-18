@@ -1,5 +1,8 @@
 package com.github.oeuvres.alix.common;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Set of flags used during an analysis process (pos tagging, lemmatization).
  * Universal POS tags always used when possible
@@ -180,7 +183,44 @@ public enum Upos implements Tag
     
     
     public final int code;
-    static final Tag.Lookup<Upos> LOOKUP = Tag.Lookup.of(values());
+
+    private static final Upos[] BY_CODE;
+    private static final Map<String, Upos> BY_NAME;
+
+    static
+    {
+        final Upos[] values = values();
+        int maxCode = 0;
+        for (Upos upos : values) {
+            if (upos.code < 0) {
+                throw new IllegalArgumentException("Negative code=" + upos.code + " for " + upos);
+            }
+            if (upos.code > maxCode) {
+                maxCode = upos.code;
+            }
+        }
+
+        final Upos[] byCode = new Upos[maxCode + 1];
+        final HashMap<String, Upos> byName = new HashMap<>(values.length * 2);
+
+        for (Upos upos : values) {
+            if (byCode[upos.code] != null) {
+                throw new IllegalArgumentException(
+                    "Duplicate code=" + upos.code + " for " + upos + " and " + byCode[upos.code]
+                );
+            }
+            byCode[upos.code] = upos;
+
+            final String name = upos.name();
+            byName.put(name, upos);
+            if (name.indexOf('_') >= 0) {
+                byName.put(name.replace('_', '+'), upos);
+            }
+        }
+
+        BY_CODE = byCode;
+        BY_NAME = Map.copyOf(byName);
+    }
 
     private Upos(final int code)
     {
@@ -205,24 +245,26 @@ public enum Upos implements Tag
     
     static public Upos get(final int code)
     {
-        return LOOKUP.get(code);
+        if (code < 0 || code >= BY_CODE.length) return null;
+        return BY_CODE[code];
     }
 
     static public Upos get(final String name)
     {
-        return LOOKUP.get(name);
+        if (name == null) return null;
+        return BY_NAME.get(name);
     }
     
     static public String name(final int code)
     {
-        Upos upos = LOOKUP.get(code);
+        Upos upos = get(code);
         if (upos == null) return null;
         return upos.name();
     }
     
     static public int code(final String name)
     {
-        Upos upos = LOOKUP.get(name);
+        Upos upos = get(name);
         if (upos == null) return -1;
         return upos.code();
     }

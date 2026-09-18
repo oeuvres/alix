@@ -34,6 +34,7 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
@@ -43,6 +44,9 @@ import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.PosResolver;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
+
+import opennlp.tools.postag.MutableTagDictionary;
+import opennlp.tools.postag.POSDictionary;
 
 /**
  * Factory for the default French lexical resources.
@@ -56,32 +60,19 @@ public final class FrenchLexicons
     {
     }
 
-    /**
-     * Builds the default abbreviation set.
-     *
-     * @return case-insensitive abbreviation set
-     */
-    public static CharArraySet buildBrevidots()
-    {
-        final CharArraySet set = new CharArraySet(300, true);
-        LexiconHelper.loadSet(
-            set,
-            LexiconHelper.class,
-            "/com/github/oeuvres/alix/fr/brevidots.csv",
-            0,
-            LexiconHelper.CsvHeader.SKIP
-        );
-        return set;
-    }
+    private static final Set<String> POS_MODEL_TAGS = Set.of(
+        "DET", "NOUN", "ADJ", "AUX", "VERB", "ADV", "ADP", "SCONJ",
+        "PRON", "PUNCT", "ADP+DET", "PROPN", "CCONJ", "NUM", "SYM",
+        "X", "ADP+PRON", "INTJ"
+    );
 
     /**
-     * Builds the default French lemma lexicon.
-     *
-     * @return populated lemma lexicon
+     * Resolver shared by word.csv consumers. Source lexical tags are rewritten
+     * to the internal Upos vocabulary; modelTag() then limits OpenNLP tag
+     * dictionaries to outcomes supported by the French POS model.
      */
-    public static LemmaLexicon buildLemmaLexicon()
+    private static PosResolver wordPosResolver()
     {
-        final LemmaLexicon lexicon = new LemmaLexicon(500_000);
         final Map<String, String> posList = Map.ofEntries(
             Map.entry("VERB", "VERB"), // 305193
             Map.entry("NOUN", "NOUN"), // 110474
@@ -114,8 +105,8 @@ public final class FrenchLexicons
             Map.entry("DETneg", "DET"), // 15
             Map.entry("DETdem", "DET"), // 10
             Map.entry("ADVneg", "ADV"), // 9
-            Map.entry("ADP+DET", "ADP_DET"), // 7
-            Map.entry("ADP+PRON", "ADP_PRON"), // 6
+            Map.entry("ADP+DET", "ADP+DET"), // 7
+            Map.entry("ADP+PRON", "ADP+PRON"), // 6
             Map.entry("PRONneg", "PRONneg"), // 5
             // Map.entry("DETdem", "DETdem"), // 4
             Map.entry("ADVint", "ADV"), // 4
@@ -124,21 +115,52 @@ public final class FrenchLexicons
             Map.entry("", "")
         );
 
-        final PosResolver posResolver = new PosResolver()
+        return new PosResolver()
         {
-            /**
-             * Rewrites a source POS label to its supported target label.
-             *
-             * @param posName source POS label
-             * @return target POS label, or {@code null} when unsupported
-             */
             @Override
             protected String posRewrite(final String posName)
             {
                 return posList.get(posName);
             }
-        };
 
+            @Override
+            protected String modelTag(final int posId)
+            {
+                final String tag = super.modelTag(posId);
+                if (tag == null || !POS_MODEL_TAGS.contains(tag)) {
+                    return null;
+                }
+                return tag;
+            }
+        };
+    }
+
+    /**
+     * Builds the default abbreviation set.
+     *
+     * @return case-insensitive abbreviation set
+     */
+    public static CharArraySet buildBrevidots()
+    {
+        final CharArraySet set = new CharArraySet(300, true);
+        LexiconHelper.loadSet(
+            set,
+            LexiconHelper.class,
+            "/com/github/oeuvres/alix/fr/brevidots.csv",
+            0,
+            LexiconHelper.CsvHeader.SKIP
+        );
+        return set;
+    }
+
+    /**
+     * Builds the default French lemma lexicon.
+     *
+     * @return populated lemma lexicon
+     */
+    public static LemmaLexicon buildLemmaLexicon()
+    {
+        final LemmaLexicon lexicon = new LemmaLexicon(500_000);
         lexicon.onDuplicate(LemmaLexicon.OnDuplicate.IGNORE);
         LexiconHelper.loadLemma(
             lexicon,
@@ -149,9 +171,46 @@ public final class FrenchLexicons
             0,
             1,
             2,
-            posResolver
+            wordPosResolver()
         );
         return lexicon;
+    }
+
+    /**
+     * Builds the default French OpenNLP tag dictionary from word.csv. Only
+     * rows carrying a FREQLIVRES value are eligible; the default threshold is
+     * zero.
+     *
+     * @return populated mutable tag dictionary
+     */
+    public static MutableTagDictionary buildTagDictionary()
+    {
+        return buildTagDictionary(0.0);
+    }
+
+    /**
+     * Builds the French OpenNLP tag dictionary from word.csv using a minimum
+     * FREQLIVRES evidence threshold. Rows with a blank frequency are ignored.
+     *
+     * @param freqMin minimum FREQLIVRES value accepted
+     * @return populated mutable tag dictionary
+     */
+    public static MutableTagDictionary buildTagDictionary(final double freqMin)
+    {
+        final MutableTagDictionary tagDic = new POSDictionary(true);
+        LexiconHelper.loadTags(
+            tagDic,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/word.csv",
+            ',',
+            LexiconHelper.CsvHeader.SKIP,
+            0,
+            1,
+            3,
+            freqMin,
+            wordPosResolver()
+        );
+        return tagDic;
     }
 
     /**
