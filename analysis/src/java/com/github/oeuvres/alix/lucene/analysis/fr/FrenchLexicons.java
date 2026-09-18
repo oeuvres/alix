@@ -38,8 +38,8 @@ import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 
-import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
-import com.github.oeuvres.alix.lucene.analysis.LexiconHelper.PosResolver;
+import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
+import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.PosResolver;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;

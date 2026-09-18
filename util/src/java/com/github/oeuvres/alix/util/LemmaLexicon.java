@@ -6,7 +6,7 @@ import java.util.Objects;
  * Dictionary-backed lemma lexicon with stable integer identifiers.
  *
  * <p>
- * This class is independent of Lucene. It stores surface forms and lemma
+ * This class stores surface forms and lemma
  * forms in one {@link CharsDic}. Lemma mappings are represented as:
  * </p>
  *

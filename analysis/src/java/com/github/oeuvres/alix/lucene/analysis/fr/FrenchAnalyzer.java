@@ -44,7 +44,6 @@ import org.apache.lucene.analysis.Tokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
-import com.github.oeuvres.alix.lucene.analysis.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
@@ -53,6 +52,7 @@ import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
+import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;

@@ -146,6 +146,7 @@ public class PosTaggingFilter extends TokenFilter
     {
         super(input);
         this.tagger = new POSTaggerME(posModel);
+        System.out.println(Arrays.toString(tagger.getAllPosTags()));
         this.rewriter = (rewriter == null) ? IDENTITY_REWRITER : rewriter;
     }
 
@@ -349,6 +350,6 @@ public class PosTaggingFilter extends TokenFilter
     
     private static boolean isSentenceBoundary(final int pos)
     {
-        return pos == PUNCTsection.code || pos == PUNCTpara.code || pos == PUNCTsent.code;
+        return pos == PUNCTsection.code || pos == PUNCTpara.code || pos == PUNCTsent.code || pos == PUNCTstruct.code;
     }
 }

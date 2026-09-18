@@ -58,7 +58,7 @@ import com.github.oeuvres.alix.util.Char;
  * as tokens (flags XML), clause punctuation as tokens (flags PUNCTclause), sentence punctuation
  * runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT), and runs of two or more
  * logical line endings as one token containing one {@value #LINE_BREAK_MARK} per line ending
- * (flags TOKEN).
+ * (flags PUNCTstruct).
  *
  * <p>An attached trailing dot is always retained by the raw character pass. Configured or
  * structurally recognized brevidots keep it unconditionally. Other dotted tokens are buffered
@@ -413,13 +413,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private boolean isLineBreakEvent()
     {
-        final int length = termAtt.length();
-        if (length < 2) return false;
-        for (int i = 0; i < length; i++) {
-            if (termAtt.charAt(i) != LINE_BREAK_MARK) return false;
-        }
-        posAtt.setPos(PUNCTstruct.code);
-        return true;
+        return posAtt.getPos() == PUNCTstruct.code;
     }
 
     /**
@@ -687,7 +681,7 @@ public class MarkupTokenizer extends Tokenizer
         for (int i = 0; i < count; i++) {
             termAtt.append(LINE_BREAK_MARK);
         }
-        posAtt.setPos(TOKEN.code);
+        posAtt.setPos(PUNCTstruct.code);
         offsetAtt.setOffset(correctOffset(start), correctOffset(end));
         return true;
     }

@@ -51,6 +51,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.util.CharsMap;
 
 

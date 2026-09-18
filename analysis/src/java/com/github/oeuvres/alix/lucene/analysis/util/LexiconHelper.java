@@ -1,4 +1,4 @@
-package com.github.oeuvres.alix.lucene.analysis;
+package com.github.oeuvres.alix.lucene.analysis.util;
 
 import java.io.IOException;
 import java.io.InputStream;
