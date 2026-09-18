@@ -7918,6 +7918,7 @@ adiaphorèses,NOUN,adiaphorèse,
 adiaphorie,NOUN,adiaphorie,
 adiaphories,NOUN,adiaphorie,
 adieu,NOUN,adieu,27.50
+adieu,INTJ,adieu,7.36
 adieux,NOUN,adieu,10.54
 adimensionnel,ADJ,adimensionnel,
 adimensionnelle,ADJ,adimensionnel,
@@ -9204,6 +9205,7 @@ adultéré,ADJ,adultéré,
 adultéré,VERBpartpast,adultérer,0.00
 adultère,NOUN,adultère,3.18
 adultère,VERB,adultérer,
+adultère,ADJ,adultère,1.08
 adultérée,ADJ,adultéré,
 adultérée,VERBpartpast,adultérer,
 adultérées,ADJ,adultéré,
@@ -9224,6 +9226,7 @@ adultérerons,VERB,adultérer,
 adultéreront,VERB,adultérer,
 adultérés,ADJ,adultéré,
 adultérés,VERBpartpast,adultérer,
+adultères,ADJ,adultère,0.54
 adultères,NOUN,adultère,0.47
 adultères,VERB,adultérer,
 adultérez,VERB,adultérer,
@@ -14220,10 +14223,13 @@ aimâtes,VERB,aimer,0.00
 aime,VERB,aimer,257.57
 aimé,VERBpartpast,aimer,71.96
 aimé,NOUN,aimé,
+aimé,ADJ,aimé,6.08
 aimée,VERBpartpast,aimer,14.80
 aimée,NOUN,aimé,
+aimée,ADJ,aimé,3.51
 aimées,VERBpartpast,aimer,1.62
 aimées,NOUN,aimé,
+aimées,ADJ,aimé,0.81
 aiment,VERB,aimer,26.96
 aimer,VERB,aimer,84.46
 aimera,VERB,aimer,2.57
@@ -14241,6 +14247,7 @@ aimeront,VERB,aimer,0.34
 aimes,VERB,aimer,25.61
 aimés,VERBpartpast,aimer,6.42
 aimés,NOUN,aimé,
+aimés,ADJ,aimé,2.36
 aimez,VERB,aimer,18.38
 aimiez,VERB,aimer,2.64
 aimions,VERB,aimer,6.55
@@ -15331,6 +15338,7 @@ alentît,VERB,alentir,
 alentîtes,VERB,alentir,
 alentour,ADV,alentour,8.92
 alentours,ADV,alentour,
+alentours,NOUN,alentour,9.12
 aléoute,NOUN,aléoute,
 aléoute,ADJ,aléoute,
 aléoutes,NOUN,aléoute,
@@ -15373,6 +15381,7 @@ alertâtes,VERB,alerter,
 alerte,NOUN,alerte,10.47
 alerte,ADJ,alerte,6.55
 alerte,VERB,alerter,1.01
+alerte,INTJ,alerte,0.81
 alerté,VERBpartpast,alerter,3.65
 alerté,ADJ,alerté,0.61
 alertée,ADJ,alerté,1.35
@@ -16452,6 +16461,7 @@ allélomorphe,ADJ,allélomorphe,
 allélomorphes,ADJ,allélomorphe,
 allélopathie,NOUN,allélopathie,
 allélopathies,NOUN,allélopathie,
+alléluia,INTJ,alléluia,0.41
 alléluia,NOUN,alléluia,0.20
 alléluias,NOUN,alléluia,0.14
 allemand,ADJ,allemand,27.97
@@ -17936,6 +17946,7 @@ amatit,VERB,amatir,
 amatît,VERB,amatir,
 amatîtes,VERB,amatir,
 amatrice,NOUN,amateur,0.00
+amatrice,ADJ,amateur,0.00
 amatrices,NOUN,amateur,
 amaurose,NOUN,amaurose,0.07
 amauroses,NOUN,amaurose,
@@ -19095,6 +19106,7 @@ aminoplastes,NOUN,aminoplaste,
 aminoside,NOUN,aminoside,
 aminosides,NOUN,aminoside,
 amiral,NOUN,amiral,11.22
+amiral,ADJ,amiral,8.45
 amiralat,NOUN,amiralat,
 amiralats,NOUN,amiralat,
 amirale,NOUN,amiral,
@@ -20431,8 +20443,10 @@ analogue,ADJ,analogue,4.66
 analogue,NOUN,analogue,0.54
 analogues,ADJ,analogue,2.16
 analogues,NOUN,analogue,0.00
+analphabète,ADJ,analphabète,0.88
 analphabète,NOUN,analphabète,0.47
 analphabètes,NOUN,analphabète,0.68
+analphabètes,ADJ,analphabète,0.34
 analphabétisme,NOUN,analphabétisme,0.20
 analphabétismes,NOUN,analphabétisme,
 analycité,NOUN,analycité,
@@ -21219,6 +21233,7 @@ anesthésiologies,NOUN,anesthésiologie,
 anesthésiologiste,NOUN,anesthésiologiste,
 anesthésiologistes,NOUN,anesthésiologiste,
 anesthésions,VERB,anesthésier,0.00
+anesthésique,NOUN,anesthésique,0.34
 anesthésique,ADJ,anesthésique,0.20
 anesthésiques,ADJ,anesthésique,
 anesthésiste,NOUN,anesthésiste,0.61
@@ -22385,7 +22400,9 @@ annihiliez,VERB,annihiler,
 annihilions,VERB,annihiler,
 annihilons,VERB,annihiler,0.00
 anniversaire,NOUN,anniversaire,12.09
+anniversaire,ADJ,anniversaire,3.51
 anniversaires,NOUN,anniversaire,0.88
+anniversaires,ADJ,anniversaire,0.34
 annonacée,NOUN,annonacée,
 annonacées,NOUN,annonacée,
 annonça,VERB,annoncer,23.38
@@ -27425,6 +27442,7 @@ apraxiques,ADJ,apraxique,
 âpre,ADJ,âpre,7.70
 âprement,ADV,âprement,3.11
 après,ADP,après,821.55
+après,ADV,après,137.23
 âpres,ADJ,âpre,2.16
 après-demain,ADV,après-demain,6.76
 après-dîner,NOUN,après-dîner,0.61
@@ -28605,6 +28623,7 @@ ardoisât,VERB,ardoiser,
 ardoisâtes,VERB,ardoiser,
 ardoise,NOUN,ardoise,5.95
 ardoise,VERB,ardoiser,
+ardoise,ADJ,ardoise,1.01
 ardoisé,ADJ,ardoisé,
 ardoisé,VERBpartpast,ardoiser,
 ardoisée,ADJ,ardoisé,0.07
@@ -28723,6 +28742,7 @@ arganiers,NOUN,arganier,0.27
 argans,NOUN,argan,0.07
 argas,NOUN,argas,
 argent,NOUN,argent,194.32
+argent,ADJ,argent,6.22
 argenta,VERB,argenter,
 argentage,NOUN,argentage,
 argentages,NOUN,argentage,
@@ -29342,6 +29362,7 @@ armoriai,VERB,armorier,
 armoriaient,VERB,armorier,
 armoriais,VERB,armorier,
 armoriait,VERB,armorier,
+armorial,NOUN,armorial,0.34
 armorial,ADJ,armorial,0.07
 armoriale,ADJ,armorial,
 armoriales,ADJ,armorial,
@@ -30203,6 +30224,9 @@ arriéré,NOUN,arriéré,0.54
 arriéré,VERBpartpast,arriérer,0.07
 arrière,NOUN,arrière,90.27
 arrière,VERB,arriérer,
+arrière,ADJ,arrière,27.70
+arrière,ADV,arrière,1.42
+arrière,INTJ,arrière,0.14
 arrière-ban,NOUN,arrière-ban,0.20
 arrière-bans,NOUN,arrière-ban,
 arrière-bec,NOUN,arrière-bec,
@@ -30977,8 +31001,10 @@ artisans,ADJ,artisan,
 artison,NOUN,artison,0.07
 artisons,NOUN,artison,
 artiste,NOUN,artiste,28.85
+artiste,ADJ,artiste,5.68
 artistement,ADV,artistement,0.81
 artistes,NOUN,artiste,17.03
+artistes,ADJ,artiste,1.49
 artistique,ADJ,artistique,6.76
 artistiquement,ADV,artistiquement,0.61
 artistiques,ADJ,artistique,3.24
@@ -34528,6 +34554,7 @@ attentiez,VERB,attenter,0.00
 attentif,ADJ,attentif,17.30
 attentifs,ADJ,attentif,6.22
 attention,NOUN,attention,119.66
+attention,INTJ,attention,21.35
 attentionné,ADJ,attentionné,0.34
 attentionnée,ADJ,attentionné,0.27
 attentionnées,ADJ,attentionné,0.00
@@ -35997,6 +36024,7 @@ auniez,VERB,auner,
 aunions,VERB,auner,
 aunons,VERB,auner,
 auparavant,ADV,auparavant,41.62
+auprès,ADP,auprès,93.45
 auprès,ADVsit,auprès,1.62
 auquel,ADP+PRON,auquel,52.56
 auquel,PRONrel,auquel,47.70
@@ -37941,9 +37969,11 @@ autovaccins,NOUN,autovaccin,
 autovalorisation,NOUN,autovalorisation,
 autovalorisations,NOUN,autovalorisation,
 autre,ADJ,autre,700.68
+autre,PRON,autre,661.82
 autre,NOUN,autre,6.49
 autrefois,ADVasp,autrefois,96.96
 autrement,ADV,autrement,62.77
+autres,PRON,autre,375.14
 autres,ADJ,autre,169.46
 autres,NOUN,autre,2.64
 autrice,NOUN,auteur,
@@ -38216,6 +38246,7 @@ avancions,VERB,avancer,2.43
 avançons,VERB,avancer,1.82
 avanie,NOUN,avanie,0.27
 avanies,NOUN,avanie,1.15
+avant,ADP,avant,574.32
 avant,ADVsit,avant,117.70
 avant,NOUN,avant,21.22
 avant-bec,NOUN,avant-bec,0.00
@@ -39583,6 +39614,7 @@ axopode,NOUN,axopode,
 axopodes,NOUN,axopode,
 ayahuasca,NOUN,ayahuasca,
 ayahuascas,NOUN,ayahuasca,
+ayant,AUX,avoir,147.84
 ayant,VERBpartpres,avoir,3.85
 ayant,NOUN,ayant,
 ayants,NOUN,ayant,
@@ -39779,6 +39811,7 @@ azulejos,NOUN,azulejo,0.54
 azulène,NOUN,azulène,
 azulènes,NOUN,azulène,
 azur,NOUN,azur,9.39
+azur,ADJ,azur,1.62
 azura,VERB,azurer,
 azurage,NOUN,azurage,
 azurages,NOUN,azurage,
@@ -42171,6 +42204,7 @@ ballons,NOUN,ballon,4.26
 ballons,VERB,baller,0.34
 ballons-sondes,NOUN,ballons-sondes,
 ballot,NOUN,ballot,1.82
+ballot,ADJ,ballot,0.81
 ballota,VERB,balloter,
 ballotage,NOUN,ballotage,
 ballotages,NOUN,ballotage,
@@ -42225,6 +42259,7 @@ ballotins,NOUN,ballotin,
 ballotions,VERB,balloter,
 ballotons,VERB,balloter,
 ballots,NOUN,ballot,4.05
+ballots,ADJ,ballot,0.27
 ballotta,VERB,ballotter,
 ballottage,NOUN,ballottage,0.00
 ballottages,NOUN,ballottage,0.14
@@ -42720,6 +42755,7 @@ banchez,VERB,bancher,
 banchiez,VERB,bancher,
 banchions,VERB,bancher,
 banchons,VERB,bancher,
+banco,INTJ,banco,0.41
 banco,NOUN,banco,0.20
 bancos,NOUN,banco,0.07
 bancoulier,NOUN,bancoulier,
@@ -42815,6 +42851,7 @@ bandouliers,NOUN,bandoulier,
 banette,NOUN,banette,
 banettes,NOUN,banette,
 bang,NOUN,bang,0.34
+bang,INTJ,bang,0.20
 bangladais,NOUN,bangladais,0.07
 bangladais,ADJ,bangladais,
 bangladaise,NOUN,bangladais,
@@ -42836,7 +42873,9 @@ bankster,NOUN,bankster,
 banksters,NOUN,bankster,
 banlieue,NOUN,banlieue,21.35
 banlieues,NOUN,banlieue,2.50
+banlieusard,ADJ,banlieusard,0.61
 banlieusard,NOUN,banlieusard,0.20
+banlieusarde,ADJ,banlieusard,0.61
 banlieusarde,NOUN,banlieusard,0.14
 banlieusardes,NOUN,banlieusard,0.00
 banlieusards,NOUN,banlieusard,0.34
@@ -44843,6 +44882,7 @@ bastât,VERB,baster,
 bastâtes,VERB,baster,
 baste,NOUN,baste,0.14
 baste,VERB,baster,
+baste,INTJ,baste,0.14
 basté,VERBpartpast,baster,
 bastent,VERB,baster,
 baster,VERB,baster,0.00
@@ -45990,6 +46030,7 @@ beatnik,NOUN,beatnik,0.00
 beatniks,NOUN,beatnik,0.07
 béats,ADJ,béat,0.34
 beau,ADJ,beau,270.07
+beau,ADV,beau,14.46
 beau,NOUN,beau,12.64
 beau-fils,NOUN,beau-fils,1.01
 beau-frère,NOUN,beau-frère,8.65
@@ -46037,6 +46078,7 @@ beaux-pères,NOUN,beau-père,
 bébé,NOUN,bébé,36.22
 bébés,NOUN,bébé,8.99
 bébête,NOUN,bébête,
+bébête,ADJ,bébête,2.77
 bêbête,NOUN,bêbête,
 bébêtes,NOUN,bébête,
 bêbêtes,NOUN,bêbête,
@@ -46886,9 +46928,11 @@ bellicistes,ADJ,belliciste,0.07
 belligérance,NOUN,belligérance,0.34
 belligérances,NOUN,belligérance,
 belligérant,NOUN,belligérant,0.00
+belligérante,ADJ,belligérant,0.54
 belligérante,NOUN,belligérant,0.07
 belligérantes,NOUN,belligérant,
 belligérants,NOUN,belligérant,0.81
+belligérants,ADJ,belligérant,0.34
 belliqueuse,ADJ,belliqueux,0.81
 belliqueusement,ADV,belliqueusement,0.07
 belliqueuses,ADJ,belliqueux,0.20
@@ -47064,7 +47108,9 @@ bénéfiques,ADJ,bénéfique,0.41
 bénefs,NOUN,bénef,0.07
 bénéfs,NOUN,bénéf,
 benêt,NOUN,benêt,1.08
+benêt,ADJ,benêt,0.47
 benêts,NOUN,benêt,0.41
+benêts,ADJ,benêt,0.27
 bénévolat,NOUN,bénévolat,0.07
 bénévolats,NOUN,bénévolat,
 bénévole,ADJ,bénévole,1.69
@@ -48850,6 +48896,7 @@ bidirectionnels,ADJ,bidirectionnel,
 bidoche,NOUN,bidoche,3.31
 bidoches,NOUN,bidoche,0.47
 bidon,NOUN,bidon,9.66
+bidon,ADJ,bidon,3.72
 bidonna,VERB,bidonner,
 bidonnage,NOUN,bidonnage,0.14
 bidonnages,NOUN,bidonnage,
@@ -49541,6 +49588,7 @@ bigrât,VERB,bigrer,
 bigrâtes,VERB,bigrer,
 bigre,NOUN,bigre,1.01
 bigre,VERB,bigrer,
+bigre,INTJ,bigre,0.54
 bigré,VERBpartpast,bigrer,
 bigrement,ADV,bigrement,1.49
 bigrent,VERB,bigrer,
@@ -50123,9 +50171,11 @@ binions,VERB,biner,
 biniou,NOUN,biniou,0.74
 binious,NOUN,biniou,0.07
 binoclard,NOUN,binoclard,
+binoclard,ADJ,binoclard,2.09
 binoclarde,NOUN,binoclard,
 binoclardes,NOUN,binoclard,
 binoclards,NOUN,binoclard,
+binoclards,ADJ,binoclard,0.20
 binocle,NOUN,binocle,0.47
 binocles,NOUN,binocle,0.54
 binoculaire,ADJ,binoculaire,0.07
@@ -53103,6 +53153,7 @@ bloguons,VERB,bloguer,
 blond,ADJ,blond,21.28
 blond,NOUN,blond,8.38
 blondasse,NOUN,blondasse,
+blondasse,ADJ,blondasse,0.74
 blondasses,NOUN,blondasse,
 blonde,ADJ,blond,29.93
 blonde,NOUN,blond,21.28
@@ -53121,8 +53172,10 @@ blondin,NOUN,blondin,0.07
 blondine,NOUN,blondin,
 blondines,NOUN,blondin,
 blondinet,NOUN,blondinet,0.95
+blondinet,ADJ,blondinet,0.47
 blondinets,NOUN,blondinet,0.00
 blondinette,NOUN,blondinet,
+blondinette,ADJ,blondinet,0.20
 blondinettes,NOUN,blondinet,
 blondins,NOUN,blondin,
 blondir,VERB,blondir,0.14
@@ -54252,7 +54305,9 @@ bombyx,NOUN,bombyx,0.00
 bôme,NOUN,bôme,0.47
 bômes,NOUN,bôme,
 bon,ADJ,bon,376.28
+bon,INTJ,bon,109.86
 bon,NOUN,bon,63.31
+bon,ADV,bon,45.54
 bon-chrétien,NOUN,bon-chrétien,
 bon-papa,NOUN,bon-papa,1.55
 bonace,NOUN,bonace,0.07
@@ -56388,6 +56443,7 @@ bougons,ADJ,bougon,0.14
 bougran,NOUN,bougran,0.00
 bougrans,NOUN,bougran,
 bougre,NOUN,bougre,8.51
+bougre,INTJ,bougre,0.74
 bougrement,ADV,bougrement,1.55
 bougrerie,NOUN,bougrerie,0.07
 bougreries,NOUN,bougrerie,0.07
@@ -57027,6 +57083,7 @@ boulottiez,VERB,boulotter,
 boulottions,VERB,boulotter,
 boulottons,VERB,boulotter,
 boum,NOUN,boum,2.64
+boum,INTJ,boum,2.09
 bouma,VERB,boumer,
 boumait,VERB,boumer,0.07
 boumant,VERBpartpres,boumer,
@@ -59396,6 +59453,7 @@ bravi,NOUN,bravo,
 braviez,VERB,braver,
 bravions,VERB,braver,
 bravissimo,NOUN,bravissimo,0.20
+bravo,INTJ,bravo,7.91
 bravo,NOUN,bravo,3.24
 bravons,VERB,braver,0.00
 bravos,NOUN,bravo,1.35
@@ -59536,6 +59594,7 @@ bredouilliez,VERB,bredouiller,
 bredouillions,VERB,bredouiller,
 bredouillis,NOUN,bredouillis,0.14
 bredouillons,VERB,bredouiller,
+bref,ADV,bref,38.78
 bref,ADJ,bref,35.20
 bref,NOUN,bref,0.61
 breffage,NOUN,breffage,
@@ -60049,8 +60108,10 @@ bricoles,NOUN,bricole,3.99
 bricoles,VERB,bricoler,0.07
 bricolés,ADJ,bricolé,
 bricolés,VERBpartpast,bricoler,0.14
+bricoleur,ADJ,bricoleur,0.34
 bricoleur,NOUN,bricoleur,0.27
 bricoleurs,NOUN,bricoleur,0.27
+bricoleurs,ADJ,bricoleur,0.20
 bricoleuse,NOUN,bricoleur,0.00
 bricoleuses,NOUN,bricoleur,
 bricolez,VERB,bricoler,0.07
@@ -60377,6 +60438,7 @@ brillamment,ADV,brillamment,2.30
 brillance,NOUN,brillance,0.54
 brillances,NOUN,brillance,0.20
 brillant,ADJ,brillant,16.62
+brillant,NOUN,brillant,4.12
 brillant,VERBpartpres,briller,2.97
 brillanta,VERB,brillanter,
 brillantage,NOUN,brillantage,0.07
@@ -60473,6 +60535,7 @@ brillantissime,ADJ,brillantissime,
 brillantissimes,ADJ,brillantissime,
 brillantons,VERB,brillanter,
 brillants,ADJ,brillant,16.15
+brillants,NOUN,brillant,1.96
 brillas,VERB,briller,
 brillasse,VERB,briller,
 brillassent,VERB,briller,
@@ -61436,6 +61499,7 @@ bronzassions,VERB,bronzer,
 bronzât,VERB,bronzer,
 bronzâtes,VERB,bronzer,
 bronze,NOUN,bronze,18.58
+bronze,ADJ,bronze,0.88
 bronze,VERB,bronzer,0.34
 bronzé,ADJ,bronzé,2.84
 bronzé,VERBpartpast,bronzer,1.42
@@ -62417,6 +62481,7 @@ brusquiez,VERB,brusquer,
 brusquions,VERB,brusquer,
 brusquons,VERB,brusquer,0.00
 brut,ADJ,brut,3.31
+brut,ADV,brut,0.20
 brutal,NOUN,brutal,
 brutal,ADJ,brutal,15.47
 brutale,NOUN,brutal,
@@ -62515,6 +62580,7 @@ bryozoaire,NOUN,bryozoaire,
 bryozoaires,NOUN,bryozoaire,
 bu,NOUN,bu,
 bu,VERBpartpast,boire,40.07
+bu,ADJ,bu,2.16
 buanderie,NOUN,buanderie,1.55
 buanderies,NOUN,buanderie,0.14
 buandier,NOUN,buandier,
@@ -64966,6 +65032,7 @@ cæsium,NOUN,cæsium,0.00
 cæsiums,NOUN,cæsium,
 cætera,ADV,cætera,
 cafard,NOUN,cafard,7.84
+cafard,ADJ,cafard,0.47
 cafarda,VERB,cafarder,
 cafardage,NOUN,cafardage,0.00
 cafardages,NOUN,cafardage,
@@ -66754,10 +66821,12 @@ calmaient,VERB,calmer,0.47
 calmais,VERB,calmer,0.20
 calmait,VERB,calmer,3.38
 calmâmes,VERB,calmer,
+calmant,NOUN,calmant,0.61
 calmant,ADJ,calmant,0.34
 calmant,VERBpartpres,calmer,0.34
 calmante,ADJ,calmant,0.54
 calmantes,ADJ,calmant,
+calmants,NOUN,calmant,0.95
 calmants,ADJ,calmant,0.20
 calmar,NOUN,calmar,0.27
 calmars,NOUN,calmar,0.34
@@ -66910,7 +66979,9 @@ calorescence,NOUN,calorescence,
 calorescences,NOUN,calorescence,
 calorie,NOUN,calorie,0.00
 calories,NOUN,calorie,0.95
+calorifère,NOUN,calorifère,0.54
 calorifère,ADJ,calorifère,0.07
+calorifères,NOUN,calorifère,0.27
 calorifères,ADJ,calorifère,0.00
 calorification,NOUN,calorification,
 calorifications,NOUN,calorification,
@@ -67851,11 +67922,13 @@ canado-américains,NOUN,canado-américain,
 canado-américains,ADJ,canado-américain,
 canai,VERB,caner,
 canaient,VERB,caner,
+canaille,ADJ,canaille,2.43
 canaille,NOUN,canaille,2.16
 canaillement,ADV,canaillement,0.07
 canaillerie,NOUN,canaillerie,0.41
 canailleries,NOUN,canaillerie,
 canailles,NOUN,canaille,0.74
+canailles,ADJ,canaille,0.41
 canaillocratie,NOUN,canaillocratie,
 canaillocraties,NOUN,canaillocratie,
 canais,VERB,caner,
@@ -67994,6 +68067,7 @@ canardions,VERB,canarder,
 canardons,VERB,canarder,
 canards,NOUN,canard,11.49
 canari,NOUN,canari,1.49
+canari,ADJ,canari,0.95
 canaris,NOUN,canari,1.28
 canas,VERB,caner,0.07
 canasse,VERB,caner,
@@ -72744,6 +72818,7 @@ casse-croûterions,VERB,casse-croûter,
 casse-croûterons,VERB,casse-croûter,
 casse-croûteront,VERB,casse-croûter,
 casse-croûtes,VERB,casse-croûter,
+casse-croûtes,NOUN,casse-croûte,0.14
 casse-croûtez,VERB,casse-croûter,
 casse-croûtiez,VERB,casse-croûter,
 casse-croûtions,VERB,casse-croûter,
@@ -74684,8 +74759,10 @@ celez,VERB,celer,
 céliaque,ADJ,céliaque,
 céliaques,ADJ,céliaque,
 célibat,NOUN,célibat,1.35
+célibataire,ADJ,célibataire,3.45
 célibataire,NOUN,célibataire,2.23
 célibataires,NOUN,célibataire,2.64
+célibataires,ADJ,célibataire,0.61
 célibats,NOUN,célibat,
 célibattant,NOUN,célibattant,
 célibattante,NOUN,célibattant,
@@ -74754,7 +74831,9 @@ celluloses,NOUN,cellulose,
 cellulosique,ADJ,cellulosique,
 cellulosiques,ADJ,cellulosique,
 celons,VERB,celer,
+celte,ADJ,celte,0.68
 celte,NOUN,celte,0.20
+celtes,ADJ,celte,0.54
 celtes,NOUN,celte,0.07
 celtibère,NOUN,celtibère,
 celtibère,ADJ,celtibère,
@@ -75016,6 +75095,8 @@ centa,VERB,center,
 centai,VERB,center,
 centaient,VERB,center,
 centaine,NUM,centaine,
+centaine,NOUN,centaine,10.54
+centaines,NOUN,centaine,31.28
 centaines,NUM,centaine,0.07
 centais,VERB,center,
 centait,VERB,center,
@@ -76374,6 +76455,7 @@ chaînon,NOUN,chaînon,0.47
 chaînons,NOUN,chaînon,0.20
 chaînons,VERB,chaîner,
 chair,NOUN,chair,90.81
+chair,ADJ,chair,4.80
 chaire,NOUN,chaire,5.47
 chaires,NOUN,chaire,0.27
 chairs,NOUN,chair,10.88
@@ -76968,6 +77050,7 @@ chamotte,NOUN,chamotte,
 chamottes,NOUN,chamotte,
 champ,NOUN,champ,51.76
 champagne,NOUN,champagne,29.86
+champagne,ADJ,champagne,1.76
 champagnes,NOUN,champagne,0.00
 champagnisa,VERB,champagniser,
 champagnisai,VERB,champagniser,
@@ -79346,6 +79429,7 @@ chattiez,VERB,chatter,
 chattions,VERB,chatter,
 chattons,VERB,chatter,0.00
 chaud,ADJ,chaud,46.42
+chaud,ADV,chaud,41.76
 chaud,NOUN,chaud,16.01
 chaud-froid,NOUN,chaud-froid,0.34
 chaudasse,NOUN,chaudasse,
@@ -80128,6 +80212,7 @@ chèques-restaurants,NOUN,chèques-restaurants,
 chéquier,NOUN,chéquier,0.61
 chéquiers,NOUN,chéquier,0.07
 cher,ADJ,cher,90.47
+cher,ADV,cher,20.27
 chercha,VERB,chercher,27.03
 cherchai,VERB,chercher,4.93
 cherchaient,VERB,chercher,11.76
@@ -80851,6 +80936,9 @@ chibouques,NOUN,chibouque,
 chibre,NOUN,chibre,0.74
 chibres,NOUN,chibre,
 chic,ADJ,chic,12.50
+chic,NOUN,chic,4.73
+chic,INTJ,chic,0.68
+chic,ADV,chic,0.07
 chicagoan,NOUN,chicagoan,
 chicagoan,ADJ,chicagoan,
 chicagoane,NOUN,chicagoan,
@@ -80925,6 +81013,7 @@ chicanos,ADJ,chicano,0.00
 chicha,NOUN,chicha,
 chichas,NOUN,chicha,
 chiche,ADJ,chiche,1.96
+chiche,INTJ,chiche,0.74
 chiche-kebab,NOUN,chiche-kebab,0.07
 chiche-kébab,NOUN,chiche-kébab,
 chiche-kébabs,NOUN,chiche-kébab,
@@ -82229,6 +82318,8 @@ choanes,NOUN,choane,0.00
 choanocyte,NOUN,choanocyte,
 choanocytes,NOUN,choanocyte,
 choc,NOUN,choc,37.57
+choc,ADJ,choc,1.08
+chochotte,ADJ,chochotte,0.47
 chochotte,NOUN,chochotte,0.27
 chochottes,NOUN,chochotte,0.34
 chocolat,NOUN,chocolat,30.61
@@ -82292,6 +82383,7 @@ chocottiez,VERB,chocotter,
 chocottions,VERB,chocotter,
 chocottons,VERB,chocotter,
 chocs,NOUN,choc,6.62
+chocs,ADJ,choc,0.61
 choéphore,NOUN,choéphore,
 choéphores,NOUN,choéphore,
 chœur,NOUN,chœur,24.86
@@ -82976,6 +83068,7 @@ choucroute,NOUN,choucroute,2.64
 choucroutes,NOUN,choucroute,0.41
 chouette,ADJ,chouette,12.30
 chouette,NOUN,chouette,4.86
+chouette,INTJ,chouette,1.15
 chouettement,ADV,chouettement,0.07
 chouettes,ADJ,chouette,1.49
 chouettes,NOUN,chouette,1.15
@@ -83024,6 +83117,7 @@ choufions,VERB,choufer,
 choufons,VERB,choufer,
 chouia,NOUN,chouia,1.01
 chouïa,NOUN,chouïa,1.82
+chouïa,ADV,chouïa,0.27
 chouias,NOUN,chouia,
 chouïas,NOUN,chouïa,
 chouina,VERB,chouiner,
@@ -84445,7 +84539,9 @@ cinoques,NOUN,cinoque,0.14
 cinoques,ADJ,cinoque,
 cinq,NUM,cinq,220.61
 cinquantaine,NUM,cinquantaine,
+cinquantaine,NOUN,cinquantaine,9.86
 cinquantaines,NUM,cinquantaine,
+cinquantaines,NOUN,cinquantaine,0.07
 cinquante,NUM,cinquante,61.08
 cinquante-cinq,NUM,cinquante-cinq,2.50
 cinquante-cinquième,NOUN,cinquante-cinquième,
@@ -84503,6 +84599,7 @@ cinquantièmes,ADJ,cinquantième,0.07
 cinquième,ADJ,cinquième,11.01
 cinquième,NOUN,cinquième,7.36
 cinquièmement,NUM,cinquièmement,
+cinquièmement,ADV,cinquièmement,0.14
 cinquièmes,NOUN,cinquième,0.54
 cinquièmes,ADJ,cinquième,0.14
 cintra,VERB,cintrer,0.68
@@ -87055,7 +87152,9 @@ clétages,NOUN,clétage,
 cléthodime,NOUN,cléthodime,
 cléthodimes,NOUN,cléthodime,
 clic,NOUN,clic,0.88
+clic,INTJ,clic,0.81
 clic-clac,NOUN,clic-clac,
+clic-clac,INTJ,clic-clac,0.07
 clic-clacs,NOUN,clic-clac,
 clicha,VERB,clicher,
 clichage,NOUN,clichage,0.07
@@ -87228,11 +87327,13 @@ clignotaient,VERB,clignoter,1.62
 clignotais,VERB,clignoter,
 clignotait,VERB,clignoter,0.61
 clignotâmes,VERB,clignoter,
+clignotant,NOUN,clignotant,1.01
 clignotant,ADJ,clignotant,0.61
 clignotant,VERBpartpres,clignoter,0.47
 clignotante,ADJ,clignotant,0.74
 clignotantes,ADJ,clignotant,0.61
 clignotants,ADJ,clignotant,0.81
+clignotants,NOUN,clignotant,0.34
 clignotas,VERB,clignoter,
 clignotasse,VERB,clignoter,
 clignotassent,VERB,clignoter,
@@ -87381,6 +87482,7 @@ clinorhombique,ADJ,clinorhombique,
 clinorhombiques,ADJ,clinorhombique,
 clinozoïsite,NOUN,clinozoïsite,
 clinozoïsites,NOUN,clinozoïsite,
+clinquant,NOUN,clinquant,0.95
 clinquant,ADJ,clinquant,0.47
 clinquante,ADJ,clinquant,0.34
 clinquantes,ADJ,clinquant,0.34
@@ -92553,6 +92655,7 @@ comblât,VERB,combler,0.07
 comblâtes,VERB,combler,
 comble,NOUN,comble,22.50
 comble,VERB,combler,3.11
+comble,ADJ,comble,2.91
 comblé,VERBpartpast,combler,3.58
 comblé,ADJ,comblé,1.42
 comblée,VERBpartpast,combler,1.89
@@ -92605,9 +92708,12 @@ come-back,NOUN,come-back,
 come-backs,NOUN,come-back,
 comédie,NOUN,comédie,25.68
 comédien,NOUN,comédien,5.27
+comédien,ADJ,comédien,0.95
 comédienne,NOUN,comédien,1.76
+comédienne,ADJ,comédien,0.88
 comédiennes,NOUN,comédien,0.61
 comédiens,NOUN,comédien,3.11
+comédiens,ADJ,comédien,0.41
 comédies,NOUN,comédie,4.05
 comédon,NOUN,comédon,
 comédons,NOUN,comédon,0.07
@@ -92753,6 +92859,7 @@ commandons,VERB,commander,0.07
 commandos,NOUN,commando,2.97
 commas,NOUN,comma,
 comme,SCONJ,comme,3429.32
+comme,ADV,comme,365.68
 comme-si,NOUN,comme-si,
 commémora,VERB,commémorer,
 commémorai,VERB,commémorer,
@@ -92863,6 +92970,7 @@ commendataires,ADJ,commendataire,
 commende,NOUN,commende,
 commendes,NOUN,commende,
 commensal,ADJ,commensal,
+commensal,NOUN,commensal,0.27
 commensale,ADJ,commensal,
 commensales,ADJ,commensal,
 commensalisme,NOUN,commensalisme,0.07
@@ -92870,11 +92978,13 @@ commensalismes,NOUN,commensalisme,
 commensalité,NOUN,commensalité,
 commensalités,NOUN,commensalité,
 commensaux,ADJ,commensal,
+commensaux,NOUN,commensal,0.61
 commensurabilité,NOUN,commensurabilité,
 commensurabilités,NOUN,commensurabilité,
 commensurable,ADJ,commensurable,0.07
 commensurables,ADJ,commensurable,0.07
 comment,ADVint,comment,164.93
+comment,INTJ,comment,13.99
 commenta,VERB,commenter,3.04
 commentai,VERB,commenter,0.14
 commentaient,VERB,commenter,0.81
@@ -98568,7 +98678,9 @@ connaissements,NOUN,connaissement,0.07
 connaissent,VERB,connaître,16.89
 connaisses,VERB,connaître,0.74
 connaisseur,NOUN,connaisseur,3.04
+connaisseur,ADJ,connaisseur,2.36
 connaisseurs,NOUN,connaisseur,1.76
+connaisseurs,ADJ,connaisseur,0.54
 connaisseuse,NOUN,connaisseur,0.68
 connaisseuses,NOUN,connaisseur,0.14
 connaissez,VERB,connaître,29.53
@@ -98784,6 +98896,7 @@ connotions,VERB,connoter,
 connotons,VERB,connoter,
 connu,NOUN,connu,
 connu,VERBpartpast,connaître,84.53
+connu,ADJ,connu,16.01
 connue,VERBpartpast,connaître,17.77
 connue,ADJ,connu,5.20
 connues,VERBpartpast,connaître,5.34
@@ -100773,6 +100886,7 @@ contentieuse,ADJ,contentieux,
 contentieusement,ADV,contentieusement,
 contentieuses,ADJ,contentieux,
 contentieux,ADJ,contentieux,
+contentieux,NOUN,contentieux,0.47
 contentiez,VERB,contenter,0.07
 contentif,ADJ,contentif,
 contentifs,ADJ,contentif,
@@ -100977,6 +101091,7 @@ continents,NOUN,continent,3.78
 continents,ADJ,continent,
 contingence,NOUN,contingence,0.27
 contingences,NOUN,contingence,1.49
+contingent,NOUN,contingent,1.69
 contingent,ADJ,contingent,0.34
 contingenta,VERB,contingenter,
 contingentai,VERB,contingenter,
@@ -101025,6 +101140,7 @@ contingentez,VERB,contingenter,
 contingentiez,VERB,contingenter,
 contingentions,VERB,contingenter,
 contingentons,VERB,contingenter,
+contingents,NOUN,contingent,0.95
 contingents,ADJ,contingent,0.00
 contînmes,VERB,contenir,
 continrent,VERB,contenir,0.14
@@ -107432,6 +107548,7 @@ cosmétiquassiez,VERB,cosmétiquer,
 cosmétiquassions,VERB,cosmétiquer,
 cosmétiquât,VERB,cosmétiquer,
 cosmétiquâtes,VERB,cosmétiquer,
+cosmétique,NOUN,cosmétique,0.27
 cosmétique,ADJ,cosmétique,0.20
 cosmétique,VERB,cosmétiquer,
 cosmétiqué,ADJ,cosmétiqué,
@@ -107454,6 +107571,7 @@ cosmétiqueriez,VERB,cosmétiquer,
 cosmétiquerions,VERB,cosmétiquer,
 cosmétiquerons,VERB,cosmétiquer,
 cosmétiqueront,VERB,cosmétiquer,
+cosmétiques,NOUN,cosmétique,0.54
 cosmétiques,ADJ,cosmétique,0.14
 cosmétiques,VERB,cosmétiquer,
 cosmétiqués,ADJ,cosmétiqué,
@@ -109222,6 +109340,7 @@ coursons,ADJ,courson,
 coursons,VERB,courser,
 court,ADJ,court,39.86
 court,VERB,courir,22.30
+court,ADV,court,19.26
 court-bouillon,NOUN,court-bouillon,0.68
 court-circuit,NOUN,court-circuit,1.55
 court-circuita,VERB,court-circuiter,
@@ -110617,6 +110736,7 @@ crane,VERB,craner,
 crané,ADJ,crané,
 crané,VERBpartpast,craner,
 crâne,NOUN,crâne,52.23
+crâne,ADJ,crâne,1.96
 crâne,VERB,crâner,0.34
 crâné,VERBpartpast,crâner,0.00
 cranée,ADJ,crané,
@@ -110658,6 +110778,7 @@ cranes,VERB,craner,
 cranés,ADJ,crané,
 cranés,VERBpartpast,craner,
 crânes,NOUN,crâne,4.59
+crânes,ADJ,crâne,0.54
 crânes,VERB,crâner,0.14
 crâneur,ADJ,crâneur,0.61
 crâneur,NOUN,crâneur,0.34
@@ -111806,6 +111927,7 @@ crénelâtes,VERB,créneler,
 crénelé,ADJ,crénelé,0.20
 crénelé,VERBpartpast,créneler,0.14
 crénèle,VERB,créneler,
+crénelée,ADJ,crénelé,0.34
 crénelée,VERBpartpast,créneler,0.20
 crénelées,ADJ,crénelé,0.41
 crénelées,VERBpartpast,créneler,0.07
@@ -111824,6 +111946,7 @@ crénèlerions,VERB,créneler,
 crénèlerons,VERB,créneler,
 crénèleront,VERB,créneler,
 crénelés,VERBpartpast,créneler,
+crénelés,ADJ,crénelé,0.20
 crénèles,VERB,créneler,
 crénelez,VERB,créneler,
 créneliez,VERB,créneler,
@@ -116966,7 +117089,9 @@ dalmatienne,NOUN,dalmatien,0.00
 dalmatiennes,NOUN,dalmatien,
 dalmatiens,NOUN,dalmatien,0.20
 dalmatique,ADJ,dalmatique,
+dalmatique,NOUN,dalmatique,0.54
 dalmatiques,ADJ,dalmatique,
+dalmatiques,NOUN,dalmatique,0.14
 dalot,NOUN,dalot,
 dalots,NOUN,dalot,
 dalton,NOUN,dalton,
@@ -117113,6 +117238,7 @@ damât,VERB,damer,
 damâtes,VERB,damer,
 dame,NOUN,dame,106.15
 dame,VERB,damer,2.43
+dame,INTJ,dame,1.49
 damé,ADJ,damé,
 damé,VERBpartpast,damer,0.00
 dame-jeanne,NOUN,dame-jeanne,0.07
@@ -117707,6 +117833,7 @@ daviers,NOUN,davier,
 dazibao,NOUN,dazibao,
 dazibaos,NOUN,dazibao,
 de,ADP,de,38928.92
+de,DET,de,0.00
 dé,NOUN,dé,3.65
 de-ci,ADV,de-ci,
 de-là,ADV,de-là,
@@ -120327,6 +120454,7 @@ déboussoliez,VERB,déboussoler,
 déboussolions,VERB,déboussoler,
 déboussolons,VERB,déboussoler,
 debout,ADJ,debout,
+debout,ADV,debout,158.85
 débout,VERB,débouillir,
 débouta,VERB,débouter,
 déboutai,VERB,débouter,
@@ -122025,6 +122153,7 @@ décapaient,VERB,décaper,
 décapais,VERB,décaper,0.07
 décapait,VERB,décaper,0.34
 décapâmes,VERB,décaper,
+décapant,NOUN,décapant,0.20
 décapant,VERBpartpres,décaper,0.07
 décapant,ADJ,décapant,0.00
 décapante,ADJ,décapant,0.07
@@ -122243,7 +122372,9 @@ décapoles,NOUN,décapole,
 décapons,VERB,décaper,
 décapota,VERB,décapoter,
 décapotable,ADJ,décapotable,1.89
+décapotable,NOUN,décapotable,0.81
 décapotables,ADJ,décapotable,0.41
+décapotables,NOUN,décapotable,0.07
 décapotai,VERB,décapoter,
 décapotaient,VERB,décapoter,
 décapotais,VERB,décapoter,
@@ -136294,6 +136425,7 @@ déhontées,ADJ,déhonté,
 déhontés,ADJ,déhonté,
 dehors,ADVsit,dehors,109.05
 dehors,NOUN,dehors,37.64
+dehors,INTJ,dehors,0.61
 déhotta,VERB,déhotter,
 déhottai,VERB,déhotter,
 déhottaient,VERB,déhotter,
@@ -136447,6 +136579,7 @@ déistes,ADJ,déiste,
 déité,NOUN,déité,0.00
 déités,NOUN,déité,0.20
 déjà,ADVasp,déjà,702.23
+déjà,INTJ,déjà,3.31
 déjà-vu,NOUN,déjà-vu,0.34
 déjanta,VERB,déjanter,0.07
 déjantai,VERB,déjanter,
@@ -139142,6 +139275,7 @@ démaquillaient,VERB,démaquiller,0.07
 démaquillais,VERB,démaquiller,0.07
 démaquillait,VERB,démaquiller,0.27
 démaquillâmes,VERB,démaquiller,
+démaquillant,NOUN,démaquillant,0.41
 démaquillant,ADJ,démaquillant,0.07
 démaquillant,VERBpartpres,démaquiller,0.00
 démaquillante,ADJ,démaquillant,0.00
@@ -155961,6 +156095,7 @@ déshabillassions,VERB,déshabiller,
 déshabillât,VERB,déshabiller,
 déshabillâtes,VERB,déshabiller,
 déshabille,VERB,déshabiller,5.00
+déshabillé,NOUN,déshabillé,2.97
 déshabillé,VERBpartpast,déshabiller,1.89
 déshabillé,ADJ,déshabillé,0.54
 déshabillée,VERBpartpast,déshabiller,1.69
@@ -155982,6 +156117,7 @@ déshabillerions,VERB,déshabiller,
 déshabillerons,VERB,déshabiller,0.07
 déshabilleront,VERB,déshabiller,
 déshabilles,VERB,déshabiller,0.20
+déshabillés,NOUN,déshabillé,0.61
 déshabillés,VERBpartpast,déshabiller,0.41
 déshabillés,ADJ,déshabillé,0.14
 déshabillez,VERB,déshabiller,0.34
@@ -157137,11 +157273,13 @@ désinfectaient,VERB,désinfecter,
 désinfectais,VERB,désinfecter,
 désinfectait,VERB,désinfecter,
 désinfectâmes,VERB,désinfecter,
+désinfectant,NOUN,désinfectant,1.49
 désinfectant,ADJ,désinfectant,0.14
 désinfectant,VERBpartpres,désinfecter,0.14
 désinfectante,ADJ,désinfectant,0.00
 désinfectantes,ADJ,désinfectant,0.00
 désinfectants,ADJ,désinfectant,
+désinfectants,NOUN,désinfectant,0.14
 désinfectas,VERB,désinfecter,
 désinfectasse,VERB,désinfecter,
 désinfectassent,VERB,désinfecter,
@@ -158195,6 +158333,7 @@ désodorisaient,VERB,désodoriser,
 désodorisais,VERB,désodoriser,
 désodorisait,VERB,désodoriser,
 désodorisâmes,VERB,désodoriser,
+désodorisant,NOUN,désodorisant,0.27
 désodorisant,ADJ,désodorisant,0.00
 désodorisant,VERBpartpres,désodoriser,
 désodorisante,ADJ,désodorisant,0.07
@@ -164895,6 +165034,7 @@ diabétologies,NOUN,diabétologie,
 diabétologue,NOUN,diabétologue,
 diabétologues,NOUN,diabétologue,
 diable,NOUN,diable,51.01
+diable,INTJ,diable,2.91
 diablement,ADV,diablement,1.01
 diablerie,NOUN,diablerie,0.07
 diableries,NOUN,diablerie,0.54
@@ -165445,6 +165585,7 @@ diamorphines,NOUN,diamorphine,
 diane,NOUN,diane,0.41
 dianes,NOUN,diane,0.07
 diantre,NOUN,diantre,0.27
+diantre,INTJ,diantre,0.14
 diantrement,ADV,diantrement,
 diapason,NOUN,diapason,1.42
 diapasonna,VERB,diapasonner,
@@ -166264,6 +166405,7 @@ différentiiez,VERB,différentier,
 différentiions,VERB,différentier,
 différentions,VERB,différentier,
 différents,ADJ,différent,22.64
+différents,DET,différent,2.84
 différer,VERB,différer,2.70
 différera,VERB,différer,0.07
 différerai,VERB,différer,
@@ -166895,6 +167037,7 @@ dilections,NOUN,dilection,
 dilemme,NOUN,dilemme,1.28
 dilemmes,NOUN,dilemme,0.20
 dilettante,NOUN,dilettante,0.68
+dilettante,ADJ,dilettante,0.47
 dilettantes,NOUN,dilettante,0.20
 dilettantisme,NOUN,dilettantisme,0.41
 dilettantismes,NOUN,dilettantisme,0.07
@@ -167266,6 +167409,7 @@ dinghies,NOUN,dinghy,
 dinghies,NOUN,dinghie,
 dinghy,NOUN,dinghy,
 dinghys,NOUN,dinghy,
+dingo,ADJ,dingo,1.01
 dingo,NOUN,dingo,0.68
 dingos,NOUN,dingo,0.20
 dingua,VERB,dinguer,
@@ -170529,9 +170673,11 @@ divergez,VERB,diverger,0.00
 divergiez,VERB,diverger,
 divergions,VERB,diverger,0.00
 divers,ADJ,divers,25.88
+divers,DET,divers,11.69
 diverse,ADJ,divers,0.68
 diversement,ADV,diversement,0.74
 diverses,ADJ,divers,14.53
+diverses,DET,divers,8.04
 diversifia,VERB,diversifier,
 diversifiable,ADJ,diversifiable,
 diversifiables,ADJ,diversifiable,
@@ -170974,7 +171120,9 @@ dixièmes,ADJ,dixième,0.07
 dixit,ADJ,dixit,0.68
 dizain,NOUN,dizain,0.00
 dizaine,NUM,dizaine,
+dizaine,NOUN,dizaine,26.55
 dizaines,NUM,dizaine,
+dizaines,NOUN,dizaine,18.18
 dizains,NOUN,dizain,
 dizygote,NOUN,dizygote,
 dizygote,ADJ,dizygote,
@@ -171754,6 +171902,7 @@ dominotiers,NOUN,dominotier,
 domisme,NOUN,domisme,
 domismes,NOUN,domisme,
 dommage,NOUN,dommage,24.05
+dommage,INTJ,dommage,5.34
 dommageable,ADJ,dommageable,0.07
 dommageables,ADJ,dommageable,0.14
 dommages,NOUN,dommage,2.09
@@ -173787,6 +173936,7 @@ droïde,NOUN,droïde,
 droïdes,NOUN,droïde,
 droit,NOUN,droit,138.72
 droit,ADJ,droit,74.26
+droit,ADV,droit,31.89
 droit-de-l’hommisme,NOUN,droit-de-l’hommisme,
 droit-de-l’hommismes,NOUN,droit-de-l’hommisme,
 droit-de-l’hommiste,NOUN,droit-de-l’hommiste,
@@ -174463,6 +174613,7 @@ duramen,NOUN,duramen,
 duramens,NOUN,duramen,
 durâmes,VERB,durer,
 durant,ADVasp,durant,
+durant,ADP,durant,65.95
 durant,VERBpartpres,durer,7.30
 duras,VERB,durer,
 durasse,VERB,durer,
@@ -174582,6 +174733,7 @@ dûs,ADJ,dû,
 dûs,VERBpartpast,devoir,
 dus,VERB,devoir,12.77
 dus,VERBpartpast,devoir,12.77
+dus,ADJ,dû,0.47
 dusse,VERB,devoir,0.20
 dussé,VERB,devoir,
 dussent,VERB,devoir,0.41
@@ -178373,6 +178525,7 @@ ecdysones,NOUN,ecdysone,
 éclaboussure,NOUN,éclaboussure,0.54
 éclaboussures,NOUN,éclaboussure,2.97
 éclair,NOUN,éclair,21.08
+éclair,ADJ,éclair,6.76
 éclaira,VERB,éclairer,6.62
 éclairage,NOUN,éclairage,10.74
 éclairages,NOUN,éclairage,2.03
@@ -184552,6 +184705,7 @@ elfiques,ADJ,elfique,
 élimination,NOUN,élimination,1.89
 éliminations,NOUN,élimination,0.07
 éliminatoire,ADJ,éliminatoire,0.20
+éliminatoires,NOUN,éliminatoire,0.34
 éliminatoires,ADJ,éliminatoire,0.00
 éliminatrice,NOUN,éliminateur,
 éliminatrice,ADJ,éliminateur,
@@ -188604,6 +188758,7 @@ embuvons,VERB,emboire,
 émigre,VERB,émigrer,0.20
 émigré,VERBpartpast,émigrer,1.55
 émigré,NOUN,émigré,1.08
+émigré,ADJ,émigré,0.61
 émigrée,NOUN,émigré,0.07
 émigrées,NOUN,émigré,
 émigrent,VERB,émigrer,0.00
@@ -188622,6 +188777,7 @@ embuvons,VERB,emboire,
 émigreront,VERB,émigrer,
 émigres,VERB,émigrer,
 émigrés,NOUN,émigré,2.30
+émigrés,ADJ,émigré,0.68
 émigrez,VERB,émigrer,
 émigriez,VERB,émigrer,
 émigrions,VERB,émigrer,
@@ -188721,7 +188877,9 @@ embuvons,VERB,emboire,
 émises,ADJ,émis,
 émises,VERBpartpast,émettre,0.47
 émissaire,NOUN,émissaire,1.15
+émissaire,ADJ,émissaire,1.01
 émissaires,NOUN,émissaire,2.57
+émissaires,ADJ,émissaire,0.20
 émisse,VERB,émettre,
 émissent,VERB,émettre,
 émisses,VERB,émettre,
@@ -201626,6 +201784,7 @@ enraciniez,VERB,enraciner,
 enracinions,VERB,enraciner,
 enracinons,VERB,enraciner,
 enrage,VERB,enrager,1.82
+enragé,ADJ,enragé,1.69
 enragé,VERBpartpast,enrager,0.95
 enragé,NOUN,enragé,0.88
 enragea,VERB,enrager,0.20
@@ -201647,7 +201806,9 @@ enrageassiez,VERB,enrager,
 enrageassions,VERB,enrager,
 enrageât,VERB,enrager,
 enrageâtes,VERB,enrager,
+enragée,ADJ,enragé,1.28
 enragée,NOUN,enragé,0.07
+enragées,ADJ,enragé,0.54
 enragées,NOUN,enragé,0.00
 enragement,NOUN,enragement,0.14
 enragements,NOUN,enragement,
@@ -201668,6 +201829,7 @@ enragerons,VERB,enrager,
 enrageront,VERB,enrager,
 enrages,VERB,enrager,
 enragés,NOUN,enragé,0.74
+enragés,ADJ,enragé,0.74
 enragez,VERB,enrager,
 enragiez,VERB,enrager,
 enragions,VERB,enrager,
@@ -205133,6 +205295,7 @@ entravons,VERB,entraver,
 entraxe,NOUN,entraxe,
 entraxes,NOUN,entraxe,
 entre,ADVsit,entre,
+entre,ADP,entre,833.99
 entre,VERB,entrer,58.78
 entré,ADJ,entré,
 entré,VERBpartpast,entrer,32.43
@@ -207547,6 +207710,7 @@ enzymopathies,NOUN,enzymopathie,
 épair,NOUN,épair,
 épairs,NOUN,épair,
 épais,ADJ,épais,41.01
+épais,ADV,épais,0.47
 épaisse,ADJ,épais,35.88
 épaisses,ADJ,épais,13.72
 épaisseur,NOUN,épaisseur,21.89
@@ -208899,6 +209063,7 @@ enzymopathies,NOUN,enzymopathie,
 épileptiforme,ADJ,épileptiforme,0.00
 épileptiformes,ADJ,épileptiforme,
 épileptique,NOUN,épileptique,0.54
+épileptique,ADJ,épileptique,0.47
 épileptiquement,ADV,épileptiquement,
 épileptiques,NOUN,épileptique,0.34
 épileptogène,ADJ,épileptogène,
@@ -211842,6 +212007,7 @@ erses,ADJ,erse,
 es,VERB,être,256.62
 es,AUX,être,77.70
 ès,DET,ès,
+ès,ADP,ès,1.08
 esbaudi,ADJ,esbaudi,
 esbaudi,VERBpartpast,esbaudir,
 esbaudie,ADJ,esbaudi,
@@ -212582,7 +212748,9 @@ esclavagiste,NOUN,esclavagiste,0.00
 esclavagistes,ADJ,esclavagiste,0.07
 esclavagistes,NOUN,esclavagiste,0.00
 esclave,NOUN,esclave,9.86
+esclave,ADJ,esclave,2.97
 esclaves,NOUN,esclave,12.36
+esclaves,ADJ,esclave,2.23
 esclavon,NOUN,esclavon,
 esclavon,ADJ,esclavon,
 esclavonne,NOUN,esclavon,
@@ -215520,6 +215688,7 @@ et,CCONJ,et,20879.73
 étançons,NOUN,étançon,
 étang,NOUN,étang,10.47
 étangs,NOUN,étang,5.00
+étant,AUX,être,76.82
 étant,VERBpartpres,être,14.19
 étape,NOUN,étape,14.46
 étapes,NOUN,étape,9.19
@@ -215691,6 +215860,7 @@ etcétéra,NOUN,etcétéra,
 etcétéras,NOUN,etcétéra,
 été,VERBpartpast,être,818.99
 été,NOUN,été,121.55
+été,AUX,être,40.20
 éteignaient,VERB,éteindre,2.23
 éteignais,VERB,éteindre,0.34
 éteignait,VERB,éteindre,4.46
@@ -216311,8 +216481,10 @@ ethos,NOUN,ethos,
 éthylénique,ADJ,éthylénique,
 éthyléniques,ADJ,éthylénique,
 éthyles,NOUN,éthyle,
+éthylique,ADJ,éthylique,0.34
 éthylique,NOUN,éthylique,0.07
 éthyliques,NOUN,éthylique,
+éthyliques,ADJ,éthylique,0.27
 éthylisme,NOUN,éthylisme,0.20
 éthylismes,NOUN,éthylisme,
 éthylomètre,NOUN,éthylomètre,
@@ -217543,6 +217715,7 @@ ethos,NOUN,ethos,
 étymon,NOUN,étymon,
 étymons,NOUN,étymon,
 eu,VERBpartpast,avoir,436.76
+eu,AUX,avoir,22.36
 eubactérie,NOUN,eubactérie,
 eubactéries,NOUN,eubactérie,
 eubage,NOUN,eubage,0.41
@@ -223620,6 +223793,7 @@ extrémale,ADJ,extrémal,
 extrémales,ADJ,extrémal,
 extrémaux,ADJ,extrémal,
 extrême,ADJ,extrême,41.62
+extrême,NOUN,extrême,7.64
 extrême-onction,NOUN,extrême-onction,1.55
 extrême-onctions,NOUN,extrême-onction,
 extrême-oriental,ADJ,extrême-oriental,
@@ -223628,6 +223802,7 @@ extrême-orientales,ADJ,extrême-oriental,
 extrême-orientaux,ADJ,extrême-oriental,
 extrêmement,ADV,extrêmement,16.96
 extrêmes,ADJ,extrême,3.92
+extrêmes,NOUN,extrême,0.88
 extrêmes-onctions,NOUN,extrêmes-onctions,0.07
 extremis,ADV,extremis,
 extrémisa,VERB,extrémiser,
@@ -226444,6 +226619,7 @@ fatalement,ADV,fatalement,5.07
 fatales,ADJ,fatal,1.49
 fatalisme,NOUN,fatalisme,1.76
 fatalismes,NOUN,fatalisme,
+fataliste,ADJ,fataliste,1.69
 fataliste,NOUN,fataliste,0.20
 fatalistes,NOUN,fataliste,
 fatalité,NOUN,fatalité,8.51
@@ -226932,6 +227108,7 @@ fauvistes,ADJ,fauviste,
 faux,ADJ,faux,66.55
 faux,NOUN,faux,8.51
 faux,VERB,faillir,
+faux,ADV,faux,2.70
 faux-bourdon,NOUN,faux-bourdon,0.07
 faux-bourdons,NOUN,faux-bourdon,
 faux-cul,NOUN,faux-cul,0.07
@@ -228275,6 +228452,7 @@ fermaux,NOUN,fermail,
 ferme,NOUN,ferme,47.23
 ferme,ADJ,ferme,39.39
 ferme,VERB,fermer,28.38
+ferme,ADV,ferme,0.00
 fermé,VERBpartpast,fermer,30.54
 fermé,ADJ,fermé,13.38
 fermée,VERBpartpast,fermer,16.15
@@ -228368,9 +228546,12 @@ fermetures,NOUN,fermeture,0.88
 fermez,VERB,fermer,1.69
 fermi,NOUN,fermi,0.00
 fermier,NOUN,fermier,5.61
+fermier,ADJ,fermier,0.68
 fermière,NOUN,fermier,2.23
+fermière,ADJ,fermier,0.27
 fermières,NOUN,fermier,0.47
 fermiers,NOUN,fermier,4.05
+fermiers,ADJ,fermier,0.47
 fermiez,VERB,fermer,0.20
 fermion,NOUN,fermion,
 fermionique,ADJ,fermionique,
@@ -228796,9 +228977,11 @@ fesseurs,NOUN,fesseur,
 fesseuse,NOUN,fesseur,0.07
 fesseuses,NOUN,fesseur,
 fessez,VERB,fesser,
+fessier,NOUN,fessier,0.54
 fessier,ADJ,fessier,0.00
 fessière,ADJ,fessier,0.07
 fessières,ADJ,fessier,0.14
+fessiers,NOUN,fessier,0.14
 fessiers,ADJ,fessier,0.07
 fessiez,VERB,fesser,0.00
 fessions,VERB,fesser,
@@ -229799,9 +229982,11 @@ fichons,VERB,ficher,0.07
 fichtre,INTJ,fichtre,1.01
 fichtrement,ADV,fichtrement,0.47
 fichu,ADJ,fichu,7.70
+fichu,NOUN,fichu,4.12
 fichue,ADJ,fichu,3.04
 fichues,ADJ,fichu,0.20
 fichus,ADJ,fichu,1.08
+fichus,NOUN,fichu,0.81
 fics,NOUN,fic,
 fictif,ADJ,fictif,1.22
 fictifs,ADJ,fictif,0.34
@@ -231911,6 +232096,7 @@ flamboyiez,VERB,flamboyer,
 flamboyions,VERB,flamboyer,
 flamboyons,VERB,flamboyer,
 flamenco,NOUN,flamenco,0.88
+flamenco,ADJ,flamenco,0.68
 flamencos,NOUN,flamenco,
 flamiche,NOUN,flamiche,
 flamiches,NOUN,flamiche,
@@ -233192,6 +233378,7 @@ flonflons,NOUN,flonflon,1.28
 flood,ADJ,flood,0.00
 floods,ADJ,flood,
 flop,NOUN,flop,0.27
+flop,INTJ,flop,0.20
 flopée,NOUN,flopée,0.61
 flopées,NOUN,flopée,0.14
 flops,NOUN,flop,0.00
@@ -233363,6 +233550,7 @@ flottilles,NOUN,flottille,0.34
 flottions,VERB,flotter,0.14
 flottons,VERB,flotter,
 flou,ADJ,flou,6.08
+flou,NOUN,flou,3.85
 floua,VERB,flouer,
 flouai,VERB,flouer,
 flouaient,VERB,flouer,
@@ -234909,6 +235097,8 @@ fondassions,VERB,fonder,
 fondât,VERB,fonder,0.14
 fondâtes,VERB,fonder,
 fondateur,NOUN,fondateur,1.69
+fondateur,ADJ,fondateur,1.08
+fondateurs,ADJ,fondateur,0.34
 fondateurs,NOUN,fondateur,0.20
 fondation,NOUN,fondation,3.99
 fondations,NOUN,fondation,3.65
@@ -235141,6 +235331,7 @@ forçâtes,VERB,forcer,
 forçats,NOUN,forçat,1.76
 force,NOUN,force,218.38
 force,VERB,forcer,11.49
+force,DET,force,4.86
 forcé,VERBpartpast,forcer,16.55
 forcé,ADJ,forcé,5.74
 force-poussée,NOUN,force-poussée,
@@ -236080,9 +236271,11 @@ fortifiais,VERB,fortifier,0.07
 fortifiait,VERB,fortifier,0.81
 fortifiâmes,VERB,fortifier,
 fortifiant,VERBpartpres,fortifier,0.41
+fortifiant,NOUN,fortifiant,0.34
 fortifiant,ADJ,fortifiant,0.20
 fortifiante,ADJ,fortifiant,
 fortifiantes,ADJ,fortifiant,
+fortifiants,NOUN,fortifiant,0.20
 fortifiants,ADJ,fortifiant,0.07
 fortifias,VERB,fortifier,
 fortifiasse,VERB,fortifier,
@@ -236639,8 +236832,10 @@ fouinerons,VERB,fouiner,
 fouineront,VERB,fouiner,
 fouines,NOUN,fouine,0.54
 fouines,VERB,fouiner,0.00
+fouineur,ADJ,fouineur,0.47
 fouineur,NOUN,fouineur,0.07
 fouineurs,NOUN,fouineur,0.00
+fouineuse,ADJ,fouineur,0.27
 fouineuse,NOUN,fouineur,0.00
 fouineuses,NOUN,fouineur,
 fouinez,VERB,fouiner,0.07
@@ -236859,6 +237054,7 @@ fourbes,VERB,fourber,
 fourbés,ADJ,fourbé,
 fourbés,VERBpartpast,fourber,
 fourbez,VERB,fourber,
+fourbi,NOUN,fourbi,2.91
 fourbi,VERBpartpast,fourbir,0.34
 fourbi,ADJ,fourbi,0.20
 fourbie,ADJ,fourbi,
@@ -236881,6 +237077,7 @@ fourbiriez,VERB,fourbir,
 fourbirions,VERB,fourbir,
 fourbirons,VERB,fourbir,
 fourbiront,VERB,fourbir,
+fourbis,NOUN,fourbi,0.27
 fourbis,ADJ,fourbi,0.14
 fourbis,VERB,fourbir,0.00
 fourbis,VERBpartpast,fourbir,
@@ -237892,6 +238089,7 @@ framework,NOUN,framework,
 frameworks,NOUN,framework,
 franc,ADJ,franc,10.95
 franc,NOUN,franc,4.73
+franc,ADV,franc,0.00
 franc-alleu,NOUN,franc-alleu,
 franc-bord,NOUN,franc-bord,
 franc-bourgeois,NOUN,franc-bourgeois,
@@ -238718,8 +238916,10 @@ franquette,NOUN,franquette,0.88
 franquettes,NOUN,franquette,
 franquisme,NOUN,franquisme,0.07
 franquismes,NOUN,franquisme,
+franquiste,ADJ,franquiste,0.34
 franquiste,NOUN,franquiste,0.07
 franquistes,NOUN,franquiste,0.47
+franquistes,ADJ,franquiste,0.34
 fransquillon,NOUN,fransquillon,
 fransquillonna,VERB,fransquillonner,
 fransquillonnai,VERB,fransquillonner,
@@ -239972,6 +240172,7 @@ fripières,NOUN,fripier,
 fripiers,NOUN,fripier,0.41
 fripiez,VERB,friper,
 fripions,VERB,friper,
+fripon,ADJ,fripon,0.41
 fripon,NOUN,fripon,0.34
 friponna,VERB,friponner,
 friponnai,VERB,friponner,
@@ -240024,6 +240225,7 @@ friponnions,VERB,friponner,
 friponnons,VERB,friponner,
 fripons,NOUN,fripon,0.20
 fripons,VERB,friper,
+fripons,ADJ,fripon,0.20
 fripouille,NOUN,fripouille,1.15
 fripouillerie,NOUN,fripouillerie,0.14
 fripouilleries,NOUN,fripouillerie,0.07
@@ -244302,6 +244504,7 @@ gardiane,NOUN,gardian,
 gardianes,NOUN,gardian,
 gardians,NOUN,gardian,0.07
 gardien,NOUN,gardien,18.45
+gardien,ADJ,gardien,4.46
 gardienna,VERB,gardienner,
 gardiennage,NOUN,gardiennage,0.27
 gardiennages,NOUN,gardiennage,
@@ -244321,6 +244524,7 @@ gardiennât,VERB,gardienner,
 gardiennâtes,VERB,gardienner,
 gardienne,NOUN,gardien,3.31
 gardienne,VERB,gardienner,
+gardienne,ADJ,gardien,0.81
 gardienné,ADJ,gardienné,
 gardienné,VERBpartpast,gardienner,
 gardiennée,ADJ,gardienné,
@@ -244343,6 +244547,7 @@ gardiennerons,VERB,gardienner,
 gardienneront,VERB,gardienner,
 gardiennes,NOUN,gardien,0.61
 gardiennes,VERB,gardienner,
+gardiennes,ADJ,gardien,0.20
 gardiennés,ADJ,gardienné,
 gardiennés,VERBpartpast,gardienner,
 gardiennez,VERB,gardienner,
@@ -244350,6 +244555,7 @@ gardienniez,VERB,gardienner,
 gardiennions,VERB,gardienner,
 gardiennons,VERB,gardienner,
 gardiens,NOUN,gardien,9.59
+gardiens,ADJ,gardien,1.49
 gardiez,VERB,garder,0.61
 gardions,VERB,garder,0.88
 gardois,NOUN,gardois,
@@ -244362,6 +244568,7 @@ gardon,NOUN,gardon,0.41
 gardons,VERB,garder,2.03
 gardons,NOUN,gardon,0.68
 gare,NOUN,gare,78.58
+gare,INTJ,gare,2.84
 gare,VERB,garer,2.77
 garé,ADJ,garé,
 garé,VERBpartpast,garer,3.45
@@ -245300,8 +245507,10 @@ gaulliennes,ADJ,gaullien,
 gaulliens,ADJ,gaullien,
 gaullisme,NOUN,gaullisme,1.49
 gaullismes,NOUN,gaullisme,
+gaulliste,ADJ,gaulliste,1.62
 gaulliste,NOUN,gaulliste,0.47
 gaullistes,NOUN,gaulliste,3.58
+gaullistes,ADJ,gaulliste,0.81
 gaulois,NOUN,gaulois,2.64
 gaulois,ADJ,gaulois,1.28
 gauloise,NOUN,gaulois,2.84
@@ -249857,7 +250066,9 @@ gnosique,ADJ,gnosique,
 gnosiques,ADJ,gnosique,
 gnosticisme,NOUN,gnosticisme,0.07
 gnosticismes,NOUN,gnosticisme,
+gnostique,NOUN,gnostique,0.20
 gnostique,ADJ,gnostique,0.00
+gnostiques,NOUN,gnostique,0.27
 gnostiques,ADJ,gnostique,0.00
 gnotobiotique,ADJ,gnotobiotique,
 gnotobiotiques,ADJ,gnotobiotique,
@@ -251851,6 +252062,7 @@ gouttât,VERB,goutter,
 gouttâtes,VERB,goutter,
 goutte,NOUN,goutte,30.34
 goutte,VERB,goutter,1.42
+goutte,ADV,goutte,0.07
 goutté,VERBpartpast,goutter,
 goutte-à-goutte,NOUN,goutte-à-goutte,
 gouttelette,NOUN,gouttelette,0.41
@@ -252003,6 +252215,7 @@ grabuge,NOUN,grabuge,0.54
 grabuges,NOUN,grabuge,
 grâce,ADP,grâce,78.85
 grâce,NOUN,grâce,49.66
+grâce,INTJ,grâce,0.27
 grâces,NOUN,grâce,8.04
 gracia,VERB,gracier,0.07
 graciable,ADJ,graciable,
@@ -252596,6 +252809,7 @@ gramscisme,NOUN,gramscisme,
 gramscismes,NOUN,gramscisme,
 grand,ADJ,grand,537.97
 grand,NOUN,grand,86.01
+grand,ADV,grand,5.81
 grand-angle,NOUN,grand-angle,0.00
 grand-angulaire,NOUN,grand-angulaire,
 grand-chose,PRONind,grand-chose,36.08
@@ -253024,6 +253238,7 @@ graptolite,NOUN,graptolite,
 graptolites,NOUN,graptolite,
 gras,ADJ,gras,25.61
 gras,NOUN,gras,5.61
+gras,ADV,gras,0.47
 gras-double,NOUN,gras-double,1.01
 gras-doubles,NOUN,gras-double,0.07
 grasse,ADJ,gras,14.12
@@ -255967,6 +256182,7 @@ grooms,NOUN,groom,0.68
 groove,NOUN,groove,
 gros,ADJ,gros,216.01
 gros,NOUN,gros,30.07
+gros,ADV,gros,0.88
 gros-boutiste,ADJ,gros-boutiste,
 gros-boutistes,ADJ,gros-boutiste,
 gros-grain,NOUN,gros-grain,0.41
@@ -256480,6 +256696,7 @@ guatémaltèques,ADJ,guatémaltèque,
 guayule,NOUN,guayule,
 guayules,NOUN,guayule,
 gué,NOUN,gué,2.03
+gué,INTJ,gué,0.00
 guéa,VERB,guéer,
 guéable,ADJ,guéable,0.07
 guéables,ADJ,guéable,
@@ -258631,6 +258848,7 @@ halotolérante,ADJ,halotolérant,
 halotolérantes,ADJ,halotolérant,
 halotolérants,ADJ,halotolérant,
 halte,NOUN,halte,10.88
+halte,INTJ,halte,3.85
 halte-garderie,NOUN,halte-garderie,0.00
 haltère,NOUN,haltère,0.07
 haltères,NOUN,haltère,1.28
@@ -259310,6 +259528,7 @@ hardeuses,NOUN,hardeur,
 hardez,VERB,harder,
 hardi,NOUN,hardi,
 hardi,ADJ,hardi,6.49
+hardi,INTJ,hardi,0.61
 hardie,NOUN,hardi,
 hardie,ADJ,hardi,1.35
 hardies,NOUN,hardi,
@@ -262626,6 +262845,7 @@ hissassions,VERB,hisser,
 hissât,VERB,hisser,
 hissâtes,VERB,hisser,
 hisse,VERB,hisser,2.64
+hisse,INTJ,hisse,0.07
 hissé,ADJ,hissé,
 hissé,VERBpartpast,hisser,2.64
 hissée,ADJ,hissé,
@@ -263748,6 +263968,7 @@ honorables,ADJ,honorable,2.57
 honorai,VERB,honorer,0.07
 honoraient,VERB,honorer,0.47
 honoraire,NOUN,honoraire,
+honoraire,ADJ,honoraire,0.68
 honoraires,NOUN,honoraire,1.49
 honorais,VERB,honorer,0.07
 honorait,VERB,honorer,1.49
@@ -269063,9 +269284,11 @@ immigrationniste,ADJ,immigrationniste,
 immigrationnistes,ADJ,immigrationniste,
 immigrations,NOUN,immigration,
 immigre,VERB,immigrer,
+immigré,ADJ,immigré,0.41
 immigré,NOUN,immigré,0.20
 immigré,VERBpartpast,immigrer,0.14
 immigrée,NOUN,immigré,0.14
+immigrées,ADJ,immigré,0.20
 immigrées,NOUN,immigré,0.00
 immigrent,VERB,immigrer,
 immigrer,VERB,immigrer,0.07
@@ -269083,6 +269306,7 @@ immigrerons,VERB,immigrer,
 immigreront,VERB,immigrer,
 immigres,VERB,immigrer,
 immigrés,NOUN,immigré,2.50
+immigrés,ADJ,immigré,0.61
 immigrez,VERB,immigrer,
 immigriez,VERB,immigrer,
 immigrions,VERB,immigrer,
@@ -269841,7 +270065,9 @@ impensées,ADJ,impensé,
 impenses,NOUN,impenses,
 impensés,ADJ,impensé,
 imper,NOUN,imper,2.50
+impératif,NOUN,impératif,1.82
 impératif,ADJ,impératif,1.55
+impératifs,NOUN,impératif,1.22
 impératifs,ADJ,impératif,0.41
 impérative,ADJ,impératif,1.35
 impérativement,ADV,impérativement,0.68
@@ -270356,7 +270582,9 @@ impolitiques,ADJ,impolitique,
 impondérabilité,NOUN,impondérabilité,
 impondérabilités,NOUN,impondérabilité,
 impondérable,ADJ,impondérable,0.61
+impondérable,NOUN,impondérable,0.20
 impondérables,ADJ,impondérable,0.47
+impondérables,NOUN,impondérable,0.41
 impondéré,ADJ,impondéré,
 impondérée,ADJ,impondéré,
 impondérées,ADJ,impondéré,
@@ -270548,6 +270776,7 @@ impossibilités,NOUN,impossibilité,0.34
 impossible,ADJ,impossible,90.07
 impossiblement,ADV,impossiblement,
 impossibles,ADJ,impossible,5.95
+impossibles,NOUN,impossible,0.41
 imposte,NOUN,imposte,0.68
 impostes,NOUN,imposte,
 imposteur,NOUN,imposteur,1.42
@@ -270832,6 +271061,7 @@ improductivité,NOUN,improductivité,
 improductivités,NOUN,improductivité,
 impromptu,ADJ,impromptu,1.42
 impromptu,NOUN,impromptu,0.54
+impromptu,ADV,impromptu,0.07
 impromptue,ADJ,impromptu,0.68
 impromptues,ADJ,impromptu,0.27
 impromptus,NOUN,impromptu,0.07
@@ -272169,6 +272399,7 @@ incoercible,ADJ,incoercible,0.34
 incoerciblement,ADV,incoerciblement,0.20
 incoercibles,ADJ,incoercible,0.27
 incognita,NOUN,incognita,
+incognito,ADV,incognito,2.36
 incognito,NOUN,incognito,1.49
 incognitos,NOUN,incognito,0.07
 incohérence,NOUN,incohérence,2.09
@@ -272471,6 +272702,7 @@ incontinence,NOUN,incontinence,0.34
 incontinences,NOUN,incontinence,0.34
 incontinent,NOUN,incontinent,
 incontinent,ADJ,incontinent,1.08
+incontinent,ADV,incontinent,0.20
 incontinente,NOUN,incontinent,
 incontinente,ADJ,incontinent,0.07
 incontinentes,NOUN,incontinent,
@@ -273572,8 +273804,10 @@ indigénat,NOUN,indigénat,
 indigénats,NOUN,indigénat,
 indigence,NOUN,indigence,1.96
 indigences,NOUN,indigence,
+indigène,ADJ,indigène,2.57
 indigène,NOUN,indigène,1.08
 indigènes,NOUN,indigène,4.19
+indigènes,ADJ,indigène,1.62
 indigénisme,NOUN,indigénisme,
 indigénismes,NOUN,indigénisme,
 indigéniste,NOUN,indigéniste,
@@ -273891,7 +274125,9 @@ individualisions,VERB,individualiser,
 individualisme,NOUN,individualisme,1.35
 individualismes,NOUN,individualisme,
 individualisons,VERB,individualiser,
+individualiste,ADJ,individualiste,0.27
 individualiste,NOUN,individualiste,0.14
+individualistes,ADJ,individualiste,0.27
 individualistes,NOUN,individualiste,0.07
 individualité,NOUN,individualité,0.74
 individualités,NOUN,individualité,0.14
@@ -275201,9 +275437,11 @@ infirmés,ADJ,infirmé,
 infirmés,VERBpartpast,infirmer,
 infirmez,VERB,infirmer,
 infirmier,NOUN,infirmier,3.58
+infirmier,ADJ,infirmier,0.95
 infirmière,NOUN,infirmier,22.97
 infirmières,NOUN,infirmier,4.93
 infirmiers,NOUN,infirmier,4.80
+infirmiers,ADJ,infirmier,0.54
 infirmiez,VERB,infirmer,
 infirmions,VERB,infirmer,
 infirmité,NOUN,infirmité,4.53
@@ -278001,6 +278239,7 @@ instancions,VERB,instancier,
 instant,NOUN,instant,285.88
 instant,ADJ,instant,11.35
 instantané,ADJ,instantané,1.22
+instantané,NOUN,instantané,0.61
 instantanée,ADJ,instantané,1.35
 instantanées,ADJ,instantané,0.20
 instantanéiste,ADJ,instantanéiste,
@@ -278008,6 +278247,7 @@ instantanéistes,ADJ,instantanéiste,
 instantanéité,NOUN,instantanéité,0.07
 instantanéités,NOUN,instantanéité,
 instantanément,ADV,instantanément,7.57
+instantanés,NOUN,instantané,0.41
 instantanés,ADJ,instantané,0.20
 instante,ADJ,instant,0.20
 instantes,ADJ,instant,0.47
@@ -278291,7 +278531,9 @@ institutrice,NOUN,instituteur,6.08
 institutrices,NOUN,instituteur,1.15
 instituts,NOUN,institut,0.68
 instructeur,NOUN,instructeur,1.22
+instructeur,ADJ,instructeur,0.68
 instructeurs,NOUN,instructeur,0.88
+instructeurs,ADJ,instructeur,0.27
 instructif,ADJ,instructif,1.55
 instructifs,ADJ,instructif,0.14
 instruction,NOUN,instruction,16.08
@@ -281745,9 +281987,13 @@ intrépidités,NOUN,intrépidité,
 intrication,NOUN,intrication,
 intrications,NOUN,intrication,
 intrigant,ADJ,intrigant,0.81
+intrigant,NOUN,intrigant,0.34
+intrigante,NOUN,intrigant,0.54
 intrigante,ADJ,intrigant,0.14
+intrigantes,NOUN,intrigant,0.20
 intrigantes,ADJ,intrigant,0.00
 intrigants,ADJ,intrigant,0.47
+intrigants,NOUN,intrigant,0.41
 intrigua,VERB,intriguer,1.01
 intriguai,VERB,intriguer,
 intriguaient,VERB,intriguer,0.88
@@ -284690,6 +284936,7 @@ ives,NOUN,ive,0.00
 ivette,NOUN,ivette,
 ivettes,NOUN,ivette,
 ivoire,NOUN,ivoire,7.84
+ivoire,ADJ,ivoire,2.16
 ivoirerie,NOUN,ivoirerie,
 ivoireries,NOUN,ivoirerie,
 ivoires,NOUN,ivoire,0.54
@@ -284763,9 +285010,11 @@ ivresses,NOUN,ivresse,0.61
 ivressomètre,NOUN,ivressomètre,
 ivressomètres,NOUN,ivressomètre,
 ivrogne,NOUN,ivrogne,8.72
+ivrogne,ADJ,ivrogne,1.49
 ivrognerie,NOUN,ivrognerie,0.88
 ivrogneries,NOUN,ivrognerie,
 ivrognes,NOUN,ivrogne,5.20
+ivrognes,ADJ,ivrogne,0.47
 ivrognesse,NOUN,ivrogne,0.07
 ivrognesses,NOUN,ivrogne,
 iwan,NOUN,iwan,
@@ -285091,6 +285340,7 @@ jaculatoires,ADJ,jaculatoire,
 jacuzzi,NOUN,jacuzzi,0.07
 jacuzzis,NOUN,jacuzzi,0.07
 jade,NOUN,jade,3.38
+jade,ADJ,jade,1.28
 jadéite,NOUN,jadéite,
 jadéites,NOUN,jadéite,
 jades,NOUN,jade,0.14
@@ -285412,6 +285662,7 @@ janotismes,NOUN,janotisme,
 jans,NOUN,jan,0.61
 jansénisme,NOUN,jansénisme,0.54
 jansénismes,NOUN,jansénisme,
+janséniste,ADJ,janséniste,0.88
 janséniste,NOUN,janséniste,0.47
 jansénistes,NOUN,janséniste,0.27
 jante,NOUN,jante,0.47
@@ -287097,8 +287348,10 @@ jouâmes,VERB,jouer,0.34
 jouant,VERBpartpres,jouer,19.19
 jouas,VERB,jouer,
 jouasse,VERB,jouer,
+jouasse,ADJ,jouasse,1.01
 jouassent,VERB,jouer,
 jouasses,VERB,jouer,
+jouasses,ADJ,jouasse,0.20
 jouassiez,VERB,jouer,
 jouassions,VERB,jouer,
 jouât,VERB,jouer,0.81
@@ -287142,9 +287395,13 @@ jouette,ADJ,jouette,
 jouettes,NOUN,jouette,
 jouettes,ADJ,jouette,
 joueur,NOUN,joueur,9.05
+joueur,ADJ,joueur,1.69
 joueurs,NOUN,joueur,9.53
+joueurs,ADJ,joueur,1.08
 joueuse,NOUN,joueur,0.74
+joueuse,ADJ,joueur,0.74
 joueuses,NOUN,joueur,0.54
+joueuses,ADJ,joueur,0.54
 jouez,VERB,jouer,3.18
 joufflu,ADJ,joufflu,1.42
 joufflue,ADJ,joufflu,0.34
@@ -287342,6 +287599,7 @@ jouxtassions,VERB,jouxter,
 jouxtât,VERB,jouxter,
 jouxtâtes,VERB,jouxter,
 jouxte,VERB,jouxter,0.07
+jouxte,ADP,jouxte,0.07
 jouxté,ADJ,jouxté,
 jouxté,VERBpartpast,jouxter,
 jouxtée,ADJ,jouxté,
@@ -289556,6 +289814,7 @@ la,DETart,le,23633.92
 la,PRON,le:PRON,1242.64
 la,NOUN,la,0.74
 là,ADV,là,1089.66
+là,INTJ,là,4.26
 là-bas,ADVsit,là-bas,117.70
 là-dedans,ADV,là-dedans,23.58
 là-dehors,ADV,là-dehors,0.00
@@ -292014,6 +292273,7 @@ laryngotomie,NOUN,laryngotomie,
 laryngotomies,NOUN,laryngotomie,
 larynx,NOUN,larynx,1.55
 las,ADJ,las,23.65
+las,INTJ,las,0.74
 lasagne,NOUN,lasagne,0.00
 lasagnes,NOUN,lasagne,0.41
 lascar,NOUN,lascar,1.89
@@ -293725,6 +293985,7 @@ leurrions,VERB,leurrer,
 leurrons,VERB,leurrer,0.27
 leurs,DETprs,leur,886.55
 leurs,NOUN,leur,
+leurs,PRON,leur,9.53
 leurszigues,PRONprs,leurszigues,
 lev,NOUN,lev,0.00
 leva,VERB,lever,123.58
@@ -293751,6 +294012,7 @@ lévamisole,NOUN,lévamisole,
 lévamisoles,NOUN,lévamisole,
 levant,VERBpartpres,lever,28.78
 levant,NOUN,levant,5.88
+levant,ADJ,levant,2.30
 levantin,NOUN,levantin,0.20
 levantin,ADJ,levantin,0.14
 levantine,NOUN,levantin,
@@ -293769,6 +294031,7 @@ levassions,VERB,lever,
 levât,VERB,lever,0.68
 levâtes,VERB,lever,
 levé,VERBpartpast,lever,40.41
+levé,ADJ,levé,11.62
 lève,VERB,lever,77.70
 lève-glace,NOUN,lève-glace,
 lève-glaces,NOUN,lève-glace,
@@ -293777,7 +294040,11 @@ lève-tôt,NOUN,lève-tôt,
 lève-vitre,NOUN,lève-vitre,
 lève-vitres,NOUN,lève-vitre,
 levée,VERBpartpast,lever,13.78
+levée,ADJ,levé,7.03
+levée,NOUN,levée,3.58
+levées,ADJ,levé,1.69
 levées,VERBpartpast,lever,1.55
+levées,NOUN,levée,1.15
 lèvent,VERB,lever,8.45
 lever,VERB,lever,66.89
 lever,NOUN,lever,8.78
@@ -296930,6 +297197,7 @@ littératures,NOUN,littérature,0.07
 littéraux,ADJ,littéral,0.00
 littérisme,NOUN,littérisme,
 littérismes,NOUN,littérisme,
+littoral,NOUN,littoral,3.11
 littoral,ADJ,littoral,0.20
 littorale,ADJ,littoral,0.14
 littorales,ADJ,littoral,
@@ -297781,6 +298049,7 @@ londrès,NOUN,londrès,0.07
 lône,NOUN,lône,
 lônes,NOUN,lône,
 long,ADJ,long,153.51
+long,ADV,long,0.74
 long-courrier,NOUN,long-courrier,0.47
 long-courrier,ADJ,long-courrier,
 long-courriers,NOUN,long-courrier,0.14
@@ -298580,6 +298849,7 @@ lourassions,VERB,lourer,
 lourât,VERB,lourer,
 lourâtes,VERB,lourer,
 lourd,ADJ,lourd,42.50
+lourd,ADV,lourd,21.35
 lourd,NOUN,lourd,2.16
 lourda,VERB,lourder,
 lourdai,VERB,lourder,
@@ -298597,8 +298867,10 @@ lourdassions,VERB,lourder,
 lourdât,VERB,lourder,
 lourdâtes,VERB,lourder,
 lourdaud,NOUN,lourdaud,0.74
+lourdaud,ADJ,lourdaud,0.20
 lourdaude,NOUN,lourdaud,
 lourdaudes,NOUN,lourdaud,
+lourdauds,ADJ,lourdaud,0.27
 lourdauds,NOUN,lourdaud,0.20
 lourde,ADJ,lourd,56.62
 lourde,VERB,lourder,
@@ -298927,11 +299199,13 @@ lubrifiaient,VERB,lubrifier,
 lubrifiais,VERB,lubrifier,
 lubrifiait,VERB,lubrifier,
 lubrifiâmes,VERB,lubrifier,
+lubrifiant,NOUN,lubrifiant,0.54
 lubrifiant,VERBpartpres,lubrifier,0.07
 lubrifiant,ADJ,lubrifiant,0.00
 lubrifiante,ADJ,lubrifiant,0.07
 lubrifiantes,ADJ,lubrifiant,
 lubrifiants,ADJ,lubrifiant,
+lubrifiants,NOUN,lubrifiant,0.14
 lubrifias,VERB,lubrifier,
 lubrifiasse,VERB,lubrifier,
 lubrifiassent,VERB,lubrifier,
@@ -299503,6 +299777,7 @@ luthistes,NOUN,luthiste,
 luths,NOUN,luth,0.34
 lutiez,VERB,luter,
 lutin,NOUN,lutin,0.61
+lutin,ADJ,lutin,0.20
 lutina,VERB,lutiner,
 lutinai,VERB,lutiner,
 lutinaient,VERB,lutiner,0.07
@@ -299547,6 +299822,7 @@ lutiniez,VERB,lutiner,
 lutinions,VERB,lutiner,
 lutinons,VERB,lutiner,
 lutins,NOUN,lutin,0.41
+lutins,ADJ,lutin,0.34
 lutions,VERB,luter,
 lutons,VERB,luter,
 lutrin,NOUN,lutrin,1.15
@@ -300037,7 +300313,9 @@ maastrichtoise,NOUN,maastrichtois,
 maastrichtoise,ADJ,maastrichtois,
 maastrichtoises,NOUN,maastrichtois,
 maastrichtoises,ADJ,maastrichtois,
+maboul,ADJ,maboul,0.68
 maboul,NOUN,maboul,0.47
+maboule,ADJ,maboul,0.47
 maboule,NOUN,maboul,0.34
 maboules,NOUN,maboul,0.14
 maboulisme,NOUN,maboulisme,
@@ -302040,6 +302318,7 @@ mairie,NOUN,mairie,15.00
 mairies,NOUN,mairie,0.95
 mais,CCONJ,mais,4463.72
 mais,NOUN,mai,
+mais,ADV,mais,1.55
 maïs,NOUN,maïs,6.42
 maïserie,NOUN,maïserie,
 maïseries,NOUN,maïserie,
@@ -302231,8 +302510,10 @@ majorité,NOUN,majorité,12.36
 majorités,NOUN,majorité,0.20
 majorons,VERB,majorer,
 majors,NOUN,major,0.34
+majuscule,ADJ,majuscule,0.88
 majuscule,NOUN,majuscule,0.81
 majuscules,NOUN,majuscule,2.03
+majuscules,ADJ,majuscule,0.81
 makach,ADVneg,makach,
 makaire,NOUN,makaire,
 makaires,NOUN,makaire,
@@ -302319,6 +302600,7 @@ malaga,NOUN,malaga,1.28
 malagas,NOUN,malaga,
 malaire,ADJ,malaire,0.00
 malaires,ADJ,malaire,
+malais,ADJ,malais,0.61
 malais,NOUN,malais,0.00
 malaisant,ADJ,malaisant,
 malaisante,ADJ,malaisant,
@@ -303421,8 +303703,10 @@ mandat-lettre,NOUN,mandat-lettre,0.07
 mandata,VERB,mandater,
 mandatai,VERB,mandater,
 mandataient,VERB,mandater,
+mandataire,ADJ,mandataire,0.88
 mandataire,NOUN,mandataire,0.74
 mandataires,NOUN,mandataire,1.08
+mandataires,ADJ,mandataire,0.20
 mandatais,VERB,mandater,
 mandatait,VERB,mandater,0.14
 mandatâmes,VERB,mandater,
@@ -304509,6 +304793,7 @@ manucurez,VERB,manucurer,
 manucuriez,VERB,manucurer,
 manucurions,VERB,manucurer,
 manucurons,VERB,manucurer,
+manuel,NOUN,manuel,3.85
 manuel,ADJ,manuel,2.03
 manuélin,ADJ,manuélin,0.07
 manuéline,ADJ,manuélin,
@@ -304517,6 +304802,7 @@ manuélins,ADJ,manuélin,
 manuelle,ADJ,manuel,0.61
 manuellement,ADV,manuellement,0.14
 manuelles,ADJ,manuel,0.20
+manuels,NOUN,manuel,4.05
 manuels,ADJ,manuel,1.01
 manufactura,VERB,manufacturer,
 manufacturable,ADJ,manufacturable,
@@ -307115,9 +307401,11 @@ marxisme,NOUN,marxisme,3.92
 marxisme-léninisme,NOUN,marxisme-léninisme,0.68
 marxismes,NOUN,marxisme,
 marxisons,VERB,marxiser,
+marxiste,ADJ,marxiste,2.36
 marxiste,NOUN,marxiste,0.41
 marxiste-léniniste,NOUN,marxiste-léniniste,0.07
 marxistes,NOUN,marxiste,0.81
+marxistes,ADJ,marxiste,0.47
 marxistes-léninistes,NOUN,marxiste-léniniste,0.07
 marxologie,NOUN,marxologie,
 marxologies,NOUN,marxologie,
@@ -308231,6 +308519,7 @@ matifiants,ADJ,matifiant,
 matîmes,VERB,matir,
 matin,NOUN,matin,376.89
 mâtin,NOUN,mâtin,0.14
+mâtin,INTJ,mâtin,0.07
 mâtina,VERB,mâtiner,
 mâtinai,VERB,mâtiner,
 mâtinaient,VERB,mâtiner,
@@ -308754,7 +309043,9 @@ maurelle,NOUN,maurelle,
 maurelles,NOUN,maurelle,
 maures,ADJ,maure,0.41
 maures,NOUN,maure,0.14
+mauresque,ADJ,mauresque,2.09
 mauresque,NOUN,mauresque,0.61
+mauresques,ADJ,mauresque,0.81
 mauresques,NOUN,mauresque,0.07
 mauresse,NOUN,maure,
 mauresses,NOUN,maure,
@@ -308785,6 +309076,7 @@ maussaderies,NOUN,maussaderie,0.07
 maussades,ADJ,maussade,1.15
 mauvais,ADJ,mauvais,108.65
 mauvais,NOUN,mauvais,6.15
+mauvais,ADV,mauvais,0.68
 mauvaise,NOUN,mauvais,
 mauvaise,ADJ,mauvais,70.88
 mauvaisement,ADV,mauvaisement,0.27
@@ -308988,6 +309280,7 @@ mazdéisme,NOUN,mazdéisme,
 mazdéismes,NOUN,mazdéisme,
 mazéage,NOUN,mazéage,
 mazéages,NOUN,mazéage,
+mazette,INTJ,mazette,0.81
 mazette,NOUN,mazette,0.07
 mazettes,NOUN,mazette,0.00
 mazot,NOUN,mazot,
@@ -310263,6 +310556,7 @@ méfont,VERB,méfaire,
 méforme,NOUN,méforme,0.00
 méformes,NOUN,méforme,
 méga,NOUN,méga,
+méga,ADJ,méga,0.81
 mégaampère,NOUN,ampère,
 mégaampères,NOUN,ampère,
 mégabase,NOUN,mégabase,
@@ -310562,6 +310856,7 @@ méhariste,NOUN,méhariste,0.07
 méharistes,NOUN,méhariste,0.20
 meilleur,ADJ,meilleur,34.32
 meilleur,NOUN,meilleur,22.70
+meilleur,ADV,meilleur,0.14
 meilleure,ADJ,meilleur,24.86
 meilleure,NOUN,meilleur,6.62
 meilleures,ADJ,meilleur,10.41
@@ -310874,6 +311169,7 @@ mélodramatiques,ADJ,mélodramatique,0.00
 mélodrame,NOUN,mélodrame,1.35
 mélodrames,NOUN,mélodrame,0.14
 mélomane,NOUN,mélomane,0.54
+mélomane,ADJ,mélomane,0.54
 mélomanes,NOUN,mélomane,0.27
 melon,NOUN,melon,5.20
 mélongine,NOUN,mélongine,
@@ -310928,6 +311224,7 @@ mémé,NOUN,mémé,34.39
 mème,NOUN,mème,
 même,ADV,même,1358.65
 même,ADJ,même,705.81
+même,PRON,même,55.74
 mêmement,ADV,mêmement,0.34
 memento,NOUN,memento,
 mémento,NOUN,mémento,
@@ -310940,6 +311237,7 @@ mémères,NOUN,mémère,1.55
 mémés,NOUN,mémé,0.95
 mèmes,NOUN,mème,
 mêmes,ADJ,même,98.99
+mêmes,PRON,même,18.38
 mémétique,NOUN,mémétique,
 mémétique,ADJ,mémétique,
 mémétiques,NOUN,mémétique,
@@ -311479,10 +311777,12 @@ mensualisons,VERB,mensualiser,
 mensualité,NOUN,mensualité,0.81
 mensualités,NOUN,mensualité,0.20
 mensuel,ADJ,mensuel,0.81
+mensuel,NOUN,mensuel,0.81
 mensuelle,ADJ,mensuel,0.88
 mensuellement,ADV,mensuellement,0.14
 mensuelles,ADJ,mensuel,0.34
 mensuels,ADJ,mensuel,0.47
+mensuels,NOUN,mensuel,0.07
 mensura,VERB,mensurer,
 mensurable,ADJ,mensurable,
 mensurables,ADJ,mensurable,
@@ -311668,6 +311968,7 @@ mentorats,NOUN,mentorat,
 mentors,NOUN,mentor,0.14
 menu,NOUN,menu,12.03
 menu,ADJ,menu,6.08
+menu,ADV,menu,0.14
 menuaille,NOUN,menuaille,
 menuailles,NOUN,menuaille,
 menue,ADJ,menu,5.68
@@ -311974,6 +312275,7 @@ mercerisons,VERB,merceriser,
 merchandising,NOUN,merchandising,0.00
 merchandisings,NOUN,merchandising,
 merci,NOUN,merci,53.24
+merci,INTJ,merci,42.36
 mercier,NOUN,mercier,0.34
 mercière,NOUN,mercier,3.72
 mercières,NOUN,mercier,0.07
@@ -312012,6 +312314,7 @@ merdâmes,VERB,merder,
 merdant,VERBpartpres,merder,
 merdas,VERB,merder,
 merdasse,VERB,merder,
+merdasse,INTJ,merdasse,0.07
 merdassent,VERB,merder,
 merdasses,VERB,merder,
 merdassiez,VERB,merder,
@@ -312019,6 +312322,7 @@ merdassions,VERB,merder,
 merdât,VERB,merder,
 merdâtes,VERB,merder,
 merde,NOUN,merde,61.28
+merde,INTJ,merde,33.85
 merde,VERB,merder,3.24
 merdé,VERBpartpast,merder,0.20
 merdent,VERB,merder,0.00
@@ -315034,6 +315338,7 @@ midshipmen,NOUN,midshipman,
 midships,NOUN,midship,
 mie,NOUN,mie,5.68
 miel,NOUN,miel,15.41
+miel,ADJ,miel,1.08
 miellat,NOUN,miellat,0.00
 miellats,NOUN,miellat,
 miellé,ADJ,miellé,0.07
@@ -315051,12 +315356,16 @@ mielleux,ADJ,mielleux,1.22
 miels,NOUN,miel,0.14
 mien,NOUN,mien,
 mien,ADJ,mien,
+mien,PRON,mien,36.08
 mienne,NOUN,mien,
 mienne,ADJ,mien,
+mienne,PRON,mien,41.28
 miennes,NOUN,mien,
 miennes,ADJ,mien,
+miennes,PRON,mien,9.59
 miens,NOUN,mien,
 miens,ADJ,mien,
+miens,PRON,mien,21.15
 mies,NOUN,mie,0.07
 miette,NOUN,miette,4.12
 miettes,NOUN,miette,13.04
@@ -315554,6 +315863,7 @@ millerandée,ADJ,millerandé,
 millerandées,ADJ,millerandé,
 millerandés,ADJ,millerandé,
 milles,NUM,mille,
+milles,NOUN,mille,3.04
 millésima,VERB,millésimer,
 millésimai,VERB,millésimer,
 millésimaient,VERB,millésimer,
@@ -315614,13 +315924,17 @@ milliampèremètre,NOUN,milliampèremètre,
 milliampèremètres,NOUN,milliampèremètre,
 milliampères,NOUN,ampère,
 milliard,NUM,milliard,
+milliard,NOUN,milliard,2.43
 milliardaire,NOUN,milliardaire,1.55
+milliardaire,ADJ,milliardaire,1.08
 milliardaires,NOUN,milliardaire,1.22
+milliardaires,ADJ,milliardaire,0.68
 milliardième,NOUN,milliardième,0.00
 milliardième,ADJ,milliardième,0.00
 milliardièmes,NOUN,milliardième,
 milliardièmes,ADJ,milliardième,
 milliards,NUM,milliard,
+milliards,NOUN,milliard,11.96
 milliasse,NOUN,milliasse,
 milliasses,NOUN,milliasse,
 millibar,NOUN,millibar,
@@ -315644,7 +315958,9 @@ millième,NOUN,millième,0.88
 millièmes,NOUN,millième,0.07
 millièmes,ADJ,millième,0.00
 millier,NUM,millier,
+millier,NOUN,millier,2.36
 milliers,NUM,millier,
+milliers,NOUN,millier,40.07
 millifarad,NOUN,farad,
 millifarads,NOUN,farad,
 milligauss,NOUN,gauss,
@@ -315687,6 +316003,7 @@ millinewtons,NOUN,newton,
 milliohm,NOUN,ohm,
 milliohms,NOUN,ohm,
 million,NUM,million,
+million,NOUN,million,7.84
 millionième,ADJ,millionième,0.34
 millionième,NOUN,millionième,0.27
 millionièmes,NOUN,millionième,
@@ -315696,6 +316013,7 @@ millionnaire,ADJ,millionnaire,0.61
 millionnaires,NOUN,millionnaire,0.54
 millionnaires,ADJ,millionnaire,0.27
 millions,NUM,million,
+millions,NOUN,million,46.22
 millipascal,NOUN,pascal,
 millipascals,NOUN,pascal,
 millipoise,NOUN,poise,
@@ -315783,6 +316101,7 @@ mimétiques,ADJ,mimétique,
 mimétisme,NOUN,mimétisme,1.55
 mimétismes,NOUN,mimétisme,
 mimez,VERB,mimer,
+mimi,ADJ,mimi,0.68
 mimi,NOUN,mimi,0.14
 mimiez,VERB,mimer,
 mimine,NOUN,mimine,
@@ -315902,6 +316221,7 @@ minbar,NOUN,minbar,0.00
 minbars,NOUN,minbar,
 mince,NOUN,mince,
 mince,ADJ,mince,60.34
+mince,INTJ,mince,2.84
 minces,NOUN,mince,
 minces,ADJ,mince,18.18
 minceur,NOUN,minceur,2.30
@@ -315956,6 +316276,7 @@ minerais,NOUN,minerai,0.07
 minerais,VERB,miner,
 minerait,VERB,miner,
 minéral,ADJ,minéral,1.69
+minéral,NOUN,minéral,0.74
 minérale,ADJ,minéral,5.88
 minérales,ADJ,minéral,0.74
 minéralier,NOUN,minéralier,
@@ -316035,6 +316356,7 @@ minéralurgie,NOUN,minéralurgie,
 minéralurgies,NOUN,minéralurgie,
 mineras,VERB,miner,
 minéraux,ADJ,minéral,0.47
+minéraux,NOUN,minéral,0.07
 minèrent,VERB,miner,
 minerez,VERB,miner,
 mineriez,VERB,miner,
@@ -317565,6 +317887,7 @@ modelâtes,VERB,modeler,
 modelé,ADJ,modelé,
 modelé,VERBpartpast,modeler,1.22
 modèle,NOUN,modèle,27.50
+modèle,ADJ,modèle,7.30
 modèle,VERB,modeler,1.28
 modelée,ADJ,modelé,
 modelée,VERBpartpast,modeler,1.01
@@ -318053,6 +318376,7 @@ moines,NOUN,moine,16.69
 moinillon,NOUN,moinillon,0.41
 moinillons,NOUN,moinillon,0.14
 moins,ADP,moins,
+moins,ADV,moins,718.18
 moins,NOUN,moins,17.03
 moins-disant,NOUN,moins-disant,
 moins-disant,ADJ,moins-disant,
@@ -318353,6 +318677,7 @@ moiti,VERBpartpast,moitir,0.00
 moitie,ADJ,moiti,
 moitie,VERBpartpast,moitir,
 moitié,NOUN,moitié,76.96
+moitié,ADV,moitié,22.16
 moitié-moitié,ADV,moitié-moitié,0.14
 moities,ADJ,moiti,
 moities,VERBpartpast,moitir,
@@ -318605,6 +318930,7 @@ mollardions,VERB,mollarder,
 mollardons,VERB,mollarder,
 mollards,NOUN,mollard,0.14
 mollasse,NOUN,mollasse,
+mollasse,ADJ,mollasse,0.81
 mollasserie,NOUN,mollasserie,
 mollasseries,NOUN,mollasserie,
 mollasses,NOUN,mollasse,
@@ -319808,7 +320134,9 @@ monstrances,NOUN,monstrance,0.07
 monstration,NOUN,monstration,
 monstrations,NOUN,monstration,
 monstre,NOUN,monstre,18.18
+monstre,ADJ,monstre,3.11
 monstres,NOUN,monstre,8.78
+monstres,ADJ,monstre,0.61
 monstresse,NOUN,monstresse,
 monstresses,NOUN,monstresse,
 monstrueuse,ADJ,monstrueux,7.97
@@ -321517,6 +321845,7 @@ moucharabieh,NOUN,moucharabieh,
 moucharabiehs,NOUN,moucharabieh,
 moucharabiés,NOUN,moucharabié,
 mouchard,NOUN,mouchard,1.62
+mouchard,ADJ,mouchard,0.41
 moucharda,VERB,moucharder,0.07
 mouchardage,NOUN,mouchardage,0.20
 mouchardages,NOUN,mouchardage,
@@ -322347,6 +322676,7 @@ mousses,VERB,mousser,
 mousseuse,ADJ,mousseux,1.28
 mousseuses,ADJ,mousseux,0.41
 mousseux,ADJ,mousseux,2.03
+mousseux,NOUN,mousseux,1.82
 moussez,VERB,mousser,
 moussiez,VERB,mousser,
 moussions,VERB,mousser,
@@ -322384,6 +322714,7 @@ moustiques,NOUN,moustique,6.08
 moût,NOUN,moût,0.54
 moutard,NOUN,moutard,1.49
 moutarde,NOUN,moutarde,4.93
+moutarde,ADJ,moutarde,1.55
 moutardes,NOUN,moutarde,0.07
 moutardier,NOUN,moutardier,0.14
 moutardière,NOUN,moutardier,
@@ -322611,6 +322942,7 @@ moyennaient,VERB,moyenner,
 moyennais,VERB,moyenner,
 moyennait,VERB,moyenner,
 moyennâmes,VERB,moyenner,
+moyennant,ADP,moyennant,4.53
 moyennant,VERBpartpres,moyenner,0.07
 moyennas,VERB,moyenner,
 moyennasse,VERB,moyenner,
@@ -322843,6 +323175,7 @@ muezzins,NOUN,muezzin,0.20
 muffin,NOUN,muffin,0.00
 muffins,NOUN,muffin,0.34
 mufle,NOUN,mufle,6.08
+mufle,ADJ,mufle,0.54
 muflerie,NOUN,muflerie,0.81
 mufleries,NOUN,muflerie,0.20
 mufles,NOUN,mufle,0.81
@@ -325234,6 +325567,7 @@ mythologiques,ADJ,mythologique,0.41
 mythologue,NOUN,mythologue,0.07
 mythologues,NOUN,mythologue,0.07
 mythomane,NOUN,mythomane,0.81
+mythomane,ADJ,mythomane,0.68
 mythomanes,NOUN,mythomane,0.47
 mythomaniaque,ADJ,mythomaniaque,
 mythomaniaques,ADJ,mythomaniaque,
@@ -325280,6 +325614,7 @@ n’empêche,ADV,n’empêche,
 n’est-ce,ADV,n’est-ce,
 n’importe,ADV,n’importe,
 n°,NUM,n°,
+na,INTJ,na,0.81
 na,NOUN,na,0.00
 naan,NOUN,naan,
 naans,NOUN,naan,
@@ -326571,6 +326906,7 @@ naucore,NOUN,naucore,
 naucores,NOUN,naucore,
 naufrage,NOUN,naufrage,10.61
 naufrage,VERB,naufrager,0.07
+naufragé,NOUN,naufragé,2.03
 naufragé,ADJ,naufragé,0.47
 naufragé,VERBpartpast,naufrager,0.20
 naufragea,VERB,naufrager,
@@ -326588,6 +326924,7 @@ naufrageassiez,VERB,naufrager,
 naufrageassions,VERB,naufrager,
 naufrageât,VERB,naufrager,
 naufrageâtes,VERB,naufrager,
+naufragée,NOUN,naufragé,0.41
 naufragée,ADJ,naufragé,0.20
 naufragées,ADJ,naufragé,0.07
 naufragent,VERB,naufrager,0.07
@@ -326607,6 +326944,7 @@ naufragerons,VERB,naufrager,
 naufrageront,VERB,naufrager,
 naufrages,NOUN,naufrage,1.01
 naufrages,VERB,naufrager,
+naufragés,NOUN,naufragé,1.01
 naufragés,ADJ,naufragé,0.34
 naufrageur,NOUN,naufrageur,0.07
 naufrageurs,NOUN,naufrageur,0.07
@@ -326888,6 +327226,7 @@ néandertaliennes,ADJ,néandertalien,
 néandertaliens,NOUN,néandertalien,0.00
 néandertaliens,ADJ,néandertalien,
 néanmoins,CCONJ,néanmoins,16.35
+néanmoins,ADV,néanmoins,11.69
 néant,NOUN,néant,23.92
 néantisa,VERB,néantiser,
 néantisai,VERB,néantiser,
@@ -327362,7 +327701,9 @@ nègreries,NOUN,nègrerie,
 nègres,NOUN,nègre,7.03
 nègres,ADJ,nègre,1.28
 négresse,NOUN,négresse,3.78
+négresse,ADJ,nègre,0.61
 négresses,NOUN,négresse,1.28
+négresses,ADJ,nègre,0.27
 négrier,NOUN,négrier,0.47
 négrier,ADJ,négrier,0.34
 négrière,NOUN,négrier,0.00
@@ -330077,7 +330418,9 @@ nocivité,NOUN,nocivité,0.20
 nocivités,NOUN,nocivité,
 noçons,VERB,nocer,
 noctambule,NOUN,noctambule,0.68
+noctambule,ADJ,noctambule,0.27
 noctambules,NOUN,noctambule,0.88
+noctambules,ADJ,noctambule,0.34
 noctambulisme,NOUN,noctambulisme,0.14
 noctambulismes,NOUN,noctambulisme,
 noctiluque,NOUN,noctiluque,
@@ -330264,8 +330607,10 @@ nolisiez,VERB,noliser,
 nolisions,VERB,noliser,
 nolisons,VERB,noliser,
 nom,NOUN,nom,326.89
+nomade,ADJ,nomade,1.96
 nomade,NOUN,nomade,1.62
 nomades,NOUN,nomade,3.24
+nomades,ADJ,nomade,1.15
 nomadisa,VERB,nomadiser,
 nomadisai,VERB,nomadiser,
 nomadisaient,VERB,nomadiser,
@@ -330992,6 +331337,7 @@ nonnette,NOUN,nonnette,0.34
 nonnettes,NOUN,nonnette,0.07
 nono,ADV,nono,
 nonobstant,ADP,nonobstant,2.97
+nonobstant,ADV,nonobstant,0.54
 nonpareil,NOUN,nonpareil,
 nonpareil,ADJ,nonpareil,
 nonpareille,NOUN,nonpareil,
@@ -331106,6 +331452,7 @@ noradrénalines,NOUN,noradrénaline,
 noradrénergique,ADJ,noradrénergique,
 noradrénergiques,ADJ,noradrénergique,
 nord,NOUN,nord,72.30
+nord,ADJ,nord,11.89
 nord-africain,NOUN,nord-africain,0.34
 nord-africain,ADJ,nord-africain,0.20
 nord-africaine,NOUN,nord-africain,
@@ -331132,6 +331479,7 @@ nord-coréens,NOUN,nord-coréen,0.07
 nord-coréens,ADJ,nord-coréen,0.00
 nord-est,NOUN,nord-est,2.84
 nord-ouest,NOUN,nord-ouest,1.22
+nord-ouest,ADJ,nord-ouest,0.61
 nord-vietnamien,NOUN,nord-vietnamien,0.00
 nord-vietnamien,ADJ,nord-vietnamien,0.00
 nord-vietnamienne,NOUN,nord-vietnamien,
@@ -331517,8 +331865,10 @@ notoriétés,NOUN,notoriété,0.07
 notre,DETprs,notre,680.68
 nôtre,NOUN,nôtre,
 nôtre,ADJ,nôtre,
+nôtre,PRON,nôtre,23.51
 nôtres,NOUN,nôtre,
 nôtres,ADJ,nôtre,
+nôtres,PRON,nôtre,21.35
 notule,NOUN,notule,
 notules,NOUN,notule,0.20
 noua,VERB,nouer,3.04
@@ -331760,7 +332110,9 @@ novés,ADJ,nové,
 novés,VERBpartpast,nover,
 novez,VERB,nover,
 novice,NOUN,novice,1.35
+novice,ADJ,novice,0.81
 novices,NOUN,novice,1.55
+novices,ADJ,novice,0.34
 noviciat,NOUN,noviciat,0.61
 noviciats,NOUN,noviciat,
 noviez,VERB,nover,
@@ -332214,6 +332566,7 @@ nullards,ADJ,nullard,0.00
 nulle,DETneg,nul,32.70
 nulle,NOUN,nul,
 nulle,ADJ,nul,8.45
+nulle,PRON,nul,7.16
 nullement,ADV,nullement,14.19
 nulles,ADJ,nul,0.61
 nulles,DETneg,nul,0.34
@@ -336698,11 +337051,14 @@ opposassions,VERB,opposer,
 opposât,VERB,opposer,0.34
 opposâtes,VERB,opposer,
 oppose,VERB,opposer,5.74
+opposé,ADJ,opposé,6.62
 opposé,VERBpartpast,opposer,5.34
 opposé,NOUN,opposé,5.20
 opposée,NOUN,opposé,
 opposée,VERBpartpast,opposer,3.58
+opposée,ADJ,opposé,3.18
 opposées,NOUN,opposé,
+opposées,ADJ,opposé,1.89
 opposées,VERBpartpast,opposer,0.95
 opposent,VERB,opposer,1.89
 opposer,VERB,opposer,9.93
@@ -336719,6 +337075,7 @@ opposerions,VERB,opposer,0.07
 opposerons,VERB,opposer,0.07
 opposeront,VERB,opposer,0.00
 opposes,VERB,opposer,0.07
+opposés,ADJ,opposé,2.77
 opposés,VERBpartpast,opposer,1.42
 opposés,NOUN,opposé,0.14
 opposez,VERB,opposer,0.20
@@ -337620,6 +337977,7 @@ organisassions,VERB,organiser,
 organisât,VERB,organiser,0.14
 organisâtes,VERB,organiser,
 organisateur,NOUN,organisateur,1.55
+organisateur,ADJ,organisateur,0.47
 organisateurs,NOUN,organisateur,1.69
 organisation,NOUN,organisation,34.32
 organisationnel,ADJ,organisationnel,
@@ -339274,6 +339632,7 @@ ouds,NOUN,oud,
 oued,NOUN,oued,0.47
 oueds,NOUN,oued,0.14
 ouest,NOUN,ouest,27.77
+ouest,ADJ,ouest,4.73
 ouest-allemand,NOUN,ouest-allemand,
 ouest-allemand,ADJ,ouest-allemand,0.00
 ouest-allemande,NOUN,ouest-allemand,
@@ -340025,6 +340384,7 @@ ovalaires,ADJ,ovalaire,
 ovalbumine,NOUN,ovalbumine,
 ovalbumines,NOUN,ovalbumine,
 ovale,ADJ,ovale,8.18
+ovale,NOUN,ovale,3.24
 ovales,ADJ,ovale,2.36
 ovalie,NOUN,ovalie,
 ovalies,NOUN,ovalie,
@@ -342560,7 +342920,9 @@ palliassiez,VERB,pallier,
 palliassions,VERB,pallier,
 palliât,VERB,pallier,
 palliâtes,VERB,pallier,
+palliatif,NOUN,palliatif,0.20
 palliatif,ADJ,palliatif,0.07
+palliatifs,NOUN,palliatif,0.34
 palliatifs,ADJ,palliatif,0.00
 palliative,ADJ,palliatif,
 palliatives,ADJ,palliatif,
@@ -343013,6 +343375,7 @@ pamplemoussiers,NOUN,pamplemoussier,0.07
 pampre,NOUN,pampre,0.20
 pampres,NOUN,pampre,0.81
 pan,NOUN,pan,13.85
+pan,INTJ,pan,1.76
 pan-bagnat,NOUN,pan-bagnat,
 pana,VERB,paner,0.00
 panacée,NOUN,panacée,0.74
@@ -343219,7 +343582,9 @@ panées,VERBpartpast,paner,0.00
 panégyrie,NOUN,panégyrie,
 panégyries,NOUN,panégyrie,
 panégyrique,ADJ,panégyrique,
+panégyrique,NOUN,panégyrique,0.20
 panégyriques,ADJ,panégyrique,
+panégyriques,NOUN,panégyrique,0.14
 panégyriste,NOUN,panégyriste,
 panégyristes,NOUN,panégyriste,0.07
 panel,NOUN,panel,0.00
@@ -345562,6 +345927,7 @@ pardessus,NOUN,pardessus,9.05
 pardi,INTJ,pardi,6.22
 pardieu,INTJ,pardieu,0.20
 pardon,NOUN,pardon,26.08
+pardon,INTJ,pardon,18.04
 pardonna,VERB,pardonner,0.54
 pardonnable,ADJ,pardonnable,0.20
 pardonnables,ADJ,pardonnable,
@@ -347500,6 +347866,7 @@ passé,VERBpartpast,passer,157.09
 passé,NOUN,passé,112.03
 passé,ADJ,passé,31.76
 passé,ADP,passé,
+passé,ADV,passé,0.41
 passe-bande,ADJ,passe-bande,
 passe-bandes,ADJ,passe-bande,
 passe-boule,NOUN,passe-boule,0.07
@@ -348180,6 +348547,7 @@ pataphysiciens,ADJ,pataphysicien,
 pataphysique,NOUN,pataphysique,
 pataphysiques,NOUN,pataphysique,
 patapouf,NOUN,patapouf,0.27
+patapouf,INTJ,patapouf,0.00
 patapoufs,NOUN,patapouf,0.07
 pataquès,NOUN,pataquès,0.34
 pataras,NOUN,pataras,
@@ -349826,6 +350194,7 @@ péché,VERBpartpast,pécher,2.30
 pèche,VERB,pécher,0.47
 pêche,NOUN,pêche,26.76
 pêche,VERB,pêcher,1.62
+pêche,ADJ,pêche,0.61
 pêché,VERBpartpast,pêcher,1.01
 pêché,ADJ,pêché,0.20
 pêchée,ADJ,pêché,
@@ -351094,6 +351463,7 @@ pendaison,NOUN,pendaison,1.08
 pendaisons,NOUN,pendaison,0.00
 pendait,VERB,pendre,13.38
 pendant,ADVasp,pendant,
+pendant,ADP,pendant,450.14
 pendant,ADJ,pendant,3.85
 pendant,VERBpartpres,pendre,2.77
 pendant,NOUN,pendant,1.55
@@ -352207,9 +352577,12 @@ perdrons,VERB,perdre,0.34
 perdront,VERB,perdre,0.34
 perds,VERB,perdre,11.35
 perdu,VERBpartpast,perdre,115.07
+perdu,ADJ,perdu,27.43
 perdu,NOUN,perdu,0.00
 perdue,VERBpartpast,perdre,22.70
 perdue,NOUN,perdu,
+perdue,ADJ,perdu,16.15
+perdues,ADJ,perdu,6.15
 perdues,VERBpartpast,perdre,4.12
 perdues,NOUN,perdu,
 perdura,VERB,perdurer,
@@ -352252,6 +352625,7 @@ perdurions,VERB,perdurer,
 perdurons,VERB,perdurer,
 perdus,VERBpartpast,perdre,13.31
 perdus,NOUN,perdu,
+perdus,ADJ,perdu,8.72
 père,NOUN,père,708.11
 pérégrin,NOUN,pérégrin,
 pérégrin,ADJ,pérégrin,
@@ -354599,7 +354973,9 @@ pessignions,VERB,pessigner,
 pessignons,VERB,pessigner,
 pessimisme,NOUN,pessimisme,2.30
 pessimismes,NOUN,pessimisme,
+pessimiste,ADJ,pessimiste,2.50
 pessimiste,NOUN,pessimiste,0.61
+pessimistes,ADJ,pessimiste,1.15
 pessimistes,NOUN,pessimiste,0.20
 pesta,VERB,pester,0.54
 pestai,VERB,pester,
@@ -354618,6 +354994,7 @@ pestât,VERB,pester,
 pestâtes,VERB,pester,
 peste,NOUN,peste,8.24
 peste,VERB,pester,0.54
+peste,INTJ,peste,0.20
 pesté,VERBpartpast,pester,0.20
 pestella,VERB,pesteller,
 pestellai,VERB,pesteller,
@@ -355080,6 +355457,7 @@ petiots,NOUN,petiot,
 petiots,ADJ,petiot,0.14
 petit,ADJ,petit,653.78
 petit,NOUN,petit,89.53
+petit,ADV,petit,25.41
 petit-beurre,NOUN,petit-beurre,0.14
 petit-bois,NOUN,petit-bois,
 petit-bourgeois,ADJ,petit-bourgeois,1.42
@@ -358015,10 +358393,12 @@ pied-de-cheval,NOUN,pied-de-cheval,
 pied-de-chèvre,NOUN,pied-de-chèvre,
 pied-de-loup,NOUN,pied-de-loup,
 pied-de-mouton,NOUN,pied-de-mouton,
+pied-de-poule,ADJ,pied-de-poule,0.54
 pied-de-poule,NOUN,pied-de-poule,0.41
 pied-de-veau,NOUN,pied-de-veau,
 pied-droit,NOUN,pied-droit,
 pied-fort,NOUN,pied-fort,
+pied-noir,ADJ,pied-noir,1.22
 pied-noir,NOUN,pied-noir,0.54
 pied-plat,NOUN,pied-plat,0.00
 piédestal,NOUN,piédestal,2.09
@@ -358849,6 +359229,7 @@ pilchard,NOUN,pilchard,
 pilchards,NOUN,pilchard,0.27
 pile,NOUN,pile,21.62
 pile,VERB,piler,1.89
+pile,ADV,pile,0.00
 pilé,ADJ,pilé,
 pilé,VERBpartpast,piler,1.15
 pilée,ADJ,pilé,
@@ -359041,6 +359422,7 @@ pilotassions,VERB,piloter,
 pilotât,VERB,piloter,
 pilotâtes,VERB,piloter,
 pilote,NOUN,pilote,5.61
+pilote,ADJ,pilote,1.55
 pilote,VERB,piloter,0.34
 piloté,ADJ,piloté,
 piloté,VERBpartpast,piloter,0.41
@@ -359063,6 +359445,7 @@ piloterions,VERB,piloter,
 piloterons,VERB,piloter,
 piloteront,VERB,piloter,0.00
 pilotes,NOUN,pilote,3.11
+pilotes,ADJ,pilote,0.61
 pilotes,VERB,piloter,0.00
 pilotés,ADJ,piloté,
 pilotés,VERBpartpast,piloter,0.14
@@ -360180,6 +360563,7 @@ piquetterons,VERB,piqueter,
 piquetteront,VERB,piqueter,
 piquettes,NOUN,piquette,0.07
 piquettes,VERB,piqueter,
+piqueur,ADJ,piqueur,0.54
 piqueur,NOUN,piqueur,0.34
 piqueurs,NOUN,piqueur,0.34
 piqueuse,NOUN,piqueux,0.27
@@ -362664,6 +363048,7 @@ pléiades,NOUN,pléiade,0.14
 plein,ADJ,plein,157.84
 plein,ADP,plein,52.77
 plein,NOUN,plein,11.15
+plein,ADV,plein,0.81
 plein-emploi,NOUN,plein-emploi,0.00
 plein-emplois,NOUN,plein-emploi,
 plein-temps,NOUN,plein-temps,0.00
@@ -363554,6 +363939,7 @@ pluridisciplinaire,ADJ,pluridisciplinaire,0.00
 pluridisciplinaires,ADJ,pluridisciplinaire,
 pluridisciplinarité,NOUN,pluridisciplinarité,
 pluridisciplinarités,NOUN,pluridisciplinarité,
+pluriel,NOUN,pluriel,2.97
 pluriel,ADJ,pluriel,0.20
 plurielle,ADJ,pluriel,0.20
 plurielles,ADJ,pluriel,
@@ -365810,7 +366196,9 @@ polygénistes,NOUN,polygéniste,
 polygénistes,ADJ,polygéniste,
 polyglobulie,NOUN,polyglobulie,
 polyglobulies,NOUN,polyglobulie,
+polyglotte,ADJ,polyglotte,0.61
 polyglotte,NOUN,polyglotte,0.14
+polyglottes,ADJ,polyglotte,0.41
 polyglottes,NOUN,polyglotte,0.00
 polygonacée,NOUN,polygonacée,
 polygonacées,NOUN,polygonacée,
@@ -366973,6 +367361,7 @@ poplitée,ADJ,poplité,0.00
 poplitées,ADJ,poplité,
 poplités,ADJ,poplité,
 popote,NOUN,popote,2.09
+popote,ADJ,popote,0.74
 popotes,NOUN,popote,0.47
 popotin,NOUN,popotin,0.74
 popotins,NOUN,popotin,
@@ -367634,6 +368023,7 @@ posidonies,NOUN,posidonie,
 posiez,VERB,poser,0.27
 posions,VERB,poser,0.14
 positif,ADJ,positif,3.99
+positif,NOUN,positif,1.08
 positifs,ADJ,positif,0.54
 position,NOUN,position,53.85
 positionna,VERB,positionner,
@@ -367836,8 +368226,10 @@ possessoires,NOUN,possessoire,
 possibilité,NOUN,possibilité,19.46
 possibilités,NOUN,possibilité,11.08
 possible,ADJ,possible,197.16
+possible,NOUN,possible,11.82
 possiblement,ADV,possiblement,0.20
 possibles,ADJ,possible,14.80
+possibles,NOUN,possible,1.01
 post,ADV,post,0.41
 post-abortum,NOUN,post-abortum,
 post-abortums,NOUN,post-abortum,
@@ -368042,6 +368434,7 @@ posterait,VERB,poster,0.07
 posteras,VERB,poster,0.07
 postèrent,VERB,poster,
 posterez,VERB,poster,
+postérieur,NOUN,postérieur,1.01
 postérieur,ADJ,postérieur,0.27
 postérieure,ADJ,postérieur,0.74
 postérieurement,ADV,postérieurement,0.27
@@ -368718,6 +369111,7 @@ pouah,INTJ,pouah,1.82
 poubelle,NOUN,poubelle,10.27
 poubelles,NOUN,poubelle,12.64
 pouce,NOUN,pouce,29.86
+pouce,INTJ,pouce,0.54
 pouce-pied,NOUN,pouce-pied,0.00
 pouce-pieds,NOUN,pouce-pied,
 pouces,NOUN,pouce,5.47
@@ -368844,6 +369238,7 @@ poudroyions,VERB,poudroyer,
 poudroyons,VERB,poudroyer,
 pouds,NOUN,poud,
 pouf,NOUN,pouf,3.92
+pouf,INTJ,pouf,0.20
 pouffa,VERB,pouffer,1.69
 pouffai,VERB,pouffer,
 pouffaient,VERB,pouffer,0.74
@@ -373228,6 +373623,7 @@ préromantiques,ADJ,préromantique,
 préromantisme,NOUN,préromantisme,
 préromantismes,NOUN,préromantisme,
 prés,NOUN,pré,12.70
+près,ADP,près,285.41
 près,ADV,près,156.96
 prés-salés,NOUN,pré-salé,
 présage,NOUN,présage,2.77
@@ -376453,6 +376849,7 @@ profitons,VERB,profiter,0.41
 profits,NOUN,profit,2.23
 profond,ADJ,profond,47.77
 profond,NOUN,profond,3.31
+profond,ADV,profond,0.07
 profonde,NOUN,profond,
 profonde,ADJ,profond,37.97
 profondément,ADV,profondément,34.59
@@ -378677,6 +379074,7 @@ proustien,ADJ,proustien,0.00
 proustienne,ADJ,proustien,0.14
 proustiennes,ADJ,proustien,
 proustiens,ADJ,proustien,
+prout,INTJ,prout,0.27
 prout,NOUN,prout,0.00
 prouta,VERB,prouter,
 proutai,VERB,prouter,
@@ -380182,6 +380580,7 @@ puccinie,NOUN,puccinie,
 puccinies,NOUN,puccinie,
 puce,NOUN,puce,3.58
 puce,VERB,pucer,
+puce,ADJ,puce,1.01
 pucé,ADJ,pucé,
 pucé,VERBpartpast,pucer,
 puceau,ADJ,puceau,1.01
@@ -381994,6 +382393,7 @@ qualiticienne,NOUN,qualiticien,
 qualiticiennes,NOUN,qualiticien,
 qualiticiens,NOUN,qualiticien,
 quand,SCONJ,quand,1480.07
+quand,ADV,quand,0.68
 quant,NOUN,quant,32.30
 quant-à-soi,NOUN,quant-à-soi,1.22
 quanta,NOUN,quantum,0.14
@@ -382636,6 +383036,7 @@ quelqu’,DETind,quelque,
 quelqu’un,PRONind,quelqu’un,128.92
 quelqu’une,PRONind,quelqu’une,0.61
 quelque,DETind,quelque,557.77
+quelque,ADV,quelque,111.49
 quelquefois,ADVasp,quelquefois,60.47
 quelques,DETind,quelque,732.57
 quelques-unes,PRONind,quelques-unes,8.51
@@ -383014,6 +383415,7 @@ queux,NOUN,queux,
 qui,PRONrel,qui,7897.91
 qui,PRONint,qui,25.34
 qui-vive,NOUN,qui-vive,1.15
+qui-vive,INTJ,qui-vive,0.14
 quia,ADV,quia,
 quiche,NOUN,quiche,0.41
 quichenotte,NOUN,quichenotte,
@@ -383194,6 +383596,7 @@ quinones,NOUN,quinone,
 quinqua,ADJ,quinqua,
 quinqua,NOUN,quinqua,0.20
 quinquagénaire,NOUN,quinquagénaire,1.08
+quinquagénaire,ADJ,quinquagénaire,0.54
 quinquagénaires,NOUN,quinquagénaire,0.27
 quinquagésime,NOUN,quinquagésime,0.07
 quinquagésimes,NOUN,quinquagésime,
@@ -383503,6 +383906,7 @@ quôc-ngu,NOUN,quôc-ngu,
 quoc-ngus,NOUN,quoc-ngu,
 quoi,PRONrel,quoi,376.89
 quoi,PRONint,quoi,3.18
+quoi,INTJ,quoi,1.62
 quoiqu,SCONJ,quoique,
 quoiqu’,SCONJ,quoique,
 quoique,SCONJ,quoique,19.05
@@ -386868,6 +387272,7 @@ raïa,NOUN,raïa,0.00
 raïas,NOUN,raïa,
 raid,NOUN,raid,1.62
 raide,ADJ,raide,24.53
+raide,ADV,raide,6.82
 raidement,ADV,raidement,0.14
 raider,NOUN,raider,0.00
 raiders,NOUN,raider,0.41
@@ -388937,7 +389342,9 @@ raouts,NOUN,raout,0.34
 rap,NOUN,rap,0.07
 râpa,VERB,râper,0.07
 rapace,NOUN,rapace,1.49
+rapace,ADJ,rapace,0.47
 rapaces,NOUN,rapace,1.22
+rapaces,ADJ,rapace,0.81
 rapacité,NOUN,rapacité,0.81
 rapacités,NOUN,rapacité,
 râpage,NOUN,râpage,
@@ -390165,6 +390572,7 @@ rarissimement,ADV,rarissimement,0.07
 rarissimes,ADJ,rarissime,0.61
 ras,NOUN,ras,25.07
 ras,ADJ,ras,9.32
+ras,ADV,ras,0.00
 ras-du-cou,NOUN,ras-du-cou,
 ras-el-hanout,NOUN,ras-el-hanout,
 ras-le-bol,NOUN,ras-le-bol,0.47
@@ -392531,6 +392939,7 @@ réacteur,NOUN,réacteur,0.14
 réacteur,ADJ,réacteur,
 réacteurs,NOUN,réacteur,0.68
 réacteurs,ADJ,réacteur,
+réactif,NOUN,réactif,0.20
 réactif,ADJ,réactif,0.00
 réactifs,ADJ,réactif,0.07
 réaction,NOUN,réaction,20.00
@@ -396098,6 +396507,7 @@ récapitulassiez,VERB,récapituler,
 récapitulassions,VERB,récapituler,
 récapitulât,VERB,récapituler,
 récapitulâtes,VERB,récapituler,
+récapitulatif,NOUN,récapitulatif,0.20
 récapitulatif,ADJ,récapitulatif,0.07
 récapitulatifs,ADJ,récapitulatif,
 récapitulation,NOUN,récapitulation,0.47
@@ -401059,7 +401469,9 @@ rectal,ADJ,rectal,0.00
 rectale,ADJ,rectal,0.14
 rectales,ADJ,rectal,
 rectangle,NOUN,rectangle,12.91
+rectangle,ADJ,rectangle,0.34
 rectangles,NOUN,rectangle,3.78
+rectangles,ADJ,rectangle,0.54
 rectangulaire,ADJ,rectangulaire,5.14
 rectangulaires,ADJ,rectangulaire,3.04
 rectaux,ADJ,rectal,0.00
@@ -415628,10 +416040,14 @@ rendrons,VERB,rendre,0.27
 rendront,VERB,rendre,1.08
 rends,VERB,rendre,27.16
 rendu,VERBpartpast,rendre,46.08
+rendu,ADJ,rendu,7.03
 rendu,NOUN,rendu,1.42
 rendue,VERBpartpast,rendre,9.46
+rendue,ADJ,rendu,3.51
 rendues,VERBpartpast,rendre,1.82
+rendues,ADJ,rendu,0.68
 rendus,VERBpartpast,rendre,7.43
+rendus,ADJ,rendu,3.51
 rendus,NOUN,rendu,1.08
 rendzine,NOUN,rendzine,
 rendzines,NOUN,rendzine,
@@ -422476,6 +422892,7 @@ résinés,ADJ,résiné,
 résinés,VERBpartpast,résiner,
 résineuse,ADJ,résineux,0.61
 résineuses,ADJ,résineux,0.27
+résineux,NOUN,résineux,0.20
 résineux,ADJ,résineux,0.14
 résinez,VERB,résiner,
 résinier,NOUN,résinier,
@@ -429604,6 +430021,7 @@ rexiste,ADJ,rexiste,0.00
 rexistes,NOUN,rexiste,0.07
 rexistes,ADJ,rexiste,
 rez,NOUN,rez,
+rez,ADP,rez,0.34
 rez-de-chaussée,NOUN,rez-de-chaussée,16.96
 rez-de-jardin,NOUN,rez-de-jardin,0.00
 rezzou,NOUN,rezzou,0.07
@@ -432387,8 +432805,10 @@ romands,ADJ,romand,
 romane,ADJ,roman,1.76
 romanes,ADJ,roman,1.69
 romanesque,NOUN,romanesque,
+romanesque,ADJ,romanesque,8.11
 romanesquement,ADV,romanesquement,
 romanesques,NOUN,romanesque,
+romanesques,ADJ,romanesque,1.96
 romani,NOUN,romani,0.07
 romanichel,NOUN,romanichel,0.34
 romanichelle,NOUN,romanichel,0.14
@@ -432956,9 +433376,11 @@ rongeront,VERB,ronger,
 ronges,VERB,ronger,0.14
 rongés,ADJ,rongé,
 rongés,VERBpartpast,ronger,3.51
+rongeur,NOUN,rongeur,1.01
 rongeur,ADJ,rongeur,0.27
 rongeure,NOUN,rongeure,
 rongeures,NOUN,rongeure,
+rongeurs,NOUN,rongeur,1.89
 rongeurs,ADJ,rongeur,0.47
 rongeuse,ADJ,rongeur,0.14
 rongeuses,ADJ,rongeur,0.07
@@ -434589,8 +435011,10 @@ royales,ADJ,royal,1.69
 royales,NOUN,royal,0.20
 royalisme,NOUN,royalisme,
 royalismes,NOUN,royalisme,
+royaliste,ADJ,royaliste,0.47
 royaliste,NOUN,royaliste,0.07
 royalistes,NOUN,royaliste,0.27
+royalistes,ADJ,royaliste,0.20
 royalties,NOUN,royalty,0.14
 royalty,NOUN,royalty,0.07
 royaltys,NOUN,royalty,
@@ -434761,6 +435185,7 @@ rubigineuse,ADJ,rubigineux,
 rubigineuses,ADJ,rubigineux,
 rubigineux,ADJ,rubigineux,
 rubis,NOUN,rubis,3.11
+rubis,ADJ,rubis,1.08
 rubricard,NOUN,rubricard,0.07
 rubricarde,NOUN,rubricard,
 rubricardes,NOUN,rubricard,
@@ -435209,9 +435634,11 @@ ruminais,VERB,ruminer,0.20
 ruminait,VERB,ruminer,1.62
 ruminâmes,VERB,ruminer,
 ruminant,VERBpartpres,ruminer,1.01
+ruminant,NOUN,ruminant,0.47
 ruminant,ADJ,ruminant,0.20
 ruminante,ADJ,ruminant,0.07
 ruminantes,ADJ,ruminant,
+ruminants,NOUN,ruminant,0.61
 ruminants,ADJ,ruminant,0.00
 ruminas,VERB,ruminer,
 ruminasse,VERB,ruminer,
@@ -438050,6 +438477,7 @@ saluons,VERB,saluer,0.61
 salure,NOUN,salure,
 salures,NOUN,salure,
 salut,NOUN,salut,58.99
+salut,INTJ,salut,6.55
 salutaire,ADJ,salutaire,2.16
 salutairement,ADV,salutairement,0.07
 salutaires,ADJ,salutaire,0.34
@@ -439479,8 +439907,10 @@ satins,NOUN,satin,0.47
 satire,NOUN,satire,0.41
 satires,NOUN,satire,0.07
 satirique,NOUN,satirique,
+satirique,ADJ,satirique,0.41
 satiriquement,ADV,satiriquement,
 satiriques,NOUN,satirique,
+satiriques,ADJ,satirique,0.27
 satirisa,VERB,satiriser,
 satirisai,VERB,satiriser,
 satirisaient,VERB,satiriser,0.07
@@ -442733,6 +443163,7 @@ sébum,NOUN,sébum,0.07
 sébums,NOUN,sébum,
 sec,NOUN,sec,
 sec,ADJ,sec,72.30
+sec,ADV,sec,0.88
 sécable,ADJ,sécable,
 sécables,ADJ,sécable,
 secam,NOUN,secam,
@@ -443423,6 +443854,7 @@ sédatés,VERBpartpast,sédater,
 sédatez,VERB,sédater,
 sédatiez,VERB,sédater,
 sédatif,ADJ,sédatif,0.00
+sédatifs,NOUN,sédatif,0.27
 sédatifs,ADJ,sédatif,0.07
 sédation,NOUN,sédation,0.00
 sédations,NOUN,sédation,
@@ -444147,6 +444579,7 @@ sémanticien,NOUN,sémanticien,
 sémanticienne,NOUN,sémanticien,
 sémanticiennes,NOUN,sémanticien,
 sémanticiens,NOUN,sémanticien,
+sémantique,NOUN,sémantique,0.34
 sémantique,ADJ,sémantique,0.07
 sémantiquement,ADV,sémantiquement,
 sémantiques,ADJ,sémantique,0.07
@@ -447130,10 +447563,13 @@ siégions,VERB,siéger,0.14
 siemens,NOUN,siemens,
 sien,NOUN,sien,
 sien,ADJ,sien,
+sien,PRON,sien,36.08
 sienne,NOUN,sien,
+sienne,PRON,sien,40.68
 sienne,ADJ,sien,0.00
 siennes,NOUN,sien,
 siennes,ADJ,sien,
+siennes,PRON,sien,9.73
 siennois,NOUN,siennois,0.20
 siennois,ADJ,siennois,0.07
 siennoise,NOUN,siennois,
@@ -447142,6 +447578,7 @@ siennoises,NOUN,siennois,
 siennoises,ADJ,siennois,0.14
 siens,NOUN,sien,
 siens,ADJ,sien,
+siens,PRON,sien,29.80
 siéra,VERB,seoir,0.00
 siéraient,VERB,seoir,
 siérait,VERB,seoir,0.07
@@ -448261,6 +448698,7 @@ singulatives,ADJ,singulatif,
 singulet,NOUN,singulet,
 singulets,NOUN,singulet,
 singulier,ADJ,singulier,9.80
+singulier,NOUN,singulier,2.50
 singulière,ADJ,singulier,8.31
 singulièrement,ADV,singulièrement,8.58
 singulières,ADJ,singulier,1.28
@@ -448391,6 +448829,7 @@ sinologies,NOUN,sinologie,
 sinologue,NOUN,sinologue,
 sinologues,NOUN,sinologue,
 sinon,SCONJ,sinon,89.26
+sinon,ADV,sinon,0.27
 sinophile,NOUN,sinophile,
 sinophile,ADJ,sinophile,
 sinophiles,NOUN,sinophile,
@@ -451236,6 +451675,7 @@ sommité,NOUN,sommité,2.03
 sommités,NOUN,sommité,0.61
 sommons,VERB,sommer,0.07
 somnambule,NOUN,somnambule,4.05
+somnambule,ADJ,somnambule,0.74
 somnambules,NOUN,somnambule,0.68
 somnambulesque,ADJ,somnambulesque,
 somnambulesques,ADJ,somnambulesque,
@@ -453490,6 +453930,7 @@ sourirons,VERB,sourire,0.00
 souriront,VERB,sourire,0.00
 souris,NOUN,souris,22.57
 souris,VERB,sourire,9.19
+souris,ADJ,souris,4.32
 sourisse,VERB,sourire,
 sourissent,VERB,sourire,
 sourisses,VERB,sourire,
@@ -456023,6 +456464,7 @@ spirituelles,ADJ,spirituel,1.76
 spirituels,ADJ,spirituel,1.69
 spiritueuse,ADJ,spiritueux,
 spiritueuses,ADJ,spiritueux,
+spiritueux,NOUN,spiritueux,0.61
 spiritueux,ADJ,spiritueux,0.07
 spirlin,NOUN,spirlin,
 spirlins,NOUN,spirlin,
@@ -460684,9 +461126,11 @@ succédais,VERB,succéder,
 succédait,VERB,succéder,2.64
 succédâmes,VERB,succéder,0.07
 succédané,ADJ,succédané,
+succédané,NOUN,succédané,0.68
 succédanée,ADJ,succédané,
 succédanées,ADJ,succédané,
 succédanés,ADJ,succédané,
+succédanés,NOUN,succédané,0.27
 succédant,VERBpartpres,succéder,2.77
 succédas,VERB,succéder,
 succédasse,VERB,succéder,
@@ -460976,6 +461420,7 @@ sucrions,VERB,sucrer,
 sucrons,VERB,sucrer,
 sucs,NOUN,suc,1.28
 sud,NOUN,sud,28.38
+sud,ADJ,sud,6.62
 sud-africain,NOUN,sud-africain,0.00
 sud-africain,ADJ,sud-africain,0.00
 sud-africaine,ADJ,sud-africain,0.34
@@ -461572,6 +462017,7 @@ suivant,VERBpartpres,suivre,21.89
 suivant,ADJ,suivant,16.82
 suivant,ADP,suivant,15.47
 suivant,NOUN,suivant,8.04
+suivant,ADV,suivant,0.07
 suivante,ADJ,suivant,19.46
 suivante,NOUN,suivant,3.18
 suivantes,ADJ,suivant,5.61
@@ -467828,6 +468274,7 @@ survêtît,VERB,survêtir,
 survêtîtes,VERB,survêtir,
 survêtons,VERB,survêtir,
 survêts,VERB,survêtir,
+survêts,NOUN,survêt,0.20
 survêtu,ADJ,survêtu,
 survêtu,VERBpartpast,survêtir,
 survêtue,ADJ,survêtu,
@@ -469315,7 +469762,9 @@ synodique,ADJ,synodique,
 synodiques,ADJ,synodique,
 synœcisme,NOUN,synœcisme,
 synœcismes,NOUN,synœcisme,
+synonyme,ADJ,synonyme,1.08
 synonyme,NOUN,synonyme,0.41
+synonymes,ADJ,synonyme,0.41
 synonymes,NOUN,synonyme,0.27
 synonymie,NOUN,synonymie,
 synonymies,NOUN,synonymie,
@@ -473381,7 +473830,9 @@ tchattez,VERB,tchatter,
 tchattiez,VERB,tchatter,
 tchattions,VERB,tchatter,
 tchattons,VERB,tchatter,
+tchécoslovaque,ADJ,tchécoslovaque,1.35
 tchécoslovaque,NOUN,tchécoslovaque,0.00
+tchécoslovaques,ADJ,tchécoslovaque,0.47
 tchécoslovaques,NOUN,tchécoslovaque,0.20
 tchèque,NOUN,tchèque,0.74
 tchèque,ADJ,tchèque,0.68
@@ -473447,6 +473898,7 @@ tchitola,NOUN,tchitola,
 tchitolas,NOUN,tchitola,
 te,PRONprs,te,774.32
 té,NOUN,té,1.08
+té,INTJ,té,0.47
 teaser,NOUN,teaser,0.00
 teasers,NOUN,teaser,
 teaseur,NOUN,teaseur,
@@ -473947,6 +474399,7 @@ téju,NOUN,téju,
 téjus,NOUN,téju,
 tek,NOUN,tek,0.00
 teks,NOUN,tek,
+tel,DET,tel,115.74
 tel,PRONind,tel,17.57
 tel,ADJ,tel,
 tél,NOUN,tél,0.00
@@ -475153,9 +475606,11 @@ télexons,VERB,télexer,
 télicité,NOUN,télicité,
 télicités,NOUN,télicité,
 tell,NOUN,tell,0.07
+telle,DET,tel,118.58
 telle,PRONind,tel,9.19
 telle,ADJ,tel,
 tellement,ADVdeg,tellement,168.51
+telles,DET,tel,27.16
 telles,PRONind,tel,1.22
 telles,ADJ,tel,
 tellière,NOUN,tellière,
@@ -475202,6 +475657,7 @@ télophase,NOUN,télophase,
 télophases,NOUN,télophase,
 télougou,NOUN,télougou,
 télougous,NOUN,télougou,
+tels,DET,tel,30.14
 tels,PRONind,tel,5.27
 tels,ADJ,tel,
 telson,NOUN,telson,0.00
@@ -475900,12 +476356,15 @@ tenture,NOUN,tenture,3.24
 tentures,NOUN,tenture,4.93
 tenu,VERBpartpast,tenir,54.12
 tenu,NOUN,tenu,
+tenu,ADJ,tenu,2.91
 ténu,ADJ,ténu,2.84
 tenue,NOUN,tenue,27.97
 tenue,VERBpartpast,tenir,8.58
+tenue,ADJ,tenu,4.26
 ténue,ADJ,ténu,1.76
 tenues,NOUN,tenue,3.92
 tenues,VERBpartpast,tenir,2.91
+tenues,ADJ,tenu,1.42
 ténues,ADJ,ténu,0.61
 ténuité,NOUN,ténuité,0.14
 ténuités,NOUN,ténuité,
@@ -475913,6 +476372,7 @@ tenure,NOUN,tenure,0.00
 tenures,NOUN,tenure,
 tenus,VERBpartpast,tenir,6.89
 tenus,NOUN,tenu,
+tenus,ADJ,tenu,0.88
 ténus,ADJ,ténu,0.74
 tenuto,ADV,tenuto,
 teocali,NOUN,teocali,
@@ -477353,6 +477813,7 @@ textile,ADJ,textile,0.47
 textiles,ADJ,textile,0.41
 textiles,NOUN,textile,0.20
 texto,NOUN,texto,
+texto,ADV,texto,0.61
 textos,NOUN,texto,
 textualisa,VERB,textualiser,
 textualisai,VERB,textualiser,
@@ -478719,6 +479180,7 @@ tiédît,VERB,tiédir,
 tiédîtes,VERB,tiédir,
 tien,NOUN,tien,
 tien,ADJ,tien,
+tien,PRON,tien,5.54
 tiendra,VERB,tenir,4.59
 tiendrai,VERB,tenir,1.89
 tiendraient,VERB,tenir,1.28
@@ -478733,13 +479195,17 @@ tiendront,VERB,tenir,0.68
 tienne,NOUN,tien,
 tienne,ADJ,tien,
 tienne,VERB,tenir,7.84
+tienne,PRON,tien,5.81
 tiennent,VERB,tenir,24.26
 tiennes,NOUN,tien,
 tiennes,ADJ,tien,
+tiennes,PRON,tien,0.95
 tiennes,VERB,tenir,0.34
+tiens,INTJ,tiens,81.89
 tiens,VERB,tenir,44.86
 tiens,ADJ,tien,
 tiens,NOUN,tien,6.82
+tiens,PRON,tien,2.50
 tient,VERB,tenir,96.69
 tierça,VERB,tiercer,
 tierçage,NOUN,tierçage,
@@ -482932,6 +483398,7 @@ tourtes,NOUN,tourte,0.20
 tourtière,NOUN,tourtière,0.00
 tourtières,NOUN,tourtière,0.07
 tous,DETind,tous,
+tous,PRON,tous,238.72
 touselle,NOUN,touselle,
 touselles,NOUN,touselle,
 toussa,VERB,tousser,5.34
@@ -483078,6 +483545,7 @@ tout-va,ADV,tout-va,
 tout-venant,NOUN,tout-venant,0.74
 toute,DETind,toute,194.26
 toute,ADV,toute,
+toute,PRON,toute,5.20
 toute-bonne,NOUN,toute-bonne,
 toute-épice,NOUN,toute-épice,
 toute-puissance,NOUN,toute-puissance,2.03
@@ -483771,6 +484239,7 @@ tragi-comédies,NOUN,tragi-comédie,0.14
 tragi-comique,ADJ,tragi-comique,0.34
 tragi-comiques,ADJ,tragi-comique,0.14
 tragique,ADJ,tragique,17.97
+tragique,NOUN,tragique,3.99
 tragiquement,ADV,tragiquement,1.96
 tragiques,ADJ,tragique,4.53
 trahi,VERBpartpast,trahir,8.11
@@ -483871,10 +484340,12 @@ traînant,ADJ,traînant,3.04
 traînante,ADJ,traînant,1.96
 traînantes,ADJ,traînant,0.61
 traînants,ADJ,traînant,0.27
+traînard,ADJ,traînard,0.47
 traînard,NOUN,traînard,0.27
 traînarde,NOUN,traînard,0.07
 traînardes,NOUN,traînard,
 traînards,NOUN,traînard,1.01
+traînards,ADJ,traînard,0.34
 traînas,VERB,traîner,
 traînassa,VERB,traînasser,
 traînassai,VERB,traînasser,
@@ -484171,11 +484642,13 @@ tranchaient,VERB,trancher,0.95
 tranchais,VERB,trancher,0.00
 tranchait,VERB,trancher,2.43
 tranchâmes,VERB,trancher,
+tranchant,NOUN,tranchant,4.59
 tranchant,ADJ,tranchant,2.43
 tranchant,VERBpartpres,trancher,1.15
 tranchante,ADJ,tranchant,1.96
 tranchantes,ADJ,tranchant,0.41
 tranchants,ADJ,tranchant,0.47
+tranchants,NOUN,tranchant,0.34
 tranchas,VERB,trancher,
 tranchasse,VERB,trancher,
 tranchassent,VERB,trancher,
@@ -484285,9 +484758,11 @@ tranquillisais,VERB,tranquilliser,
 tranquillisait,VERB,tranquilliser,0.34
 tranquillisâmes,VERB,tranquilliser,
 tranquillisant,ADJ,tranquillisant,0.14
+tranquillisant,NOUN,tranquillisant,0.14
 tranquillisant,VERBpartpres,tranquilliser,0.00
 tranquillisante,ADJ,tranquillisant,0.07
 tranquillisantes,ADJ,tranquillisant,0.00
+tranquillisants,NOUN,tranquillisant,0.88
 tranquillisants,ADJ,tranquillisant,0.00
 tranquillisas,VERB,tranquilliser,
 tranquillisasse,VERB,tranquilliser,
@@ -484362,7 +484837,9 @@ transandines,ADJ,transandin,
 transandins,ADJ,transandin,
 transat,NOUN,transat,0.88
 transatlantique,NOUN,transatlantique,2.09
+transatlantique,ADJ,transatlantique,0.68
 transatlantiques,NOUN,transatlantique,0.41
+transatlantiques,ADJ,transatlantique,0.34
 transatmosphérique,ADJ,transatmosphérique,
 transatmosphériques,ADJ,transatmosphérique,
 transats,NOUN,transat,0.61
@@ -484883,7 +485360,9 @@ transformassiez,VERB,transformer,
 transformassions,VERB,transformer,
 transformât,VERB,transformer,0.34
 transformâtes,VERB,transformer,
+transformateur,NOUN,transformateur,0.34
 transformateur,ADJ,transformateur,0.07
+transformateurs,NOUN,transformateur,0.14
 transformateurs,ADJ,transformateur,0.07
 transformation,NOUN,transformation,4.39
 transformationnel,ADJ,transformationnel,
@@ -493244,6 +493723,8 @@ ummites,NOUN,ummite,
 ummites,ADJ,ummite,
 un,DETart,un,13550.68
 un,NOUN,un,
+un,PRON,un,329.53
+un,NUM,un,66.15
 unaire,ADJ,unaire,
 unaires,ADJ,unaire,
 unanime,ADJ,unanime,4.66
@@ -493272,8 +493753,11 @@ undergrounds,ADJ,underground,
 underscore,NOUN,underscore,
 underscores,NOUN,underscore,
 une,DETart,un,9587.97
+une,PRON,un,199.93
+une,NUM,un,42.64
 une,NOUN,un,0.27
 unes,NOUN,un,
+unes,PRON,un,19.59
 unetelle,NOUN,unetelle,0.61
 unetelles,NOUN,unetelle,
 unguéal,ADJ,unguéal,0.00
@@ -493708,6 +494192,7 @@ univoquement,ADV,univoquement,
 univoques,ADJ,univoque,
 univs,NOUN,univ,
 uns,NOUN,un,
+uns,PRON,un,62.91
 untel,NOUN,untel,2.77
 untels,NOUN,untel,
 ununhexium,NOUN,ununhexium,
@@ -495025,6 +495510,7 @@ vairé,ADJ,vairé,
 vairée,ADJ,vairé,
 vairées,ADJ,vairé,
 vairés,ADJ,vairé,
+vairon,ADJ,vairon,0.20
 vairon,NOUN,vairon,0.14
 vaironna,VERB,vaironner,
 vaironnai,VERB,vaironner,
@@ -495063,6 +495549,7 @@ vaironniez,VERB,vaironner,
 vaironnions,VERB,vaironner,
 vaironnons,VERB,vaironner,
 vairons,NOUN,vairon,0.41
+vairons,ADJ,vairon,0.34
 vairs,NOUN,vair,
 vais,VERB,aller,280.00
 vaisseau,NOUN,vaisseau,7.23
@@ -495874,11 +496361,13 @@ vantais,VERB,vanter,0.41
 vantait,VERB,vanter,4.46
 vantâmes,VERB,vanter,
 vantant,VERBpartpres,vanter,1.42
+vantard,ADJ,vantard,0.27
 vantard,NOUN,vantard,0.07
 vantarde,NOUN,vantard,0.00
 vantardes,NOUN,vantard,
 vantardise,NOUN,vantardise,0.74
 vantardises,NOUN,vantardise,0.95
+vantards,ADJ,vantard,0.41
 vantards,NOUN,vantard,0.07
 vantas,VERB,vanter,
 vantasse,VERB,vanter,
@@ -498368,6 +498857,7 @@ verlan,NOUN,verlan,0.34
 verlans,NOUN,verlan,
 vermée,NOUN,vermée,
 vermées,NOUN,vermée,
+vermeil,NOUN,vermeil,1.35
 vermeil,ADJ,vermeil,0.88
 vermeille,ADJ,vermeil,0.81
 vermeilles,ADJ,vermeil,1.08
@@ -499642,6 +500132,7 @@ viables,ADJ,viable,0.27
 viaduc,NOUN,viaduc,0.88
 viaducs,NOUN,viaduc,
 viager,ADJ,viager,
+viager,NOUN,viager,0.27
 viagère,ADJ,viager,0.14
 viagères,ADJ,viager,
 viagers,ADJ,viager,
@@ -501248,6 +501739,7 @@ violons,NOUN,violon,3.58
 violons,VERB,violer,0.07
 viols,NOUN,viol,1.28
 vioque,NOUN,vioque,4.32
+vioque,ADJ,vioque,0.88
 vioques,NOUN,vioque,0.61
 vioqui,VERBpartpast,vioquir,
 vioquîmes,VERB,vioquir,
@@ -501674,6 +502166,7 @@ virtuellement,ADV,virtuellement,1.15
 virtuelles,ADJ,virtuel,0.47
 virtuels,ADJ,virtuel,0.34
 virtuose,NOUN,virtuose,1.55
+virtuose,ADJ,virtuose,0.68
 virtuoses,NOUN,virtuose,0.68
 virtuosisme,NOUN,virtuosisme,
 virtuosismes,NOUN,virtuosisme,
@@ -502513,6 +503006,7 @@ vivariums,NOUN,vivarium,
 vivat,NOUN,vivat,0.00
 vivats,NOUN,vivat,1.82
 vive,ADJ,vif,30.61
+vive,INTJ,vive,12.09
 vive,VERB,vivre,5.47
 vive,NOUN,vive,1.28
 vive-arête,NOUN,vive-arête,
@@ -503738,8 +504232,10 @@ votons,VERB,voter,0.00
 votre,DETprs,votre,427.91
 vôtre,NOUN,vôtre,
 vôtre,ADJ,vôtre,
+vôtre,PRON,vôtre,11.69
 vôtres,NOUN,vôtre,
 vôtres,ADJ,vôtre,
+vôtres,PRON,vôtre,4.39
 voua,VERB,vouer,0.41
 vouai,VERB,vouer,0.07
 vouaient,VERB,vouer,0.41
@@ -504060,8 +504556,11 @@ voyageront,VERB,voyager,0.00
 voyages,NOUN,voyage,29.53
 voyages,VERB,voyager,0.20
 voyageur,NOUN,voyageur,20.88
+voyageur,ADJ,voyageur,2.77
 voyageurs,NOUN,voyageur,20.74
+voyageurs,ADJ,voyageur,1.62
 voyageuse,NOUN,voyageur,1.08
+voyageuse,ADJ,voyageur,0.20
 voyageuses,NOUN,voyageur,0.68
 voyagez,VERB,voyager,0.14
 voyagiez,VERB,voyager,0.00
