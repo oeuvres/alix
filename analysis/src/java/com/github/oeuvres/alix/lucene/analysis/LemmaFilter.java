@@ -186,19 +186,33 @@ public final class LemmaFilter extends TokenFilter
         if (Upos.isNum(posId)) {
             return true;
         }
+        if (termAtt.length() < 1) {
+            // an upper filter may have strip this position
+            return true;
+        }
         
-        // Surface known ?
+        // Is surface known with this case?
         int termId = lexicon.ord(termAtt);
         // if not known, try lower case
-        if (termId < 0) {
+        if (termId < 0 && Char.isUpperCase(termAtt.charAt(0)) ) {
             // Protect proper name Paris ≠ parier
-            if (propn != null && propn.contains(termAtt)) return true;
+            if (propn != null && propn.contains(termAtt)) {
+                posAtt.setPos(Upos.PROPN.code);
+                return true;
+            }
             // Protect acronym, USA ≠ user
-            if (termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) return true;
+            if (termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) {
+                // are acronym PROPN?
+                return true;
+            }
             probe.copyFrom(termAtt).toLowerCase();
             termId = lexicon.ord(probe);
-            if (termId < 0) return true;
+            if (termId < 0) { // seems not a lang word 
+                posAtt.setPos(Upos.PROPN.code);
+                return true;
+            }
             // surface is known as common word, normalize case
+            // keep pos from PoTagger
             termAtt.setEmpty().append(probe);
         }
 

@@ -75,6 +75,9 @@ import com.github.oeuvres.alix.util.Char;
  *       input;</li>
  *   <li>other XML tokens, quotes, parentheses, en dashes, and em dashes are transparent to
  *       the decision and remain in their original output order;</li>
+ *   <li>independently, an opening French guillemet after a colon is flagged {@code PUNCTsent}
+ *       when the quoted text begins with uppercase/titlecase; this supplies a conservative
+ *       sentence boundary for downstream tagging without treating every quotation as a sentence;</li>
  *   <li>another unresolved dotted token extends the pending sequence.</li>
  * </ul>
  *
@@ -151,6 +154,9 @@ public class MarkupTokenizer extends Tokenizer
 
     /** Raw source end offset of {@link #pendingChar}. */
     private int pendingEnd;
+
+    /** True after an emitted colon, across horizontal spacing only. */
+    private boolean afterColon;
 
     /** Buffered token states during trailing-dot resolution, then replayed in order. */
     private TokenStateQueue lookahead;
@@ -789,33 +795,77 @@ public class MarkupTokenizer extends Tokenizer
         while ((c = peek()) >= 0) {
             final char ch = (char) c;
             if (isLineBreak(c)) {
+                afterColon = false;
                 if (readLineBreakRun()) return true;
                 continue;
             }
             if (ch == '<') {
+                afterColon = false;
                 return readTag();
             }
             if (isClausePunct(ch)) {
                 final int start = offset;
+                final boolean colonBefore = afterColon;
+                afterColon = false;
+
                 termAtt.append(ch);
                 skip();
-                posAtt.setPos(PUNCTclause.code);
-                offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+                final int end = offset;
+
+                // A colon introducing a French quotation may start a new sentence.
+                // Only promote the opening guillemet when the quoted text itself
+                // starts with uppercase/titlecase. Lowercase quotations such as
+                // ": « le courage... »" remain ordinary clause punctuation.
+                if (ch == '«' && colonBefore && uppercaseAfterHorizontalSpace()) {
+                    posAtt.setPos(PUNCTsent.code);
+                }
+                else {
+                    posAtt.setPos(PUNCTclause.code);
+                }
+                if (ch == ':') afterColon = true;
+
+                offsetAtt.setOffset(correctOffset(start), correctOffset(end));
                 return true;
             }
             if (isSentencePunct(ch)) {
+                afterColon = false;
                 return readSentencePunctRun(offset);
             }
             if (Char.isDigit(ch)) {
+                afterColon = false;
                 return readNumber(offset);
             }
             if (Char.isToken(ch)) {
+                afterColon = false;
                 if (readWord()) return true;
                 continue; // an entity decoded to a delimiter and the term evaporated
             }
+            if (!isHorizontalSpace(ch)) afterColon = false;
             skip();
         }
         return false;
+    }
+
+
+    /**
+     * Consume horizontal spacing after an opening guillemet and test the next source character.
+     * Newlines are deliberately excluded: they remain structural input for {@link #readLineBreakRun()}.
+     */
+    private boolean uppercaseAfterHorizontalSpace() throws IOException
+    {
+        int c;
+        while ((c = peek()) >= 0 && isHorizontalSpace((char) c)) {
+            skip();
+        }
+        if (c < 0) return false;
+        final char ch = (char) c;
+        return Character.isUpperCase(ch) || Character.isTitleCase(ch);
+    }
+
+    /** Horizontal spacing which may occur around French guillemets. */
+    private static boolean isHorizontalSpace(final char c)
+    {
+        return c == ' ' || c == '\t' || c == '\u00A0' || c == '\u202F';
     }
 
     /**
@@ -960,6 +1010,7 @@ public class MarkupTokenizer extends Tokenizer
         bufferLength = 0;
         offset = 0;
         pendingChar = -1;
+        afterColon = false;
         candidateCount = 0;
         if (lookahead != null) lookahead.clear();
         buffer.reset();

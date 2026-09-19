@@ -249,6 +249,7 @@ public class PosTaggingFilter extends TokenFilter
         int m = 0; // tagger token count
 
         // Build many-to-many mapping
+        boolean first = true;
         for (int i = 0; i < n; i++) {
             final PosAttribute p = queue.get(i).getAttribute(PosAttribute.class);
             if (p == null) continue;
@@ -277,8 +278,14 @@ public class PosTaggingFilter extends TokenFilter
             if (t == null || t.length() == 0) {
                 continue; // 1 -> 0
             }
-
-            final String term = t.toString();
+            final String term;
+            // force lower casing of first word, Latin languages (even English) 
+            if (first) {
+                term = t.toString().toLowerCase();
+                first = false;
+            } else {
+                term = t.toString();
+            }
 
             final int before = sentenceList.size();
             rewriter.rewrite(term, sentenceList);

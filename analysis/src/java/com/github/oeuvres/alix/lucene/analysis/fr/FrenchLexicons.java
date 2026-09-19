@@ -180,6 +180,7 @@ public final class FrenchLexicons
      */
     public static MutableTagDictionary buildTagDictionary(final double freqMin)
     {
+        // true = case sensitive, false = case insensitive
         final MutableTagDictionary tagDic = new POSDictionary(true);
         LexiconHelper.loadTags(
             tagDic,
