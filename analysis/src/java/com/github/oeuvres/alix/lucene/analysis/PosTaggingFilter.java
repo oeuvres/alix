@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -50,14 +49,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
-import opennlp.tools.ml.model.SequenceClassificationModel;
-import opennlp.tools.postag.DefaultPOSSequenceValidator;
-import opennlp.tools.postag.POSContextGenerator;
-import opennlp.tools.postag.POSModel;
-import opennlp.tools.postag.POSTaggerME;
-import opennlp.tools.postag.TagDictionary;
 import opennlp.tools.util.Sequence;
-import opennlp.tools.util.SequenceValidator;
 
 /**
  * POS tagging filter with sentence buffering and many-to-many mapping
@@ -68,8 +60,8 @@ import opennlp.tools.util.SequenceValidator;
  * - no language-specific rewrite rules
  * - no post-correction heuristics
  *
- * Rewriting is delegated to a pluggable TaggerRewriter. An optional
- * TagDictionary can constrain the POS outcomes during beam-search decoding.
+ * Rewriting is delegated to a pluggable TaggerRewriter. POS decoding is
+ * delegated to a shared {@link PosTagger}.
  */
 public class PosTaggingFilter extends TokenFilter
 {
@@ -123,17 +115,8 @@ public class PosTaggingFilter extends TokenFilter
     /** Buffered token states (one sentence/chunk). */
     private TokenStateQueue queue;
 
-    /** Standard OpenNLP tagger, used when no external tag dictionary is supplied. */
-    private final POSTaggerME tagger;
-
-    /** Sequence model used when an external tag dictionary constrains decoding. */
-    private final SequenceClassificationModel sequenceModel;
-
-    /** Context generator used by constrained decoding. */
-    private final POSContextGenerator contextGenerator;
-
-    /** Validator applying the external tag dictionary during beam search. */
-    private final SequenceValidator<String> sequenceValidator;
+    /** Shared thread-safe POS decoder. */
+    private final PosTagger tagger;
 
     /** Optional term rewriter for tagger input (language-specific logic belongs outside this class). */
     private final TaggerRewriter rewriter;
@@ -150,61 +133,32 @@ public class PosTaggingFilter extends TokenFilter
 
     /**
      * Default constructor: identity rewrite (1->1).
+     *
+     * @param input upstream token stream
+     * @param tagger shared POS decoder
      */
-    public PosTaggingFilter(TokenStream input, POSModel posModel)
+    public PosTaggingFilter(final TokenStream input, final PosTagger tagger)
     {
-        this(input, posModel, null, IDENTITY_REWRITER);
+        this(input, tagger, IDENTITY_REWRITER);
     }
 
     /**
      * Constructor with pluggable many-to-many rewriter.
-     */
-    public PosTaggingFilter(TokenStream input, POSModel posModel, TaggerRewriter rewriter)
-    {
-        this(input, posModel, null, rewriter);
-    }
-
-    /**
-     * Constructor with an external tag dictionary and identity rewriting.
-     */
-    public PosTaggingFilter(TokenStream input, POSModel posModel, TagDictionary tagDictionary)
-    {
-        this(input, posModel, tagDictionary, IDENTITY_REWRITER);
-    }
-
-    /**
-     * Constructor with an external tag dictionary and a pluggable many-to-many rewriter.
      *
-     * <p>The dictionary constrains beam-search outcomes for words present in it.
-     * Words absent from the dictionary remain unconstrained.</p>
+     * @param input upstream token stream
+     * @param tagger shared POS decoder
+     * @param rewriter optional token rewrite before POS tagging
      */
     public PosTaggingFilter(
         final TokenStream input,
-        final POSModel posModel,
-        final TagDictionary tagDictionary,
+        final PosTagger tagger,
         final TaggerRewriter rewriter)
     {
         super(input);
-        Objects.requireNonNull(posModel, "posModel");
-
-        if (tagDictionary == null) {
-            // Preserve the existing POSTaggerME path when no external dictionary is supplied.
-            this.tagger = new POSTaggerME(posModel);
-            this.sequenceModel = null;
-            this.contextGenerator = null;
-            this.sequenceValidator = null;
-        } else {
-            // POSTaggerME has no constructor accepting an external TagDictionary.
-            // Decode through the same public sequence-model API with a dictionary validator.
-            this.tagger = null;
-            this.sequenceModel = Objects.requireNonNull(
-                posModel.getPosSequenceModel(),
-                "POS model has no sequence model"
-            );
-            this.contextGenerator = posModel.getFactory().getPOSContextGenerator();
-            this.sequenceValidator = new DefaultPOSSequenceValidator(tagDictionary);
+        if (tagger == null) {
+            throw new NullPointerException("tagger");
         }
-
+        this.tagger = tagger;
         this.rewriter = (rewriter == null) ? IDENTITY_REWRITER : rewriter;
     }
 
@@ -356,28 +310,14 @@ public class PosTaggingFilter extends TokenFilter
         // termLast.setEmpty().append("$$$");
         // termLast.setEmpty().append(Arrays.toString(sentence));
 
-        // Tag. With an external dictionary, constrain beam-search outcomes through
-        // DefaultPOSSequenceValidator; otherwise preserve the normal POSTaggerME path.
-        final String[] tags;
-        final double[] probs;
-        if (tagger != null) {
-            tags = tagger.tag(sentence);
-            probs = tagger.probs();
-        } else {
-            final Sequence sequence = sequenceModel.bestSequence(
-                sentence,
-                null,
-                contextGenerator,
-                sequenceValidator
-            );
-            if (sequence == null) {
-                return;
-            }
-            tags = sequence.getOutcomes().toArray(String[]::new);
-            probs = sequence.getProbs();
-        }
+        // Tag
+        final Sequence sequence = tagger.tag(sentence);
+        if (sequence == null) return;
 
-        final int tlen = Math.min(m, Math.min(tags.length, probs.length));
+        final List<String> tags = sequence.getOutcomes();
+        final double[] probs = sequence.getProbs();
+
+        final int tlen = Math.min(m, Math.min(tags.size(), probs.length));
 
         // Write back, queue token by queue token (using queue -> tagger slice mapping)
         for (int i = 0; i < n; i++) {
@@ -416,7 +356,7 @@ public class PosTaggingFilter extends TokenFilter
 
             if (start >= tlen) continue;
 
-            final Upos upos = Upos.get(tags[start]);
+            final Upos upos = Upos.get(tags.get(start));
             if (upos != null) {
                 posAttr.setPos(upos.code());
             }

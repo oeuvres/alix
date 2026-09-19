@@ -48,6 +48,7 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
+import com.github.oeuvres.alix.lucene.analysis.PosTagger;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
@@ -78,6 +79,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     private static final POSModel POS_MODEL =
         LexiconHelper.loadPosModel(FrenchAnalyzer.class, POS_PATH);
 
+    /** Shared thread-safe POS decoder for this analyzer. */
+    private final PosTagger posTagger;
+
     /** Word2vec analyzer. */
     private final Analyzer word2vec;
 
@@ -102,9 +106,6 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Lemma dictionary. */
     public final LemmaLexicon lemmaLexicon;
 
-    /** POS constraints loaded from word.csv. */
-    public final MutableTagDictionary tagDictionary;
-
     /** Term normalizer. */
     public final CharsMap normalizer;
 
@@ -123,6 +124,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Uppercase words protected by the uppercase filter. */
     public final CharArraySet ucwords;
 
+    /** POS constraints loaded from word.csv. Configure before concurrent analysis. */
+    public final MutableTagDictionary tagDictionary;
+
     /**
      * Builds a French analyzer with the default lexical resources.
      *
@@ -137,10 +141,11 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         noisetokens = FrenchLexicons.buildNoisetokens();
         normalizer = FrenchLexicons.buildNormalizer();
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
-        tagDictionary = FrenchLexicons.buildTagDictionary();
         brevidots = FrenchLexicons.buildBrevidots();
         propn = FrenchLexicons.buildPropn();
         ucwords = FrenchLexicons.buildUcwords();
+        tagDictionary = FrenchLexicons.buildTagDictionary();
+        posTagger = new PosTagger(POS_MODEL, tagDictionary);
 
         mweEntryAnalyzer = new MweEntryAnalyzer();
         expressions = FrenchLexicons.buildMweLexicon(mweEntryAnalyzer);
@@ -343,8 +348,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new UppercaseFilter(ts, ucwords, 4);
         ts = new PosTaggingFilter(
             ts,
-            POS_MODEL,
-            tagDictionary,
+            posTagger,
             PosTaggingFilter.HYPHEN_REWRITER
         );
         ts = new LemmaFilter(ts, lemmaLexicon, propn);
