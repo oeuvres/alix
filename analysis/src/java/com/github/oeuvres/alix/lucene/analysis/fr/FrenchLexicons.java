@@ -123,15 +123,6 @@ public final class FrenchLexicons
                 return posList.get(posName);
             }
 
-            @Override
-            protected String modelTag(final int posId)
-            {
-                final String tag = super.modelTag(posId);
-                if (tag == null || !POS_MODEL_TAGS.contains(tag)) {
-                    return null;
-                }
-                return tag;
-            }
         };
     }
 
@@ -338,9 +329,9 @@ public final class FrenchLexicons
     }
 
     /**
-     * Builds the default stop-word set.
+     * Builds the default tokens list that are not words, even function words.
      *
-     * @return case-insensitive stop-word set
+     * @return case-insensitive noise tokens set
      */
     public static CharArraySet buildNoisetokens()
     {

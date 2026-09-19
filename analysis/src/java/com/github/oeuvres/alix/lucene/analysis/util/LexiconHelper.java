@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +27,7 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.Report;
 
+import opennlp.tools.postag.MutableTagDictionary;
 import opennlp.tools.postag.POSModel;
 
 /**
@@ -787,6 +789,170 @@ public final class LexiconHelper
         pr.endFile(null);
     }
     
+
+    /**
+     * Loads POS tags from a classpath CSV resource into a mutable OpenNLP tag
+     * dictionary.
+     *
+     * @param tagDic       mutable tag dictionary to populate
+     * @param anchor       class used to resolve the resource path
+     * @param resourcePath classpath resource path
+     * @param sep          CSV separator
+     * @param csvHeader    header policy
+     * @param formCol      column containing the surface form
+     * @param tagCol       column containing the source POS tag
+     * @param freqCol      frequency column; if negative, frequency is ignored
+     * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
+     * @param posResolver  POS resolver; {@code null} uses {@link #DEFAULT_POS_RESOLVER}
+     * @throws UncheckedIOException on read error
+     */
+    public static void loadTags(
+        final MutableTagDictionary tagDic,
+        final Class<?> anchor,
+        final String resourcePath,
+        final char sep,
+        final CsvHeader csvHeader,
+        final int formCol,
+        final int tagCol,
+        final int freqCol,
+        final double freqMin,
+        final PosResolver posResolver)
+        throws UncheckedIOException
+    {
+        Objects.requireNonNull(anchor, "anchor");
+        Objects.requireNonNull(resourcePath, "resourcePath");
+
+        final int maxCol = (freqCol < 0)
+            ? maxRequiredCol(formCol, tagCol)
+            : maxRequiredCol(formCol, tagCol, freqCol);
+
+        try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
+            csv.separator(sep).cellMax(maxCol);
+            loadTags(tagDic, csv, csvHeader, formCol, tagCol, freqCol, freqMin, posResolver, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Loads POS tags from a CSV reader into a mutable OpenNLP tag dictionary.
+     * If {@code freqCol < 0}, every otherwise valid row is considered. Otherwise
+     * the row must contain a numeric frequency greater than or equal to
+     * {@code freqMin}.
+     *
+     * @param tagDic       mutable tag dictionary to populate
+     * @param csv          CSV reader
+     * @param csvHeader    header policy
+     * @param formCol      column containing the surface form
+     * @param tagCol       column containing the source POS tag
+     * @param freqCol      frequency column; if negative, frequency is ignored
+     * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
+     * @param posResolver  POS resolver; {@code null} uses {@link #DEFAULT_POS_RESOLVER}
+     * @param report       report sink; {@code null} is silent
+     * @throws UncheckedIOException on read error
+     */
+    public static void loadTags(
+        final MutableTagDictionary tagDic,
+        final CSVReader csv,
+        final CsvHeader csvHeader,
+        final int formCol,
+        final int tagCol,
+        final int freqCol,
+        final double freqMin,
+        final PosResolver posResolver,
+        final Report report)
+        throws UncheckedIOException
+    {
+        Objects.requireNonNull(tagDic, "tagDic");
+        Objects.requireNonNull(csv, "csv");
+        Objects.requireNonNull(csvHeader, "csvHeader");
+        checkColumnIndex(formCol, "formCol");
+        checkColumnIndex(tagCol, "tagCol");
+
+        final PosResolver pr = (posResolver == null) ? DEFAULT_POS_RESOLVER : posResolver;
+        pr.reset();
+
+        final Report rep = orSilent(report);
+        csv.report(rep);
+
+        final int minCols = (freqCol < 0)
+            ? maxRequiredCol(formCol, tagCol)
+            : maxRequiredCol(formCol, tagCol, freqCol);
+
+        final CsvRowHandler handler = new CsvRowHandler()
+        {
+            @Override
+            protected boolean accept(final CSVReader row) throws UncheckedIOException
+            {
+                if (freqCol >= 0) {
+                    final String freqText = row.getCellAsString(freqCol);
+                    if (freqText == null || freqText.isBlank()) {
+                        return false;
+                    }
+                    final double freq;
+                    try {
+                        freq = Double.parseDouble(freqText.trim());
+                    } catch (NumberFormatException e) {
+                        rep.warn(row.getSpec() + ":" + row.getLineNo()
+                            + " invalid frequency=" + freqText);
+                        return false;
+                    }
+                    if (!Double.isFinite(freq) || freq < freqMin) {
+                        return false;
+                    }
+                }
+
+                final String tag = pr.posTag(row.getCellAsString(tagCol));
+                if (tag == null) {
+                    return false;
+                }
+
+                final StringBuilder form = row.getCell(formCol);
+                Char.translate(form, "’", "'");
+                Char.trim(form);
+                if (form.isEmpty()) {
+                    return false;
+                }
+
+                final String word = form.toString();
+                final String[] oldTags = tagDic.getTags(word);
+                if (oldTags == null || oldTags.length == 0) {
+                    tagDic.put(word, tag);
+                    return true;
+                }
+                for (String oldTag : oldTags) {
+                    if (tag.equals(oldTag)) {
+                        return false;
+                    }
+                }
+                final String[] tags = Arrays.copyOf(oldTags, oldTags.length + 1);
+                tags[oldTags.length] = tag;
+                tagDic.put(word, tags);
+                return true;
+            }
+        };
+
+        forEachDataRow(csv, csvHeader, minCols, rep, handler);
+        pr.endFile(null);
+    }
+
+    /**
+     * Convenience overload using {@link #DEFAULT_POS_RESOLVER}.
+     */
+    public static void loadTags(
+        final MutableTagDictionary tagDic,
+        final CSVReader csv,
+        final CsvHeader csvHeader,
+        final int formCol,
+        final int tagCol,
+        final int freqCol,
+        final double freqMin,
+        final Report report)
+        throws UncheckedIOException
+    {
+        loadTags(tagDic, csv, csvHeader, formCol, tagCol, freqCol, freqMin, null, report);
+    }
+
     public static POSModel loadPosModel(final Class<?> anchor, String path)
     {
         try (InputStream in = anchor.getResourceAsStream(path)) {
@@ -1004,6 +1170,40 @@ public final class LexiconHelper
             return fallbackPosId();
         }
         
+
+        /**
+         * Resolve a raw POS label to its rewritten tag name.
+         * <p>
+         * The same {@link #posRewrite(String)} and {@link #posLookup(String)}
+         * hooks are used as by {@link #posInt(String)}. The returned string is
+         * the rewritten tag itself; this class does not assign any semantics to
+         * tag names.
+         * </p>
+         *
+         * @param rawPosName raw POS label from the CSV cell
+         * @return rewritten and validated POS tag, or {@code null} if unsupported
+         */
+        public final String posTag(final String rawPosName)
+        {
+            if (rawPosName == null || rawPosName.isBlank()) {
+                reportUnknown(rawPosName);
+                return null;
+            }
+
+            final String posName = posRewrite(rawPosName.trim());
+            if (posName == null || posName.isBlank()) {
+                reportUnknown(rawPosName);
+                return null;
+            }
+
+            if (posLookup(posName) < 0) {
+                reportUnknown(rawPosName);
+                return null;
+            }
+
+            return posName;
+        }
+
         /**
          * Rewrite / normalize a POS label before lookup.
          * <p>
