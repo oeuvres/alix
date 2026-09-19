@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -49,19 +50,26 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
+import opennlp.tools.ml.model.SequenceClassificationModel;
+import opennlp.tools.postag.DefaultPOSSequenceValidator;
+import opennlp.tools.postag.POSContextGenerator;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerME;
+import opennlp.tools.postag.TagDictionary;
+import opennlp.tools.util.Sequence;
+import opennlp.tools.util.SequenceValidator;
 
 /**
  * POS tagging filter with sentence buffering and many-to-many mapping
  * between Lucene tokens and the String[] sent to the POS tagger.
  *
  * Language-agnostic:
- * - no lexical resources
+ * - no built-in lexical resources
  * - no language-specific rewrite rules
  * - no post-correction heuristics
  *
- * Rewriting is delegated to a pluggable TaggerRewriter.
+ * Rewriting is delegated to a pluggable TaggerRewriter. An optional
+ * TagDictionary can constrain the POS outcomes during beam-search decoding.
  */
 public class PosTaggingFilter extends TokenFilter
 {
@@ -115,8 +123,17 @@ public class PosTaggingFilter extends TokenFilter
     /** Buffered token states (one sentence/chunk). */
     private TokenStateQueue queue;
 
-    /** non-thread-safe tagger, one per filter instance */
+    /** Standard OpenNLP tagger, used when no external tag dictionary is supplied. */
     private final POSTaggerME tagger;
+
+    /** Sequence model used when an external tag dictionary constrains decoding. */
+    private final SequenceClassificationModel sequenceModel;
+
+    /** Context generator used by constrained decoding. */
+    private final POSContextGenerator contextGenerator;
+
+    /** Validator applying the external tag dictionary during beam search. */
+    private final SequenceValidator<String> sequenceValidator;
 
     /** Optional term rewriter for tagger input (language-specific logic belongs outside this class). */
     private final TaggerRewriter rewriter;
@@ -136,7 +153,7 @@ public class PosTaggingFilter extends TokenFilter
      */
     public PosTaggingFilter(TokenStream input, POSModel posModel)
     {
-        this(input, posModel, IDENTITY_REWRITER);
+        this(input, posModel, null, IDENTITY_REWRITER);
     }
 
     /**
@@ -144,9 +161,50 @@ public class PosTaggingFilter extends TokenFilter
      */
     public PosTaggingFilter(TokenStream input, POSModel posModel, TaggerRewriter rewriter)
     {
+        this(input, posModel, null, rewriter);
+    }
+
+    /**
+     * Constructor with an external tag dictionary and identity rewriting.
+     */
+    public PosTaggingFilter(TokenStream input, POSModel posModel, TagDictionary tagDictionary)
+    {
+        this(input, posModel, tagDictionary, IDENTITY_REWRITER);
+    }
+
+    /**
+     * Constructor with an external tag dictionary and a pluggable many-to-many rewriter.
+     *
+     * <p>The dictionary constrains beam-search outcomes for words present in it.
+     * Words absent from the dictionary remain unconstrained.</p>
+     */
+    public PosTaggingFilter(
+        final TokenStream input,
+        final POSModel posModel,
+        final TagDictionary tagDictionary,
+        final TaggerRewriter rewriter)
+    {
         super(input);
-        this.tagger = new POSTaggerME(posModel);
-        System.out.println(Arrays.toString(tagger.getAllPosTags()));
+        Objects.requireNonNull(posModel, "posModel");
+
+        if (tagDictionary == null) {
+            // Preserve the existing POSTaggerME path when no external dictionary is supplied.
+            this.tagger = new POSTaggerME(posModel);
+            this.sequenceModel = null;
+            this.contextGenerator = null;
+            this.sequenceValidator = null;
+        } else {
+            // POSTaggerME has no constructor accepting an external TagDictionary.
+            // Decode through the same public sequence-model API with a dictionary validator.
+            this.tagger = null;
+            this.sequenceModel = Objects.requireNonNull(
+                posModel.getPosSequenceModel(),
+                "POS model has no sequence model"
+            );
+            this.contextGenerator = posModel.getFactory().getPOSContextGenerator();
+            this.sequenceValidator = new DefaultPOSSequenceValidator(tagDictionary);
+        }
+
         this.rewriter = (rewriter == null) ? IDENTITY_REWRITER : rewriter;
     }
 
@@ -298,9 +356,26 @@ public class PosTaggingFilter extends TokenFilter
         // termLast.setEmpty().append("$$$");
         // termLast.setEmpty().append(Arrays.toString(sentence));
 
-        // Tag
-        final String[] tags = tagger.tag(sentence);
-        final double[] probs = tagger.probs();
+        // Tag. With an external dictionary, constrain beam-search outcomes through
+        // DefaultPOSSequenceValidator; otherwise preserve the normal POSTaggerME path.
+        final String[] tags;
+        final double[] probs;
+        if (tagger != null) {
+            tags = tagger.tag(sentence);
+            probs = tagger.probs();
+        } else {
+            final Sequence sequence = sequenceModel.bestSequence(
+                sentence,
+                null,
+                contextGenerator,
+                sequenceValidator
+            );
+            if (sequence == null) {
+                return;
+            }
+            tags = sequence.getOutcomes().toArray(String[]::new);
+            probs = sequence.getProbs();
+        }
 
         final int tlen = Math.min(m, Math.min(tags.length, probs.length));
 
@@ -341,7 +416,7 @@ public class PosTaggingFilter extends TokenFilter
 
             if (start >= tlen) continue;
 
-            final Upos upos = Upos.get(tags[start].replace('+', '_'));
+            final Upos upos = Upos.get(tags[start]);
             if (upos != null) {
                 posAttr.setPos(upos.code());
             }

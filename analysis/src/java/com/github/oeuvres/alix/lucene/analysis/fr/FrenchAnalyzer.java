@@ -57,6 +57,7 @@ import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 
+import opennlp.tools.postag.MutableTagDictionary;
 import opennlp.tools.postag.POSModel;
 
 /**
@@ -101,6 +102,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Lemma dictionary. */
     public final LemmaLexicon lemmaLexicon;
 
+    /** POS constraints loaded from word.csv. */
+    public final MutableTagDictionary tagDictionary;
+
     /** Term normalizer. */
     public final CharsMap normalizer;
 
@@ -133,6 +137,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         noisetokens = FrenchLexicons.buildNoisetokens();
         normalizer = FrenchLexicons.buildNormalizer();
         lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
+        tagDictionary = FrenchLexicons.buildTagDictionary();
         brevidots = FrenchLexicons.buildBrevidots();
         propn = FrenchLexicons.buildPropn();
         ucwords = FrenchLexicons.buildUcwords();
@@ -339,6 +344,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new PosTaggingFilter(
             ts,
             POS_MODEL,
+            tagDictionary,
             PosTaggingFilter.HYPHEN_REWRITER
         );
         ts = new LemmaFilter(ts, lemmaLexicon, propn);

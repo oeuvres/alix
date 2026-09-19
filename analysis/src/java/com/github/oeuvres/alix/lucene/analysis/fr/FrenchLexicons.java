@@ -34,7 +34,6 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
@@ -60,16 +59,9 @@ public final class FrenchLexicons
     {
     }
 
-    private static final Set<String> POS_MODEL_TAGS = Set.of(
-        "DET", "NOUN", "ADJ", "AUX", "VERB", "ADV", "ADP", "SCONJ",
-        "PRON", "PUNCT", "ADP+DET", "PROPN", "CCONJ", "NUM", "SYM",
-        "X", "ADP+PRON", "INTJ"
-    );
-
     /**
      * Resolver shared by word.csv consumers. Source lexical tags are rewritten
-     * to the internal Upos vocabulary; modelTag() then limits OpenNLP tag
-     * dictionaries to outcomes supported by the French POS model.
+     * to the POS vocabulary used by the French OpenNLP model.
      */
     private static PosResolver wordPosResolver()
     {
@@ -107,7 +99,7 @@ public final class FrenchLexicons
             Map.entry("ADVneg", "ADV"), // 9
             Map.entry("ADP+DET", "ADP+DET"), // 7
             Map.entry("ADP+PRON", "ADP+PRON"), // 6
-            Map.entry("PRONneg", "PRONneg"), // 5
+            Map.entry("PRONneg", "PRON"), // 5
             // Map.entry("DETdem", "DETdem"), // 4
             Map.entry("ADVint", "ADV"), // 4
             Map.entry("PRON", "PRON"), // 2
