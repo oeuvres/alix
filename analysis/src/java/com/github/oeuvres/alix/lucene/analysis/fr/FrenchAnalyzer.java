@@ -346,13 +346,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new FrenchCliticSplitFilter(ts);
         ts = new ReplaceFilter(ts, normalizer);
         ts = new UppercaseFilter(ts, ucwords, 4);
-        ts = new PosTaggingFilter(
-            ts,
-            posTagger,
-            PosTaggingFilter.HYPHEN_REWRITER
-        );
-        ts = new LemmaFilter(ts, lemmaLexicon, propn);
         ts = new MweFilter(ts, expressions);
+        ts = new PosTaggingFilter(ts, posTagger);
+        ts = new LemmaFilter(ts, lemmaLexicon, propn);
         return ts;
     }
 

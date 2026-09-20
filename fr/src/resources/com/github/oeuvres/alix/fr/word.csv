@@ -337387,8 +337387,8 @@ opuntias,NOUN,opuntia,
 opus,NOUN,opus,1.01
 opuscule,NOUN,opuscule,0.61
 opuscules,NOUN,opuscule,0.27
+or,CCONJ,or:CCONJ,165.27
 or,NOUN,or,127.23
-or,CCONJ,or,65.27
 oracle,NOUN,oracle,2.16
 oracles,NOUN,oracle,0.61
 oraculaire,ADJ,oraculaire,
@@ -361792,7 +361792,7 @@ plaindriez,VERB,plaindre,0.07
 plaindrions,VERB,plaindre,0.07
 plaindrons,VERB,plaindre,
 plaindront,VERB,plaindre,0.14
-plaine,NOUN,plain,39.86
+plaine,NOUN,plaine,39.86
 plaine,ADJ,plain,1.42
 plaine,VERB,plainer,
 plainé,ADJ,plainé,
@@ -361815,7 +361815,7 @@ plaineriez,VERB,plainer,
 plainerions,VERB,plainer,
 plainerons,VERB,plainer,
 plaineront,VERB,plainer,
-plaines,NOUN,plain,7.43
+plaines,NOUN,plaine,7.43
 plaines,ADJ,plain,0.81
 plaines,VERB,plainer,
 plainés,ADJ,plainé,
@@ -421193,7 +421193,7 @@ reprisassiez,VERB,repriser,
 reprisassions,VERB,repriser,
 reprisât,VERB,repriser,
 reprisâtes,VERB,repriser,
-reprise,NOUN,repris,8.38
+reprise,NOUN,reprise,8.38
 reprise,VERBpartpast,reprendre,4.19
 reprise,ADJ,repris,0.95
 reprise,VERB,repriser,0.00
@@ -507854,3 +507854,1454 @@ zythums,NOUN,zythum,
 zzzz,INTJ,zzzz,0.07
 EEG,NOUN,EEG,
 IRM,NOUN,IRM,
+à base de,ADP,,0.00
+à bon droit,ADV,,0.00
+à bord,ADV,,0.00
+à bord de,ADP,,0.00
+à bout de,ADP,,0.00
+à bout de force,ADJ,,0.00
+à bout portant,ADV,,0.00
+à brûle-pourpoint,ADV,,0.00
+a capella,ADV,,0.00
+a cappella,ADV,,0.00
+à cause de,ADP,,0.00
+à cet égard,ADP,,0.00
+à chaque fois,ADV,,0.00
+à chaque fois que,SCONJ,,0.00
+à cloche-pied,ADV,,0.00
+à compter de,ADP,,0.00
+à condition de,ADP,,0.00
+a contrario,ADV,,0.00
+à côté de,ADP,,0.00
+à coup de,ADP,,0.00
+à coup sûr,ADV,,0.00
+à défaut de,ADP,,0.00
+à des degrés divers,ADV,,0.00
+à dessein de,ADP,,0.00
+à destination de,ADP,,0.00
+à fin de,ADP,,0.00
+à fond,ADV,,0.00
+à fond,ADV,,0.00
+à force de,ADP,,0.00
+a fortiori,ADV,,0.00
+à fortiori,ADV,,0.00
+a giorno,ADV,,0.00
+à giorno,ADV,,0.00
+à glagla,ADV,,0.00
+à grand renfort de,ADP,,0.00
+à haute voix,ADV,,0.00
+à jeun,ADV,,0.00
+à jeun,ADV,,0.00
+à juste titre,ADV,,0.00
+à l'autre bout de,ADP,,0.00
+à l'aveuglette,ADV,,0.00
+à l'aveuglette,ADV,,0.00
+à l'égard de,ADP,,0.00
+à l'encan,ADV,,0.00
+à l'encan,ADV,,0.00
+à l'envi,ADV,,0.00
+à l'envi,ADV,,0.00
+à l'improviste,ADV,,0.00
+à l'improviste,ADV,,0.00
+à l'instant même,ADV,,0.00
+à l'adresse de,ADP,,0.00
+à l'aide de,ADP,,0.00
+à l'appui de,ADP,,0.00
+à l'aulne de,ADP,,0.00
+à l'aune de,ADP,,0.00
+à l'avenant,ADP,,0.00
+à l'effet de,ADP,,0.00
+à l'égal de,ADP,,0.00
+à l'égard de,ADP,,0.00
+à l'encontre,ADP,,0.00
+à l'endroit de,ADP,,0.00
+à l'entour de,ADP,,0.00
+à l'épreuve de,ADP,,0.00
+à l'exemple de,ADP,,0.00
+à l'extérieur de,ADP,,0.00
+à l'imitation de,ADP,,0.00
+à l'instant,ADV,,0.00
+à l'instar de,ADP,,0.00
+à l'intérieur de,ADP,,0.00
+à l'ombre de,ADP,,0.00
+à l'opposé de,ADP,,0.00
+à l'unisson,ADP,,0.00
+à la condition de,ADP,,0.00
+à la fois,ADV,,0.00
+à la longue,ADV,,0.00
+à la lumière de,ADP,,0.00
+à la mémoire de,ADP,,0.00
+à la place de,ADP,,0.00
+à la réserve de,ADP,,0.00
+à la saint-glinglin,ADV,,0.00
+à la sortie de,ADP,,0.00
+à la suite de,ADP,,0.00
+à la vue de,ADP,,0.00
+à la zeub,ADP,,0.00
+à leur encontre,ADV,,0.00
+à long terme,ADV,,0.00
+à lurelure,ADV,,0.00
+à mon encontre,ADV,,0.00
+angle aigu,NOUN,,0.00
+angle obtus,NOUN,,0.00
+à notre encontre,ADV,,0.00
+à nouveau,ADV,,0.00
+à NUM fois,ADV,,0.00
+à part,ADP,,0.00
+à part ça,ADP,,0.00
+à partir de,ADP,,0.00
+à partir de là,ADP,,0.00
+à peine,ADV,,0.00
+à peine de,ADP,,0.00
+à perte de vue,ADV,,0.00
+à peu près,ADV,,0.00
+a posteriori,ADV,,0.00
+à posteriori,ADV,a posteriori,0.00
+à présent,ADV,,0.00
+a priori,ADV,,0.00
+à priori,ADV,a priori,0.00
+à propos de,ADP,,0.00
+à proprement parler,ADV,,0.00
+à quoi bon,ADVint,,0.00
+à raison de,ADP,,0.00
+à ras,ADJ,,0.00
+à ras bord,ADV,,0.00
+à rebours,ADV,,0.00
+à rebours de,ADP,,0.00
+à rebrousse-poil,ADV,,0.00
+à sens unique,ADV,,0.00
+à son encontre,ADV,,0.00
+à tâtons,ADV,,0.00
+à terme,ADP,,0.00
+à tire-larigot,ADV,,0.00
+à titre de,ADP,,0.00
+à ton encontre,ADV,,0.00
+à touche-touche,ADV,,0.00
+à travers,ADP,,0.00
+à tue-tête,ADV,,0.00
+à valeurs dans,ADP,,0.00
+à voir,ADP,,0.00
+à voix basse,ADV,,0.00
+à voix haute,ADV,,0.00
+à votre encontre,ADV,,0.00
+à vrai dire,ADV,,0.00
+au bas,ADV,,0.00
+au bas de,ADP,,0.00
+au beau milieu de,ADP,,0.00
+au bord de,ADP,,0.00
+au bout de,ADP,,0.00
+au cas où,SCONJ,,0.00
+au contraire,ADV,,0.00
+au contraire de,ADP,,0.00
+au cours de,ADP,,0.00
+au delà,ADVsit,au-delà,0.00
+au-delà,ADV,,0.00
+au dépourvu,ADV,,0.00
+au détriment de,ADP,,0.00
+au droit de,ADP,,0.00
+au fur et à mesure,ADV,,0.00
+au lieu de,ADP,,0.00
+au lieu et place de,ADP,,0.00
+au milieu de,ADP,,0.00
+au moins,ADV,,0.00
+au moment de,ADP,,0.00
+au moment où,ADP,,0.00
+au moyen de,ADP,,0.00
+au moyen des,ADP,au moyen de,0.00
+au moyen desquels,ADP,au moyen de,0.00
+au moyen duquel,ADP,au moyen de,0.00
+au niveau de,ADP,,0.00
+au nom de,ADP,,0.00
+au préalable,ADV,,0.00
+au préjudice de,ADP,,0.00
+au premier chef,ADV,,0.00
+au premier abord,ADV,,0.00
+au prétexte de,ADP,,0.00
+au prix de,ADP,,0.00
+au ras de,ADP,,0.00
+au rebours de,ADP,,0.00
+au regard de,ADP,,0.00
+au risque de,ADP,,0.00
+au sein de,ADP,,0.00
+au sens étroit,ADV,,0.00
+au sens figuré,ADV,,0.00
+au sens large,ADV,,0.00
+au sens propre,ADV,,0.00
+au sortir de,ADP,,0.00
+au spectacle de,ADP,,0.00
+au sujet de,ADP,,0.00
+au temps de,ADP,,0.00
+au travers,ADP,à travers,0.00
+au travers de,ADP,,0.00
+au vu de,ADP,,0.00
+au vu et au su de,ADP,,0.00
+au vu et su de,ADP,,0.00
+autrement dit,ADVconj,,0.00
+autrement dire,ADVconj,autrement dit,0.00
+aux aguets,ADV,,0.00
+aux dépens de,ADP,,0.00
+aux fins de,ADP,,0.00
+aux lieu et place de,ADP,,0.00
+aux portes de,ADP,,0.00
+aux yeux de,ADP,,0.00
+académie des sciences,NOUN,Académie des Sciences,0.00
+Académie des Sciences,NOUN,,0.00
+académie des sciences morales,NOUN,Académie des Sciences morales et politiques,0.00
+Académie des Sciences morales,NOUN,Académie des Sciences morales et politiques,0.00
+académie des sciences morales et politiques,NOUN,Académie des Sciences morales et politiques,0.00
+Académie des Sciences morales et politiques,NOUN,,0.00
+acid jazz,NOUN,,0.00
+acte sexuel,NOUN,,0.00
+actes sexuels,NOUN,acte sexuel,0.00
+action painting,NOUN,,0.00
+ad hoc,ADJ,,0.00
+administrateur général,NOUN,,0.00
+affaires étrangères,NOUN,Affaires étrangères,0.00
+Affaires étrangères,NOUN,,0.00
+afin de,ADP,,0.00
+afin que,SCONJ,,0.00
+after shave,NOUN,,0.00
+agent de change,NOUN,,0.00
+agents de change,NOUN,,0.00
+agnus dei,NOUN,,0.00
+aide de camp,NOUN,,0.00
+air bag,NOUN,,0.00
+aller aller,INTJ,,0.00
+aller droit,VERB,,0.00
+aller de soi,VERB,,0.00
+allez allez,INTJ,,0.00
+allons allons,INTJ,,0.00
+alors que,CCONJ,,0.00
+alter ego,NOUN,,0.00
+Altesse Royale,NOUN,,0.00
+amour propre,NOUN,,0.00
+appareil photo,NOUN,,0.00
+après que,SCONJ,,0.00
+argent de poche,NOUN,,0.00
+arrêt maladie,NOUN,,0.00
+arrière-train,NOUN,,0.00
+assemblée générale,NOUN,,0.00
+au-dedans de,ADP,,0.00
+au-dessous de,ADP,,0.00
+aujourd'hui,ADVconj,,0.00
+au premier abord,ADV,,0.00
+auprès de,ADP,,0.00
+auquel cas,CCONJ,,0.00
+au point de vue,ADV,,0.00
+au sens strict,ADV,,0.00
+aussi peu que,ADP,,0.00
+autour de,ADP,,0.00
+autre chose,NOUN,,0.00
+autre part,ADV,,0.00
+autrement dit,ADVconj,,0.00
+av. J.-C.,NUM,,0.00
+avant J.-C.,NOUN,av. J.-C.,0.00
+avant de,ADP,,0.00
+avant même que,SCONJ,,0.00
+avant que,SCONJ,,0.00
+avant que de,ADP,,0.00
+avocat général,NOUN,,0.00
+avoir l'air,VERB,,0.00
+avoir lieu,VERB,,0.00
+ayants droit,NOUN,,0.00
+back up,NOUN,,0.00
+bain de mer,NOUN,,0.00
+bains de mer,NOUN,,0.00
+bande à part,NOUN,,0.00
+bas de page,NOUN,,0.00
+bas ventre,NOUN,bas-ventre,0.00
+bas-ventre,NOUN,,0.00
+beat generation,NOUN,,0.00
+beau fils,NOUN,beau-fils,0.00
+beau frère,NOUN,beau-frère,0.00
+beau père,NOUN,beau-père,0.00
+beau temps,NOUN,,0.00
+beaucoup de,DETind,,0.00
+beaux esprits,NOUN,bel esprit,0.00
+bec de gaz,NOUN,,0.00
+becs de gaz,NOUN,,0.00
+bel canto,NOUN,,0.00
+bel esprit,NOUN,,0.00
+belle fille,NOUN,belle-fille,0.00
+belle lurette,NOUN,,0.00
+belle mère,NOUN,belle-mère,0.00
+belle sœur,NOUN,belle-sœur,0.00
+best of,NOUN,,0.00
+bien entendu,ADV,,0.00
+bien loin de,ADP,,0.00
+bien que,SCONJ,,0.00
+bien sûr,ADV,,0.00
+big band,NOUN,,0.00
+big bang,NOUN,,0.00
+birth control,NOUN,,0.00
+bla bla,NOUN,,0.00
+bloody mary,NOUN,,0.00
+blouson de cuir,NOUN,,0.00
+blue jeans,NOUN,,0.00
+blue note,NOUN,,0.00
+boîte aux lettres,NOUN,,0.00
+bombe atomique,NOUN,,0.00
+bon cœur,NOUN,,0.00
+bon Dieu,INTJ,,0.00
+bon goût,NOUN,,0.00
+bon gré,NOUN,,0.00
+bon gré mal gré,ADV,,0.00
+bon marché,ADJ,,0.00
+bon point,NOUN,,0.00
+bon sens,NOUN,,0.00
+bon vieux temps,NOUN,,0.00
+bonne conscience,NOUN,,0.00
+bonne femme,NOUN,,0.00
+bonne foi,NOUN,,0.00
+bonne fortune,NOUN,,0.00
+bonne humeur,NOUN,,0.00
+bonne manière,NOUN,,0.00
+bonne part,NOUN,,0.00
+bonne volonté,NOUN,,0.00
+bonnes volontés,NOUN,bonne volonté,0.00
+bonnes gens,NOUN,,0.00
+bordel de merde,INTJ,,0.00
+bouche bée,NOUN,,0.00
+bouton d'or,NOUN,,0.00
+bras dessus bras dessous,ADV,,0.00
+brown sugar,NOUN,,0.00
+bubble gum,NOUN,,0.00
+buen retiro,NOUN,,0.00
+Bureau international d'Éducation,NOUN,BIE,0.00
+Bureau international d'Education,NOUN,BIE,0.00
+Bureau international d'éducation,NOUN,BIE,0.00
+by night,ADJ,,0.00
+c'est-à-dire,ADVconj,c'est-à-dire,0.00
+c'est à dire,ADVconj,c'est-à-dire,0.00
+cabinet de toilette,NOUN,,0.00
+cadre général,NOUN,,0.00
+café au lait,NOUN,,0.00
+cage d'escalier,NOUN,,0.00
+call girl,NOUN,,0.00
+call girls,NOUN,,0.00
+canadian river,NOUN,,0.00
+caput mortuum,NOUN,,0.00
+carte postale,NOUN,,0.00
+cartes postales,NOUN,carte postale,0.00
+cas limite,NOUN,,0.00
+cas général,NOUN,,0.00
+cas particulier,NOUN,,0.00
+cas particuliers,NOUN,cas particulier,0.00
+casus belli,NOUN,,0.00
+cause finale,NOUN,,0.00
+causes finales,NOUN,cause finale,0.00
+ce dernier,PRONind,,0.00
+cela supposé,ADP,,0.00
+celle ci,PRONdem,celle-ci,0.00
+celle là,PRONdem,celle-là,0.00
+celle-ci,PRONdem,,0.00
+celle-là,PRONdem,,0.00
+celui ci,PRONdem,celui-ci,0.00
+celui là,PRONdem,celui-là,0.00
+celui-ci,PRONdem,,0.00
+celui-là,PRONdem,,0.00
+centrale nucléaire,NOUN,,0.00
+centrales nucléaires,NOUN,centrale nucléaire,0.00
+cependant que,SCONJ,,0.00
+ces derniers,PRONind,,0.00
+c'est-à-dire,NOUN,,0.00
+cette dernière,PRONind,,0.00
+cette fois ci,ADVconj,,0.00
+cette fois là,ADVconj,,0.00
+cette fois où,CCONJ,,0.00
+cette fois-ci,PRONdem,cette fois ci,0.00
+cette fois-là,PRONdem,cette fois ci,0.00
+ceux ci,PRONdem,ceux-ci,0.00
+ceux là,PRONdem,ceux-là,0.00
+chambre à coucher,NOUN,,0.00
+Chambre des députés,NOUN,,0.00
+champ de bataille,NOUN,,0.00
+chapeau haut de forme,NOUN,,0.00
+chaque fois,ADV,,0.00
+chaque fois que,SCONJ,,0.00
+check up,NOUN,,0.00
+chef d'entreprise,NOUN,,0.00
+chef d'État,NOUN,,0.00
+chef d'état,NOUN,chef d'État,0.00
+chef de l'État,NOUN,chef d'État,0.00
+chefs d'État,NOUN,chef d'État,0.00
+chefs d'état,NOUN,chefs d'État,0.00
+chefs de l'État,NOUN,chefs d'État,0.00
+chef d'oeuvre,NOUN,chef-d'œuvre,0.00
+chef d'œuvre,NOUN,chef-d'œuvre,0.00
+chef-d'oeuvre,NOUN,chef-d'œuvre,0.00
+chef-d'œuvre,NOUN,,0.00
+chefs d'oeuvre,NOUN,chef-d'œuvre,0.00
+chefs d'œuvre,NOUN,chef-d'œuvre,0.00
+chefs-d'oeuvre,NOUN,chef-d'œuvre,0.00
+chefs-d'œuvre,NOUN,chef-d'œuvre,0.00
+chemin de fer,NOUN,,0.00
+chemin de fer d'intérêt local,NOUN,,0.00
+chemins de fer,NOUN,chemin de fer,0.00
+chemise de nuit,NOUN,,0.00
+chewing gum,NOUN,,0.00
+chien de fusil,NOUN,,0.00
+chop suey,NOUN,,0.00
+chute libre,NOUN,,0.00
+citizen band,NOUN,,0.00
+clair de lune,NOUN,,0.00
+clin d'œil,NOUN,,0.00
+coffee shop,NOUN,,0.00
+coin de l'oeil,NOUN,,0.00
+coin de l'œil,NOUN,,0.00
+comic book,NOUN,,0.00
+comic books,NOUN,,0.00
+commedia dell'arte,NOUN,,0.00
+compte tenu de,ADP,,0.00
+conférence de presse,NOUN,,0.00
+Conférence internationale,NOUN,,0.00
+conférence nternationale,NOUN,Conférence internationale,0.00
+conformément à,ADP,,0.00
+connaissance de cause,NOUN,,0.00
+conscience morale,NOUN,,0.00
+conseil d'administration,NOUN,,0.00
+Conseil d'État,NOUN,,0.00
+conseil d'Etat,NOUN,Conseil d'État,0.00
+conseil d'etat,NOUN,Conseil d'État,0.00
+conseil d'état,NOUN,Conseil d'État,0.00
+conseil général,NOUN,,0.00
+conseiller général,NOUN,,0.00
+conséquemment à,ADP,,0.00
+contrairement à,ADP,,0.00
+corn flakes,NOUN,,0.00
+corps de garde,NOUN,,0.00
+côte à côte,ADV,,0.00
+coup d'épée,NOUN,,0.00
+coup d'oeil,NOUN,,0.00
+coup d'œil,NOUN,,0.00
+coup de balai,NOUN,,0.00
+coup de bâton,NOUN,,0.00
+coup de feu,NOUN,,0.00
+coup de foudre,NOUN,,0.00
+coup de fil,NOUN,,0.00
+coup de fusil,NOUN,,0.00
+coup de main,NOUN,,0.00
+coup de pied,NOUN,,0.00
+coup de pistolet,NOUN,,0.00
+coup de poing,NOUN,,0.00
+coup de vent,NOUN,,0.00
+coup sur coup,ADV,,0.00
+coups d'épée,NOUN,,0.00
+coups d'oeil,NOUN,,0.00
+coups d'œil,NOUN,,0.00
+coups de balai,NOUN,coup de balai,0.00
+coups de bâton,NOUN,coup de bâton,0.00
+coups de feu,NOUN,,0.00
+coups de fusil,NOUN,coup de fusil,0.00
+coups de main,NOUN,,0.00
+coups de pied,NOUN,,0.00
+coups de pistolet,NOUN,,0.00
+coups de poings,NOUN,,0.00
+coups de vent,NOUN,,0.00
+coups et blessures,NOUN,,0.00
+coups et blessures aggravés,NOUN,,0.00
+cour d'assises,NOUN,,0.00
+courrier électronique,NOUN,,0.00
+cri de joie,NOUN,,0.00
+critique d'art,NOUN,,0.00
+culture générale,NOUN,,0.00
+curriculum vitae,NOUN,,0.00
+d'abord,ADVconj,,0.00
+d'accord,ADVconj,,0.00
+d'ailleurs,ADV,,0.00
+d'autant que,CCONJ,,0.00
+d'autre part,ADVconj,,0.00
+d'autres,PRONind,,0.00
+d'emblée,ADV,,0.00
+d'ordre général,ADJ,,0.00
+d'ores et déjà,ADVconj,,0.00
+d'un autre côté,ADP,,0.00
+d'un seul coup,ADVconj,,0.00
+d'une part,ADVconj,,0.00
+d'après,ADP,,0.00
+d'au milieu de,ADP,,0.00
+d'avec,ADP,,0.00
+d'entre,ADP,,0.00
+dame patronnesse,NOUN,,0.00
+dames patronnesses,NOUN,,0.00
+dans l'optique de,ADP,,0.00
+dans la crainte de,ADP,,0.00
+dans la merde,ADV,,0.00
+dans une certaine mesure,ADV,,0.00
+dans une large mesure,ADV,,0.00
+dans la mesure où,ADVconj,,0.00
+dans la plupart des cas,ADV,,0.00
+dans le moment où,ADP,,0.00
+dans le moment que,ADP,,0.00
+dans le viseur de,ADP,,0.00
+dans l'état actuel,ADVconj,,0.00
+dare dare,ADV,,0.00
+de amicis,NOUN,,0.00
+de auditu,ADV,,0.00
+de bon cœur,ADV,,0.00
+de bonne heure,ADVasp,,0.00
+de crainte de,ADP,,0.00
+de façon à,ADP,,0.00
+de façon générale,ADV,,0.00
+de facto,ADV,,0.00
+de guingois,ADV,,0.00
+de haut en bas,ADV,,0.00
+de la part de,ADP,,0.00
+de la manière suivante,ADV,,0.00
+de long en large,ADV,,0.00
+de manière à,ADP,,0.00
+de manière générale,ADV,,0.00
+de même,ADV,,0.00
+de même que,CCONJ,,0.00
+demi-siècle,NOUN,,0.00
+demi siècle,NOUN,demi-siècle,0.00
+demi-siècles,NOUN,demi-siècle,0.00
+demi siècles,NOUN,demi-siècles,0.00
+de mon côté,ADP,,0.00
+de niveau avec,ADP,,0.00
+de nouveau,ADV,,0.00
+de par,ADP,,0.00
+de parmi,ADP,,0.00
+de peur de,ADP,,0.00
+de plano,ADV,,0.00
+de plein gré,ADV,,0.00
+de plus,ADVconj,,0.00
+de plus en plus,ADV,,0.00
+de préférence à,ADP,,0.00
+de prime abord,ADV,,0.00
+de profundis,NOUN,,0.00
+de santis,NOUN,,0.00
+de sorte que,SCONJ,,0.00
+de temps en temps,ADVasp,,0.00
+de toutes parts,ADV,,0.00
+de traviole,ADV,,0.00
+de visu,ADV,,0.00
+défense de,ADP,,0.00
+défini sur,ADP,,0.00
+delirium tremens,NOUN,,0.00
+demander pardon,VERB,,0.00
+dernier soupir,NOUN,,0.00
+des fois que,SCONJ,,0.00
+dès lors,ADVconj,,0.00
+dès lors que,SCONJ,,0.00
+dès que,SCONJ,,0.00
+deus ex machina,NOUN,,0.00
+deux fois,ADVconj,,0.00
+deux fois par an,ADV,,0.00
+deux fois par mois,ADV,,0.00
+deux fois par semaine,ADV,,0.00
+devant notaire,ADP,,0.00
+devoir dire,VERB,,0.00
+dies irae,NOUN,,0.00
+Dieu sait,ADP,,0.00
+dîner en ville,NOUN,,0.00
+directeur général,NOUN,,0.00
+direction générale,NOUN,,0.00
+disque dur,NOUN,,0.00
+donner lieu,VERB,,0.00
+donner l'ordre,VERB,,0.00
+donner l'impression,VERB,,0.00
+donner la main,VERB,,0.00
+drelin drelin,INTJ,,0.00
+droit d'ainesse,NOUN,,0.00
+droits de l'homme,NOUN,,0.00
+Droits de l'homme,NOUN,droits de l'homme,0.00
+du côté de,ADP,,0.00
+du fait même que,SCONJ,,0.00
+du fait que,SCONJ,,0.00
+du fond du cœur,ADV,,0.00
+du haut en bas,ADV,,0.00
+du même coup,ADP,,0.00
+du milieu de,ADP,,0.00
+d'une manière générale,ADV,,0.00
+du point de vue,ADV,,0.00
+du reste,ADVconj,,0.00
+du seul fait que,SCONJ,,0.00
+du tac au tac,ADV,,0.00
+du temps que,ADP,,0.00
+du vivant de,ADP,,0.00
+eau minérale,NOUN,,0.00
+ecce homo,ADV,,0.00
+éclat de rire,NOUN,,0.00
+éclater de rire,VERB,,0.00
+éclats de rire,NOUN,éclat de rire,0.00
+École polytechnique,NOUN,École Polytechnique,0.00
+École Polytechnique,NOUN,,0.00
+école primaire,NOUN,,0.00
+écoles primaires,NOUN,école primaire,0.00
+États-Unis d'Amérique,NOUN,USA,0.00
+empreinte digitale,NOUN,,0.00
+empreintes digitales,NOUN,empreinte digitale,0.00
+en amont de,ADP,,0.00
+en apparence,ADVconj,,0.00
+en arrière,ADV,,0.00
+en arrière de,ADP,,0.00
+en aval de,ADP,,0.00
+en avant de,ADP,,0.00
+en bas,ADV,,0.00
+en bonne voie,ADV,,0.00
+en catimini,ADV,,0.00
+en ce qui concerne,ADP,,0.00
+en compagnie de,ADP,,0.00
+en comparaison de,ADP,,0.00
+en conformité de,ADP,,0.00
+en connaissance de cause,ADV,,0.00
+en conséquence de,ADP,,0.00
+en considération de,ADP,,0.00
+en cours de route,ADV,,0.00
+en d'autres termes,ADVconj,,0.00
+en deçà,ADV,,0.00
+en deçà de,ADP,,0.00
+en définitive,ADV,,0.00
+en dehors de,ADVconj,,0.00
+en dernier lieu,ADVconj,,0.00
+en dépit de,ADP,,0.00
+en dessous,ADP,,0.00
+en effet,ADVconj,,0.00
+en exécution de,ADP,,0.00
+en face,ADV,,0.00
+en face de,ADP,,0.00
+en fait de,ADP,,0.00
+en faveur de,ADV,,0.00
+en filigrane,ADV,,0.00
+en fin de compte,ADV,,0.00
+en fonction de,ADP,,0.00
+# en forme,ADV, # je m'en forme une idée,0.00
+en forme de,ADP,,0.00
+en friche,ADJ,,0.00
+en général,ADV,,0.00
+en grande partie,ADV,,0.00
+en guise de,ADP,,0.00
+en haut,ADV,,0.00
+en lieu et place de,ADP,,0.00
+en loucedé,ADV,,0.00
+en marge,ADV,,0.00
+en marge de,ADP,,0.00
+en matière de,ADP,,0.00
+en même temps,ADV,,0.00
+en même temps que,ADP,,0.00
+en mémoire de,ADP,,0.00
+en ordre inverse,ADV,,0.00
+en outre,ADVconj,,0.00
+en partant,ADV,,0.00
+en particulier,ADV,,0.00
+en passant,ADV,,0.00
+en passe de,ADP,,0.00
+en permanence,ADV,,0.00
+en plein,ADV,,0.00
+en pleine,ADV,en plein,0.00
+en plein essor,ADV,,0.00
+en plein jour,ADV,,0.00
+en pleine connaissance de cause,ADV,,0.00
+en premier lieu,ADVconj,,0.00
+en présence,ADV,,0.00
+en présence de,ADP,,0.00
+en proie à,ADP,,0.00
+en quelque sorte,ADV,,0.00
+en raison de,ADP,,0.00
+en réalité,ADVconj,,0.00
+en regard de,ADP,,0.00
+en retour,ADV,,0.00
+en revanche,ADVconj,,0.00
+en second lieu,ADVconj,,0.00
+en sens contraire,ADV,,0.00
+en sorte que,SCONJ,,0.00
+en soi,ADV,,0.00
+en somme,ADVconj,,0.00
+en sus,ADV,,0.00
+en sus de,ADP,,0.00
+en tapinois,ADV,,0.00
+en tant que,CCONJ,,0.00
+en terme de,ADP,,0.00
+en tous cas,ADVconj,,0.00
+en train de,ADV,,0.00
+en troisième lieu,ADVconj,,0.00
+en vain,ADV,,0.00
+en vérité,ADV,,0.00
+en vertu de,ADP,,0.00
+en vigueur,ADV,,0.00
+en vue de,ADP,,0.00
+encore une fois,ADVconj,,0.00
+enfant de choeur,NOUN,enfant de chœur,0.00
+enfant de chœur,NOUN,,0.00
+enfants de choeur,NOUN,enfants de chœur,0.00
+enfants de chœur,NOUN,enfant de chœur,0.00
+en règle générale,ADV,,0.00
+enseignement primaire,NOUN,,0.00
+enseignement secondaire,NOUN,,0.00
+entenant de,ADP,,0.00
+entendre parler,VERB,,0.00
+entrer en ligne de compte,VERB,,0.00
+espèce humaine,NOUN,,0.00
+est-ce que,ADV,,0.00
+et caetera,NOUN,etc.,0.00
+et cætera,NOUN,etc.,0.00
+et cetera,NOUN,etc.,0.00
+et seq,ADV,,0.00
+étant donné,ADP,,0.00
+état civil,NOUN,,0.00
+état d'âme,NOUN,,0.00
+état d'esprit,NOUN,,0.00
+état d'exception,NOUN,,0.00
+état de choses,NOUN,,0.00
+état de fait,NOUN,,0.00
+état de grâce,NOUN,,0.00
+état de nature,NOUN,,0.00
+état de siège,NOUN,,0.00
+être parti,VERB,partir,0.00
+être partis,VERB,partir,0.00
+être partie,VERB,partir,0.00
+être parties,VERB,partir,0.00
+être tenu,VERB,être tenu,0.00
+être tenus,VERB,être tenu,0.00
+être tenue,VERB,être tenu,0.00
+être tenues,VERB,être tenu,0.00
+être vivant,NOUN,être vivant,0.00
+êtres vivants,NOUN,être vivant,0.00
+eu égard à,ADP,,0.00
+ex abrupto,ADV,,0.00
+ex nihilo,ADV,,0.00
+expérience intérieure,NOUN,,0.00
+face à,ADP,,0.00
+face à face,NOUN,,0.00
+faire abstraction,VERB,,0.00
+faire face,VERB,,0.00
+faire grief,VERB,,0.00
+faire mine,VERB,,0.00
+faire place,VERB,,0.00
+faire partie,VERB,,0.00
+faire semblant,VERB,,0.00
+fast food,NOUN,,0.00
+faute de,ADP,,0.00
+fauteuil roulant,NOUN,,0.00
+faux monnayeurs,NOUN,,0.00
+femme de chambre,NOUN,,0.00
+femmes de chambre,NOUN,femme de chambre,0.00
+five o'clock,NOUN,,0.00
+flatus vocis,NOUN,,0.00
+fond de l'âme,NOUN,,0.00
+foreign office,NOUN,,0.00
+fort bien,ADV,,0.00
+free jazz,NOUN,,0.00
+fur et à mesure,NOUN,,0.00
+garde champêtre,NOUN,,0.00
+garde du corps,NOUN,,0.00
+garde du roi,NOUN,,0.00
+garde national,NOUN,,0.00
+garde nationale,NOUN,,0.00
+gardes du corps,NOUN,garde du corps,0.00
+gardes du roi,NOUN,garde du roi,0.00
+gardes nationaux,NOUN,,0.00
+gare centrale,NOUN,,0.00
+général en chef,NOUN,,0.00
+gengis khan,NOUN,,0.00
+genre humain,NOUN,,0.00
+gens du monde,NOUN,,0.00
+géométrie projective,NOUN,,0.00
+girl friend,NOUN,,0.00
+goutte à goutte,ADV,,0.00
+gouverneur général,NOUN,,0.00
+grâce à,ADP,,0.00
+grâces à,ADP,grâce à,0.00
+grain de beauté,NOUN,,0.00
+grand chose,NOUN,grand-chose,0.00
+grand dieu,NOUN,,0.00
+grand mère,NOUN,grand-mère,0.00
+grand oncle,NOUN,grand-oncle,0.00
+grand père,NOUN,grand-père,0.00
+grand seigneur,NOUN,,0.00
+grand'chose,NOUN,grand-chose,0.00
+grand'mère,NOUN,grand-mère,0.00
+grand'père,NOUN,grand-père,0.00
+grand'tante,NOUN,,0.00
+grands dieux,NOUN,,0.00
+grands seigneurs,NOUN,grand seigneur,0.00
+gratis pro deo,ADV,,0.00
+grève générale,NOUN,,0.00
+grosso modo,ADV,,0.00
+guerre civile,NOUN,,0.00
+guerre mondiale,NOUN,,0.00
+guerres mondiales,NOUN,guerre mondiale,0.00
+happy end,NOUN,,0.00
+happy ends,NOUN,,0.00
+happy few,NOUN,,0.00
+hard edge,NOUN,,0.00
+has been,NOUN,,0.00
+haut de forme,NOUN,haut-de-forme,0.00
+haut fait,NOUN,,0.00
+haut rang,NOUN,,0.00
+haut-de-forme,NOUN,,0.00
+haute vertu,NOUN,,0.00
+hauts faits,NOUN,haut fait,0.00
+hay hay,INTJ,,0.00
+hi hi,INTJ,,0.00
+hi hi hi,INTJ,,0.00
+hi hi hi hi,INTJ,,0.00
+hic et nunc,ADV,,0.00
+high life,NOUN,,0.00
+high tech,ADJ,,0.00
+histoire naturelle,NOUN,,0.00
+hold up,NOUN,,0.00
+homme d'affaires,NOUN,,0.00
+homme d'état,NOUN,homme d'État,0.00
+homme d'État,NOUN,,0.00
+hommes d'état,NOUN,homme d'État,0.00
+hommes d'État,NOUN,homme d'État,0.00
+homo erectus,NOUN,,0.00
+homo habilis,NOUN,,0.00
+hong kong,NOUN,,0.00
+honnête homme,NOUN,,0.00
+honnêtes gens,NOUN,,0.00
+honoris causa,ADV,,0.00
+hors de,ADP,,0.00
+hot dog,NOUN,,0.00
+hot dogs,NOUN,,0.00
+hôtel de police,NOUN,,0.00
+hôtel de ville,NOUN,,0.00
+house music,NOUN,,0.00
+il était une fois,ADV,,0.00
+il être possible que,ADP,,0.00
+il n'empêche que,ADP,,0.00
+il n'en reste pas moins que,ADP,,0.00
+il pourrait bien se faire que,ADP,,0.00
+il se pourrait que,ADP,,0.00
+il serait possible que,ADP,,0.00
+il y a,VERB,il y a,0.00
+il y avoir,VERB,il y a,0.00
+il y avait,VERB,il y a,0.00
+il y aura,VERB,il y a,0.00
+il y a eut,VERB,il y a,0.00
+il y eut,VERB,il y a,0.00
+in absentia,ADV,,0.00
+in abstracto,ADV,,0.00
+in anima vili,ADV,,0.00
+in cauda venenum,ADV,,0.00
+in extenso,ADV,,0.00
+in extremis,ADV,,0.00
+in illo tempore,ADP,,0.00
+in memoriam,ADV,,0.00
+in pace,NOUN,,0.00
+in petto,ADV,,0.00
+in utero,ADV,,0.00
+in utero,ADJ,,0.00
+in vino veritas,ADV,,0.00
+in vitro,ADV,,0.00
+in vitro,ADJ,,0.00
+in vivo,ADV,,0.00
+inspecteur de police,NOUN,,0.00
+instruction publique,NOUN,,0.00
+intérêt général,NOUN,,0.00
+intra muros,ADV,,0.00
+invisible piston,NOUN,,0.00
+ipso facto,ADV,,0.00
+irish coffee,NOUN,,0.00
+ite missa est,NOUN,,0.00
+jet society,NOUN,,0.00
+jeune fille,NOUN,,0.00
+jeunes filles,NOUN,jeune fille,0.00
+jeune homme,NOUN,,0.00
+jeunes hommes,NOUN,jeune homme,0.00
+jeunes gens,NOUN,,0.00
+jouer le rôle de,VERB,,0.00
+jouer un rôle,VERB,,0.00
+jour après jour,ADV,,0.00
+jour de l'an,NOUN,,0.00
+juge d'instruction,NOUN,,0.00
+juge de paix,NOUN,,0.00
+jusqu'à ce que,SCONJ,,0.00
+jusqu'à la fin,ADP,,0.00
+jusqu'à nouvel ordre,ADV,,0.00
+jusqu'au bout,ADV,,0.00
+jusqu'ici,ADV,,0.00
+jusques à,ADP,,0.00
+jusques et y compris,ADP,,0.00
+juste ciel,NOUN,,0.00
+juste ciel,INTJ,,0.00
+Juste ciel,INTJ,,0.00
+justice distributive,NOUN,,0.00
+justice rétributive,NOUN,,0.00
+kung fu,NOUN,,0.00
+kyrie eleison,NOUN,,0.00
+l'un,PRONind,,0.00
+l'une,PRONind,,0.00
+l'autre,PRONind,,0.00
+la dernière,PRONind,,0.00
+la fois où,SCONJ,,0.00
+la mienne,PRONprs,,0.00
+langue française,NOUN,,0.00
+la plata,NOUN,,0.00
+la plupart,PRONind,,0.00
+la plupart de,DETind,,0.00
+la première fois,ADV,,0.00
+la sienne,PRONprs,,0.00
+la tienne,PRONprs,,0.00
+lacryma christi,NOUN,,0.00
+laisser passer,VERB,,0.00
+laisser tomber,VERB,,0.00
+langue vivante,NOUN,,0.00
+le dernier,PRONind,,0.00
+le diable soit de,ADP,,0.00
+le long de,ADP,,0.00
+le long des,ADP,,0.00
+le mien,PRONprs,,0.00
+le moment venu,ADVconj,,0.00
+le nôtre,PRONprs,,0.00
+le sien,PRONprs,,0.00
+le tien,PRONprs,,0.00
+le vôtre,PRONprs,,0.00
+légion d'honneur,NOUN,,0.00
+les fois où,SCONJ,,0.00
+les fois que,SCONJ,,0.00
+les miennes,PRONprs,,0.00
+les miens,PRONprs,,0.00
+les nôtres,PRONprs,,0.00
+les siennes,PRONprs,,0.00
+les siens,PRONprs,,0.00
+les tiennes,PRONprs,,0.00
+les tiens,PRONprs,,0.00
+les vôtres,PRONprs,,0.00
+libre arbitre,NOUN,,0.00
+lieutenant de police,NOUN,,0.00
+ligne de compte,NOUN,,0.00
+lieu-commun,NOUN,lieu commun,0.00
+lieu commun,NOUN,,0.00
+lieux communs,NOUN,lieu commun,0.00
+lieux-communs,NOUN,lieu commun,0.00
+lit de sangle,NOUN,,0.00
+livre sterling,NOUN,,0.00
+livres de rente,NOUN,,0.00
+livres sterling,NOUN,livre sterling,0.00
+loc. cit.,NOUN,,0.00
+loc. cit,NOUN,loc. cit.,0.00
+loc cit,NOUN,loc. cit.,0.00
+loin de,ADP,,0.00
+loi naturelle,NOUN,,0.00
+loi physique,NOUN,,0.00
+lois physiques,NOUN,loi physique,0.00
+lois naturelles,NOUN,,0.00
+long terme,NOUN,,0.00
+lors de,ADP,,0.00
+lutte des classes,NOUN,,0.00
+machine à vapeur,NOUN,,0.00
+made in,ADV,,0.00
+madre de dios,NOUN,,0.00
+maison d'édition,NOUN,,0.00
+maison d'arrêt,NOUN,,0.00
+maison de campagne,NOUN,,0.00
+maison de passe,NOUN,,0.00
+maisons de passe,NOUN,,0.00
+maître d'école,NOUN,,0.00
+maître d'hôtel,NOUN,,0.00
+maître de maison,NOUN,,0.00
+maître de poste,NOUN,,0.00
+maître des requêtes,NOUN,,0.00
+maître queux,NOUN,,0.00
+maîtresse de maison,NOUN,,0.00
+mal à l'aise,ADJ,,0.00
+malade mental,NOUN,,0.00
+maladie mentale,NOUN,,0.00
+malgré tout,ADVconj,,0.00
+manque de,ADP,,0.00
+manu militari,ADV,,0.00
+marchand de vin,NOUN,,0.00
+marchands de vin,NOUN,,0.00
+maréchal des logis,NOUN,,0.00
+maréchal des logis-chef,NOUN,,0.00
+mass media,NOUN,,0.00
+mater dolorosa,NOUN,,0.00
+mauvais goût,NOUN,,0.00
+mauvais sort,NOUN,,0.00
+mauvaise conscience,NOUN,,0.00
+mauvaise foi,NOUN,,0.00
+mauvaise grâce,NOUN,,0.00
+mauvaise humeur,NOUN,,0.00
+maux de tête,NOUN,,0.00
+mea culpa,NOUN,,0.00
+M elle,NOUN,Melle,0.00
+mécanique classique,NOUN,,0.00
+melting pot,NOUN,,0.00
+même chose,NOUN,,0.00
+même quand,SCONJ,,0.00
+même si,SCONJ,,0.00
+mètres carrés,NOUN,,0.00
+mettre en doute,VERB,,0.00
+mettre en examen,VERB,,0.00
+mettre en exergue,VERB,,0.00
+mettre en forme,VERB,,0.00
+mettre en garde,VERB,,0.00
+mettre en lumière,VERB,,0.00
+mettre en œuvre,VERB,,0.00
+mettre en peine,VERB,,0.00
+mettre en question,VERB,,0.00
+mettre la table,VERB,,0.00
+mezza voce,ADV,,0.00
+middle class,NOUN,,0.00
+milk shake,NOUN,,0.00
+ministère public,NOUN,,0.00
+ministre de l'Intérieur,NOUN,,0.00
+ministre de l'intérieur,NOUN,ministre de l'Intérieur,0.00
+ministre de la guerre,NOUN,,0.00
+ministre de la justice,NOUN,,0.00
+ministre des affaires étrangères,NOUN,Ministre des Affaires étrangères,0.00
+ministre des Affaires étrangères,NOUN,Ministre des Affaires étrangères,0.00
+Ministre des Affaires étrangères,NOUN,,0.00
+ministère des affaires étrangères,NOUN,ministère des Affaires étrangères,0.00
+Ministère des Affaires étrangères,NOUN,ministère des Affaires étrangères,0.00
+ministère des Affaires étrangères,NOUN,,0.00
+ministre des finances,NOUN,ministre des Finances,0.00
+ministre des Finances,NOUN,,0.00
+minus habens,NOUN,,0.00
+mise en cause,NOUN,,0.00
+mise en forme,NOUN,,0.00
+mise en oeuvre,NOUN,mise en œuvre,0.00
+mise en œuvre,NOUN,,0.00
+mise en ordre,NOUN,,0.00
+mise en place,NOUN,,0.00
+mise en question,NOUN,,0.00
+M lle,NOUN,Melle,0.00
+mode de vie,NOUN,,0.00
+modes de vie,NOUN,mode de vie,0.00
+modern style,NOUN,,0.00
+modern style,ADJ,,0.00
+modus operandi,NOUN,,0.00
+modus vivendi,NOUN,,0.00
+mon Dieu,INTJ,,0.00
+monde entier,NOUN,,0.00
+mot d'ordre,NOUN,,0.00
+mots d'ordre,NOUN,mot d'ordre,0.00
+motu proprio,ADV,,0.00
+Moyen Age,NOUN,Moyen-Âge,0.00
+moyen age,NOUN,Moyen-Âge,0.00
+Moyen Âge,NOUN,Moyen-Âge,0.00
+moyen âge,NOUN,Moyen-Âge,0.00
+moyen-âge,NOUN,Moyen-Âge,0.00
+Moyen-Âge,NOUN,,0.00
+moyen terme,NOUN,,0.00
+music hall,NOUN,,0.00
+mutatis mutandis,ADV,,0.00
+nécessité morale,NOUN,,0.00
+nécessités morales,NOUN,nécessité morale,0.00
+n'est ce pas,INTJ,n'est-ce pas,0.00
+n'est-ce pas,ADV,,0.00
+n'est-ce pas,ADV,,0.00
+n'importe qui,PRONind,,0.00
+n'importe quoi,PRONind,,0.00
+n'empêche que,ADP,,0.00
+ne varietur,ADV,,0.00
+negro spiritual,NOUN,,0.00
+negro spirituals,NOUN,,0.00
+nerf de bœuf,NOUN,,0.00
+new wave,NOUN,,0.00
+night club,NOUN,,0.00
+nihil obstat,ADV,,0.00
+niveau de vie,NOUN,,0.00
+no man's land,NOUN,,0.00
+no man's land,NOUN,,0.00
+non content de,ADP,,0.00
+non plus que,ADP,,0.00
+non sans,ADP,,0.00
+non seulement,ADV,,0.00
+non troppo,ADV,,0.00
+nota bene,ADV,,0.00
+nulle part,ADV,,0.00
+numéro de immatriculation,NOUN,,0.00
+numéro de téléphone,NOUN,,0.00
+numerus clausus,NOUN,,0.00
+obligation morale,NOUN,,0.00
+oeuvre d'art,NOUN,,0.00
+œuvre d'art,NOUN,,0.00
+œuvre d'art,NOUN,,0.00
+œuvres d'art,NOUN,,0.00
+off the record,ADV,,0.00
+officier de la légion d'honneur,NOUN,,0.00
+Oh ! ciel,INTJ,,0.00
+olla podrida,NOUN,,0.00
+op. cit.,NOUN,,0.00
+opinion publique,NOUN,,0.00
+ordinateur de poche,NOUN,,0.00
+ordinateur portable,NOUN,,0.00
+ordre moral,NOUN,,0.00
+Organisation des Nations Unies,NOUN,ONU,0.00
+Nations Unies,NOUN,ONU,0.00
+nature humaine,NOUN,,0.00
+osso buco,NOUN,,0.00
+ou bien,CCONJ,,0.00
+ouvr. cit.,NOUN,,0.00
+pan bagnat,NOUN,,0.00
+par accident,ADV,,0.00
+par ailleurs,ADV,,0.00
+par certains côtés,ADP,,0.00
+par comparaison,ADV,,0.00
+par comparaison à,ADP,par comparaison à,0.00
+par comparaison au,ADP,par comparaison à,0.00
+par comparaison aux,ADP,par comparaison à,0.00
+par conséquent,CCONJ,,0.00
+par crainte de,ADP,,0.00
+par delà,ADP,,0.00
+par derrière,NOUN,par-derrière,0.00
+par devant,NOUN,par-devant,0.00
+par-devant notaire,ADP,,0.00
+par devers,ADP,,0.00
+par dessous,NOUN,par-dessous,0.00
+par dessus,NOUN,par-dessus,0.00
+par définition,ADV,,0.00
+par écrit,ADV,,0.00
+par essence,ADV,,0.00
+par excellence,ADV,,0.00
+par exemple,ADV,,0.00
+par hasard,ADV,,0.00
+par là,ADV,,0.00
+par l'intermédiaire de,ADP,,0.00
+par manque de,ADP,,0.00
+par mégarde,ADV,,0.00
+par opposition à,ADP,par opposition à,0.00
+par opposition au,ADP,par opposition à,0.00
+par opposition aux,ADP,par opposition à,0.00
+par préférence à,ADP,par préférence à,0.00
+par préférence au,ADP,par préférence à,0.00
+par préférence aux,ADP,par préférence à,0.00
+par rapport à,ADP,par rapport à,0.00
+par rapport au,ADP,par rapport à,0.00
+par rapport aux,ADP,par rapport à,0.00
+par suite,ADVconj,,0.00
+par suite de,ADP,,0.00
+par surcroît,ADVdeg,,0.00
+parce que,SCONJ,,0.00
+parole d'honneur,NOUN,,0.00
+part time,NOUN,,0.00
+parti pris,NOUN,parti-pris,0.00
+pas plus que,ADP,,0.00
+pas plus tard que,ADP,,0.00
+paso doble,NOUN,,0.00
+pater familias,NOUN,,0.00
+pater noster,NOUN,,0.00
+pauvre diable,NOUN,,0.00
+pax americana,NOUN,,0.00
+pendant que,SCONJ,,0.00
+persona grata,ADJ,,0.00
+persona non grata,NOUN,,0.00
+peu à peu,ADV,,0.00
+peu de,DETind,,0.00
+peu de chose,NOUN,,0.00
+peu ou prou,ADV,,0.00
+photo d'identité,NOUN,,0.00
+pied de grue,NOUN,,0.00
+pied de lit,NOUN,,0.00
+pieds de haut,NOUN,,0.00
+pieds de lit,NOUN,,0.00
+pit bull,NOUN,,0.00
+plaque d'immatriculation,NOUN,,0.00
+play back,NOUN,,0.00
+plein air,NOUN,,0.00
+plus tard,ADV,,0.00
+plutôt deux fois que une,ADV,,0.00
+poignée de main,NOUN,,0.00
+poignées de main,NOUN,,0.00
+point de vue,NOUN,,0.00
+points de vue,NOUN,point de vue,0.00
+pom-pom girl,NOUN,,0.00
+pom-pom girls,NOUN,,0.00
+pomme de terre,NOUN,,0.00
+pommes de terre,NOUN,,0.00
+pompes funèbres,NOUN,,0.00
+pon point,NOUN,,0.00
+porte cochère,NOUN,,0.00
+porte d'entrée,NOUN,,0.00
+porte de derrière,NOUN,,0.00
+porter à croire,VERB,,0.00
+poser question,VERB,,0.00
+poser des questions,VERB,poser question,0.00
+poser la question,VERB,poser question,0.00
+poser une question,VERB,poser question,0.00
+post it,NOUN,,0.00
+post mortem,ADV,,0.00
+pour autant que,ADP,,0.00
+pour ce qui est de,ADP,,0.00
+pour cette fois,ADV,,0.00
+pour des prunes,ADP,,0.00
+pour ma part,ADP,,0.00
+pour sa part,ADP,,0.00
+pour ta part,ADP,,0.00
+pour que,SCONJ,,0.00
+pour tout,ADP,,0.00
+pour un peu,ADP,,0.00
+pour une bonne part,ADV,,0.00
+pour une fois,ADVconj,,0.00
+pour une fois que,SCONJ,,0.00
+P r,NOUN,Pr,0.00
+premier âge,NOUN,,0.00
+premier consul,NOUN,,0.00
+premier degré,NOUN,,0.00
+premier ministre,NOUN,Premier ministre,0.00
+Premier ministre,NOUN,,0.00
+premier plan,NOUN,,0.00
+prendre au sérieux,VERB,,0.00
+prendre contact,VERB,,0.00
+prendre conscience,VERB,,0.00
+prendre du plaisir,VERB,,0.00
+prendre en charge,VERB,,0.00
+prendre en exemple,VERB,,0.00
+prendre en compte,VERB,,0.00
+prendre exemple,VERB,,0.00
+prendre garde,VERB,,0.00
+prendre l'air,VERB,,0.00
+prendre la peine,VERB,,0.00
+prendre le soin de,VERB,,0.00
+prendre part,VERB,,0.00
+prendre parti,VERB,,0.00
+prendre place,VERB,,0.00
+prendre position,VERB,,0.00
+prendre ses jambes à son cou,VERB,,0.00
+prendre soin,VERB,,0.00
+près de,ADP,,0.00
+presse écrite,NOUN,,0.00
+prêt à,ADP,,0.00
+prime time,NOUN,,0.00
+prix Nobel,NOUN,,0.00
+proche de,ADP,,0.00
+procureur du roi,NOUN,,0.00
+proprement dit,ADV,,0.00
+proprement dite,ADV,,0.00
+proprement dites,ADV,,0.00
+proprement dits,ADV,,0.00
+public schools,NOUN,,0.00
+punching ball,NOUN,,0.00
+qu'est-ce que,ADV,,0.00
+quand et quand,ADP,,0.00
+quand même,ADV,,0.00
+quant à,ADP,quant à,0.00
+quant au,ADP,quant à,0.00
+quant aux,ADP,quant à,0.00
+quart d'heure,NOUN,,0.00
+quartier général,NOUN,,0.00
+que le diable l'emporte,INTJ,,0.00
+quel que soit,ADP,,0.00
+quelque chose,PRONind,,0.00
+quelque part,ADV,,0.00
+qui aime bien châtie bien,NOUN,,0.00
+qui plus est,ADVconj,,0.00
+qui que,SCONJ,,0.00
+quitte à,ADP,,0.00
+quoi qu'il en fût,ADP,,0.00
+quoi que,SCONJ,,0.00
+raison d'état,NOUN,,0.00
+raisons d'état,NOUN,raison d'état,0.00
+raison nécessaire,NOUN,,0.00
+raison suffisante,NOUN,,0.00
+raisons nécessaires,NOUN,raison nécessaire,0.00
+raisons suffisantes,NOUN,raison suffisante,0.00
+rapport sexuel,NOUN,,0.00
+rapports sexuels,NOUN,,0.00
+recto tono,ADV,,0.00
+recherche scientifique,NOUN,,0.00
+recherches scientifiques,NOUN,recherche scientifique,0.00
+rédacteur en chef,NOUN,,0.00
+rédactrice en chef,NOUN,rédacteur en chef,0.00
+règle morale,NOUN,,0.00
+règles morales,NOUN,,0.00
+reine mère,NOUN,,0.00
+relation sexuelle,NOUN,,0.00
+relations sexuelles,NOUN,,0.00
+remettre en question,VERB,,0.00
+rendez vous,NOUN,rendez-vous,0.00
+rendre compte,VERB,,0.00
+rendre grâce,VERB,,0.00
+rendre hommage,VERB,,0.00
+rendre justice,VERB,,0.00
+rendre service,VERB,,0.00
+rendre un service,VERB,,0.00
+rendre visite,VERB,,0.00
+répétition générale,NOUN,,0.00
+requiescat in pace,NOUN,,0.00
+révérende mère,NOUN,,0.00
+rhythm and blues,NOUN,,0.00
+ric et rac,ADV,,0.00
+roast beef,NOUN,,0.00
+robe de chambre,NOUN,,0.00
+rocking chair,NOUN,,0.00
+rouge à lèvres,NOUN,,0.00
+s'agir,VERB,,0.00
+s'en tenir à,VERB,s'en tenir à,0.00
+s'en tenir au,VERB,s'en tenir à,0.00
+s'en tenir aux,VERB,s'en tenir à,0.00
+s'agissant de,ADP,,0.00
+sac à dos,NOUN,,0.00
+sainte nitouche,NOUN,,0.00
+salle à manger,NOUN,,0.00
+salle de bains,NOUN,,0.00
+sans cela,CCONJ,,0.00
+sans cesse,ADV,,0.00
+sans compter,ADP,,0.00
+sans doute,ADVconj,,0.00
+sans perdre de temps,ADV,,0.00
+sans plus de,ADP,,0.00
+sans pour autant,ADP,,0.00
+sans préjudice de,ADP,,0.00
+sans que,SCONJ,,0.00
+sauf à,ADP,,0.00
+savoir bien,VERB,,0.00
+scenic railway,NOUN,,0.00
+sciences de l'homme,NOUN,,0.00
+sciences exactes,NOUN,,0.00
+science expérimentale,NOUN,,0.00
+sciences expérimentales,NOUN,science expérimentale,0.00
+sciences humaines,NOUN,,0.00
+sciences naturelles,NOUN,,0.00
+second degré,NOUN,,0.00
+secrétaire de rédaction,NOUN,,0.00
+secrétaire général,NOUN,,0.00
+sedia gestatoria,NOUN,,0.00
+self-made man,NOUN,,0.00
+sens commun,NOUN,,0.00
+sens critique,NOUN,,0.00
+sens unique,NOUN,,0.00
+se trouver,VERB,,0.00
+serrer la main,VERB,,0.00
+services sociaux,NOUN,,0.00
+si bien que,SCONJ,,0.00
+si peu que,ADP,,0.00
+signe de croix,NOUN,,0.00
+signe de la croix,NOUN,,0.00
+signe de tête,NOUN,,0.00
+sine die,ADV,,0.00
+sine qua non,ADV,,0.00
+Société des Nations,NOUN,SDN,0.00
+Société des nations,NOUN,SDN,0.00
+Son Excellence,NOUN,,0.00
+sous couleur de,ADP,,0.00
+sous couvert de,ADP,,0.00
+sous forme de,ADP,,0.00
+sous l'ombre de,ADP,,0.00
+sous la houlette de,ADP,,0.00
+sous la plume de,ADP,,0.00
+sous le couvert de,ADP,,0.00
+sous le prétexte de,ADP,,0.00
+sous le rapport de,ADP,,0.00
+sous les yeux de,ADP,,0.00
+sous peine de,ADP,,0.00
+sous prétexte de,ADP,,0.00
+sous réserve de,ADP,,0.00
+sous un nouveau jour,ADP,,0.00
+soutien gorge,NOUN,soutien-gorge,0.00
+soutien-gorge,NOUN,,0.00
+souventes fois,ADV,,0.00
+sri lankais,NOUN,,0.00
+sri lankais,ADJ,,0.00
+stabat mater,NOUN,,0.00
+statu quo,NOUN,,0.00
+story board,NOUN,,0.00
+stricto sensu,ADV,,0.00
+struggle for life,NOUN,,0.00
+sui generis,ADJ,,0.00
+suite à,ADP,suite à,0.00
+suite au,ADP,suite à,0.00
+suite aux,ADP,suite à,0.00
+supposé que,ADP,,0.00
+sur le plan,ADP,,0.00
+sur le point de,ADP,,0.00
+sursum corda,ADV,,0.00
+sus le sujet de,ADP,,0.00
+système nerveux,NOUN,,0.00
+table d'écoute,NOUN,,0.00
+table de chevet,NOUN,,0.00
+table des matières,NOUN,,0.00
+table ronde,NOUN,,0.00
+Table ronde,NOUN,table ronde,0.00
+Table Ronde,NOUN,table ronde,0.00
+taï chi,NOUN,,0.00
+talavera de la reina,NOUN,,0.00
+tandis que,SCONJ,,0.00
+tant de,DETind,,0.00
+tant et si bien que,ADP,,0.00
+tant pis,ADV,,0.00
+tant qu'à,ADP,,0.00
+tantôt à droite tantôt à gauche,ADV,,0.00
+tarte à la crème,NOUN,,0.00
+te deum,NOUN,,0.00
+téléphone portable,NOUN,,0.00
+temps à perdre,NOUN,,0.00
+tenir compte,VERB,,0.00
+tenir lieu de,VERB,,0.00
+terme à terme,ADJ,,0.00
+ne tenir pas lieu de,NOUN,tenir lieu de,0.00
+terra incognita,NOUN,,0.00
+tiers monde,NOUN,Tiers Monde,0.00
+Tiers Monde,NOUN,Tiers Monde,0.00
+toile cirée,NOUN,,0.00
+too much,ADJ,,0.00
+top models,NOUN,,0.00
+tôt ou tard,ADV,,0.00
+total général,NOUN,,0.00
+tour à tour,ADV,,0.00
+tous deux,PRONind,,0.00
+tous les deux,PRONind,,0.00
+tous les trois,PRONind,,0.00
+tout de même,ADV,,0.00
+tout de suite,ADV,,0.00
+tout le monde,NOUN,,0.00
+toutes les fois,ADV,,0.00
+toutes les fois que,SCONJ,,0.00
+traveller's chèques,NOUN,,0.00
+trésorier général,NOUN,,0.00
+triangle isocèle,NOUN,,0.00
+triangle rectangle,NOUN,,0.00
+triangles isocèles,NOUN,triangle isocèle,0.00
+triangles rectangles,NOUN,triangle rectangle,0.00
+tribunal d'instance,NOUN,,0.00
+tribunal d'instance,NOUN,,0.00
+Tribunal de Commerce,NOUN,,0.00
+tribunal de commerce,NOUN,Tribunal de Commerce,0.00
+tribunal de Commerce,NOUN,Tribunal de Commerce,0.00
+trois fois,ADV,,0.00
+trois fois par an,ADV,,0.00
+trois fois par mois,ADV,,0.00
+trois fois par semaine,ADV,,0.00
+tss tss,NOUN,,0.00
+tu autem,NOUN,,0.00
+tutti frutti,ADV,,0.00
+tutti quanti,ADV,,0.00
+ultima ratio,NOUN,,0.00
+une autre fois,ADV,,0.00
+une bonne fois,ADV,,0.00
+une bonne fois pour toutes,ADVconj,,0.00
+une bonne partie,DET,,0.00
+une fois,ADP,,0.00
+une fois,ADV,,0.00
+une fois par an,ADV,,0.00
+une fois par mois,ADV,,0.00
+une fois par semaine,ADV,,0.00
+une fois pour toutes,ADV,,0.00
+une fois que,SCONJ,,0.00
+urbi et orbi,ADV,,0.00
+va pour,ADP,,0.00
+vade retro,ADV,,0.00
+vae soli,ADV,,0.00
+vae victis,ADV,,0.00
+valeur morale,NOUN,,0.00
+valeurs morales,NOUN,valeur morale,0.00
+valet de chambre,NOUN,,0.00
+valet de pied,NOUN,,0.00
+venir à bout,VERB,,0.00
+venir de,VERB,,0.00
+vent debout contre,ADP,,0.00
+verre à vin,NOUN,,0.00
+vice-président général,NOUN,,0.00
+vie privée,NOUN,,0.00
+vie quotidienne,NOUN,,0.00
+vieille dame,NOUN,,0.00
+vis à vis,ADV,vis-à-vis,0.00
+vis-à-vis,ADV,,0.00
+vis-à-vis de,ADP,,0.00
+Votre Excellence,NOUN,,0.00
+vouloir dire,VERB,,0.00
+vox populi,NOUN,,0.00
+vulgum pecus,NOUN,,0.00
+wait and see,NOUN,,0.00
+wall street,NOUN,,0.00
+way of life,NOUN,,0.00
+week end,NOUN,,0.00
+world music,NOUN,,0.00
+y compris,ADP,,0.00
+yom kippour,NOUN,,0.00
+yom kippur,NOUN,,0.00
+diagramme de Venn,NOUN,,0.00

@@ -33,10 +33,17 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
+import static com.github.oeuvres.alix.common.Upos.PUNCTpara;
+import static com.github.oeuvres.alix.common.Upos.PUNCTsection;
+import static com.github.oeuvres.alix.common.Upos.PUNCTsent;
+import static com.github.oeuvres.alix.common.Upos.PUNCTstruct;
+import static com.github.oeuvres.alix.common.Upos.XML;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -47,158 +54,116 @@ import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 
-import static com.github.oeuvres.alix.common.Upos.*;
-
 import opennlp.tools.util.Sequence;
 
 /**
- * POS tagging filter with sentence buffering and many-to-many mapping
- * between Lucene tokens and the String[] sent to the POS tagger.
- *
- * Language-agnostic:
- * - no built-in lexical resources
- * - no language-specific rewrite rules
- * - no post-correction heuristics
- *
- * Rewriting is delegated to a pluggable TaggerRewriter. POS decoding is
- * delegated to a shared {@link PosTagger}.
+ * Assigns POS tags to a Lucene token stream by buffering tokens and submitting
+ * each sentence or bounded chunk to a shared {@link PosTagger}.
+ * <p>
+ * Each non-XML Lucene token is submitted to the tagger as exactly one token.
+ * Multiword expressions therefore remain single tokens, including any spaces
+ * they contain. Structural punctuation supplied by upstream filters is
+ * preserved. Sentence boundaries are submitted to the tagger as {@code "."},
+ * while XML tokens are omitted.
+ * </p>
+ * <p>
+ * The first lexical token after a sentence boundary is lowercased before it is
+ * submitted to the tagger. Leading punctuation does not consume this
+ * sentence-initial state, and the state is preserved when a sentence is split
+ * because it exceeds {@link #SENTMAX}.
+ * </p>
  */
 public class PosTaggingFilter extends TokenFilter
 {
-
-    /** Max buffered tokens per sentence/chunk. */
+    /** Maximum number of Lucene tokens buffered in one tagging chunk. */
     public static final int SENTMAX = 300;
 
-    /**
-     * Rewriter used to build the tagger String[] from a Lucene term.
-     * Contract:
-     * - return null or empty => fallback to identity (term)
-     * - returned strings are submitted to the tagger in place of the single Lucene token
-     * - this filter keeps mapping back to the original Lucene token index
-     */
-    @FunctionalInterface
-    public interface TaggerRewriter {
-        /**
-         * Append 0..N tagger tokens for one Lucene token.
-         * Contract: append only non-null, non-empty strings.
-         */
-        void rewrite(String term, List<String> out);
-    }
-
-    /** Identity rewriter (1 Lucene token -> 1 tagger token), no per-token array allocation. */
-    public static final TaggerRewriter IDENTITY_REWRITER = new TaggerRewriter() {
-        @Override
-        public void rewrite(final String term, final List<String> out) {
-            out.add(term);
-        }
-    };
-    
-    /** Identity rewriter (1 Lucene token -> 1 tagger token), no per-token array allocation. */
-    public static final TaggerRewriter HYPHEN_REWRITER = new TaggerRewriter() {
-        @Override
-        public void rewrite(final String term, final List<String> out) {
-            out.add(term.replace("-", ""));
-        }
-    };
-
-
-    /** The term provided by the Tokenizer (current token cursor). */
+    /** Current token term; registering it ensures that buffered states contain it. */
     @SuppressWarnings("unused")
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
-    /** POS attribute (read structural class from upstream; write POS from tagger). */
+    /** Current token POS; contains upstream structural classes before tagging. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
 
-    /** Probability attribute set from tagger confidence. */
+    /** Current token tagging probability; registering it ensures that buffered states contain it. */
+    @SuppressWarnings("unused")
     private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
 
-    /** Buffered token states (one sentence/chunk). */
+    /** Buffered token states for the current sentence or chunk. */
     private TokenStateQueue queue;
 
-    /** Shared thread-safe POS decoder. */
+    /** Queue index to corresponding tagger-token index, or {@code -1} when omitted. */
+    private int[] queueToTagIndex = new int[0];
+
+    /** Whether the next lexical token is the first lexical token of a sentence. */
+    private boolean sentenceStart = true;
+
+    /** Shared POS decoder. */
     private final PosTagger tagger;
 
-    /** Optional term rewriter for tagger input (language-specific logic belongs outside this class). */
-    private final TaggerRewriter rewriter;
-
-    // ---- Mapping buffers ----
-    /** tagger token index -> queue index (many tagger tokens may map to same queue token). */
-    private int[] tagToQueue = new int[0];
-
-    /** queue index -> first tagger token index, or -1 if not submitted to tagger (e.g. XML). */
-    private int[] queueToTagStart = new int[0];
-
-    /** queue index -> number of tagger tokens generated for this Lucene token (0,1,N). */
-    private int[] queueToTagCount = new int[0];
-
     /**
-     * Default constructor: identity rewrite (1->1).
+     * Creates a POS tagging filter.
      *
      * @param input upstream token stream
      * @param tagger shared POS decoder
-     */
-    public PosTaggingFilter(final TokenStream input, final PosTagger tagger)
-    {
-        this(input, tagger, IDENTITY_REWRITER);
-    }
-
-    /**
-     * Constructor with pluggable many-to-many rewriter.
-     *
-     * @param input upstream token stream
-     * @param tagger shared POS decoder
-     * @param rewriter optional token rewrite before POS tagging
+     * @throws NullPointerException if {@code tagger} is {@code null}
      */
     public PosTaggingFilter(
         final TokenStream input,
-        final PosTagger tagger,
-        final TaggerRewriter rewriter)
-    {
+        final PosTagger tagger
+    ) {
         super(input);
         if (tagger == null) {
             throw new NullPointerException("tagger");
         }
         this.tagger = tagger;
-        this.rewriter = (rewriter == null) ? IDENTITY_REWRITER : rewriter;
     }
 
+    /**
+     * Emits the next buffered and POS-tagged token, filling and tagging a new
+     * sentence or chunk when the queue is empty.
+     *
+     * @return {@code true} when a token is emitted; {@code false} at end of stream
+     * @throws IOException if the upstream token stream cannot be read
+     */
     @Override
     public final boolean incrementToken() throws IOException
     {
         ensureQueue();
 
-        // 0) Drain queued tokens first
         if (!queue.isEmpty()) {
             clearAttributes();
             queue.removeFirst(this);
             return true;
         }
 
-        // 1) Fill queue until boundary or SENTMAX or EOF
         fillQueue();
-
-        final int n = queue.size();
-        if (n == 0) {
+        if (queue.isEmpty()) {
             return false;
         }
 
-        // 2) Build tagger sentence + mappings, then tag, then write back
         tagBufferedQueue();
 
-        // 3) Emit first token of the now-tagged queue
         clearAttributes();
         queue.removeFirst(this);
         return true;
     }
 
+    /**
+     * Resets this filter and its sentence-start state for a new input stream.
+     *
+     * @throws IOException if the upstream token stream cannot be reset
+     */
     @Override
     public void reset() throws IOException
     {
         super.reset();
         ensureQueue();
         queue.clear();
+        sentenceStart = true;
     }
 
+    /** Creates the token-state queue on first use. */
     private void ensureQueue()
     {
         if (queue == null) {
@@ -207,171 +172,129 @@ public class PosTaggingFilter extends TokenFilter
     }
 
     /**
-     * Fill queue until sentence boundary, SENTMAX, or EOF.
+     * Reads upstream tokens until a sentence boundary, {@link #SENTMAX}, or
+     * end of input is reached. The boundary token itself is included.
+     *
+     * @throws IOException if the upstream token stream cannot be read
      */
     private void fillQueue() throws IOException
     {
         while (queue.size() < SENTMAX) {
             clearAttributes();
             if (!input.incrementToken()) {
-                break;
+                return;
             }
 
             queue.addLast(this);
-
-            final int pos = posAtt.getPos(); // structural classification from upstream
-            if (isSentenceBoundary(pos)) {
-                break;
+            if (isSentenceBoundary(posAtt.getPos())) {
+                return;
             }
         }
     }
 
     /**
-     * Build String[] for tagger with many-to-many mapping and write back tags.
+     * Tests whether an upstream structural POS code ends a sentence-sized
+     * tagging unit.
      *
-     * Policy for expanded tokens (1->N):
-     * - POS is NOT overwritten here (language-specific projection should be elsewhere)
-     * - probability is set to max(probabilities of generated tagger tokens)
+     * @param pos upstream POS code
+     * @return {@code true} for section, paragraph, sentence, or structural boundaries
+     */
+    private static boolean isSentenceBoundary(final int pos)
+    {
+        return pos == PUNCTsection.code
+            || pos == PUNCTpara.code
+            || pos == PUNCTsent.code
+            || pos == PUNCTstruct.code;
+    }
+
+    /**
+     * Builds the tagger input for the buffered queue, invokes the tagger, and
+     * writes each tag and probability back to its corresponding Lucene token.
      */
     private void tagBufferedQueue()
     {
         final int n = queue.size();
-        if (n == 0) return;
-
-        // Prepare per-queue mapping arrays
-        queueToTagStart = ArrayUtil.grow(queueToTagStart, n);
-        queueToTagCount = ArrayUtil.grow(queueToTagCount, n);
-        Arrays.fill(queueToTagStart, 0, n, -1);
-        Arrays.fill(queueToTagCount, 0, n, 0);
-
-        // Build tagger sentence dynamically
-        final List<String> sentenceList = new ArrayList<>(n + 8);
-        int m = 0; // tagger token count
-
-        // Build many-to-many mapping
-        boolean first = true;
-        for (int i = 0; i < n; i++) {
-            final PosAttribute p = queue.get(i).getAttribute(PosAttribute.class);
-            if (p == null) continue;
-
-            final int pos = p.getPos();
-
-            // Skip structural XML tags entirely (1 -> 0)
-            if (pos == XML.code) {
-                probAtt.setProb(1);
-                continue;
-            }
-
-            // Sentence boundaries are submitted as punctuation token (1 -> 1)
-            if (isSentenceBoundary(pos)) {
-                queueToTagStart[i] = m;
-                queueToTagCount[i] = 1;
-
-                tagToQueue = ArrayUtil.grow(tagToQueue, m + 1);
-                tagToQueue[m] = i;
-                sentenceList.add(".");
-                m++;
-                continue;
-            }
-
-            final CharTermAttribute t = queue.get(i).getAttribute(CharTermAttribute.class);
-            if (t == null || t.length() == 0) {
-                continue; // 1 -> 0
-            }
-            final String term;
-            // force lower casing of first word, Latin languages (even English) 
-            if (first) {
-                term = t.toString().toLowerCase();
-                first = false;
-            } else {
-                term = t.toString();
-            }
-
-            final int before = sentenceList.size();
-            rewriter.rewrite(term, sentenceList);
-            int cnt = sentenceList.size() - before;
-
-            // Defensive fallback to identity (rewriter appended nothing)
-            if (cnt <= 0) {
-                sentenceList.add(term);
-                cnt = 1;
-            }
-
-            queueToTagStart[i] = m;
-            queueToTagCount[i] = cnt;
-
-            tagToQueue = ArrayUtil.grow(tagToQueue, m + cnt);
-            for (int j = 0; j < cnt; j++) {
-                tagToQueue[m + j] = i;
-            }
-            m += cnt;
+        if (n == 0) {
+            return;
         }
 
-        // Nothing taggable: queue drains unchanged.
-        if (m == 0) return;
+        queueToTagIndex = ArrayUtil.grow(queueToTagIndex, n);
+        Arrays.fill(queueToTagIndex, 0, n, -1);
 
-        final String[] sentence = sentenceList.toArray(new String[m]);
-        
-        // debug, check how sentence is splitted
-        // final CharTermAttribute termLast = queue.get(n-1).getAttribute(CharTermAttribute.class);
-        // termLast.setEmpty().append("$$$");
-        // termLast.setEmpty().append(Arrays.toString(sentence));
+        final List<String> sentence = new ArrayList<>(n);
 
-        // Tag
-        final Sequence sequence = tagger.tag(sentence);
-        if (sequence == null) return;
+        for (int i = 0; i < n; i++) {
+            final PosAttribute pos = queue.get(i).getAttribute(PosAttribute.class);
+            if (pos == null) {
+                continue;
+            }
+
+            final int origPos = pos.getPos();
+
+            if (origPos == XML.code) {
+                final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
+                if (prob != null) {
+                    prob.setProb(1.0);
+                }
+                continue;
+            }
+
+            if (isSentenceBoundary(origPos)) {
+                sentence.add(".");
+                sentenceStart = true;
+                continue;
+            }
+
+            final CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
+            if (term == null || term.length() == 0) {
+                continue;
+            }
+
+            String taggerTerm = term.toString();
+            if (!Upos.isPunct(origPos)) {
+                if (sentenceStart) {
+                    taggerTerm = taggerTerm.toLowerCase(Locale.ROOT);
+                }
+                sentenceStart = false;
+            }
+
+            queueToTagIndex[i] = sentence.size();
+            sentence.add(taggerTerm);
+        }
+
+        if (sentence.isEmpty()) {
+            return;
+        }
+
+        final Sequence sequence = tagger.tag(sentence.toArray(new String[0]));
+        if (sequence == null) {
+            return;
+        }
 
         final List<String> tags = sequence.getOutcomes();
-        final double[] probs = sequence.getProbs();
+        final double[] probabilities = sequence.getProbs();
+        final int taggedLength = Math.min(sentence.size(), Math.min(tags.size(), probabilities.length));
 
-        final int tlen = Math.min(m, Math.min(tags.size(), probs.length));
-
-        // Write back, queue token by queue token (using queue -> tagger slice mapping)
         for (int i = 0; i < n; i++) {
-            final int start = queueToTagStart[i];
-            final int cnt = queueToTagCount[i];
-            if (start < 0 || cnt <= 0) continue;
-
-            final PosAttribute posAttr = queue.get(i).getAttribute(PosAttribute.class);
-            if (posAttr == null) continue;
-
-            final int origPos = posAttr.getPos();
-
-            // Preserve upstream punctuation classification unchanged
-            if (Upos.isPunct(origPos)) {
+            final int tagIndex = queueToTagIndex[i];
+            if (tagIndex < 0 || tagIndex >= taggedLength) {
                 continue;
             }
 
-            // Probability: max over generated slice (useful even for expanded tokens)
+            final PosAttribute pos = queue.get(i).getAttribute(PosAttribute.class);
+            if (pos == null || Upos.isPunct(pos.getPos())) {
+                continue;
+            }
+
             final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
             if (prob != null) {
-                double pmax = Double.NEGATIVE_INFINITY;
-                final int end = Math.min(start + cnt, tlen);
-                for (int j = start; j < end; j++) {
-                    if (probs[j] > pmax) pmax = probs[j];
-                }
-                if (pmax != Double.NEGATIVE_INFINITY) {
-                    prob.setProb(pmax);
-                }
+                prob.setProb(probabilities[tagIndex]);
             }
 
-            // POS write-back only for 1->1 mapping in this generic filter.
-            // Expanded tokens are rewritten for context preservation; projection is language-specific.
-            if (cnt != 1) {
-                continue;
-            }
-
-            if (start >= tlen) continue;
-
-            final Upos upos = Upos.get(tags.get(start));
-            if (upos != null) {
-                posAttr.setPos(upos.code());
+            final Upos taggedPos = Upos.get(tags.get(tagIndex));
+            if (taggedPos != null) {
+                pos.setPos(taggedPos.code());
             }
         }
-    }
-    
-    private static boolean isSentenceBoundary(final int pos)
-    {
-        return pos == PUNCTsection.code || pos == PUNCTpara.code || pos == PUNCTsent.code || pos == PUNCTstruct.code;
     }
 }

@@ -87,7 +87,7 @@ public final class FrenchLexicons
             Map.entry("ADVdeg", "ADV"), // 23
             Map.entry("PRONind", "PRON"), // 22
             Map.entry("DETind", "DET"), // 22
-            // Map.entry("ADVconj", "ADV"), // 20
+            Map.entry("ADVconj", "ADV"), // 20
             Map.entry("PRONrel", "PRON"), // 18
             Map.entry("PRONint", "PRON"), // 16
             Map.entry("SCONJ", "SCONJ"), // 16

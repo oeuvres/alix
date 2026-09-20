@@ -136,6 +136,8 @@ comment
 contre
 d'abord
 d’abord
+d'ailleurs
+d’ailleurs
 d'autre
 d’autre
 d'autres
@@ -428,7 +430,7 @@ oh
 on
 ont
 onze
-or
+or:CCONJ
 ou
 où
 ouais
@@ -448,6 +450,7 @@ parmi
 part
 pas
 pendant
+personne:PRON
 petit
 petite
 petites

@@ -97,7 +97,7 @@ public final class MweFilter extends TokenFilter
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 
     /** Buffered token states, including one look-ahead token. */
-    private final TokenStateQueue queue;
+    private TokenStateQueue queue;
 
     /** Normalized token text. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -117,7 +117,6 @@ public final class MweFilter extends TokenFilter
         super(input);
         lexicon.freeze();
         this.lexicon = lexicon;
-        this.queue = new TokenStateQueue(lexicon.maxLen() + 1, this);
     }
 
     /**
@@ -233,6 +232,9 @@ public final class MweFilter extends TokenFilter
     public void reset() throws IOException
     {
         super.reset();
+        if (this.queue == null) {
+            this.queue = new TokenStateQueue(lexicon.maxLen() + 1, this);
+        }
         queue.clear();
         inputExhausted = false;
     }

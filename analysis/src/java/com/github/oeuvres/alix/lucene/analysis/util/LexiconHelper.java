@@ -249,8 +249,8 @@ public final class LexiconHelper
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(resourcePath, "resourcePath");
         try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
-            csv.cellMax(2);
-            loadExpressions(lexicon, analyzer, csv, 0, 1, CsvHeader.SKIP);
+            csv.cellMax(3);
+            loadExpressions(lexicon, analyzer, csv, 0, 2, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -766,18 +766,23 @@ public final class LexiconHelper
             @Override
             protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
-                final String rawPosName = row.getCellAsString(posCol);
-                int posId = pr.posInt(rawPosName);
                 // normalize some chars before input entries
                 StringBuilder form = row.getCell(formCol);
                 Char.translate(form, "’", "'");
                 Char.trim(form);
+                if (form.isEmpty()) return false;
                 StringBuilder lemma = row.getCell(lemmaCol);
-                Char.translate(lemma, "’", "'");
-                Char.trim(lemma);
-                if (form.isEmpty() || lemma.isEmpty())
-                    return false;
+                if (!lemma.isEmpty()) {
+                    Char.translate(lemma, "’", "'");
+                    Char.trim(lemma);
+                }
+                // form=lemma
+                else {
+                    lemma = form;
+                }
                 lex.put(form, lemma);
+                final String rawPosName = row.getCellAsString(posCol);
+                int posId = pr.posInt(rawPosName);
                 if (posId >= 0) {
                     lex.put(form, posId, lemma);
                 }
