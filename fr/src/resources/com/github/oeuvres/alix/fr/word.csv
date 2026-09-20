@@ -96962,7 +96962,6 @@ conduite,NOUN,conduite,25.34
 conduite,VERBpartpast,conduire,7.09
 conduite,ADJ,conduit,1.28
 conduites,NOUN,conduite,1.42
-conduites,VERBpartpast,conduire,0.95
 conduites,ADJ,conduit,0.20
 conduits,ADJ,conduit,
 conduits,VERBpartpast,conduire,5.47
@@ -508190,7 +508189,6 @@ cas particuliers,NOUN,cas particulier,0.00
 casus belli,NOUN,,0.00
 cause finale,NOUN,,0.00
 causes finales,NOUN,cause finale,0.00
-ce dernier,PRONind,,0.00
 cela supposé,ADP,,0.00
 celle ci,PRONdem,celle-ci,0.00
 celle là,PRONdem,celle-là,0.00
@@ -508203,9 +508201,7 @@ celui-là,PRONdem,,0.00
 centrale nucléaire,NOUN,,0.00
 centrales nucléaires,NOUN,centrale nucléaire,0.00
 cependant que,SCONJ,,0.00
-ces derniers,PRONind,,0.00
 c'est-à-dire,NOUN,,0.00
-cette dernière,PRONind,,0.00
 cette fois ci,ADVconj,,0.00
 cette fois là,ADVconj,,0.00
 cette fois où,CCONJ,,0.00
@@ -508725,7 +508721,6 @@ kyrie eleison,NOUN,,0.00
 l'un,PRONind,,0.00
 l'une,PRONind,,0.00
 l'autre,PRONind,,0.00
-la dernière,PRONind,,0.00
 la fois où,SCONJ,,0.00
 la mienne,PRONprs,,0.00
 langue française,NOUN,,0.00
@@ -508739,7 +508734,6 @@ lacryma christi,NOUN,,0.00
 laisser passer,VERB,,0.00
 laisser tomber,VERB,,0.00
 langue vivante,NOUN,,0.00
-le dernier,PRONind,,0.00
 le diable soit de,ADP,,0.00
 le long de,ADP,,0.00
 le long des,ADP,,0.00
@@ -509305,3 +509299,16 @@ y compris,ADP,,0.00
 yom kippour,NOUN,,0.00
 yom kippur,NOUN,,0.00
 diagramme de Venn,NOUN,,0.00
+av. J.-C.,NOUN,,0.0
+cette fois ci,PRONdem,,0.0
+etc.,NOUN,,0.0
+grand-chose,NOUN,,0.0
+Melle,NOUN,,0.0
+n'est-ce pas,INTJ,,0.0
+par-derrière,NOUN,,0.0
+par-devant,NOUN,,0.0
+par-dessous,NOUN,,0.0
+par-dessus,NOUN,,0.0
+Pr,NOUN,,0.0
+tenir lieu de,NOUN,,0.0
+

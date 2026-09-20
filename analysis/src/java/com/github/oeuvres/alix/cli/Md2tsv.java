@@ -18,13 +18,14 @@ import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
 
 /**
  * Convert Markdown files to TSV files containing Lucene terms, lemmas,
- * and part-of-speech tags.
+ * part-of-speech tags, and POS-tagging probabilities.
  *
  * <p>YAML front matter is copied to the TSV header as comment metadata.
  * The Markdown body is then passed directly to the Lucene analyzer.</p>
@@ -172,7 +173,7 @@ public class Md2tsv
 
     /**
      * Analyze the remaining Markdown content and write its terms, lemmas,
-     * and part-of-speech tags.
+     * part-of-speech tags, and POS-tagging probabilities.
      *
      * @param reader reader positioned at the Markdown body
      * @param out TSV writer
@@ -192,6 +193,8 @@ public class Md2tsv
                 tokens.addAttribute(PosAttribute.class);
             LemmaAttribute lemmaAtt =
                 tokens.addAttribute(LemmaAttribute.class);
+            ProbAttribute probAtt =
+                tokens.addAttribute(ProbAttribute.class);
 
             tokens.reset();
 
@@ -206,6 +209,10 @@ public class Md2tsv
                 out.write(lemma);
                 out.write('\t');
                 out.write(Upos.name(posAtt.getPos()));
+                /*
+                out.write('\t');
+                out.write(Double.toString(probAtt.getProb()));
+                */
                 out.newLine();
             }
 

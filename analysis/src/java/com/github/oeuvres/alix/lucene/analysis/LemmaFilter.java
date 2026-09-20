@@ -69,9 +69,12 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
  *   <li>When a POS is present, lemma lookup first uses that POS. If the
  *       POS-specific mapping is absent, lookup falls back to the POS-agnostic
  *       mapping. The tagger POS is evidence, not an authority for lemma choice.</li>
- *   <li>When POS is unknown, capitalization is used as a fallback: an uppercase
- *       token inside a sentence is treated as a proper name, whereas an uppercase
- *       token at sentence start may be probed in lowercase.</li>
+ *   <li>For an uppercase form unknown in its original case, lowercase lookup is
+ *       attempted. If the lowercase form is also absent, the token is tagged
+ *       {@code PROPN}, even when the statistical tagger proposed another POS.</li>
+ *   <li>When POS itself is unknown, sentence position adds a further fallback:
+ *       an uppercase token inside a sentence is treated as a proper name, whereas
+ *       an uppercase token at sentence start may be probed in lowercase.</li>
  *   <li>A POS-agnostic lemma is therefore both the fallback after a failed
  *       POS-specific lookup and the direct lookup when POS is unknown.</li>
  * </ol>
@@ -229,6 +232,12 @@ public final class LemmaFilter extends TokenFilter
         }
 
         if (termId < 0) {
+            // No exact or lowercase dictionary form exists. In this case,
+            // capitalization is stronger evidence than a non-PROPN proposal
+            // from the statistical tagger: restore the proper-name fallback.
+            if (uppercase) {
+                posAtt.setPos(Upos.PROPN.code);
+            }
             return true;
         }
 

@@ -86,7 +86,6 @@ public class PosTaggingFilter extends TokenFilter
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
 
     /** Current token tagging probability; registering it ensures that buffered states contain it. */
-    @SuppressWarnings("unused")
     private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
 
     /** Buffered token states for the current sentence or chunk. */
