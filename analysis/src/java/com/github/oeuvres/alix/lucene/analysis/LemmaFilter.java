@@ -33,8 +33,6 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
-import static com.github.oeuvres.alix.common.Upos.XML;
-
 import java.io.IOException;
 import java.util.Objects;
 
@@ -51,188 +49,275 @@ import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 
-
 /**
  * Populates a parallel lemma channel for each token using a {@link LemmaLexicon}.
  *
- * <p>This filter does <b>not</b> replace the token text carried by
- * {@link org.apache.lucene.analysis.tokenattributes.CharTermAttribute}.
- * Instead, it writes the resolved lemma (when available) into a custom
- * {@link LemmaAttribute}, allowing downstream consumers to choose between:
+ * <p>This filter never changes the token text carried by {@link CharTermAttribute}.
+ * Resolved lemmas are written to {@link LemmaAttribute}; an empty lemma means that
+ * no lemma override is required and downstream code may retain the surface form.
  *
- * <ul>
- *   <li>the original surface / inflected form (from {@code CharTermAttribute}), and</li>
- *   <li>the lemma form (from {@code LemmaAttribute}).</li>
- * </ul>
+ * <h2>Lookup policy</h2>
  *
- * <p>The lemma channel is <b>sparse</b>: {@code LemmaAttribute} is left empty when no
- * useful lemma is produced (see rules below). This preserves a clear semantic invariant:
- * an empty lemma slot means "no lemma override for this token".
- *
- * <h2>Lookup strategy</h2>
- *
- * <p>For each token, this filter:
+ * <p>The filter gives precedence to information that is stronger than a generic
+ * dictionary lookup:
  * <ol>
- *   <li>reads the current surface form from {@code CharTermAttribute},</li>
- *   <li>looks up the corresponding form id in the {@link LemmaLexicon},</li>
- *   <li>tries a POS-specific lemma lookup using {@link PosAttribute},</li>
- *   <li>optionally falls back to a POS-agnostic lemma lookup (filter policy),</li>
- *   <li>writes the lemma into {@code LemmaAttribute} only if it is distinct from the surface form.</li>
+ *   <li>An uppercase form present in the supplied proper-name set is protected,
+ *       tagged {@code PROPN}, and is not lemmatized through the word lexicon.</li>
+ *   <li>A token already tagged as {@code PROPN} (or a project-specific PROPN
+ *       subtype) is protected from common-word lemmatization. Proper-name
+ *       normalization belongs to a separate resource.</li>
+ *   <li>When a POS is present, lemma lookup first uses that POS. If the
+ *       POS-specific mapping is absent, lookup falls back to the POS-agnostic
+ *       mapping. The tagger POS is evidence, not an authority for lemma choice.</li>
+ *   <li>When POS is unknown, capitalization is used as a fallback: an uppercase
+ *       token inside a sentence is treated as a proper name, whereas an uppercase
+ *       token at sentence start may be probed in lowercase.</li>
+ *   <li>A POS-agnostic lemma is therefore both the fallback after a failed
+ *       POS-specific lookup and the direct lookup when POS is unknown.</li>
  * </ol>
+ *
+ * <p>Lowercase probing never rewrites {@code CharTermAttribute}. If the lowercase
+ * dictionary form is itself the lemma, it is copied to {@code LemmaAttribute};
+ * for example surface {@code Mais} may yield lemma {@code mais}.
+ *
+ * <h2>Sentence-start state</h2>
+ *
+ * <p>Start of stream is treated as sentence start. Sentence, paragraph, section,
+ * and structural boundaries reset the state. XML and other punctuation do not
+ * consume it. The first non-punctuation token consumes the state even when that
+ * token is a keyword or a number.
  *
  * <h2>Tokens ignored by design</h2>
  *
- * <p>No lemma is written (the lemma channel remains empty) for:
- * <ul>
- *   <li>tokens marked as keywords ({@link org.apache.lucene.analysis.tokenattributes.KeywordAttribute}),</li>
- *   <li>punctuation tokens (as determined from {@link PosAttribute}),</li>
- *   <li>XML / markup sentinel tokens (according to the POS code policy used by this pipeline),</li>
- *   <li>tokens not found in the lexicon,</li>
- *   <li>tokens whose resolved lemma is identical to the surface form.</li>
- * </ul>
+ * <p>No lemma is written for XML, punctuation, numbers, keywords, protected or
+ * tagged proper names, acronyms protected from lowercase probing, unknown forms,
+ * or forms for which neither a POS-specific nor a POS-agnostic lemma can be found.
  *
- * <h2>Attribute contract</h2>
- *
- * <p>This filter requires the following attributes to be present in the stream:
- * <ul>
- *   <li>{@link org.apache.lucene.analysis.tokenattributes.CharTermAttribute} (input token text),</li>
- *   <li>{@link PosAttribute} (POS code used for lemma disambiguation),</li>
- *   <li>{@link org.apache.lucene.analysis.tokenattributes.KeywordAttribute} (skip-lemmatization marker),</li>
- *   <li>{@link LemmaAttribute} (output lemma channel; added by this filter if absent).</li>
- * </ul>
- *
- * <p>The filter should clear or empty {@code LemmaAttribute} on every token before attempting
- * lookup, so that the lemma channel cannot accidentally retain a previous token value.
- *
- * <h2>Indexing note</h2>
- *
- * <p>{@code LemmaAttribute} is a custom analysis-time attribute. Standard Lucene indexing
- * components do not automatically persist custom attributes into the index. If the lemma channel
- * must be indexed, project it explicitly to a dedicated field (for example, by replaying tokens
- * into a second {@code TokenStream}).
- * 
- * <p>The lemma channel is sparse: LemmaAttribute is left empty for punctuation, markup/XML sentinel 
- * tokens, keywords, unknown forms.
- *
- * <h2>Performance characteristics</h2>
- *
- * <p>This filter is intended to be allocation-light:
- * lexicon forms are copied from interned storage into {@code LemmaAttribute}'s reusable
- * {@code char[]} buffer, avoiding per-token {@code String} creation in the hot path.
- *
- * <p><b>Policy note:</b> this filter intentionally keeps lookup policy explicit in the
- * implementation (for example, POS-specific lookup and fallback order).
- *
- * @see LemmaLexicon
  * @see LemmaAttribute
+ * @see LemmaLexicon
  * @see PosAttribute
  */
 public final class LemmaFilter extends TokenFilter
 {
-    /** The lemma lexicon */
+    /** Lemma lexicon for common-word forms. */
     private final LemmaLexicon lexicon;
-    /** A set of proper names to protect from lower casing */
+
+    /** Optional set of proper names protected from common-word lemmatization. */
     private final CharArraySet propn;
-    /** Reusable probe for transformed dictionary lookup (no String allocation in hot path). */
+
+    /** Reusable probe for lowercase dictionary lookup. */
     private final TermProbe probe = new TermProbe();
 
-
+    /** Current surface token. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+
+    /** Keyword marker used to suppress lemmatization. */
     private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
+
+    /** Current POS supplied by upstream analysis. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+
+    /** Sparse output lemma channel. */
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
 
-    public LemmaFilter(TokenStream input, LemmaLexicon lexicon)
+    /** Whether the next lexical token is sentence-initial. */
+    private boolean sentenceStart = true;
+
+    /**
+     * Creates a lemmatization side-channel filter without a proper-name set.
+     *
+     * @param input input token stream
+     * @param lexicon lemma lexicon used to resolve forms and lemmas
+     * @throws NullPointerException if {@code input} or {@code lexicon} is null
+     */
+    public LemmaFilter(final TokenStream input, final LemmaLexicon lexicon)
     {
         this(input, lexicon, null);
     }
+
     /**
      * Creates a lemmatization side-channel filter.
      *
      * @param input input token stream
-     * @param lexicon lemma lexicon used to resolve forms and lemmas
-     * @throws NullPointerException if {@code input} or {@code lex} is null
+     * @param lexicon lemma lexicon used to resolve common-word forms and lemmas
+     * @param propn optional set of protected proper-name surface forms
+     * @throws NullPointerException if {@code input} or {@code lexicon} is null
      */
-    public LemmaFilter(TokenStream input, LemmaLexicon lexicon, CharArraySet propn)
-    {
-        super(input);
+    public LemmaFilter(
+        final TokenStream input,
+        final LemmaLexicon lexicon,
+        final CharArraySet propn
+    ) {
+        super(Objects.requireNonNull(input, "input"));
         this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
         this.propn = propn;
     }
 
     /**
-     * Advances the stream by one token and populates {@link LemmaAttribute} when a distinct lemma
-     * can be resolved for the current token.
+     * Advances the stream by one token and populates {@link LemmaAttribute} when
+     * a distinct or case-normalized lemma can be resolved.
      *
-     * <p>The token text in {@link org.apache.lucene.analysis.tokenattributes.CharTermAttribute}
-     * is never modified by this filter.
-     *
-     * @return {@code true} if a token is available, {@code false} at end of stream
+     * @return {@code true} if a token is available; {@code false} at end of stream
      * @throws IOException if the input stream throws while advancing
      */
     @Override
     public boolean incrementToken() throws IOException
     {
         lemmaAtt.setEmpty();
-        if (!input.incrementToken()) return false;
-        
-        if (keywordAtt.isKeyword()) return true;
+        if (!input.incrementToken()) {
+            return false;
+        }
 
         final int posId = posAtt.getPos();
-        if (posId == XML.code || Upos.isPunct(posId)) {
+
+        if (isSentenceBoundary(posId)) {
+            sentenceStart = true;
             return true;
         }
-        // unify numbers
-        if (Upos.isNum(posId)) {
+
+        // XML and non-boundary punctuation do not consume sentence-start state.
+        if (posId == Upos.XML.code || Upos.isPunct(posId)) {
             return true;
         }
+
         if (termAtt.length() < 1) {
-            // an upper filter may have strip this position
             return true;
         }
-        
-        // Is surface known with this case?
+
+        // Any non-punctuation token consumes sentence-start state, even if skipped below.
+        final boolean atSentenceStart = sentenceStart;
+        sentenceStart = false;
+
+        if (keywordAtt.isKeyword() || Upos.isNum(posId)) {
+            return true;
+        }
+
+        final boolean uppercase = Char.isUpperCase(termAtt.charAt(0));
+        final boolean hasPos = hasPos(posId);
+
+        // Explicit proper-name protection has priority over the common-word lexicon.
+        if (uppercase && propn != null && propn.contains(termAtt)) {
+            posAtt.setPos(Upos.PROPN.code);
+            return true;
+        }
+
+        // word.csv must never normalize a token already identified as a proper name.
+        if (isProperName(posId)) {
+            return true;
+        }
+
+        // With no POS information, internal capitalization is our proper-name fallback.
+        if (uppercase && !hasPos && !atSentenceStart) {
+            posAtt.setPos(Upos.PROPN.code);
+            return true;
+        }
+
+        // Protect acronyms from accidental lowercase lexical matches (USA != user, etc.).
+        if (uppercase && termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) {
+            return true;
+        }
+
         int termId = lexicon.ord(termAtt);
-        // if not known, try lower case
-        if (termId < 0 && Char.isUpperCase(termAtt.charAt(0)) ) {
-            // Protect proper name Paris ≠ parier
-            if (propn != null && propn.contains(termAtt)) {
-                posAtt.setPos(Upos.PROPN.code);
-                return true;
-            }
-            // Protect acronym, USA ≠ user
-            if (termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) {
-                // are acronym PROPN?
-                return true;
-            }
+        boolean lowercaseLookup = false;
+
+        // A capitalized unknown form may be a sentence-initial common word, or may
+        // have a non-PROPN POS proposal supplied by an upstream tagger.
+        if (termId < 0 && uppercase) {
             probe.copyFrom(termAtt).toLowerCase();
             termId = lexicon.ord(probe);
-            if (termId < 0) { // seems not a lang word 
-                posAtt.setPos(Upos.PROPN.code);
-                return true;
-            }
-            // surface is known as common word, normalize case
-            // keep pos from PoTagger
-            termAtt.setEmpty().append(probe);
+            lowercaseLookup = (termId >= 0);
         }
 
-        // Lookup with pos
-        int lemmaId = (posId >= 0) ? lexicon.lemmaId(termId, posId) : -1;
+        if (termId < 0) {
+            return true;
+        }
 
-        // Default lemma (pos-agnostic)
+        int lemmaId = LemmaLexicon.NO_LEMMA;
+        if (hasPos) {
+            // The tagger POS is tried first, but it is only a proposal. A missing
+            // POS-specific mapping must not prevent the dictionary fallback below.
+            lemmaId = lexicon.lemmaId(termId, posId);
+        }
+
+        // POS-agnostic dictionary fallback. This is also the direct lookup when
+        // no usable POS was supplied upstream.
         if (lemmaId < 0) {
-            lemmaId = lexicon.lemmaId(termId); // returns -1 if none
+            lemmaId = lexicon.lemmaId(termId);
         }
 
-        // Nothing usable
-        if (lemmaId < 0 || lemmaId == termId) return true;
+        if (lemmaId < 0) {
+            return true;
+        }
 
-        // Copy lemma proposition in lemmaAtt
+        // For an exact-case lookup, identical form and lemma need no override.
+        // For a lowercase probe, they still differ from the original surface case.
+        if (lemmaId == termId && !lowercaseLookup) {
+            return true;
+        }
+
+        copyLemma(lemmaId);
+        return true;
+    }
+
+    /**
+     * Resets sentence-position state for a reused token stream.
+     *
+     * @throws IOException if the upstream stream cannot be reset
+     */
+    @Override
+    public void reset() throws IOException
+    {
+        super.reset();
+        sentenceStart = true;
+        probe.clear();
+    }
+
+    /**
+     * Copies one interned lexicon entry to the lemma output attribute.
+     *
+     * @param lemmaId lexicon ordinal of the lemma
+     */
+    private void copyLemma(final int lemmaId)
+    {
         final int len = lexicon.length(lemmaId);
         final char[] dst = lemmaAtt.resizeBuffer(len);
         lexicon.copy(lemmaId, dst, 0);
         lemmaAtt.setLength(len);
+    }
 
-        return true;
+    /**
+     * Tests whether a POS value is available for a first, POS-specific lemma lookup.
+     *
+     * @param posId POS code
+     * @return {@code true} unless the POS is unset or explicitly unknown
+     */
+    private static boolean hasPos(final int posId)
+    {
+        return posId > PosAttribute.UNKNOWN && posId != Upos.UNKNOWN.code;
+    }
+
+    /**
+     * Tests the PROPN code family, including project-specific PROPN subtypes.
+     *
+     * @param posId POS code
+     * @return {@code true} for a proper-name POS
+     */
+    private static boolean isProperName(final int posId)
+    {
+        return posId >= Upos.PROPN.code && posId <= Upos.PROPNgod.code;
+    }
+
+    /**
+     * Tests whether a structural POS code starts a new sentence context.
+     *
+     * @param posId POS code
+     * @return {@code true} for sentence, paragraph, section, or structural boundaries
+     */
+    private static boolean isSentenceBoundary(final int posId)
+    {
+        return posId == Upos.PUNCTsent.code
+            || posId == Upos.PUNCTpara.code
+            || posId == Upos.PUNCTsection.code
+            || posId == Upos.PUNCTstruct.code;
     }
 }
