@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -796,8 +797,13 @@ public final class LexiconHelper
     
 
     /**
-     * Loads POS tags from a classpath CSV resource into a mutable OpenNLP tag
-     * dictionary.
+     * Loads POS tags from a classpath CSV resource and optionally removes
+     * frequency-supported tags that are much rarer than the strongest tag for
+     * the same surface form.
+     *
+     * <p>A zero frequency is treated as "no frequency information" and is never
+     * removed by the ratio filter. This preserves manually added dictionary
+     * entries carrying {@code 0.0}.</p>
      *
      * @param tagDic       mutable tag dictionary to populate
      * @param anchor       class used to resolve the resource path
@@ -833,17 +839,32 @@ public final class LexiconHelper
 
         try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
             csv.separator(sep).cellMax(maxCol);
-            loadTags(tagDic, csv, csvHeader, formCol, tagCol, freqCol, freqMin, posResolver, null);
+            loadTags(
+                tagDic,
+                csv,
+                csvHeader,
+                formCol,
+                tagCol,
+                freqCol,
+                freqMin,
+                posResolver,
+                null
+            );
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
 
     /**
-     * Loads POS tags from a CSV reader into a mutable OpenNLP tag dictionary.
-     * If {@code freqCol < 0}, every otherwise valid row is considered. Otherwise
-     * the row must contain a numeric frequency greater than or equal to
-     * {@code freqMin}.
+     * Loads POS tags from a CSV reader and optionally prunes very weak
+     * frequency-supported alternatives for each surface form.
+     *
+     * <p>Frequencies are aggregated after POS rewriting, so source categories
+     * such as {@code VERBpartpast} and {@code VERBpartpres} contribute to the
+     * rewritten {@code VERB} tag. A tag is removed only when all of its rows
+     * have positive frequency and the strongest positive-frequency tag is at
+     * least {@code freqRatio} times more frequent. Any row with frequency
+     * {@code 0.0} protects that rewritten tag from ratio pruning.</p>
      *
      * @param tagDic       mutable tag dictionary to populate
      * @param csv          CSV reader
@@ -852,6 +873,8 @@ public final class LexiconHelper
      * @param tagCol       column containing the source POS tag
      * @param freqCol      frequency column; if negative, frequency is ignored
      * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
+     * @param freqRatio    dominant/candidate ratio at which a positive-frequency
+     *                     candidate is removed; must be greater than 1
      * @param posResolver  POS resolver; {@code null} uses {@link #DEFAULT_POS_RESOLVER}
      * @param report       report sink; {@code null} is silent
      * @throws UncheckedIOException on read error
@@ -884,27 +907,34 @@ public final class LexiconHelper
             ? maxRequiredCol(formCol, tagCol)
             : maxRequiredCol(formCol, tagCol, freqCol);
 
+        final Map<String, LinkedHashMap<String, TagEvidence>> evidenceByWord =
+            new LinkedHashMap<>();
+
         final CsvRowHandler handler = new CsvRowHandler()
         {
             @Override
             protected boolean accept(final CSVReader row) throws UncheckedIOException
             {
+                double frequency = 0.0;
+                boolean hasFrequency = false;
+
                 if (freqCol >= 0) {
                     final String freqText = row.getCellAsString(freqCol);
                     if (freqText == null || freqText.isBlank()) {
                         return false;
                     }
-                    final double freq;
                     try {
-                        freq = Double.parseDouble(freqText.trim());
+                        frequency = Double.parseDouble(freqText.trim());
                     } catch (NumberFormatException e) {
                         rep.warn(row.getSpec() + ":" + row.getLineNo()
                             + " invalid frequency=" + freqText);
                         return false;
                     }
-                    if (!Double.isFinite(freq) || freq < freqMin) {
+                    if (!Double.isFinite(frequency)
+                            || (frequency != 0.0 && frequency < freqMin)) {
                         return false;
                     }
+                    hasFrequency = true;
                 }
 
                 final String tag = pr.posTag(row.getCellAsString(tagCol));
@@ -920,42 +950,67 @@ public final class LexiconHelper
                 }
 
                 final String word = form.toString();
-                final String[] oldTags = tagDic.getTags(word);
-                if (oldTags == null || oldTags.length == 0) {
-                    tagDic.put(word, tag);
-                    return true;
+                final LinkedHashMap<String, TagEvidence> byTag =
+                    evidenceByWord.computeIfAbsent(word, key -> new LinkedHashMap<>());
+                final TagEvidence evidence =
+                    byTag.computeIfAbsent(tag, key -> new TagEvidence());
+
+                if (!hasFrequency || frequency == 0.0) {
+                    evidence.unscored = true;
+                } else {
+                    evidence.frequency += frequency;
                 }
-                for (String oldTag : oldTags) {
-                    if (tag.equals(oldTag)) {
-                        return false;
-                    }
-                }
-                final String[] tags = Arrays.copyOf(oldTags, oldTags.length + 1);
-                tags[oldTags.length] = tag;
-                tagDic.put(word, tags);
                 return true;
             }
         };
 
         forEachDataRow(csv, csvHeader, minCols, rep, handler);
+
+        for (Map.Entry<String, LinkedHashMap<String, TagEvidence>> wordEntry
+                : evidenceByWord.entrySet()) {
+            double maxFrequency = 0.0;
+            for (TagEvidence evidence : wordEntry.getValue().values()) {
+                if (evidence.frequency > maxFrequency) {
+                    maxFrequency = evidence.frequency;
+                }
+            }
+
+            final List<String> tags = new ArrayList<>();
+            final String[] oldTags = tagDic.getTags(wordEntry.getKey());
+            if (oldTags != null) {
+                tags.addAll(Arrays.asList(oldTags));
+            }
+
+            for (Map.Entry<String, TagEvidence> tagEntry : wordEntry.getValue().entrySet()) {
+                final TagEvidence evidence = tagEntry.getValue();
+                if (!evidence.unscored
+                        && evidence.frequency > 0.0
+                ) {
+                    continue;
+                }
+                if (!tags.contains(tagEntry.getKey())) {
+                    tags.add(tagEntry.getKey());
+                }
+            }
+
+            if (!tags.isEmpty()) {
+                tagDic.put(wordEntry.getKey(), tags.toArray(new String[0]));
+            }
+        }
+
         pr.endFile(null);
     }
 
     /**
-     * Convenience overload using {@link #DEFAULT_POS_RESOLVER}.
+     * Frequency evidence accumulated for one rewritten POS tag of one surface form.
      */
-    public static void loadTags(
-        final MutableTagDictionary tagDic,
-        final CSVReader csv,
-        final CsvHeader csvHeader,
-        final int formCol,
-        final int tagCol,
-        final int freqCol,
-        final double freqMin,
-        final Report report)
-        throws UncheckedIOException
+    private static final class TagEvidence
     {
-        loadTags(tagDic, csv, csvHeader, formCol, tagCol, freqCol, freqMin, null, report);
+        /** Sum of positive FREQLIVRES values. */
+        private double frequency;
+
+        /** True when at least one row has no usable frequency evidence. */
+        private boolean unscored;
     }
 
     public static POSModel loadPosModel(final Class<?> anchor, String path)

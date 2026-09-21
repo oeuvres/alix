@@ -46,6 +46,7 @@ import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTagger;
@@ -81,6 +82,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
 
     /** Shared thread-safe POS decoder for this analyzer. */
     private final PosTagger posTagger;
+
+    /** Markup parsing mode used by every tokenizer created by this analyzer. */
+    private final MarkupMode markupMode;
 
     /** Word2vec analyzer. */
     private final Analyzer word2vec;
@@ -134,7 +138,19 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public FrenchAnalyzer() throws IOException
     {
+        this(MarkupMode.XML);
+    }
+
+    /**
+     * Builds a French analyzer with the default lexical resources and markup mode.
+     *
+     * @param markupMode markup parsing mode used by the analyzer tokenizers
+     * @throws IOException if an analyzer resource cannot be initialized
+     */
+    public FrenchAnalyzer(final MarkupMode markupMode) throws IOException
+    {
         super(PER_FIELD_REUSE_STRATEGY);
+        this.markupMode = (markupMode == null) ? MarkupMode.XML : markupMode;
 
         stopwords = FrenchLexicons.buildStopwords();
         gramwords = FrenchLexicons.buildGramwords();
@@ -365,7 +381,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         protected TokenStreamComponents createComponents(final String fieldName)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
             TokenStream ts = tokenizer;
             ts = new MarkupZoneFilter(
                 ts,
@@ -391,7 +407,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         protected TokenStreamComponents createComponents(final String fieldName)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
             TokenStream ts = tokenizer;
             ts = new MarkupZoneFilter(
                 ts,
@@ -426,7 +442,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         protected TokenStreamComponents createComponents(final String fieldName)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
             TokenStream ts = canonicChain(tokenizer);
             ts = new CleanupFilter(ts, noisetokens, gramwords); // remove noise and function words
             return new TokenStreamComponents(tokenizer, ts);
@@ -451,7 +467,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         protected TokenStreamComponents createComponents(final String fieldName)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
             TokenStream ts = tokenizer;
             ts = new FrenchCliticSplitFilter(ts);
             ts = new ReplaceFilter(ts, normalizer);
@@ -483,7 +499,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         protected TokenStreamComponents createComponents(final String fieldName)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer(brevidots);
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
             TokenStream ts = tokenizer;
             ts = new MarkupZoneFilter(
                 ts,

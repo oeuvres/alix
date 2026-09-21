@@ -98,6 +98,9 @@ import com.github.oeuvres.alix.util.Char;
  */
 public class MarkupTokenizer extends Tokenizer
 {
+    /** Controls whether angle-bracket markup is parsed as XML tokens. */
+    public enum MarkupMode { NONE, XML }
+
     /** Normalized character used to represent one logical line ending in a line-break event. */
     public static final char LINE_BREAK_MARK = '↵';
 
@@ -127,6 +130,9 @@ public class MarkupTokenizer extends Tokenizer
 
     /** Configured brevidots, stored with their final dot, for example {@code "etc."}. */
     private final CharArraySet brevidots;
+
+    /** Markup parsing mode. */
+    private final MarkupMode markupMode;
 
     /** Local-names of block tags, compiled case-insensitive. */
     private final CharArraySet blockTags;
@@ -174,46 +180,70 @@ public class MarkupTokenizer extends Tokenizer
     private int candidateCount;
 
     /**
-     * Build a tokenizer with no configured abbreviation list and the default
+     * Build an XML-aware tokenizer with no configured abbreviation list and the default
      * {@link #BLOCK_TAGS}.
      */
     public MarkupTokenizer()
     {
-        this(CharArraySet.EMPTY_SET, BLOCK_TAGS);
+        this(CharArraySet.EMPTY_SET, BLOCK_TAGS, MarkupMode.XML);
     }
 
     /**
-     * Build a tokenizer with configured brevidots and the default {@link #BLOCK_TAGS}.
-     * Brevidot entries include their final dot, for example {@code "Dr."}, {@code "etc."},
-     * or {@code "Var."}.
+     * Build an XML-aware tokenizer with configured brevidots and the default
+     * {@link #BLOCK_TAGS}.
      *
      * @param brevidots forms whose final dot always remains inside the token; null means none
      */
     public MarkupTokenizer(final CharArraySet brevidots)
     {
-        this(brevidots, BLOCK_TAGS);
+        this(brevidots, BLOCK_TAGS, MarkupMode.XML);
     }
 
     /**
-     * Build a tokenizer with configured brevidots and block tags.
+     * Build a tokenizer with configured brevidots, the default {@link #BLOCK_TAGS}, and the
+     * requested markup mode.
      *
-     * <p>Position increment and position length are registered so that they exist in the
-     * stream, but never set: {@code clearAttributes()} resets both to their default of 1,
-     * which is the only value this tokenizer emits.</p>
+     * @param brevidots forms whose final dot always remains inside the token; null means none
+     * @param markupMode markup parsing mode; null is treated as {@link MarkupMode#XML}
+     */
+    public MarkupTokenizer(final CharArraySet brevidots, final MarkupMode markupMode)
+    {
+        this(brevidots, BLOCK_TAGS, markupMode);
+    }
+
+    /**
+     * Build an XML-aware tokenizer with configured brevidots and block tags.
      *
-     * @param brevidots forms whose final dot always remains inside the token, spelled with
-     *        that dot ({@code "etc."}, {@code "Stud."}); matched with the set's own case
-     *        policy, so {@code Var.} and {@code var.} differ under a case-sensitive set;
-     *        null means none
-     * @param blockTags comma-separated element local-names ending any sentence pending a dot
-     *        decision, matched case-insensitive on opening and closing tags; null or blank
-     *        means no block boundary, the legacy behavior
+     * @param brevidots forms whose final dot always remains inside the token; null means none
+     * @param blockTags comma-separated element local-names ending any sentence pending a dot;
+     *        null or blank means no block boundary
      */
     public MarkupTokenizer(final CharArraySet brevidots, final String blockTags)
     {
+        this(brevidots, blockTags, MarkupMode.XML);
+    }
+
+    /**
+     * Build a tokenizer with configured brevidots, block tags, and markup mode.
+     *
+     * <p>In {@link MarkupMode#XML}, a {@code '<'} starts an XML-like token. In
+     * {@link MarkupMode#NONE}, angle brackets are ordinary delimiters and never start markup
+     * parsing.</p>
+     *
+     * @param brevidots forms whose final dot always remains inside the token; null means none
+     * @param blockTags comma-separated element local-names ending any sentence pending a dot;
+     *        null or blank means no block boundary
+     * @param markupMode markup parsing mode; null is treated as {@link MarkupMode#XML}
+     */
+    public MarkupTokenizer(
+        final CharArraySet brevidots,
+        final String blockTags,
+        final MarkupMode markupMode
+    ) {
         super();
         this.brevidots = (brevidots == null) ? CharArraySet.EMPTY_SET : brevidots;
         this.blockTags = compileBlockTags(blockTags);
+        this.markupMode = (markupMode == null) ? MarkupMode.XML : markupMode;
         addAttribute(PositionIncrementAttribute.class);
         addAttribute(PositionLengthAttribute.class);
     }
@@ -722,7 +752,7 @@ public class MarkupTokenizer extends Tokenizer
         // input, a dangling separator stays inside the number ("p. 12.</p>" gives "12.").
         final int length = termAtt.length();
         final char last = termAtt.charAt(length - 1);
-        if (c >= 0 && c != '<' && (last == '.' || last == ',')) {
+        if (c >= 0 && (markupMode != MarkupMode.XML || c != '<') && (last == '.' || last == ',')) {
             termAtt.setLength(length - 1);
             pendingChar = last;
             pendingStart = offset - 1;
@@ -799,7 +829,7 @@ public class MarkupTokenizer extends Tokenizer
                 if (readLineBreakRun()) return true;
                 continue;
             }
-            if (ch == '<') {
+            if (ch == '<' && markupMode == MarkupMode.XML) {
                 afterColon = false;
                 return readTag();
             }
