@@ -632,7 +632,7 @@ public final class LexiconHelper
                 Char.trim(form);
                 if (form.length() == 0)
                     return false; // rtrim may empty the cell
-                final boolean added = set.add(form);
+                // final boolean added = set.add(form);
                 /* TODO report
                 if (!added) {
                     System.out.printf(

@@ -26,7 +26,7 @@ import com.github.oeuvres.alix.util.Report.ReportConsole;
 
 /**
  * Convert Markdown files to TSV files containing Lucene terms, lemmas,
- * part-of-speech tags, and POS-tagging probabilities.
+ * part-of-speech tags.
  *
  * <p>YAML front matter is copied to the TSV header as comment metadata.
  * The Markdown body is then passed directly to the Lucene analyzer.</p>

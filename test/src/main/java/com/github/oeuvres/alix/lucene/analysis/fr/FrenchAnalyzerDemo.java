@@ -11,7 +11,7 @@ import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 
 public class FrenchAnalyzerDemo
 {
-    static String FIELD = "f";
+    static String FIELD = "tsv";
     
     private FrenchAnalyzerDemo()
     {
@@ -51,17 +51,24 @@ public class FrenchAnalyzerDemo
     
     
     static final List<Case> CASES = List.of(
-            new Case(
-                "",
-                """
-                Les jours suivants, mêmes réactions mais appliquées à des situations toujours nouvelles.
-                Elle se cambre ainsi devant des objets nouveaux, en manière d’expérience pour voir, devant
-                des objets qu’elle cherche à saisir, devant moi pour me faire continuer les gestes
-                que j’exécute, etc., etc.
-                """,
-                ""
-            ),
-            new Case(
+        new Case(
+            "",
+            """
+            Le Canadien, Conseil et moi, nous eûmes une assez longue conversation à ce sujet.
+            """,
+            ""
+        ),
+        new Case(
+            "",
+            """
+            Les jours suivants, mêmes réactions mais appliquées à des situations toujours nouvelles.
+            Elle se cambre ainsi devant des objets nouveaux, en manière d’expérience pour voir, devant
+            des objets qu’elle cherche à saisir, devant moi pour me faire continuer les gestes
+            que j’exécute, etc., etc.
+            """,
+            ""
+        ),
+        new Case(
             "",
             """
             En troisième lieu, une question essentielle demeure : celle du degré de conscience
