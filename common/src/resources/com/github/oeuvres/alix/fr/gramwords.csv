@@ -1,12 +1,68 @@
 __STOPWORDS
+# personne
 a
 A
 à
 À
+à base de
+à bord de
+à bout de
+à cause de
+à cet égard
+à chaque fois que
+à compter de
+à condition de
+à côté de
+à coup de
+à défaut de
+à dessein de
+à destination de
+à fin de
+à force de
+à grand renfort de
+à l'adresse de
+à l'aide de
+à l'appui de
+à l'autre bout de
+à l'avenant
+à l'effet de
+à l'égal de
+à l'égard de
+à l'encontre
+à l'endroit de
+à l'entour de
+à l'épreuve de
+à l'exemple de
+à l'extérieur de
+à l'imitation de
+à l'instar de
+à l'intérieur de
+à l'ombre de
+à l'opposé de
+à l'unisson
+à la condition de
 à la fois
+à la lumière de
+à la mémoire de
+à la place de
+à la réserve de
+à la sortie de
+à la suite de
+à la vue de
+à part
+à part ça
 à partir de
+à partir de là
+à peine de
 à peu près
+à propos de
+à raison de
+à terme
+à titre de
+à travers
 afin
+afin de
+afin que
 ah
 ai
 aie
@@ -19,18 +75,52 @@ allait
 aller
 aller aller
 alors
+alors que
 an
 ans
 après
+après que
 as
 assez
 au
+au bas de
+au beau milieu de
+au bord de
+au bout de
+au cas où
 au contraire
+au contraire de
+au cours de
+au détriment de
+au droit de
+au lieu de
 au milieu de
 au moins
+au moment de
+au moment où
+au moyen de
 au niveau de
+au nom de
+au préjudice de
+au prétexte de
+au prix de
+au ras de
+au rebours de
+au regard de
+au risque de
+au sein de
+au sortir de
+au spectacle de
+au sujet de
+au temps de
+au travers de
+au vu de
+au vu et au su de
+au vu et su de
+au-dedans de
 au-dehors
 au-dessous
+au-dessous de
 au-dessus
 aucun
 aucune
@@ -43,6 +133,7 @@ aujourd’hui
 auprès
 auprès de
 auquel
+auquel cas
 aura
 aurai
 auraient
@@ -57,19 +148,31 @@ auront
 ausdiz
 ausquelz
 aussi
+aussi peu que
 autant
 autour
 autour de
 autre
 autrefois
 autres
+autrui
 aux
+aux dépens de
+aux fins de
+aux lieu et place de
+aux portes de
+aux yeux de
+auxdits
 auxquelles
 auxquels
 avaient
 avais
 avait
 avant
+avant de
+avant même que
+avant que
+avant que de
 avec
 avecques
 avez
@@ -84,7 +187,9 @@ ayant
 ayez
 ayons
 beaucoup
+beaucoup de
 bien
+bien loin de
 bien que
 bientôt
 bon
@@ -100,12 +205,16 @@ ceci
 cela
 celle
 celle-ci
+celle-là
 celles
 celui
+celui-ci
+celui-là
 celuy
 cent
 cents
 cependant
+cependant que
 certain
 certaine
 certaines
@@ -116,11 +225,15 @@ cest
 ceste
 cet
 cette
+cette fois où
 ceulx
 ceux
+ceux-là
 chacun
+chacune
 chapitre
 chaque
+chaque fois que
 chascun
 cher
 chère
@@ -133,23 +246,45 @@ com
 combien
 comme
 comment
+conformément à
+conséquemment à
+contrairement à
 contre
 d'abord
 d’abord
 d'ailleurs
 d’ailleurs
+d'après
+d'autant que
 d'autre
 d’autre
 d'autres
 d’autres
+d'avec
+d'entre
 d'ici
+d'un autre côté
 dans
+dans la crainte de
+dans le moment où
+dans le moment que
 de
 De
+de crainte de
+de façon à
+de la part de
+de manière à
 de même
 de même que
+de mon côté
+de niveau avec
+de par
+de peur de
 de plus
+de préférence à
+de sorte que
 dedans
+défense de
 dehors
 déjà
 depuis
@@ -157,8 +292,13 @@ derrière
 des
 Des
 dès
+des fois que
 dès lors
+dès lors que
+dès que
 desdictes
+desdites
+desdits
 desdiz
 desja
 désormais
@@ -171,7 +311,10 @@ dessusdictes
 dessusdiz
 deux
 devant
+devant notaire
+devers
 devoir
+dieu sait
 dire
 dix
 dix-huit
@@ -182,8 +325,13 @@ dont
 douze
 du
 Du
+du côté de
 du fait que
+du même coup
+du milieu de
 du point de vue
+du temps que
+du vivant de
 dudict
 dudit
 duquel
@@ -194,12 +342,44 @@ elle-même
 elles
 elles-mêmes
 en
+en amont de
+en arrière de
+en aval de
+en avant de
+en ce qui concerne
+en compagnie de
+en comparaison de
+en conformité de
+en conséquence de
+en considération de
 en d’autres termes
+en deçà de
+en dépit de
+en dessous
 en effet
+en exécution de
+en face de
+en fait de
+en forme de
 en général
+en guise de
 en lieu et place de
+en marge de
+en matière de
+en même temps que
+en mémoire de
 en outre
+en passe de
+en présence de
+en proie à
+en raison de
+en regard de
+en sorte que
+en sus de
 en tant que
+en terme de
+en vertu de
+en vue de
 encore
 enfin
 ensuite
@@ -222,6 +402,7 @@ Et
 étais
 était
 étant
+étant donné
 etc
 etc.
 été
@@ -233,6 +414,7 @@ etc.
 étoit
 être
 eu
+eu égard à
 eue
 eues
 eulx
@@ -251,6 +433,8 @@ eût
 eux
 eux-mêmes
 ex
+excepté
+face à
 faire
 fais
 faisaient
@@ -270,6 +454,7 @@ fasses
 fassiez
 fassions
 faut
+faute de
 fera
 ferai
 feraient
@@ -294,6 +479,7 @@ fît
 fîtes
 fois
 font
+fors
 fûmes
 furent
 fus
@@ -305,7 +491,9 @@ fussions
 fut
 fût
 fûtes
+grâce à
 grand
+grand-chose
 ha
 hé
 hélas
@@ -313,15 +501,22 @@ heu
 heure
 heures
 ho
+hormis
 hors
+hors de
 huit
 icelle
 icelles
 icellui
 icelui
 iceulx
+iceux
 ici
 il
+il n'en reste pas moins que
+il pourrait bien se faire que
+il se pourrait que
+il serait possible que
 il y a
 ils
 in
@@ -335,21 +530,31 @@ jour après jour
 jours
 jusqu
 jusqu'
+jusqu'à ce que
+jusqu'à la fin
 jusque
 jusques
+jusques à
 l'
-l’
 L'
+l’
 L’
 l'autre
 l’autre
+l'on
 l'un
 l’un
+l'une
 la
 La
 là
 la même
+la mienne
+la plupart
+la plupart de
 la première
+la sienne
+la tienne
 là-dedans
 là-dessus
 ladicte
@@ -357,6 +562,9 @@ ladite
 laquelle
 le
 Le
+le diable soit de
+le long de
+le long des
 le même
 le mien
 le premier
@@ -367,7 +575,18 @@ ledit
 lequel
 les
 Les
+lès
+les fois où
+les fois que
 les mêmes
+les miennes
+les miens
+les nôtres
+les siennes
+les siens
+les tiennes
+les tiens
+les vôtres
 lesdict
 lesdictes
 lesdit
@@ -377,9 +596,12 @@ lesquelles
 lesquels
 leur
 leurs
+lez
 loin
+loin de
 longtemps
 lors
+lors de
 lorsqu
 lorsqu'
 lorsqu’
@@ -388,13 +610,22 @@ lui
 lui-même
 m'
 m’
+ma
+maint
+mainte
 maintenant
+maintes
+maints
 mais
 malgré
+manque de
 me
 même
+même quand
+même si
 mêmes
 ment
+mes
 mien
 mienne
 miennes
@@ -408,22 +639,32 @@ moins
 mon
 monsieur
 Monsieur
+moyennant
 Mu
+n'empêche que
+n'importe qui
+n'importe quoi
 ne
 néanmoins
 neuf
 ni
 non
+non content de
+non plus que
+non sans
 non seulement
 nos
 nosdiz
 nostre
 nostredit
 notre
+nôtre
 nôtres
 nous
+nous-même
 nous-mêmes
 nul
+nulle
 ô
 Ô
 oh
@@ -433,6 +674,7 @@ onze
 or:CCONJ
 ou
 où
+ou bien
 ouais
 oudict
 oudit
@@ -440,17 +682,36 @@ oudiz
 oui
 par
 par ailleurs
+par certains côtés
+par conséquent
+par crainte de
+par delà
+par devers
 par exemple
+par l'intermédiaire de
+par manque de
 par opposition à
+par préférence à
+par rapport à
+par suite de
+par-delà
+par-derrière
+par-dessous
 par-dessus
+par-devant
+par-devant notaire
+par-devers
 parce
 parce que
 parfois
 parmi
 part
 pas
+pas plus que
+pas plus tard que
 pendant
-personne:PRON
+pendant que
+personne_PRON
 petit
 petite
 petites
@@ -465,6 +726,15 @@ plusieurs
 plutôt
 point
 pour
+pour ce qui est de
+pour des prunes
+pour ma part
+pour que
+pour sa part
+pour ta part
+pour tout
+pour un peu
+pour une fois que
 pourquoi
 pourquoy
 pourtant
@@ -473,14 +743,18 @@ pouvoir
 près
 près de
 presque
+prêt à
+proche de
 puis
 puisqu
 puisqu'
 puisqu’
 puisque
+qu
 qu'est-ce
 qu'est-ce que
 quand
+quand et quand
 quant
 quant à
 quarante
@@ -489,6 +763,7 @@ quatorze
 quatre
 que
 quel
+quel que soit
 quelconque
 quelle
 quelles
@@ -504,16 +779,31 @@ quelques-unes
 quelques-uns
 quels
 qui
+qui que
+quiconque
+quid
 quinze
+quitte à
 quoi
+quoi qu'il en fût
+quoi que
 quoique
+revoici
+revoilà
+rez
 rien
 rue
+sa
 sans
+sans cela
+sans compter
 sans doute
 sans plus
+sans plus de
+sans préjudice de
 sans que
 sauf
+sauf à
 se
 selon
 sept
@@ -529,17 +819,22 @@ seriez
 serions
 serons
 seront
+ses
 seul
 seule
 seules
 seuls
 si
+si bien que
+si peu que
 sien
 sienne
 siennes
 siens
+sinon
 six
 soi
+soi-même
 soient
 sois
 soit
@@ -548,20 +843,39 @@ sommes
 son
 sont
 sous
+sous couleur de
+sous forme de
+sous l'ombre de
+sous la plume de
+sous le couvert de
+sous le prétexte de
+sous le rapport de
+sous les yeux de
+sous peine de
+sous prétexte de
+sous un nouveau jour
 souvent
 soyez
 soyons
 suis
+suite à
+supposé que
 sur
+sur le plan
+sur le point de
+ta
 tandis
 tandis que
 tant
 tant de
+tant et si bien que
+tant qu'à
 te
 tel
 telle
 telles
 tels
+tes
 tien
 toi
 toi-même
@@ -569,11 +883,14 @@ ton
 toujours
 tous
 tous deux
+tous les deux
+tous les trois
 tousjours
 tout
 toute
 toutefois
 toutes
+toutes les fois que
 trente
 très
 trois
@@ -581,14 +898,22 @@ trop
 tu
 un
 un peu de
+une
+une bonne partie
+une fois que
+unes
+uns
 va
+va pour
 vas
 vers
+via
 vingt
 vingt-cinq
 vingt-deux
 vingt-quatre
 vingt-trois
+vis-à-vis de
 voici
 voilà
 voir
@@ -603,3 +928,4 @@ vous-même
 vous-mêmes
 y
 Y
+y compris
