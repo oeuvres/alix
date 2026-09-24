@@ -312,7 +312,7 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildGramwords()
     {
-        final CharArraySet set = new CharArraySet(600, true);
+        final CharArraySet set = new CharArraySet(1200, true);
         LexiconHelper.loadSet(
             set,
             FrenchLexicons.class,

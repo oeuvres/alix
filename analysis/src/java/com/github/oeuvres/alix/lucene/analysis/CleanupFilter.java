@@ -392,6 +392,10 @@ public class CleanupFilter extends TokenFilter
         if (len == 0) {
             return true;
         }
+        // structural event, \n\n, used by Mrakdown, should have been processed
+        if (termAtt.charAt(0) == '↵') {
+            return true;
+        }
         
         // known noise tokens, resorb position, but keep punctuation
         if (skipped != null && !Upos.isPunct(pos) && skipped.contains(termAtt.buffer(), 0, termAtt.length())) {

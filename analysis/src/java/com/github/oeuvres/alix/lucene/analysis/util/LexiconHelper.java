@@ -630,21 +630,10 @@ public final class LexiconHelper
             {
                 final StringBuilder form = row.getCell(col);
                 Char.trim(form);
-                if (form.length() == 0)
+                if (form.length() == 0) {
                     return false; // rtrim may empty the cell
-                // final boolean added = set.add(form);
-                /* TODO report
-                if (!added) {
-                    System.out.printf(
-                        "added=%-5s size=%d length=%d value=[%s]%n",
-                        added,
-                        set.size(),
-                        form.length(),
-                        form
-                    );
                 }
-                */
-                return true;
+                return set.add(form);
             }
         };
         

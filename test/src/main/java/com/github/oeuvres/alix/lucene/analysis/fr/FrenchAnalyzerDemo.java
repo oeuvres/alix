@@ -11,7 +11,7 @@ import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 
 public class FrenchAnalyzerDemo
 {
-    static String FIELD = "tsv";
+    static String FIELD = "content";
     
     private FrenchAnalyzerDemo()
     {
@@ -44,7 +44,7 @@ public class FrenchAnalyzerDemo
             if (line.isBlank()) return;
             analyzer.brevidots.add(line);
         });
-        System.out.println(analyzer.brevidots.contains("Stud."));
+        System.out.println("analyzer.brevidots.contains(\"Stud.=\")" + analyzer.brevidots.contains("Stud."));
         return analyzer;
     }
     
@@ -54,7 +54,7 @@ public class FrenchAnalyzerDemo
         new Case(
             "",
             """
-            Le Canadien, Conseil et moi, nous eûmes une assez longue conversation à ce sujet.
+            Le Canadien, Conseil et moi, nous eûmes une assez longue conversation au sujet des Vendéens.
             """,
             ""
         ),

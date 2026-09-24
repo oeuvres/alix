@@ -101,9 +101,6 @@ public class MarkupTokenizer extends Tokenizer
     /** Controls whether angle-bracket markup is parsed as XML tokens. */
     public enum MarkupMode { NONE, XML }
 
-    /** Normalized character used to represent one logical line ending in a line-break event. */
-    public static final char LINE_BREAK_MARK = '↵';
-
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
 
@@ -713,10 +710,7 @@ public class MarkupTokenizer extends Tokenizer
         }
 
         if (count < 2) return false;
-
-        for (int i = 0; i < count; i++) {
-            termAtt.append(LINE_BREAK_MARK);
-        }
+        termAtt.append("↵↵");
         posAtt.setPos(PUNCTstruct.code);
         offsetAtt.setOffset(correctOffset(start), correctOffset(end));
         return true;
