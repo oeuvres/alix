@@ -69,9 +69,10 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
  *   <li>When a POS is present, lemma lookup first uses that POS. If the
  *       POS-specific mapping is absent, lookup falls back to the POS-agnostic
  *       mapping. The tagger POS is evidence, not an authority for lemma choice.</li>
- *   <li>A sentence-internal capitalized {@code NOUN} keeps that initial capital
- *       on its resolved lemma. This is an indexing policy, not a POS correction:
- *       the token remains {@code NOUN} rather than being promoted to {@code PROPN}.</li>
+ *   <li>A sentence-internal capitalized {@code NOUN} is protected from common-word
+ *       lemmatization. Its surface form is retained unchanged (for example
+ *       {@code Vendéens}, {@code Vierge}, or {@code Bac}) without promoting the
+ *       token to {@code PROPN}.</li>
  *   <li>For an uppercase form unknown in its original case, lowercase lookup is
  *       attempted. If the lowercase form is also absent, the token is tagged
  *       {@code PROPN}, even when the statistical tagger proposed another POS.</li>
@@ -96,8 +97,9 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
  * <h2>Tokens ignored by design</h2>
  *
  * <p>No lemma is written for XML, punctuation, numbers, keywords, protected or
- * tagged proper names, acronyms protected from lowercase probing, unknown forms,
- * or forms for which neither a POS-specific nor a POS-agnostic lemma can be found.
+ * tagged proper names, sentence-internal capitalized nouns, acronyms protected
+ * from lowercase probing, unknown forms, or forms for which neither a POS-specific
+ * nor a POS-agnostic lemma can be found.
  *
  * @see LemmaAttribute
  * @see LemmaLexicon
@@ -201,12 +203,13 @@ public final class LemmaFilter extends TokenFilter
         final boolean uppercase = Char.isUpperCase(termAtt.charAt(0));
         final boolean hasPos = hasPos(posId);
 
-        // Indexing policy: preserve meaningful internal capitalization on nouns.
-        // This deliberately does NOT promote NOUN to PROPN. It only preserves
-        // the initial capital on the resolved lemma (Conseil -> Conseil,
-        // Etats -> Etat), while sentence-initial capitalization is ignored.
-        // Remove this rule if lemma case should become purely lexical again.
-        final boolean preserveNounCapital =
+        // Indexing policy: a sentence-internal capitalized NOUN is left untouched.
+        // This preserves distinctions useful to search (Vendéens, Vierge, Bac,
+        // Conseil, État...) without guessing PROPN and without reducing Vendéens
+        // to Vendéen. Sentence-initial capitals are excluded because they usually
+        // carry no lexical information. Remove this block to restore purely
+        // dictionary-driven lemmatization of capitalized common nouns.
+        final boolean protectCapitalizedNoun =
             uppercase
             && !atSentenceStart
             && posId == Upos.NOUN.code;
@@ -219,6 +222,12 @@ public final class LemmaFilter extends TokenFilter
 
         // word.csv must never normalize a token already identified as a proper name.
         if (isProperName(posId)) {
+            return true;
+        }
+
+        // Keep the original surface form: an empty lemma means downstream code
+        // retains CharTermAttribute unchanged. POS remains NOUN.
+        if (protectCapitalizedNoun) {
             return true;
         }
 
@@ -277,7 +286,7 @@ public final class LemmaFilter extends TokenFilter
             return true;
         }
 
-        copyLemma(lemmaId, preserveNounCapital);
+        copyLemma(lemmaId);
         return true;
     }
 
@@ -298,16 +307,12 @@ public final class LemmaFilter extends TokenFilter
      * Copies one interned lexicon entry to the lemma output attribute.
      *
      * @param lemmaId lexicon ordinal of the lemma
-     * @param uppercaseInitial whether the first lemma character must be uppercased
      */
-    private void copyLemma(final int lemmaId, final boolean uppercaseInitial)
+    private void copyLemma(final int lemmaId)
     {
         final int len = lexicon.length(lemmaId);
         final char[] dst = lemmaAtt.resizeBuffer(len);
         lexicon.copy(lemmaId, dst, 0);
-        if (uppercaseInitial && len > 0) {
-            dst[0] = Character.toUpperCase(dst[0]);
-        }
         lemmaAtt.setLength(len);
     }
 
