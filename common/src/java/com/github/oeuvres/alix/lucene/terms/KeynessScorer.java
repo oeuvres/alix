@@ -2,22 +2,6 @@ package com.github.oeuvres.alix.lucene.terms;
 
 /**
  * Scores one term from statistics for a focus population and its active corpus.
- *
- * <p>
- * Counts are raw token or event occurrences, not document frequencies. The
- * active corpus may be the whole indexed field or a filtered corpus. Scorers
- * that compare focus with the rest of the corpus derive the complementary
- * counts from {@link Stats#otherTermCount()} and {@link Stats#otherTokens()}.
- * </p>
- *
- * <p>
- * {@link LogDice} additionally uses {@link Stats#pivotCount()} as the marginal
- * frequency of the pivot query. For a true collocational LogDice,
- * {@link Stats#focusTermCount()} must then be the co-occurrence frequency
- * {@code f(A,B)}, {@link Stats#pivotCount()} must be {@code f(A)}, and
- * {@link Stats#corpusTermCount()} must be {@code f(B)}, all measured in the
- * same active corpus.
- * </p>
  */
 public interface KeynessScorer
 {
@@ -85,14 +69,32 @@ public interface KeynessScorer
      */
     double score(Stats stats);
 
-    /**
-     * Signed Pearson chi-square X² (Pearson 1900), 2×2 contingency.
+        /**
+     * Signed Pearson chi-square on a 2 x 2 term/focus table.
      *
-     * <p>
-     * The focus is compared with the rest of the active corpus. Positive scores
-     * indicate over-representation in the focus; negative scores indicate
-     * under-representation.
-     * </p>
+     * <pre>
+     * X2 = sum((O - E)^2 / E)
+     * </pre>
+     *
+     * The table compares the focus with the rest of the collection:
+     *
+     * <pre>
+     *                 focus               rest
+     * term            tf                  cf - tf
+     * other terms     dl - tf             CL - dl - cf + tf
+     * </pre>
+     *
+     * The sign is positive when tf / dl &gt;= (cf - tf) / (CL - dl),
+     * otherwise negative.
+     *
+     * <pre>
+     * tf : term frequency in focus
+     * cf : collection frequency of term
+     * dl : focus length
+     * CL : collection length
+     * </pre>
+     *
+     * Pearson, K. (1900). "On the criterion that a given system of deviations from the probable in the case of a correlated system of variables is such that it can be reasonably supposed to have arisen from random sampling." Philosophical Magazine 50(302): 157-175. doi:10.1080/14786440009463897.
      */
     class Chi2 implements KeynessScorer
     {
@@ -152,13 +154,21 @@ public interface KeynessScorer
         }
     }
 
-    /**
-     * Raw focus-frequency scorer.
+        /**
+     * Raw term frequency.
+     *
+     * <pre>
+     * tf
+     *
+     * tf : term frequency in focus
+     * </pre>
+     *
+     * Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches in automatic text retrieval." Information Processing &amp; Management 24(5): 513-523. doi:10.1016/0306-4573(88)90021-0.
      */
     class Count implements KeynessScorer
     {
         /**
-         * Returns the candidate frequency in the focus population.
+         * Returns tf, the candidate frequency in the focus.
          *
          * @param stats focus statistics
          * @return focus candidate frequency
@@ -170,58 +180,43 @@ public interface KeynessScorer
         }
     }
 
-    /**
-     * Log-Likelihood G² (Dunning 1993) with a specificity control in
-     * {@code [0, 2]}.
+        /**
+     * G² log-likelihood ratio with a specificity parameter s in [0, 2].
      *
-     * <p>
-     * The scale has three exact landmarks:
-     * </p>
+     * The 2 x 2 table compares the focus with the rest of the collection:
      *
-     * <ul>
-     *   <li>{@code 0}: raw focus frequency;</li>
-     *   <li>{@code 1}: ordinary G²;</li>
-     *   <li>{@code 2}: G² divided once by the regularized expected focus
-     *       frequency.</li>
-     * </ul>
+     * <pre>
+     *                 focus               rest
+     * term            tf                  cf - tf
+     * other terms     dl - tf             CL - dl - cf + tf
+     * </pre>
      *
-     * <p>
-     * Between {@code 0} and {@code 1}, raw frequency and G² are interpolated
-     * geometrically:
-     * </p>
+     * <pre>
+     * G2 = 2 * sum(O * ln(O / E))
      *
-     * <pre>{@code
-     * score = focusCount^(1 - specificity) * G²^specificity
-     * }</pre>
+     * s = 0       : tf
+     * 0 &lt; s &lt; 1   : tf^(1-s) * G2^s
+     * s = 1       : G2
+     * 1 &lt; s &lt; 2   : G2 * q^((s-1)/(2-s))
+     * s = 2       : G2 if tf = cf, otherwise 0
      *
-     * <p>
-     * Between {@code 1} and {@code 2}, increasingly general terms are
-     * discounted by their expected focus frequency:
-     * </p>
+     * q = tf / cf
      *
-     * <pre>{@code
-     * score = G² / (expectedFocusTerm + 20)^(specificity - 1)
-     * }</pre>
+     * tf : term frequency in focus
+     * cf : collection frequency of term
+     * dl : focus length
+     * CL : collection length
+     * q : share of collection occurrences in focus
+     * s : specificity parameter
+     * </pre>
      *
-     * <p>
-     * The upper bound {@code 2} is deliberate. For a fixed relative
-     * enrichment, G² grows approximately linearly with the amount of expected
-     * evidence. Dividing once by expected frequency therefore approximately
-     * removes this first-order frequency dependence. Values above {@code 2}
-     * would increasingly reward rarity in its own right rather than merely
-     * discounting frequency.
-     * </p>
+     * The parameter s is an experimental extension; G2 itself is the standard
+     * log-likelihood ratio.
      *
-     * <p>
-     * G² itself is non-negative. No enrichment/depletion sign is added here.
-     * This lets the ranking experiment determine whether directionality is
-     * needed rather than building that policy into the statistic.
-     * </p>
+     * Dunning, T. (1993). "Accurate Methods for the Statistics of Surprise and Coincidence." Computational Linguistics 19(1): 61-74.
      */
     class G2 implements KeynessScorer
     {
-        /** Regularizes the rare-term tail above ordinary G². */
-        private static final double REGULARIZER = 20d;
 
         /** Specificity control in [0, 2]. */
         private final double specificity;
@@ -238,17 +233,16 @@ public interface KeynessScorer
          * Creates a G² scorer with frequency-specificity control.
          *
          * @param specificity value in {@code [0, 2]}; {@code 0} gives raw
-         *                    focus frequency, {@code 1} ordinary G², and
-         *                    {@code 2} the strongest supported frequency
-         *                    normalization
+         *                    term frequency, {@code 1} ordinary G², and
+         *                    {@code 2} keeps only terms exclusive to the focus
          * @throws IllegalArgumentException if the value is non-finite or outside
          *                                  {@code [0, 2]}
          */
         public G2(final double specificity)
         {
-            if (!Double.isFinite(specificity) || specificity < 0d ) {
+            if (!Double.isFinite(specificity) || specificity < 0d || specificity > 2d) {
                 throw new IllegalArgumentException(
-                    "specificity must be finite and > 0: " + specificity);
+                    "specificity must be finite and in [0, 2]: " + specificity);
             }
             this.specificity = specificity;
         }
@@ -316,12 +310,18 @@ public interface KeynessScorer
                 return Math.pow((double) focusTermCount, 1d - specificity)
                     * Math.pow(g2, specificity);
             }
-            if (specificity > 1d) {
-                return g2 / Math.pow(
-                    expectedFocusTerm + REGULARIZER,
-                    specificity - 1d);
+            if (specificity == 1d) {
+                return g2;
             }
-            return g2;
+
+            final double concentration = (double) focusTermCount / (double) allTermCount;
+
+            if (specificity == 2d) {
+                return (focusTermCount == allTermCount) ? g2 : 0d;
+            }
+
+            final double exponent = (specificity - 1d) / (2d - specificity);
+            return g2 * Math.pow(concentration, exponent);
         }
 
         /**
@@ -335,15 +335,21 @@ public interface KeynessScorer
         }
     }
 
-    /**
-     * Collocational logDice (Rychlý 2008).
+        /**
+     * Collocational logDice.
      *
-     * <p>
-     * Uses {@code focusTermCount = f(A,B)}, {@code pivotCount = f(A)}, and
-     * {@code corpusTermCount = f(B)}. Corpus token count is intentionally absent
-     * from the formula: logDice depends only on the two marginals and their
-     * co-occurrence frequency.
-     * </p>
+     * <pre>
+     * 14 + log2(2 * fAB / (fA + fB))
+     *
+     * fAB : co-occurrence frequency of A and B
+     * fA : collection frequency of pivot A
+     * fB : collection frequency of candidate B
+     * </pre>
+     *
+     * In Stats, focusTermCount = fAB, pivotCount = fA, and
+     * corpusTermCount = fB.
+     *
+     * Rychlý, P. (2008). "A Lexicographer-Friendly Association Score." Proceedings of the 2nd Workshop on Recent Advances in Slavonic Natural Language Processing (RASLAN 2008): 6-9.
      */
     class LogDice implements KeynessScorer
     {
@@ -372,22 +378,31 @@ public interface KeynessScorer
         }
     }
 
-    /**
-     * Support-weighted log ratio between focus and the rest of the active corpus.
+        /**
+     * Hardie's Log Ratio.
      *
-     * <p>
-     * This preserves the previous implementation: the base-2 rate ratio is
-     * multiplied by the natural logarithm of the focus count.
-     * </p>
+     * <pre>
+     * log2((tf / dl) / ((cf - tf) / (CL - dl)))
+     *
+     * tf : term frequency in focus
+     * cf : collection frequency of term
+     * dl : focus length
+     * CL : collection length
+     * </pre>
+     *
+     * Log Ratio is the binary logarithm of the ratio of relative frequencies.
+     * A zero term count is replaced by 0.5 to keep the ratio finite.
+     *
+     * Hardie, A. (2014). "Log Ratio – an informal introduction." ESRC Centre for Corpus Approaches to Social Science (CASS), Lancaster University, 28 April 2014.
      */
     class LogRatio implements KeynessScorer
     {
         /**
-         * Computes the support-weighted log ratio.
+         * Computes Hardie's Log Ratio.
          *
          * @param stats focus and active-corpus statistics
-         * @return weighted log ratio, or {@code 0} when either side has no term
-         *         occurrences or no tokens
+         * @return log ratio, {@link Double#NaN} for invalid term counts, or
+         *         {@code 0} when one side has no tokens
          */
         @Override
         public double score(final Stats stats)
@@ -397,18 +412,34 @@ public interface KeynessScorer
             final long otherTermCount = stats.otherTermCount();
             final long otherTokens = stats.otherTokens();
 
-            if (focusTermCount <= 0L || otherTermCount <= 0L) return 0d;
+            if (focusTermCount < 0L || otherTermCount < 0L) return Double.NaN;
             if (focusTokens <= 0L || otherTokens <= 0L) return 0d;
 
-            final double relFocus = (double) focusTermCount / (double) focusTokens;
-            final double relOther = (double) otherTermCount / (double) otherTokens;
+            final double focusCount = (focusTermCount > 0L) ? focusTermCount : 0.5d;
+            final double otherCount = (otherTermCount > 0L) ? otherTermCount : 0.5d;
+            final double relFocus = focusCount / (double) focusTokens;
+            final double relOther = otherCount / (double) otherTokens;
 
-            return Math.log(relFocus / relOther) / Math.log(2d) * Math.log(focusTermCount);
+            return Math.log(relFocus / relOther) / Math.log(2d);
         }
     }
 
-    /**
-     * Simple Maths (Kilgarriff 2009): smoothed ratio of per-million frequencies.
+        /**
+     * Kilgarriff Simple Maths.
+     *
+     * <pre>
+     * rf_focus = 1_000_000 * tf / dl
+     * rf_rest = 1_000_000 * (cf - tf) / (CL - dl)
+     * (rf_focus + k) / (rf_rest + k)
+     *
+     * tf : term frequency in focus
+     * cf : collection frequency of term
+     * dl : focus length
+     * CL : collection length
+     * k : smoothing parameter
+     * </pre>
+     *
+     * Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of the Corpus Linguistics Conference CL2009, University of Liverpool.
      */
     class SimpleMaths implements KeynessScorer
     {
