@@ -289777,10 +289777,10 @@ kyudo,NOUN,kyudo,
 kyudos,NOUN,kyudo,
 kyus,NOUN,kyu,
 l’,DETart,le,12746.76
-l’,PRON,le:PRON,2575.41
+l’,PRON,le_PRON,2575.41
 l’on,PRONprs,on,0.00
 la,DETart,le,23633.92
-la,PRON,le:PRON,1242.64
+la,PRON,le_PRON,1242.64
 la,NOUN,la,0.74
 là,ADV,là,1089.66
 là,INTJ,là,4.26
@@ -292802,7 +292802,7 @@ lazzi,NOUN,lazzi,0.68
 lazzis,NOUN,lazzi,0.68
 lb,NOUN,lb,
 le,DETart,le,18310.95
-le,PRON,le:PRON,2424.19
+le,PRON,le_PRON,2424.19
 lé,NOUN,lé,1.35
 leader,NOUN,leader,0.95
 leaders,NOUN,leader,0.74
@@ -293558,7 +293558,7 @@ lerche,ADV,lerche,4.12
 lérot,NOUN,lérot,0.00
 lérots,NOUN,lérot,0.14
 les,DETart,le,14662.30
-les,PRON,le:PRON,1412.23
+les,PRON,le_PRON,1412.23
 lés,NOUN,lé,0.68
 lès,ADP,lès,0.07
 lésa,VERB,léser,
@@ -337386,7 +337386,7 @@ opuntias,NOUN,opuntia,
 opus,NOUN,opus,1.01
 opuscule,NOUN,opuscule,0.61
 opuscules,NOUN,opuscule,0.27
-or,CCONJ,or:CCONJ,165.27
+or,CCONJ,or_CCONJ,165.27
 or,NOUN,or,127.23
 oracle,NOUN,oracle,2.16
 oracles,NOUN,oracle,0.61
@@ -354418,7 +354418,7 @@ personnalistes,NOUN,personnaliste,
 personnalistes,ADJ,personnaliste,
 personnalité,NOUN,personnalité,13.24
 personnalités,NOUN,personnalité,6.62
-personne,PRONneg,personne:PRON,312.16
+personne,PRONneg,personne_PRON,312.16
 personne,NOUN,personne,145.95
 personnel,ADJ,personnel,18.38
 personnel,NOUN,personnel,18.72

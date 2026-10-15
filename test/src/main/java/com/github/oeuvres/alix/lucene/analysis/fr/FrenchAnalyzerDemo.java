@@ -54,6 +54,8 @@ public class FrenchAnalyzerDemo
         new Case(
             "",
             """
+            Au milieu de l'apothéose de son Louvre, sous la pluie d'or battante des recettes. Restaient 
+            les deux autres enfants, Serge Mouret, Désirée Mouret.
             Le Canadien, Conseil et moi, nous eûmes une assez longue conversation au sujet des Vendéens.
             """,
             ""

@@ -216,7 +216,7 @@ public final class LexiconHelper
         Objects.requireNonNull(file, "file");
         try (CSVReader csv = new CSVReader(file)) {
             csv.cellMax(2);
-            loadExpressions(lexicon, analyzer, csv, 0, 1, CsvHeader.SKIP);
+            loadExpressions(lexicon, analyzer, csv, 0, 2, CsvHeader.SKIP);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
