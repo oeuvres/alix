@@ -33,6 +33,8 @@
  */
 package com.github.oeuvres.alix.lucene.analysis;
 
+import static com.github.oeuvres.alix.util.LemmaLexicon.NO_LEMMA;
+
 import java.io.IOException;
 import java.util.Objects;
 
@@ -45,6 +47,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.LemmaLexicon;
@@ -124,6 +127,9 @@ public final class LemmaFilter extends TokenFilter
 
     /** Current POS supplied by upstream analysis. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
+    
+    /** Current token tagging probability; registering it ensures that buffered states contain it. */
+    private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
 
     /** Sparse output lemma channel. */
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
@@ -203,89 +209,83 @@ public final class LemmaFilter extends TokenFilter
         final boolean uppercase = Char.isUpperCase(termAtt.charAt(0));
         final boolean hasPos = hasPos(posId);
 
-        // Indexing policy: a sentence-internal capitalized NOUN is left untouched.
-        // This preserves distinctions useful to search (Vendéens, Vierge, Bac,
-        // Conseil, État...) without guessing PROPN and without reducing Vendéens
-        // to Vendéen. Sentence-initial capitals are excluded because they usually
-        // carry no lexical information. Remove this block to restore purely
-        // dictionary-driven lemmatization of capitalized common nouns.
-        final boolean protectCapitalizedNoun =
-            uppercase
-            && !atSentenceStart
-            && posId == Upos.NOUN.code;
-
         // Explicit proper-name protection has priority over the common-word lexicon.
         if (uppercase && propn != null && propn.contains(termAtt)) {
             posAtt.setPos(Upos.PROPN.code);
             return true;
         }
 
-        // word.csv must never normalize a token already identified as a proper name.
-        if (isProperName(posId)) {
-            return true;
-        }
-
-        // Keep the original surface form: an empty lemma means downstream code
-        // retains CharTermAttribute unchanged. POS remains NOUN.
-        if (protectCapitalizedNoun) {
-            return true;
-        }
-
-        // With no POS information, internal capitalization is our proper-name fallback.
-        if (uppercase && !hasPos && !atSentenceStart) {
-            posAtt.setPos(Upos.PROPN.code);
-            return true;
-        }
 
         // Protect acronyms from accidental lowercase lexical matches (USA != user, etc.).
         if (uppercase && termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) {
             return true;
         }
-
-        int termId = lexicon.ord(termAtt);
-        boolean lowercaseLookup = false;
-
-        // A capitalized unknown form may be a sentence-initial common word, or may
-        // have a non-PROPN POS proposal supplied by an upstream tagger.
-        if (termId < 0 && uppercase) {
-            probe.copyFrom(termAtt).toLowerCase();
-            termId = lexicon.ord(probe);
-            lowercaseLookup = (termId >= 0);
-        }
-
-        if (termId < 0) {
-            // No exact or lowercase dictionary form exists. In this case,
-            // capitalization is stronger evidence than a non-PROPN proposal
-            // from the statistical tagger: restore the proper-name fallback.
-            if (uppercase) {
-                posAtt.setPos(Upos.PROPN.code);
+        
+        // Take note of the pos tagger proposition
+        boolean isPROPN = isPROPN(posId);
+        // try to inform lemma
+        int lemmaId = NO_LEMMA;
+        // Not upper case, simple case
+        if (!uppercase) {
+            int termId = lexicon.ord(termAtt);
+            // unknown from dic, go
+            if (termId < 0) return true;
+            // try form+pos for nicer lemma
+            if (hasPos) {
+                lemmaId = lexicon.lemmaId(termId, posId);
             }
+            // lemma not found with pos, get 
+            if (lemmaId < 0) {
+                lemmaId = lexicon.lemmaId(termId);
+                // tagger bug
+                if (isPROPN) posAtt.setPos(Upos.NOUN.code);
+            }
+            if (lemmaId < 0 || lemmaId == termId) {
+                return true;
+            }
+            copyLemma(lemmaId);
             return true;
         }
-
-        int lemmaId = LemmaLexicon.NO_LEMMA;
+        // Start of sentence, or book title, or capitalized word like Justice
+        probe.copyFrom(termAtt).toLowerCase();
+        int termId = lexicon.ord(probe);
+        // Uppercase not known as word and tagged as PROPN, seems safe
+        if (termId < 0 && isPROPN) {
+            return true;
+        }
+        // Uppercase not known as word, but not tagged as PROPN, is the tag of the tagger correct ? 
+        if (termId < 0) {
+            // Could be a German noun
+            // posAtt.setPos(Upos.PROPN.code);
+            return true;
+        }
+        // Uppercase known as a word, but tagged as PROPN at start of sentence, ex: Blanche
+        // Could be wrong for verses
+        if (atSentenceStart && isPROPN) {
+            return true;
+        }
+        
+        // copy lower cased probe into term
+        termAtt.setEmpty().append(probe);
+        if (isPROPN) {
+            posAtt.setPos(Upos.UNKNOWN.code);
+        }
+        
         if (hasPos) {
-            // The tagger POS is tried first, but it is only a proposal. A missing
-            // POS-specific mapping must not prevent the dictionary fallback below.
+            // remove PROPN error from tagger
             lemmaId = lexicon.lemmaId(termId, posId);
         }
-
-        // POS-agnostic dictionary fallback. This is also the direct lookup when
-        // no usable POS was supplied upstream.
-        if (lemmaId < 0) {
+        if (lemmaId == NO_LEMMA) {
             lemmaId = lexicon.lemmaId(termId);
         }
-
-        if (lemmaId < 0) {
+        // term known but wit
+        if (lemmaId == NO_LEMMA) {
             return true;
         }
 
-        // For an exact-case lookup, identical form and lemma need no override.
-        // For a lowercase probe, they still differ from the original surface case.
-        if (lemmaId == termId && !lowercaseLookup) {
+        if (lemmaId == termId) {
             return true;
         }
-
         copyLemma(lemmaId);
         return true;
     }
@@ -333,7 +333,7 @@ public final class LemmaFilter extends TokenFilter
      * @param posId POS code
      * @return {@code true} for a proper-name POS
      */
-    private static boolean isProperName(final int posId)
+    private static boolean isPROPN(final int posId)
     {
         return posId >= Upos.PROPN.code && posId <= Upos.PROPNgod.code;
     }

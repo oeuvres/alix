@@ -11,7 +11,7 @@ import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
 
 public class FrenchAnalyzerDemo
 {
-    static String FIELD = "content";
+    static String FIELD = "tsv";
     
     private FrenchAnalyzerDemo()
     {
@@ -55,7 +55,7 @@ public class FrenchAnalyzerDemo
             "",
             """
             Au milieu de l'apothéose de son Louvre, sous la pluie d'or battante des recettes. Restaient 
-            les deux autres enfants, Serge Mouret, Désirée Mouret.
+            les deux autres enfants, Serge Mouret, Désirée Mouret, et le Roman de la Justice.
             Le Canadien, Conseil et moi, nous eûmes une assez longue conversation au sujet des Vendéens.
             """,
             ""

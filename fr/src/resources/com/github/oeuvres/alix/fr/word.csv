@@ -7778,8 +7778,6 @@ adduction,NOUN,adduction,0.14
 adductions,NOUN,adduction,
 adduit,NOUN,adduit,
 adduits,NOUN,adduit,
-adèle,NOUN,adèle,
-adèles,NOUN,adèle,
 adelphe,NOUN,adelphe,
 adelphe,ADJ,adelphe,
 adelphes,NOUN,adelphe,
@@ -14910,9 +14908,6 @@ albigeoise,NOUN,albigeois,
 albigeoise,ADJ,albigeois,
 albigeoises,NOUN,albigeois,
 albigeoises,ADJ,albigeois,
-albin,ADJ,albin,
-albine,ADJ,albin,
-albines,ADJ,albin,
 albinisme,NOUN,albinisme,0.00
 albinismes,NOUN,albinisme,
 albinos,NOUN,albinos,
@@ -21027,8 +21022,6 @@ andrologique,ADJ,andrologique,
 andrologiques,ADJ,andrologique,
 andrologue,NOUN,andrologue,
 andrologues,NOUN,andrologue,
-andromède,NOUN,andromède,
-andromèdes,NOUN,andromède,
 andropause,NOUN,andropause,0.14
 andropauses,NOUN,andropause,
 androphobie,NOUN,androphobie,
@@ -25152,8 +25145,6 @@ aphrodisiaques,NOUN,aphrodisiaque,0.14
 aphrodisiaques,ADJ,aphrodisiaque,0.14
 aphrodisie,NOUN,aphrodisie,0.14
 aphrodisies,NOUN,aphrodisie,
-aphrodite,NOUN,aphrodite,0.00
-aphrodites,NOUN,aphrodite,
 aphte,NOUN,aphte,
 aphtes,NOUN,aphte,0.00
 aphteuse,ADJ,aphteux,0.34
@@ -25505,8 +25496,6 @@ apollinien,ADJ,apollinien,
 apollinienne,ADJ,apollinien,
 apolliniennes,ADJ,apollinien,
 apolliniens,ADJ,apollinien,
-apollon,NOUN,apollon,0.00
-apollons,NOUN,apollon,0.14
 apologétique,NOUN,apologétique,0.47
 apologétique,ADJ,apologétique,0.07
 apologétiques,NOUN,apologétique,
@@ -36045,8 +36034,6 @@ aurantiacées,NOUN,aurantiacée,
 auras,VERB,avoir,21.42
 auras,AUX,avoir,7.03
 auras,NOUN,aura,0.41
-aurélie,NOUN,aurélie,
-aurélies,NOUN,aurélie,
 auréola,VERB,auréoler,0.07
 auréolai,VERB,auréoler,
 auréolaient,VERB,auréoler,0.27
@@ -117098,7 +117085,6 @@ dalmatiques,ADJ,dalmatique,
 dalmatiques,NOUN,dalmatique,0.14
 dalot,NOUN,dalot,
 dalots,NOUN,dalot,
-dalton,NOUN,dalton,
 daltonien,NOUN,daltonien,0.00
 daltonien,ADJ,daltonien,0.00
 daltonienne,NOUN,daltonien,
@@ -117109,7 +117095,6 @@ daltoniens,NOUN,daltonien,0.00
 daltoniens,ADJ,daltonien,0.00
 daltonisme,NOUN,daltonisme,0.00
 daltonismes,NOUN,daltonisme,
-daltons,NOUN,dalton,0.07
 dalx,NOUN,lx,
 dam,NOUN,dam,1.62
 dama,VERB,damer,
@@ -230229,8 +230214,6 @@ fifres,NOUN,fifre,0.88
 fifties,NOUN,fifties,0.07
 fifty-fifty,ADV,fifty-fifty,0.14
 fig,NOUN,figure,
-figaro,NOUN,figaro,1.35
-figaros,NOUN,figaro,0.07
 fige,VERB,figer,2.91
 figé,VERBpartpast,figer,9.32
 figé,ADJ,figé,5.61
@@ -257272,8 +257255,6 @@ guilde,NOUN,guilde,0.00
 guildes,NOUN,guilde,0.00
 guili-guili,NOUN,guili-guili,0.14
 guili-guilis,NOUN,guili-guili,
-guillaume,NOUN,guillaume,0.14
-guillaumes,NOUN,guillaume,0.07
 guilledou,NOUN,guilledou,0.20
 guilledous,NOUN,guilledou,
 guillemet,NOUN,guillemet,0.00
@@ -261823,7 +261804,6 @@ herméneutique,ADJ,herméneutique,0.00
 herméneutique,NOUN,herméneutique,
 herméneutiques,ADJ,herméneutique,
 herméneutiques,NOUN,herméneutique,
-hermès,NOUN,hermès,0.00
 hermesse,NOUN,hermesse,
 hermesses,NOUN,hermesse,
 herméticité,NOUN,herméticité,
@@ -293460,16 +293440,12 @@ lentivirus,NOUN,lentivirus,
 lento,ADV,lento,0.14
 lentos,ADV,lento,
 lents,ADJ,lent,12.03
-léonard,NOUN,léonard,
-léonard,ADJ,léonard,0.14
 léonarde,NOUN,léonard,
 léonarde,ADJ,léonard,
 léonardes,NOUN,léonard,
 léonardes,ADJ,léonard,
 léonardesque,ADJ,léonardesque,
 léonardesques,ADJ,léonardesque,
-léonards,NOUN,léonard,
-léonards,ADJ,léonard,
 léonin,ADJ,léonin,0.27
 léonine,ADJ,léonin,0.34
 léonines,ADJ,léonin,
@@ -296758,8 +296734,6 @@ liserons,NOUN,liseron,0.47
 liserons,VERB,liserer,
 lisérons,VERB,lisérer,
 lises,VERB,lire,0.41
-lisette,NOUN,lisette,
-lisettes,NOUN,lisette,
 liseur,NOUN,liseur,0.68
 liseurs,NOUN,liseur,
 liseuse,NOUN,liseur,0.68
@@ -509306,10 +509280,10 @@ etc.,NOUN,,0.0
 grand-chose,NOUN,,0.0
 Melle,NOUN,,0.0
 n'est-ce pas,INTJ,,0.0
-par-derrière,NOUN,,0.0
-par-devant,NOUN,,0.0
-par-dessous,NOUN,,0.0
-par-dessus,NOUN,,0.0
+par-derrière,ADV,,0.0
+par-devant,ADV,,0.0
+par-dessous,ADV,,0.0
+par-dessus,ADV,,0.0
 Pr,NOUN,,0.0
-tenir lieu de,NOUN,,0.0
+tenir lieu de,VERB,,0.0
 
