@@ -34,6 +34,7 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -60,6 +61,7 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 
 import opennlp.tools.postag.MutableTagDictionary;
+import opennlp.tools.postag.POSDictionary;
 import opennlp.tools.postag.POSModel;
 
 /**
@@ -129,7 +131,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public final CharArraySet ucwords;
 
     /** POS constraints loaded from word.csv. Configure before concurrent analysis. */
-    public final MutableTagDictionary tagDictionary;
+    public final MutableTagDictionary tagDic;
 
     /**
      * Builds a French analyzer with the default lexical resources.
@@ -160,9 +162,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         brevidots = FrenchLexicons.buildBrevidots();
         propn = FrenchLexicons.buildPropn();
         ucwords = FrenchLexicons.buildUcwords();
-        tagDictionary = FrenchLexicons.buildTagDictionary();
-        posTagger = new PosTagger(POS_MODEL, tagDictionary);
-
+        tagDic = FrenchLexicons.buildTagDictionary();
+        posTagger = new PosTagger(POS_MODEL, tagDic);
+        
         mweEntryAnalyzer = new MweEntryAnalyzer();
         expressions = FrenchLexicons.buildMweLexicon(mweEntryAnalyzer);
 

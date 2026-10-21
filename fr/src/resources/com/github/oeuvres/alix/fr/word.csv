@@ -41045,7 +41045,7 @@ bahutages,NOUN,bahutage,
 bahuts,NOUN,bahut,1.15
 bai,NOUN,bai,
 bai,ADJ,bai,1.22
-baie,NOUN,bai,14.86
+baie,NOUN,baie,14.86
 baie,ADJ,bai,0.61
 baie,VERB,bayer,0.00
 baient,VERB,bayer,
@@ -172036,6 +172036,7 @@ donnée,NOUN,donnée,1.49
 données,NOUN,donnée,5.41
 données,VERBpartpast,donner,5.07
 données,ADJ,donné,0.54
+donne-m’en,VERB,donner,0.0
 donnent,VERB,donner,26.28
 donner,VERB,donner,216.55
 donnera,VERB,donner,8.99
@@ -172061,6 +172062,7 @@ donneurs,NOUN,donneur,0.95
 donneuse,NOUN,donneur,0.47
 donneuses,NOUN,donneur,0.07
 donnez,VERB,donner,13.65
+donnez-m’en,VERB,donner,0.0
 donniez,VERB,donner,1.28
 donnions,VERB,donner,1.69
 donnons,VERB,donner,1.96
@@ -329733,6 +329735,7 @@ nimbo-stratus,NOUN,nimbo-stratus,0.00
 nimbons,VERB,nimber,
 nimbostratus,NOUN,nimbostratus,0.07
 nimbus,NOUN,nimbus,0.20
+n'importe,PRONind,,0.00
 nîmois,NOUN,nîmois,
 nîmois,ADJ,nîmois,
 nîmoise,NOUN,nîmois,
@@ -509286,4 +509289,3 @@ par-dessous,ADV,,0.0
 par-dessus,ADV,,0.0
 Pr,NOUN,,0.0
 tenir lieu de,VERB,,0.0
-

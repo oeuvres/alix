@@ -39,6 +39,7 @@ import opennlp.tools.ml.BeamSearch;
 import opennlp.tools.ml.model.SequenceClassificationModel;
 import opennlp.tools.postag.DefaultPOSSequenceValidator;
 import opennlp.tools.postag.POSContextGenerator;
+import opennlp.tools.postag.POSDictionary;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerFactory;
 import opennlp.tools.postag.POSTaggerME;
@@ -59,9 +60,13 @@ public final class PosTagger
 
     /** Feature-context generator. */
     private final POSContextGenerator contextGenerator;
+    
+    /** Optional dictionary-aware sequence validator. */
+    private final TagDictionary tagDic;
 
     /** Optional dictionary-aware sequence validator. */
     private final SequenceValidator<String> sequenceValidator;
+    
 
     /**
      * Builds a decoder using the tag dictionary embedded in the model, if any.
@@ -81,10 +86,10 @@ public final class PosTagger
      * are accepted by beam search.</p>
      *
      * @param posModel OpenNLP POS model
-     * @param tagDictionary external tag dictionary, or {@code null} to use the
+     * @param tagDic external tag dictionary, or {@code null} to use the
      *        model factory's normal sequence validator
      */
-    public PosTagger(final POSModel posModel, final TagDictionary tagDictionary)
+    public PosTagger(final POSModel posModel, final TagDictionary tagDic)
     {
         Objects.requireNonNull(posModel, "posModel");
 
@@ -101,9 +106,31 @@ public final class PosTagger
             "POS model has no sequence model"
         );
         this.contextGenerator = factory.getPOSContextGenerator(beamSize);
-        this.sequenceValidator = (tagDictionary == null)
+        this.tagDic = tagDic;
+        this.sequenceValidator = (tagDic == null)
             ? factory.getSequenceValidator()
-            : new DefaultPOSSequenceValidator(tagDictionary);
+            : new DefaultPOSSequenceValidator(tagDic);
+    }
+    
+    public String[] tags(final String word)
+    {
+        Objects.requireNonNull(word, "word");
+        return tagDic.getTags(word);
+    }
+
+    
+    public boolean hasTag(final String word, final String tag)
+    {
+        Objects.requireNonNull(word, "word");
+        Objects.requireNonNull(tag, "tag");
+        final String[] tags = tagDic.getTags(word);
+        if (tags == null || tags.length < 1) return false;
+        for (String aTag : tags) {
+            if (tag.equals(aTag)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

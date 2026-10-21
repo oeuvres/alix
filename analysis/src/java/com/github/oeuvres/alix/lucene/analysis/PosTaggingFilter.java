@@ -252,7 +252,15 @@ public class PosTaggingFilter extends TokenFilter
             String taggerTerm = term.toString();
             if (!Upos.isPunct(origPos)) {
                 if (sentenceStart) {
-                    // taggerTerm = taggerTerm.toLowerCase(Locale.ROOT);
+                    // if not known has PROPN, try lower casing
+                    if (!tagger.hasTag(taggerTerm, "PROPN")) {
+                        final String lowerTerm = taggerTerm.toLowerCase(Locale.ROOT);
+                        String[] tags = tagger.tags(lowerTerm);
+                        // lower case word is known by dic, lower case it
+                        if (tags != null && tags.length != 0) {
+                            taggerTerm = lowerTerm;
+                        }
+                    }
                 }
                 sentenceStart = false;
             }
@@ -296,4 +304,5 @@ public class PosTaggingFilter extends TokenFilter
             }
         }
     }
+    
 }
