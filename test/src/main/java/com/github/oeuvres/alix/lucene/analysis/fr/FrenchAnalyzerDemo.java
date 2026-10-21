@@ -44,7 +44,6 @@ public class FrenchAnalyzerDemo
             if (line.isBlank()) return;
             analyzer.brevidots.add(line);
         });
-        System.out.println("analyzer.brevidots.contains(\"Stud.=\")" + analyzer.brevidots.contains("Stud."));
         return analyzer;
     }
     
@@ -54,7 +53,11 @@ public class FrenchAnalyzerDemo
         new Case(
             "",
             """
-            Au milieu de l'apothéose de son Louvre, sous la pluie d'or battante des recettes. Restaient 
+            – Je présume qu'elle est retournée à Tours.
+            Tu vas bien ?
+            Napoléon II était vivant, ce me semble ?
+            – Eh bien, veux-tu que je te dise, mon pauvre Patrice, répondit Tom, j'en ai peur !
+            Au milieu de l'apothéose de son Louvre, c’est-à-dire son sacre, sous la pluie d'or battante des recettes. Restaient 
             les deux autres enfants, Serge Mouret, Désirée Mouret, et le Roman de la Justice.
             Le Canadien, Conseil et moi, nous eûmes une assez longue conversation au sujet des Vendéens.
             """,
@@ -82,7 +85,7 @@ public class FrenchAnalyzerDemo
         new Case(
             "",
             """
-            une mise en forme des instruments mêmes de la démonstration
+            Une mise en forme des instruments mêmes de la démonstration
             Les Creusaz et le Crêtet de la Perche (2000-2150 m). Entremont : partie supérieure
             Bringuier, Conversations libres avec Jean Piaget (p. 35-42). R. Laffont.
             Voir Larguier des Bancels, Introduction à la psychologie, 2e éd., p. 149. 15 

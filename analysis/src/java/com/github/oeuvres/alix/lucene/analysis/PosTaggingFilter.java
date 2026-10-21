@@ -252,7 +252,7 @@ public class PosTaggingFilter extends TokenFilter
             String taggerTerm = term.toString();
             if (!Upos.isPunct(origPos)) {
                 if (sentenceStart) {
-                    taggerTerm = taggerTerm.toLowerCase(Locale.ROOT);
+                    // taggerTerm = taggerTerm.toLowerCase(Locale.ROOT);
                 }
                 sentenceStart = false;
             }

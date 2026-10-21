@@ -209,11 +209,6 @@ public final class LemmaFilter extends TokenFilter
         final boolean uppercase = Char.isUpperCase(termAtt.charAt(0));
         final boolean hasPos = hasPos(posId);
 
-        // Explicit proper-name protection has priority over the common-word lexicon.
-        if (uppercase && propn != null && propn.contains(termAtt)) {
-            posAtt.setPos(Upos.PROPN.code);
-            return true;
-        }
 
 
         // Protect acronyms from accidental lowercase lexical matches (USA != user, etc.).
@@ -246,7 +241,21 @@ public final class LemmaFilter extends TokenFilter
             copyLemma(lemmaId);
             return true;
         }
-        // Start of sentence, or book title, or capitalized word like Justice
+
+        // Explicit proper-name protection, known to be in the word dictionary,
+        // but could be very common, example Pas (en Artois)
+        final boolean isProtected = (propn != null && propn.contains(termAtt));
+        if (isProtected) {
+            if (!atSentenceStart) {
+                return true;
+            }
+            // at start of sentence, accept only if tagged as PROPN
+            if (isPROPN) {
+                return true;
+            }
+        }
+
+        
         probe.copyFrom(termAtt).toLowerCase();
         int termId = lexicon.ord(probe);
         // Uppercase not known as word and tagged as PROPN, seems safe
@@ -255,8 +264,7 @@ public final class LemmaFilter extends TokenFilter
         }
         // Uppercase not known as word, but not tagged as PROPN, is the tag of the tagger correct ? 
         if (termId < 0) {
-            // Could be a German noun
-            // posAtt.setPos(Upos.PROPN.code);
+            // Could be a German noun, or Révolution, République, do not fix the tag
             return true;
         }
         // Uppercase known as a word, but tagged as PROPN at start of sentence, ex: Blanche
@@ -264,15 +272,14 @@ public final class LemmaFilter extends TokenFilter
         if (atSentenceStart && isPROPN) {
             return true;
         }
+        // let’s be confident in the tagger?
+        if (isPROPN) { 
+            // return true;
+        }
         
         // copy lower cased probe into term
         termAtt.setEmpty().append(probe);
-        if (isPROPN) {
-            posAtt.setPos(Upos.UNKNOWN.code);
-        }
-        
         if (hasPos) {
-            // remove PROPN error from tagger
             lemmaId = lexicon.lemmaId(termId, posId);
         }
         if (lemmaId == NO_LEMMA) {

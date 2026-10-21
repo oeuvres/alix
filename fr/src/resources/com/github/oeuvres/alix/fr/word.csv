@@ -301142,12 +301142,12 @@ madéfiez,VERB,madéfier,
 madéfiiez,VERB,madéfier,
 madéfiions,VERB,madéfier,
 madéfions,VERB,madéfier,
-madeleine,NOUN,madeleine,0.95
+madeleine,NOUN,madeleine,
 madeleines,NOUN,madeleine,0.95
 madelonnette,NOUN,madelonnette,
 madelonnettes,NOUN,madelonnette,
 mademoiselle,NOUN,mademoiselle,62.30
-madère,NOUN,madère,0.68
+madère,NOUN,madère,
 madères,NOUN,madère,
 madérisa,VERB,madériser,
 madérisai,VERB,madériser,
@@ -326114,7 +326114,7 @@ naphténiques,ADJ,naphténique,
 naphtes,NOUN,naphte,
 naphtol,NOUN,naphtol,
 naphtols,NOUN,naphtol,
-napoléon,NOUN,napoléon,0.81
+napoléon,NOUN,napoléon,
 napoléonien,NOUN,napoléonien,
 napoléonien,ADJ,napoléonien,0.20
 napoléonienne,NOUN,napoléonien,
@@ -349181,6 +349181,7 @@ patriarche,NOUN,patriarche,4.12
 patriarches,NOUN,patriarche,0.47
 patriarchie,NOUN,patriarchie,0.00
 patriarchies,NOUN,patriarchie,
+patrice,NOUN,patrice,
 patrices,NOUN,patrice,
 patricial,ADJ,patricial,
 patriciale,ADJ,patricial,
@@ -508620,7 +508621,6 @@ hommes d'état,NOUN,homme d'État,0.00
 hommes d'État,NOUN,homme d'État,0.00
 homo erectus,NOUN,,0.00
 homo habilis,NOUN,,0.00
-hong kong,NOUN,,0.00
 honnête homme,NOUN,,0.00
 honnêtes gens,NOUN,,0.00
 honoris causa,ADV,,0.00

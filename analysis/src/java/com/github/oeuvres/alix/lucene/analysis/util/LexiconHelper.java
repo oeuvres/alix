@@ -836,6 +836,68 @@ public final class LexiconHelper
             throw new UncheckedIOException(e);
         }
     }
+    
+    /**
+     * Loads PROPN forms.
+     *
+     * @param tagDic       mutable tag dictionary to populate
+     * @param csv          CSV reader
+     * @param csvHeader    header policy
+     * @param formCol      column containing the surface form
+     * @param tagCol       column containing the source POS tag
+     * @param freqCol      frequency column; if negative, frequency is ignored
+     * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
+     * @param posResolver  POS resolver; {@code null} uses {@link #DEFAULT_POS_RESOLVER}
+     * @param report       report sink; {@code null} is silent
+     * @throws UncheckedIOException on read error
+     */
+    public static void loadPROPN(
+        final MutableTagDictionary tagDic,
+        final CSVReader csv,
+        final Report report)
+        throws UncheckedIOException
+    {
+        Objects.requireNonNull(tagDic, "tagDic");
+        Objects.requireNonNull(csv, "csv");
+        final Report rep = orSilent(report);
+        csv.report(rep);
+        final CsvRowHandler handler = new CsvRowHandler()
+        {
+            @Override
+            protected boolean accept(final CSVReader row)
+                throws UncheckedIOException
+            {
+                final String tag = "PROPN";
+                final StringBuilder form = row.getCell(0);
+                Char.translate(form, "’", "'");
+                Char.trim(form);
+                if (form.isEmpty()) {
+                    return false;
+                }
+                final String word = form.toString();
+                final String[] oldTags = tagDic.getTags(word);
+
+                if (oldTags == null || oldTags.length == 0) {
+                    tagDic.put(word, tag);
+                    return true;
+                }
+
+                for (String oldTag : oldTags) {
+                    if (tag.equals(oldTag)) {
+                        return false;
+                    }
+                }
+
+                final String[] tags =
+                    java.util.Arrays.copyOf(oldTags, oldTags.length + 1);
+                tags[oldTags.length] = tag;
+                tagDic.put(word, tags);
+                return true;
+            }
+        };
+        forEachDataRow(csv, CsvHeader.KEEP, 1, rep, handler);
+    }
+
 
     /**
      * Loads POS tags from a CSV reader into a mutable OpenNLP tag dictionary.

@@ -72,6 +72,8 @@ public class Md2tsv
             }
         }
 
+        int processed = 0;
+        int total = files.size();
         try (FrenchAnalyzer analyzer = new FrenchAnalyzer(MarkupMode.NONE)) {
             for (Path md : files) {
                 Path tsv = outputPath(outDir, md);
@@ -94,6 +96,13 @@ public class Md2tsv
 
                     writeTokens(reader, out, analyzer);
                 }
+                processed++;
+                System.err.printf("\rConverted %d/%d files (%d%%)",
+                    processed, total, 100 * processed / total);
+            }
+        } finally {
+            if (processed > 0) {
+                System.err.println();
             }
         }
     }

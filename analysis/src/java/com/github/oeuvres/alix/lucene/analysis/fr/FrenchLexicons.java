@@ -33,6 +33,8 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -40,6 +42,7 @@ import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.PosResolver;
+import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
@@ -165,8 +168,9 @@ public final class FrenchLexicons
      * zero.
      *
      * @return populated mutable tag dictionary
+     * @throws IOException 
      */
-    public static MutableTagDictionary buildTagDictionary()
+    public static MutableTagDictionary buildTagDictionary() throws IOException
     {
         return buildTagDictionary(0.0);
     }
@@ -177,8 +181,9 @@ public final class FrenchLexicons
      *
      * @param freqMin minimum FREQLIVRES value accepted
      * @return populated mutable tag dictionary
+     * @throws IOException 
      */
-    public static MutableTagDictionary buildTagDictionary(final double freqMin)
+    public static MutableTagDictionary buildTagDictionary(final double freqMin) throws IOException
     {
         // true = case sensitive, false = case insensitive
         final MutableTagDictionary tagDic = new POSDictionary(true);
@@ -194,6 +199,12 @@ public final class FrenchLexicons
             freqMin,
             wordPosResolver()
         );
+        // Load Prop words
+        /*
+        try (CSVReader csv = new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-words.csv")) {
+            LexiconHelper.loadPROPN(tagDic, csv, null);
+        }
+        */
         return tagDic;
     }
 

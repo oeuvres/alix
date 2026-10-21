@@ -640,6 +640,7 @@ public final class CSVReader implements Closeable
 
     /**
      * Sets the field separator character. Call before the first {@link #readRow()}.
+     * Default is ','.
      *
      * @param separator separator character
      * @return this reader, for chaining
