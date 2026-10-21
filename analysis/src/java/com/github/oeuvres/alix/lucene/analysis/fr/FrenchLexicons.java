@@ -199,12 +199,10 @@ public final class FrenchLexicons
             freqMin,
             wordPosResolver()
         );
-        // Load Prop words
-        /*
+        // Load PROPN words
         try (CSVReader csv = new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-words.csv")) {
             LexiconHelper.loadPROPN(tagDic, csv, null);
         }
-        */
         return tagDic;
     }
 

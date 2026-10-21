@@ -57,8 +57,8 @@ public class FrenchAnalyzerDemo
             Tu vas bien ?
             Napoléon II était vivant, ce me semble ?
             – Eh bien, veux-tu que je te dise, mon pauvre Patrice, répondit Tom, j'en ai peur !
-            Au milieu de l'apothéose de son Louvre, c’est-à-dire son sacre, sous la pluie d'or battante des recettes. Restaient 
-            les deux autres enfants, Serge Mouret, Désirée Mouret, et le Roman de la Justice.
+            Au milieu de l'apothéose de son Louvre, c’est-à-dire son sacre, sous la pluie d'or battante des recettes.
+            Restaient les deux autres enfants, Serge Mouret, Désirée Mouret, et le Roman de la Justice.
             Le Canadien, Conseil et moi, nous eûmes une assez longue conversation au sujet des Vendéens.
             """,
             ""
