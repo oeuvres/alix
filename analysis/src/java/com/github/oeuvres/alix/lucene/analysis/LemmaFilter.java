@@ -232,8 +232,6 @@ public final class LemmaFilter extends TokenFilter
             // lemma not found with pos, get 
             if (lemmaId < 0) {
                 lemmaId = lexicon.lemmaId(termId);
-                // tagger bug
-                if (isPROPN) posAtt.setPos(Upos.NOUN.code);
             }
             if (lemmaId < 0 || lemmaId == termId) {
                 return true;
@@ -274,7 +272,7 @@ public final class LemmaFilter extends TokenFilter
         }
         // let’s be confident in the tagger?
         if (isPROPN) { 
-            // return true;
+            return true;
         }
         
         // copy lower cased probe into term

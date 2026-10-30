@@ -63717,6 +63717,7 @@ c’est-à-dire,CCONJ,c’est-à-dire,0.00
 c’est-à-dire,SCONJ,c’est-à-dire,
 c’étaient,PRONdem,c’est,
 c’était,PRONdem,c’est,
+ç’a,VERB,ç’a,0
 ça,PRONdem,ça,2477.64
 çà,ADVsit,çà,21.15
 cab,NOUN,cab,0.20
@@ -116794,10 +116795,10 @@ d’abord,ADV,d’abord,169.32
 d’accord,ADV,d’accord,
 d’ailleurs,ADV,d’ailleurs,
 d’après,ADP,d’après,0.00
-d’aucuns,PRONprs,d’aucuns,
-d’autant,ADV,d’autant,
-d’autre,PRON,d’autre,
-d’autres,PRON,d’autre,
+d’aucuns,PRONprs,d’aucuns,0
+d’autant,ADV,d’autant,0
+d’autre,PRON,d’autre,0
+d’autres,PRON,d’autre,0
 d’avec,ADP,d’avec,0.00
 d’emblée,ADV,d’emblée,8.38
 d’entre,ADP,d’entre,0.00
@@ -252809,10 +252810,6 @@ grandes,NOUN,grand,3.99
 grandes-duchesses,NOUN,grande-duchesse,0.14
 grandesse,NOUN,grandesse,0.14
 grandesses,NOUN,grandesse,
-grandet,ADJ,grandet,0.14
-grandets,ADJ,grandet,
-grandette,ADJ,grandet,
-grandettes,ADJ,grandet,
 grandeur,NOUN,grandeur,26.49
 grandeurs,NOUN,grandeur,1.89
 grandi,ADJ,grandi,
@@ -260668,6 +260665,7 @@ heimatlos,NOUN,heimatlos,
 heimatlos,ADJ,heimatlos,
 heimatlosat,NOUN,heimatlosat,
 heimatlosats,NOUN,heimatlosat,
+hein,INTJ,hein,
 héla,VERB,héler,1.69
 hélai,VERB,héler,0.14
 hélaient,VERB,héler,0.47
@@ -320700,6 +320698,7 @@ mordicante,ADJ,mordicant,
 mordicantes,ADJ,mordicant,
 mordicants,ADJ,mordicant,
 mordicus,ADV,mordicus,0.54
+mordieu,INTJ,mordieu,0
 mordiez,VERB,mordre,
 mordilla,VERB,mordiller,0.61
 mordillage,NOUN,mordillage,0.07
@@ -325556,7 +325555,6 @@ n-uplets,NOUN,n-uplet,
 n’,ADVneg,ne,6084.12
 n’empêche,ADV,n’empêche,
 n’est-ce,ADV,n’est-ce,
-n’importe,ADV,n’importe,
 n°,NUM,n°,
 na,INTJ,na,0.81
 na,NOUN,na,0.00
@@ -329735,7 +329733,9 @@ nimbo-stratus,NOUN,nimbo-stratus,0.00
 nimbons,VERB,nimber,
 nimbostratus,NOUN,nimbostratus,0.07
 nimbus,NOUN,nimbus,0.20
-n'importe,PRONind,,0.00
+n’importe,INTJ,n’importe,0.00
+n’importe qui,PRONind,n’importe qui,0.00
+n’importe quoi,PRONind,n’importe quoi,0.00
 nîmois,NOUN,nîmois,
 nîmois,ADJ,nîmois,
 nîmoise,NOUN,nîmois,
@@ -381986,7 +381986,7 @@ qu’,PRONrel,que,0.00
 qu’,PRONint,que,0.00
 qu’,ADVneg,que,0.00
 qu’en-dira-t-on,NOUN,qu’en-dira-t-on,0.41
-qu’est-ce,NOUN,qu’est-ce,
+qu’est-ce,NOUN,qu’est-ce,0
 qua,ADV,qua,
 quad,NOUN,quad,
 quadra,NOUN,quadra,0.00
@@ -494935,6 +494935,7 @@ va,VERB,aller,694.59
 va-comme-je-te-pousse,ADV,va-comme-je-te-pousse,
 va-et-vient,NOUN,va-et-vient,10.61
 va-nu-pieds,NOUN,va-nu-pieds,
+va-t’en,VERB,aller,0
 va-t-en-guerre,NOUN,va-t-en-guerre,
 va-t-en-guerre,ADJ,va-t-en-guerre,
 va-tout,NOUN,va-tout,0.41
@@ -508853,11 +508854,9 @@ music hall,NOUN,,0.00
 mutatis mutandis,ADV,,0.00
 nécessité morale,NOUN,,0.00
 nécessités morales,NOUN,nécessité morale,0.00
-n'est ce pas,INTJ,n'est-ce pas,0.00
-n'est-ce pas,ADV,,0.00
-n'est-ce pas,ADV,,0.00
-n'importe qui,PRONind,,0.00
-n'importe quoi,PRONind,,0.00
+n’est-ce,VERB,n’est-ce,0.00
+n’est ce pas,INTJ,n’est-ce pas,0.00
+n’est-ce pas,ADV,n’est-ce pas,0.00
 n'empêche que,ADP,,0.00
 ne varietur,ADV,,0.00
 negro spiritual,NOUN,,0.00
