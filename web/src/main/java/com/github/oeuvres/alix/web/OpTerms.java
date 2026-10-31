@@ -191,7 +191,7 @@ public final class OpTerms extends Op
             throws IOException
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
-        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         TopTerms topTerms = topTerms(index, pars, meta);
         Writer writer = response.getWriter();
         if (topTerms != null) {
@@ -233,8 +233,8 @@ public final class OpTerms extends Op
         final HttpServletResponse response
     ) throws IOException
     {
-        final HttpPars pars = new HttpPars(request, response);
-        final MetaUtil meta = new MetaUtil();
+        final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         TopTerms topTerms = topTerms(index, pars, meta);
         TermsUtil.txt(request, response, topTerms);
     }

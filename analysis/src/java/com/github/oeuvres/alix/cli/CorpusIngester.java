@@ -60,9 +60,9 @@ public final class CorpusIngester
         analyzer.addStopwords(cfg.files(NOISETOKENS));
         analyzer.addGramwords(cfg.files(GRAMWORDS));
         analyzer.addNoisetokens(cfg.files(NOISETOKENS));
-        
         analyzer.addBrevidots(cfg.files(BREVIDOTS));
         analyzer.addUcwords(cfg.files(UCWORDS));
+        
         report.info(cfg.toString());
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
         iwc.setIndexSort(new Sort(

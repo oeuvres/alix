@@ -40,12 +40,12 @@ public class Pars
     public static final String   SCORER           = "scorer";
     public static final String   SIMPLE_MATHS     = "simplemaths";
     public static final String   SLOP             = "slop";
-    public static final int      SLOP_DEFAULT     = 20;
+    public static final int      SLOP_DEFAULT     = 30;
     public static final int[]    SLOP_RANGE       = {0, 200};
     public static final String   SMOOTH           = "smooth";
     public static final String   SPECIF           = "specif";
-    public static final double   SPECIF_DEFAULT   = 1;
-    public static final double[] SPECIF_RANGE     = {0.0, +2.0};
+    public static final double   SPECIF_DEFAULT   = 0.5;
+    public static final double[] SPECIF_RANGE     = {0.0, +1.0};
     public static final String   SNIPPETS         = "snippets";
     public static final int      SNIPPETS_DEFAULT = 3;
     public static final int[]    SNIPPETS_RANGE   = {-1, 100};

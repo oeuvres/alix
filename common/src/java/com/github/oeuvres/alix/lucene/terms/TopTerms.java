@@ -481,13 +481,19 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
         final int vocabSize = termStats.vocabSize();
         final long corpusTokens = corpus == null ? termStats.fieldTokens() : corpus.tokens;
+        final int corpusDocs = corpus == null ? termStats.fieldDocs() : corpus.docs;
+        final long[] corpusFreq = corpus == null ? termStats.termFreqRef() : corpus.termFreq;
+        final int[] corpusDf = corpus == null ? termStats.termDocsRef() : corpus.termDocs;
         final double[] scoreVec = new double[vocabSize];
         final TopArray included = new TopArray(topK);
+
+        scorer.corpus(corpusTokens, corpusDocs);
+        scorer.focus(tokens, pivotCount);
 
         for (int termId = rankingInclude.nextSetBit(1);
                 termId >= 0;
                 termId = rankingInclude.nextSetBit(termId + 1)) {
-            final double score = scorerScore(scorer, termId, corpusTokens);
+            final double score = scorer.score(termFreq[termId], corpusFreq[termId], corpusDf[termId]);
             scoreVec[termId] = rankingScore(score);
             included.push(termId, scoreVec[termId]);
         }
@@ -508,7 +514,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
                     continue;
                 }
 
-                final double score = scorerScore(scorer, termId, corpusTokens);
+                final double score = scorer.score(termFreq[termId], corpusFreq[termId], corpusDf[termId]);
                 if (Double.isNaN(score)) {
                     continue;
                 }
@@ -1251,31 +1257,6 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     private double score(final int termId, final double[] scoreVec)
     {
         return scoreVec == null ? (double) termFreq[termId] : scoreVec[termId];
-    }
-
-    /**
-     * Computes one term's score from the current focus and its scoring metadata.
-     *
-     * @param scorer scorer to apply
-     * @param termId dense term id
-     * @param corpusTokens active-corpus token total
-     * @return scorer value
-     */
-    private double scorerScore(
-        final KeynessScorer scorer,
-        final int termId,
-        final long corpusTokens)
-    {
-        final long corpusTermCount = corpus == null
-            ? termStats.termFreq(termId)
-            : corpus.termFreq[termId];
-        final KeynessScorer.Stats stats = new KeynessScorer.Stats(
-            termFreq[termId],
-            tokens,
-            corpusTermCount,
-            corpusTokens,
-            pivotCount);
-        return scorer.score(stats);
     }
 
     /**

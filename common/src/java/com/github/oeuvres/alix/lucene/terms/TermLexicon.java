@@ -159,6 +159,19 @@ public final class TermLexicon {
         String[] tags() {
             return tags;
         }
+        
+        @Override
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            boolean first = true;
+            for(String tag: tags) {
+                if (first) first=false;
+                else sb.append(",");
+                sb.append(tag);
+            }
+            return sb.toString();
+        }
     }
 
     /** Reverse index from a Hunspell morphological tag to the flags it sets; built from {@link TermFlag}. */

@@ -24,6 +24,9 @@ public class TermsUtil
     ) throws IOException {
         int rank = 1;
         Writer writer = response.getWriter();
+        MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
+        // why this write nothing?
+        meta.toString(writer, (HttpPars)request.getAttribute(ALIX_PARS));
         for (TermEntry term : terms) {
             writer.append(String.valueOf(rank++)).append(". ")
             .append(term.form())

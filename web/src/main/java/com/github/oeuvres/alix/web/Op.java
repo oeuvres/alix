@@ -516,19 +516,19 @@ public abstract class Op
         return IntPoint.newRangeQuery(flucYear.name(), start, end);
     }
 
-    static KeynessScorer tsort(HttpPars pars)
+    static KeynessScorer tsort(final HttpPars pars)
     {
-        double specif = pars.getDouble(SPECIF, SPECIF_RANGE, SPECIF_DEFAULT, SPECIF);
-        return switch (pars.getString(TSORT, "")) {
-            case "count" -> new KeynessScorer.Count();
-            case "raw" -> new KeynessScorer.Count();
-            case "g2" -> new KeynessScorer.G2(specif);
+        final double specif = pars.getDouble(SPECIF, SPECIF_RANGE, SPECIF_DEFAULT, SPECIF);
+
+        final KeynessScorer scorer = switch (pars.getString(TSORT, "")) {
+            case "count", "raw" -> new KeynessScorer.Count();
+            case "g2" -> new KeynessScorer.G2();
             case "logratio" -> new KeynessScorer.LogRatio();
             case "logdice" -> new KeynessScorer.LogDice();
             case "chi2" -> new KeynessScorer.Chi2();
-            case "simple" -> new KeynessScorer.SimpleMaths();
-            default -> new KeynessScorer.G2(specif);
+            default -> new KeynessScorer.SimpleMaths();
         };
+        return scorer.specif(specif);
     }
     
     static FlucText contentFluc(final LuceneIndex index, final HttpPars pars, final MetaUtil meta)
