@@ -11,6 +11,7 @@ import java.util.BitSet;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
 
+import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
@@ -20,56 +21,26 @@ import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.Report;
 
 /**
- * Builds dense term vectors from positional term cooccurrence using truncated
- * PRIMME truncated SVD, and writes them in the word2vec binary format.
+ * Builds word2vec-format term embeddings using positional co-occurrence and SVD.
  *
- * <p>The vocabulary is selected by minimum document frequency, then by
- * decreasing total term frequency. Rows and columns use the same selected
- * vocabulary. Each unordered pair of selected token occurrences whose
- * positional distance is in {@code [1, window]} is visited once and contributes
- * symmetrically to the contingency table. For two occurrences of the same
- * selected term, the diagonal receives two counts, corresponding to the two
- * pivot/cooccurrence directions.</p>
+ * <p>The selected vocabulary serves as both rows and columns. Each unordered
+ * positional pair is counted once. Its count is mirrored in the symmetric
+ * contingency table, with same-word pairs contributing two diagonal counts.
+ * The table is stored as upper-triangular sparse integer counts.</p>
  *
- * <p>Cooccurrence counts remain sparse throughout collection. Each row uses a
- * primitive integer-to-double hash map while counts are accumulated. Only the upper triangle is stored during collection, then flattened to COO arrays
- * before the G² pipeline is created. The dense
- * logical {@code vocabulary x vocabulary} count matrix is never allocated.</p>
+ * <p>{@link SparseSvd#keyness(KeynessScorer, double)} scores each direction
+ * separately. SimpleMaths therefore retains its focus-dependent asymmetry.
+ * The exported word vectors are the left singular vectors, optionally weighted
+ * by singular values.</p>
  *
- * <p>Position gaps represented by {@link TermRail#NO_TERM} remain part of
- * positional distance. Each document is copied from {@link TermRail} once into
- * a reusable {@code int[]} and converted in place from rail term ids to
- * selected matrix-row ids before pair counting.</p>
- *
- * <p><b>Stopword distance gate.</b> Terms flagged {@link TermFlag#STOPWORD} in
- * the lexicon, loaded from an optional {@code <field>.stop} list, remain in the
- * vocabulary but use only short-range context. A pair involving a stopword is
- * counted only at positional distance {@code <= STOP_DIST}; content/content
- * pairs are counted across the full configured window. The gate is symmetric
- * and inert when no stopword is flagged.</p>
- *
- * <p>The main model parameters, in decreasing practical importance, are:</p>
- * <ol>
- *   <li>{@code --window 30}: maximum positional cooccurrence distance.</li>
- *   <li>{@code --dims 500}: number of dimensions requested from truncated SVD.</li>
- *   <li>{@code --weightAxes 0.5}: exponent used to weight retained SVD axes by
- *       {@code sigma^weightAxes}; zero leaves projected axes unweighted.</li>
- *   <li>{@code --specif 1.5}: specificity passed to
- *       {@link SparseG2Svd#g2Specif(double, double)}; zero disables the G² specificity
- *       adjustment and uses that method's zero-specificity endpoint.</li>
- *   <li>{@code --maxTerms 10000}: maximum vocabulary size after frequency
- *       selection.</li>
- *   <li>{@code --minDocFreq 3}: minimum document frequency required for a term.</li>
- * </ol>
- *
- * <p>{@code --sideDir DIR} optionally changes the directory containing or
- * receiving side data such as term statistics, the positional rail, and the
- * stopword list. It defaults to {@code indexDir}.</p>
+ * <p>Selected stopwords are restricted to {@link #STOP_DIST} positional steps;
+ * other terms use the full window. A missing stopword list disables the gate.</p>
  *
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
- *     [--window 30] [--dims 500] [--weightAxes 0.5] [--specif 1.5] \
- *     [--maxTerms 10000] [--minDocFreq 3] [--sideDir DIR]
+ *     [--window 30] [--dims 100] [--scorer g2|simple] [--specif 0.5] \
+ *     [--cellPower 0.5] [--weightAxes 0.5] \
+ *     [--maxTerms 15000] [--minDocFreq 3] [--sideDir DIR]
  * }</pre>
  */
 public final class Coocs2vec
@@ -87,7 +58,7 @@ public final class Coocs2vec
         String[] words,
         int[] rows,
         int[] cols,
-        double[] values,
+        long[] values,
         long pairs
     ) {
         /**
@@ -115,8 +86,8 @@ public final class Coocs2vec
         }
     }
 
-    /** Minimal primitive integer-to-double open-addressing map. */
-    private static final class IntDoubleMap
+    /** Minimal primitive integer-to-long open-addressing map. */
+    private static final class IntLongMap
     {
         /** Empty-key sentinel; matrix columns are always non-negative. */
         private static final int EMPTY = -1;
@@ -128,16 +99,16 @@ public final class Coocs2vec
         private int size;
 
         /** Hash values. */
-        private double[] values;
+        private long[] values;
 
         /**
          * Creates a small empty map.
          */
-        private IntDoubleMap()
+        private IntLongMap()
         {
             keys = new int[16];
             Arrays.fill(keys, EMPTY);
-            values = new double[keys.length];
+            values = new long[keys.length];
         }
 
         /**
@@ -147,7 +118,7 @@ public final class Coocs2vec
          * @param amount amount to add
          * @return true if the key was inserted, false if it already existed
          */
-        private boolean add(final int key, final double amount)
+        private boolean add(final int key, final long amount)
         {
             if ((size + 1) * 10 >= keys.length * 7) {
                 rehash(keys.length << 1);
@@ -163,7 +134,7 @@ public final class Coocs2vec
                     return true;
                 }
                 if (present == key) {
-                    values[slot] += amount;
+                    values[slot] = Math.addExact(values[slot], amount);
                     return false;
                 }
                 slot = (slot + 1) & mask;
@@ -177,7 +148,7 @@ public final class Coocs2vec
          * @return mapped value
          * @throws IllegalStateException if the key is absent
          */
-        private double get(final int key)
+        private long get(final int key)
         {
             final int mask = keys.length - 1;
             int slot = hash(key) & mask;
@@ -217,10 +188,10 @@ public final class Coocs2vec
         private void rehash(final int capacity)
         {
             final int[] oldKeys = keys;
-            final double[] oldValues = values;
+            final long[] oldValues = values;
             keys = new int[capacity];
             Arrays.fill(keys, EMPTY);
-            values = new double[capacity];
+            values = new long[capacity];
             final int mask = capacity - 1;
             for (int i = 0; i < oldKeys.length; i++) {
                 final int key = oldKeys[i];
@@ -247,7 +218,7 @@ public final class Coocs2vec
         private int nonZero;
 
         /** Primitive column-to-count map for each row. */
-        private final IntDoubleMap[] rows;
+        private final IntLongMap[] rows;
 
         /**
          * Creates an empty square sparse count table.
@@ -257,7 +228,7 @@ public final class Coocs2vec
         private SparseCounts(final int size)
         {
             columns = new IntList[size];
-            rows = new IntDoubleMap[size];
+            rows = new IntLongMap[size];
         }
 
         /**
@@ -267,11 +238,11 @@ public final class Coocs2vec
          * @param col column rank
          * @param amount positive amount to add
          */
-        private void add(final int row, final int col, final double amount)
+        private void add(final int row, final int col, final long amount)
         {
-            IntDoubleMap map = rows[row];
+            IntLongMap map = rows[row];
             if (map == null) {
-                map = new IntDoubleMap();
+                map = new IntLongMap();
                 rows[row] = map;
                 columns[row] = new IntList();
             }
@@ -291,14 +262,14 @@ public final class Coocs2vec
         {
             final int[] sparseRows = new int[nonZero];
             final int[] sparseCols = new int[nonZero];
-            final double[] sparseValues = new double[nonZero];
+            final long[] sparseValues = new long[nonZero];
             int index = 0;
             for (int row = 0; row < rows.length; row++) {
                 final IntList keys = columns[row];
                 if (keys == null) {
                     continue;
                 }
-                final IntDoubleMap map = rows[row];
+                final IntLongMap map = rows[row];
                 for (int i = 0; i < keys.size(); i++) {
                     final int col = keys.get(i);
                     sparseRows[index] = row;
@@ -318,7 +289,7 @@ public final class Coocs2vec
      * @param cols observed column ranks
      * @param values observed values
      */
-    private record SparseCells(int[] rows, int[] cols, double[] values) {}
+    private record SparseCells(int[] rows, int[] cols, long[] values) {}
 
     /**
      * Maximum positional distance, inclusive, at which a pair involving a
@@ -334,8 +305,9 @@ public final class Coocs2vec
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
-            + " [--window 30] [--dims 200] [--weightAxes 0.5] [--specif 1.5]"
-            + " [--maxTerms 10000] [--minDocFreq 3] [--sideDir DIR]";
+            + " [--window 30] [--dims 100] [--scorer g2|simple] [--specif 0.5]"
+            + " [--cellPower 0.5] [--weightAxes 0.5]"
+            + " [--maxTerms 15000] [--minDocFreq 3] [--sideDir DIR]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
@@ -352,6 +324,19 @@ public final class Coocs2vec
      *
      * @param args index directory, field, then command-line options
      * @throws IOException if the index, rail, or output file cannot be accessed
+     * 
+     * "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // best model, dims200 enough
+     * "piaget-260827-content-coocs30-g2specif1.0-dims100.bin" // Good model
+     * "piaget-260827-content-coocs50-g2specif1.0-dims100.bin" // coocs50, too big for dims100
+     * "piaget-260827-content-coocs50-g2specif1.0-dims300.bin" // coocs50, add semantics
+     * "piaget-260827-content-coocs50-g2specif1.0-dims200.bin" // coocs50, add semantics
+     * "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // g2specif1.0, best
+     * "piaget-260827-content-coocs30-g2specif0.5-dims200.bin" // g2specif0.5, over sparse
+     * "piaget-260827-content-coocs30-g2specif2.0-dims200.bin" //specif2.0, over concentrate
+     * "piaget-260827-content-coocs50-g2specif1.5-cellpow0.5-dims500.bin" // cellpow0.5 should stay default
+     * "piaget-260827-content-coocs50-g2specif1.5-cellpow0.25-dims500.bin" // over-flattens association strengths
+     * "piaget-260827-content-coocs50-g2specif1.5-cellpow2.0-dims500.bin" // over-concentrates on strongest association cells
+     * "piaget-260827-content-coocs30-g2specif1.5-dims500.bin" // window 30, bad with dim500
      */
     public static void main(final String[] args) throws IOException
     {
@@ -365,34 +350,25 @@ public final class Coocs2vec
         final Path indexDir = Paths.get(args[0]);
         final String field = args[1];
         Path sideDir = indexDir;
-        
+
 
         int window = 30;
-        int dims = 100; // sweet spot between sparse (50) and concentrate (300)
-        int maxTerms = 15_000; // seems the right level
-        // those params have not yet shown improvement to the model
-        final double cellpow = 0.5; 
-        final double weightAxes = 0.5;
-        double specif = 1.5d;
+        int dims = 100;
+        int maxTerms = 15_000;
         int minDocFreq = 3;
-        // "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // best model, dims200 enough
-        // "piaget-260827-content-coocs30-g2specif1.0-dims100.bin" // Good model
-        // "piaget-260827-content-coocs50-g2specif1.0-dims100.bin" // coocs50, too big for dims100
-        // "piaget-260827-content-coocs50-g2specif1.0-dims300.bin" // coocs50, add semantics
-        // "piaget-260827-content-coocs50-g2specif1.0-dims200.bin" // coocs50, add semantics
-        // "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // g2specif1.0, best
-        // "piaget-260827-content-coocs30-g2specif0.5-dims200.bin" // g2specif0.5, over sparse
-        // "piaget-260827-content-coocs30-g2specif2.0-dims200.bin" //specif2.0, over concentrate
-        // "piaget-260827-content-coocs50-g2specif1.5-cellpow0.5-dims500.bin" // cellpow0.5 should stay default
-        // "piaget-260827-content-coocs50-g2specif1.5-cellpow0.25-dims500.bin" // over-flattens association strengths
-        // "piaget-260827-content-coocs50-g2specif1.5-cellpow2.0-dims500.bin" // over-concentrates on strongest association cells
-        // "piaget-260827-content-coocs30-g2specif1.5-dims500.bin" // window 30, bad with dim500
+        String scorerName = "simple";
+        double specif = 0.5d;
+        double cellPower = 0.5d;
+        double weightAxes = 0.5d;
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
                 case "--window" -> window = Integer.parseInt(args[++i]);
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
+                case "--scorer" -> scorerName = args[++i];
                 case "--specif" -> specif = Double.parseDouble(args[++i]);
+                case "--cellPower" -> cellPower = Double.parseDouble(args[++i]);
+                case "--weightAxes" -> weightAxes = Double.parseDouble(args[++i]);
                 case "--maxTerms" -> maxTerms = Integer.parseInt(args[++i]);
                 case "--minDocFreq" -> minDocFreq = Integer.parseInt(args[++i]);
                 case "--sideDir" -> sideDir = Paths.get(args[++i]);
@@ -410,33 +386,38 @@ public final class Coocs2vec
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be >= 1: " + dims);
         }
-        /*
         if (!Double.isFinite(weightAxes) || weightAxes < 0d) {
             throw new IllegalArgumentException(
                 "weightAxes must be finite and >= 0: " + weightAxes);
         }
-        */
-        if (!Double.isFinite(specif) || specif < 0d) {
+        if (!Double.isFinite(cellPower) || cellPower <= 0d) {
             throw new IllegalArgumentException(
-                "specif must be finite and >= 0: " + specif);
+                "cellPower must be finite and > 0: " + cellPower);
         }
+        if (!Double.isFinite(specif) || specif < 0d || specif > 1d) {
+            throw new IllegalArgumentException(
+                "specif must be in [0, 1]: " + specif);
+        }
+        final KeynessScorer scorer = switch (scorerName) {
+            case "g2" -> new KeynessScorer.G2();
+            case "simple" -> new KeynessScorer.SimpleMaths();
+            default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
+        };
+        scorer.specif(specif);
         if (maxTerms < 2) {
             throw new IllegalArgumentException("maxTerms must be >= 2: " + maxTerms);
         }
 
         String outName = indexDir.getFileName().toString();
-        // final DateFormat formatter = new SimpleDateFormat("yyMMdd");
-        // outName += "-" + formatter.format(new Date());
         outName += "-" + field;
         outName += "-win" + window;
-        // outName += "-cellpow" + cellpow;
 
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
             final TermStats stats = TermStats.openOrBuild(
                 reader, sideDir, field, Report.ReportNull.INSTANCE);
             final Path stopPath = sideDir.resolve(field + ".stop");
             final String[] words;
-            final SparseG2Svd svd;
+            final SparseSvd svd;
             final int termCount;
             InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
             final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
@@ -447,7 +428,9 @@ public final class Coocs2vec
                     "stopword gate active: pairs with a stopword counted only within +/-%d",
                     STOP_DIST);
             }
-            outName += "-g2specif" + specif;
+            outName += "-" + scorerName + "-s" + specif;
+            if (cellPower != 0.5d) outName += "-cp" + cellPower;
+            if (weightAxes != 0.5d) outName += "-aw" + weightAxes;
             outName += "-dims" + dims;
 
             if (!TermRail.exists(sideDir, field)) {
@@ -488,10 +471,11 @@ public final class Coocs2vec
                 table.storedNonZero(),
                 table.pairs());
             words = table.words();
-            svd = new SparseG2Svd(
-                termCount, termCount, table.rows(), table.cols(), table.values());
-            log("preparing sparse positive G2 specificity matrix (specif=%.3f)", specif);
-            svd.g2Specif(specif, cellpow);
+            svd = new SparseSvd(
+                termCount, table.rows(), table.cols(), table.values());
+            log("preparing directed %s matrix (specif=%.3f, cellPower=%.3f)",
+                scorerName, specif, cellPower);
+            svd.keyness(scorer, cellPower);
             final int retained;
             log("decomposing to top %,d singular axes (PRIMME SVDS, eps=%.1e)", dims, SVD_EPS);
             svd.decompose(dims, SVD_EPS);
@@ -500,13 +484,41 @@ public final class Coocs2vec
                 svd.weightAxes(weightAxes);
             }
             retained = svd.singularValues().length;
+            if (retained == 0) {
+                throw new IllegalStateException("no nonzero singular dimensions: " + scorerName);
+            }
             log("decomposition done, retained %,d dimensions", retained);
 
 
             final double[][] coords = svd.project(retained).coords();
+            final String[] outputWords = new String[termCount];
+            final double[][] outputVectors = new double[termCount][];
+            int outputCount = 0;
+            for (int row = 0; row < termCount; row++) {
+                double norm2 = 0d;
+                for (final double coordinate : coords[row]) {
+                    norm2 += coordinate * coordinate;
+                }
+                if (!Double.isFinite(norm2)) {
+                    throw new IllegalStateException("invalid SVD vector for " + words[row]);
+                }
+                if (norm2 == 0d) {
+                    continue; // word2vec cannot represent an empty vector
+                }
+                outputWords[outputCount] = words[row];
+                outputVectors[outputCount++] = coords[row];
+            }
+            if (outputCount == 0) {
+                throw new IllegalStateException("all SVD vectors are zero");
+            }
+            if (outputCount < termCount) {
+                log("omitting %,d zero-norm vectors", termCount - outputCount);
+            }
             final Path out = Paths.get(outName + ".bin");
-            log("writing %,d vectors to %s", termCount, out);
-            VecModel.write(out, words, coords);
+            log("writing %,d vectors to %s", outputCount, out);
+            VecModel.write(out,
+                Arrays.copyOf(outputWords, outputCount),
+                Arrays.copyOf(outputVectors, outputCount));
 
             log("done");
         }
@@ -515,7 +527,7 @@ public final class Coocs2vec
     /**
      * Prints the nearest rows by cosine in the prepared matrix before SVD.
      *
-     * <p>Unlike {@link #printPreparedTop(SparseG2Svd, String[], String, int)},
+     * <p>Unlike {@link #printPreparedTop(SparseSvd, String[], String, int)},
      * this compares complete row profiles.</p>
      *
      * @param svd prepared sparse reduction pipeline
@@ -524,7 +536,7 @@ public final class Coocs2vec
      * @param topK number of neighbours to print
      */
     private static void printPreparedCosineTop(
-        final SparseG2Svd svd,
+        final SparseSvd svd,
         final String[] words,
         final String word,
         final int topK
@@ -573,7 +585,7 @@ public final class Coocs2vec
      * @param topK number of columns to print
      */
     private static void printPreparedTop(
-        final SparseG2Svd svd,
+        final SparseSvd svd,
         final String[] words,
         final String word,
         final int topK
@@ -629,13 +641,13 @@ public final class Coocs2vec
         final int col
     ) {
         if (row == col) {
-            counts.add(row, row, 2d);
+            counts.add(row, row, 2L);
         }
         else if (row < col) {
-            counts.add(row, col, 1d);
+            counts.add(row, col, 1L);
         }
         else {
-            counts.add(col, row, 1d);
+            counts.add(col, row, 1L);
         }
     }
 
