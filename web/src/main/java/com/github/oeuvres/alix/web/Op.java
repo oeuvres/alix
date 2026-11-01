@@ -519,13 +519,14 @@ public abstract class Op
     static KeynessScorer tsort(final HttpPars pars)
     {
         final double specif = pars.getDouble(SPECIF, SPECIF_RANGE, SPECIF_DEFAULT, SPECIF);
+        final double simplek = pars.getDouble(SIMPLEK, SIMPLEK_RANGE, Double.NaN);
 
         final KeynessScorer scorer = switch (pars.getString(TSORT, "")) {
             case "count", "raw" -> new KeynessScorer.Count();
             case "g2" -> new KeynessScorer.G2();
             case "logratio" -> new KeynessScorer.LogRatio();
             case "chi2" -> new KeynessScorer.Chi2();
-            default -> new KeynessScorer.SimpleMaths();
+            default -> new KeynessScorer.SimpleMaths(simplek);
         };
         return scorer.specif(specif);
     }

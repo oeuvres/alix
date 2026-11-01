@@ -287,7 +287,7 @@ public final class VecModel
                 ByteBuffer.wrap(row).order(ByteOrder.LITTLE_ENDIAN);
 
             for (int id = 0; id < count; id++) {
-                final String word = readWord(in);
+                final String word = readWord(in, id, count, path);
                 if (word.isEmpty()) {
                     throw new IOException(
                         "empty word at vector row " + id + " in " + path);
@@ -657,9 +657,19 @@ public final class VecModel
 
     /**
      * Reads one UTF-8 word2vec token terminated by one ASCII space.
+     *
+     * @param in input stream positioned at the start of a token
+     * @param id zero-based vector row being read
+     * @param count number of vectors declared in the header
+     * @param path model file path for diagnostic messages
+     * @return decoded token
+     * @throws IOException if the token is malformed or cannot be read
      */
     private static String readWord(
-        final InputStream in
+        final InputStream in,
+        final int id,
+        final int count,
+        final Path path
     ) throws IOException {
         byte[] bytes = new byte[32];
         int length = 0;
@@ -668,14 +678,21 @@ public final class VecModel
             final int c = in.read();
             if (c < 0) {
                 throw new EOFException(
-                    "truncated word2vec entry while reading token");
+                    "EOF reading word2vec token at vector " + id
+                        + " (row " + (id + 1) + "/" + count + ") in " + path
+                        + ": " + (length == 0
+                            ? "no token bytes available (missing entry or incorrect header count)"
+                            : length + " token bytes read without a terminating space"));
             }
             if (c == ' ') {
                 return decodeUtf8(bytes, length);
             }
             if (c == '\n' || c == '\r') {
                 throw new IOException(
-                    "unexpected line break inside word2vec token");
+                    "unexpected " + (c == '\n' ? "LF" : "CR")
+                        + " inside word2vec token at vector " + id
+                        + " (row " + (id + 1) + "/" + count + ") in " + path
+                        + " after " + length + " token bytes");
             }
 
             if (length == bytes.length) {

@@ -39,6 +39,8 @@ public class Pars
     public static final int[]    ROWS_RANGE       = {1, 2000};
     public static final String   SCORER           = "scorer";
     public static final String   SIMPLE_MATHS     = "simplemaths";
+    public static final String   SIMPLEK          = "simplek";
+    public static final double[] SIMPLEK_RANGE    = {0, Double.MAX_VALUE};
     public static final String   SLOP             = "slop";
     public static final int      SLOP_DEFAULT     = 30;
     public static final int[]    SLOP_RANGE       = {0, 200};

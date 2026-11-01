@@ -53,23 +53,6 @@ public abstract class KeynessScorer
     protected double specif = 0.5d;
 
     /**
-     * Configures normalized specificity. May be called at any time; affects
-     * later scores.
-     *
-     * @param specif normalized specificity in [0, 1]
-     * @return this scorer
-     * @throws IllegalArgumentException if specif is non-finite or outside [0, 1]
-     */
-    public KeynessScorer specif(final double specif)
-    {
-        if (!Double.isFinite(specif) || specif < 0d || specif > 1d) {
-            throw new IllegalArgumentException("specif must be in [0, 1]: " + specif);
-        }
-        this.specif = specif;
-        return this;
-    }
-
-    /**
      * Sets corpus statistics, shared by every term in a ranking, and
      * invalidates the previous focus.
      *
@@ -111,6 +94,20 @@ public abstract class KeynessScorer
     }
 
     /**
+     * Returns the score of an independent association, to be subtracted when
+     * constructing a sparse positive-association matrix.
+     *
+     * <p>For signed statistics and frequency scores the neutral value is zero.
+     * Ratio scorers override this when necessary.</p>
+     *
+     * @return neutral association score
+     */
+    public double neutral()
+    {
+        return 0d;
+    }
+
+    /**
      * Scores one candidate term; higher scores rank first. This
      * implementation is raw frequency: {@code tf} for any specificity below 1,
      * and at {@code s = 1} {@code tf} of exclusive terms only. Subclasses call
@@ -133,6 +130,23 @@ public abstract class KeynessScorer
         }
         if (specif == 1d && tf != cf) return Double.NaN;
         return tf;
+    }
+
+    /**
+     * Configures normalized specificity. May be called at any time; affects
+     * later scores.
+     *
+     * @param specif normalized specificity in [0, 1]
+     * @return this scorer
+     * @throws IllegalArgumentException if specif is non-finite or outside [0, 1]
+     */
+    public KeynessScorer specif(final double specif)
+    {
+        if (!Double.isFinite(specif) || specif < 0d || specif > 1d) {
+            throw new IllegalArgumentException("specif must be in [0, 1]: " + specif);
+        }
+        this.specif = specif;
+        return this;
     }
 
     /**
@@ -368,12 +382,41 @@ public abstract class KeynessScorer
          */
         public SimpleMaths(final double k)
         {
-            if (!Double.isFinite(k) || k <= 0d) {
-                throw new IllegalArgumentException("k must be finite and > 0: " + k);
+            // NaN as default value for no k
+            if (!Double.isNaN(k)) {
+                if (!Double.isFinite(k) || k <= 0d) {
+                    throw new IllegalArgumentException("k must be finite and > 0: " + k);
+                }
+                this.k0 = k;
+                kSet = true;
             }
-            this.k0 = k;
-            kSet = true;
         }
+
+        /**
+         * Sets the focus, then computes k from specificity and k0.
+         *
+         * @param focusTokens candidate tokens of the focus, pivot occurrences excluded
+         * @param pivotCount occurrences of the pivot query, all inside the focus
+         * @throws IllegalStateException if the corpus is not initialized
+         * @throws IllegalArgumentException if a count is negative or the focus
+         *                                  with its pivot exceeds the corpus
+         */
+        @Override
+        public void focus(final long focusTokens, final long pivotCount)
+        {
+            super.focus(focusTokens, pivotCount);
+            if (!kSet) {
+                k0 = 4d * Math.sqrt(focusTokens * 100_000d / (focusTokens + 100_000d));
+            }
+            
+            if (specif == 0.5) {
+                k = k0;
+            }
+            else {
+                k = k(specif, k0);
+            }
+        }
+
 
         /**
          * Maps specificity to the smoothing constant, geometrically on each
@@ -397,30 +440,17 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Sets the focus, then computes k from specificity and k0.
+         * Returns the score of statistical independence for the current
+         * specificity. Interior Simple Maths scores are ratios centred on 1;
+         * its raw-frequency and exclusive-frequency endpoints are centred on 0.
          *
-         * @param focusTokens candidate tokens of the focus, pivot occurrences excluded
-         * @param pivotCount occurrences of the pivot query, all inside the focus
-         * @throws IllegalStateException if the corpus is not initialized
-         * @throws IllegalArgumentException if a count is negative or the focus
-         *                                  with its pivot exceeds the corpus
+         * @return neutral association score
          */
         @Override
-        public void focus(final long focusTokens, final long pivotCount)
+        public double neutral()
         {
-            super.focus(focusTokens, pivotCount);
-            if (!kSet) {
-                k0 = 4d * Math.sqrt(focusTokens);
-            }
-            
-            if (specif == 0.5) {
-                k = k0;
-            }
-            else {
-                k = k(specif, k0);
-            }
+            return specif == 0d || specif == 1d ? 0d : 1d;
         }
-
 
         /**
          * Computes Simple Maths with the current smoothing constant.
