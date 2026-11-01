@@ -21,6 +21,13 @@ package com.github.oeuvres.alix.lucene.terms;
  * </p>
  *
  * <p>
+ * The 2 x 2 table covers the whole corpus, {@code corpusTokens}. The pivot
+ * is not a candidate, but its occurrences lie in the focus:
+ * {@link #focus(long, long)} adds them to the candidate tokens of the focus,
+ * so that they count among the other terms of the focus and not in the rest.
+ * </p>
+ *
+ * <p>
  * {@link Double#NaN} means that the term goes out of the term list. Clients
  * omit NaN scores.
  * </p>
@@ -36,7 +43,7 @@ public abstract class KeynessScorer
     /** Total tokens in the active corpus, or -1 before initialization. */
     protected long corpusTokens = -1L;
 
-    /** Total tokens in the focus, or -1 before initialization. */
+    /** Total tokens in the focus, pivot occurrences included, or -1 before initialization. */
     protected long focusTokens = -1L;
 
     /** Occurrences of the pivot query in the active corpus, or -1 before initialization. */
@@ -82,22 +89,24 @@ public abstract class KeynessScorer
     }
 
     /**
-     * Sets statistics shared by every term in the focus population.
+     * Sets statistics shared by every term in the focus population. The
+     * pivot occurrences are added to the focus:
+     * {@code this.focusTokens = focusTokens + pivotCount}.
      *
-     * @param focusTokens total token count of the focus population
-     * @param pivotCount occurrences of the pivot query in the active corpus;
+     * @param focusTokens candidate tokens of the focus, pivot occurrences excluded
+     * @param pivotCount occurrences of the pivot query, all inside the focus;
      *                   zero when no pivot is used
      * @throws IllegalStateException if the corpus is not initialized
-     * @throws IllegalArgumentException if the focus is outside the corpus or
-     *                                  pivotCount is negative
+     * @throws IllegalArgumentException if a count is negative or the focus
+     *                                  with its pivot exceeds the corpus
      */
     public void focus(final long focusTokens, final long pivotCount)
     {
         if (corpusTokens < 0L) throw new IllegalStateException("call corpus() before focus()");
-        if (focusTokens < 0L || focusTokens > corpusTokens || pivotCount < 0L) {
+        if (focusTokens < 0L || pivotCount < 0L || focusTokens + pivotCount > corpusTokens) {
             throw new IllegalArgumentException("invalid focusTokens or pivotCount");
         }
-        this.focusTokens = focusTokens;
+        this.focusTokens = focusTokens + pivotCount;
         this.pivotCount = pivotCount;
     }
 
@@ -319,12 +328,11 @@ public abstract class KeynessScorer
      *
      * The smoothing constant k, per million, is {@link #k(double, double)}:
      * {@code k0} at {@code s = 0.5}, geometric toward {@link #K_MAX} at
-     * {@code s = 0} and toward {@link #K_MIN} at {@code s = 1}. By default
-     * {@code k0 = 500_000 / focusTokens}, half an occurrence in the focus,
-     * set by {@link #focus(long, long)}. High k favours frequent words, low k
-     * rare words; toward {@code s = 0} the ranking approaches the rate
-     * difference {@code rfFocus - rfRest}, not raw frequency, and the
-     * endpoint overrides it. A k given to the constructor stays fixed.
+     * {@code s = 0} and toward {@link #K_MIN} at {@code s = 1}. The centre
+     * k0 is given to the constructor, 170 by default. High k favours frequent
+     * words, low k rare words; toward {@code s = 0} the ranking approaches the
+     * rate difference {@code rfFocus - rfRest}, not raw frequency, and the
+     * endpoint overrides it.
      *
      * Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of the
      * Corpus Linguistics Conference CL2009, University of Liverpool.
@@ -336,25 +344,26 @@ public abstract class KeynessScorer
 
         /** Smoothing constant per million at {@code s = 1}. */
         public static final double K_MIN = 0.1d;
-
-        /** Smoothing constant per million at {@code s = 0.5}; 100 until focus() sets it. */
-        private double k0 = 170;
-
-        /** True when k was given to the constructor and stays fixed. */
+        
+        /** True if centered k has been set by constructor */
         private boolean kSet;
 
-        /** Smoothing constant added to per-million rates; NaN until known. */
+        /** Smoothing constant per million at {@code s = 0.5}, centre of the specificity variation. */
+        private double k0 = 170;
+
+        /** Smoothing constant added to per-million rates, set by focus(); NaN until then. */
         private double k = Double.NaN;
 
         /**
-         * Creates a scorer whose k derives from specificity and focus size.
+         * Creates a scorer with the default centre {@code k0 = 170}.
          */
         public SimpleMaths() {}
 
         /**
-         * Creates a scorer with a fixed smoothing constant.
+         * Creates a scorer with an explicit centre k0 of the specificity
+         * variation.
          *
-         * @param k positive per-million smoothing constant
+         * @param k positive per-million smoothing constant at {@code s = 0.5}
          * @throws IllegalArgumentException if k is not finite and positive
          */
         public SimpleMaths(final double k)
@@ -363,6 +372,7 @@ public abstract class KeynessScorer
                 throw new IllegalArgumentException("k must be finite and > 0: " + k);
             }
             this.k0 = k;
+            kSet = true;
         }
 
         /**
@@ -374,8 +384,7 @@ public abstract class KeynessScorer
          * s &gt;  0.5   k = k0 * (K_MIN / k0)^(2s - 1)
          * </pre>
          *
-         * Decreasing only if {@code K_MIN < k0 < K_MAX}; with the default k0,
-         * a focus above 5 million tokens gives {@code k0 < K_MIN}.
+         * Decreasing only if {@code K_MIN < k0 < K_MAX}.
          *
          * @param specif normalized specificity in [0, 1]
          * @param k0 positive per-million smoothing constant at {@code s = 0.5}
@@ -388,19 +397,22 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Sets the focus, derives {@code k0 = 500_000 / focusTokens}, then k
-         * unless it was given to the constructor.
+         * Sets the focus, then computes k from specificity and k0.
          *
-         * @param focusTokens total token count of the focus population
-         * @param pivotCount occurrences of the pivot query in the active corpus
+         * @param focusTokens candidate tokens of the focus, pivot occurrences excluded
+         * @param pivotCount occurrences of the pivot query, all inside the focus
          * @throws IllegalStateException if the corpus is not initialized
-         * @throws IllegalArgumentException if the focus is outside the corpus or
-         *                                  pivotCount is negative
+         * @throws IllegalArgumentException if a count is negative or the focus
+         *                                  with its pivot exceeds the corpus
          */
         @Override
         public void focus(final long focusTokens, final long pivotCount)
         {
             super.focus(focusTokens, pivotCount);
+            if (!kSet) {
+                k0 = 4d * Math.sqrt(focusTokens);
+            }
+            
             if (specif == 0.5) {
                 k = k0;
             }
