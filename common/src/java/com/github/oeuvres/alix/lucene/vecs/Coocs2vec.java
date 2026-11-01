@@ -40,8 +40,12 @@ import com.github.oeuvres.alix.util.Report;
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--window 30] [--dims 100] [--scorer g2|simple] [--specif 0.5] \
  *     [--cellPower 0.5] [--weightAxes 0.5] \
- *     [--maxTerms 15000] [--minDocFreq 3] [--sideDir DIR]
+ *     [--maxTerms 15000|-1] [--minDocFreq 0] [--sideDir DIR]
  * }</pre>
+ *
+ * <p>{@code --maxTerms -1} selects all eligible terms without a vocabulary
+ * cap. The default {@code --minDocFreq 0} applies no document-frequency
+ * threshold.</p>
  */
 public final class Coocs2vec
 {
@@ -307,7 +311,7 @@ public final class Coocs2vec
         "usage: Coocs2vec <indexDir> <field>"
             + " [--window 30] [--dims 100] [--scorer g2|simple] [--specif 0.5]"
             + " [--cellPower 0.5] [--weightAxes 0.5]"
-            + " [--maxTerms 15000] [--minDocFreq 3] [--sideDir DIR]";
+            + " [--maxTerms 15000|-1] [--minDocFreq 0] [--sideDir DIR]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
@@ -355,7 +359,7 @@ public final class Coocs2vec
         int window = 30;
         int dims = 100;
         int maxTerms = 15_000;
-        int minDocFreq = 3;
+        int minDocFreq = 1;
         String scorerName = "simple";
         double specif = 0.5d;
         double cellPower = 0.5d;
@@ -400,12 +404,15 @@ public final class Coocs2vec
         }
         final KeynessScorer scorer = switch (scorerName) {
             case "g2" -> new KeynessScorer.G2();
-            case "simple" -> new KeynessScorer.SimpleMaths();
+            case "simple" -> new KeynessScorer.SimpleMaths(170);
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
         scorer.specif(specif);
-        if (maxTerms < 2) {
-            throw new IllegalArgumentException("maxTerms must be >= 2: " + maxTerms);
+        if (maxTerms != -1 && maxTerms < 2) {
+            throw new IllegalArgumentException("maxTerms must be -1 or >= 2: " + maxTerms);
+        }
+        if (minDocFreq < 0) {
+            throw new IllegalArgumentException("minDocFreq must be >= 0: " + minDocFreq);
         }
 
         String outName = indexDir.getFileName().toString();
@@ -446,10 +453,11 @@ public final class Coocs2vec
             }
 
             log(
-                "selecting terms (minDocFreq=%d, cap=%d)",
-                minDocFreq, maxTerms);
+                "selecting terms (minDocFreq=%d, cap=%s)",
+                minDocFreq, maxTerms == -1 ? "unlimited" : Integer.toString(maxTerms));
+            final int selectionLimit = maxTerms == -1 ? lexicon.vocabSize() : maxTerms;
             final SelectedTerm[] selected = LuceneData.selectTerms(
-                reader, stats, minDocFreq, maxTerms);
+                reader, stats, minDocFreq, selectionLimit);
             termCount = selected.length;
             if (termCount < 2) {
                 throw new IllegalArgumentException(
