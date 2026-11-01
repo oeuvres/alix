@@ -2,6 +2,7 @@ package com.github.oeuvres.alix.lucene.vecs;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,18 +35,21 @@ import com.github.oeuvres.alix.util.Report;
  * by singular values.</p>
  *
  * <p>Selected stopwords are restricted to {@link #STOP_DIST} positional steps;
- * other terms use the full window. A missing stopword list disables the gate.</p>
+ * other terms use the full window. A missing stopword list disables the gate.
+ * Active gating is marked {@code gramdist2} in the output filename; no
+ * stopwords are removed.</p>
  *
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
- *     [--window 30] [--dims 100] [--scorer g2|simple] [--specif 0.5] \
+ *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5] \
  *     [--cellPower 0.5] [--weightAxes 0.5] \
  *     [--maxTerms 15000|-1] [--minDocFreq 0] [--sideDir DIR]
  * }</pre>
  *
  * <p>{@code --maxTerms -1} selects all eligible terms without a vocabulary
  * cap. The default {@code --minDocFreq 0} applies no document-frequency
- * threshold.</p>
+ * threshold. {@code --simplek} sets fixed SimpleMaths smoothing, recorded in
+ * the model filename as {@code simplek1500} by default.</p>
  */
 public final class Coocs2vec
 {
@@ -309,7 +313,7 @@ public final class Coocs2vec
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
-            + " [--window 30] [--dims 100] [--scorer g2|simple] [--specif 0.5]"
+            + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5]"
             + " [--cellPower 0.5] [--weightAxes 0.5]"
             + " [--maxTerms 15000|-1] [--minDocFreq 0] [--sideDir DIR]";
 
@@ -361,6 +365,7 @@ public final class Coocs2vec
         int maxTerms = 15_000;
         int minDocFreq = 1;
         String scorerName = "simple";
+        double simplek = 1500d;
         double specif = 0.5d;
         double cellPower = 0.5d;
         double weightAxes = 0.5d;
@@ -370,6 +375,7 @@ public final class Coocs2vec
                 case "--window" -> window = Integer.parseInt(args[++i]);
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
                 case "--scorer" -> scorerName = args[++i];
+                case "--simplek" -> simplek = Double.parseDouble(args[++i]);
                 case "--specif" -> specif = Double.parseDouble(args[++i]);
                 case "--cellPower" -> cellPower = Double.parseDouble(args[++i]);
                 case "--weightAxes" -> weightAxes = Double.parseDouble(args[++i]);
@@ -402,9 +408,12 @@ public final class Coocs2vec
             throw new IllegalArgumentException(
                 "specif must be in [0, 1]: " + specif);
         }
+        if (!Double.isFinite(simplek) || simplek <= 0d) {
+            throw new IllegalArgumentException("simplek must be finite and > 0: " + simplek);
+        }
         final KeynessScorer scorer = switch (scorerName) {
             case "g2" -> new KeynessScorer.G2();
-            case "simple" -> new KeynessScorer.SimpleMaths(170);
+            case "simple" -> new KeynessScorer.SimpleMaths(simplek);
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
         scorer.specif(specif);
@@ -430,12 +439,16 @@ public final class Coocs2vec
             final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
             final boolean stopwords = (STOP_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
             if (stopwords) {
-                outName += "-stop" + STOP_DIST;
+                outName += "-gramdist" + STOP_DIST;
                 log(
                     "stopword gate active: pairs with a stopword counted only within +/-%d",
                     STOP_DIST);
             }
-            outName += "-" + scorerName + "-s" + specif;
+            outName += "-" + scorerName;
+            if ("simple".equals(scorerName)) {
+                outName += "k" + BigDecimal.valueOf(simplek).stripTrailingZeros().toPlainString();
+            }
+            outName += "-s" + specif;
             if (cellPower != 0.5d) outName += "-cp" + cellPower;
             if (weightAxes != 0.5d) outName += "-aw" + weightAxes;
             outName += "-dims" + dims;
