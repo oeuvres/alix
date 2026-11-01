@@ -524,7 +524,6 @@ public abstract class Op
             case "count", "raw" -> new KeynessScorer.Count();
             case "g2" -> new KeynessScorer.G2();
             case "logratio" -> new KeynessScorer.LogRatio();
-            case "logdice" -> new KeynessScorer.LogDice();
             case "chi2" -> new KeynessScorer.Chi2();
             default -> new KeynessScorer.SimpleMaths();
         };

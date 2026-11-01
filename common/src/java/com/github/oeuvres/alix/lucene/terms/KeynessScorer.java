@@ -4,26 +4,95 @@ package com.github.oeuvres.alix.lucene.terms;
  * Scores terms in a focus population against an active corpus.
  *
  * <p>
- * Call {@link #corpus(long, int)} and {@link #focus(long, long)} before scoring
- * terms. A scorer that depends on these statistics checks its initialization.
- * Scorers are mutable and should not be shared between concurrent rankings.
- * {@link #specif(double)} optionally configures normalized specificity before
- * corpus initialization. Its neutral value is {@code 0.5}.
- * {@link Double#NaN} means that a term is not eligible for ranking (or that its
- * term counts are inconsistent); clients should omit such scores.
+ * Call order: {@link #specif(double)} (optional, allowed at any time),
+ * {@link #corpus(long, int)}, {@link #focus(long, long)}, then
+ * {@link #score(long, long, int)} for each candidate term. {@link Count} needs
+ * no initialization. Scorers are mutable and should not be shared between
+ * concurrent rankings.
+ * </p>
+ *
+ * <p>
+ * Normalized specificity {@code s} in [0, 1] is enforced at its endpoints for
+ * every scorer: {@code s = 0} returns raw term frequency, {@code s = 1} returns
+ * the term frequency of exclusive terms only, those occurring in the focus and
+ * nowhere else ({@code tf == cf}). The neutral value {@code 0.5} gives the
+ * native scorer. Between the endpoints, a scorer may interpolate or ignore
+ * {@code s}.
+ * </p>
+ *
+ * <p>
+ * {@link Double#NaN} means that the term goes out of the term list:
+ * inconsistent counts, a term absent from the focus at {@code s = 0}, a
+ * non-exclusive term at {@code s = 1}, or degenerate margins (empty focus,
+ * focus equal to the corpus, term absent from the corpus or equal to it).
+ * Exception: at {@code s = 0}, a focus equal to the corpus yields the corpus
+ * frequency list. Clients omit NaN scores.
  * </p>
  */
-@FunctionalInterface
-public interface KeynessScorer
+public abstract class KeynessScorer
 {
+    /** Natural logarithm of 2, for base-2 logarithms. */
+    protected static final double LN2 = Math.log(2d);
+
+    /** Number of documents in the active corpus, or -1 before initialization. */
+    private int corpusDocs = -1;
+
+    /** Total tokens in the active corpus, or -1 before initialization. */
+    private long corpusTokens = -1L;
+
+    /** Total tokens in the focus, or -1 before initialization. */
+    private long focusTokens = -1L;
+
+    /** Occurrences of the pivot query in the active corpus, or -1 before initialization. */
+    private long pivotCount = -1L;
+
+    /** Normalized specificity in [0, 1]; 0.5 gives the native scorer. */
+    private double specificity = 0.5d;
+
     /**
-     * Sets corpus statistics, shared by every term in a ranking.
+     * Creates a scorer with neutral specificity.
+     */
+    protected KeynessScorer()
+    {
+    }
+
+    /**
+     * Configures normalized specificity. The value {@code 0.5} gives the native
+     * scorer, {@code 0} raw term frequency, {@code 1} term frequency of terms
+     * exclusive to the focus. May be called at any time; affects later scores.
+     *
+     * @param specif normalized specificity in [0, 1]
+     * @return this scorer
+     * @throws IllegalArgumentException if specif is non-finite or outside [0, 1]
+     */
+    public KeynessScorer specif(final double specif)
+    {
+        if (!Double.isFinite(specif) || specif < 0d || specif > 1d) {
+            throw new IllegalArgumentException("specif must be in [0, 1]: " + specif);
+        }
+        this.specificity = specif;
+        update();
+        return this;
+    }
+
+    /**
+     * Sets corpus statistics, shared by every term in a ranking, and
+     * invalidates the previous focus.
      *
      * @param corpusTokens total token count of the active corpus
      * @param corpusDocs number of documents in the active corpus
+     * @throws IllegalArgumentException if either total is not positive
      */
-    default void corpus(final long corpusTokens, final int corpusDocs)
+    public void corpus(final long corpusTokens, final int corpusDocs)
     {
+        if (corpusTokens <= 0L || corpusDocs <= 0) {
+            throw new IllegalArgumentException("corpusTokens and corpusDocs must be positive");
+        }
+        this.corpusTokens = corpusTokens;
+        this.corpusDocs = corpusDocs;
+        this.focusTokens = -1L;
+        this.pivotCount = -1L;
+        update();
     }
 
     /**
@@ -32,57 +101,160 @@ public interface KeynessScorer
      * @param focusTokens total token count of the focus population
      * @param pivotCount occurrences of the pivot query in the active corpus;
      *                   zero when no pivot is used
+     * @throws IllegalStateException if the corpus is not initialized
+     * @throws IllegalArgumentException if the focus is outside the corpus or
+     *                                  pivotCount is negative
      */
-    default void focus(final long focusTokens, final long pivotCount)
+    public void focus(final long focusTokens, final long pivotCount)
     {
+        if (corpusTokens < 0L) throw new IllegalStateException("call corpus() before focus()");
+        if (focusTokens < 0L || focusTokens > corpusTokens || pivotCount < 0L) {
+            throw new IllegalArgumentException("invalid focusTokens or pivotCount");
+        }
+        this.focusTokens = focusTokens;
+        this.pivotCount = pivotCount;
+        update();
     }
 
     /**
-     * Scores one candidate term. Higher scores rank first.
+     * Scores one candidate term. Higher scores rank first. Validates counts,
+     * applies the specificity endpoints and degenerate margins, then delegates
+     * to {@link #interior(long, long, int)}.
      *
      * @param tf term frequency in the focus population
      * @param cf collection frequency in the active corpus
      * @param df document frequency in the active corpus
-     * @return the score, or {@link Double#NaN} if the term is ineligible or
-     *         its statistics are inconsistent
-     * @throws IllegalStateException if required corpus or focus statistics have
-     *                               not been initialized
+     * @return the score, or {@link Double#NaN} if the term goes out of the list
+     * @throws IllegalStateException if the scorer needs corpus and focus
+     *                               statistics and they are not initialized
      */
-    double score(long tf, long cf, int df);
-
-    /**
-     * Configures normalized specificity. The value {@code 0.5} preserves the
-     * natural or recommended scorer, {@code 0} selects raw term frequency,
-     * and {@code 1} selects term frequency restricted to the focus.
-     * Non-parameterizable scorers ignore valid specificity values.
-     *
-     * @param specif normalized specificity in [0, 1]
-     * @return this scorer
-     * @throws IllegalArgumentException if specif is non-finite or outside [0, 1]
-     * @throws IllegalStateException if a parameterizable scorer was already
-     *                               initialized or uses an explicit native parameter
-     */
-    default KeynessScorer specif(final double specif)
+    public final double score(final long tf, final long cf, final int df)
     {
-        if (!Double.isFinite(specif) || specif < 0d || specif > 1d) {
-            throw new IllegalArgumentException("specif must be in [0, 1]: " + specif);
+        if (tf < 0L || cf < tf || df < 0) return Double.NaN;
+        final boolean marginals = needsMarginals();
+        if (marginals) {
+            if (focusTokens < 0L) throw new IllegalStateException("call corpus() and focus() before score()");
+            if (cf > corpusTokens || tf > focusTokens || cf - tf > corpusTokens - focusTokens) return Double.NaN;
         }
-        return this;
+        if (specificity == 0d) return tf > 0L ? tf : Double.NaN;
+        if (specificity == 1d) {
+            if (focusTokens >= 0L && focusTokens == corpusTokens) return Double.NaN;
+            return tf > 0L && tf == cf ? tf : Double.NaN;
+        }
+        if (marginals && (focusTokens == 0L || focusTokens == corpusTokens || cf == 0L || cf == corpusTokens)) {
+            return Double.NaN;
+        }
+        return interior(tf, cf, df);
     }
 
     /**
-     * Signed Pearson chi-square on a 2 x 2 term/focus table.
+     * Returns the number of documents in the active corpus.
+     *
+     * @return corpus documents, or -1 before initialization
+     */
+    protected final int corpusDocs()
+    {
+        return corpusDocs;
+    }
+
+    /**
+     * Returns the total token count of the active corpus.
+     *
+     * @return corpus tokens, or -1 before initialization
+     */
+    protected final long corpusTokens()
+    {
+        return corpusTokens;
+    }
+
+    /**
+     * Returns the total token count of the focus.
+     *
+     * @return focus tokens, or -1 before initialization
+     */
+    protected final long focusTokens()
+    {
+        return focusTokens;
+    }
+
+    /**
+     * Scores a term strictly between the specificity endpoints. Called only
+     * with consistent counts and, for scorers needing marginals, with
+     * non-degenerate margins: {@code 0 < focusTokens < corpusTokens} and
+     * {@code 0 < cf < corpusTokens}.
+     *
+     * @param tf term frequency in the focus population
+     * @param cf collection frequency in the active corpus
+     * @param df document frequency in the active corpus
+     * @return the score, or {@link Double#NaN} if the term goes out of the list
+     */
+    protected abstract double interior(long tf, long cf, int df);
+
+    /**
+     * Tells whether this scorer needs corpus and focus statistics.
+     *
+     * @return true by default
+     */
+    protected boolean needsMarginals()
+    {
+        return true;
+    }
+
+    /**
+     * Returns the token count of the corpus outside the focus.
+     *
+     * @return corpus tokens minus focus tokens; meaningful after focus()
+     */
+    protected final long otherTokens()
+    {
+        return corpusTokens - focusTokens;
+    }
+
+    /**
+     * Returns the pivot marginal.
+     *
+     * @return pivot occurrences in the active corpus, or -1 before initialization
+     */
+    protected final long pivotCount()
+    {
+        return pivotCount;
+    }
+
+    /**
+     * Returns the normalized specificity.
+     *
+     * @return specificity in [0, 1]
+     */
+    protected final double specificity()
+    {
+        return specificity;
+    }
+
+    /**
+     * Recomputes derived parameters after a change of specificity, corpus or
+     * focus. Does nothing by default.
+     */
+    protected void update()
+    {
+    }
+
+    /**
+     * Signed Pearson chi-square on a 2 x 2 term/focus table. Ignores
+     * specificity between the endpoints.
      *
      * <pre>
      *                 focus               rest
      * term            tf                  cf - tf
      * other terms     focusTokens - tf    corpusTokens - focusTokens - cf + tf
      *
-     * X2 = sum((O - E)^2 / E)
+     * delta = tf - focusTokens * cf / corpusTokens
+     * X2    = delta^2 * N^3 / (focusTokens * otherTokens * cf * (N - cf))
      * </pre>
      *
-     * The sign is positive for overrepresentation in the focus, negative for
-     * underrepresentation.
+     * All four cells deviate from expectation by the same |delta|, hence the
+     * closed form. The sign is the sign of delta: positive for
+     * overrepresentation in the focus. Unreliable when expected counts are
+     * small (rule of thumb E &lt; 5), where it inflates rare terms.
      *
      * Pearson, K. (1900). "On the criterion that a given system of deviations
      * from the probable in the case of a correlated system of variables is
@@ -90,118 +262,73 @@ public interface KeynessScorer
      * sampling." Philosophical Magazine 50(302): 157-175.
      * doi:10.1080/14786440009463897.
      */
-    class Chi2 implements KeynessScorer
+    public static class Chi2 extends KeynessScorer
     {
-        /** Total tokens in the active corpus, or -1 before initialization. */
-        private long corpusTokens = -1L;
-
-        /** Total tokens in the focus, or -1 before initialization. */
-        private long focusTokens = -1L;
-
         /**
-         * Sets the active corpus and invalidates any previous focus.
-         *
-         * @param corpusTokens total corpus tokens
-         * @param corpusDocs number of corpus documents
-         * @throws IllegalArgumentException if either total is not positive
+         * Creates a chi-square scorer.
          */
-        @Override
-        public void corpus(final long corpusTokens, final int corpusDocs)
+        public Chi2()
         {
-            if (corpusTokens <= 0L || corpusDocs <= 0) {
-                throw new IllegalArgumentException("corpusTokens and corpusDocs must be positive");
-            }
-            this.corpusTokens = corpusTokens;
-            this.focusTokens = -1L;
         }
 
         /**
-         * Sets the focus length.
-         *
-         * @param focusTokens tokens in the focus
-         * @param pivotCount unused pivot marginal
-         * @throws IllegalStateException if the corpus is not initialized
-         * @throws IllegalArgumentException if the focus is outside the corpus
-         */
-        @Override
-        public void focus(final long focusTokens, final long pivotCount)
-        {
-            if (corpusTokens < 0L) throw new IllegalStateException("call corpus() before focus()");
-            if (focusTokens < 0L || focusTokens > corpusTokens || pivotCount < 0L) {
-                throw new IllegalArgumentException("invalid focusTokens or pivotCount");
-            }
-            this.focusTokens = focusTokens;
-        }
-
-        /**
-         * Computes signed Pearson X².
+         * Computes signed Pearson X² in closed form.
          *
          * @param tf occurrences in focus
          * @param cf occurrences in corpus
          * @param df unused document frequency
-         * @return signed X², {@link Double#NaN} for invalid counts, or zero
-         *         for degenerate marginals
-         * @throws IllegalStateException if focus statistics are uninitialized
+         * @return signed X²
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        protected double interior(final long tf, final long cf, final int df)
         {
-            if (focusTokens < 0L) throw new IllegalStateException("call corpus() and focus() before score()");
-            final long otherTokens = corpusTokens - focusTokens;
-            final long otherTf = cf - tf;
-            if (tf < 0L || cf < tf || cf > corpusTokens || tf > focusTokens
-                    || otherTf > otherTokens || df < 0) return Double.NaN;
-            if (focusTokens == 0L || otherTokens == 0L || cf == 0L || cf == corpusTokens) return 0d;
-
-            final long focusOther = focusTokens - tf;
-            final long restOther = otherTokens - otherTf;
-            final long corpusOther = corpusTokens - cf;
-
-            double x2 = 0d;
-            x2 += cell(tf, (double) focusTokens * cf / corpusTokens);
-            x2 += cell(otherTf, (double) otherTokens * cf / corpusTokens);
-            x2 += cell(focusOther, (double) focusTokens * corpusOther / corpusTokens);
-            x2 += cell(restOther, (double) otherTokens * corpusOther / corpusTokens);
-
-            return (double) tf / focusTokens >= (double) otherTf / otherTokens ? x2 : -x2;
-        }
-
-        /**
-         * Computes one Pearson chi-square cell contribution.
-         *
-         * @param observed observed cell count
-         * @param expected expected cell count
-         * @return cell contribution, or zero for a nonpositive expectation
-         */
-        private static double cell(final long observed, final double expected)
-        {
-            if (expected <= 0d) return 0d;
-            final double difference = observed - expected;
-            return difference * difference / expected;
+            final double n = corpusTokens();
+            final double f = focusTokens();
+            final double o = otherTokens();
+            final double c = cf;
+            final double delta = tf - f * c / n;
+            if (delta == 0d) return 0d;
+            final double x2 = delta * delta * (n / f) * (n / o) * (n / c) / (n - c);
+            return delta > 0d ? x2 : -x2;
         }
     }
 
     /**
-     * Raw term frequency in the focus population.
-     *
-     * Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches in
-     * automatic text retrieval." Information Processing &amp; Management
-     * 24(5): 513-523. doi:10.1016/0306-4573(88)90021-0.
+     * Raw term frequency in the focus population. Needs no corpus or focus
+     * statistics; specificity applies only at its endpoints.
      */
-    class Count implements KeynessScorer
+    public static class Count extends KeynessScorer
     {
+        /**
+         * Creates a raw frequency scorer.
+         */
+        public Count()
+        {
+        }
+
         /**
          * Returns raw focus term frequency.
          *
          * @param tf term frequency in focus
          * @param cf unused collection frequency
          * @param df unused document frequency
-         * @return {@code tf}, or {@link Double#NaN} for negative frequency
+         * @return {@code tf}, or {@link Double#NaN} for a term absent from the focus
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        protected double interior(final long tf, final long cf, final int df)
         {
-            return tf < 0L ? Double.NaN : tf;
+            return tf > 0L ? tf : Double.NaN;
+        }
+
+        /**
+         * Raw frequency needs no marginals.
+         *
+         * @return false
+         */
+        @Override
+        protected boolean needsMarginals()
+        {
+            return false;
         }
     }
 
@@ -212,263 +339,101 @@ public interface KeynessScorer
      * G2 = 2 * sum(O * ln(O / E))
      * </pre>
      *
-     * The sign is positive for overrepresentation in the focus and negative
-     * for underrepresentation. {@link #specif(double)} configures the
-     * G²-per-occurrence exponent; its neutral value of 0.5 gives ordinary G².
+     * The sign is positive for overrepresentation in the focus. Between the
+     * specificity endpoints, the score is
+     *
+     * <pre>
+     * sign * tf^(2(1-s)) * (G2 / tf)^(2s)
+     * </pre>
+     *
+     * which is exactly signed G² at {@code s = 0.5}, weights frequency toward
+     * {@code s = 0} and G² per occurrence toward {@code s = 1}. It ranks as
+     * {@code tf * (G2/tf)^(s/(1-s))} but its exponents never exceed 2, so it
+     * cannot overflow. For a term absent from the focus, the limit is 0 below
+     * 0.5 and negative infinity above.
      *
      * Dunning, T. (1993). "Accurate Methods for the Statistics of Surprise
      * and Coincidence." Computational Linguistics 19(1): 61-74.
      */
-    class G2 implements KeynessScorer
+    public static class G2 extends KeynessScorer
     {
-        /** Total tokens in the active corpus, or -1 before initialization. */
-        private long corpusTokens = -1L;
-
-        /** Total tokens in the focus, or -1 before initialization. */
-        private long focusTokens = -1L;
-
-        /** Normalized specificity; 0.5 gives ordinary signed G². */
-        private double specificity = 0.5d;
-
         /**
-         * Creates a scorer using ordinary signed G².
+         * Creates a G² scorer.
          */
         public G2()
         {
         }
 
         /**
-         * Configures G² specificity before corpus initialization.
-         *
-         * <p>
-         * For {@code 0 < specif < 1}, the exponent of G² per occurrence is
-         * {@code alpha = specif / (1 - specif)}. At {@code 0.5}, this is
-         * exactly ordinary signed G². The endpoints yield TF and exclusive TF.
-         * </p>
-         *
-         * @param specif normalized specificity in [0, 1]
-         * @return this scorer
-         * @throws IllegalArgumentException if specif is outside [0, 1]
-         * @throws IllegalStateException if corpus() has already been called
-         */
-        @Override
-        public G2 specif(final double specif)
-        {
-            KeynessScorer.super.specif(specif);
-            if (corpusTokens >= 0L) {
-                throw new IllegalStateException("call specif() before corpus()");
-            }
-            specificity = specif;
-            return this;
-        }
-
-        /**
-         * Sets the corpus and invalidates the previous focus.
-         *
-         * @param corpusTokens total corpus tokens
-         * @param corpusDocs number of corpus documents
-         * @throws IllegalArgumentException if either total is not positive
-         */
-        @Override
-        public void corpus(final long corpusTokens, final int corpusDocs)
-        {
-            if (corpusTokens <= 0L || corpusDocs <= 0) {
-                throw new IllegalArgumentException("corpusTokens and corpusDocs must be positive");
-            }
-            this.corpusTokens = corpusTokens;
-            this.focusTokens = -1L;
-        }
-
-        /**
-         * Sets the focus length.
-         *
-         * @param focusTokens tokens in the focus
-         * @param pivotCount unused pivot marginal
-         * @throws IllegalStateException if the corpus is not initialized
-         * @throws IllegalArgumentException if the focus is outside the corpus
-         */
-        @Override
-        public void focus(final long focusTokens, final long pivotCount)
-        {
-            if (corpusTokens < 0L) throw new IllegalStateException("call corpus() before focus()");
-            if (focusTokens < 0L || focusTokens > corpusTokens || pivotCount < 0L) {
-                throw new IllegalArgumentException("invalid focusTokens or pivotCount");
-            }
-            this.focusTokens = focusTokens;
-        }
-
-        /**
-         * Computes signed G².
+         * Computes signed G², weighted by specificity.
          *
          * @param tf occurrences in focus
          * @param cf occurrences in corpus
          * @param df unused document frequency
-         * @return signed score, or {@link Double#NaN} for inconsistent counts
-         * @throws IllegalStateException if focus statistics are uninitialized
+         * @return the signed score
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        protected double interior(final long tf, final long cf, final int df)
         {
-            if (focusTokens < 0L) throw new IllegalStateException("call corpus() and focus() before score()");
-
-            final long otherTokens = corpusTokens - focusTokens;
+            final double n = corpusTokens();
+            final double f = focusTokens();
+            final double o = otherTokens();
+            final double corpusOther = n - cf;
             final long otherTf = cf - tf;
-            if (tf < 0L || cf < tf || cf > corpusTokens || tf > focusTokens
-                    || otherTf > otherTokens || df < 0) return Double.NaN;
-            if (specificity == 0d) return tf;
-            if (specificity == 1d) return tf > 0L && tf == cf ? tf : Double.NaN;
-            if (focusTokens == 0L || otherTokens == 0L || cf == 0L || cf == corpusTokens) return 0d;
-
-            final long focusOther = focusTokens - tf;
-            final long restOther = otherTokens - otherTf;
-            final long corpusOther = corpusTokens - cf;
-
-            final double expectedFocusTf = (double) focusTokens * cf / corpusTokens;
-            final double expectedRestTf = (double) otherTokens * cf / corpusTokens;
-            final double expectedFocusOther = (double) focusTokens * corpusOther / corpusTokens;
-            final double expectedRestOther = (double) otherTokens * corpusOther / corpusTokens;
+            final long focusOther = focusTokens() - tf;
+            final long restOther = otherTokens() - otherTf;
+            final double expectedFocusTf = f * cf / n;
 
             double g2 = 0d;
-            if (tf > 0L) g2 += 2d * tf * Math.log(tf / expectedFocusTf);
-            if (otherTf > 0L) g2 += 2d * otherTf * Math.log(otherTf / expectedRestTf);
-            if (focusOther > 0L) g2 += 2d * focusOther * Math.log(focusOther / expectedFocusOther);
-            if (restOther > 0L) g2 += 2d * restOther * Math.log(restOther / expectedRestOther);
-            g2 = Math.max(g2, 0d);
+            g2 += cell(tf, expectedFocusTf);
+            g2 += cell(otherTf, o * cf / n);
+            g2 += cell(focusOther, f * corpusOther / n);
+            g2 += cell(restOther, o * corpusOther / n);
+            g2 = Math.max(2d * g2, 0d);
 
-            final double sign = (double) tf / focusTokens >= (double) otherTf / otherTokens ? 1d : -1d;
-            if (specificity == 0.5d) return sign * g2;
-            if (tf == 0L || g2 == 0d) return 0d;
-            final double alpha = specificity / (1d - specificity);
-            return sign * tf * Math.pow(g2 / tf, alpha);
+            final double sign = tf >= expectedFocusTf ? 1d : -1d;
+            final double s = specificity();
+            if (s == 0.5d) return sign * g2;
+            if (g2 == 0d) return 0d;
+            if (tf == 0L) return s < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
+            return sign * Math.pow(tf, 2d * (1d - s)) * Math.pow(g2 / tf, 2d * s);
+        }
+
+        /**
+         * Computes one cell term {@code O * ln(O / E)}, zero for an empty cell.
+         *
+         * @param observed observed cell count
+         * @param expected expected cell count, positive
+         * @return the cell term
+         */
+        private static double cell(final long observed, final double expected)
+        {
+            return observed > 0L ? observed * Math.log(observed / expected) : 0d;
         }
     }
 
     /**
-     * Collocational logDice.
-     *
-     * <pre>
-     * 14 + log2(2 * fAB / (fA + fB))
-     * </pre>
-     *
-     * Here {@code tf = fAB}, {@code pivotCount = fA}, and {@code cf = fB}.
-     *
-     * Rychlý, P. (2008). "A Lexicographer-Friendly Association Score."
-     * Proceedings of the 2nd Workshop on Recent Advances in Slavonic Natural
-     * Language Processing (RASLAN 2008): 6-9.
-     */
-    class LogDice implements KeynessScorer
-    {
-        /** Pivot marginal, or -1 before focus initialization. */
-        private long pivotCount = -1L;
-
-        /**
-         * Begins a corpus configuration and invalidates the previous pivot.
-         *
-         * @param corpusTokens total corpus tokens
-         * @param corpusDocs number of corpus documents
-         * @throws IllegalArgumentException if either total is not positive
-         */
-        @Override
-        public void corpus(final long corpusTokens, final int corpusDocs)
-        {
-            if (corpusTokens <= 0L || corpusDocs <= 0) {
-                throw new IllegalArgumentException("corpusTokens and corpusDocs must be positive");
-            }
-            pivotCount = -1L;
-        }
-
-        /**
-         * Sets the pivot marginal.
-         *
-         * @param focusTokens unused focus length
-         * @param pivotCount pivot occurrences in the active corpus
-         * @throws IllegalArgumentException if pivotCount is negative
-         */
-        @Override
-        public void focus(final long focusTokens, final long pivotCount)
-        {
-            if (focusTokens < 0L || pivotCount < 0L) {
-                throw new IllegalArgumentException("focusTokens and pivotCount must be nonnegative");
-            }
-            this.pivotCount = pivotCount;
-        }
-
-        /**
-         * Computes logDice.
-         *
-         * @param tf co-occurrences of candidate and pivot
-         * @param cf corpus occurrences of candidate
-         * @param df unused document frequency
-         * @return logDice, negative infinity for zero co-occurrence, or
-         *         {@link Double#NaN} for inconsistent marginals
-         * @throws IllegalStateException if focus was not initialized
-         */
-        @Override
-        public double score(final long tf, final long cf, final int df)
-        {
-            if (pivotCount < 0L) throw new IllegalStateException("call focus() before score()");
-            if (tf < 0L || cf < 0L || df < 0 || pivotCount == 0L || cf == 0L
-                    || tf > cf || tf > pivotCount) return Double.NaN;
-            if (tf == 0L) return Double.NEGATIVE_INFINITY;
-            final double dice = 2d * tf / ((double) pivotCount + cf);
-            return 14d + Math.log(dice) / Math.log(2d);
-        }
-    }
-
-    /**
-     * Hardie's Log Ratio.
+     * Hardie's Log Ratio. Ignores specificity between the endpoints.
      *
      * <pre>
      * log2((tf / focusTokens) / ((cf - tf) / (corpusTokens - focusTokens)))
      * </pre>
      *
-     * A zero term count on either side is replaced with 0.5.
+     * A zero term count on either side is replaced with 0.5. Log Ratio is an
+     * effect size, meant to be filtered by a significance test; unfiltered,
+     * terms exclusive to the focus with tf = 1 tie at the top.
      *
      * Hardie, A. (2014). "Log Ratio – an informal introduction." ESRC Centre
      * for Corpus Approaches to Social Science (CASS), Lancaster University,
      * 28 April 2014.
      */
-    class LogRatio implements KeynessScorer
+    public static class LogRatio extends KeynessScorer
     {
-        /** Total tokens in the active corpus, or -1 before initialization. */
-        private long corpusTokens = -1L;
-
-        /** Total tokens in the focus, or -1 before initialization. */
-        private long focusTokens = -1L;
-
         /**
-         * Sets the corpus and invalidates the previous focus.
-         *
-         * @param corpusTokens total corpus tokens
-         * @param corpusDocs number of corpus documents
-         * @throws IllegalArgumentException if either total is not positive
+         * Creates a Log Ratio scorer.
          */
-        @Override
-        public void corpus(final long corpusTokens, final int corpusDocs)
+        public LogRatio()
         {
-            if (corpusTokens <= 0L || corpusDocs <= 0) {
-                throw new IllegalArgumentException("corpusTokens and corpusDocs must be positive");
-            }
-            this.corpusTokens = corpusTokens;
-            this.focusTokens = -1L;
-        }
-
-        /**
-         * Sets the focus length.
-         *
-         * @param focusTokens tokens in the focus
-         * @param pivotCount unused pivot marginal
-         * @throws IllegalStateException if the corpus is not initialized
-         * @throws IllegalArgumentException if the focus is outside the corpus
-         */
-        @Override
-        public void focus(final long focusTokens, final long pivotCount)
-        {
-            if (corpusTokens < 0L) throw new IllegalStateException("call corpus() before focus()");
-            if (focusTokens < 0L || focusTokens > corpusTokens || pivotCount < 0L) {
-                throw new IllegalArgumentException("invalid focusTokens or pivotCount");
-            }
-            this.focusTokens = focusTokens;
         }
 
         /**
@@ -477,177 +442,136 @@ public interface KeynessScorer
          * @param tf occurrences in focus
          * @param cf occurrences in corpus
          * @param df unused document frequency
-         * @return the log ratio, zero for degenerate token marginals, or
-         *         {@link Double#NaN} for inconsistent term counts
-         * @throws IllegalStateException if focus statistics are uninitialized
+         * @return the base-2 log ratio
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        protected double interior(final long tf, final long cf, final int df)
         {
-            if (focusTokens < 0L) throw new IllegalStateException("call corpus() and focus() before score()");
-            final long otherTokens = corpusTokens - focusTokens;
             final long otherTf = cf - tf;
-            if (tf < 0L || cf < tf || cf > corpusTokens || tf > focusTokens
-                    || otherTf > otherTokens || df < 0) return Double.NaN;
-            if (focusTokens == 0L || otherTokens == 0L) return 0d;
-
             final double focusCount = tf > 0L ? tf : 0.5d;
             final double otherCount = otherTf > 0L ? otherTf : 0.5d;
-            return Math.log((focusCount / focusTokens) / (otherCount / otherTokens)) / Math.log(2d);
+            return Math.log((focusCount / focusTokens()) / (otherCount / otherTokens())) / LN2;
         }
     }
 
     /**
-     * Kilgarriff's Simple Maths keyword score.
+     * Kilgarriff's Simple Maths keyword score, a ratio centred on 1.
      *
      * <pre>
      * rfFocus = 1_000_000 * tf / focusTokens
      * rfRest  = 1_000_000 * (cf - tf) / (corpusTokens - focusTokens)
      * score   = (rfFocus + k) / (rfRest + k)
+     * k       = k0 * (1 - s) / s
      * </pre>
      *
-     * The default is {@code k = 500_000 * corpusDocs / corpusTokens}, equivalent
-     * to half an occurrence in the average-length document. The normalized
-     * specificity method {@link #specif(double)} uses
-     * {@code k(s) = k * (1-s) / s} for
-     * {@code 0 < s < 1}, exact TF at zero, and exclusive TF at one.
+     * The base constant {@code k0}, used at the neutral {@code s = 0.5}, is
+     * explicit or derived from {@link Smoothing}. As {@code s} tends to 0, k
+     * grows and the ranking tends to the rate difference
+     * {@code rfFocus - rfRest}, not raw frequency; the endpoint {@code s = 0}
+     * overrides that limit with raw frequency.
      *
      * Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of the
      * Corpus Linguistics Conference CL2009, University of Liverpool.
      */
-    class SimpleMaths implements KeynessScorer
+    public static class SimpleMaths extends KeynessScorer
     {
-        /** True when the smoothing parameter comes from corpus statistics. */
-        private final boolean automatic;
+        /**
+         * Automatic derivation of the base smoothing constant {@code k0},
+         * expressed per million.
+         */
+        public enum Smoothing
+        {
+            /** Half an occurrence in the average-length document: {@code 500_000 * corpusDocs / corpusTokens}. */
+            AVERAGE_DOC,
+            /** Half an occurrence in the focus: {@code 500_000 / focusTokens}. */
+            FOCUS
+        }
 
-        /** Normalized specificity, used only for automatic smoothing. */
-        private double specificity;
+        /** Automatic smoothing mode, or null for an explicit k0. */
+        private final Smoothing smoothing;
 
-        /** Smoothing constant added to per-million rates. */
-        private double k;
+        /** Explicit base constant, or NaN for automatic smoothing. */
+        private final double explicitK0;
 
-        /** Total tokens in the active corpus, or -1 before initialization. */
-        private long corpusTokens = -1L;
-
-        /** Total tokens in the focus, or -1 before initialization. */
-        private long focusTokens = -1L;
+        /** Smoothing constant for the current specificity, corpus and focus; NaN if undefined. */
+        private double k = Double.NaN;
 
         /**
-         * Creates a scorer using the corpus-dependent recommended smoothing.
+         * Creates a scorer smoothing with half an occurrence in the
+         * average-length document.
          */
         public SimpleMaths()
         {
-            this.automatic = true;
-            this.specificity = 0.5d;
+            this(Smoothing.AVERAGE_DOC);
         }
 
         /**
-         * Creates a scorer with an explicit native smoothing parameter.
+         * Creates a scorer with an automatic smoothing mode.
          *
-         * @param k positive per-million smoothing constant
-         * @throws IllegalArgumentException if k is not finite and positive
+         * @param smoothing derivation of k0
+         * @throws NullPointerException if smoothing is null
          */
-        public SimpleMaths(final double k)
+        public SimpleMaths(final Smoothing smoothing)
         {
-            if (!Double.isFinite(k) || k <= 0d) {
-                throw new IllegalArgumentException("k must be finite and > 0: " + k);
-            }
-            this.k = k;
-            this.automatic = false;
-            this.specificity = Double.NaN;
+            if (smoothing == null) throw new NullPointerException("smoothing");
+            this.smoothing = smoothing;
+            this.explicitK0 = Double.NaN;
         }
 
         /**
-         * Configures normalized specificity before corpus initialization.
-         * Explicit native smoothing and normalized specificity are mutually
-         * exclusive.
+         * Creates a scorer with an explicit base constant, scaled by
+         * specificity like the automatic modes.
          *
-         * @param specif normalized specificity in [0, 1]
-         * @return this scorer
-         * @throws IllegalArgumentException if specif is outside [0, 1]
-         * @throws IllegalStateException if the native parameter was set explicitly
-         *                               or corpus() has already been called
+         * @param k0 positive per-million smoothing constant at {@code s = 0.5}
+         * @throws IllegalArgumentException if k0 is not finite and positive
          */
-        @Override
-        public SimpleMaths specif(final double specif)
+        public SimpleMaths(final double k0)
         {
-            KeynessScorer.super.specif(specif);
-            if (!automatic) {
-                throw new IllegalStateException("cannot combine an explicit k with specif()");
+            if (!Double.isFinite(k0) || k0 <= 0d) {
+                throw new IllegalArgumentException("k0 must be finite and > 0: " + k0);
             }
-            if (corpusTokens >= 0L) {
-                throw new IllegalStateException("call specif() before corpus()");
-            }
-            specificity = specif;
-            return this;
+            this.smoothing = null;
+            this.explicitK0 = k0;
         }
 
         /**
-         * Sets the corpus and computes automatic smoothing, if required.
-         *
-         * @param corpusTokens total corpus tokens
-         * @param corpusDocs number of corpus documents
-         * @throws IllegalArgumentException if either total is not positive
-         */
-        @Override
-        public void corpus(final long corpusTokens, final int corpusDocs)
-        {
-            if (corpusTokens <= 0L || corpusDocs <= 0) {
-                throw new IllegalArgumentException("corpusTokens and corpusDocs must be positive");
-            }
-            this.corpusTokens = corpusTokens;
-            this.focusTokens = -1L;
-            
-            if (automatic && specificity > 0d && specificity < 1d) {
-                this.k = 500_000d * corpusDocs / corpusTokens * (1d - specificity) / specificity;
-            }
-        }
-
-        /**
-         * Sets the focus length.
-         *
-         * @param focusTokens tokens in the focus
-         * @param pivotCount unused pivot marginal
-         * @throws IllegalStateException if the corpus is not initialized
-         * @throws IllegalArgumentException if the focus is outside the corpus
-         */
-        @Override
-        public void focus(final long focusTokens, final long pivotCount)
-        {
-            if (corpusTokens < 0L) throw new IllegalStateException("call corpus() before focus()");
-            if (focusTokens < 0L || focusTokens > corpusTokens || pivotCount < 0L) {
-                throw new IllegalArgumentException("invalid focusTokens or pivotCount");
-            }
-            
-            
-            this.focusTokens = focusTokens;
-        }
-
-        /**
-         * Computes Simple Maths with the configured smoothing constant.
+         * Computes Simple Maths with the current smoothing constant.
          *
          * @param tf occurrences in focus
          * @param cf occurrences in corpus
          * @param df unused document frequency
-         * @return the smoothed frequency ratio, or {@link Double#NaN} for
-         *         inconsistent term counts
-         * @throws IllegalStateException if focus statistics are uninitialized
+         * @return the smoothed ratio of per-million rates
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        protected double interior(final long tf, final long cf, final int df)
         {
-            if (focusTokens < 0L) throw new IllegalStateException("call corpus() and focus() before score()");
-            final long otherTokens = corpusTokens - focusTokens;
-            final long otherTf = cf - tf;
-            if (tf < 0L || cf < tf || cf > corpusTokens || tf > focusTokens
-                    || otherTf > otherTokens || df < 0) return Double.NaN;
-            if (automatic && specificity == 0d) return tf;
-            if (automatic && specificity == 1d) return tf > 0L && tf == cf ? tf : Double.NaN;
-            if (focusTokens == 0L || otherTokens == 0L) return 0d;
+            final double rfFocus = tf * 1_000_000d / focusTokens() + k;
+            final double rfRest = (cf - tf) * 1_000_000d / otherTokens() + k;
+            return rfFocus / rfRest;
+        }
 
-            final double ppmFocus = tf * 1_000_000d / focusTokens + k;
-            final double ppmRest = otherTf * 1_000_000d / otherTokens + k;
-            return ppmFocus / ppmRest;
+        /**
+         * Recomputes k from k0 and specificity, as soon as the statistics
+         * required by the smoothing mode are known.
+         */
+        @Override
+        protected void update()
+        {
+            final double k0;
+            if (smoothing == null) {
+                k0 = explicitK0;
+            }
+            else if (smoothing == Smoothing.AVERAGE_DOC && corpusTokens() > 0L) {
+                k0 = 500_000d * corpusDocs() / corpusTokens();
+            }
+            else if (smoothing == Smoothing.FOCUS && focusTokens() > 0L) {
+                k0 = 500_000d / focusTokens();
+            }
+            else {
+                k0 = Double.NaN;
+            }
+            final double s = specificity();
+            k = s > 0d && s < 1d ? k0 * (1d - s) / s : Double.NaN;
         }
     }
 }
