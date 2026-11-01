@@ -278,9 +278,9 @@ public abstract class KeynessScorer
      * log2((tf / focusTokens) / ((cf - tf) / (corpusTokens - focusTokens)))
      * </pre>
      *
-     * A zero term count on either side is replaced with 0.5. Log Ratio is an
-     * effect size, meant to be filtered by a significance test; unfiltered,
-     * terms exclusive to the focus with tf = 1 tie at the top.
+     * A zero term count on either side is replaced with 0.5 (Alix convention,
+     * not stated by Hardie). Log Ratio is an effect size; terms exclusive to
+     * the focus with tf = 1 tie at the top.
      *
      * Hardie, A. (2014). "Log Ratio – an informal introduction." ESRC Centre
      * for Corpus Approaches to Social Science (CASS), Lancaster University,
@@ -318,15 +318,13 @@ public abstract class KeynessScorer
      * </pre>
      *
      * The smoothing constant k, per million, is {@link #k(double, double)}:
-     * geometric in specificity, from {@link #K_MAX} at {@code s = 0} to
-     * {@code kMin = 500_000 / corpusTokens} at {@code s = 1}, half an
-     * occurrence in the corpus. At kMin the top of the list is already the
-     * exclusive terms ranked by frequency, so the curve joins the
-     * {@code s = 1} endpoint without a jump. The centre is the geometric mean
-     * {@code sqrt(K_MAX * kMin)}. Toward {@code s = 0} the ranking approaches
-     * the rate difference {@code rfFocus - rfRest}, not raw frequency; the
-     * endpoint overrides it. A k given to the constructor is replaced by
-     * {@link #specif(double)}.
+     * {@code k0} at {@code s = 0.5}, geometric toward {@link #K_MAX} at
+     * {@code s = 0} and toward {@link #K_MIN} at {@code s = 1}. By default
+     * {@code k0 = 500_000 / focusTokens}, half an occurrence in the focus,
+     * set by {@link #focus(long, long)}. High k favours frequent words, low k
+     * rare words; toward {@code s = 0} the ranking approaches the rate
+     * difference {@code rfFocus - rfRest}, not raw frequency, and the
+     * endpoint overrides it. A k given to the constructor stays fixed.
      *
      * Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of the
      * Corpus Linguistics Conference CL2009, University of Liverpool.
@@ -339,20 +337,22 @@ public abstract class KeynessScorer
         /** Smoothing constant per million at {@code s = 1}. */
         public static final double K_MIN = 0.1d;
 
-        /** Default smoothing constant added to per-million rates; NaN until known. */
-        private double k0 = 100;
+        /** Smoothing constant per million at {@code s = 0.5}; 100 until focus() sets it. */
+        private double k0 = 170;
 
-        /** True when k derives from specificity and corpus. */
+        /** True when k was given to the constructor and stays fixed. */
         private boolean kSet;
 
         /** Smoothing constant added to per-million rates; NaN until known. */
         private double k = Double.NaN;
 
+        /**
+         * Creates a scorer whose k derives from specificity and focus size.
+         */
         public SimpleMaths() {}
 
         /**
-         * Creates a scorer with a fixed smoothing constant, until
-         * {@link #specif(double)} is called.
+         * Creates a scorer with a fixed smoothing constant.
          *
          * @param k positive per-million smoothing constant
          * @throws IllegalArgumentException if k is not finite and positive
@@ -362,16 +362,23 @@ public abstract class KeynessScorer
             if (!Double.isFinite(k) || k <= 0d) {
                 throw new IllegalArgumentException("k must be finite and > 0: " + k);
             }
-            this.kSet = true;
-            this.k = k;
+            this.k0 = k;
         }
 
         /**
-         * Maps specificity to the smoothing constant:
-         * {@code k = K_MAX * (kMin / K_MAX)^s}, a straight line in log k.
+         * Maps specificity to the smoothing constant, geometrically on each
+         * side of {@code k0}.
+         *
+         * <pre>
+         * s &lt;= 0.5   k = k0 * (K_MAX / k0)^(1 - 2s)
+         * s &gt;  0.5   k = k0 * (K_MIN / k0)^(2s - 1)
+         * </pre>
+         *
+         * Decreasing only if {@code K_MIN < k0 < K_MAX}; with the default k0,
+         * a focus above 5 million tokens gives {@code k0 < K_MIN}.
          *
          * @param specif normalized specificity in [0, 1]
-         * @param kMin positive per-million smoothing constant at {@code s = 1}
+         * @param k0 positive per-million smoothing constant at {@code s = 0.5}
          * @return the per-million smoothing constant
          */
         public static double k(final double specif, final double k0)
@@ -380,19 +387,21 @@ public abstract class KeynessScorer
             return k0 * Math.pow(K_MIN / k0, 2 * specif - 1);
         }
 
-
+        /**
+         * Sets the focus, derives {@code k0 = 500_000 / focusTokens}, then k
+         * unless it was given to the constructor.
+         *
+         * @param focusTokens total token count of the focus population
+         * @param pivotCount occurrences of the pivot query in the active corpus
+         * @throws IllegalStateException if the corpus is not initialized
+         * @throws IllegalArgumentException if the focus is outside the corpus or
+         *                                  pivotCount is negative
+         */
         @Override
         public void focus(final long focusTokens, final long pivotCount)
         {
             super.focus(focusTokens, pivotCount);
-            if (focusTokens > 0) {
-                k0 = 500_000d / focusTokens;
-            }
-            
-            if (kSet) {
-                
-            }
-            else if (specif == 0.5) {
+            if (specif == 0.5) {
                 k = k0;
             }
             else {
