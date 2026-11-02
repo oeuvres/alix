@@ -104,11 +104,26 @@ public class Factorial
 
     public static double logFactorial(int n)
     {
+        if (n < 0) throw new IllegalArgumentException("n must be nonnegative: " + n);
         if (n <= 1) {
             return 0.0D;
         } else {
             return Gamma.logGamma(n + 1.0D);
         }
+    }
+
+    /**
+     * Computes the natural logarithm of {@code n!} for a long argument.
+     *
+     * @param n nonnegative integer
+     * @return the natural logarithm of {@code n!}
+     * @throws IllegalArgumentException if {@code n} is negative
+     */
+    public static double logFactorial(final long n)
+    {
+        if (n < 0L) throw new IllegalArgumentException("n must be nonnegative: " + n);
+        if (n <= 1L) return 0d;
+        return Gamma.logGamma((double) n + 1d);
     }
 }
 

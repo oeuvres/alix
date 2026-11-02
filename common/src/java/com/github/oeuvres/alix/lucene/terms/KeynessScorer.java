@@ -1,5 +1,7 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import com.github.oeuvres.alix.maths.Fisher;
+
 /**
  * Scores terms in a focus population against an active corpus.
  *
@@ -169,6 +171,23 @@ public abstract class KeynessScorer
     }
 
     /**
+     * Maps normalized specificity to a nonnegative exponent, using a shared
+     * upper reference value and a scorer-specific midpoint.
+     *
+     * <pre>
+     * alpha = middle * (2 * specif)^log2(16 / middle)
+     * </pre>
+     *
+     * @param specif normalized specificity in [0, 1]
+     * @param middle exponent at specificity 0.5; must be positive
+     * @return interpolated exponent (0 at 0, middle at 0.5, 16 at 1)
+     */
+    protected static double alpha(final double specif, final double middle)
+    {
+        return middle * Math.pow(2d * specif, Math.log(16d / middle) / LN2);
+    }
+
+    /**
      * Signed Pearson chi-square on a 2 x 2 term/focus table. Ignores
      * specificity between the endpoints.
      *
@@ -291,6 +310,57 @@ public abstract class KeynessScorer
         private static double cell(final long observed, final double expected)
         {
             return observed > 0L ? observed * Math.log(observed / expected) : 0d;
+        }
+    }
+
+    /**
+     * Parametric, one-sided hypergeometric surprise for a term in the focus.
+     *
+     * <pre>
+     * HGT   = -ln(P(X >= tf)), X ~ Hypergeom(corpusTokens, cf, focusTokens)
+     * score = tf * (HGT / tf)^alpha
+     * alpha = (2 * specif)^4
+     * </pre>
+     *
+     * <p>At specificity 0.5, alpha is 1 and the score is ordinary HGT.
+     * A smaller specificity gives more weight to frequency; a larger one
+     * gives more weight to surprise per occurrence. HGT is nonnegative and
+     * measures overrepresentation only. The endpoints follow the common
+     * scorer contract (raw TF at 0, exclusive TF at 1).</p>
+     *
+     * <p>Sheridan, P. &amp; Onsjö, M. (2024). "The hypergeometric test performs
+     * comparably to TF-IDF on standard text analysis tasks." Multimedia Tools
+     * and Applications 83: 28875-28890. doi:10.1007/s11042-023-16615-z.</p>
+     */
+    public static class HgtAlpha extends KeynessScorer
+    {
+        /** Maximum finite surprise used by the Python reference for nonfinite values. */
+        private static final double MAX_SCORE = 1000d * Math.log(10d);
+
+        /**
+         * Scores a term with the alpha-weighted hypergeometric upper tail.
+         *
+         * @param tf occurrences in the focus
+         * @param cf occurrences in the corpus
+         * @param df document frequency, used only at the endpoints
+         * @return the nonnegative score, or {@link Double#NaN} for invalid counts
+         * @throws IllegalStateException if the corpus and focus have not been set
+         */
+        @Override
+        public double score(final long tf, final long cf, final int df)
+        {
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (focusTokens < 0L) {
+                throw new IllegalStateException("call corpus() and focus() before score()");
+            }
+            final double count = super.score(tf, cf, df);
+            if (Double.isNaN(count)) return Double.NaN;
+            double hgt = -Fisher.logRightTail(tf, cf, focusTokens, corpusTokens);
+            if (!Double.isFinite(hgt)) hgt = MAX_SCORE;
+            if (hgt <= 0d) return 0d;
+            final double exponent = alpha(specif, 1d);
+            if (specif == 0.5d) return hgt;
+            return tf * Math.pow(hgt / tf, exponent);
         }
     }
 
@@ -507,7 +577,7 @@ public abstract class KeynessScorer
         @Override
         protected double alphaAtMidpoint()
         {
-            return 0.20d;
+            return 0.37d;
         }
 
         /**
@@ -586,9 +656,7 @@ public abstract class KeynessScorer
             final double count = super.score(tf, cf, df);
             if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
             final double idf = Math.log((double) corpusDocs / df);
-            final double middle = alphaAtMidpoint();
-            final double alpha = middle * Math.pow(2d * specif, Math.log(16d / middle) / LN2);
-            return count * Math.pow(idf, alpha);
+            return count * Math.pow(idf, alpha(specif, alphaAtMidpoint()));
         }
     }
 }

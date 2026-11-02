@@ -528,6 +528,7 @@ public abstract class Op
             case "chi2" -> new KeynessScorer.Chi2();
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
+            case "fisher" -> new KeynessScorer.HgtAlpha();
             default -> new KeynessScorer.SimpleMaths(simplek);
         };
         return scorer.specif(specif);
