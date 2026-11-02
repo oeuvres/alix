@@ -14,7 +14,7 @@ package com.github.oeuvres.alix.lucene.terms;
  * <p>
  * Normalized specificity {@code s} in [0, 1]: {@code 0} gives raw term
  * frequency, {@code 1} the term frequency of exclusive terms (in the focus
- * and nowhere else, {@code tf == cf}), {@code 0.5} the native scorer. The
+ * and nowhere else, {@code tf == cf}), {@code 0.5} the scorer-specific reference setting. The
  * endpoints are implemented once, in {@link #score(long, long, int)} of this
  * class; subclasses delegate to it at the endpoints and use or ignore
  * {@code s} in between.
@@ -49,7 +49,7 @@ public abstract class KeynessScorer
     /** Occurrences of the pivot query in the active corpus, or -1 before initialization. */
     protected long pivotCount = -1L;
 
-    /** Normalized specificity in [0, 1]; 0.5 gives the native scorer. */
+    /** Normalized specificity in [0, 1]; 0.5 gives the scorer-specific reference setting. */
     protected double specif = 0.5d;
 
     /**
@@ -469,6 +469,126 @@ public abstract class KeynessScorer
             final double rfFocus = tf * 1_000_000d / focusTokens + k;
             final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
             return rfFocus / rfRest;
+        }
+    }
+
+    /**
+     * Sublinear TF-IDF with a configurable IDF exponent.
+     *
+     * <pre>
+     * score = (1 + ln(tf)) * ln(corpusDocs / df)^alpha
+     * alpha = 0.37 * (2 * s)^log2(16 / 0.37)
+     * </pre>
+     *
+     * <p>
+     * For {@code 0 < s < 1}, this matches {@code SubTfIdfAlpha} in
+     * {@code scorers.py} at the corresponding alpha, with alpha = 0.37 at
+     * {@code s = 0.5}. At {@code s = 0}, the
+     * common scorer contract takes precedence and returns raw {@code tf},
+     * rather than sublinear TF. At {@code s = 1}, it returns raw {@code tf}
+     * only for terms exclusive to the focus ({@code tf == cf}); other terms
+     * receive {@link Double#NaN}. Thus alpha approaches 16 from below, but
+     * the exact endpoint enforces exclusivity.
+     * </p>
+     *
+     * <p>
+     * Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches in
+     * automatic text retrieval." Information Processing &amp; Management
+     * 24(5): 513-523. doi:10.1016/0306-4573(88)90021-0.
+     * </p>
+     */
+    public static class SubTfIdfAlpha extends TfIdfAlpha
+    {
+        /**
+         * Returns the IDF exponent at the specificity midpoint.
+         *
+         * @return 0.37
+         */
+        @Override
+        protected double alphaAtMidpoint()
+        {
+            return 0.20d;
+        }
+
+        /**
+         * Computes sublinear TF-IDF with the specificity-dependent exponent.
+         *
+         * @param tf term frequency in the focus
+         * @param cf collection frequency in the active corpus
+         * @param df document frequency in the active corpus
+         * @return the sublinear TF-IDF score, or {@link Double#NaN} for an
+         *         invalid candidate or a non-exclusive term at {@code s = 1}
+         */
+        @Override
+        public double score(final long tf, final long cf, final int df)
+        {
+            final double score = super.score(tf, cf, df);
+            if (specif == 0d || specif == 1d || Double.isNaN(score)) return score;
+            return (1d + Math.log(tf)) * (score / tf);
+        }
+    }
+
+    /**
+     * TF-IDF with a specificity-dependent IDF exponent.
+     *
+     * <pre>
+     * score = tf * ln(corpusDocs / df)^alpha
+     * alpha = 0.77 * (2 * s)^log2(16 / 0.77)
+     * </pre>
+     *
+     * <p>
+     * This matches {@code TfIdfAlpha} in {@code scorers.py} for
+     * {@code 0 < s < 1}. The mapping has alpha = 0 at {@code s = 0},
+     * alpha = 0.77 at {@code s = 0.5}, and alpha = 16 at {@code s = 1}.
+     * The common scorer endpoints take precedence: {@code s = 0} returns
+     * raw {@code tf}; {@code s = 1} returns raw {@code tf} only where
+     * {@code tf == cf}, and {@link Double#NaN} otherwise. No finite alpha
+     * alone guarantees focus exclusivity, particularly for multi-document
+     * focus populations.
+     * </p>
+     *
+     * <p>
+     * Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches in
+     * automatic text retrieval." Information Processing &amp; Management
+     * 24(5): 513-523. doi:10.1016/0306-4573(88)90021-0.
+     * </p>
+     */
+    public static class TfIdfAlpha extends KeynessScorer
+    {
+        /**
+         * Returns the IDF exponent at the specificity midpoint.
+         *
+         * @return 0.77
+         */
+        protected double alphaAtMidpoint()
+        {
+            return 0.77d;
+        }
+
+        /**
+         * Computes TF-IDF with the specificity-dependent exponent.
+         *
+         * @param tf term frequency in the focus
+         * @param cf collection frequency in the active corpus
+         * @param df document frequency in the active corpus
+         * @return the TF-IDF score, or {@link Double#NaN} for an invalid
+         *         candidate or a non-exclusive term at {@code s = 1}
+         * @throws IllegalStateException if corpus or focus is not initialized
+         *                               for an interior specificity value
+         */
+        @Override
+        public double score(final long tf, final long cf, final int df)
+        {
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (focusTokens < 0L || corpusDocs < 0) {
+                throw new IllegalStateException("call corpus() and focus() before score()");
+            }
+            final double count = super.score(tf, cf, df);
+            if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
+            final double idf = Math.log((double) corpusDocs / df);
+            final double middle = alphaAtMidpoint();
+            final double alpha = middle * Math.pow(2d * specif, Math.log(16d / middle) / LN2);
+            return count * Math.pow(idf, alpha);
         }
     }
 }

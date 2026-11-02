@@ -5,27 +5,29 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Builds a query-centred two-dimensional semantic compass from a fixed number
- * of nearest vectors, then projects arbitrary model terms into that same plane.
+ * Builds a two-dimensional PCA compass from either query neighbours or
+ * selected keywords, then projects any model term into the resulting plane.
  *
- * <p>The nearest {@code limit} non-pivot vectors define a local PCA plane. The
- * PCA is computed in pure Java by block power iteration; no native numerical
- * dependency is required. Coordinates are expressed relative to the arithmetic
- * mean of the pivot vectors, so the pivot focus is at {@code (0, 0)}.</p>
+ * <p>The three-argument constructor defines a local plane using neighbours
+ * of the query pivots and places the pivot centroid at {@code (0, 0)}.
+ * The two-argument constructor defines the plane using the supplied keyword
+ * vectors and places their centroid at {@code (0, 0)}. Query words can then
+ * be projected without influencing the keyword PCA. Both modes use the same
+ * pure-Java block power iteration.</p>
  *
  * <p>No attempt is made to orient the PCA plane. In particular, this class does
  * not rotate or reflect the projected points to stabilize cardinal directions.
  * A caller that needs to align successive maps may do so afterwards, for
  * example with a Procrustes transform based on shared points.</p>
  *
- * <p>The reference neighbours are used only to define the PCA plane. They do
- * not constrain which terms can later be plotted: any term present in the same
+ * <p>The reference vectors define the PCA plane without restricting which
+ * terms can be plotted: any term present in the same
  * {@link VecModel} can be projected with {@link #point(int)} or
  * {@link #point(String)}.</p>
  */
 public final class CompassVec
 {
-    /** Maximum pure-Java orthogonal-iteration steps for the local PCA plane. */
+    /** Maximum pure-Java orthogonal-iteration steps for a PCA plane. */
     private static final int PCA_MAX_ITERATIONS = 128;
 
     /** Convergence tolerance for the two-dimensional PCA subspace. */
@@ -37,16 +39,16 @@ public final class CompassVec
     /** Second orthonormal direction of the local PCA plane. */
     private final double[] directionY;
 
-    /** Arithmetic mean of the pivot vectors, used as the plotted origin. */
+    /** Mean of pivot vectors or selected keywords, used as the plotted origin. */
     private final double[] focus;
 
     /** Model whose coordinate system defines this compass. */
     private final VecModel model;
 
-    /** Share of centred neighbour variance represented by the PCA plane. */
+    /** Share of centred reference-vector variance represented by the PCA plane. */
     private final double quality;
 
-    /** Number of nearest neighbours used to define this compass. */
+    /** Number of vectors used to define this compass. */
     private final int referenceCount;
 
     /** One-third nearest-rank quantile of absolute reference X coordinates. */
@@ -56,14 +58,15 @@ public final class CompassVec
     private final double yCenter;
 
     /**
-     * One model term projected into the local PCA plane.
+     * One model term projected into the PCA plane.
      *
      * @param form term form
      * @param id vector id in the model
-     * @param distance mean cosine distance to the pivot vectors
+     * @param distance one minus the mean cosine similarity to the reference
+     *        centroid (pivots in local mode, keywords in keyword mode)
      * @param x horizontal PCA coordinate
      * @param y vertical PCA coordinate
-     * @param quality share of the pivot-centred vector displacement represented
+     * @param quality share of the origin-centred vector displacement represented
      *        by the displayed plane
      */
     public record Point(
@@ -76,16 +79,16 @@ public final class CompassVec
     ) {}
 
     /**
-     * Builds a compass from the nearest vectors of one or more pivots.
+     * Builds a local PCA compass from the nearest vectors of query pivots.
      *
      * <p>For several pivots, neighbour distance is {@code 1 - mean(cosine)}.
      * Exactly {@code limit} neighbours are selected in total, not per pivot.
-     * Every pivot is excluded from the reference-neighbour set. The arithmetic
-     * mean of the pivot vectors is the displayed origin.</p>
+     * Every pivot is excluded from the reference set. The arithmetic mean
+     * of the pivot vectors is the displayed origin.</p>
      *
      * @param model loaded vector model
      * @param pivotIds vector ids of the query pivots
-     * @param limit maximum number of nearest neighbours used to define the plane
+     * @param limit maximum number of nearest neighbours defining the plane
      * @throws IllegalArgumentException if no pivot is supplied, {@code limit < 2},
      *         or fewer than two non-pivot vectors are available
      * @throws NullPointerException if {@code model} or {@code pivotIds} is null
@@ -95,40 +98,71 @@ public final class CompassVec
         final int[] pivotIds,
         final int limit
     ) {
+        this(model, nearestIds(model, pivotIds, limit), pivotIds);
+    }
+
+    /**
+     * Builds a keyword PCA compass from the selected keyword vectors.
+     *
+     * <p>The keywords themselves define the PCA plane and its centroid,
+     * which becomes the origin. Query pivots are not used in the fit and
+     * can be projected afterward using {@link #point(int)} or
+     * {@link #point(String)}. Each keyword contributes equally.</p>
+     *
+     * @param model loaded vector model
+     * @param keywordIds vector ids of the selected keywords
+     * @throws IllegalArgumentException if fewer than three keywords are provided
+     *         or the keyword cloud has fewer than two independent directions
+     * @throws NullPointerException if {@code model} or {@code keywordIds} is null
+     */
+    public CompassVec(
+        final VecModel model,
+        final int[] keywordIds
+    ) {
+        this(model, keywordIds, null);
+    }
+
+    /**
+     * Constructs the PCA plane from a specified set of reference vectors.
+     *
+     * @param model loaded vector model
+     * @param referenceIds ids used to determine the PCA directions
+     * @param pivotIds optional query pivots defining the plotted origin;
+     *                 {@code null} uses the reference-word centroid
+     */
+    private CompassVec(
+        final VecModel model,
+        final int[] referenceIds,
+        final int[] pivotIds
+    ) {
         this.model = Objects.requireNonNull(model, "model");
-        Objects.requireNonNull(pivotIds, "pivotIds");
-        if (pivotIds.length == 0) {
-            throw new IllegalArgumentException("at least one pivot is required");
+        Objects.requireNonNull(referenceIds, "referenceIds");
+        if (referenceIds.length < 3 && pivotIds == null) {
+            throw new IllegalArgumentException("keyword PCA needs at least three terms");
         }
-        if (limit < 2) {
-            throw new IllegalArgumentException("limit must be >= 2: " + limit);
-        }
-
-        final List<VecModel.Neighbor> neighbors = model.nearest(pivotIds, limit);
-        if (neighbors.size() < 2) {
-            throw new IllegalArgumentException(
-                "at least two non-pivot neighbours are required");
+        if (referenceIds.length < 2) {
+            throw new IllegalArgumentException("PCA needs at least two reference vectors");
         }
 
-        final int size = neighbors.size();
+        final int size = referenceIds.length;
         final int dim = model.dim();
         final double[][] vectors = new double[size][dim];
-        final double[] neighborMean = new double[dim];
+        final double[] referenceMean = new double[dim];
         for (int row = 0; row < size; row++) {
-            model.get(neighbors.get(row).id(), vectors[row]);
+            model.get(referenceIds[row], vectors[row]);
             for (int axis = 0; axis < dim; axis++) {
-                neighborMean[axis] += vectors[row][axis];
+                referenceMean[axis] += vectors[row][axis];
             }
         }
         for (int axis = 0; axis < dim; axis++) {
-            neighborMean[axis] /= size;
+            referenceMean[axis] /= size;
         }
 
         final double[][] centered = new double[size][dim];
         double totalVariance = 0d;
         for (int row = 0; row < size; row++) {
             for (int axis = 0; axis < dim; axis++) {
-                final double value = vectors[row][axis] - neighborMean[axis];
+                final double value = vectors[row][axis] - referenceMean[axis];
                 centered[row][axis] = value;
                 totalVariance += value * value;
             }
@@ -137,7 +171,7 @@ public final class CompassVec
         final double[][] directions = principalPlane(centered);
         directionX = directions[0];
         directionY = directions[1];
-        focus = pivotMean(model, pivotIds);
+        focus = pivotIds == null ? referenceMean : pivotMean(model, pivotIds);
 
         final double[][] points = new double[size][2];
         double shownVariance = 0d;
@@ -160,7 +194,7 @@ public final class CompassVec
     }
 
     /**
-     * Projects one model vector into the local PCA plane.
+     * Projects one model vector into the selected PCA plane.
      *
      * @param id vector id
      * @return projected point
@@ -194,7 +228,7 @@ public final class CompassVec
     }
 
     /**
-     * Projects one model term into the local PCA plane.
+     * Projects one model term into the selected PCA plane.
      *
      * @param form term form
      * @return projected point, or {@code null} if the form is absent from the model
@@ -208,7 +242,7 @@ public final class CompassVec
     }
 
     /**
-     * Returns the share of centred reference-neighbour variance represented by
+     * Returns the share of centred reference-vector variance represented by
      * the compass plane.
      *
      * @return value in {@code [0, 1]}
@@ -219,9 +253,9 @@ public final class CompassVec
     }
 
     /**
-     * Returns the number of nearest neighbours used to define this compass.
+     * Returns the number of reference vectors used to define this compass.
      *
-     * @return reference-neighbour count
+     * @return reference-vector count
      */
     public int referenceCount()
     {
@@ -232,7 +266,7 @@ public final class CompassVec
      * Returns the positive X boundary of the central compass band.
      *
      * <p>The value is the one-third nearest-rank quantile of {@code |x|} among
-     * the reference neighbours. The corresponding grid boundaries are therefore
+     * the reference vectors. The corresponding grid boundaries are therefore
      * {@code -xCenter()} and {@code +xCenter()} in projection units.</p>
      *
      * @return positive central-band X boundary in vector-projection units
@@ -246,7 +280,7 @@ public final class CompassVec
      * Returns the positive Y boundary of the central compass band.
      *
      * <p>The value is the one-third nearest-rank quantile of {@code |y|} among
-     * the reference neighbours. The corresponding grid boundaries are therefore
+     * the reference vectors. The corresponding grid boundaries are therefore
      * {@code -yCenter()} and {@code +yCenter()} in projection units.</p>
      *
      * @return positive central-band Y boundary in vector-projection units
@@ -261,7 +295,7 @@ public final class CompassVec
      *
      * <p>For {@code n} values and probability {@code p}, this selects sorted
      * element {@code ceil(p * n) - 1}, clamped to the available range. With
-     * {@code p = 1/3}, about one third of the reference neighbours therefore
+     * {@code p = 1/3}, about one third of the reference vectors therefore
      * lie inside the corresponding central band on that axis.</p>
      *
      * @param points two-dimensional reference coordinates
@@ -297,7 +331,7 @@ public final class CompassVec
     }
 
     /**
-     * Projects one model vector into the pivot-centred PCA plane.
+     * Projects one model vector into the plane relative to its origin.
      *
      * @param vector model vector
      * @return X and Y coordinates in the PCA plane
@@ -348,7 +382,7 @@ public final class CompassVec
             }
         }
         if (firstRow < 0 || !(firstNorm2 > 0d)) {
-            throw new IllegalArgumentException("neighbour cloud has no variance");
+            throw new IllegalArgumentException("reference cloud has no variance");
         }
 
         final double[] first = matrix[firstRow].clone();
@@ -367,13 +401,46 @@ public final class CompassVec
         }
         if (secondRow < 0 || !(secondNorm2 > 0d)) {
             throw new IllegalArgumentException(
-                "neighbour cloud has fewer than two independent directions");
+                "reference cloud has fewer than two independent directions");
         }
 
         final double[] second = matrix[secondRow].clone();
         subtractProjection(second, first);
         normalize(second);
         return new double[][] { first, second };
+    }
+
+    /**
+     * Selects the nearest non-pivot model vectors for the local PCA reference.
+     *
+     * @param model loaded vector model
+     * @param pivotIds vector ids of the query pivots
+     * @param limit maximum number of neighbours
+     * @return selected vector ids in nearest-neighbour order
+     */
+    private static int[] nearestIds(
+        final VecModel model,
+        final int[] pivotIds,
+        final int limit
+    ) {
+        Objects.requireNonNull(model, "model");
+        Objects.requireNonNull(pivotIds, "pivotIds");
+        if (pivotIds.length == 0) {
+            throw new IllegalArgumentException("at least one pivot is required");
+        }
+        if (limit < 2) {
+            throw new IllegalArgumentException("limit must be >= 2: " + limit);
+        }
+        final List<VecModel.Neighbor> neighbors = model.nearest(pivotIds, limit);
+        if (neighbors.size() < 2) {
+            throw new IllegalArgumentException(
+                "at least two non-pivot neighbours are required");
+        }
+        final int[] ids = new int[neighbors.size()];
+        for (int i = 0; i < ids.length; i++) {
+            ids[i] = neighbors.get(i).id();
+        }
+        return ids;
     }
 
     /**

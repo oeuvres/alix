@@ -23,20 +23,19 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_META;
 import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
 
 /**
- * Produces a query-centred two-dimensional map of the {@link TopTerms} selected
- * for a query, using a stable local compass defined by nearest model vectors.
+ * Produces a two-dimensional map of the {@link TopTerms} selected for a query.
  *
- * <p>The query pivots and {@link TopTerms} are selected exactly as for
- * {@link OpVecMap}. The nearest model vectors are used only to define and orient
- * the two-dimensional compass; they are not emitted. The JSON node list contains
- * the pivots followed by the selected {@link TopTerms}, so the existing map
- * client can render the response without a compass-specific node format.</p>
+ * <p>By default, the PCA plane is fitted to the selected TopTerms, without
+ * including query pivots in the fit. The request parameter {@code plane=local}
+ * instead fits the PCA plane to nearest neighbours of the query pivots.
+ * Both modes project pivots and TopTerms into their respective planes and use
+ * the same JSON node format.</p>
  */
 public class OpCompass extends Op
 {
     /** Property for the directory of models */
     private static final String ALIX_MODELS_ROOT="alix.models.root";
-    /** Number of nearest model vectors used to define the compass. */
+    /** Number of query neighbours defining the optional local PCA plane. */
     private static final int NEIGHBORS = 300;
 
     /** Vector model used by the current experiment. */
@@ -68,7 +67,7 @@ public class OpCompass extends Op
     }
 
     /**
-     * Writes the query TopTerms projected into the nearest-neighbour compass.
+     * Writes query pivots and TopTerms in the selected PCA plane.
      *
      * @param lucene Lucene index
      * @param request HTTP request
@@ -112,11 +111,37 @@ public class OpCompass extends Op
             return;
         }
 
-        final int[] ids = new int[pivotIds.size()];
-        for (int index = 0; index < ids.length; index++) {
-            ids[index] = pivotIds.get(index);
+        final String plane = request.getParameter("plane");
+        if (plane != null && !"local".equals(plane) && !"keywords".equals(plane)) {
+            response.setStatus(400);
+            meta.log("[unknown PCA plane: " + plane + "]");
+            AlixServlet.jsonError(request, response);
+            return;
         }
-        final CompassVec compass = new CompassVec(model, ids, NEIGHBORS);
+        final boolean keywords = !"local".equals(plane);
+        final int[] ids;
+        if (keywords) {
+            final List<Integer> keywordIds = new ArrayList<>();
+            for (final TermEntry term : topTerms) {
+                final int id = model.id(term.form());
+                if (id >= 0) {
+                    keywordIds.add(id);
+                }
+            }
+            if (keywordIds.size() < 3) {
+                response.setStatus(400);
+                meta.log("[keyword PCA requires at least three words in the vector model]");
+                AlixServlet.jsonError(request, response);
+                return;
+            }
+            ids = keywordIds.stream().mapToInt(Integer::intValue).toArray();
+        }
+        else {
+            ids = pivotIds.stream().mapToInt(Integer::intValue).toArray();
+        }
+        final CompassVec compass = keywords
+            ? new CompassVec(model, ids)
+            : new CompassVec(model, ids, NEIGHBORS);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");
@@ -131,6 +156,7 @@ public class OpCompass extends Op
             json.name("axes");
             json.beginObject();
             json.name("unit").value("vector-projection");
+            json.name("plane").value(keywords ? "keywords" : "local");
             json.name("reference").value(compass.referenceCount());
             json.name("xCenter").value(round(compass.xCenter(), 4));
             json.name("yCenter").value(round(compass.yCenter(), 4));
@@ -139,11 +165,12 @@ public class OpCompass extends Op
             json.name("nodes");
             json.beginArray();
             for (final TopTerms.ExcludedTerm pivot : pivots) {
+                final CompassVec.Point point = compass.point(pivot.form());
                 json.beginObject();
-                json.name("form").value(pivot.form());
-                json.name("x").value(0d);
-                json.name("y").value(0d);
-                json.name("quality").value(1d);
+                json.name("form").value(point.form());
+                json.name("x").value(round(point.x(), 4));
+                json.name("y").value(round(point.y(), 4));
+                json.name("quality").value(round(point.quality(), 4));
                 json.name("type").value("pivot");
                 json.endObject();
             }
