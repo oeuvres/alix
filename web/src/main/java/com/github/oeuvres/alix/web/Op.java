@@ -525,10 +525,11 @@ public abstract class Op
             case "count", "raw" -> new KeynessScorer.Count();
             case "g2" -> new KeynessScorer.G2();
             case "logratio" -> new KeynessScorer.LogRatio();
-            case "chi2" -> new KeynessScorer.Chi2();
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "fisher" -> new KeynessScorer.HgtAlpha();
+            case "chi2" -> new KeynessScorer.Chi2Alpha();
+            case "bm25" -> new KeynessScorer.BM25();
             default -> new KeynessScorer.SimpleMaths(simplek);
         };
         return scorer.specif(specif);

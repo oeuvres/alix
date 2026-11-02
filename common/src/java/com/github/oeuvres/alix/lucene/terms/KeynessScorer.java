@@ -171,20 +171,122 @@ public abstract class KeynessScorer
     }
 
     /**
-     * Maps normalized specificity to a nonnegative exponent, using a shared
-     * upper reference value and a scorer-specific midpoint.
+     * Maps normalized specificity to a nonnegative exponent, with independent
+     * midpoint and upper reference values.
      *
      * <pre>
-     * alpha = middle * (2 * specif)^log2(16 / middle)
+     * alpha = middle * (2 * specif)^log2(upper / middle)
      * </pre>
      *
      * @param specif normalized specificity in [0, 1]
-     * @param middle exponent at specificity 0.5; must be positive
-     * @return interpolated exponent (0 at 0, middle at 0.5, 16 at 1)
+     * @param middle positive exponent at specificity 0.5
+     * @param upper exponent approached at specificity 1, greater than middle
+     * @return 0 at specificity 0, middle at 0.5, and upper at 1
+     * @throws IllegalArgumentException if arguments are outside their ranges
      */
-    protected static double alpha(final double specif, final double middle)
+    protected static double alpha(final double specif, final double middle, final double upper)
     {
-        return middle * Math.pow(2d * specif, Math.log(16d / middle) / LN2);
+        if (!Double.isFinite(specif) || specif < 0d || specif > 1d
+                || !Double.isFinite(middle) || middle <= 0d
+                || !Double.isFinite(upper) || upper <= middle) {
+            throw new IllegalArgumentException("invalid alpha mapping arguments");
+        }
+        if (specif == 0d) return 0d;
+        if (specif == 0.5d) return middle;
+        if (specif == 1d) return upper;
+        return middle * Math.pow(2d * specif, Math.log(upper / middle) / LN2);
+    }
+
+    /**
+     * BM25 at the specificity midpoint, continuously interpolated between
+     * raw TF at zero and focus-exclusive TF at one.
+     *
+     * <pre>
+     * k1         = K1_MIDDLE * max(s, 1 - s) / min(s, 1 - s)
+     * idf        = ln(1 + (corpusDocs - df + 0.5) / (df + 0.5))
+     * idfPower   = 2 * min(s, 1 - s)
+     * exclusive  = 1                             if s &lt;= 0.5
+     *              (tf / cf)^((s - 0.5)/(1 - s))   if s &gt; 0.5
+     * score      = tf * (k1 + 1) / (tf + k1) * idf^idfPower * exclusive
+     * </pre>
+     *
+     * <p>At s = 0.5 this is ordinary BM25 with b = 0 and k1 = 150.
+     * On the lower half, increasing k1 removes TF saturation while
+     * simultaneously reducing IDF weighting to one: the score approaches TF.
+     * On the upper half, increasing k1 restores linear TF while the exclusive
+     * factor suppresses terms with occurrences outside the focus; at s = 1
+     * the inherited endpoint returns exclusive TF. There is just one public
+     * control, {@link #specif(double)}. This interpolation is experimental;
+     * only the midpoint is conventional BM25.</p>
+     *
+     * <p>Length normalization is omitted (b = 0), since aggregated
+     * co-occurrence focuses have no comparable corpus-document length.</p>
+     *
+     * <p>Robertson, S. &amp; Zaragoza, H. (2009). "The Probabilistic Relevance
+     * Framework: BM25 and Beyond." Foundations and Trends in Information
+     * Retrieval 3(4): 333-389.</p>
+     */
+    public static class BM25 extends KeynessScorer
+    {
+        /** Midpoint TF saturation; approximately 90% linear TF at tf = 18. */
+        private static final double K1_MIDDLE = 150d;
+
+        /** Cached BM25 TF saturation parameter. */
+        private double k1 = K1_MIDDLE;
+
+        /** Cached power of the conventional BM25 IDF. */
+        private double idfPower = 1d;
+
+        /** Cached focus-exclusivity exponent. */
+        private double exclusivePower = 0d;
+
+        /**
+         * Scores one term using the current specificity.
+         *
+         * @param tf term frequency in the focus
+         * @param cf collection frequency of the term
+         * @param df document frequency of the term
+         * @return the score, or {@link Double#NaN} for inconsistent counts
+         * @throws IllegalStateException if the corpus and focus are not initialized
+         */
+        @Override
+        public double score(final long tf, final long cf, final int df)
+        {
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (focusTokens < 0L) {
+                throw new IllegalStateException("call corpus() and focus() before score()");
+            }
+            final double count = super.score(tf, cf, df);
+            if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
+
+            final double tfWeight = Double.isInfinite(k1) ? tf :
+                    tf * ((k1 + 1d) / (tf + k1));
+            final double idf = Math.log1p((corpusDocs - df + 0.5d) / (df + 0.5d));
+            final double idfWeight = Math.pow(idf, idfPower);
+            final double exclusive = exclusivePower == 0d ? 1d :
+                    Math.pow((double) tf / cf, exclusivePower);
+            return tfWeight * idfWeight * exclusive;
+        }
+
+        /**
+         * Sets specificity and caches saturation, IDF and exclusivity powers.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @return this scorer
+         * @throws IllegalArgumentException if specificity is invalid
+         */
+        @Override
+        public BM25 specif(final double specif)
+        {
+            super.specif(specif);
+            final double edge = Math.min(specif, 1d - specif);
+            k1 = edge == 0d ? Double.POSITIVE_INFINITY :
+                    K1_MIDDLE * Math.max(specif, 1d - specif) / edge;
+            idfPower = 2d * edge;
+            exclusivePower = specif <= 0.5d ? 0d :
+                    (specif - 0.5d) / (1d - specif);
+            return this;
+        }
     }
 
     /**
@@ -233,6 +335,73 @@ public abstract class KeynessScorer
             if (delta == 0d) return 0d;
             final double x2 = delta * delta * (n / f) * (n / (n - f)) * (n / c) / (n - c);
             return delta > 0d ? x2 : -x2;
+        }
+    }
+
+    /**
+     * Signed Pearson chi-square with an exponent controlling specificity.
+     *
+     * <pre>
+     * X2     = signed Pearson chi-square on the 2 x 2 table
+     * score  = sign(X2) * tf * (abs(X2) / tf)^alpha
+     * alpha  = alpha(specif, 1, 16)
+     * </pre>
+     *
+     * <p>At specificity 0.5 (alpha = 1), the score is exactly signed
+     * {@link Chi2}. Negative scores indicate underrepresentation and can be
+     * filtered by the caller. For tf = 0, the continuous limit is zero when
+     * alpha &lt; 1 and negative infinity when alpha &gt; 1; at alpha = 1 the
+     * signed chi-square value is returned. The endpoints follow the common
+     * contract: raw frequency at 0 and exclusive term frequency at 1.</p>
+     *
+     * <p>Pearson, K. (1900). "On the criterion that a given system of
+     * deviations from the probable in the case of a correlated system of
+     * variables is such that it can be reasonably supposed to have arisen
+     * from random sampling." Philosophical Magazine 50(302): 157-175.
+     * doi:10.1080/14786440009463897.</p>
+     */
+    public static class Chi2Alpha extends Chi2
+    {
+        /** Exponent at the specificity midpoint. */
+        private static final double ALPHA_MIDDLE = 0.3d;
+
+        /** Upper reference exponent, before the exclusive-frequency endpoint. */
+        private static final double ALPHA_UPPER = 5d;
+
+        /** Exponent cached for the current specificity. */
+        private double exponent = ALPHA_MIDDLE;
+
+        /**
+         * Computes the signed alpha-weighted Pearson chi-square statistic.
+         *
+         * @param tf occurrences in the focus
+         * @param cf occurrences in the corpus
+         * @param df document frequency, used only at the endpoints
+         * @return the signed score, or {@link Double#NaN} for an invalid table
+         */
+        @Override
+        public double score(final long tf, final long cf, final int df)
+        {
+            final double chi2 = super.score(tf, cf, df);
+            if (specif == 0d || specif == 1d || Double.isNaN(chi2)) return chi2;
+            if (tf == 0L) return specif < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
+            final double score = tf * Math.pow(Math.abs(chi2) / tf, exponent);
+            return chi2 > 0d ? score : -score;
+        }
+
+        /**
+         * Updates specificity and caches the corresponding exponent.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @return this scorer
+         * @throws IllegalArgumentException if specificity is invalid
+         */
+        @Override
+        public Chi2Alpha specif(final double specif)
+        {
+            super.specif(specif);
+            exponent = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER);
+            return this;
         }
     }
 
@@ -334,8 +503,17 @@ public abstract class KeynessScorer
      */
     public static class HgtAlpha extends KeynessScorer
     {
+        /** Exponent at the specificity midpoint. */
+        private static final double ALPHA_MIDDLE = 1d;
+
+        /** Upper reference exponent, before the exclusive-frequency endpoint. */
+        private static final double ALPHA_UPPER = 4d;
+
         /** Maximum finite surprise used by the Python reference for nonfinite values. */
         private static final double MAX_SCORE = 1000d * Math.log(10d);
+
+        /** Exponent cached for the current specificity. */
+        private double exponent = ALPHA_MIDDLE;
 
         /**
          * Scores a term with the alpha-weighted hypergeometric upper tail.
@@ -358,9 +536,23 @@ public abstract class KeynessScorer
             double hgt = -Fisher.logRightTail(tf, cf, focusTokens, corpusTokens);
             if (!Double.isFinite(hgt)) hgt = MAX_SCORE;
             if (hgt <= 0d) return 0d;
-            final double exponent = alpha(specif, 1d);
             if (specif == 0.5d) return hgt;
             return tf * Math.pow(hgt / tf, exponent);
+        }
+
+        /**
+         * Updates specificity and caches the corresponding exponent.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @return this scorer
+         * @throws IllegalArgumentException if specificity is invalid
+         */
+        @Override
+        public HgtAlpha specif(final double specif)
+        {
+            super.specif(specif);
+            exponent = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER);
+            return this;
         }
     }
 
@@ -543,58 +735,87 @@ public abstract class KeynessScorer
     }
 
     /**
-     * Sublinear TF-IDF with a configurable IDF exponent.
+     * TF-IDF with a specificity-dependent transition from raw to log TF.
      *
      * <pre>
-     * score = (1 + ln(tf)) * ln(corpusDocs / df)^alpha
-     * alpha = 0.37 * (2 * s)^log2(16 / 0.37)
+     * alpha   = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER)
+     * t       = max(0, 1 - 2 * specif)
+     * tfWeight = tf^t * (1 + ln(tf))^((1 - t) * TF_LOG_POWER)
+     * score   = tfWeight * ln(corpusDocs / df)^alpha
      * </pre>
      *
-     * <p>
-     * For {@code 0 < s < 1}, this matches {@code SubTfIdfAlpha} in
-     * {@code scorers.py} at the corresponding alpha, with alpha = 0.37 at
-     * {@code s = 0.5}. At {@code s = 0}, the
-     * common scorer contract takes precedence and returns raw {@code tf},
-     * rather than sublinear TF. At {@code s = 1}, it returns raw {@code tf}
-     * only for terms exclusive to the focus ({@code tf == cf}); other terms
-     * receive {@link Double#NaN}. Thus alpha approaches 16 from below, but
-     * the exact endpoint enforces exclusivity.
-     * </p>
+     * <p>At specif = 0 the score is raw tf; at specif = 0.5 it uses a fixed
+     * logarithmic TF power and the midpoint IDF exponent. Between 0 and 0.5,
+     * the TF transform itself changes, avoiding the nearly invariant rankings
+     * obtained when only a very small IDF exponent changed. Between 0.5 and 1,
+     * TF stays logarithmic while alpha increases. At specif = 1 the shared
+     * exclusive-term endpoint replaces the interior formula. No document-length
+     * normalization is applied.</p>
      *
-     * <p>
+     * <p>This interpolation is experimental and is not conventional subTF-IDF.
      * Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches in
      * automatic text retrieval." Information Processing &amp; Management
-     * 24(5): 513-523. doi:10.1016/0306-4573(88)90021-0.
-     * </p>
+     * 24(5): 513-523.</p>
      */
-    public static class SubTfIdfAlpha extends TfIdfAlpha
+    public static class SubTfIdfAlpha extends KeynessScorer
     {
-        /**
-         * Returns the IDF exponent at the specificity midpoint.
-         *
-         * @return 0.37
-         */
-        @Override
-        protected double alphaAtMidpoint()
-        {
-            return 0.37d;
-        }
+        /** IDF exponent at the specificity midpoint. */
+        private static final double ALPHA_MIDDLE = 0.15d;
+
+        /** Upper reference IDF exponent before exclusive term selection. */
+        private static final double ALPHA_UPPER = 4d;
+
+        /** Logarithmic TF power at and above the midpoint. */
+        private static final double TF_LOG_POWER = 1.5d;
+
+        /** Cached IDF exponent. */
+        private double exponent = ALPHA_MIDDLE;
+
+        /** Cached raw-TF power. */
+        private double tfPower = 0d;
+
+        /** Cached log-TF power. */
+        private double logPower = TF_LOG_POWER;
 
         /**
-         * Computes sublinear TF-IDF with the specificity-dependent exponent.
+         * Calculates the interpolated TF and IDF weighting independently.
          *
-         * @param tf term frequency in the focus
-         * @param cf collection frequency in the active corpus
-         * @param df document frequency in the active corpus
-         * @return the sublinear TF-IDF score, or {@link Double#NaN} for an
-         *         invalid candidate or a non-exclusive term at {@code s = 1}
+         * @param tf occurrences in the focus
+         * @param cf occurrences in the corpus
+         * @param df document frequency in the corpus
+         * @return weighted score, or {@link Double#NaN} for invalid counts
+         * @throws IllegalStateException if corpus or focus is not initialized
          */
         @Override
         public double score(final long tf, final long cf, final int df)
         {
-            final double score = super.score(tf, cf, df);
-            if (specif == 0d || specif == 1d || Double.isNaN(score)) return score;
-            return (1d + Math.log(tf)) * (score / tf);
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (focusTokens < 0L) {
+                throw new IllegalStateException("call corpus() and focus() before score()");
+            }
+            final double count = super.score(tf, cf, df);
+            if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
+            final double tfWeight = (tfPower == 0d ? 1d : Math.pow(tf, tfPower))
+                    * Math.pow(1d + Math.log(tf), logPower);
+            final double idf = Math.log((double) corpusDocs / df);
+            return tfWeight * Math.pow(idf, exponent);
+        }
+
+        /**
+         * Updates specificity and caches its TF and IDF powers.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @return this scorer
+         * @throws IllegalArgumentException if specificity is invalid
+         */
+        @Override
+        public SubTfIdfAlpha specif(final double specif)
+        {
+            super.specif(specif);
+            exponent = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER);
+            tfPower = Math.max(0d, 1d - 2d * specif);
+            logPower = (1d - tfPower) * TF_LOG_POWER;
+            return this;
         }
     }
 
@@ -625,14 +846,41 @@ public abstract class KeynessScorer
      */
     public static class TfIdfAlpha extends KeynessScorer
     {
+        /** Exponent at the specificity midpoint. */
+        private static final double ALPHA_MIDDLE = 0.77d;
+
+        /** Upper reference exponent, before the exclusive-frequency endpoint. */
+        private static final double ALPHA_UPPER = 16d;
+
+        /** Midpoint exponent of this scorer instance. */
+        private final double middle;
+
+        /** Upper reference exponent of this scorer instance. */
+        private final double upper;
+
+        /** Exponent cached for the current specificity. */
+        private double exponent;
+
         /**
-         * Returns the IDF exponent at the specificity midpoint.
-         *
-         * @return 0.77
+         * Creates TF-IDF with its default exponent parameters.
          */
-        protected double alphaAtMidpoint()
+        public TfIdfAlpha()
         {
-            return 0.77d;
+            this(ALPHA_MIDDLE, ALPHA_UPPER);
+        }
+
+        /**
+         * Creates an IDF scorer with scorer-specific exponent parameters.
+         *
+         * @param middle exponent at specificity 0.5
+         * @param upper upper reference exponent at specificity 1
+         * @throws IllegalArgumentException if the parameters are invalid
+         */
+        protected TfIdfAlpha(final double middle, final double upper)
+        {
+            this.middle = middle;
+            this.upper = upper;
+            this.exponent = alpha(specif, middle, upper);
         }
 
         /**
@@ -656,7 +904,22 @@ public abstract class KeynessScorer
             final double count = super.score(tf, cf, df);
             if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
             final double idf = Math.log((double) corpusDocs / df);
-            return count * Math.pow(idf, alpha(specif, alphaAtMidpoint()));
+            return count * Math.pow(idf, exponent);
+        }
+
+        /**
+         * Updates specificity and caches the corresponding IDF exponent.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @return this scorer
+         * @throws IllegalArgumentException if specificity is invalid
+         */
+        @Override
+        public TfIdfAlpha specif(final double specif)
+        {
+            super.specif(specif);
+            exponent = alpha(specif, middle, upper);
+            return this;
         }
     }
 }
