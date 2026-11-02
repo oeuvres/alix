@@ -458,8 +458,10 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * <p>
      * The flags restrict ordinary ranking candidates only. Population counts,
      * corpus marginals, and the pivot-event count are unchanged. Stored
-     * exclusions are omitted. Stored inclusions bypass the flag filter, consume
-     * places within {@code topK}, and displace the lowest-scoring ordinary
+     * exclusions are omitted. The scorer receives the number of distinct terms
+     * with positive frequency in the entire analytical population, independently
+     * of ranking flags and inclusions. Stored inclusions bypass the flag filter,
+     * consume places within {@code topK}, and displace the lowest-scoring ordinary
      * terms. No flags, or {@link TermFlag#NULL}, select all ordinary terms.
      * </p>
      *
@@ -487,8 +489,13 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         final double[] scoreVec = new double[vocabSize];
         final TopArray included = new TopArray(topK);
 
+        int distinctTerms = 0;
+        for (int termId = 1; termId < vocabSize; termId++) {
+            if (termFreq[termId] > 0L) distinctTerms++;
+        }
+
         scorer.corpus(corpusTokens, corpusDocs);
-        scorer.focus(tokens, pivotCount);
+        scorer.focus(tokens, pivotCount, distinctTerms);
 
         for (int termId = rankingInclude.nextSetBit(1);
                 termId >= 0;
