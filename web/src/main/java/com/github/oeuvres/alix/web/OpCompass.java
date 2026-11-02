@@ -11,6 +11,7 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
+import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 
@@ -39,7 +40,7 @@ public class OpCompass extends Op
     private static final int NEIGHBORS = 300;
 
     /** Vector model used by the current experiment. */
-    private static final String MODEL_DEFAULT = "piaget-word2vec-win30-stop2-g2specif1.0-dims100-terms15000.bin";
+    private static String modelDefault;
     
     /**
      * Returns the configured models root directory.
@@ -62,6 +63,11 @@ public class OpCompass extends Op
         if (!Files.isDirectory(path)) {
             throw new IOException(ALIX_MODELS_ROOT + " is not a directory: " + path);
         }
+        Path model = Dir.firstFile(path, "*.bin");
+        if (model == null) {
+            throw new IOException(ALIX_MODELS_ROOT + ": no model *.bin found");
+        }
+        modelDefault = model.getFileName().toString();
         context.setAttribute(ALIX_MODELS_ROOT, path);
         return path;
     }
@@ -92,7 +98,7 @@ public class OpCompass extends Op
             return;
         }
         final Path modelsRoot = modelsRoot(request);
-        final String modelName = pars.getString("model", MODEL_DEFAULT);
+        final String modelName = pars.getString("model", modelDefault);
         final VecModel model = VecModel.get(modelsRoot.resolve(modelName));
         final List<TopTerms.ExcludedTerm> pivots = new ArrayList<>();
         final List<Integer> pivotIds = new ArrayList<>();
