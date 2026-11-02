@@ -413,6 +413,7 @@ public final class Coocs2vec
         }
         final KeynessScorer scorer = switch (scorerName) {
             case "g2" -> new KeynessScorer.G2();
+            case "bm25" -> new KeynessScorer.BM25Alpha();
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);

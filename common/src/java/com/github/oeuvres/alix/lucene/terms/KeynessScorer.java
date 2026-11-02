@@ -912,22 +912,32 @@ public abstract class KeynessScorer
     }
 
     /**
-     * TF-IDF with a specificity-dependent IDF exponent.
+     * TF-IDF with a specificity-dependent IDF exponent, interpolated
+     * geometrically between TF and IDF.
      *
      * <pre>
-     * score = tf * ln(corpusDocs / df)^alpha
-     * alpha = 0.77 * (2 * s)^log2(16 / 0.77)
+     * idf   = ln(corpusDocs / df)
+     * score = tf^(2(1-s)) * idf^(2 * 0.77 * s)
      * </pre>
      *
      * <p>
-     * This matches {@code TfIdfAlpha} in {@code scorers.py} for
-     * {@code 0 < s < 1}. The mapping has alpha = 0 at {@code s = 0},
-     * alpha = 0.77 at {@code s = 0.5}, and alpha = 16 at {@code s = 1}.
-     * The common scorer endpoints take precedence: {@code s = 0} returns
-     * raw {@code tf}; {@code s = 1} returns raw {@code tf} only where
-     * {@code tf == cf}, and {@link Double#NaN} otherwise. No finite alpha
-     * alone guarantees focus exclusivity, particularly for multi-document
-     * focus populations.
+     * The score ranks as {@code tf * idf^alpha} with
+     * {@code alpha = 0.77 * s / (1 - s)}: raising it to {@code 1 / (2(1-s))}
+     * is monotone. With {@code theta = alpha / (1 + alpha)}, the ranking is
+     * that of {@code tf^(1-theta) * idf^theta}, and theta is linear in s, so
+     * each step of s moves the same share of weight from ln(tf) to ln(idf).
+     * At {@code s = 0.5} the score is exactly {@code tf * idf^0.77}. The
+     * exponents never exceed 2, so the score cannot overflow as alpha grows
+     * without bound toward {@code s = 1}. The common scorer endpoints take
+     * precedence: {@code s = 0} returns raw {@code tf}; {@code s = 1} returns
+     * raw {@code tf} only where {@code tf == cf}, and {@link Double#NaN}
+     * otherwise.
+     * </p>
+     *
+     * <p>
+     * The ranking changes fastest where the spread of {@code alpha * ln(idf)}
+     * matches the spread of {@code ln(tf)} among candidates; this point moves
+     * toward higher s as the focus grows.
      * </p>
      *
      * <p>
@@ -941,42 +951,41 @@ public abstract class KeynessScorer
         /** Exponent at the specificity midpoint. */
         private static final double ALPHA_MIDDLE = 0.77d;
 
-        /** Upper reference exponent, before the exclusive-frequency endpoint. */
-        private static final double ALPHA_UPPER = 16d;
-
         /** Midpoint exponent of this scorer instance. */
         private final double middle;
 
-        /** Upper reference exponent of this scorer instance. */
-        private final double upper;
+        /** Cached power of the IDF, {@code 2 * middle * s}. */
+        private double idfPower;
 
-        /** Exponent cached for the current specificity. */
-        private double exponent;
+        /** Cached power of the TF, {@code 2 * (1 - s)}. */
+        private double tfPower;
 
         /**
-         * Creates TF-IDF with its default exponent parameters.
+         * Creates TF-IDF with its default midpoint exponent.
          */
         public TfIdfAlpha()
         {
-            this(ALPHA_MIDDLE, ALPHA_UPPER);
+            this(ALPHA_MIDDLE);
         }
 
         /**
-         * Creates an IDF scorer with scorer-specific exponent parameters.
+         * Creates an IDF scorer with a scorer-specific midpoint exponent.
          *
-         * @param middle exponent at specificity 0.5
-         * @param upper upper reference exponent at specificity 1
-         * @throws IllegalArgumentException if the parameters are invalid
+         * @param middle positive exponent at specificity 0.5
+         * @throws IllegalArgumentException if the parameter is invalid
          */
-        protected TfIdfAlpha(final double middle, final double upper)
+        protected TfIdfAlpha(final double middle)
         {
+            if (!Double.isFinite(middle) || middle <= 0d) {
+                throw new IllegalArgumentException("middle must be finite and positive: " + middle);
+            }
             this.middle = middle;
-            this.upper = upper;
-            this.exponent = alpha(specif, middle, upper);
+            this.tfPower = 2d * (1d - specif);
+            this.idfPower = 2d * middle * specif;
         }
 
         /**
-         * Computes TF-IDF with the specificity-dependent exponent.
+         * Computes TF-IDF with the specificity-dependent powers.
          *
          * @param tf term frequency in the focus
          * @param cf collection frequency in the active corpus
@@ -996,11 +1005,11 @@ public abstract class KeynessScorer
             final double count = super.score(tf, cf, df);
             if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
             final double idf = Math.log((double) corpusDocs / df);
-            return count * Math.pow(idf, exponent);
+            return Math.pow(count, tfPower) * Math.pow(idf, idfPower);
         }
 
         /**
-         * Updates specificity and caches the corresponding IDF exponent.
+         * Updates specificity and caches the TF and IDF powers.
          *
          * @param specif normalized specificity in [0, 1]
          * @return this scorer
@@ -1010,7 +1019,8 @@ public abstract class KeynessScorer
         public TfIdfAlpha specif(final double specif)
         {
             super.specif(specif);
-            exponent = alpha(specif, middle, upper);
+            tfPower = 2d * (1d - specif);
+            idfPower = 2d * middle * specif;
             return this;
         }
     }
