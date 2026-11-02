@@ -55,7 +55,7 @@ public class Constants
      * Determine machine epsilon.
      *
      * @return The machine epsilon as a double. The machine epsilon MACHEPS is the
-     *         smallest number such that (1 + MACHEPS) == 1 .
+     *         smallest number such that (1 + MACHEPS) &gt; 1 .
      */
     public static double determineMachineEpsilon()
     {
@@ -89,7 +89,7 @@ public class Constants
         // of the machine precision.
 
         double digits = Math.log(macheps) / Math.log(10.0D);
-        return (int) digits;
+        return (int) -digits;
     }
 
     /**

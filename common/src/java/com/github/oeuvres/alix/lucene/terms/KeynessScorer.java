@@ -215,296 +215,89 @@ public abstract class KeynessScorer
     }
 
     /**
-     * BM25 at the specificity midpoint, interpolated from raw TF to
-     * focus-exclusive TF. The conventional BM25 IDF is retained.
-     *
-     * <p>The default constructor enables focus-level calibration of the
-     * midpoint k1. Call {@link #focus(long, long, int)} with the number of
-     * distinct terms in the focus; this requires no frequency-array allocation.
-     * Without the count, the minimum midpoint is 150. The explicit
-     * {@link #BM25(float, float)} constructor fixes k1 and b.</p>
+     * BM25 with specificity: raw TF at 0, vanilla BM25 at 0.5, exclusive
+     * TF at 1.
      *
      * <pre>
-     * norm       = 1 - b + b * focusTokens / (corpusTokens / corpusDocs)
-     * k1(s)      = middleK1 * max(s, 1-s) / min(s, 1-s)
-     * idf        = ln(1 + (corpusDocs - df + 0.5) / (df + 0.5))
-     * idfPower   = 2 * min(s, 1-s)
-     * q          = 0.3 * (s-0.5) / (1-s)        for 0.5 &lt; s &lt; 1
-     * score      = tf * (k1+1) / (tf+k1*norm) * idf^idfPower
-     *              * (tf/cf)^q                 for s &gt; 0.5
+     * q      = (1 - s) / s
+     * b(s)   = b                 for s &lt;= 0.5
+     *          b * q             for s &gt;  0.5
+     * L      = 1 - b(s) + b(s) * focusTokens / (corpusTokens / corpusDocs)
+     * k      = k1 * q * L
+     * sat    = tf * (k + 1) / (tf + k)
+     * idf    = ln(1 + (corpusDocs - df + 0.5) / (df + 0.5))
+     * s &lt;= 0.5:  score = idf^(2s) * sat
+     * s &gt;  0.5:  R     = (cf - tf) * focusTokens / (corpusTokens - focusTokens)
+     *            w     = (s - 0.5) / (1 - s)
+     *            score = idf * sat * (1 - w * R / tf)
      * </pre>
      *
-     * <p>The endpoints are handled by {@link KeynessScorer#score(long, long, int)}.
-     * At s=0.5 the score is conventional BM25 with the chosen k1 and b.
-     * The interpolation outside the midpoint is experimental. The q curve
-     * was calibrated against the 0.9-to-1 transition for a Piaget focus;
-     * it approaches infinity as s approaches 1. With b=0 the
-     * interior limit approaches raw TF at s=0; with b greater than zero it
-     * approaches a focus-wise constant multiple of TF. Term rankings within
-     * the same focus are unaffected by that constant.</p>
+     * <p>At s = 0.5, q = 1: the score is vanilla BM25 with the constructor
+     * k1 and b, which is also the default specificity. Below 0.5, k grows
+     * and the IDF power falls; at s = 0 the ranking is raw TF, since sat is
+     * monotone in tf. Above 0.5, k1 and b decrease together by the factor q,
+     * so that k falls below the focus TF whatever the focus size; saturation
+     * turns TF into presence and the IDF prevails. The BM25 score is weighted by
+     * the attributable fraction {@code (tf - w * R) / tf}. R is the expected
+     * focus count at the rate of the rest of the corpus, zero for a term
+     * exclusive to the focus. The threshold w is 0 at s = 0.5 (vanilla), 1 at
+     * s = 0.75 (positive only above independence) and grows without bound
+     * toward s = 1, where only exclusive terms stay positive. Terms below the
+     * threshold get negative scores. The endpoints are handled by the
+     * superclass; near s = 1 exclusive terms are ranked by IDF before the
+     * endpoint ranks them by TF.</p>
+     *
+     * <p>The default k1 = 100 is an empirical plateau on the Piaget corpus:
+     * vanilla rankings were judged stable for k1 at or above this value.
+     * The default b = 0.75 is the Lucene default: with L proportional to
+     * the focus length, k scales with the focus size at the midpoint.</p>
      *
      * <p>Robertson, S. &amp; Zaragoza, H. (2009). "The Probabilistic Relevance
      * Framework: BM25 and Beyond." Foundations and Trends in Information
      * Retrieval 3(4): 333-389.</p>
      */
-    public static class BM25 extends KeynessScorer
-    {
-        /** Empirically selected minimum midpoint k1. */
-        private static final double K1_FALLBACK = 150d;
-
-        /** Controls the approach to exclusive TF above specificity 0.5. */
-        private static final double EXCLUSIVITY_SCALE = 0.3d;
-
-        /** Fraction of linear TF retained at the reference frequency. */
-        private static final double TF_RETENTION = 0.9d;
-
-        /** Whether this scorer calibrates midpoint k1 from focus lexical diversity. */
-        private final boolean adaptive;
-
-        /** BM25 document-length normalization parameter. */
-        private final double b;
-
-        /** Current midpoint k1, fixed or calibrated for the current focus. */
-        private double middleK1;
-
-        /** Focus-specific length normalization, cached by focus(). */
-        private double lengthNorm = 1d;
-
-        /** Current specificity-dependent k1. */
-        private double k1;
-
-        /** Cached power of the conventional BM25 IDF. */
-        private double idfPower = 1d;
-
-        /** Cached focus-exclusivity exponent. */
-        private double exclusivePower;
-
-        /**
-         * Creates BM25 with a midpoint k1 adapted to the mean positive term
-         * frequency when the focus vocabulary size is supplied. Without it,
-         * the empirically selected midpoint 150 is used. Length normalization
-         * is disabled by default.
-         */
-        public BM25()
-        {
-            adaptive = true;
-            b = 0d;
-            middleK1 = K1_FALLBACK;
-            k1 = middleK1;
-        }
-
-        /**
-         * Creates BM25 with a fixed midpoint k1 and length normalization b.
-         * Focus vocabulary size does not change these parameters.
-         *
-         * @param k1 positive TF saturation parameter at specificity 0.5
-         * @param b length normalization in [0, 1]
-         * @throws IllegalArgumentException if k1 or b is invalid
-         */
-        public BM25(final float k1, final float b)
-        {
-            if (!Float.isFinite(k1) || k1 <= 0f || !Float.isFinite(b) || b < 0f || b > 1f) {
-                throw new IllegalArgumentException("k1 must be positive and b must be in [0, 1]");
-            }
-            adaptive = false;
-            this.b = b;
-            middleK1 = k1;
-            this.k1 = k1;
-        }
-
-        /**
-         * Sets the focus without lexical diversity data, resetting adaptive
-         * calibration to its minimum midpoint k1.
-         *
-         * @param focusTokens candidate tokens in the focus, excluding pivot occurrences
-         * @param pivotCount pivot occurrences included in the focus
-         */
-        @Override
-        public void focus(final long focusTokens, final long pivotCount)
-        {
-            super.focus(focusTokens, pivotCount);
-            final double averageLength = (double) corpusTokens / corpusDocs;
-            lengthNorm = 1d - b + b * this.focusTokens / averageLength;
-            if (adaptive) middleK1 = K1_FALLBACK;
-            specif(specif);
-        }
-
-        /**
-         * Sets the focus and calibrates its midpoint k1 from mean positive TF.
-         *
-         * <p>The caller can obtain distinctTerms from the size of its existing
-         * focus term-frequency map, without copying or sorting frequencies.
-         * The mean candidate TF is focusTokens / distinctTerms. At that mean,
-         * k1 targets 90% of linear TF growth relative to tf=1. Calibration
-         * never decreases the empirically selected minimum k1 of 150.
-         * A fixed-parameter BM25 ignores the additional count.</p>
-         *
-         * @param focusTokens candidate occurrences in the focus, excluding pivot occurrences
-         * @param pivotCount pivot occurrences included in the focus
-         * @param distinctTerms number of different candidates with positive TF
-         * @throws IllegalArgumentException if distinctTerms is invalid
-         */
-        @Override
-        public void focus(final long focusTokens, final long pivotCount, final int distinctTerms)
-        {
-            if (distinctTerms < 0 || distinctTerms > focusTokens) {
-                throw new IllegalArgumentException("distinctTerms must be between 0 and focusTokens");
-            }
-            focus(focusTokens, pivotCount);
-            if (!adaptive || distinctTerms == 0) return;
-
-            final double meanTf = (double) focusTokens / distinctTerms;
-            final double normalizedK1 = (TF_RETENTION * meanTf - 1d) / (1d - TF_RETENTION);
-            middleK1 = Math.max(K1_FALLBACK, normalizedK1 / lengthNorm);
-            specif(specif);
-        }
-
-        /**
-         * Returns the midpoint k1 currently selected for this focus.
-         *
-         * @return fixed or calibrated midpoint k1
-         */
-        public double middleK1()
-        {
-            return middleK1;
-        }
-
-        /**
-         * Scores a term with the current specificity, BM25 IDF and length norm.
-         *
-         * @param tf term frequency in the focus
-         * @param cf collection frequency of the term
-         * @param df document frequency of the term
-         * @return score, or {@link Double#NaN} for invalid counts
-         * @throws IllegalStateException if corpus or focus are not initialized
-         */
-        @Override
-        public double score(final long tf, final long cf, final int df)
-        {
-            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (focusTokens < 0L) {
-                throw new IllegalStateException("call corpus() and focus() before score()");
-            }
-            final double count = super.score(tf, cf, df);
-            if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
-
-            final double tfWeight = tf * ((k1 + 1d) / (tf + k1 * lengthNorm));
-            final double idf = Math.log1p((corpusDocs - df + 0.5d) / (df + 0.5d));
-            final double idfWeight = Math.pow(idf, idfPower);
-            final double exclusive = exclusivePower == 0d || tf == cf ? 1d :
-                    Math.pow((double) tf / cf, exclusivePower);
-            return tfWeight * idfWeight * exclusive;
-        }
-
-        /**
-         * Sets specificity and updates the cached saturation and IDF powers.
-         *
-         * @param specif normalized specificity in [0, 1]
-         * @return this scorer
-         * @throws IllegalArgumentException if specificity is invalid
-         */
-        @Override
-        public BM25 specif(final double specif)
-        {
-            super.specif(specif);
-            final double edge = Math.min(specif, 1d - specif);
-            k1 = edge == 0d ? Double.POSITIVE_INFINITY :
-                    middleK1 * Math.max(specif, 1d - specif) / edge;
-            idfPower = 2d * edge;
-            if (specif <= 0.5d) {
-                exclusivePower = 0d;
-            }
-            else if (specif == 1d) {
-                exclusivePower = Double.POSITIVE_INFINITY;
-            }
-            else {
-                exclusivePower = EXCLUSIVITY_SCALE * (specif - 0.5d) / (1d - specif);
-            }
-            return this;
-        }
-    }
-
-    /**
-     * Experimental BM25-style interpolation exactly centered on TF-IDF-alpha.
-     *
-     * <p>
-     * At specificity 0 this scorer returns raw TF; at 0.5 it is exactly
-     * {@code tf * ln(corpusDocs / df)^0.77}; at 1 only terms exclusive to
-     * the focus are retained, with their raw TF. Unlike {@link BM25}, the
-     * midpoint is not classical BM25. The lower half adjusts IDF alone;
-     * the upper half combines BM25-style TF saturation with an exclusivity
-     * penalty. This is an experimental scorer, not Robertson's BM25.
-     * </p>
-     *
-     * <pre>
-     * t     = abs(2 * specif - 1)
-     * alpha = 0.77 * (1 - t^2)
-     * idf   = ln(corpusDocs / df)
-     * s &lt;= 0.5: score = tf * idf^alpha
-     * s &gt;  0.5:
-     *   k1    = K1_SATURATION / (4 * t * (1 - t))
-     *   norm  = 1 - b + b * focusTokens / (corpusTokens / corpusDocs)
-     *   sat   = (k1 * norm + 1) / (tf + k1 * norm)
-     *   q     = EXCLUSIVITY_SCALE * t / (1 - t)^EXCLUSIVITY_CURVE_POWER
-     *   score = tf * sat * idf^alpha * (tf / cf)^q
-     * </pre>
-     *
-     * <p>
-     * Saturation is neutral at both upper-half boundaries and strongest at
-     * {@code specif = 0.75}; its parameter specifies k1 at that point, not
-     * the midpoint. The default b is zero, appropriate when a focus consists
-     * of aggregated Lucene co-occurrence windows rather than a document.
-     * The exclusive endpoint is imposed by the superclass. For a term with
-     * {@code df == corpusDocs}, the unsmoothed IDF is zero at all interior
-     * settings, as in the TF-IDF reference; this exceptional case has no
-     * continuous positive limit at the exclusive endpoint.
-     * </p>
-     */
     public static class BM25Alpha extends KeynessScorer
     {
-        /** The TF-IDF exponent at the specificity midpoint. */
-        private static final double ALPHA_MIDDLE = 0.77d;
+        /** Empirical plateau of k1 for vanilla BM25 on the Piaget corpus. */
+        private static final float K1_PLATEAU = 100f;
 
-        /** Mid-interval upper-half saturation strength. */
-        private static final double K1_SATURATION = 500d;
+        /** Lucene default length normalization. */
+        private static final float B_LUCENE = 0.75f;
 
-        /** Exclusivity exponent scale, calibrated initially on instrument. */
-        private static final double EXCLUSIVITY_SCALE = 1.2d;
-
-        /** Upper-tail curvature, calibrated initially on instrument. */
-        private static final double EXCLUSIVITY_CURVE_POWER = 0.35d;
-
-        /** Optional BM25 length normalization (zero by default). */
+        /** BM25 length normalization parameter. */
         private final double b;
 
-        /** Saturation parameter at specificity 0.75. */
-        private final double baseK1;
+        /** BM25 saturation parameter at specificity 0.5. */
+        private final double k1;
 
-        /** Cached IDF exponent. */
-        private double idfExponent = ALPHA_MIDDLE;
+        /** Cached power of the BM25 IDF. */
+        private double idfPower = 1d;
 
-        /** Cached upper-half exclusivity exponent. */
-        private double exclusiveExponent;
+        /** Cached length normalization strength b(s). */
+        private double bScaled;
 
-        /** Cached upper-half saturation parameter. */
-        private double k1 = Double.POSITIVE_INFINITY;
+        /** Focus length in average documents, cached by focus(). */
+        private double focusLength = 1d;
 
-        /** Cached focus-length normalization. */
-        private double lengthNorm = 1d;
+        /** Cached factor q = (1 - s) / s applied to k1. */
+        private double saturationScale = 1d;
+
+        /** Cached attributable-fraction threshold, zero up to s = 0.5. */
+        private double threshold = 0d;
 
         /**
-         * Creates an unnormalized scorer with k1 = 500 at specificity 0.75.
+         * Creates the scorer with k1 = 100 and b = 0.75.
          */
         public BM25Alpha()
         {
-            this((float) K1_SATURATION, 0f);
+            this(K1_PLATEAU, B_LUCENE);
         }
 
         /**
-         * Creates a scorer with an explicit upper-half saturation parameter.
+         * Creates the scorer with explicit BM25 parameters for specificity 0.5.
          *
-         * @param k1 positive k1 at specificity 0.75 (not at the midpoint)
-         * @param b length-normalization strength in [0, 1]
+         * @param k1 positive TF saturation of vanilla BM25
+         * @param b length normalization in [0, 1]
          * @throws IllegalArgumentException if either parameter is invalid
          */
         public BM25Alpha(final float k1, final float b)
@@ -512,12 +305,13 @@ public abstract class KeynessScorer
             if (!Float.isFinite(k1) || k1 <= 0f || !Float.isFinite(b) || b < 0f || b > 1f) {
                 throw new IllegalArgumentException("k1 must be positive and b must be in [0, 1]");
             }
-            this.baseK1 = k1;
+            this.k1 = k1;
             this.b = b;
+            this.bScaled = b;
         }
 
         /**
-         * Initializes the focus and caches the BM25-style length factor.
+         * Initializes the focus and caches its length in average documents.
          *
          * @param focusTokens candidate tokens, excluding pivot occurrences
          * @param pivotCount pivot occurrences included in the focus
@@ -528,17 +322,17 @@ public abstract class KeynessScorer
         public void focus(final long focusTokens, final long pivotCount)
         {
             super.focus(focusTokens, pivotCount);
-            final double meanDocLength = (double) corpusTokens / corpusDocs;
-            lengthNorm = 1d - b + b * this.focusTokens / meanDocLength;
+            focusLength = this.focusTokens / ((double) corpusTokens / corpusDocs);
         }
 
         /**
-         * Computes the midpoint-exact, specificity-dependent term score.
+         * Scores a term with BM25 interpolated by specificity.
          *
          * @param tf term occurrences within the focus
          * @param cf collection occurrences of the term
          * @param df documents containing the term in the active corpus
-         * @return a nonnegative term weight, or NaN for invalid terms
+         * @return the score, negative below the specificity threshold, or
+         *         {@link Double#NaN} for invalid counts
          * @throws IllegalStateException if corpus or focus are not initialized
          */
         @Override
@@ -550,18 +344,20 @@ public abstract class KeynessScorer
             }
             final double count = super.score(tf, cf, df);
             if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
-            final double idf = Math.log((double) corpusDocs / df);
-            final double weightedTf = count * Math.pow(idf, idfExponent);
-            if (specif <= 0.5d || weightedTf == 0d) return weightedTf;
-
-            final double effectiveK1 = k1 * lengthNorm;
-            final double saturation = (effectiveK1 + 1d) / (tf + effectiveK1);
-            final double exclusivity = tf == cf ? 1d : Math.pow((double) tf / cf, exclusiveExponent);
-            return weightedTf * saturation * exclusivity;
+            final double k = k1 * saturationScale * (1d - bScaled + bScaled * focusLength);
+            final double tfWeight = tf * (k + 1d) / (tf + k);
+            final double idf = Math.log1p((corpusDocs - df + 0.5d) / (df + 0.5d));
+            final double bm25 = Math.pow(idf, idfPower) * tfWeight;
+            if (threshold == 0d) return bm25;
+            final long rest = cf - tf;
+            final double reference = rest == 0L ? 0d :
+                    rest * ((double) focusTokens / (corpusTokens - focusTokens));
+            return bm25 * (1d - threshold * reference / tf);
         }
 
         /**
-         * Updates cached IDF, saturation and exclusivity parameters.
+         * Sets specificity and caches the saturation scale, length
+         * normalization, IDF power and attributable-fraction threshold.
          *
          * @param specif normalized specificity in [0, 1]
          * @return this scorer
@@ -571,20 +367,11 @@ public abstract class KeynessScorer
         public BM25Alpha specif(final double specif)
         {
             super.specif(specif);
-            final double t = Math.abs(2d * specif - 1d);
-            idfExponent = ALPHA_MIDDLE * (1d - t * t);
-            if (specif <= 0.5d) {
-                k1 = Double.POSITIVE_INFINITY;
-                exclusiveExponent = 0d;
-            }
-            else if (specif == 1d) {
-                k1 = Double.POSITIVE_INFINITY;
-                exclusiveExponent = Double.POSITIVE_INFINITY;
-            }
-            else {
-                k1 = baseK1 / (4d * t * (1d - t));
-                exclusiveExponent = EXCLUSIVITY_SCALE * t / Math.pow(1d - t, EXCLUSIVITY_CURVE_POWER);
-            }
+            saturationScale = specif == 0d ? Double.POSITIVE_INFINITY : (1d - specif) / specif;
+            bScaled = specif <= 0.5d ? b : b * saturationScale;
+            idfPower = specif <= 0.5d ? 2d * specif : 1d;
+            threshold = specif <= 0.5d ? 0d :
+                    specif == 1d ? Double.POSITIVE_INFINITY : (specif - 0.5d) / (1d - specif);
             return this;
         }
     }

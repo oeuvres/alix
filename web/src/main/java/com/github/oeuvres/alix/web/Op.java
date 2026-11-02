@@ -520,6 +520,7 @@ public abstract class Op
     {
         final double specif = pars.getDouble(SPECIF, SPECIF_RANGE, SPECIF_DEFAULT, SPECIF);
         final double simplek = pars.getDouble(SIMPLEK, SIMPLEK_RANGE, Double.NaN);
+        final int k1 = pars.getInt("k1", 250);
 
         final KeynessScorer scorer = switch (pars.getString(TSORT, "")) {
             case "count", "raw" -> new KeynessScorer.Count();
@@ -529,7 +530,7 @@ public abstract class Op
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "fisher" -> new KeynessScorer.HgtAlpha();
             case "chi2" -> new KeynessScorer.Chi2Alpha();
-            case "bm25" -> new KeynessScorer.BM25();
+            case "bm25a" -> new KeynessScorer.BM25Alpha(150, 0.75f);
             default -> new KeynessScorer.SimpleMaths(simplek);
         };
         return scorer.specif(specif);
