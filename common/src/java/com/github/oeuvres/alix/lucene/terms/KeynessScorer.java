@@ -205,8 +205,10 @@ public abstract class KeynessScorer
      * k1         = K1_MIDDLE * max(s, 1 - s) / min(s, 1 - s)
      * idf        = ln(1 + (corpusDocs - df + 0.5) / (df + 0.5))
      * idfPower   = 2 * min(s, 1 - s)
+     * x          = 2 * s - 1                      for s &gt; 0.5
+     * q          = x^5 / (1 - x^5)                for 0.5 &lt; s &lt; 1
      * exclusive  = 1                             if s &lt;= 0.5
-     *              (tf / cf)^((s - 0.5)/(1 - s))   if s &gt; 0.5
+     *              (tf / cf)^q                   if s &gt; 0.5
      * score      = tf * (k1 + 1) / (tf + k1) * idf^idfPower * exclusive
      * </pre>
      *
@@ -214,7 +216,9 @@ public abstract class KeynessScorer
      * On the lower half, increasing k1 removes TF saturation while
      * simultaneously reducing IDF weighting to one: the score approaches TF.
      * On the upper half, increasing k1 restores linear TF while the exclusive
-     * factor suppresses terms with occurrences outside the focus; at s = 1
+     * factor suppresses terms with occurrences outside the focus. The fifth-power
+     * curve delays strong suppression until close to s = 1, retaining useful
+     * contrast at s = 0.9; at s = 1
      * the inherited endpoint returns exclusive TF. There is just one public
      * control, {@link #specif(double)}. This interpolation is experimental;
      * only the midpoint is conventional BM25.</p>
@@ -263,7 +267,7 @@ public abstract class KeynessScorer
                     tf * ((k1 + 1d) / (tf + k1));
             final double idf = Math.log1p((corpusDocs - df + 0.5d) / (df + 0.5d));
             final double idfWeight = Math.pow(idf, idfPower);
-            final double exclusive = exclusivePower == 0d ? 1d :
+            final double exclusive = exclusivePower == 0d || tf == cf ? 1d :
                     Math.pow((double) tf / cf, exclusivePower);
             return tfWeight * idfWeight * exclusive;
         }
@@ -283,8 +287,18 @@ public abstract class KeynessScorer
             k1 = edge == 0d ? Double.POSITIVE_INFINITY :
                     K1_MIDDLE * Math.max(specif, 1d - specif) / edge;
             idfPower = 2d * edge;
-            exclusivePower = specif <= 0.5d ? 0d :
-                    (specif - 0.5d) / (1d - specif);
+            if (specif <= 0.5d) {
+                exclusivePower = 0d;
+            }
+            else if (specif == 1d) {
+                exclusivePower = Double.POSITIVE_INFINITY;
+            }
+            else {
+                final double x = 2d * specif - 1d;
+                final double x2 = x * x;
+                final double x5 = x2 * x2 * x;
+                exclusivePower = x5 / (1d - x5);
+            }
             return this;
         }
     }
@@ -735,32 +749,35 @@ public abstract class KeynessScorer
     }
 
     /**
-     * TF-IDF with a specificity-dependent transition from raw to log TF.
+     * Sublinear TF-IDF interpolated from raw TF to a tuned logarithmic scorer.
      *
      * <pre>
-     * alpha   = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER)
-     * t       = max(0, 1 - 2 * specif)
-     * tfWeight = tf^t * (1 + ln(tf))^((1 - t) * TF_LOG_POWER)
+     * u       = 4 * s * (1 - s)                              for s &lt;= 0.5
+     *           1                                             for s &gt; 0.5
+     * alpha   = u * ALPHA_MIDDLE                            for s &lt;= 0.5
+     *           ALPHA_MIDDLE * (ALPHA_UPPER / ALPHA_MIDDLE)^(2 * s - 1)
+     *                                                         for s &gt; 0.5
+     * tfWeight = tf^(1 - u) * (1 + ln(tf))^(u * TF_LOG_POWER)
      * score   = tfWeight * ln(corpusDocs / df)^alpha
      * </pre>
      *
-     * <p>At specif = 0 the score is raw tf; at specif = 0.5 it uses a fixed
-     * logarithmic TF power and the midpoint IDF exponent. Between 0 and 0.5,
-     * the TF transform itself changes, avoiding the nearly invariant rankings
-     * obtained when only a very small IDF exponent changed. Between 0.5 and 1,
-     * TF stays logarithmic while alpha increases. At specif = 1 the shared
-     * exclusive-term endpoint replaces the interior formula. No document-length
-     * normalization is applied.</p>
+     * <p>The midpoint exactly matches the previous implementation at
+     * {@code specif = 0.6}: power 1.5 for the logarithmic TF factor, and the
+     * corresponding IDF exponent. Below 0.5, a quadratic ease-out progression
+     * changes both TF compression and IDF weighting earlier in the range,
+     * rather than leaving most of the low-specificity interval almost inert. Above
+     * 0.5, it grows geometrically toward the upper reference value. The
+     * endpoints return raw TF and exclusive TF, respectively.</p>
      *
-     * <p>This interpolation is experimental and is not conventional subTF-IDF.
-     * Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches in
-     * automatic text retrieval." Information Processing &amp; Management
+     * <p>Experimental TF-IDF interpolation, not a standard sublinear TF-IDF
+     * formulation. Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches
+     * in automatic text retrieval." Information Processing &amp; Management
      * 24(5): 513-523.</p>
      */
     public static class SubTfIdfAlpha extends KeynessScorer
     {
-        /** IDF exponent at the specificity midpoint. */
-        private static final double ALPHA_MIDDLE = 0.15d;
+        /** IDF exponent at midpoint, equal to the previous scorer at s = 0.6. */
+        private static final double ALPHA_MIDDLE = 0.35577063364800476d;
 
         /** Upper reference IDF exponent before exclusive term selection. */
         private static final double ALPHA_UPPER = 4d;
@@ -802,7 +819,7 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Updates specificity and caches its TF and IDF powers.
+         * Updates specificity and caches the TF and IDF powers.
          *
          * @param specif normalized specificity in [0, 1]
          * @return this scorer
@@ -812,9 +829,11 @@ public abstract class KeynessScorer
         public SubTfIdfAlpha specif(final double specif)
         {
             super.specif(specif);
-            exponent = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER);
-            tfPower = Math.max(0d, 1d - 2d * specif);
-            logPower = (1d - tfPower) * TF_LOG_POWER;
+            final double u = specif <= 0.5d ? 4d * specif * (1d - specif) : 1d;
+            exponent = specif <= 0.5d ? u * ALPHA_MIDDLE :
+                    ALPHA_MIDDLE * Math.pow(ALPHA_UPPER / ALPHA_MIDDLE, 2d * specif - 1d);
+            tfPower = 1d - u;
+            logPower = u * TF_LOG_POWER;
             return this;
         }
     }
