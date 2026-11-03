@@ -33,10 +33,12 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
  * the same JSON node format.</p>
  *
  * <p>{@code layout=pca|mds|centred} selects the layout (default {@code pca};
- * the former {@code mds=true} still selects {@code mds}). {@code links=mutual|nearest|none}
+ * the former {@code mds=true} still selects {@code mds}). {@code links=mutual|nearest|tree|mix|none}
  * selects the lines drawn between nodes (default {@code mutual}). The JSON
  * writes {@code nodes} first, each with its vector {@code id}, then
- * {@code links}, whose {@code source} and {@code target} are node ids.</p>
+ * {@code links}, whose {@code source} and {@code target} are node ids. Each
+ * TopTerms node carries {@code pivotDistance}, its model cosine distance to
+ * the nearest pivot.</p>
  */
 public class OpCompass extends Op
 {
@@ -44,6 +46,8 @@ public class OpCompass extends Op
     private static final String ALIX_MODELS_ROOT="alix.models.root";
     /** Display budget of links per node: a readability choice, not derived from the model. */
     private static final double LINKS_PER_NODE = 1.5d;
+    /** Mutual-rank links added to the spanning tree in {@code links=mix}, per node: a display choice. */
+    private static final double MIX_LINKS_PER_NODE = 1d;
     /** Number of query neighbours defining the optional local PCA plane. */
     private static final int NEIGHBORS = 300;
 
@@ -172,6 +176,8 @@ public class OpCompass extends Op
         switch (linksName) {
             case "mutual" -> linkMode = CompassVec.LinkMode.MUTUAL_RANK;
             case "nearest" -> linkMode = CompassVec.LinkMode.NEAREST;
+            case "tree" -> linkMode = CompassVec.LinkMode.TREE;
+            case "mix" -> linkMode = CompassVec.LinkMode.MIX;
             case "none" -> linkMode = null;
             default -> {
                 response.setStatus(400);
@@ -204,7 +210,14 @@ public class OpCompass extends Op
         }
         final List<CompassVec.Link> links = linkMode == null
             ? List.of()
-            : compass.links(nodeIds, (int) Math.round(LINKS_PER_NODE * nodeIds.length), linkMode);
+            : compass.links(
+                nodeIds,
+                (int) Math.round((linkMode == CompassVec.LinkMode.MIX
+                    ? MIX_LINKS_PER_NODE
+                    : LINKS_PER_NODE) * nodeIds.length),
+                linkMode);
+        final double[] pivotDistances = compass.pivotDistances(
+            nodeIds, pivotIds.stream().mapToInt(Integer::intValue).toArray());
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");
@@ -244,6 +257,7 @@ public class OpCompass extends Op
                 else {
                     json.name("freq").value(term.freq());
                     json.name("score").value(round(term.score(), 4));
+                    json.name("pivotDistance").value(round(pivotDistances[node], 4));
                 }
                 json.endObject();
             }

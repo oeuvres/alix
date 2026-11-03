@@ -123,6 +123,11 @@ public final class CompassVec
     public enum LinkMode
     {
         /**
+         * Complete minimum spanning tree, so that no term is left alone, plus
+         * the strongest {@link #MUTUAL_RANK} pairs not yet in the tree.
+         */
+        MIX,
+        /**
          * Pairs ordered by {@code max(rank of b among a's neighbours, rank of a
          * among b's neighbours)}, ties by distance: a pair ranks high only if
          * each term is among the other's closest, so dense groups and hub terms
@@ -130,7 +135,14 @@ public final class CompassVec
          */
         MUTUAL_RANK,
         /** Each term linked to its nearest displayed term, ordered by distance. */
-        NEAREST
+        NEAREST,
+        /**
+         * Minimum spanning tree of the displayed terms (Prim), ordered by
+         * distance: every nearest-neighbour link, plus for each group the
+         * shortest connection to the rest, so that no term is left alone. A
+         * limit below {@code ids.length - 1} disconnects the tree.
+         */
+        TREE
     }
 
     /**
@@ -383,17 +395,26 @@ public final class CompassVec
     /**
      * Selects the links worth drawing among displayed terms.
      *
-     * <p>Distances are model cosine distances, whatever the layout. With
-     * {@link LinkMode#MUTUAL_RANK}, all pairs are ranked by the larger of
-     * their two neighbour ranks, ties by distance. With
-     * {@link LinkMode#NEAREST}, each term contributes the pair with its
-     * nearest displayed term, a mutual pair once, ordered by distance. The
-     * list is cut at {@code limit}; a term may have no link.</p>
+     * <p>Distances are model cosine distances, whatever the layout.</p>
+     * <ul>
+     * <li>{@link LinkMode#MUTUAL_RANK}: pairs ranked by the larger of their
+     * two neighbour ranks, ties by distance, cut at {@code limit}; a term may
+     * have no link.</li>
+     * <li>{@link LinkMode#NEAREST}: each term's pair with its nearest
+     * displayed term, a mutual pair once, cut at {@code limit}.</li>
+     * <li>{@link LinkMode#TREE}: the minimum spanning tree, cut at
+     * {@code limit}; uncut, no term is left alone.</li>
+     * <li>{@link LinkMode#MIX}: the complete minimum spanning tree, plus the
+     * first {@code limit} mutual-rank pairs that are not already tree
+     * links.</li>
+     * </ul>
      *
      * @param ids vector ids of the displayed terms, in display order
-     * @param limit maximum number of links returned, a display budget
+     * @param limit display budget: maximum number of links, or for
+     *        {@link LinkMode#MIX} the number of links added to the tree
      * @param mode selection rule
-     * @return links ordered from strongest to weakest, by vector id
+     * @return links ordered by distance, shortest first, except
+     *         {@link LinkMode#MUTUAL_RANK} which keeps its rank order
      * @throws NullPointerException if {@code ids} or {@code mode} is null
      * @throws IndexOutOfBoundsException if an id is outside the model
      */
@@ -403,7 +424,7 @@ public final class CompassVec
         Objects.requireNonNull(mode, "mode");
         final int size = ids.length;
         final List<Link> links = new ArrayList<>();
-        if (size < 2 || limit < 1) {
+        if (size < 2 || limit < 0 || (limit == 0 && mode != LinkMode.MIX)) {
             return links;
         }
         final double[][] distances = new double[size][size];
@@ -422,53 +443,97 @@ public final class CompassVec
             }
         }
 
-        if (mode == LinkMode.NEAREST) {
-            final boolean[][] seen = new boolean[size][size];
-            for (int i = 0; i < size; i++) {
-                int nearest = -1;
-                for (int j = 0; j < size; j++) {
-                    if (j != i && (nearest < 0 || distances[i][j] < distances[i][nearest])) {
-                        nearest = j;
+        final List<int[]> pairs = new ArrayList<>();
+        switch (mode) {
+            case NEAREST -> {
+                final boolean[][] seen = new boolean[size][size];
+                for (int i = 0; i < size; i++) {
+                    int nearest = -1;
+                    for (int j = 0; j < size; j++) {
+                        if (j != i && (nearest < 0 || distances[i][j] < distances[i][nearest])) {
+                            nearest = j;
+                        }
+                    }
+                    final int source = Math.min(i, nearest);
+                    final int target = Math.max(i, nearest);
+                    if (!seen[source][target]) {
+                        seen[source][target] = true;
+                        pairs.add(new int[] { source, target });
                     }
                 }
-                final int source = Math.min(i, nearest);
-                final int target = Math.max(i, nearest);
-                if (!seen[source][target]) {
-                    seen[source][target] = true;
-                    links.add(new Link(ids[source], ids[target], distances[source][target]));
-                }
             }
-            links.sort((a, b) -> Double.compare(a.distance(), b.distance()));
-        }
-        else {
-            final int[][] ranks = new int[size][size];
-            for (int i = 0; i < size; i++) {
-                final int row = i;
-                final Integer[] order = new Integer[size];
-                for (int j = 0; j < size; j++) {
-                    order[j] = j;
+            case TREE -> pairs.addAll(spanningTree(distances));
+            case MUTUAL_RANK -> pairs.addAll(mutualOrder(distances));
+            case MIX -> {
+                final List<int[]> tree = spanningTree(distances);
+                final boolean[][] inTree = new boolean[size][size];
+                for (final int[] edge : tree) {
+                    inTree[edge[0]][edge[1]] = true;
                 }
-                Arrays.sort(order, (a, b) -> Double.compare(
-                    a == row ? Double.NEGATIVE_INFINITY : distances[row][a],
-                    b == row ? Double.NEGATIVE_INFINITY : distances[row][b]));
-                for (int rank = 0; rank < size; rank++) {
-                    ranks[i][order[rank]] = rank;
+                pairs.addAll(tree);
+                int added = 0;
+                for (final int[] pair : mutualOrder(distances)) {
+                    if (added >= limit) {
+                        break;
+                    }
+                    if (!inTree[pair[0]][pair[1]]) {
+                        pairs.add(pair);
+                        added++;
+                    }
                 }
-            }
-            final List<int[]> pairs = new ArrayList<>();
-            for (int i = 0; i < size; i++) {
-                for (int j = i + 1; j < size; j++) {
-                    pairs.add(new int[] { i, j, Math.max(ranks[i][j], ranks[j][i]) });
-                }
-            }
-            pairs.sort((a, b) -> a[2] != b[2]
-                ? Integer.compare(a[2], b[2])
-                : Double.compare(distances[a[0]][a[1]], distances[b[0]][b[1]]));
-            for (final int[] pair : pairs) {
-                links.add(new Link(ids[pair[0]], ids[pair[1]], distances[pair[0]][pair[1]]));
             }
         }
-        return links.size() > limit ? new ArrayList<>(links.subList(0, limit)) : links;
+        if (mode != LinkMode.MUTUAL_RANK) {
+            pairs.sort((a, b) -> Double.compare(distances[a[0]][a[1]], distances[b[0]][b[1]]));
+        }
+        final int count = mode == LinkMode.MIX ? pairs.size() : Math.min(limit, pairs.size());
+        for (int index = 0; index < count; index++) {
+            final int[] pair = pairs.get(index);
+            links.add(new Link(ids[pair[0]], ids[pair[1]], distances[pair[0]][pair[1]]));
+        }
+        return links;
+    }
+
+    /**
+     * Returns, for each term, its model cosine distance to the nearest pivot.
+     *
+     * <p>This is a second-order relation to the query: how similar the term's
+     * contexts are to a pivot's contexts in the whole corpus, as opposed to
+     * how often the term occurs with the query. Only pivot ids are needed,
+     * whatever the structure of the query; a pivot gets distance 0.</p>
+     *
+     * @param ids vector ids of the terms
+     * @param pivotIds vector ids of the query pivots
+     * @return minimum {@code 1 - cos} over the pivots, one value per term,
+     *         or 1 for every term if there is no usable pivot
+     * @throws NullPointerException if {@code ids} or {@code pivotIds} is null
+     * @throws IndexOutOfBoundsException if an id is outside the model
+     */
+    public double[] pivotDistances(final int[] ids, final int[] pivotIds)
+    {
+        Objects.requireNonNull(ids, "ids");
+        Objects.requireNonNull(pivotIds, "pivotIds");
+        final double[][] pivots = new double[pivotIds.length][model.dim()];
+        final double[] pivotNorms = new double[pivotIds.length];
+        for (int p = 0; p < pivotIds.length; p++) {
+            model.get(pivotIds[p], pivots[p]);
+            pivotNorms[p] = Math.sqrt(dot(pivots[p], pivots[p]));
+        }
+        final double[] distances = new double[ids.length];
+        final double[] vector = new double[model.dim()];
+        for (int row = 0; row < ids.length; row++) {
+            model.get(ids[row], vector);
+            final double norm = Math.sqrt(dot(vector, vector));
+            double nearest = 1d;
+            for (int p = 0; p < pivotIds.length; p++) {
+                final double norms = norm * pivotNorms[p];
+                if (norms > 0d) {
+                    nearest = Math.min(nearest, 1d - dot(vector, pivots[p]) / norms);
+                }
+            }
+            distances[row] = Math.max(0d, nearest);
+        }
+        return distances;
     }
 
     /**
@@ -843,6 +908,42 @@ public final class CompassVec
     }
 
     /**
+     * Orders all pairs by mutual rank: the larger of the two neighbour ranks,
+     * ties by distance.
+     *
+     * @param distances symmetric distance matrix
+     * @return pairs {@code {i, j}} with {@code i < j}, strongest first
+     */
+    private static List<int[]> mutualOrder(final double[][] distances)
+    {
+        final int size = distances.length;
+        final int[][] ranks = new int[size][size];
+        for (int i = 0; i < size; i++) {
+            final int row = i;
+            final Integer[] order = new Integer[size];
+            for (int j = 0; j < size; j++) {
+                order[j] = j;
+            }
+            Arrays.sort(order, (a, b) -> Double.compare(
+                a == row ? Double.NEGATIVE_INFINITY : distances[row][a],
+                b == row ? Double.NEGATIVE_INFINITY : distances[row][b]));
+            for (int rank = 0; rank < size; rank++) {
+                ranks[i][order[rank]] = rank;
+            }
+        }
+        final List<int[]> pairs = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            for (int j = i + 1; j < size; j++) {
+                pairs.add(new int[] { i, j, Math.max(ranks[i][j], ranks[j][i]) });
+            }
+        }
+        pairs.sort((a, b) -> a[2] != b[2]
+            ? Integer.compare(a[2], b[2])
+            : Double.compare(distances[a[0]][a[1]], distances[b[0]][b[1]]));
+        return pairs;
+    }
+
+    /**
      * Selects the nearest non-pivot model vectors for the local PCA reference.
      *
      * @param model loaded vector model
@@ -1142,6 +1243,45 @@ public final class CompassVec
             stress = nextStress;
         }
         return current;
+    }
+
+    /**
+     * Computes the minimum spanning tree of a complete distance graph by
+     * Prim's algorithm.
+     *
+     * @param distances symmetric distance matrix
+     * @return tree edges {@code {i, j}} with {@code i < j}, in insertion order
+     */
+    private static List<int[]> spanningTree(final double[][] distances)
+    {
+        final int size = distances.length;
+        final boolean[] inTree = new boolean[size];
+        final double[] best = new double[size];
+        final int[] parent = new int[size];
+        Arrays.fill(best, Double.POSITIVE_INFINITY);
+        best[0] = 0d;
+        final List<int[]> edges = new ArrayList<>();
+        for (int step = 0; step < size; step++) {
+            int next = -1;
+            for (int i = 0; i < size; i++) {
+                if (!inTree[i] && (next < 0 || best[i] < best[next])) {
+                    next = i;
+                }
+            }
+            inTree[next] = true;
+            if (step > 0) {
+                edges.add(new int[] {
+                    Math.min(next, parent[next]),
+                    Math.max(next, parent[next]) });
+            }
+            for (int i = 0; i < size; i++) {
+                if (!inTree[i] && distances[next][i] < best[i]) {
+                    best[i] = distances[next][i];
+                    parent[i] = next;
+                }
+            }
+        }
+        return edges;
     }
 
     /**
