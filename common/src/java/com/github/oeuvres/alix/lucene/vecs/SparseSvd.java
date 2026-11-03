@@ -165,7 +165,7 @@ public final class SparseSvd
                 .setMethod(PrimmeSvds.Method.NORMAL_EQUATIONS)
                 .setTarget(PrimmeSvds.Target.LARGEST)
                 .setEps(eps)
-                .setPrintLevel(0)
+                .setPrintLevel(1)
                 .solve();
             absorb(result);
         }
