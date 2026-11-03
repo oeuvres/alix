@@ -20,6 +20,7 @@ import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.vecs.LuceneData.SelectedTerm;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.Report;
+import us.ascendtech.primme.PrimmeSvds;
 
 /**
  * Builds word2vec-format term embeddings using positional co-occurrence and SVD.
@@ -34,7 +35,7 @@ import com.github.oeuvres.alix.util.Report;
  * The exported word vectors are the left singular vectors, optionally weighted
  * by singular values.</p>
  *
- * <p>Selected stopwords are restricted to {@link #STOP_DIST} positional steps;
+ * <p>Selected stopwords are restricted to {@link #GRAM_DIST} positional steps;
  * other terms use the full window. A missing stopword list disables the gate.
  * Active gating is marked {@code gramdist2} in the output filename; no
  * stopwords are removed.</p>
@@ -43,13 +44,18 @@ import com.github.oeuvres.alix.util.Report;
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5] \
  *     [--cellPower 0.5] [--weightAxes 0.5] \
- *     [--maxTerms 15000|-1] [--minDocFreq 0] [--sideDir DIR]
+ *     [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--sideDir DIR]
  * }</pre>
  *
  * <p>{@code --maxTerms -1} selects all eligible terms without a vocabulary
  * cap. The default {@code --minDocFreq 0} applies no document-frequency
  * threshold. {@code --simplek} sets fixed SimpleMaths smoothing, recorded in
  * the model filename as {@code simplek1500} by default.</p>
+ *
+ * <p>{@code --eps} sets the PRIMME convergence tolerance, recorded in the
+ * filename when it differs from {@link #SVD_EPS}. {@code --test} switches
+ * PRIMME from the normal equations to its hybrid method and appends
+ * {@code -test} to the filename.</p>
  */
 public final class Coocs2vec
 {
@@ -305,9 +311,9 @@ public final class Coocs2vec
      * pair is kept only when neither endpoint is a stopword. Content–content
      * pairs are unaffected and count up to the full {@code window}.
      */
-    private static final int STOP_DIST = 2;
+    private static final int GRAM_DIST = 2;
 
-    /** PRIMME convergence tolerance for model production. */
+    /** Default PRIMME convergence tolerance, overridable with {@code --eps}. */
     private static final double SVD_EPS = 1e-3;
 
     /** Command-line usage. */
@@ -315,7 +321,7 @@ public final class Coocs2vec
         "usage: Coocs2vec <indexDir> <field>"
             + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5]"
             + " [--cellPower 0.5] [--weightAxes 0.5]"
-            + " [--maxTerms 15000|-1] [--minDocFreq 0] [--sideDir DIR]";
+            + " [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--sideDir DIR]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
@@ -369,6 +375,8 @@ public final class Coocs2vec
         double specif = 0.5d;
         double cellPower = 0.5d;
         double weightAxes = 0.5d;
+        double eps = SVD_EPS;
+        boolean test = false;
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
@@ -381,6 +389,8 @@ public final class Coocs2vec
                 case "--weightAxes" -> weightAxes = Double.parseDouble(args[++i]);
                 case "--maxTerms" -> maxTerms = Integer.parseInt(args[++i]);
                 case "--minDocFreq" -> minDocFreq = Integer.parseInt(args[++i]);
+                case "--eps" -> eps = Double.parseDouble(args[++i]);
+                case "--test" -> test = true;
                 case "--sideDir" -> sideDir = Paths.get(args[++i]);
                 default -> {
                     System.err.println("unknown option: " + args[i]);
@@ -411,9 +421,12 @@ public final class Coocs2vec
         if (!Double.isFinite(simplek) || simplek <= 0d) {
             throw new IllegalArgumentException("simplek must be finite and > 0: " + simplek);
         }
+        if (!Double.isFinite(eps) || eps <= 0d) {
+            throw new IllegalArgumentException("eps must be finite and > 0: " + eps);
+        }
         final KeynessScorer scorer = switch (scorerName) {
             case "g2" -> new KeynessScorer.G2();
-            case "bm25" -> new KeynessScorer.BM25Alpha();
+            case "bm25" -> new KeynessScorer.BM25Alpha(50, 0.75f);
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
@@ -440,12 +453,12 @@ public final class Coocs2vec
             final int termCount;
             InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
             final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
-            final boolean stopwords = (STOP_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
+            final boolean stopwords = (GRAM_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
             if (stopwords) {
-                outName += "-gramdist" + STOP_DIST;
+                outName += "-gramdist" + GRAM_DIST;
                 log(
                     "stopword gate active: pairs with a stopword counted only within +/-%d",
-                    STOP_DIST);
+                    GRAM_DIST);
             }
             outName += "-" + scorerName;
             if ("simple".equals(scorerName)) {
@@ -454,6 +467,8 @@ public final class Coocs2vec
             outName += "-s" + specif;
             if (cellPower != 0.5d) outName += "-cp" + cellPower;
             if (weightAxes != 0.5d) outName += "-aw" + weightAxes;
+            if (eps != SVD_EPS) outName += "-eps" + BigDecimal.valueOf(eps).stripTrailingZeros().toPlainString();
+            if (test) outName += "-test";
             outName += "-dims" + dims;
 
             if (!TermRail.exists(sideDir, field)) {
@@ -501,8 +516,11 @@ public final class Coocs2vec
                 scorerName, specif, cellPower);
             svd.keyness(scorer, cellPower);
             final int retained;
-            log("decomposing to top %,d singular axes (PRIMME SVDS, eps=%.1e)", dims, SVD_EPS);
-            svd.decompose(dims, SVD_EPS);
+            final PrimmeSvds.Method method = test
+                ? PrimmeSvds.Method.HYBRID
+                : PrimmeSvds.Method.NORMAL_EQUATIONS;
+            log("decomposing to top %,d singular axes (PRIMME SVDS %s, eps=%.1e)", dims, method, eps);
+            svd.decompose(dims, eps, method);
             if(weightAxes > 0) {
                 log("weighting axes by sigma^%.3f", weightAxes);
                 svd.weightAxes(weightAxes);
@@ -680,7 +698,7 @@ public final class Coocs2vec
      * rail without allocating a dense vocabulary-square matrix.
      *
      * <p>Pairs involving a {@link TermFlag#STOPWORD} term are counted only within
-     * {@link #STOP_DIST} positions; see the class comment. Stopword membership is
+     * {@link #GRAM_DIST} positions; see the class comment. Stopword membership is
      * resolved once into a per-row {@code boolean[]} so the hot loop never touches
      * the lexicon or a bitset.</p>
      *
@@ -697,7 +715,7 @@ public final class Coocs2vec
         final int window
     ) {
         final BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
-        final boolean hasStopwords = stopwords != null && !stopwords.isEmpty() && STOP_DIST > 0;
+        final boolean hasStopwords = stopwords != null && !stopwords.isEmpty() && GRAM_DIST > 0;
 
         final int termCount = selected.length;
         final String[] words = new String[termCount];
@@ -743,7 +761,7 @@ public final class Coocs2vec
                 }
                 final int fullEnd = Math.min(docLen, position + window + 1);
                 final int nearEnd = hasStopwords
-                    ? Math.min(fullEnd, position + STOP_DIST + 1)
+                    ? Math.min(fullEnd, position + GRAM_DIST + 1)
                     : fullEnd;
 
                 // near range [1, STOP_DIST]: every co-occurrence counts

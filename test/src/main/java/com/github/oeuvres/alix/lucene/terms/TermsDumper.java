@@ -36,8 +36,8 @@ public final class TermsDumper {
         */
 
         Path indexDir = Path.of("../web/lucene/piaget");
-        String field = "content";
-        Path outFile = Path.of("../web/target/content.txt");
+        String field = "word2vec";
+        Path outFile = Path.of("../web/target/" + field + ".tsv");
 
         try (
                 FSDirectory dir = FSDirectory.open(indexDir);

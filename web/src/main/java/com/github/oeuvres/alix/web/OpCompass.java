@@ -31,11 +31,19 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
  * instead fits the PCA plane to nearest neighbours of the query pivots.
  * Both modes project pivots and TopTerms into their respective planes and use
  * the same JSON node format.</p>
+ *
+ * <p>{@code layout=pca|mds|centred} selects the layout (default {@code pca};
+ * the former {@code mds=true} still selects {@code mds}). {@code links=mutual|nearest|none}
+ * selects the lines drawn between nodes (default {@code mutual}). The JSON
+ * writes {@code nodes} first, each with its vector {@code id}, then
+ * {@code links}, whose {@code source} and {@code target} are node ids.</p>
  */
 public class OpCompass extends Op
 {
     /** Property for the directory of models */
     private static final String ALIX_MODELS_ROOT="alix.models.root";
+    /** Display budget of links per node: a readability choice, not derived from the model. */
+    private static final double LINKS_PER_NODE = 1.5d;
     /** Number of query neighbours defining the optional local PCA plane. */
     private static final int NEIGHBORS = 300;
 
@@ -145,9 +153,58 @@ public class OpCompass extends Op
         else {
             ids = pivotIds.stream().mapToInt(Integer::intValue).toArray();
         }
+        final String layoutName = pars.getString(
+            "layout", pars.getBoolean("mds", false) ? "mds" : "pca");
+        final CompassVec.Layout layout = switch (layoutName) {
+            case "pca" -> CompassVec.Layout.PCA;
+            case "mds" -> CompassVec.Layout.MDS;
+            case "centred" -> CompassVec.Layout.MDS_CENTRED;
+            default -> null;
+        };
+        if (layout == null) {
+            response.setStatus(400);
+            meta.log("[unknown layout: " + layoutName + "]");
+            AlixServlet.jsonError(request, response);
+            return;
+        }
+        final String linksName = pars.getString("links", "mutual");
+        final CompassVec.LinkMode linkMode;
+        switch (linksName) {
+            case "mutual" -> linkMode = CompassVec.LinkMode.MUTUAL_RANK;
+            case "nearest" -> linkMode = CompassVec.LinkMode.NEAREST;
+            case "none" -> linkMode = null;
+            default -> {
+                response.setStatus(400);
+                meta.log("[unknown links: " + linksName + "]");
+                AlixServlet.jsonError(request, response);
+                return;
+            }
+        }
         final CompassVec compass = keywords
-            ? new CompassVec(model, ids)
-            : new CompassVec(model, ids, NEIGHBORS);
+            ? new CompassVec(model, ids, layout)
+            : new CompassVec(model, ids, NEIGHBORS, layout);
+
+        final List<CompassVec.Point> points = new ArrayList<>();
+        final List<TermEntry> entries = new ArrayList<>();
+        for (final TopTerms.ExcludedTerm pivot : pivots) {
+            points.add(compass.point(pivot.form()));
+            entries.add(null);
+        }
+        for (final TermEntry term : topTerms) {
+            final CompassVec.Point point = compass.point(term.form());
+            if (point == null) {
+                continue;
+            }
+            points.add(point);
+            entries.add(term);
+        }
+        final int[] nodeIds = new int[points.size()];
+        for (int node = 0; node < nodeIds.length; node++) {
+            nodeIds[node] = points.get(node).id();
+        }
+        final List<CompassVec.Link> links = linkMode == null
+            ? List.of()
+            : compass.links(nodeIds, (int) Math.round(LINKS_PER_NODE * nodeIds.length), linkMode);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");
@@ -161,8 +218,10 @@ public class OpCompass extends Op
             json.beginObject();
             json.name("axes");
             json.beginObject();
-            json.name("unit").value("vector-projection");
+            json.name("unit").value(layout == CompassVec.Layout.PCA ? "vector-projection" : "model-distance");
             json.name("plane").value(keywords ? "keywords" : "local");
+            json.name("layout").value(layoutName);
+            json.name("links").value(linksName);
             json.name("reference").value(compass.referenceCount());
             json.name("xCenter").value(round(compass.xCenter(), 4));
             json.name("yCenter").value(round(compass.yCenter(), 4));
@@ -170,29 +229,33 @@ public class OpCompass extends Op
 
             json.name("nodes");
             json.beginArray();
-            for (final TopTerms.ExcludedTerm pivot : pivots) {
-                final CompassVec.Point point = compass.point(pivot.form());
+            for (int node = 0; node < points.size(); node++) {
+                final CompassVec.Point point = points.get(node);
+                final TermEntry term = entries.get(node);
                 json.beginObject();
+                json.name("id").value(point.id());
                 json.name("form").value(point.form());
                 json.name("x").value(round(point.x(), 4));
                 json.name("y").value(round(point.y(), 4));
                 json.name("quality").value(round(point.quality(), 4));
-                json.name("type").value("pivot");
+                if (term == null) {
+                    json.name("type").value("pivot");
+                }
+                else {
+                    json.name("freq").value(term.freq());
+                    json.name("score").value(round(term.score(), 4));
+                }
                 json.endObject();
             }
+            json.endArray();
 
-            for (final TermEntry term : topTerms) {
-                final CompassVec.Point point = compass.point(term.form());
-                if (point == null) {
-                    continue;
-                }
+            json.name("links");
+            json.beginArray();
+            for (final CompassVec.Link link : links) {
                 json.beginObject();
-                json.name("form").value(point.form());
-                json.name("x").value(round(point.x(), 4));
-                json.name("y").value(round(point.y(), 4));
-                json.name("quality").value(round(point.quality(), 4));
-                json.name("freq").value(term.freq());
-                json.name("score").value(round(term.score(), 4));
+                json.name("source").value(link.source());
+                json.name("target").value(link.target());
+                json.name("distance").value(round(link.distance(), 4));
                 json.endObject();
             }
             json.endArray();

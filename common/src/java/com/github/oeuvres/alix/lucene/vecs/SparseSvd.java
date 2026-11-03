@@ -132,7 +132,7 @@ public final class SparseSvd
     }
 
     /**
-     * Computes leading singular vectors using PRIMME SVDS.
+     * Computes leading singular vectors using PRIMME SVDS on the normal equations.
      *
      * @param dims number of singular dimensions requested
      * @param eps positive relative convergence tolerance
@@ -142,6 +142,28 @@ public final class SparseSvd
      */
     public SparseSvd decompose(final int dims, final double eps)
     {
+        return decompose(dims, eps, PrimmeSvds.Method.NORMAL_EQUATIONS);
+    }
+
+    /**
+     * Computes leading singular vectors using PRIMME SVDS with an explicit method.
+     *
+     * <p>{@code NORMAL_EQUATIONS} solves the eigenproblem of {@code A^T*A} only.
+     * {@code HYBRID} then refines the triplets on the augmented matrix
+     * {@code [0 A; A^T 0]}, whose spectrum is not squared, at the cost of more
+     * products (Wu, Romero &amp; Stathopoulos 2017, SIAM J. Sci. Comput. 39(5)).</p>
+     *
+     * @param dims number of singular dimensions requested
+     * @param eps positive relative convergence tolerance
+     * @param method PRIMME SVDS method
+     * @return this pipeline
+     * @throws IllegalArgumentException if dims or eps is invalid
+     * @throws IllegalStateException if keyness preparation has not run
+     * @throws NullPointerException if method is null
+     */
+    public SparseSvd decompose(final int dims, final double eps, final PrimmeSvds.Method method)
+    {
+        Objects.requireNonNull(method, "method");
         if (prepared == null) {
             throw new IllegalStateException("call keyness() before decompose()");
         }
@@ -162,7 +184,7 @@ public final class SparseSvd
         try (PrimmeSvds svds = PrimmeSvds.create(size, size, requested, matvec)) {
             final PrimmeSvds.Result result = svds
                 .setMaxBlockSize(MAX_BLOCK_SIZE)
-                .setMethod(PrimmeSvds.Method.NORMAL_EQUATIONS)
+                .setMethod(method)
                 .setTarget(PrimmeSvds.Target.LARGEST)
                 .setEps(eps)
                 .setPrintLevel(1)
