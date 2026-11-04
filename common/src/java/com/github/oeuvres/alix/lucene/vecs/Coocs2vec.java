@@ -1,8 +1,12 @@
 package com.github.oeuvres.alix.lucene.vecs;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,7 +41,7 @@ import us.ascendtech.primme.PrimmeSvds;
  *
  * <p>Selected stopwords are restricted to {@link #GRAM_DIST} positional steps;
  * other terms use the full window. A missing stopword list disables the gate.
- * Active gating is marked {@code gramdist2} in the output filename; no
+ * Active gating is marked {@code gate2} in the counting part of the filename; no
  * stopwords are removed.</p>
  *
  * <p>{@code --distance} weights each positional pair by its distance d
@@ -48,8 +52,8 @@ import us.ascendtech.primme.PrimmeSvds;
  * the harmonic decay of GloVe (Pennington, Socher &amp; Manning 2014).
  * Weights are rescaled to a mean of 1 over all counted pairs, so the table
  * keeps the mass of the raw counts. SimpleMaths is unchanged by that scale;
- * with tests (G²) or BM25 saturation the option is experimental. The filename
- * gets {@code -dw}.</p>
+ * with tests (G²) or BM25 saturation the option is experimental. The counting
+ * part of the filename gets {@code dw}.</p>
  *
  * <p>Negative result: the longer reach, that of the pair's less widespread
  * word, was tried (Piaget corpus, SimpleMaths, 200 dimensions) and dropped.
@@ -60,13 +64,28 @@ import us.ascendtech.primme.PrimmeSvds;
  * frequency 12,061 with the shorter reach, 70,050 with the longer one). The
  * shorter reach keeps frequent words local and avoids that profile.</p>
  *
- * <p>Two files are written: {@code <name>.bin}, the row vectors (a word as
- * focus: the contexts it expects), and {@code <name>-ctx.bin}, the context
+ * <p>Three files are written: {@code <name>.bin}, the row vectors (a word as
+ * focus: the contexts it expects); {@code <name>.ctx}, in the same word2vec
+ * binary format, kept out of {@code *.bin} listings of models, the context
  * vectors (a word as context: the focuses that expect it). The prepared
  * matrix is directed, so the cell (a, b) is the keyness of b in the contexts
  * of a and differs from (b, a). With the default {@code --weightAxes 0.5},
  * row(a) . ctx(b) approximates (a, b) within the retained axes; cosine
- * between row vectors stays the symmetric, second-order comparison.</p>
+ * between row vectors stays the symmetric, second-order comparison;
+ * {@code <name>.json}, the diagnosis of the run: model name, command-line
+ * arguments and the whole log (block scales, inertia by frequency class,
+ * solver times, refinement losses).</p>
+ *
+ * <p>The name lists the stages of the pipeline in order, separated by
+ * {@code -}, never inside a stage, so that models built from the same matrix
+ * sort together: corpus and field, vocabulary ({@code terms37175}), counting
+ * ({@code b5_10_30}, or {@code w30} with {@code dw} or {@code gate2}),
+ * scoring ({@code simplek1500s0.5}, {@code g2s0.5}, then {@code cp} if
+ * cellPower differs from 0.5), reduction ({@code d200}, dimensions on three
+ * digits, then {@code aw}, {@code eps}, {@code test} when not default), and
+ * refinement ({@code logstrength1}, weight then alpha, {@code i8} if the
+ * passes differ from 4). For example
+ * {@code piaget-word2vec-terms37175-b5_10_30-simplek1500s0.5-d200-logstrength1}.</p>
  *
  * <p>{@code --bands 1,3,7,15,30} counts each pair in the band of its
  * distance, given by the inclusive upper bounds, the last one equal to the
@@ -76,15 +95,25 @@ import us.ascendtech.primme.PrimmeSvds;
  * stopword gate is off and the option excludes {@code --distance}. Row
  * vectors stay one per word; context vectors are one per (word, band),
  * labelled {@code word@upper}, e.g. {@code sujet@1}, {@code sujet@30}. The
- * filename gets {@code -bands1_3_7_15_30}. The log shows the share of inertia
+ * counting part of the filename is {@code b1_3_7_15_30}. The log shows the share of inertia
  * of each band by frequency class of the rows, frequencies in powers of 2.</p>
+ *
+ * <p>{@code --refine alpha} replaces the truncated SVD by a weighted
+ * low-rank fit of the same directed matrix, started from the SVD (see
+ * {@link SparseSvd#refine(double, SparseSvd.CellWeight, int)}): stored cells
+ * weigh {@code 1 + alpha * g}, all other cells 1. {@code --cellWeight} sets g
+ * ({@code logstrength} by default: log(count) times value over mean value;
+ * {@code log}; {@code log1p}), {@code --refineIters} the number of
+ * alternating passes. It requires {@code --weightAxes 0.5}. The refinement
+ * part of the filename is {@code <weight><alpha>}.</p>
  *
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5] \
  *     [--cellPower 0.5] [--weightAxes 0.5] \
  *     [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance]
- *     [--bands 1,3,7,15,30] [--sideDir DIR]
+ *     [--bands 1,3,7,15,30] [--refine 10] [--cellWeight logstrength|log|log1p] [--refineIters 4]
+ *     [--sideDir DIR]
  * }</pre>
  *
  * <p>{@code --maxTerms -1} selects all eligible terms without a vocabulary
@@ -94,8 +123,8 @@ import us.ascendtech.primme.PrimmeSvds;
  *
  * <p>{@code --eps} sets the PRIMME convergence tolerance, recorded in the
  * filename when it differs from {@link #SVD_EPS}. {@code --test} switches
- * PRIMME from the normal equations to its hybrid method and appends
- * {@code -test} to the filename.</p>
+ * PRIMME from the normal equations to its hybrid method and adds
+ * {@code test} to the reduction part of the filename.</p>
  */
 public final class Coocs2vec
 {
@@ -366,7 +395,8 @@ public final class Coocs2vec
             + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5]"
             + " [--cellPower 0.5] [--weightAxes 0.5]"
             + " [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance]"
-            + " [--bands 1,3,7,15,30] [--sideDir DIR]";
+            + " [--bands 1,3,7,15,30] [--refine 10] [--cellWeight logstrength|log|log1p] [--refineIters 4]"
+            + " [--sideDir DIR]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
@@ -400,6 +430,40 @@ public final class Coocs2vec
     public static void main(final String[] args) throws IOException
     {
         started = System.currentTimeMillis();
+        final PrintStream console = System.err;
+        final ByteArrayOutputStream logBuffer = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(new OutputStream() {
+            @Override
+            public void write(final int b)
+            {
+                console.write(b);
+                logBuffer.write(b);
+            }
+
+            @Override
+            public void write(final byte[] b, final int off, final int len)
+            {
+                console.write(b, off, len);
+                logBuffer.write(b, off, len);
+            }
+        }, true, StandardCharsets.UTF_8));
+        try {
+            run(args, logBuffer);
+        }
+        finally {
+            System.setErr(console);
+        }
+    }
+
+    /**
+     * Runs the export once the log is captured, see {@link #main(String[])}.
+     *
+     * @param args index directory, field, then command-line options
+     * @param logBuffer copy of everything written to standard error, for the diagnosis file
+     * @throws IOException if the index, rail, or output file cannot be accessed
+     */
+    private static void run(final String[] args, final ByteArrayOutputStream logBuffer) throws IOException
+    {
         if (args.length < 2) {
             System.err.println(USAGE);
             System.exit(2);
@@ -424,6 +488,9 @@ public final class Coocs2vec
         boolean test = false;
         boolean distance = false;
         int[] bounds = null;
+        double refine = 0d;
+        String cellWeightName = "logstrength";
+        int refineIters = 4;
 
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
@@ -441,6 +508,9 @@ public final class Coocs2vec
                 case "--distance" -> distance = true;
                 case "--bands" -> bounds = Arrays.stream(args[++i].split(","))
                     .map(String::trim).mapToInt(Integer::parseInt).toArray();
+                case "--refine" -> refine = Double.parseDouble(args[++i]);
+                case "--cellWeight" -> cellWeightName = args[++i];
+                case "--refineIters" -> refineIters = Integer.parseInt(args[++i]);
                 case "--sideDir" -> sideDir = Paths.get(args[++i]);
                 default -> {
                     System.err.println("unknown option: " + args[i]);
@@ -490,6 +560,21 @@ public final class Coocs2vec
             }
         }
         final int bandCount = bounds == null ? 1 : bounds.length;
+        final SparseSvd.CellWeight cellWeight = switch (cellWeightName) {
+            case "logstrength" -> SparseSvd.CellWeight.LOG_STRENGTH;
+            case "log" -> SparseSvd.CellWeight.LOG;
+            case "log1p" -> SparseSvd.CellWeight.LOG1P;
+            default -> throw new IllegalArgumentException("unknown cellWeight: " + cellWeightName);
+        };
+        if (!Double.isFinite(refine) || refine < 0d) {
+            throw new IllegalArgumentException("refine must be finite and >= 0: " + refine);
+        }
+        if (refine > 0d && weightAxes != 0.5d) {
+            throw new IllegalArgumentException("--refine requires --weightAxes 0.5");
+        }
+        if (refineIters < 1) {
+            throw new IllegalArgumentException("refineIters must be >= 1: " + refineIters);
+        }
         final KeynessScorer scorer = switch (scorerName) {
             case "g2" -> new KeynessScorer.G2();
             case "bm25" -> new KeynessScorer.BM25Alpha(50, 0.75f);
@@ -506,9 +591,23 @@ public final class Coocs2vec
             throw new IllegalArgumentException("minDocFreq must be >= 0: " + minDocFreq);
         }
 
-        String outName = indexDir.getFileName().toString();
-        outName += "-" + field;
-        outName += "-win" + window;
+        String counting = bounds == null ? "w" + window : "b" + String.join("_",
+            Arrays.stream(bounds).mapToObj(Integer::toString).toArray(String[]::new));
+        if (distance) counting += "dw";
+        String scoring = scorerName;
+        if ("simple".equals(scorerName)) scoring += "k" + number(simplek);
+        scoring += "s" + number(specif);
+        if (cellPower != 0.5d) scoring += "cp" + number(cellPower);
+        String reduction = String.format("d%03d", dims);
+        if (weightAxes != 0.5d) reduction += "aw" + number(weightAxes);
+        if (eps != SVD_EPS) reduction += "eps" + number(eps);
+        if (test) reduction += "test";
+        String refinement = "";
+        if (refine > 0d) {
+            refinement = cellWeightName + number(refine);
+            if (refineIters != 4) refinement += "i" + refineIters;
+        }
+        String outName = indexDir.getFileName().toString() + "-" + field;
 
         try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(indexDir))) {
             final TermStats stats = TermStats.openOrBuild(
@@ -522,26 +621,11 @@ public final class Coocs2vec
             final boolean stopwords = !distance && bounds == null
                 && (GRAM_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
             if (stopwords) {
-                outName += "-gramdist" + GRAM_DIST;
+                counting += "gate" + GRAM_DIST;
                 log(
                     "stopword gate active: pairs with a stopword counted only within +/-%d",
                     GRAM_DIST);
             }
-            outName += "-" + scorerName;
-            if ("simple".equals(scorerName)) {
-                outName += "k" + BigDecimal.valueOf(simplek).stripTrailingZeros().toPlainString();
-            }
-            outName += "-s" + specif;
-            if (cellPower != 0.5d) outName += "-cp" + cellPower;
-            if (weightAxes != 0.5d) outName += "-aw" + weightAxes;
-            if (eps != SVD_EPS) outName += "-eps" + BigDecimal.valueOf(eps).stripTrailingZeros().toPlainString();
-            if (test) outName += "-test";
-            if (distance) outName += "-dw";
-            if (bounds != null) {
-                outName += "-bands" + String.join("_",
-                    Arrays.stream(bounds).mapToObj(Integer::toString).toArray(String[]::new));
-            }
-            outName += "-dims" + dims;
 
             if (!TermRail.exists(sideDir, field)) {
                 TermRail.build(
@@ -567,7 +651,9 @@ public final class Coocs2vec
                     "too few terms after selection: " + termCount);
             }
             log("selected %,d terms", termCount);
-            outName += "-terms" + termCount;
+            outName += "-terms" + termCount + "-" + counting + "-" + scoring + "-" + reduction
+                + (refinement.isEmpty() ? "" : "-" + refinement);
+            log("model name %s", outName);
 
             final long cellCount = (long) termCount * termCount * bandCount;
             log(
@@ -616,6 +702,11 @@ public final class Coocs2vec
                 log("weighting axes by sigma^%.3f", weightAxes);
                 svd.weightAxes(weightAxes);
             }
+            if (refine > 0d) {
+                log("refining by weighted low-rank fit (alpha=%s, cellWeight=%s, %d iterations)",
+                    refine, cellWeightName, refineIters);
+                svd.refine(refine, cellWeight, refineIters);
+            }
             retained = svd.singularValues().length;
             if (retained == 0) {
                 throw new IllegalStateException("no nonzero singular dimensions: " + scorerName);
@@ -627,10 +718,82 @@ public final class Coocs2vec
             if (weightAxes != 0.5d) {
                 log("warning: row . context reconstructs directed cells only with --weightAxes 0.5");
             }
-            writeVectors(Paths.get(outName + "-ctx.bin"), columnLabels(words, bounds), svd.contexts());
+            writeVectors(Paths.get(outName + ".ctx"), columnLabels(words, bounds), svd.contexts());
 
             log("done");
+            writeDiagnosis(Paths.get(outName + ".json"), outName, args, logBuffer);
         }
+    }
+
+    /**
+     * Formats a parameter value for the model name, without trailing zeros.
+     *
+     * @param value parameter value
+     * @return plain decimal string, e.g. {@code 0.5}, {@code 1500}, {@code 0.0001}
+     */
+    private static String number(final double value)
+    {
+        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+    }
+
+    /**
+     * Writes the diagnosis file of a run: model name, arguments and log lines.
+     *
+     * @param out output file
+     * @param name model name
+     * @param args command-line arguments
+     * @param logBuffer captured standard error of the run
+     * @throws IOException if writing fails
+     */
+    private static void writeDiagnosis(
+        final Path out,
+        final String name,
+        final String[] args,
+        final ByteArrayOutputStream logBuffer
+    ) throws IOException {
+        final StringBuilder json = new StringBuilder();
+        json.append("{\n  \"model\": ").append(jsonString(name)).append(",\n  \"args\": [");
+        for (int i = 0; i < args.length; i++) {
+            json.append(i == 0 ? "" : ", ").append(jsonString(args[i]));
+        }
+        json.append("],\n  \"log\": [");
+        final String[] lines = logBuffer.toString(StandardCharsets.UTF_8).split("\\R");
+        for (int i = 0; i < lines.length; i++) {
+            json.append(i == 0 ? "\n    " : ",\n    ").append(jsonString(lines[i]));
+        }
+        json.append("\n  ]\n}\n");
+        Files.writeString(out, json, StandardCharsets.UTF_8);
+        System.err.printf("[%,8d ms] diagnosis written to %s%n", System.currentTimeMillis() - started, out);
+    }
+
+    /**
+     * Quotes a string as a JSON string literal.
+     *
+     * @param value raw string
+     * @return quoted and escaped literal
+     */
+    private static String jsonString(final String value)
+    {
+        final StringBuilder out = new StringBuilder(value.length() + 2).append('"');
+        for (int i = 0; i < value.length(); i++) {
+            final char c = value.charAt(i);
+            switch (c) {
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
+                default -> {
+                    if (c < 0x20) {
+                        out.append(String.format("\\u%04x", (int) c));
+                    }
+                    else {
+                        out.append(c);
+                    }
+                }
+            }
+        }
+        return out.append('"').toString();
     }
 
     /**
