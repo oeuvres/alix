@@ -7,8 +7,8 @@ import com.github.oeuvres.alix.maths.Fisher;
  *
  * <p>
  * Call order: {@link #specif(double)} (optional, allowed at any time),
- * {@link #corpus(long, int)}, {@link #focus(long, long)}, then
- * {@link #score(long, long, int)} for each candidate term. {@link Count} needs
+ * {@link #corpus(double, int)}, {@link #focus(double, double)}, then
+ * {@link #score(double, double, int)} for each candidate term. {@link Count} needs
  * no initialization. Scorers are mutable and should not be shared between
  * concurrent rankings.
  * </p>
@@ -17,7 +17,7 @@ import com.github.oeuvres.alix.maths.Fisher;
  * Normalized specificity {@code s} in [0, 1]: {@code 0} gives raw term
  * frequency, {@code 1} the term frequency of exclusive terms (in the focus
  * and nowhere else, {@code tf == cf}), {@code 0.5} the scorer-specific reference setting. The
- * endpoints are implemented once, in {@link #score(long, long, int)} of this
+ * endpoints are implemented once, in {@link #score(double, double, int)} of this
  * class; subclasses delegate to it at the endpoints and use or ignore
  * {@code s} in between.
  * </p>
@@ -25,8 +25,18 @@ import com.github.oeuvres.alix.maths.Fisher;
  * <p>
  * The 2 x 2 table covers the whole corpus, {@code corpusTokens}. The pivot
  * is not a candidate, but its occurrences lie in the focus:
- * {@link #focus(long, long)} adds them to the candidate tokens of the focus,
+ * {@link #focus(double, double)} adds them to the candidate tokens of the focus,
  * so that they count among the other terms of the focus and not in the rest.
+ * </p>
+ *
+ * <p>
+ * Counts are {@code double}: plain integer counts are passed unchanged, and
+ * weighted counts (for example co-occurrences weighted by distance) are
+ * accepted by every scorer except {@link HgtAlpha}, whose hypergeometric
+ * tail is defined for whole counts only. Ratio scorers (SimpleMaths, Log
+ * Ratio) are unchanged by a common scale of the counts; tests (G², χ²) and
+ * BM25 saturation are not, so weighted counts should keep the mass of the
+ * raw counts.
  * </p>
  *
  * <p>
@@ -42,14 +52,23 @@ public abstract class KeynessScorer
     /** Number of documents in the active corpus, or -1 before initialization. */
     protected int corpusDocs = -1;
 
+    /**
+     * Relative tolerance when comparing a term count with its collection
+     * count ({@code tf <= cf}, and {@code tf == cf} for exclusivity at
+     * {@code s = 1}): weighted counts summed in different orders may differ by
+     * rounding. Far above double rounding (about 1e-16 per addition), far
+     * below one occurrence in any realistic total.
+     */
+    private static final double ROUNDING_TOLERANCE = 1e-9d;
+
     /** Total tokens in the active corpus, or -1 before initialization. */
-    protected long corpusTokens = -1L;
+    protected double corpusTokens = -1d;
 
     /** Total tokens in the focus, pivot occurrences included, or -1 before initialization. */
-    protected long focusTokens = -1L;
+    protected double focusTokens = -1d;
 
     /** Occurrences of the pivot query in the active corpus, or -1 before initialization. */
-    protected long pivotCount = -1L;
+    protected double pivotCount = -1d;
 
     /** Normalized specificity in [0, 1]; 0.5 gives the scorer-specific reference setting. */
     protected double specif = 0.5d;
@@ -62,15 +81,15 @@ public abstract class KeynessScorer
      * @param corpusDocs number of documents in the active corpus
      * @throws IllegalArgumentException if either total is not positive
      */
-    public void corpus(final long corpusTokens, final int corpusDocs)
+    public void corpus(final double corpusTokens, final int corpusDocs)
     {
-        if (corpusTokens <= 0L || corpusDocs <= 0) {
+        if (!(corpusTokens > 0d) || !Double.isFinite(corpusTokens) || corpusDocs <= 0) {
             throw new IllegalArgumentException("corpusTokens and corpusDocs must be positive");
         }
         this.corpusTokens = corpusTokens;
         this.corpusDocs = corpusDocs;
-        this.focusTokens = -1L;
-        this.pivotCount = -1L;
+        this.focusTokens = -1d;
+        this.pivotCount = -1d;
     }
 
     /**
@@ -85,10 +104,10 @@ public abstract class KeynessScorer
      * @throws IllegalArgumentException if a count is negative or the focus
      *                                  with its pivot exceeds the corpus
      */
-    public void focus(final long focusTokens, final long pivotCount)
+    public void focus(final double focusTokens, final double pivotCount)
     {
-        if (corpusTokens < 0L) throw new IllegalStateException("call corpus() before focus()");
-        if (focusTokens < 0L || pivotCount < 0L || focusTokens + pivotCount > corpusTokens) {
+        if (corpusTokens < 0d) throw new IllegalStateException("call corpus() before focus()");
+        if (!(focusTokens >= 0d) || !(pivotCount >= 0d) || focusTokens + pivotCount > corpusTokens) {
             throw new IllegalArgumentException("invalid focusTokens or pivotCount");
         }
         this.focusTokens = focusTokens + pivotCount;
@@ -104,7 +123,7 @@ public abstract class KeynessScorer
      * @param distinctTerms number of different candidate terms with positive frequency
      * @throws IllegalArgumentException if distinctTerms is negative or exceeds focusTokens
      */
-    public void focus(final long focusTokens, final long pivotCount, final int distinctTerms)
+    public void focus(final double focusTokens, final double pivotCount, final int distinctTerms)
     {
         if (distinctTerms < 0 || distinctTerms > focusTokens) {
             throw new IllegalArgumentException("distinctTerms must be between 0 and focusTokens");
@@ -140,14 +159,14 @@ public abstract class KeynessScorer
      *         focus, a non-exclusive term at {@code s = 1}, or inconsistent
      *         counts
      */
-    public double score(final long tf, final long cf, final int df)
+    public double score(final double tf, final double cf, final int df)
     {
-        if (tf <= 0L || cf < tf || df < 0) return Double.NaN;
-        if (focusTokens >= 0L
+        if (!(tf > 0d) || tf - cf > ROUNDING_TOLERANCE * cf || df < 0) return Double.NaN;
+        if (focusTokens >= 0d
                 && (tf > focusTokens || cf > corpusTokens || cf - tf > corpusTokens - focusTokens)) {
             return Double.NaN;
         }
-        if (specif == 1d && tf != cf) return Double.NaN;
+        if (specif == 1d && Math.abs(cf - tf) > ROUNDING_TOLERANCE * cf) return Double.NaN;
         return tf;
     }
 
@@ -178,12 +197,12 @@ public abstract class KeynessScorer
      * @return true if the table can be scored
      * @throws IllegalStateException if corpus or focus is not initialized
      */
-    protected boolean table(final long tf, final long cf)
+    protected boolean table(final double tf, final double cf)
     {
-        if (focusTokens < 0L) throw new IllegalStateException("call corpus() and focus() before score()");
-        return focusTokens > 0L && focusTokens < corpusTokens
-                && cf > 0L && cf < corpusTokens
-                && tf >= 0L && tf <= cf && tf <= focusTokens
+        if (focusTokens < 0d) throw new IllegalStateException("call corpus() and focus() before score()");
+        return focusTokens > 0d && focusTokens < corpusTokens
+                && cf > 0d && cf < corpusTokens
+                && tf >= 0d && tf - cf <= ROUNDING_TOLERANCE * cf && tf <= focusTokens
                 && cf - tf <= corpusTokens - focusTokens;
     }
 
@@ -319,10 +338,10 @@ public abstract class KeynessScorer
          * @throws IllegalArgumentException if focus counts are invalid
          */
         @Override
-        public void focus(final long focusTokens, final long pivotCount)
+        public void focus(final double focusTokens, final double pivotCount)
         {
             super.focus(focusTokens, pivotCount);
-            focusLength = this.focusTokens / ((double) corpusTokens / corpusDocs);
+            focusLength = this.focusTokens / (corpusTokens / corpusDocs);
         }
 
         /**
@@ -336,10 +355,10 @@ public abstract class KeynessScorer
          * @throws IllegalStateException if corpus or focus are not initialized
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (focusTokens < 0L) {
+            if (focusTokens < 0d) {
                 throw new IllegalStateException("call corpus() and focus() before score()");
             }
             final double count = super.score(tf, cf, df);
@@ -349,9 +368,9 @@ public abstract class KeynessScorer
             final double idf = Math.log1p((corpusDocs - df + 0.5d) / (df + 0.5d));
             final double bm25 = Math.pow(idf, idfPower) * tfWeight;
             if (threshold == 0d) return bm25;
-            final long rest = cf - tf;
-            final double reference = rest == 0L ? 0d :
-                    rest * ((double) focusTokens / (corpusTokens - focusTokens));
+            final double rest = cf - tf;
+            final double reference = rest <= 0d ? 0d :
+                    rest * (focusTokens / (corpusTokens - focusTokens));
             return bm25 * (1d - threshold * reference / tf);
         }
 
@@ -411,7 +430,7 @@ public abstract class KeynessScorer
          * @return signed X², or {@link Double#NaN} for an invalid table
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
             if (!table(tf, cf)) return Double.NaN;
@@ -467,11 +486,11 @@ public abstract class KeynessScorer
          * @return the signed score, or {@link Double#NaN} for an invalid table
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             final double chi2 = super.score(tf, cf, df);
             if (specif == 0d || specif == 1d || Double.isNaN(chi2)) return chi2;
-            if (tf == 0L) return specif < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
+            if (tf == 0d) return specif < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
             final double score = tf * Math.pow(Math.abs(chi2) / tf, exponent);
             return chi2 > 0d ? score : -score;
         }
@@ -535,7 +554,7 @@ public abstract class KeynessScorer
          * @return the signed score, or {@link Double#NaN} for an invalid table
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
             if (!table(tf, cf)) return Double.NaN;
@@ -552,7 +571,7 @@ public abstract class KeynessScorer
             final double sign = tf >= expected ? 1d : -1d;
             if (specif == 0.5d) return sign * g2;
             if (g2 == 0d) return 0d;
-            if (tf == 0L) return specif < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
+            if (tf == 0d) return specif < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
             return sign * Math.pow(tf, 2d * (1d - specif)) * Math.pow(g2 / tf, 2d * specif);
         }
 
@@ -563,9 +582,9 @@ public abstract class KeynessScorer
          * @param expected expected cell count, positive
          * @return the cell term
          */
-        private static double cell(final long observed, final double expected)
+        private static double cell(final double observed, final double expected)
         {
-            return observed > 0L ? observed * Math.log(observed / expected) : 0d;
+            return observed > 0d ? observed * Math.log(observed / expected) : 0d;
         }
     }
 
@@ -610,17 +629,24 @@ public abstract class KeynessScorer
          * @param df document frequency, used only at the endpoints
          * @return the nonnegative score, or {@link Double#NaN} for invalid counts
          * @throws IllegalStateException if the corpus and focus have not been set
+         * @throws IllegalArgumentException if a count is not a whole number:
+         *         the hypergeometric tail is defined for whole counts only
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (focusTokens < 0L) {
+            if (focusTokens < 0d) {
                 throw new IllegalStateException("call corpus() and focus() before score()");
+            }
+            if (tf != Math.rint(tf) || cf != Math.rint(cf)
+                    || focusTokens != Math.rint(focusTokens) || corpusTokens != Math.rint(corpusTokens)) {
+                throw new IllegalArgumentException("HgtAlpha requires whole counts");
             }
             final double count = super.score(tf, cf, df);
             if (Double.isNaN(count)) return Double.NaN;
-            double hgt = -Fisher.logRightTail(tf, cf, focusTokens, corpusTokens);
+            double hgt = -Fisher.logRightTail(
+                    (long) tf, (long) cf, (long) focusTokens, (long) corpusTokens);
             if (!Double.isFinite(hgt)) hgt = MAX_SCORE;
             if (hgt <= 0d) return 0d;
             if (specif == 0.5d) return hgt;
@@ -669,13 +695,13 @@ public abstract class KeynessScorer
          * @return the base-2 log ratio, or {@link Double#NaN} for an invalid table
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
             if (!table(tf, cf)) return Double.NaN;
-            final long otherTf = cf - tf;
-            final double focusCount = tf > 0L ? tf : 0.5d;
-            final double otherCount = otherTf > 0L ? otherTf : 0.5d;
+            final double otherTf = cf - tf;
+            final double focusCount = tf > 0d ? tf : 0.5d;
+            final double otherCount = otherTf > 0d ? otherTf : 0.5d;
             return Math.log((focusCount / focusTokens) / (otherCount / (corpusTokens - focusTokens))) / LN2;
         }
     }
@@ -751,7 +777,7 @@ public abstract class KeynessScorer
          *                                  with its pivot exceeds the corpus
          */
         @Override
-        public void focus(final long focusTokens, final long pivotCount)
+        public void focus(final double focusTokens, final double pivotCount)
         {
             super.focus(focusTokens, pivotCount);
             if (!kSet) {
@@ -811,7 +837,7 @@ public abstract class KeynessScorer
          *         {@link Double#NaN} for an invalid table
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
             if (!table(tf, cf)) return Double.NaN;
@@ -877,10 +903,10 @@ public abstract class KeynessScorer
          * @throws IllegalStateException if corpus or focus is not initialized
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (focusTokens < 0L) {
+            if (focusTokens < 0d) {
                 throw new IllegalStateException("call corpus() and focus() before score()");
             }
             final double count = super.score(tf, cf, df);
@@ -996,10 +1022,10 @@ public abstract class KeynessScorer
          *                               for an interior specificity value
          */
         @Override
-        public double score(final long tf, final long cf, final int df)
+        public double score(final double tf, final double cf, final int df)
         {
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (focusTokens < 0L || corpusDocs < 0) {
+            if (focusTokens < 0d || corpusDocs < 0) {
                 throw new IllegalStateException("call corpus() and focus() before score()");
             }
             final double count = super.score(tf, cf, df);
