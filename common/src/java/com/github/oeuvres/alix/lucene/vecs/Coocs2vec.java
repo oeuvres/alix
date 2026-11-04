@@ -91,8 +91,11 @@ import us.ascendtech.primme.PrimmeSvds;
  * distance, given by the inclusive upper bounds, the last one equal to the
  * window. The default bounds {@code 2^k - 1} give bands of equal width in log
  * distance. Each band becomes a column block, scored against its own totals
- * and balanced by its first singular value (see {@link SparseSvd}); the
- * stopword gate is off and the option excludes {@code --distance}. Row
+ * and balanced by its first singular value (see {@link SparseSvd}). The
+ * stopword gate applies as without bands: a pair with a stopword counts only
+ * within {@link #GRAM_DIST}, so in the first band, and content pairs count
+ * in every band; {@code --noGate} turns it off (counting part without
+ * {@code gate2}). The option excludes {@code --distance}. Row
  * vectors stay one per word; context vectors are one per (word, band),
  * labelled {@code word@upper}, e.g. {@code sujet@1}, {@code sujet@30}. The
  * counting part of the filename is {@code b1_3_7_15_30}. The log shows the share of inertia
@@ -111,7 +114,7 @@ import us.ascendtech.primme.PrimmeSvds;
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5] \
  *     [--cellPower 0.5] [--weightAxes 0.5] \
- *     [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance]
+ *     [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance] [--noGate]
  *     [--bands 1,3,7,15,30] [--refine 10] [--cellWeight logstrength|log|log1p] [--refineIters 4]
  *     [--sideDir DIR]
  * }</pre>
@@ -394,7 +397,7 @@ public final class Coocs2vec
         "usage: Coocs2vec <indexDir> <field>"
             + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5]"
             + " [--cellPower 0.5] [--weightAxes 0.5]"
-            + " [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance]"
+            + " [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance] [--noGate]"
             + " [--bands 1,3,7,15,30] [--refine 10] [--cellWeight logstrength|log|log1p] [--refineIters 4]"
             + " [--sideDir DIR]";
 
@@ -487,6 +490,7 @@ public final class Coocs2vec
         double eps = SVD_EPS;
         boolean test = false;
         boolean distance = false;
+        boolean noGate = false;
         int[] bounds = null;
         double refine = 0d;
         String cellWeightName = "logstrength";
@@ -506,6 +510,7 @@ public final class Coocs2vec
                 case "--eps" -> eps = Double.parseDouble(args[++i]);
                 case "--test" -> test = true;
                 case "--distance" -> distance = true;
+                case "--noGate" -> noGate = true;
                 case "--bands" -> bounds = Arrays.stream(args[++i].split(","))
                     .map(String::trim).mapToInt(Integer::parseInt).toArray();
                 case "--refine" -> refine = Double.parseDouble(args[++i]);
@@ -618,7 +623,7 @@ public final class Coocs2vec
             final int termCount;
             InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
             final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
-            final boolean stopwords = !distance && bounds == null
+            final boolean stopwords = !distance && !noGate
                 && (GRAM_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
             if (stopwords) {
                 counting += "gate" + GRAM_DIST;
@@ -669,7 +674,7 @@ public final class Coocs2vec
                         scorerName);
                 }
             }
-            final Table table = coocTable(rail, lexicon, selected, window, reach, bounds);
+            final Table table = coocTable(rail, lexicon, selected, window, reach, bounds, stopwords);
             log(
                 "matrix built: %,d logical non-zero cells (%.2f%% dense), "
                     + "%,d upper-triangle cells stored, %,d positional pairs counted",
@@ -1073,7 +1078,8 @@ public final class Coocs2vec
      * are then rescaled to a mean of 1.</p>
      *
      * <p>With {@code bounds}, every pair within the window is counted 1 in the
-     * band of its distance, and the stopword gate is off. The band is carried
+     * band of its distance, a pair with a stopword only within
+     * {@link #GRAM_DIST} when the gate is on. The band is carried
      * in the column key during the scan, {@code band * termCount + col}, then
      * split into the table's {@code cols} and {@code bands}.</p>
      *
@@ -1083,6 +1089,7 @@ public final class Coocs2vec
      * @param window maximum positional distance, inclusive
      * @param reach reach of each selected row, or null for unweighted counts
      * @param bounds inclusive upper distance of each band, or null without bands
+     * @param gate whether the stopword gate applies (never with distance weighting)
      * @return selected forms and their sparse raw cooccurrence table
      */
     private static Table coocTable(
@@ -1091,10 +1098,11 @@ public final class Coocs2vec
         final SelectedTerm[] selected,
         final int window,
         final double[] reach,
-        final int[] bounds
+        final int[] bounds,
+        final boolean gate
     ) {
         final BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
-        final boolean hasStopwords = reach == null && bounds == null
+        final boolean hasStopwords = gate && reach == null
             && stopwords != null && !stopwords.isEmpty() && GRAM_DIST > 0;
 
         final int termCount = selected.length;
@@ -1171,6 +1179,9 @@ public final class Coocs2vec
                     for (int next = position + 1; next < fullEnd; next++) {
                         final int col = rows[next];
                         if (col < 0) {
+                            continue;
+                        }
+                        if (next - position > GRAM_DIST && (rowIsStop[row] || rowIsStop[col])) {
                             continue;
                         }
                         bump(counts, row, col, 1d, bandBase[next - position]);

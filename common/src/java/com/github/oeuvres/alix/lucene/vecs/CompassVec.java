@@ -48,6 +48,14 @@ import java.util.Objects;
  * pairs worth drawing as lines. Links are always computed on plain model
  * cosine distance, independently of the layout, so a long line on the map
  * shows two model neighbours that the plane has separated.</p>
+ *
+ * <p>Given context vectors ({@code .ctx} of the model), {@link LinkMode#MIX}
+ * adds directed links instead of mutual-rank pairs. The score of a expecting
+ * b is {@code row(a) . ctx(b)}, the model's rebuilt keyness of b in the
+ * contexts of a, which differs from that of b expecting a. Each column is
+ * standardized over the displayed terms, so a term expected by all (the
+ * pivot, near which all terms were selected) is not everyone's target; each
+ * term's choices are then taken by rank, first choices first.</p>
  */
 public final class CompassVec
 {
@@ -124,7 +132,9 @@ public final class CompassVec
     {
         /**
          * Complete minimum spanning tree, so that no term is left alone, plus
-         * the strongest {@link #MUTUAL_RANK} pairs not yet in the tree.
+         * the strongest {@link #MUTUAL_RANK} pairs not yet in the tree, or,
+         * given context vectors, the strongest directed expectations not yet
+         * in the tree (see the class comment).
          */
         MIX,
         /**
@@ -149,11 +159,15 @@ public final class CompassVec
      * A link between two displayed terms, identified like {@link Point#id()}.
      *
      * @param source vector id of the first term (the one given first to
-     *        {@link #links(int[], int, LinkMode)})
-     * @param target vector id of the second term
+     *        {@link #links(int[], int, LinkMode)}); for a directed link, the
+     *        term that expects the other
+     * @param target vector id of the second term; for a directed link, the
+     *        expected term
      * @param distance model cosine distance, {@code 1 - cos}
+     * @param directed true if only source expects target; false for a cosine
+     *        link or an expectation in both directions
      */
-    public record Link(int source, int target, double distance) {}
+    public record Link(int source, int target, double distance, boolean directed) {}
 
     /**
      * One model term projected into the PCA plane.
@@ -420,6 +434,38 @@ public final class CompassVec
      */
     public List<Link> links(final int[] ids, final int limit, final LinkMode mode)
     {
+        return links(ids, limit, mode, null);
+    }
+
+    /**
+     * Selects the links worth drawing among displayed terms, with directed
+     * expectations in {@link LinkMode#MIX} when context vectors are given.
+     *
+     * <p>Other modes ignore {@code contexts}. In {@link LinkMode#MIX}, after
+     * the complete minimum spanning tree, at most {@code limit} directed links
+     * are added: pairs a to b ordered by the rank of b among a's standardized
+     * expectations, then by the standardized score; a pair already in the tree
+     * is skipped, and the reverse of a selected pair turns it into a link in
+     * both directions without using the budget.</p>
+     *
+     * @param ids vector ids of the displayed terms, in display order
+     * @param limit display budget, see {@link #links(int[], int, LinkMode)}
+     * @param mode selection rule
+     * @param contexts context vector of each displayed term, aligned with
+     *        {@code ids}, or null for the cosine selection only
+     * @return links, see {@link #links(int[], int, LinkMode)}; directed links
+     *         follow the tree in selection order
+     * @throws NullPointerException if {@code ids} or {@code mode} is null
+     * @throws IllegalArgumentException if {@code contexts} is not aligned with
+     *         {@code ids} or its vectors do not have the model dimension
+     * @throws IndexOutOfBoundsException if an id is outside the model
+     */
+    public List<Link> links(
+        final int[] ids,
+        final int limit,
+        final LinkMode mode,
+        final double[][] contexts
+    ) {
         Objects.requireNonNull(ids, "ids");
         Objects.requireNonNull(mode, "mode");
         final int size = ids.length;
@@ -443,6 +489,12 @@ public final class CompassVec
             }
         }
 
+        if (mode == LinkMode.MIX && contexts != null) {
+            if (contexts.length != size) {
+                throw new IllegalArgumentException("contexts not aligned with ids");
+            }
+            return directedMix(ids, limit, distances, vectors, contexts);
+        }
         final List<int[]> pairs = new ArrayList<>();
         switch (mode) {
             case NEAREST -> {
@@ -489,7 +541,7 @@ public final class CompassVec
         final int count = mode == LinkMode.MIX ? pairs.size() : Math.min(limit, pairs.size());
         for (int index = 0; index < count; index++) {
             final int[] pair = pairs.get(index);
-            links.add(new Link(ids[pair[0]], ids[pair[1]], distances[pair[0]][pair[1]]));
+            links.add(new Link(ids[pair[0]], ids[pair[1]], distances[pair[0]][pair[1]], false));
         }
         return links;
     }
@@ -665,6 +717,107 @@ public final class CompassVec
     public double yCenter()
     {
         return yCenter;
+    }
+
+    /**
+     * Builds the {@link LinkMode#MIX} links with directed expectations.
+     *
+     * <p>Scores {@code s(a, b) = row(a) . ctx(b)} are standardized per column
+     * b over the displayed terms other than b, {@code (s - mean) / sd}, so
+     * that a term expected by every term weighs only by how much more one
+     * term expects it than the others do (query-relative hubness).</p>
+     *
+     * @param ids vector ids of the displayed terms
+     * @param limit maximum number of directed links added to the tree
+     * @param distances cosine distances between displayed terms
+     * @param vectors row vectors of the displayed terms
+     * @param contexts context vectors of the displayed terms
+     * @return tree links, then directed links in selection order
+     */
+    private List<Link> directedMix(
+        final int[] ids,
+        final int limit,
+        final double[][] distances,
+        final double[][] vectors,
+        final double[][] contexts
+    ) {
+        final int size = ids.length;
+        final double[][] z = new double[size][size];
+        for (int b = 0; b < size; b++) {
+            if (contexts[b] != null && contexts[b].length != model.dim()) {
+                throw new IllegalArgumentException("context vector dimension differs from the model");
+            }
+            double sum = 0d;
+            double sum2 = 0d;
+            for (int a = 0; a < size; a++) {
+                final double score = a == b || contexts[b] == null ? 0d : dot(vectors[a], contexts[b]);
+                z[a][b] = score;
+                if (a != b) {
+                    sum += score;
+                    sum2 += score * score;
+                }
+            }
+            final double mean = sum / (size - 1);
+            final double sd = Math.sqrt(Math.max(0d, sum2 / (size - 1) - mean * mean));
+            for (int a = 0; a < size; a++) {
+                z[a][b] = a == b || contexts[b] == null || !(sd > 0d)
+                    ? Double.NEGATIVE_INFINITY
+                    : (z[a][b] - mean) / sd;
+            }
+        }
+        final List<int[]> order = new ArrayList<>();
+        for (int a = 0; a < size; a++) {
+            final int row = a;
+            final Integer[] targets = new Integer[size];
+            for (int b = 0; b < size; b++) {
+                targets[b] = b;
+            }
+            Arrays.sort(targets, (x, y) -> Double.compare(z[row][y], z[row][x]));
+            for (int rank = 0; rank < size; rank++) {
+                final int b = targets[rank];
+                if (b != a && z[a][b] > Double.NEGATIVE_INFINITY) {
+                    order.add(new int[] { a, b, rank });
+                }
+            }
+        }
+        order.sort((x, y) -> x[2] != y[2]
+            ? Integer.compare(x[2], y[2])
+            : Double.compare(z[y[0]][y[1]], z[x[0]][x[1]]));
+
+        final List<Link> links = new ArrayList<>();
+        final boolean[][] linked = new boolean[size][size];
+        for (final int[] edge : spanningTree(distances)) {
+            linked[edge[0]][edge[1]] = true;
+            linked[edge[1]][edge[0]] = true;
+            links.add(new Link(ids[edge[0]], ids[edge[1]], distances[edge[0]][edge[1]], false));
+        }
+        final int[][] directed = new int[size][size];
+        int added = 0;
+        for (final int[] pair : order) {
+            if (added >= limit) {
+                break;
+            }
+            final int a = pair[0];
+            final int b = pair[1];
+            if (linked[a][b] && directed[b][a] == 0) {
+                continue;
+            }
+            if (directed[b][a] > 0) {
+                if (directed[a][b] == 0) {
+                    final int index = directed[b][a] - 1;
+                    final Link reverse = links.get(index);
+                    links.set(index, new Link(reverse.source(), reverse.target(), reverse.distance(), false));
+                    directed[a][b] = directed[b][a];
+                }
+                continue;
+            }
+            links.add(new Link(ids[a], ids[b], distances[a][b], true));
+            directed[a][b] = links.size();
+            linked[a][b] = true;
+            linked[b][a] = true;
+            added++;
+        }
+        return links;
     }
 
     /**

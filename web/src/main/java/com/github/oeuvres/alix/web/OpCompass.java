@@ -5,6 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
@@ -39,20 +41,80 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
  * {@code links}, whose {@code source} and {@code target} are node ids. Each
  * TopTerms node carries {@code pivotDistance}, its model cosine distance to
  * the nearest pivot.</p>
+ *
+ * <p>When the context vectors of the model sit next to it ({@code <name>.ctx}
+ * for {@code <name>.bin}), {@code links=mix} draws directed links after the
+ * spanning tree: a term to the term it expects most, relative to the other
+ * displayed terms (see {@link CompassVec}). The context vector of a term is
+ * the sum of its band vectors, {@code word@5}, {@code word@10}..., the bands
+ * being read from the model name ({@code -b5_10_30}). A directed link has
+ * {@code "directed": true}, source expecting target.</p>
  */
 public class OpCompass extends Op
 {
     /** Property for the directory of models */
     private static final String ALIX_MODELS_ROOT="alix.models.root";
+    /** Bands in a model name, e.g. {@code -b5_10_30}. */
+    private static final Pattern BANDS = Pattern.compile("-b(\\d+(?:_\\d+)*)");
     /** Display budget of links per node: a readability choice, not derived from the model. */
-    private static final double LINKS_PER_NODE = 1.5d;
-    /** Mutual-rank links added to the spanning tree in {@code links=mix}, per node: a display choice. */
-    private static final double MIX_LINKS_PER_NODE = 1d;
+    private static final double LINKS_PER_NODE = 2.5d;
+    /**
+     * Links added to the spanning tree in {@code links=mix}, per node: the tree
+     * gives about one link per node, so mix totals about {@link #LINKS_PER_NODE}.
+     */
+    private static final double MIX_LINKS_PER_NODE = 1.5d;
     /** Number of query neighbours defining the optional local PCA plane. */
     private static final int NEIGHBORS = 300;
 
     /** Vector model used by the current experiment. */
     private static String modelDefault;
+
+    /**
+     * Returns the context vector of each displayed term: the sum of its
+     * context vectors over the bands of the model, or its single context
+     * vector for a model without bands.
+     *
+     * @param contexts context vectors of the model
+     * @param modelName file name of the model, giving its bands
+     * @param points displayed terms
+     * @return one vector per term, null for a term without context vector
+     */
+    private static double[][] contextVectors(
+        final VecModel contexts,
+        final String modelName,
+        final List<CompassVec.Point> points
+    ) {
+        final Matcher bands = BANDS.matcher(modelName);
+        final String[] suffixes;
+        if (bands.find()) {
+            final String[] bounds = bands.group(1).split("_");
+            suffixes = new String[bounds.length];
+            for (int band = 0; band < bounds.length; band++) {
+                suffixes[band] = "@" + bounds[band];
+            }
+        }
+        else {
+            suffixes = new String[] { "" };
+        }
+        final double[][] vectors = new double[points.size()][];
+        final double[] band = new double[contexts.dim()];
+        for (int node = 0; node < vectors.length; node++) {
+            for (final String suffix : suffixes) {
+                final int id = contexts.id(points.get(node).form() + suffix);
+                if (id < 0) {
+                    continue;
+                }
+                contexts.get(id, band);
+                if (vectors[node] == null) {
+                    vectors[node] = new double[band.length];
+                }
+                for (int axis = 0; axis < band.length; axis++) {
+                    vectors[node][axis] += band[axis];
+                }
+            }
+        }
+        return vectors;
+    }
     
     /**
      * Returns the configured models root directory.
@@ -112,6 +174,8 @@ public class OpCompass extends Op
         final Path modelsRoot = modelsRoot(request);
         final String modelName = pars.getString("model", modelDefault);
         final VecModel model = VecModel.get(modelsRoot.resolve(modelName));
+        final Path contextsPath = modelsRoot.resolve(modelName.replaceFirst("\\.bin$", "") + ".ctx");
+        final VecModel contexts = Files.isRegularFile(contextsPath) ? VecModel.get(contextsPath) : null;
         final List<TopTerms.ExcludedTerm> pivots = new ArrayList<>();
         final List<Integer> pivotIds = new ArrayList<>();
         for (final TopTerms.ExcludedTerm pivot : topTerms.excludedTerms()) {
@@ -208,6 +272,9 @@ public class OpCompass extends Op
         for (int node = 0; node < nodeIds.length; node++) {
             nodeIds[node] = points.get(node).id();
         }
+        final double[][] nodeContexts = linkMode == CompassVec.LinkMode.MIX && contexts != null
+            ? contextVectors(contexts, modelName, points)
+            : null;
         final List<CompassVec.Link> links = linkMode == null
             ? List.of()
             : compass.links(
@@ -215,7 +282,8 @@ public class OpCompass extends Op
                 (int) Math.round((linkMode == CompassVec.LinkMode.MIX
                     ? MIX_LINKS_PER_NODE
                     : LINKS_PER_NODE) * nodeIds.length),
-                linkMode);
+                linkMode,
+                nodeContexts);
         final double[] pivotDistances = compass.pivotDistances(
             nodeIds, pivotIds.stream().mapToInt(Integer::intValue).toArray());
 
@@ -235,6 +303,7 @@ public class OpCompass extends Op
             json.name("plane").value(keywords ? "keywords" : "local");
             json.name("layout").value(layoutName);
             json.name("links").value(linksName);
+            json.name("directed").value(nodeContexts != null);
             json.name("reference").value(compass.referenceCount());
             json.name("xCenter").value(round(compass.xCenter(), 4));
             json.name("yCenter").value(round(compass.yCenter(), 4));
@@ -270,6 +339,9 @@ public class OpCompass extends Op
                 json.name("source").value(link.source());
                 json.name("target").value(link.target());
                 json.name("distance").value(round(link.distance(), 4));
+                if (link.directed()) {
+                    json.name("directed").value(true);
+                }
                 json.endObject();
             }
             json.endArray();

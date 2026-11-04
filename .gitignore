@@ -26,3 +26,4 @@ common/*.csv
 common/*.tsv
 common/word2vec*
 common/hs_err_pid*.log
+*.ctx
