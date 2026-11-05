@@ -49,8 +49,8 @@ import java.util.Objects;
  * cosine distance, independently of the layout, so a long line on the map
  * shows two model neighbours that the plane has separated.</p>
  *
- * <p>Given context vectors ({@code .ctx} of the model), {@link LinkMode#MIX}
- * adds directed links instead of mutual-rank pairs. The score of a expecting
+ * <p>Given context vectors ({@code .ctx} of the model), {@link LinkMode#DIRECTED}
+ * draws directed expectations. The score of a expecting
  * b is {@code row(a) . ctx(b)}, the model's rebuilt keyness of b in the
  * contexts of a, which differs from that of b expecting a. Each column is
  * standardized over the displayed terms, so a term expected by all (the
@@ -131,10 +131,17 @@ public final class CompassVec
     public enum LinkMode
     {
         /**
-         * Complete minimum spanning tree, so that no term is left alone, plus
-         * the strongest {@link #MUTUAL_RANK} pairs not yet in the tree, or,
-         * given context vectors, the strongest directed expectations not yet
-         * in the tree (see the class comment).
+         * Directed expectations from context vectors (see the class comment),
+         * a term may have no link; without context vectors, as
+         * {@link #MUTUAL_RANK}.
+         */
+        DIRECTED,
+        /**
+         * Each term linked to its nearest displayed term, so that no term is
+         * left alone when the budget allows, then the strongest
+         * {@link #MUTUAL_RANK} pairs not yet linked. A nearest-term link is directed when the choice is not
+         * mutual: it points to the nearer term's group centre, the word that
+         * several words have as nearest (rank asymmetry of cosine).
          */
         MIX,
         /**
@@ -418,17 +425,17 @@ public final class CompassVec
      * displayed term, a mutual pair once, cut at {@code limit}.</li>
      * <li>{@link LinkMode#TREE}: the minimum spanning tree, cut at
      * {@code limit}; uncut, no term is left alone.</li>
-     * <li>{@link LinkMode#MIX}: the complete minimum spanning tree, plus the
-     * first {@code limit} mutual-rank pairs that are not already tree
-     * links.</li>
+     * <li>{@link LinkMode#MIX}: each term to its nearest displayed term,
+     * directed when the choice is not mutual, shortest first, then
+     * mutual-rank pairs not yet linked, all cut at {@code limit}.</li>
      * </ul>
      *
      * @param ids vector ids of the displayed terms, in display order
-     * @param limit display budget: maximum number of links, or for
-     *        {@link LinkMode#MIX} the number of links added to the tree
+     * @param limit display budget: maximum number of links
      * @param mode selection rule
      * @return links ordered by distance, shortest first, except
-     *         {@link LinkMode#MUTUAL_RANK} which keeps its rank order
+     *         {@link LinkMode#MUTUAL_RANK} which keeps its rank order and
+     *         {@link LinkMode#MIX}, nearest-term links then mutual-rank links
      * @throws NullPointerException if {@code ids} or {@code mode} is null
      * @throws IndexOutOfBoundsException if an id is outside the model
      */
@@ -439,22 +446,21 @@ public final class CompassVec
 
     /**
      * Selects the links worth drawing among displayed terms, with directed
-     * expectations in {@link LinkMode#MIX} when context vectors are given.
+     * expectations in {@link LinkMode#DIRECTED} when context vectors are given.
      *
-     * <p>Other modes ignore {@code contexts}. In {@link LinkMode#MIX}, after
-     * the complete minimum spanning tree, at most {@code limit} directed links
-     * are added: pairs a to b ordered by the rank of b among a's standardized
-     * expectations, then by the standardized score; a pair already in the tree
-     * is skipped, and the reverse of a selected pair turns it into a link in
-     * both directions without using the budget.</p>
+     * <p>Other modes ignore {@code contexts}. In {@link LinkMode#DIRECTED}, at
+     * most {@code limit} directed links are drawn: pairs a to b ordered by the
+     * rank of b among a's standardized expectations, then by the standardized
+     * score; the reverse of a selected pair turns it into a link in both
+     * directions without using the budget.</p>
      *
      * @param ids vector ids of the displayed terms, in display order
      * @param limit display budget, see {@link #links(int[], int, LinkMode)}
      * @param mode selection rule
      * @param contexts context vector of each displayed term, aligned with
      *        {@code ids}, or null for the cosine selection only
-     * @return links, see {@link #links(int[], int, LinkMode)}; directed links
-     *         follow the tree in selection order
+     * @return links, see {@link #links(int[], int, LinkMode)}; directed
+     *         expectations in selection order
      * @throws NullPointerException if {@code ids} or {@code mode} is null
      * @throws IllegalArgumentException if {@code contexts} is not aligned with
      *         {@code ids} or its vectors do not have the model dimension
@@ -470,7 +476,7 @@ public final class CompassVec
         Objects.requireNonNull(mode, "mode");
         final int size = ids.length;
         final List<Link> links = new ArrayList<>();
-        if (size < 2 || limit < 0 || (limit == 0 && mode != LinkMode.MIX)) {
+        if (size < 2 || limit <= 0) {
             return links;
         }
         final double[][] distances = new double[size][size];
@@ -489,11 +495,14 @@ public final class CompassVec
             }
         }
 
-        if (mode == LinkMode.MIX && contexts != null) {
+        if (mode == LinkMode.DIRECTED && contexts != null) {
             if (contexts.length != size) {
                 throw new IllegalArgumentException("contexts not aligned with ids");
             }
             return directedMix(ids, limit, distances, vectors, contexts);
+        }
+        if (mode == LinkMode.MIX) {
+            return nearestMix(ids, limit, distances);
         }
         final List<int[]> pairs = new ArrayList<>();
         switch (mode) {
@@ -515,30 +524,15 @@ public final class CompassVec
                 }
             }
             case TREE -> pairs.addAll(spanningTree(distances));
-            case MUTUAL_RANK -> pairs.addAll(mutualOrder(distances));
-            case MIX -> {
-                final List<int[]> tree = spanningTree(distances);
-                final boolean[][] inTree = new boolean[size][size];
-                for (final int[] edge : tree) {
-                    inTree[edge[0]][edge[1]] = true;
-                }
-                pairs.addAll(tree);
-                int added = 0;
-                for (final int[] pair : mutualOrder(distances)) {
-                    if (added >= limit) {
-                        break;
-                    }
-                    if (!inTree[pair[0]][pair[1]]) {
-                        pairs.add(pair);
-                        added++;
-                    }
-                }
+            case MUTUAL_RANK, DIRECTED -> pairs.addAll(mutualOrder(distances));
+            default -> {
+                // MIX returns above
             }
         }
-        if (mode != LinkMode.MUTUAL_RANK) {
+        if (mode != LinkMode.MUTUAL_RANK && mode != LinkMode.DIRECTED) {
             pairs.sort((a, b) -> Double.compare(distances[a[0]][a[1]], distances[b[0]][b[1]]));
         }
-        final int count = mode == LinkMode.MIX ? pairs.size() : Math.min(limit, pairs.size());
+        final int count = Math.min(limit, pairs.size());
         for (int index = 0; index < count; index++) {
             final int[] pair = pairs.get(index);
             links.add(new Link(ids[pair[0]], ids[pair[1]], distances[pair[0]][pair[1]], false));
@@ -586,6 +580,68 @@ public final class CompassVec
             distances[row] = Math.max(0d, nearest);
         }
         return distances;
+    }
+
+    /**
+     * Links the terms most concentrated around the query to their nearest pivot.
+     *
+     * <p>The share of a term is the part of its corpus occurrences that fall in
+     * the query contexts, {@code freq / fieldFreq}: near 1 for a word that
+     * lives with the pivot, such as the second word of a locution, small for a
+     * frequent word even when it is frequent near the pivot. The {@code limit}
+     * terms of highest share are linked, each to the pivot nearest by cosine,
+     * the term as source.</p>
+     *
+     * @param ids vector ids of the displayed terms
+     * @param pivots true for the displayed terms that are query pivots
+     * @param shares share of each displayed term, ignored for pivots
+     * @param limit maximum number of links
+     * @return directed links, highest share first; empty without a pivot
+     * @throws NullPointerException if an argument is null
+     * @throws IllegalArgumentException if the arrays are not aligned
+     * @throws IndexOutOfBoundsException if an id is outside the model
+     */
+    public List<Link> pivotLinks(
+        final int[] ids,
+        final boolean[] pivots,
+        final double[] shares,
+        final int limit
+    ) {
+        Objects.requireNonNull(ids, "ids");
+        Objects.requireNonNull(pivots, "pivots");
+        Objects.requireNonNull(shares, "shares");
+        if (pivots.length != ids.length || shares.length != ids.length) {
+            throw new IllegalArgumentException("pivots and shares not aligned with ids");
+        }
+        final List<Integer> terms = new ArrayList<>();
+        final List<Integer> pivotNodes = new ArrayList<>();
+        for (int node = 0; node < ids.length; node++) {
+            if (pivots[node]) {
+                pivotNodes.add(node);
+            }
+            else if (shares[node] > 0d) {
+                terms.add(node);
+            }
+        }
+        final List<Link> links = new ArrayList<>();
+        if (pivotNodes.isEmpty()) {
+            return links;
+        }
+        terms.sort((a, b) -> Double.compare(shares[b], shares[a]));
+        for (int index = 0; index < Math.min(limit, terms.size()); index++) {
+            final int node = terms.get(index);
+            int nearest = pivotNodes.get(0);
+            double best = distance(ids[node], ids[nearest]);
+            for (final int pivot : pivotNodes) {
+                final double value = distance(ids[node], ids[pivot]);
+                if (value < best) {
+                    best = value;
+                    nearest = pivot;
+                }
+            }
+            links.add(new Link(ids[node], ids[nearest], best, true));
+        }
+        return links;
     }
 
     /**
@@ -720,7 +776,7 @@ public final class CompassVec
     }
 
     /**
-     * Builds the {@link LinkMode#MIX} links with directed expectations.
+     * Builds the {@link LinkMode#DIRECTED} links from context vectors.
      *
      * <p>Scores {@code s(a, b) = row(a) . ctx(b)} are standardized per column
      * b over the displayed terms other than b, {@code (s - mean) / sd}, so
@@ -732,7 +788,7 @@ public final class CompassVec
      * @param distances cosine distances between displayed terms
      * @param vectors row vectors of the displayed terms
      * @param contexts context vectors of the displayed terms
-     * @return tree links, then directed links in selection order
+     * @return directed links in selection order
      */
     private List<Link> directedMix(
         final int[] ids,
@@ -786,11 +842,6 @@ public final class CompassVec
 
         final List<Link> links = new ArrayList<>();
         final boolean[][] linked = new boolean[size][size];
-        for (final int[] edge : spanningTree(distances)) {
-            linked[edge[0]][edge[1]] = true;
-            linked[edge[1]][edge[0]] = true;
-            links.add(new Link(ids[edge[0]], ids[edge[1]], distances[edge[0]][edge[1]], false));
-        }
         final int[][] directed = new int[size][size];
         int added = 0;
         for (final int[] pair : order) {
@@ -816,6 +867,69 @@ public final class CompassVec
             linked[a][b] = true;
             linked[b][a] = true;
             added++;
+        }
+        return links;
+    }
+
+    /**
+     * Builds the {@link LinkMode#MIX} links: nearest-term links, then
+     * mutual-rank pairs.
+     *
+     * <p>Every term is linked to its nearest displayed term, shortest links
+     * first. When the two terms choose each other the link is plain;
+     * otherwise it is directed, from the term to its nearest. Then pairs in
+     * mutual-rank order are added if not yet linked; they are plain. The total
+     * is cut at {@code limit}: a budget below the number of nearest-term links
+     * leaves the farthest terms without a link.</p>
+     *
+     * @param ids vector ids of the displayed terms
+     * @param limit maximum number of links
+     * @param distances cosine distances between displayed terms
+     * @return nearest-term links, then mutual-rank links
+     */
+    private static List<Link> nearestMix(
+        final int[] ids,
+        final int limit,
+        final double[][] distances
+    ) {
+        final int size = ids.length;
+        final int[] nearest = new int[size];
+        for (int i = 0; i < size; i++) {
+            nearest[i] = -1;
+            for (int j = 0; j < size; j++) {
+                if (j != i && (nearest[i] < 0 || distances[i][j] < distances[i][nearest[i]])) {
+                    nearest[i] = j;
+                }
+            }
+        }
+        final Integer[] byDistance = new Integer[size];
+        for (int i = 0; i < size; i++) {
+            byDistance[i] = i;
+        }
+        Arrays.sort(byDistance, (a, b) -> Double.compare(distances[a][nearest[a]], distances[b][nearest[b]]));
+        final List<Link> links = new ArrayList<>();
+        final boolean[][] linked = new boolean[size][size];
+        for (final int i : byDistance) {
+            final int j = nearest[i];
+            if (links.size() >= limit) {
+                break;
+            }
+            if (linked[i][j]) {
+                continue;
+            }
+            linked[i][j] = true;
+            linked[j][i] = true;
+            links.add(new Link(ids[i], ids[j], distances[i][j], nearest[j] != i));
+        }
+        for (final int[] pair : mutualOrder(distances)) {
+            if (links.size() >= limit) {
+                break;
+            }
+            if (!linked[pair[0]][pair[1]]) {
+                linked[pair[0]][pair[1]] = true;
+                linked[pair[1]][pair[0]] = true;
+                links.add(new Link(ids[pair[0]], ids[pair[1]], distances[pair[0]][pair[1]], false));
+            }
         }
         return links;
     }

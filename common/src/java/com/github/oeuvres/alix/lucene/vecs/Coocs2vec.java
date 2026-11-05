@@ -39,13 +39,25 @@ import us.ascendtech.primme.PrimmeSvds;
  * The exported word vectors are the left singular vectors, optionally weighted
  * by singular values.</p>
  *
- * <p>Selected stopwords are restricted to {@link #GRAM_DIST} positional steps;
- * other terms use the full window. A missing stopword list disables the gate.
- * Active gating is marked {@code gate2} in the counting part of the filename; no
- * stopwords are removed.</p>
+ * <p>{@code --gramdist 2}, the grammatical distance: a pair with a
+ * {@link TermFlag#STOPWORD} term counts only within that many positional
+ * steps; content–content pairs use the full window. No stopword is removed:
+ * grammatical words keep their near contexts and lose only the long-range
+ * cooccurrences that profile them all alike, the frequency direction.
+ * {@code --gramdist 0}, or a missing stopword list, counts every pair up to
+ * the window. An active distance is marked {@code gram2} in the counting part
+ * of the filename.</p>
+ *
+ * <p>Measured on the Piaget corpus ({@code w30}, SimpleMaths k = 1000,
+ * 200 dimensions): without the gram distance, 8% of the top-20 neighbours of
+ * frequent content words are stopwords; with a distance from 1 to 5, none,
+ * and the mean cosine of random pairs drops from 0.037 to 0.028–0.030.
+ * Neighbour lists of successive distances overlap at 91–95%. The default 2
+ * covers determiner, preposition and clitic attachments (<i>du sujet</i>,
+ * <i>le sujet</i>, <i>il le</i>).</p>
  *
  * <p>{@code --distance} weights each positional pair by its distance d
- * instead of counting it 1, and replaces the stopword gate. Each word gets a
+ * instead of counting it 1, and replaces the gram distance. Each word gets a
  * reach that grows with its idf, {@code max(1, window * idf / ln N)}, N being
  * the number of documents; a pair's reach R is the shorter of its two words'
  * reaches; the pair counts 1 for {@code d <= R}, then {@code R / d},
@@ -69,7 +81,7 @@ import us.ascendtech.primme.PrimmeSvds;
  * binary format, kept out of {@code *.bin} listings of models, the context
  * vectors (a word as context: the focuses that expect it). The prepared
  * matrix is directed, so the cell (a, b) is the keyness of b in the contexts
- * of a and differs from (b, a). With the default {@code --weightAxes 0.5},
+ * of a and differs from (b, a). With the default {@code --weightaxes 0.5},
  * row(a) . ctx(b) approximates (a, b) within the retained axes; cosine
  * between row vectors stays the symmetric, second-order comparison;
  * {@code <name>.json}, the diagnosis of the run: model name, command-line
@@ -79,50 +91,76 @@ import us.ascendtech.primme.PrimmeSvds;
  * <p>The name lists the stages of the pipeline in order, separated by
  * {@code -}, never inside a stage, so that models built from the same matrix
  * sort together: corpus and field, vocabulary ({@code terms37175}), counting
- * ({@code b5_10_30}, or {@code w30} with {@code dw} or {@code gate2}),
- * scoring ({@code simplek1500s0.5}, {@code g2s0.5}, then {@code cp} if
+ * ({@code b5_10_30}, or {@code w30} with {@code dw} or {@code gram2}),
+ * scoring ({@code simplek1000s0.5}, {@code g2s0.5}, then {@code cp} if
  * cellPower differs from 0.5), reduction ({@code d200}, dimensions on three
  * digits, then {@code aw}, {@code eps}, {@code test} when not default), and
  * refinement ({@code logstrength1}, weight then alpha, {@code i8} if the
  * passes differ from 4). For example
- * {@code piaget-word2vec-terms37175-b5_10_30-simplek1500s0.5-d200-logstrength1}.</p>
+ * {@code piaget-word2vec-terms37175-w30gram2-simplek1000s0.5-d200}.</p>
  *
  * <p>{@code --bands 1,3,7,15,30} counts each pair in the band of its
  * distance, given by the inclusive upper bounds, the last one equal to the
  * window. The default bounds {@code 2^k - 1} give bands of equal width in log
  * distance. Each band becomes a column block, scored against its own totals
  * and balanced by its first singular value (see {@link SparseSvd}). The
- * stopword gate applies as without bands: a pair with a stopword counts only
- * within {@link #GRAM_DIST}, so in the first band, and content pairs count
- * in every band; {@code --noGate} turns it off (counting part without
- * {@code gate2}). The option excludes {@code --distance}. Row
+ * gram distance applies as without bands: a pair with a stopword counts only
+ * within {@code --gramdist}, so in the first band when it is not wider, and
+ * content pairs count in every band. The option excludes {@code --distance}. Row
  * vectors stay one per word; context vectors are one per (word, band),
  * labelled {@code word@upper}, e.g. {@code sujet@1}, {@code sujet@30}. The
  * counting part of the filename is {@code b1_3_7_15_30}. The log shows the share of inertia
  * of each band by frequency class of the rows, frequencies in powers of 2.</p>
+ * 
+ * <p>Negative result: bands were tried (Piaget corpus, gram distance 2,
+ * SimpleMaths k = 1000, 200 dimensions) and add nothing to the cosine
+ * between row vectors. With bounds {@code 2,30}, {@code 2,8,30} and
+ * {@code 2,5,12,30}, the share of hapaxes among the top-20 neighbours of
+ * mid-frequency words (20–200 occurrences) is 0.31, 0.19 and 0.15, against
+ * 0.04 for {@code w30}. Among the 3 strongest corpus partners of a word at
+ * distances 3–30, the share found in its top-20 neighbours is 0.25, 0.32 and
+ * 0.35, against 0.42. The share of partners at distances 1–2 is 0.16, 0.22
+ * and 0.25, against 0.26. Each added band moves the model from {@code w2}
+ * toward {@code w30}, without reaching it. The near block is the cause: at
+ * distances 1–2, 65% of a content word's pairs are with a stopword, so a
+ * mid-frequency word keeps a median of 51 content partners, against 1,000
+ * up to 30. Its profile is a grammatical frame shared by all words of the
+ * same construction, and MFA gives it the weight of a full block. Stronger
+ * smoothing does not repair it: {@code w2} with k = 15000, the equivalent of
+ * k = 1000 at window 30 for the width of the band, keeps a hapax share of
+ * 0.43. For frequent words, the near block gives substitutes (<i>sujet</i>:
+ * enfant, bébé, nourrisson), not the partners of locutions; those stay in the
+ * directed cells, see {@code <name>.ctx}.</p>
  *
  * <p>{@code --refine alpha} replaces the truncated SVD by a weighted
  * low-rank fit of the same directed matrix, started from the SVD (see
  * {@link SparseSvd#refine(double, SparseSvd.CellWeight, int)}): stored cells
- * weigh {@code 1 + alpha * g}, all other cells 1. {@code --cellWeight} sets g
+ * weigh {@code 1 + alpha * g}, all other cells 1. {@code --cellweight} sets g
  * ({@code logstrength} by default: log(count) times value over mean value;
- * {@code log}; {@code log1p}), {@code --refineIters} the number of
- * alternating passes. It requires {@code --weightAxes 0.5}. The refinement
+ * {@code log}; {@code log1p}), {@code --refineiters} the number of
+ * alternating passes. It requires {@code --weightaxes 0.5}. The refinement
  * part of the filename is {@code <weight><alpha>}.</p>
  *
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
- *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5] \
- *     [--cellPower 0.5] [--weightAxes 0.5] \
- *     [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance] [--noGate]
- *     [--bands 1,3,7,15,30] [--refine 10] [--cellWeight logstrength|log|log1p] [--refineIters 4]
- *     [--sideDir DIR]
+ *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5] \
+ *     [--cellpower 0.5] [--weightaxes 0.5] \
+ *     [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-3] [--test] [--distance] [--gramdist 2]
+ *     [--bands 1,3,7,15,30] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]
+ *     [--sidedir DIR]
  * }</pre>
  *
- * <p>{@code --maxTerms -1} selects all eligible terms without a vocabulary
- * cap. The default {@code --minDocFreq 0} applies no document-frequency
+ * <p>{@code --terms -1} selects all eligible terms without a vocabulary
+ * cap. The default {@code --mindocfreq 0} applies no document-frequency
  * threshold. {@code --simplek} sets fixed SimpleMaths smoothing, recorded in
- * the model filename as {@code simplek1500} by default.</p>
+ * the model filename as {@code simplek1000} by default. One cooccurrence adds
+ * about {@code 1e6 / (2 * window * f)} to the per-million frequency of a word
+ * of f occurrences, so k = 1000 lets single cooccurrences weigh only for words
+ * under about 17 occurrences at window 30. Measured on the Piaget corpus: below
+ * k = 100 neighbours are rare-word noise; the mean cosine of random pairs is
+ * lowest at k = 1000 (0.037), the share of hapaxes among neighbours of
+ * mid-frequency words falls to 0.02 from there, while larger k keeps raising
+ * neighbour frequency.</p>
  *
  * <p>{@code --eps} sets the PRIMME convergence tolerance, recorded in the
  * filename when it differs from {@link #SVD_EPS}. {@code --test} switches
@@ -382,10 +420,11 @@ public final class Coocs2vec
     private record SparseCells(int[] rows, int[] cols, double[] values) {}
 
     /**
-     * Maximum positional distance, inclusive, at which a pair involving a
-     * {@link TermFlag#STOPWORD} term is still counted. Beyond this distance a
-     * pair is kept only when neither endpoint is a stopword. Content–content
-     * pairs are unaffected and count up to the full {@code window}.
+     * Default of {@code --gramdist}: maximum positional distance, inclusive, at
+     * which a pair involving a {@link TermFlag#STOPWORD} term is still counted.
+     * Beyond it a pair is kept only when neither endpoint is a stopword.
+     * Content–content pairs are unaffected and count up to the full
+     * {@code window}.
      */
     private static final int GRAM_DIST = 2;
 
@@ -395,11 +434,11 @@ public final class Coocs2vec
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
-            + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1500] [--specif 0.5]"
-            + " [--cellPower 0.5] [--weightAxes 0.5]"
-            + " [--maxTerms 15000|-1] [--minDocFreq 0] [--eps 1e-3] [--test] [--distance] [--noGate]"
-            + " [--bands 1,3,7,15,30] [--refine 10] [--cellWeight logstrength|log|log1p] [--refineIters 4]"
-            + " [--sideDir DIR]";
+            + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5]"
+            + " [--cellpower 0.5] [--weightaxes 0.5]"
+            + " [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-3] [--test] [--distance] [--gramdist 2]"
+            + " [--bands 1,3,7,15,30] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]"
+            + " [--sidedir DIR]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
     private static long started;
@@ -417,18 +456,6 @@ public final class Coocs2vec
      * @param args index directory, field, then command-line options
      * @throws IOException if the index, rail, or output file cannot be accessed
      * 
-     * "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // best model, dims200 enough
-     * "piaget-260827-content-coocs30-g2specif1.0-dims100.bin" // Good model
-     * "piaget-260827-content-coocs50-g2specif1.0-dims100.bin" // coocs50, too big for dims100
-     * "piaget-260827-content-coocs50-g2specif1.0-dims300.bin" // coocs50, add semantics
-     * "piaget-260827-content-coocs50-g2specif1.0-dims200.bin" // coocs50, add semantics
-     * "piaget-260827-content-coocs30-g2specif1.0-dims200.bin" // g2specif1.0, best
-     * "piaget-260827-content-coocs30-g2specif0.5-dims200.bin" // g2specif0.5, over sparse
-     * "piaget-260827-content-coocs30-g2specif2.0-dims200.bin" //specif2.0, over concentrate
-     * "piaget-260827-content-coocs50-g2specif1.5-cellpow0.5-dims500.bin" // cellpow0.5 should stay default
-     * "piaget-260827-content-coocs50-g2specif1.5-cellpow0.25-dims500.bin" // over-flattens association strengths
-     * "piaget-260827-content-coocs50-g2specif1.5-cellpow2.0-dims500.bin" // over-concentrates on strongest association cells
-     * "piaget-260827-content-coocs30-g2specif1.5-dims500.bin" // window 30, bad with dim500
      */
     public static void main(final String[] args) throws IOException
     {
@@ -480,17 +507,17 @@ public final class Coocs2vec
 
         int window = 30;
         int dims = 100;
-        int maxTerms = 15_000;
+        int terms = 15_000;
         int minDocFreq = 1;
         String scorerName = "simple";
-        double simplek = 1500d;
+        double simplek = 1000d;
         double specif = 0.5d;
         double cellPower = 0.5d;
         double weightAxes = 0.5d;
         double eps = SVD_EPS;
         boolean test = false;
         boolean distance = false;
-        boolean noGate = false;
+        int gramDist = GRAM_DIST;
         int[] bounds = null;
         double refine = 0d;
         String cellWeightName = "logstrength";
@@ -503,20 +530,20 @@ public final class Coocs2vec
                 case "--scorer" -> scorerName = args[++i];
                 case "--simplek" -> simplek = Double.parseDouble(args[++i]);
                 case "--specif" -> specif = Double.parseDouble(args[++i]);
-                case "--cellPower" -> cellPower = Double.parseDouble(args[++i]);
-                case "--weightAxes" -> weightAxes = Double.parseDouble(args[++i]);
-                case "--maxTerms" -> maxTerms = Integer.parseInt(args[++i]);
-                case "--minDocFreq" -> minDocFreq = Integer.parseInt(args[++i]);
+                case "--cellpower" -> cellPower = Double.parseDouble(args[++i]);
+                case "--weightaxes" -> weightAxes = Double.parseDouble(args[++i]);
+                case "--terms" -> terms = Integer.parseInt(args[++i]);
+                case "--mindocfreq" -> minDocFreq = Integer.parseInt(args[++i]);
                 case "--eps" -> eps = Double.parseDouble(args[++i]);
                 case "--test" -> test = true;
                 case "--distance" -> distance = true;
-                case "--noGate" -> noGate = true;
+                case "--gramdist" -> gramDist = Integer.parseInt(args[++i]);
                 case "--bands" -> bounds = Arrays.stream(args[++i].split(","))
                     .map(String::trim).mapToInt(Integer::parseInt).toArray();
                 case "--refine" -> refine = Double.parseDouble(args[++i]);
-                case "--cellWeight" -> cellWeightName = args[++i];
-                case "--refineIters" -> refineIters = Integer.parseInt(args[++i]);
-                case "--sideDir" -> sideDir = Paths.get(args[++i]);
+                case "--cellweight" -> cellWeightName = args[++i];
+                case "--refineiters" -> refineIters = Integer.parseInt(args[++i]);
+                case "--sidedir" -> sideDir = Paths.get(args[++i]);
                 default -> {
                     System.err.println("unknown option: " + args[i]);
                     System.err.println(USAGE);
@@ -545,6 +572,9 @@ public final class Coocs2vec
         }
         if (!Double.isFinite(simplek) || simplek <= 0d) {
             throw new IllegalArgumentException("simplek must be finite and > 0: " + simplek);
+        }
+        if (gramDist < 0) {
+            throw new IllegalArgumentException("gramdist must be >= 0: " + gramDist);
         }
         if (!Double.isFinite(eps) || eps <= 0d) {
             throw new IllegalArgumentException("eps must be finite and > 0: " + eps);
@@ -575,7 +605,7 @@ public final class Coocs2vec
             throw new IllegalArgumentException("refine must be finite and >= 0: " + refine);
         }
         if (refine > 0d && weightAxes != 0.5d) {
-            throw new IllegalArgumentException("--refine requires --weightAxes 0.5");
+            throw new IllegalArgumentException("--refine requires --weightaxes 0.5");
         }
         if (refineIters < 1) {
             throw new IllegalArgumentException("refineIters must be >= 1: " + refineIters);
@@ -589,8 +619,8 @@ public final class Coocs2vec
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
         scorer.specif(specif);
-        if (maxTerms != -1 && maxTerms < 2) {
-            throw new IllegalArgumentException("maxTerms must be -1 or >= 2: " + maxTerms);
+        if (terms != -1 && terms < 2) {
+            throw new IllegalArgumentException("terms must be -1 or >= 2: " + terms);
         }
         if (minDocFreq < 0) {
             throw new IllegalArgumentException("minDocFreq must be >= 0: " + minDocFreq);
@@ -623,13 +653,11 @@ public final class Coocs2vec
             final int termCount;
             InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
             final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
-            final boolean stopwords = !distance && !noGate
-                && (GRAM_DIST > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
+            final boolean stopwords = !distance
+                && (gramDist > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
             if (stopwords) {
-                counting += "gate" + GRAM_DIST;
-                log(
-                    "stopword gate active: pairs with a stopword counted only within +/-%d",
-                    GRAM_DIST);
+                counting += "gram" + gramDist;
+                log("gram distance: pairs with a stopword counted only within +/-%d", gramDist);
             }
 
             if (!TermRail.exists(sideDir, field)) {
@@ -646,8 +674,8 @@ public final class Coocs2vec
 
             log(
                 "selecting terms (minDocFreq=%d, cap=%s)",
-                minDocFreq, maxTerms == -1 ? "unlimited" : Integer.toString(maxTerms));
-            final int selectionLimit = maxTerms == -1 ? lexicon.vocabSize() : maxTerms;
+                minDocFreq, terms == -1 ? "unlimited" : Integer.toString(terms));
+            final int selectionLimit = terms == -1 ? lexicon.vocabSize() : terms;
             final SelectedTerm[] selected = LuceneData.selectTerms(
                 reader, stats, minDocFreq, selectionLimit);
             termCount = selected.length;
@@ -674,7 +702,7 @@ public final class Coocs2vec
                         scorerName);
                 }
             }
-            final Table table = coocTable(rail, lexicon, selected, window, reach, bounds, stopwords);
+            final Table table = coocTable(rail, lexicon, selected, window, reach, bounds, stopwords ? gramDist : 0);
             log(
                 "matrix built: %,d logical non-zero cells (%.2f%% dense), "
                     + "%,d upper-triangle cells stored, %,d positional pairs counted",
@@ -721,7 +749,7 @@ public final class Coocs2vec
 
             writeVectors(Paths.get(outName + ".bin"), words, svd.project(retained).coords());
             if (weightAxes != 0.5d) {
-                log("warning: row . context reconstructs directed cells only with --weightAxes 0.5");
+                log("warning: row . context reconstructs directed cells only with --weightaxes 0.5");
             }
             writeVectors(Paths.get(outName + ".ctx"), columnLabels(words, bounds), svd.contexts());
 
@@ -1069,17 +1097,17 @@ public final class Coocs2vec
      * rail without allocating a dense vocabulary-square matrix.
      *
      * <p>Pairs involving a {@link TermFlag#STOPWORD} term are counted only within
-     * {@link #GRAM_DIST} positions; see the class comment. Stopword membership is
+     * {@code gramDist} positions; see the class comment. Stopword membership is
      * resolved once into a per-row {@code boolean[]} so the hot loop never touches
      * the lexicon or a bitset.</p>
      *
      * <p>With {@code reach}, every pair within the window is weighted by
-     * distance (see the class comment) and the stopword gate is off; weights
+     * distance (see the class comment) and the gram distance is off; weights
      * are then rescaled to a mean of 1.</p>
      *
      * <p>With {@code bounds}, every pair within the window is counted 1 in the
      * band of its distance, a pair with a stopword only within
-     * {@link #GRAM_DIST} when the gate is on. The band is carried
+     * {@code gramDist} when it is positive. The band is carried
      * in the column key during the scan, {@code band * termCount + col}, then
      * split into the table's {@code cols} and {@code bands}.</p>
      *
@@ -1089,7 +1117,8 @@ public final class Coocs2vec
      * @param window maximum positional distance, inclusive
      * @param reach reach of each selected row, or null for unweighted counts
      * @param bounds inclusive upper distance of each band, or null without bands
-     * @param gate whether the stopword gate applies (never with distance weighting)
+     * @param gramDist maximum distance of a pair with a stopword, 0 to count
+     *        every pair up to the window (always 0 with distance weighting)
      * @return selected forms and their sparse raw cooccurrence table
      */
     private static Table coocTable(
@@ -1099,11 +1128,11 @@ public final class Coocs2vec
         final int window,
         final double[] reach,
         final int[] bounds,
-        final boolean gate
+        final int gramDist
     ) {
         final BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
-        final boolean hasStopwords = gate && reach == null
-            && stopwords != null && !stopwords.isEmpty() && GRAM_DIST > 0;
+        final boolean hasStopwords = gramDist > 0 && reach == null
+            && stopwords != null && !stopwords.isEmpty();
 
         final int termCount = selected.length;
         final String[] words = new String[termCount];
@@ -1181,7 +1210,7 @@ public final class Coocs2vec
                         if (col < 0) {
                             continue;
                         }
-                        if (next - position > GRAM_DIST && (rowIsStop[row] || rowIsStop[col])) {
+                        if (hasStopwords && next - position > gramDist && (rowIsStop[row] || rowIsStop[col])) {
                             continue;
                         }
                         bump(counts, row, col, 1d, bandBase[next - position]);
@@ -1190,10 +1219,10 @@ public final class Coocs2vec
                     continue;
                 }
                 final int nearEnd = hasStopwords
-                    ? Math.min(fullEnd, position + GRAM_DIST + 1)
+                    ? Math.min(fullEnd, position + gramDist + 1)
                     : fullEnd;
 
-                // near range [1, STOP_DIST]: every co-occurrence counts
+                // near range [1, gramDist]: every co-occurrence counts
                 for (int next = position + 1; next < nearEnd; next++) {
                     final int col = rows[next];
                     if (col < 0) {
@@ -1203,7 +1232,7 @@ public final class Coocs2vec
                     pairs++;
                 }
 
-                // far range (STOP_DIST, window]: only when the pivot is content,
+                // far range (gramDist, window]: only when the pivot is content,
                 // and stopword columns are dropped as long-range noise
                 if (!rowIsStop[row]) {
                     for (int next = nearEnd; next < fullEnd; next++) {

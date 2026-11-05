@@ -35,20 +35,31 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
  * the same JSON node format.</p>
  *
  * <p>{@code layout=pca|mds|centred} selects the layout (default {@code pca};
- * the former {@code mds=true} still selects {@code mds}). {@code links=mutual|nearest|tree|mix|none}
- * selects the lines drawn between nodes (default {@code mutual}). The JSON
+ * the former {@code mds=true} still selects {@code mds}).
+ * {@code linkmode=mix|mutual|nearest|tree|directed|none} selects the lines
+ * drawn between nodes (default {@code mix}), and {@code links} their number
+ * per node, 0 or more (default {@link #LINKS_PER_NODE}). The JSON
  * writes {@code nodes} first, each with its vector {@code id}, then
  * {@code links}, whose {@code source} and {@code target} are node ids. Each
  * TopTerms node carries {@code pivotDistance}, its model cosine distance to
  * the nearest pivot.</p>
  *
- * <p>When the context vectors of the model sit next to it ({@code <name>.ctx}
- * for {@code <name>.bin}), {@code links=mix} draws directed links after the
- * spanning tree: a term to the term it expects most, relative to the other
- * displayed terms (see {@link CompassVec}). The context vector of a term is
- * the sum of its band vectors, {@code word@5}, {@code word@10}..., the bands
- * being read from the model name ({@code -b5_10_30}). A directed link has
- * {@code "directed": true}, source expecting target.</p>
+ * <p>{@code linkmode=mix} links each term to its nearest displayed term, with
+ * {@code "directed": true} when the choice is not mutual (source to its
+ * nearest), then adds mutual-rank pairs up to the budget; all from the word
+ * vectors alone. {@code linkmode=directed} is experimental: when the context vectors of the
+ * model sit next to it ({@code <name>.ctx} for {@code <name>.bin}), it draws
+ * each term to the term it expects most, relative to the other displayed
+ * terms (see {@link CompassVec}); the context vector of a term is the sum of
+ * its band vectors, {@code word@5}, {@code word@10}..., the bands being read
+ * from the model name ({@code -b5_10_30}).</p>
+ *
+ * <p>With {@code linkmode=mix} or {@code linkmode=directed}, pivot links are added:
+ * the TopTerms with the highest share of their corpus occurrences inside the
+ * query contexts ({@code freq / fieldFreq}), each linked to its nearest
+ * pivot, marked {@code "pivot": true} with its {@code "share"}; their number
+ * per node is {@link #PIVOT_LINKS_PER_NODE}, never more than {@code links}. A
+ * link already drawn between the same two terms is not repeated.</p>
  */
 public class OpCompass extends Op
 {
@@ -56,13 +67,13 @@ public class OpCompass extends Op
     private static final String ALIX_MODELS_ROOT="alix.models.root";
     /** Bands in a model name, e.g. {@code -b5_10_30}. */
     private static final Pattern BANDS = Pattern.compile("-b(\\d+(?:_\\d+)*)");
-    /** Display budget of links per node: a readability choice, not derived from the model. */
-    private static final double LINKS_PER_NODE = 2.5d;
     /**
-     * Links added to the spanning tree in {@code links=mix}, per node: the tree
-     * gives about one link per node, so mix totals about {@link #LINKS_PER_NODE}.
+     * Default of the {@code links} parameter, links per node: a readability
+     * choice, not derived from the model.
      */
-    private static final double MIX_LINKS_PER_NODE = 1.5d;
+    private static final double LINKS_PER_NODE = 1.5d;
+    /** Pivot links per displayed node, a display choice: about 8 for 50 nodes. */
+    private static final double PIVOT_LINKS_PER_NODE = 0.15d;
     /** Number of query neighbours defining the optional local PCA plane. */
     private static final int NEIGHBORS = 300;
 
@@ -235,17 +246,18 @@ public class OpCompass extends Op
             AlixServlet.jsonError(request, response);
             return;
         }
-        final String linksName = pars.getString("links", "mutual");
+        final String linksName = pars.getString("linkmode", "mix");
         final CompassVec.LinkMode linkMode;
         switch (linksName) {
             case "mutual" -> linkMode = CompassVec.LinkMode.MUTUAL_RANK;
             case "nearest" -> linkMode = CompassVec.LinkMode.NEAREST;
             case "tree" -> linkMode = CompassVec.LinkMode.TREE;
             case "mix" -> linkMode = CompassVec.LinkMode.MIX;
+            case "directed" -> linkMode = CompassVec.LinkMode.DIRECTED;
             case "none" -> linkMode = null;
             default -> {
                 response.setStatus(400);
-                meta.log("[unknown links: " + linksName + "]");
+                meta.log("[unknown linkmode: " + linksName + "]");
                 AlixServlet.jsonError(request, response);
                 return;
             }
@@ -272,18 +284,61 @@ public class OpCompass extends Op
         for (int node = 0; node < nodeIds.length; node++) {
             nodeIds[node] = points.get(node).id();
         }
-        final double[][] nodeContexts = linkMode == CompassVec.LinkMode.MIX && contexts != null
+        double linksPerNode = LINKS_PER_NODE;
+        final String linksValue = pars.getString("links", null);
+        if (linksValue != null && !linksValue.isBlank()) {
+            try {
+                linksPerNode = Double.parseDouble(linksValue.trim());
+            }
+            catch (final NumberFormatException e) {
+                linksPerNode = Double.NaN;
+            }
+            if (!(linksPerNode >= 0d) || Double.isInfinite(linksPerNode)) {
+                response.setStatus(400);
+                meta.log("[links must be a number >= 0: " + linksValue + "]");
+                AlixServlet.jsonError(request, response);
+                return;
+            }
+        }
+        final boolean directedMode = linkMode == CompassVec.LinkMode.MIX
+            || linkMode == CompassVec.LinkMode.DIRECTED;
+        final double[][] nodeContexts = linkMode == CompassVec.LinkMode.DIRECTED && contexts != null
             ? contextVectors(contexts, modelName, points)
             : null;
         final List<CompassVec.Link> links = linkMode == null
             ? List.of()
             : compass.links(
                 nodeIds,
-                (int) Math.round((linkMode == CompassVec.LinkMode.MIX
-                    ? MIX_LINKS_PER_NODE
-                    : LINKS_PER_NODE) * nodeIds.length),
+                (int) Math.round(linksPerNode * nodeIds.length),
                 linkMode,
                 nodeContexts);
+        final List<CompassVec.Link> pivotLinks = new ArrayList<>();
+        final double[] shares = new double[nodeIds.length];
+        if (directedMode) {
+            final boolean[] isPivot = new boolean[nodeIds.length];
+            for (int node = 0; node < nodeIds.length; node++) {
+                final TermEntry term = entries.get(node);
+                isPivot[node] = term == null;
+                shares[node] = term == null || term.fieldFreq() == 0L
+                    ? 0d
+                    : (double) term.freq() / term.fieldFreq();
+            }
+            for (final CompassVec.Link link : compass.pivotLinks(
+                    nodeIds, isPivot, shares,
+                    (int) Math.round(Math.min(PIVOT_LINKS_PER_NODE, linksPerNode) * nodeIds.length))) {
+                boolean drawn = false;
+                for (final CompassVec.Link other : links) {
+                    if ((other.source() == link.source() && other.target() == link.target())
+                        || (other.source() == link.target() && other.target() == link.source())) {
+                        drawn = true;
+                        break;
+                    }
+                }
+                if (!drawn) {
+                    pivotLinks.add(link);
+                }
+            }
+        }
         final double[] pivotDistances = compass.pivotDistances(
             nodeIds, pivotIds.stream().mapToInt(Integer::intValue).toArray());
 
@@ -302,7 +357,8 @@ public class OpCompass extends Op
             json.name("unit").value(layout == CompassVec.Layout.PCA ? "vector-projection" : "model-distance");
             json.name("plane").value(keywords ? "keywords" : "local");
             json.name("layout").value(layoutName);
-            json.name("links").value(linksName);
+            json.name("linkmode").value(linksName);
+            json.name("links").value(linksPerNode);
             json.name("directed").value(nodeContexts != null);
             json.name("reference").value(compass.referenceCount());
             json.name("xCenter").value(round(compass.xCenter(), 4));
@@ -341,6 +397,21 @@ public class OpCompass extends Op
                 json.name("distance").value(round(link.distance(), 4));
                 if (link.directed()) {
                     json.name("directed").value(true);
+                }
+                json.endObject();
+            }
+            for (final CompassVec.Link link : pivotLinks) {
+                json.beginObject();
+                json.name("source").value(link.source());
+                json.name("target").value(link.target());
+                json.name("distance").value(round(link.distance(), 4));
+                json.name("directed").value(true);
+                json.name("pivot").value(true);
+                for (int node = 0; node < nodeIds.length; node++) {
+                    if (nodeIds[node] == link.source()) {
+                        json.name("share").value(round(shares[node], 4));
+                        break;
+                    }
                 }
                 json.endObject();
             }
