@@ -43,6 +43,19 @@ import us.ascendtech.primme.PrimmeSvds;
  * itself. The result is put back in SVD form (orthogonal axes ordered by
  * singular value), so the outputs keep their meaning.</p>
  *
+ * <p>Deflation, {@link #decompose(int, double, PrimmeSvds.Method, boolean)}:
+ * PRIMME stops a triplet when its residual is below {@code eps * ||A||}, and
+ * {@code ||A||} is the first singular value. A scored matrix has positive
+ * cells only, so its first axis is a one-signed profile of the word weights,
+ * and it may stand far above the others (TF-IDF on the Piaget corpus:
+ * sigma1 / sigma2 = 4.6, against 1.75 for SimpleMaths). The first triplet is
+ * then computed alone, and the others on {@code A1 = (I - u1 u1^T) A}, whose
+ * norm is sigma2: the same eps gives a tolerance scaled to the remaining
+ * spectrum. A1 has the singular triplets of A without the first; it is
+ * applied in the callback, never stored. As an orthogonal projection of the
+ * row space, it uses u1 only, so an error on sigma1 does not leak into the
+ * other axes.</p>
+ *
  * <p>Only observed cells are scored. Scores not exceeding the scorer's neutral
  * association value are discarded. Positive excess scores are raised to
  * {@code cellPower}. All scoring happens once, before PRIMME is called.
@@ -275,6 +288,31 @@ public final class SparseSvd
      */
     public SparseSvd decompose(final int dims, final double eps, final PrimmeSvds.Method method)
     {
+        return decompose(dims, eps, method, false);
+    }
+
+    /**
+     * Computes leading singular vectors using PRIMME SVDS, optionally with the
+     * first triplet deflated.
+     *
+     * <p>With {@code deflate}, PRIMME first computes the first triplet alone,
+     * then the {@code dims - 1} next ones on {@code (I - u1 u1^T) A} (see the
+     * class comment). Their left vectors are projected orthogonally to u1 and
+     * normalized, then all axes are assembled as from a single run: same
+     * outputs, same sign rule.</p>
+     *
+     * @param dims number of singular dimensions requested
+     * @param eps positive relative convergence tolerance
+     * @param method PRIMME SVDS method
+     * @param deflate whether to compute the first triplet separately and deflate it
+     * @return this pipeline
+     * @throws IllegalArgumentException if dims or eps is invalid
+     * @throws IllegalStateException if keyness preparation has not run
+     * @throws NullPointerException if method is null
+     */
+    public SparseSvd decompose(final int dims, final double eps, final PrimmeSvds.Method method,
+        final boolean deflate)
+    {
         Objects.requireNonNull(method, "method");
         if (prepared == null) {
             throw new IllegalStateException("call keyness() before decompose()");
@@ -292,27 +330,55 @@ public final class SparseSvd
         }
 
         final int requested = Math.min(dims, size);
-        final PrimmeMatvec matvec = new PrimmeMatvec(prepared);
-        final long started = System.nanoTime();
-        try (PrimmeSvds svds = PrimmeSvds.create(size, colCount, requested, matvec)) {
-            final PrimmeSvds.Result result = svds
-                .setMaxBlockSize(MAX_BLOCK_SIZE)
-                .setMethod(method)
-                .setTarget(PrimmeSvds.Target.LARGEST)
-                .setEps(eps)
-                .setPrintLevel(1)
-                .solve();
-            absorb(result);
+        if (!deflate) {
+            final Triplets all = solve(new PrimmeMatvec(prepared, null), requested, eps, method);
+            absorb(all.values(), all.left());
+            return this;
         }
-        final long elapsed = System.nanoTime() - started;
-        System.err.printf(
-            "PRIMME: solve %.3f s; callbacks %,d; vectors %,d; "
-                + "callback %.3f s (%.1f%%)%n",
-            elapsed / 1_000_000_000d,
-            matvec.callbacks,
-            matvec.vectors,
-            matvec.nanos / 1_000_000_000d,
-            elapsed > 0L ? 100d * matvec.nanos / elapsed : 0d);
+        final Triplets first = solve(new PrimmeMatvec(prepared, null), 1, eps, method);
+        if (first.values().length == 0 || requested == 1) {
+            absorb(first.values(), first.left());
+            return this;
+        }
+        final double[] u1 = new double[size];
+        double norm2 = 0d;
+        for (int row = 0; row < size; row++) {
+            u1[row] = first.left()[row][0];
+            norm2 += u1[row] * u1[row];
+        }
+        final double norm = Math.sqrt(norm2);
+        for (int row = 0; row < size; row++) {
+            u1[row] /= norm;
+        }
+        final Triplets rest = solve(new PrimmeMatvec(prepared, u1), requested - 1, eps, method);
+        final int count = 1 + rest.values().length;
+        final double[] values = new double[count];
+        values[0] = first.values()[0];
+        System.arraycopy(rest.values(), 0, values, 1, count - 1);
+        final double[][] left = new double[size][count];
+        for (int row = 0; row < size; row++) {
+            left[row][0] = u1[row];
+            System.arraycopy(rest.left()[row], 0, left[row], 1, count - 1);
+        }
+        for (int axis = 1; axis < count; axis++) {
+            double dot = 0d;
+            for (int row = 0; row < size; row++) {
+                dot += u1[row] * left[row][axis];
+            }
+            double n2 = 0d;
+            for (int row = 0; row < size; row++) {
+                left[row][axis] -= dot * u1[row];
+                n2 += left[row][axis] * left[row][axis];
+            }
+            final double n = Math.sqrt(n2);
+            if (n > 0d) {
+                for (int row = 0; row < size; row++) {
+                    left[row][axis] /= n;
+                }
+            }
+        }
+        System.err.printf("PRIMME: first axis deflated, sigma1 %.6e%n", values[0]);
+        absorb(values, left);
         return this;
     }
 
@@ -744,14 +810,13 @@ public final class SparseSvd
     }
 
     /**
-     * Adopts PRIMME's left singular vectors using the native binding's layout,
-     * then derives the right ones from them.
+     * Adopts left singular vectors, then derives the right ones from them.
      *
-     * @param result computed decomposition
+     * @param values singular values, decreasing
+     * @param left unit left singular vectors, rows by axes, one axis per value
      */
-    private void absorb(final PrimmeSvds.Result result)
+    private void absorb(final double[] values, final double[][] left)
     {
-        final double[] values = result.svals();
         if (values.length == 0) {
             singularValues = new double[0];
             embedding = new double[size][0];
@@ -766,17 +831,14 @@ public final class SparseSvd
         while (retained < values.length && values[retained] > tolerance) {
             retained++;
         }
-        final double[][] vectors = result.svecs();
-        final int chunkLength = size + colCount;
         singularValues = Arrays.copyOf(values, retained);
-        embedding = new double[size][retained];
-        for (int axis = 0; axis < retained; axis++) {
-            final long offset = (long) axis * size;
+        if (retained == values.length) {
+            embedding = left;
+        }
+        else {
+            embedding = new double[size][];
             for (int row = 0; row < size; row++) {
-                final long index = offset + row;
-                final int chunk = (int) (index / chunkLength);
-                final int within = (int) (index % chunkLength);
-                embedding[row][axis] = vectors[chunk][within];
+                embedding[row] = Arrays.copyOf(left[row], retained);
             }
         }
         rank = retained;
@@ -784,6 +846,80 @@ public final class SparseSvd
         contexts = rightVectors(embedding, singularValues);
         axesWeighted = false;
     }
+
+    /**
+     * Reads PRIMME's left singular vectors using the native binding's layout.
+     *
+     * @param vectors singular vectors as returned by the binding
+     * @param count number of axes to read
+     * @return left singular vectors, rows by axes
+     */
+    private double[][] leftVectors(final double[][] vectors, final int count)
+    {
+        final int chunkLength = size + colCount;
+        final double[][] left = new double[size][count];
+        for (int axis = 0; axis < count; axis++) {
+            final long offset = (long) axis * size;
+            for (int row = 0; row < size; row++) {
+                final long index = offset + row;
+                final int chunk = (int) (index / chunkLength);
+                final int within = (int) (index % chunkLength);
+                left[row][axis] = vectors[chunk][within];
+            }
+        }
+        return left;
+    }
+
+    /**
+     * Runs PRIMME SVDS once on an operator and copies its triplets out of the
+     * native result before it is closed.
+     *
+     * @param matvec operator callback, possibly deflated
+     * @param count number of singular triplets requested
+     * @param eps relative convergence tolerance
+     * @param method PRIMME SVDS method
+     * @return singular values and left singular vectors
+     */
+    private Triplets solve(
+        final PrimmeMatvec matvec,
+        final int count,
+        final double eps,
+        final PrimmeSvds.Method method
+    ) {
+        final long started = System.nanoTime();
+        final Triplets triplets;
+        try (PrimmeSvds svds = PrimmeSvds.create(size, colCount, count, matvec)) {
+            final PrimmeSvds.Result result = svds
+                .setMaxBlockSize(MAX_BLOCK_SIZE)
+                .setMethod(method)
+                .setTarget(PrimmeSvds.Target.LARGEST)
+                .setEps(eps)
+                .setPrintLevel(1)
+                .solve();
+            final double[] values = result.svals();
+            triplets = new Triplets(values, leftVectors(result.svecs(), values.length));
+        }
+        final long elapsed = System.nanoTime() - started;
+        System.err.printf(
+            "PRIMME: %,d triplets%s, solve %.3f s; callbacks %,d; vectors %,d; "
+                + "callback %.3f s (%.1f%%)%n",
+            count,
+            matvec.deflated == null ? "" : " (first axis deflated)",
+            elapsed / 1_000_000_000d,
+            matvec.callbacks,
+            matvec.vectors,
+            matvec.nanos / 1_000_000_000d,
+            elapsed > 0L ? 100d * matvec.nanos / elapsed : 0d);
+        return triplets;
+    }
+
+    /**
+     * Singular values and left singular vectors of one PRIMME run.
+     *
+     * @param values singular values, decreasing
+     * @param left left singular vectors, rows by axes
+     */
+    private record Triplets(double[] values, double[][] left) {}
 
     /**
      * Returns the Gram matrix {@code Y^T Y} of row vectors.
@@ -1358,6 +1494,9 @@ public final class SparseSvd
         /** Prepared matrix. */
         private final SparseMatrix matrix;
 
+        /** Unit left vector projected out of the operator, or null without deflation. */
+        private final double[] deflated;
+
         /** Input buffer for blocks of vectors. */
         private double[] input = new double[0];
 
@@ -1380,11 +1519,48 @@ public final class SparseSvd
          */
         private PrimmeMatvec(final SparseMatrix matrix)
         {
-            this.matrix = matrix;
+            this(matrix, null);
         }
 
         /**
-         * Computes {@code A*x} or {@code A^T*x} for one interleaved vector block.
+         * Creates a PRIMME callback for {@code (I - u u^T) A}.
+         *
+         * @param matrix prepared matrix
+         * @param deflated unit left vector u to project out, or null
+         */
+        private PrimmeMatvec(final SparseMatrix matrix, final double[] deflated)
+        {
+            this.matrix = matrix;
+            this.deflated = deflated;
+        }
+
+        /**
+         * Projects each vector of an interleaved block orthogonally to the
+         * deflated vector, in place.
+         *
+         * @param vectors interleaved vectors of length {@code matrix.size}
+         * @param blockSize number of vectors
+         */
+        private void project(final double[] vectors, final int blockSize)
+        {
+            final double[] dots = new double[blockSize];
+            for (int row = 0; row < matrix.size; row++) {
+                final double u = deflated[row];
+                for (int block = 0; block < blockSize; block++) {
+                    dots[block] += u * vectors[row * blockSize + block];
+                }
+            }
+            for (int row = 0; row < matrix.size; row++) {
+                final double u = deflated[row];
+                for (int block = 0; block < blockSize; block++) {
+                    vectors[row * blockSize + block] -= dots[block] * u;
+                }
+            }
+        }
+
+        /**
+         * Computes {@code A*x} or {@code A^T*x} for one interleaved vector block,
+         * with A replaced by {@code (I - u u^T) A} when deflated.
          *
          * @param x foreign input buffer
          * @param ldx input leading dimension
@@ -1416,7 +1592,13 @@ public final class SparseSvd
                         ValueLayout.JAVA_DOUBLE, block * ldx + row);
                 }
             }
+            if (deflated != null && transpose != 0) {
+                project(input, blockSize);
+            }
             matrix.multiplyBlock(input, output, blockSize, transpose != 0);
+            if (deflated != null && transpose == 0) {
+                project(output, blockSize);
+            }
             for (int row = 0; row < outLength; row++) {
                 for (int block = 0; block < blockSize; block++) {
                     y.setAtIndex(ValueLayout.JAVA_DOUBLE,

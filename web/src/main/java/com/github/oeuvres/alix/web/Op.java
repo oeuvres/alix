@@ -528,7 +528,7 @@ public abstract class Op
             case "logratio" -> new KeynessScorer.LogRatio();
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
-            case "fisher" -> new KeynessScorer.HgtAlpha();
+            case "fisher" -> new KeynessScorer.FisherAlpha();
             case "chi2" -> new KeynessScorer.Chi2Alpha();
             case "bm25a" -> new KeynessScorer.BM25Alpha(150, 0.75f);
             default -> new KeynessScorer.SimpleMaths(simplek);

@@ -32,7 +32,7 @@ import com.github.oeuvres.alix.maths.Fisher;
  * <p>
  * Counts are {@code double}: plain integer counts are passed unchanged, and
  * weighted counts (for example co-occurrences weighted by distance) are
- * accepted by every scorer except {@link HgtAlpha}, whose hypergeometric
+ * accepted by every scorer except {@link FisherAlpha}, whose hypergeometric
  * tail is defined for whole counts only. Ratio scorers (SimpleMaths, Log
  * Ratio) are unchanged by a common scale of the counts; tests (G², χ²) and
  * BM25 saturation are not, so weighted counts should keep the mass of the
@@ -607,7 +607,7 @@ public abstract class KeynessScorer
      * comparably to TF-IDF on standard text analysis tasks." Multimedia Tools
      * and Applications 83: 28875-28890. doi:10.1007/s11042-023-16615-z.</p>
      */
-    public static class HgtAlpha extends KeynessScorer
+    public static class FisherAlpha extends KeynessScorer
     {
         /** Exponent at the specificity midpoint. */
         private static final double ALPHA_MIDDLE = 1d;
@@ -661,7 +661,7 @@ public abstract class KeynessScorer
          * @throws IllegalArgumentException if specificity is invalid
          */
         @Override
-        public HgtAlpha specif(final double specif)
+        public FisherAlpha specif(final double specif)
         {
             super.specif(specif);
             exponent = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER);

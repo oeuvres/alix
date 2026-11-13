@@ -145,7 +145,7 @@ import us.ascendtech.primme.PrimmeSvds;
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5] \
  *     [--cellpower 0.5] [--weightaxes 0.5] \
- *     [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-3] [--test] [--distance] [--gramdist 2]
+ *     [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--gramdist 2]
  *     [--bands 1,3,7,15,30] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]
  *     [--sidedir DIR]
  * }</pre>
@@ -429,14 +429,14 @@ public final class Coocs2vec
     private static final int GRAM_DIST = 2;
 
     /** Default PRIMME convergence tolerance, overridable with {@code --eps}. */
-    private static final double SVD_EPS = 1e-3;
+    private static final double SVD_EPS = 1e-4;
 
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
             + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5]"
             + " [--cellpower 0.5] [--weightaxes 0.5]"
-            + " [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-3] [--test] [--distance] [--gramdist 2]"
+            + " [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--gramdist 2]"
             + " [--bands 1,3,7,15,30] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]"
             + " [--sidedir DIR]";
 
@@ -515,6 +515,7 @@ public final class Coocs2vec
         double cellPower = 0.5d;
         double weightAxes = 0.5d;
         double eps = SVD_EPS;
+        boolean deflate = false;
         boolean test = false;
         boolean distance = false;
         int gramDist = GRAM_DIST;
@@ -535,6 +536,7 @@ public final class Coocs2vec
                 case "--terms" -> terms = Integer.parseInt(args[++i]);
                 case "--mindocfreq" -> minDocFreq = Integer.parseInt(args[++i]);
                 case "--eps" -> eps = Double.parseDouble(args[++i]);
+                case "--deflate" -> deflate = true;
                 case "--test" -> test = true;
                 case "--distance" -> distance = true;
                 case "--gramdist" -> gramDist = Integer.parseInt(args[++i]);
@@ -613,9 +615,10 @@ public final class Coocs2vec
         final KeynessScorer scorer = switch (scorerName) {
             case "g2" -> new KeynessScorer.G2();
             case "bm25" -> new KeynessScorer.BM25Alpha(50, 0.75f);
-            case "tfidf" -> new KeynessScorer.TfIdfAlpha();
+            case "fisher" -> new KeynessScorer.FisherAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
+            case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
         scorer.specif(specif);
@@ -636,6 +639,7 @@ public final class Coocs2vec
         String reduction = String.format("d%03d", dims);
         if (weightAxes != 0.5d) reduction += "aw" + number(weightAxes);
         if (eps != SVD_EPS) reduction += "eps" + number(eps);
+        if (deflate) reduction += "defl";
         if (test) reduction += "test";
         String refinement = "";
         if (refine > 0d) {
@@ -729,8 +733,9 @@ public final class Coocs2vec
             final PrimmeSvds.Method method = test
                 ? PrimmeSvds.Method.HYBRID
                 : PrimmeSvds.Method.NORMAL_EQUATIONS;
-            log("decomposing to top %,d singular axes (PRIMME SVDS %s, eps=%.1e)", dims, method, eps);
-            svd.decompose(dims, eps, method);
+            log("decomposing to top %,d singular axes (PRIMME SVDS %s, eps=%.1e%s)",
+                    dims, method, eps, deflate ? ", first axis deflated" : "");
+            svd.decompose(dims, eps, method, deflate);
             if(weightAxes > 0) {
                 log("weighting axes by sigma^%.3f", weightAxes);
                 svd.weightAxes(weightAxes);
