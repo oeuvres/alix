@@ -14,6 +14,7 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
+import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
@@ -54,8 +55,13 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * carries {@code pivotDistance}, its model cosine distance to the nearest
  * pivot;</li>
  * <li>{@code coocs}: for each pair of displayed TopTerms present together in
- * at least one context, the number of those {@code contexts}, most frequent
- * pair first; {@code source} and {@code target} are node ids;</li>
+ * at least one context, the number of those {@code contexts} and the
+ * {@code score} of the pair, highest score first; {@code source} and
+ * {@code target} are node ids. The score is the signed G² of
+ * {@link KeynessScorer.G2} on the 2 x 2 table of the query contexts
+ * (containing the first term or not, containing the second or not):
+ * positive when the two terms are found together more than their own
+ * numbers of contexts let expect, the same from either side;</li>
  * <li>{@code neighbors}: for each pivot, the {@link #NEAREST} words of the
  * whole model most similar to it (see {@link VecModel#nearest(int[], int)}).
  * These words are taken from the model, not from the query contexts: they
@@ -162,8 +168,15 @@ public class OpCompass extends Op
 
     /**
      * Writes the array of the contexts shared by two displayed TopTerms, see
-     * {@link #coocMatrix}: most frequent pair first, pairs never found
-     * together omitted.
+     * {@link #coocMatrix}, with the score of each pair: highest score first,
+     * pairs never found together omitted.
+     *
+     * <p>The score is signed G² at its midpoint specificity. For a pair
+     * (a, b), the corpus is the contexts of the query, the focus the contexts
+     * containing a, the scored term b: counts are contexts, not occurrences.
+     * The 2 x 2 table is the same from the side of b, so one score serves
+     * both terms. A term present in every context has no table and no
+     * score.</p>
      *
      * @param json writer, positioned after the name of the array
      * @param mat context counts by term id, or null for an empty array
@@ -177,30 +190,46 @@ public class OpCompass extends Op
         final List<TermEntry> entries,
         final int[] nodeIds
     ) throws IOException {
-        final List<int[]> pairs = new ArrayList<>();
-        if (mat != null) {
+        record Cooc(int source, int target, int contexts, double score) {}
+        final List<Cooc> coocs = new ArrayList<>();
+        if (mat != null && mat.total() > 0L) {
+            final KeynessScorer scorer = new KeynessScorer.G2();
+            scorer.corpus(mat.total(), (int) mat.total());
             for (int a = 0; a < nodeIds.length; a++) {
                 if (entries.get(a) == null) {
                     continue;
                 }
+                final int idA = entries.get(a).termId();
+                scorer.focus(mat.count(idA, idA), 0d);
                 for (int b = a + 1; b < nodeIds.length; b++) {
                     if (entries.get(b) == null) {
                         continue;
                     }
-                    final int count = mat.count(entries.get(a).termId(), entries.get(b).termId());
-                    if (count > 0) {
-                        pairs.add(new int[] { a, b, count });
+                    final int idB = entries.get(b).termId();
+                    final int contexts = mat.count(idA, idB);
+                    if (contexts > 0) {
+                        coocs.add(new Cooc(
+                            nodeIds[a],
+                            nodeIds[b],
+                            contexts,
+                            scorer.score(contexts, mat.count(idB, idB), 0)));
                     }
                 }
             }
-            pairs.sort((x, y) -> Integer.compare(y[2], x[2]));
+            // NaN, a pair without table, sorts last
+            coocs.sort((x, y) -> Double.compare(
+                Double.isNaN(y.score()) ? Double.NEGATIVE_INFINITY : y.score(),
+                Double.isNaN(x.score()) ? Double.NEGATIVE_INFINITY : x.score()));
         }
         json.beginArray();
-        for (final int[] pair : pairs) {
+        for (final Cooc cooc : coocs) {
             json.beginObject();
-            json.name("source").value(nodeIds[pair[0]]);
-            json.name("target").value(nodeIds[pair[1]]);
-            json.name("contexts").value(pair[2]);
+            json.name("source").value(cooc.source());
+            json.name("target").value(cooc.target());
+            json.name("contexts").value(cooc.contexts());
+            if (!Double.isNaN(cooc.score())) {
+                json.name("score").value(round(cooc.score(), 4));
+            }
             json.endObject();
         }
         json.endArray();
