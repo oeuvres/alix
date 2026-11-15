@@ -37,59 +37,35 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * including query pivots in the fit. The request parameter {@code plane=local}
  * instead fits the PCA plane to the {@link #NEIGHBORS} model words nearest to
  * the query pivots. Both modes project pivots and TopTerms into their
- * respective planes and use the same JSON node format.</p>
+ * respective planes and use the same JSON node format.
+ * {@code layout=pca|mds|centred} selects the layout (default {@code pca};
+ * the former {@code mds=true} still selects {@code mds}).</p>
  *
- * <p>{@code layout=pca|mds|centred} selects the layout (default {@code pca};
- * the former {@code mds=true} still selects {@code mds}).
- * {@code linkmode=mix|mutual|nearest|tree|directed|none} selects the lines
- * drawn between nodes (default {@code mix}), and {@code links} their number
- * per node, 0 or more (default {@link #LINKS_PER_NODE}).</p>
+ * <p>Two sources are kept apart. The model gives positions,
+ * {@code pivotDistance} and {@code neighbors}. The query contexts, the same
+ * contexts as the TopTerms selection, give {@code freq}, {@code contexts} and
+ * {@code coocs}; their number is {@code focusContexts} in the meta.</p>
  *
  * <p>The JSON {@code data} holds:</p>
  * <ul>
  * <li>{@code axes}: the settings of the map;</li>
- * <li>{@code nodes}: pivots, then TopTerms, each with its vector {@code id};
- * a TopTerms node carries {@code pivotDistance}, its model cosine distance to
- * the nearest pivot;</li>
- * <li>{@code links}: {@code source} and {@code target} are node ids;</li>
- * <li>{@code cooc}: counts from the query contexts, the same contexts as the
- * TopTerms selection. {@code contexts} is their number; {@code nodes} gives,
- * for each displayed TopTerms, the number of {@code contexts} containing it;
- * {@code pairs} gives, for each pair of displayed TopTerms present together
- * in at least one context, the number of those {@code contexts}, most
- * frequent pair first. Ids are node ids;</li>
- * <li>{@code neighbors}: for each pivot, then for all pivots together when
- * there are several, the {@link #NEAREST} words of the whole model most
- * similar to it ({@code 1 - mean(cosine)} to the pivots, see
- * {@link VecModel#nearest(int[], int)}). These words are taken from the
- * model, not from the query contexts: they need not be on the map.</li>
+ * <li>{@code nodes}: pivots, then TopTerms, each with its vector {@code id}
+ * and the number of {@code contexts} containing it; a TopTerms node also
+ * carries {@code pivotDistance}, its model cosine distance to the nearest
+ * pivot;</li>
+ * <li>{@code coocs}: for each pair of displayed TopTerms present together in
+ * at least one context, the number of those {@code contexts}, most frequent
+ * pair first; {@code source} and {@code target} are node ids;</li>
+ * <li>{@code neighbors}: for each pivot, the {@link #NEAREST} words of the
+ * whole model most similar to it (see {@link VecModel#nearest(int[], int)}).
+ * These words are taken from the model, not from the query contexts: they
+ * need not be on the map.</li>
  * </ul>
- *
- * <p>{@code linkmode=mix} links each term to its nearest displayed term, with
- * {@code "directed": true} when the choice is not mutual (source to its
- * nearest), then adds mutual-rank pairs up to the budget; all from the word
- * vectors alone. {@code linkmode=directed} is experimental: when the context
- * vectors of the model sit next to it ({@code <name>.ctx} for
- * {@code <name>.bin}), it draws each term to the term it expects most,
- * relative to the other displayed terms (see {@link CompassVec}).</p>
- *
- * <p>With {@code linkmode=mix} or {@code linkmode=directed}, pivot links are
- * added: the TopTerms with the highest share of their corpus occurrences
- * inside the query contexts ({@code freq / fieldFreq}), each linked to its
- * nearest pivot, marked {@code "pivot": true} with its {@code "share"}; their
- * number per node is {@link #PIVOT_LINKS_PER_NODE}, never more than
- * {@code links}. A link already drawn between the same two terms is not
- * repeated.</p>
  */
 public class OpCompass extends Op
 {
     /** Property for the directory of models */
     private static final String ALIX_MODELS_ROOT = "alix.models.root";
-    /**
-     * Default of the {@code links} parameter, links per node: a readability
-     * choice, not derived from the model.
-     */
-    private static final double LINKS_PER_NODE = 1.5d;
     /** Similar words listed for each query word, a display choice. */
     private static final int NEAREST = 10;
     /**
@@ -98,8 +74,6 @@ public class OpCompass extends Op
      * displayed. Unused with the default keyword plane.
      */
     private static final int NEIGHBORS = 300;
-    /** Pivot links per displayed node, a display choice: about 8 for 50 nodes. */
-    private static final double PIVOT_LINKS_PER_NODE = 0.15d;
 
     /** Vector model used by the current experiment. */
     private static String modelDefault;
@@ -124,29 +98,6 @@ public class OpCompass extends Op
         response.setStatus(400);
         meta.log(message);
         AlixServlet.jsonError(request, response);
-    }
-
-    /**
-     * Returns the context vector of each displayed term.
-     *
-     * @param contexts context vectors of the model
-     * @param points displayed terms
-     * @return one vector per term, null for a term without context vector
-     */
-    private static double[][] contextVectors(
-        final VecModel contexts,
-        final List<CompassVec.Point> points
-    ) {
-        final double[][] vectors = new double[points.size()][];
-        for (int node = 0; node < vectors.length; node++) {
-            final int id = contexts.id(points.get(node).form());
-            if (id < 0) {
-                continue;
-            }
-            vectors[node] = new double[contexts.dim()];
-            contexts.get(id, vectors[node]);
-        }
-        return vectors;
     }
 
     /**
@@ -210,14 +161,12 @@ public class OpCompass extends Op
     }
 
     /**
-     * Writes the object of context counts, see {@link #coocMatrix}: the
-     * number of {@code contexts}, the contexts of each displayed TopTerms in
-     * {@code nodes}, and in {@code pairs} the contexts shared by two
-     * displayed TopTerms, most frequent pair first, pairs never found
+     * Writes the array of the contexts shared by two displayed TopTerms, see
+     * {@link #coocMatrix}: most frequent pair first, pairs never found
      * together omitted.
      *
-     * @param json writer, positioned after the name of the object
-     * @param mat context counts by term id
+     * @param json writer, positioned after the name of the array
+     * @param mat context counts by term id, or null for an empty array
      * @param entries TopTerms entry of each displayed term, null for a pivot
      * @param nodeIds vector ids of the displayed terms, aligned with entries
      * @throws IOException if response writing fails
@@ -229,38 +178,23 @@ public class OpCompass extends Op
         final int[] nodeIds
     ) throws IOException {
         final List<int[]> pairs = new ArrayList<>();
-        for (int a = 0; a < nodeIds.length; a++) {
-            if (entries.get(a) == null) {
-                continue;
-            }
-            for (int b = a + 1; b < nodeIds.length; b++) {
-                if (entries.get(b) == null) {
+        if (mat != null) {
+            for (int a = 0; a < nodeIds.length; a++) {
+                if (entries.get(a) == null) {
                     continue;
                 }
-                final int count = mat.count(entries.get(a).termId(), entries.get(b).termId());
-                if (count > 0) {
-                    pairs.add(new int[] { a, b, count });
+                for (int b = a + 1; b < nodeIds.length; b++) {
+                    if (entries.get(b) == null) {
+                        continue;
+                    }
+                    final int count = mat.count(entries.get(a).termId(), entries.get(b).termId());
+                    if (count > 0) {
+                        pairs.add(new int[] { a, b, count });
+                    }
                 }
             }
+            pairs.sort((x, y) -> Integer.compare(y[2], x[2]));
         }
-        pairs.sort((x, y) -> Integer.compare(y[2], x[2]));
-
-        json.beginObject();
-        json.name("contexts").value(mat.total());
-        json.name("nodes");
-        json.beginArray();
-        for (int node = 0; node < nodeIds.length; node++) {
-            final TermEntry term = entries.get(node);
-            if (term == null) {
-                continue;
-            }
-            json.beginObject();
-            json.name("id").value(nodeIds[node]);
-            json.name("contexts").value(mat.count(term.termId(), term.termId()));
-            json.endObject();
-        }
-        json.endArray();
-        json.name("pairs");
         json.beginArray();
         for (final int[] pair : pairs) {
             json.beginObject();
@@ -270,13 +204,12 @@ public class OpCompass extends Op
             json.endObject();
         }
         json.endArray();
-        json.endObject();
     }
 
     /**
-     * Writes query pivots and TopTerms in the selected plane, their links,
-     * the context counts of the displayed terms, and the model words most
-     * similar to the query.
+     * Writes query pivots and TopTerms in the selected plane, the contexts
+     * shared by displayed terms, and the model words most similar to each
+     * query word.
      *
      * @param lucene Lucene index
      * @param request HTTP request
@@ -336,36 +269,6 @@ public class OpCompass extends Op
             return;
         }
 
-        final String linksName = pars.getString("linkmode", "mix");
-        final CompassVec.LinkMode linkMode;
-        switch (linksName) {
-            case "mutual" -> linkMode = CompassVec.LinkMode.MUTUAL_RANK;
-            case "nearest" -> linkMode = CompassVec.LinkMode.NEAREST;
-            case "tree" -> linkMode = CompassVec.LinkMode.TREE;
-            case "mix" -> linkMode = CompassVec.LinkMode.MIX;
-            case "directed" -> linkMode = CompassVec.LinkMode.DIRECTED;
-            case "none" -> linkMode = null;
-            default -> {
-                badRequest(request, response, meta, "[unknown linkmode: " + linksName + "]");
-                return;
-            }
-        }
-
-        double linksPerNode = LINKS_PER_NODE;
-        final String linksValue = pars.getString("links", null);
-        if (linksValue != null && !linksValue.isBlank()) {
-            try {
-                linksPerNode = Double.parseDouble(linksValue.trim());
-            }
-            catch (final NumberFormatException e) {
-                linksPerNode = Double.NaN;
-            }
-            if (!(linksPerNode >= 0d) || Double.isInfinite(linksPerNode)) {
-                badRequest(request, response, meta, "[links must be a number >= 0: " + linksValue + "]");
-                return;
-            }
-        }
-
         final CompassVec compass;
         if (keywords) {
             final List<Integer> keywordIds = new ArrayList<>();
@@ -407,30 +310,6 @@ public class OpCompass extends Op
             nodeIds[node] = points.get(node).id();
         }
 
-        final Path contextsPath = modelsRoot.resolve(modelName.replaceFirst("\\.bin$", "") + ".ctx");
-        final double[][] nodeContexts =
-            linkMode == CompassVec.LinkMode.DIRECTED && Files.isRegularFile(contextsPath)
-                ? contextVectors(VecModel.get(contextsPath), points)
-                : null;
-        final List<CompassVec.Link> links = linkMode == null
-            ? List.of()
-            : compass.links(
-                nodeIds,
-                (int) Math.round(linksPerNode * nodeIds.length),
-                linkMode,
-                nodeContexts);
-
-        final double[] shares = new double[nodeIds.length];
-        final List<CompassVec.Link> pivotLinks =
-            linkMode == CompassVec.LinkMode.MIX || linkMode == CompassVec.LinkMode.DIRECTED
-                ? pivotLinks(
-                    compass,
-                    nodeIds,
-                    entries,
-                    shares,
-                    (int) Math.round(Math.min(PIVOT_LINKS_PER_NODE, linksPerNode) * nodeIds.length),
-                    links)
-                : List.of();
         final double[] pivotDistances = compass.pivotDistances(nodeIds, pivotIds);
         final IntMatrixById coocMatrix = coocMatrix(lucene, pars, meta, entries);
 
@@ -449,12 +328,7 @@ public class OpCompass extends Op
             json.name("unit").value(layout == CompassVec.Layout.PCA ? "vector-projection" : "model-distance");
             json.name("plane").value(keywords ? "keywords" : "local");
             json.name("layout").value(layoutName);
-            json.name("linkmode").value(linksName);
-            json.name("links").value(linksPerNode);
-            json.name("directed").value(nodeContexts != null);
             json.name("reference").value(compass.referenceCount());
-            json.name("xCenter").value(round(compass.xCenter(), 4));
-            json.name("yCenter").value(round(compass.yCenter(), 4));
             json.endObject();
 
             json.name("nodes");
@@ -469,10 +343,13 @@ public class OpCompass extends Op
                 json.name("y").value(round(point.y(), 4));
                 json.name("quality").value(round(point.quality(), 4));
                 if (term == null) {
+                    // pivots are the first nodes, in the order of the list
                     json.name("type").value("pivot");
+                    json.name("contexts").value(pivots.get(node).contexts());
                 }
                 else {
                     json.name("freq").value(term.freq());
+                    json.name("contexts").value(term.contexts());
                     json.name("score").value(round(term.score(), 4));
                     json.name("pivotDistance").value(round(pivotDistances[node], 4));
                 }
@@ -480,39 +357,8 @@ public class OpCompass extends Op
             }
             json.endArray();
 
-            json.name("links");
-            json.beginArray();
-            for (final CompassVec.Link link : links) {
-                json.beginObject();
-                json.name("source").value(link.source());
-                json.name("target").value(link.target());
-                json.name("distance").value(round(link.distance(), 4));
-                if (link.directed()) {
-                    json.name("directed").value(true);
-                }
-                json.endObject();
-            }
-            for (final CompassVec.Link link : pivotLinks) {
-                json.beginObject();
-                json.name("source").value(link.source());
-                json.name("target").value(link.target());
-                json.name("distance").value(round(link.distance(), 4));
-                json.name("directed").value(true);
-                json.name("pivot").value(true);
-                for (int node = 0; node < nodeIds.length; node++) {
-                    if (nodeIds[node] == link.source()) {
-                        json.name("share").value(round(shares[node], 4));
-                        break;
-                    }
-                }
-                json.endObject();
-            }
-            json.endArray();
-
-            if (coocMatrix != null) {
-                json.name("cooc");
-                coocs(json, coocMatrix, entries, nodeIds);
-            }
+            json.name("coocs");
+            coocs(json, coocMatrix, entries, nodeIds);
 
             json.name("neighbors");
             neighbors(json, model, pivotIds);
@@ -554,43 +400,27 @@ public class OpCompass extends Op
     }
 
     /**
-     * Writes the array of the model words most similar to the query: one
-     * entry per pivot, then one for all pivots together when there are
-     * several. An entry has the {@code form} of its pivots, separated by
-     * spaces, and its {@code terms}, most similar first, each with its
-     * {@code form} and {@code distance}.
+     * Writes the array of the model words most similar to each query pivot:
+     * one entry per pivot, with its {@code form} and its {@code terms}, most
+     * similar first, each with its {@code form} and {@code distance}.
      *
      * @param json writer, positioned after the name of the array
      * @param model vector model
      * @param pivotIds vector ids of the query pivots
      * @throws IOException if response writing fails
      */
-    private void neighbors(
+    private static void neighbors(
         final JsonWriter json,
         final VecModel model,
         final int[] pivotIds
     ) throws IOException {
-        final List<int[]> queries = new ArrayList<>();
-        for (final int pivotId : pivotIds) {
-            queries.add(new int[] { pivotId });
-        }
-        if (pivotIds.length > 1) {
-            queries.add(pivotIds);
-        }
         json.beginArray();
-        for (final int[] query : queries) {
-            final StringBuilder form = new StringBuilder();
-            for (final int id : query) {
-                if (!form.isEmpty()) {
-                    form.append(' ');
-                }
-                form.append(model.word(id));
-            }
+        for (final int pivotId : pivotIds) {
             json.beginObject();
-            json.name("form").value(form.toString());
+            json.name("form").value(model.word(pivotId));
             json.name("terms");
             json.beginArray();
-            for (final VecModel.Neighbor neighbor : model.nearest(query, NEAREST)) {
+            for (final VecModel.Neighbor neighbor : model.nearest(new int[] { pivotId }, NEAREST)) {
                 json.beginObject();
                 json.name("form").value(neighbor.word());
                 json.name("distance").value(round(neighbor.distance(), 4));
@@ -600,51 +430,5 @@ public class OpCompass extends Op
             json.endObject();
         }
         json.endArray();
-    }
-
-    /**
-     * Computes the share of each displayed term, the part of its corpus
-     * occurrences inside the query contexts, and returns the pivot links not
-     * already drawn between the same two terms.
-     *
-     * @param compass compass of the map
-     * @param nodeIds vector ids of the displayed terms
-     * @param entries TopTerms entry of each displayed term, null for a pivot
-     * @param shares filled with the share of each displayed term, 0 for a pivot
-     * @param limit maximum number of pivot links
-     * @param links links already drawn
-     * @return pivot links, highest share first
-     */
-    private static List<CompassVec.Link> pivotLinks(
-        final CompassVec compass,
-        final int[] nodeIds,
-        final List<TermEntry> entries,
-        final double[] shares,
-        final int limit,
-        final List<CompassVec.Link> links
-    ) {
-        final boolean[] isPivot = new boolean[nodeIds.length];
-        for (int node = 0; node < nodeIds.length; node++) {
-            final TermEntry term = entries.get(node);
-            isPivot[node] = term == null;
-            shares[node] = term == null || term.fieldFreq() == 0L
-                ? 0d
-                : (double) term.freq() / term.fieldFreq();
-        }
-        final List<CompassVec.Link> pivotLinks = new ArrayList<>();
-        for (final CompassVec.Link link : compass.pivotLinks(nodeIds, isPivot, shares, limit)) {
-            boolean drawn = false;
-            for (final CompassVec.Link other : links) {
-                if ((other.source() == link.source() && other.target() == link.target())
-                    || (other.source() == link.target() && other.target() == link.source())) {
-                    drawn = true;
-                    break;
-                }
-            }
-            if (!drawn) {
-                pivotLinks.add(link);
-            }
-        }
-        return pivotLinks;
     }
 }
