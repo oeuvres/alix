@@ -47,9 +47,10 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  *
  * <h2>Counting model</h2>
  * <p>
- * One context is one snippet window. Each occurrence pair is counted exactly
- * once. If a row term occurs {@code r} times and a different column term occurs
- * {@code c} times in a window, their cell receives {@code r * c}.
+ * One context is one snippet window. With {@link Counting#OCCURRENCES}, the
+ * default, each occurrence pair is counted exactly once. If a row term occurs
+ * {@code r} times and a different column term occurs {@code c} times in a
+ * window, their cell receives {@code r * c}.
  * Self-pairs are excluded by term id, not by rank: row and column ranks are
  * unrelated in a rectangular matrix.
  * </p>
@@ -60,6 +61,16 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  * that equal row and column ranks denote the same term. Callers performing
  * residual analysis must treat identity cells as structural cells and exclude
  * them from the co-occurrence model.
+ * </p>
+ *
+ * <p>
+ * With {@link Counting#CONTEXTS}, a cell counts the contexts in which the row
+ * term and the column term are both present, once per context whatever their
+ * numbers of occurrences. The identity cell of an id present on both axes then
+ * stores the number of contexts containing the term, the same count as
+ * {@code TopTerms.Population#termContexts()} for an identical walk, and
+ * {@link IntMatrixById#total()} is the number of contexts. Textual order has
+ * no meaning for presence: this counting is undirected only.
  * </p>
  *
  * <h2>Direction</h2>
@@ -84,6 +95,18 @@ import com.github.oeuvres.alix.util.IntMatrixById;
  */
 public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
 {
+    /** What a cell counts for a pair of terms. */
+    public enum Counting
+    {
+        /** Contexts in which both terms are present, once per context. */
+        CONTEXTS,
+        /** Occurrence pairs, {@code r * c} per context. */
+        OCCURRENCES
+    }
+
+    /** What a cell counts. */
+    private final Counting counting;
+
     /** Whether a cell counts only row-before-column occurrence pairs. */
     private final boolean directed;
 
@@ -112,7 +135,8 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
     private final IntList touchedRows = new IntList();
 
     /**
-     * Constructs a rectangular co-occurrence-matrix listener.
+     * Constructs a rectangular co-occurrence-matrix listener counting
+     * occurrence pairs.
      *
      * @param mat target matrix; both axes must use the rail term-id space
      * @param rail positional rail for the same indexed field
@@ -129,11 +153,42 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
         final int right,
         final boolean directed
     ) {
+        this(mat, rail, left, right, directed, Counting.OCCURRENCES);
+    }
+
+    /**
+     * Constructs a rectangular co-occurrence-matrix listener.
+     *
+     * @param mat target matrix; both axes must use the rail term-id space
+     * @param rail positional rail for the same indexed field
+     * @param left context width to the left, in positions
+     * @param right context width to the right, in positions
+     * @param directed {@code true} for row-before-column counts
+     * @param counting what a cell counts
+     * @throws IllegalArgumentException if {@code left} or {@code right} is
+     *         negative, or if {@code directed} is asked with
+     *         {@link Counting#CONTEXTS}
+     * @throws NullPointerException if {@code mat}, {@code rail} or
+     *         {@code counting} is {@code null}
+     */
+    public CoocMatSnippets(
+        final IntMatrixById mat,
+        final TermRail rail,
+        final int left,
+        final int right,
+        final boolean directed,
+        final Counting counting
+    ) {
         this.mat = Objects.requireNonNull(mat, "mat");
         this.rail = Objects.requireNonNull(rail, "rail");
+        this.counting = Objects.requireNonNull(counting, "counting");
         if (left < 0 || right < 0) {
             throw new IllegalArgumentException(
                 "left and right must be >= 0; got left=" + left + ", right=" + right);
+        }
+        if (directed && counting == Counting.CONTEXTS) {
+            throw new IllegalArgumentException(
+                "Counting.CONTEXTS is undirected: presence in a context has no textual order");
         }
         this.left = left;
         this.right = right;
@@ -149,7 +204,9 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
      * The callback order is textual order. A current column occurrence is paired
      * with preceding row occurrences. In undirected mode, a current row occurrence
      * is additionally paired with preceding column occurrences. These two cases
-     * are disjoint occurrence pairs, so no cell is counted twice.
+     * are disjoint occurrence pairs, so no cell is counted twice. With
+     * {@link Counting#CONTEXTS} the occurrence is only recorded; pairs are
+     * counted when the window is complete.
      * </p>
      *
      * @param termId dense term id read from the rail
@@ -160,11 +217,13 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
         final int rowRank = mat.rowRank(termId);
         final int colRank = mat.colRank(termId);
 
-        if (colRank >= 0) {
-            addPrecedingRows(termId, colRank);
-        }
-        if (!directed && rowRank >= 0) {
-            addPrecedingCols(termId, rowRank);
+        if (counting == Counting.OCCURRENCES) {
+            if (colRank >= 0) {
+                addPrecedingRows(termId, colRank);
+            }
+            if (!directed && rowRank >= 0) {
+                addPrecedingCols(termId, rowRank);
+            }
         }
 
         if (rowRank >= 0) {
@@ -204,9 +263,36 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
             touchedCols.clear();
             rail.scanWindow(docId, start - left, end + right, this);
 
+            if (counting == Counting.CONTEXTS) {
+                addContextPairs();
+            }
             addIdentityMarginals();
             clearWindow();
             mat.incTotal();
+        }
+    }
+
+    /**
+     * Adds one to the cell of every row term and different column term both
+     * present in the completed window. Used only for
+     * {@link Counting#CONTEXTS}.
+     */
+    private void addContextPairs()
+    {
+        final int rowSize = touchedRows.size();
+        final int[] rowRanks = touchedRows.data();
+        final int colSize = touchedCols.size();
+        final int[] colRanks = touchedCols.data();
+        for (int i = 0; i < rowSize; i++) {
+            final int rowRank = rowRanks[i];
+            final int rowId = mat.rowId(rowRank);
+            for (int j = 0; j < colSize; j++) {
+                final int colRank = colRanks[j];
+                if (mat.colId(colRank) == rowId) {
+                    continue;
+                }
+                mat.incByRank(rowRank, colRank);
+            }
         }
     }
 
@@ -255,8 +341,9 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
     }
 
     /**
-     * Stores row-term occurrence marginals in identity cells where the same term
-     * id belongs to the column axis.
+     * Stores row-term marginals in identity cells where the same term id
+     * belongs to the column axis: occurrences in the window, or one for the
+     * window with {@link Counting#CONTEXTS}.
      */
     private void addIdentityMarginals()
     {
@@ -266,7 +353,10 @@ public final class CoocMatSnippets implements SnippetsConsumer, IntConsumer
             final int rowRank = ranks[i];
             final int colRank = mat.colRank(mat.rowId(rowRank));
             if (colRank >= 0) {
-                mat.incByRank(rowRank, colRank, seenRowCount[rowRank]);
+                mat.incByRank(
+                    rowRank,
+                    colRank,
+                    counting == Counting.CONTEXTS ? 1 : seenRowCount[rowRank]);
             }
         }
     }

@@ -6,12 +6,20 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.search.Query;
+
 import com.github.oeuvres.alix.lucene.LuceneIndex;
+import com.github.oeuvres.alix.lucene.fluc.FlucText;
+import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
+import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
+import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
 import com.github.oeuvres.alix.util.Dir;
+import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 
@@ -20,8 +28,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import static com.github.oeuvres.alix.web.Pars.ALIX_META;
-import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
+import static com.github.oeuvres.alix.web.Pars.*;
 
 /**
  * Produces a two-dimensional map of the {@link TopTerms} selected for a query.
@@ -45,6 +52,12 @@ import static com.github.oeuvres.alix.web.Pars.ALIX_PARS;
  * a TopTerms node carries {@code pivotDistance}, its model cosine distance to
  * the nearest pivot;</li>
  * <li>{@code links}: {@code source} and {@code target} are node ids;</li>
+ * <li>{@code cooc}: counts from the query contexts, the same contexts as the
+ * TopTerms selection. {@code contexts} is their number; {@code nodes} gives,
+ * for each displayed TopTerms, the number of {@code contexts} containing it;
+ * {@code pairs} gives, for each pair of displayed TopTerms present together
+ * in at least one context, the number of those {@code contexts}, most
+ * frequent pair first. Ids are node ids;</li>
  * <li>{@code neighbors}: for each pivot, then for all pivots together when
  * there are several, the {@link #NEAREST} words of the whole model most
  * similar to it ({@code 1 - mean(cosine)} to the pivots, see
@@ -78,7 +91,7 @@ public class OpCompass extends Op
      */
     private static final double LINKS_PER_NODE = 1.5d;
     /** Similar words listed for each query word, a display choice. */
-    private static final int NEAREST = 20;
+    private static final int NEAREST = 10;
     /**
      * Number of model words nearest to the query pivots that define the PCA
      * plane with {@code plane=local}. They fit the plane and are not
@@ -137,8 +150,133 @@ public class OpCompass extends Op
     }
 
     /**
+     * Counts, for the displayed TopTerms, the query contexts in which each
+     * term and each pair of terms are present. This is a second walk of the
+     * contexts walked by {@link OpTerms#topTerms}, with the same query,
+     * filter and margins, read from the same parameters.
+     *
+     * @param lucene Lucene index
+     * @param pars resolved parameters
+     * @param meta meta of the request
+     * @param entries TopTerms entry of each displayed term, null for a pivot
+     * @return square matrix by term id: a cell is the number of contexts
+     *         containing both terms, an identity cell the number of contexts
+     *         containing the term, the total the number of contexts; null
+     *         without a span query or with fewer than two terms
+     * @throws IOException if index access fails
+     */
+    private static IntMatrixById coocMatrix(
+        final LuceneIndex lucene,
+        final HttpPars pars,
+        final MetaUtil meta,
+        final List<TermEntry> entries
+    ) throws IOException {
+        final List<Integer> termIds = new ArrayList<>();
+        for (final TermEntry term : entries) {
+            if (term != null) {
+                termIds.add(term.termId());
+            }
+        }
+        if (termIds.size() < 2) {
+            return null;
+        }
+        final FlucText contentFluc = contentFluc(lucene, pars, meta);
+        final SpanQuery spanQuery = spanQuery(lucene, pars, meta);
+        if (contentFluc == null || spanQuery == null) {
+            return null;
+        }
+        final Query filterQuery = filterQuery(lucene, pars, meta);
+        // same as in OpTerms.topTerms
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+        final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
+        final int right = pars.getInt(RIGHT, RIGHT_RANGE, slop);
+
+        final int[] ids = termIds.stream().mapToInt(Integer::intValue).toArray();
+        final IntMatrixById mat = new IntMatrixById(ids, ids, null);
+        final SpanWalker walker = new SpanWalker(
+            lucene.searcher(),
+            spanQuery,
+            new DocSnippets(DocSnippets.Usage.POSITIONS, slop),
+            filterQuery
+        );
+        walker.walk(new CoocMatSnippets(
+            mat,
+            contentFluc.termRail(),
+            left,
+            right,
+            false,
+            CoocMatSnippets.Counting.CONTEXTS));
+        return mat;
+    }
+
+    /**
+     * Writes the object of context counts, see {@link #coocMatrix}: the
+     * number of {@code contexts}, the contexts of each displayed TopTerms in
+     * {@code nodes}, and in {@code pairs} the contexts shared by two
+     * displayed TopTerms, most frequent pair first, pairs never found
+     * together omitted.
+     *
+     * @param json writer, positioned after the name of the object
+     * @param mat context counts by term id
+     * @param entries TopTerms entry of each displayed term, null for a pivot
+     * @param nodeIds vector ids of the displayed terms, aligned with entries
+     * @throws IOException if response writing fails
+     */
+    private static void coocs(
+        final JsonWriter json,
+        final IntMatrixById mat,
+        final List<TermEntry> entries,
+        final int[] nodeIds
+    ) throws IOException {
+        final List<int[]> pairs = new ArrayList<>();
+        for (int a = 0; a < nodeIds.length; a++) {
+            if (entries.get(a) == null) {
+                continue;
+            }
+            for (int b = a + 1; b < nodeIds.length; b++) {
+                if (entries.get(b) == null) {
+                    continue;
+                }
+                final int count = mat.count(entries.get(a).termId(), entries.get(b).termId());
+                if (count > 0) {
+                    pairs.add(new int[] { a, b, count });
+                }
+            }
+        }
+        pairs.sort((x, y) -> Integer.compare(y[2], x[2]));
+
+        json.beginObject();
+        json.name("contexts").value(mat.total());
+        json.name("nodes");
+        json.beginArray();
+        for (int node = 0; node < nodeIds.length; node++) {
+            final TermEntry term = entries.get(node);
+            if (term == null) {
+                continue;
+            }
+            json.beginObject();
+            json.name("id").value(nodeIds[node]);
+            json.name("contexts").value(mat.count(term.termId(), term.termId()));
+            json.endObject();
+        }
+        json.endArray();
+        json.name("pairs");
+        json.beginArray();
+        for (final int[] pair : pairs) {
+            json.beginObject();
+            json.name("source").value(nodeIds[pair[0]]);
+            json.name("target").value(nodeIds[pair[1]]);
+            json.name("contexts").value(pair[2]);
+            json.endObject();
+        }
+        json.endArray();
+        json.endObject();
+    }
+
+    /**
      * Writes query pivots and TopTerms in the selected plane, their links,
-     * and the model words most similar to the query.
+     * the context counts of the displayed terms, and the model words most
+     * similar to the query.
      *
      * @param lucene Lucene index
      * @param request HTTP request
@@ -294,6 +432,7 @@ public class OpCompass extends Op
                     links)
                 : List.of();
         final double[] pivotDistances = compass.pivotDistances(nodeIds, pivotIds);
+        final IntMatrixById coocMatrix = coocMatrix(lucene, pars, meta, entries);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");
@@ -369,6 +508,11 @@ public class OpCompass extends Op
                 json.endObject();
             }
             json.endArray();
+
+            if (coocMatrix != null) {
+                json.name("cooc");
+                coocs(json, coocMatrix, entries, nodeIds);
+            }
 
             json.name("neighbors");
             neighbors(json, model, pivotIds);
