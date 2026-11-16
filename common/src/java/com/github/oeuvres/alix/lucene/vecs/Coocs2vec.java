@@ -57,7 +57,7 @@ import us.ascendtech.primme.PrimmeSvds;
  * <i>le sujet</i>, <i>il le</i>).</p>
  *
  * <p>{@code --distance} weights each positional pair by its distance d
- * instead of counting it 1, and replaces the gram distance. Each word gets a
+ * instead of counting it 1. Each word gets a
  * reach that grows with its idf, {@code max(1, window * idf / ln N)}, N being
  * the number of documents; a pair's reach R is the shorter of its two words'
  * reaches; the pair counts 1 for {@code d <= R}, then {@code R / d},
@@ -658,8 +658,7 @@ public final class Coocs2vec
             final int termCount;
             InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
             final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
-            final boolean stopwords = !distance
-                && (gramDist > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
+            final boolean stopwords = (gramDist > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
             if (stopwords) {
                 counting += "gram" + gramDist;
                 log("gram distance: pairs with a stopword counted only within +/-%d", gramDist);
@@ -1124,7 +1123,7 @@ public final class Coocs2vec
      * @param reach reach of each selected row, or null for unweighted counts
      * @param bounds inclusive upper distance of each band, or null without bands
      * @param gramDist maximum distance of a pair with a stopword, 0 to count
-     *        every pair up to the window (always 0 with distance weighting)
+     *        every pair up to the window
      * @return selected forms and their sparse raw cooccurrence table
      */
     private static Table coocTable(
@@ -1137,8 +1136,7 @@ public final class Coocs2vec
         final int gramDist
     ) {
         final BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
-        final boolean hasStopwords = gramDist > 0 && reach == null
-            && stopwords != null && !stopwords.isEmpty();
+        final boolean hasStopwords = gramDist > 0 && stopwords != null && !stopwords.isEmpty();
 
         final int termCount = selected.length;
         final String[] words = new String[termCount];
@@ -1204,6 +1202,9 @@ public final class Coocs2vec
                         final int d = next - position;
                         final double r = Math.min(reach[row], reach[col]);
                         final double weight = d <= r ? 1d : r / d;
+                        if (hasStopwords && d > gramDist && (rowIsStop[row] || rowIsStop[col])) {
+                            continue;
+                        }
                         bump(counts, row, col, weight, 0);
                         weightSum += weight;
                         pairs++;

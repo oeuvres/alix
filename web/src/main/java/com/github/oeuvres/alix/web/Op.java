@@ -1,6 +1,9 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -13,6 +16,7 @@ import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,6 +29,8 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser.ParseResult;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
+import com.github.oeuvres.alix.lucene.vecs.VecModel;
+import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.util.fr.FrenchCliticTokenizer;
 import com.github.oeuvres.alix.web.util.HttpPars;
 
@@ -79,6 +85,10 @@ import static com.github.oeuvres.alix.common.Names.*;
 public abstract class Op
 {
     protected static final Logger LOG = Logger.getLogger(Op.class.getName());
+    /** Context attribute: file name of the default vector model, set by {@link #modelsRoot}. */
+    static final String ALIX_MODEL_DEFAULT = "alix.model.default";
+    /** Init parameter, then context attribute: directory of the vector models. */
+    static final String ALIX_MODELS_ROOT = "alix.models.root";
 
     /**
      * Dispatches a request to the format method matching the requested
@@ -576,7 +586,77 @@ public abstract class Op
         if (s.indexOf(',') < 0 && s.indexOf(';') < 0 && s.indexOf('"') < 0 && s.indexOf('\n') < 0 && s.indexOf('\r') < 0) return s;
         return '"' + s.replace("\"", "\"\"") + '"';
     }
-    
+
+    /**
+     * Resolves the {@code model} parameter to a model file of the models
+     * root, the first {@code *.bin} of the root by default. The value is a
+     * file name: a path leaving the root is refused like an unknown model.
+     *
+     * @param request HTTP request
+     * @param pars resolved parameters
+     * @param meta meta of the request
+     * @return the model file, or {@code null} with status 404 and the reason
+     *         logged in the meta; the caller writes the error document
+     * @throws IOException if the models root is not a directory or holds no model
+     * @throws ServletException if the models root is not configured
+     */
+    static Path modelPath(
+        final HttpServletRequest request,
+        final HttpPars pars,
+        final MetaUtil meta
+    ) throws IOException, ServletException {
+        final Path root = modelsRoot(request);
+        final String fallback = (String) request.getServletContext().getAttribute(ALIX_MODEL_DEFAULT);
+        final String name = pars.getString("model", fallback);
+        Path path = null;
+        try {
+            path = root.resolve(name).normalize();
+        }
+        catch (InvalidPathException e) {
+            // answered below as a model not found
+        }
+        if (path == null || !root.equals(path.getParent()) || !Files.isRegularFile(path)) {
+            pars.response().setStatus(404);
+            meta.log("[vector model not found: " + name + "]");
+            return null;
+        }
+        return path;
+    }
+
+    /**
+     * Returns the configured models root directory. The first call checks the
+     * directory and records its first {@code *.bin} as the default model, in
+     * the servlet context.
+     *
+     * @param request HTTP request
+     * @return models root directory
+     * @throws IOException if the parameter does not designate a directory, or
+     *         the directory holds no model
+     * @throws ServletException if the parameter is missing
+     */
+    static Path modelsRoot(final HttpServletRequest request) throws IOException, ServletException
+    {
+        final ServletContext context = request.getServletContext();
+
+        final Object cached = context.getAttribute(ALIX_MODELS_ROOT);
+        if (cached instanceof Path path) {
+            return path;
+        }
+        final String value = HttpPars.requiresInitParameter(context, ALIX_MODELS_ROOT);
+        final Path path = Path.of(value).toAbsolutePath().normalize();
+        if (!Files.isDirectory(path)) {
+            throw new IOException(ALIX_MODELS_ROOT + " is not a directory: " + path);
+        }
+        final Path model = Dir.firstFile(path, "*.bin");
+        if (model == null) {
+            throw new IOException(ALIX_MODELS_ROOT + ": no model *.bin found");
+        }
+        // the default before the root: a request finding the root finds the default
+        context.setAttribute(ALIX_MODEL_DEFAULT, model.getFileName().toString());
+        context.setAttribute(ALIX_MODELS_ROOT, path);
+        return path;
+    }
+
     /**
      * Rounds to {@code decimals} fractional digits, to keep serialised
      * numbers short.
@@ -588,5 +668,24 @@ public abstract class Op
     static double round(final double v, final int decimals) {
         final double f = Math.pow(10, decimals);
         return Math.round(v * f) / f;
+    }
+
+    /**
+     * Loads a vector model, cached by {@link VecModel#get(Path)}, and
+     * describes it in the meta: {@code model}, {@code model dim},
+     * {@code model words}.
+     *
+     * @param modelPath model file, see {@link #modelPath}
+     * @param meta meta of the request
+     * @return the model
+     * @throws IOException if the model cannot be loaded
+     */
+    static VecModel vecModel(final Path modelPath, final MetaUtil meta) throws IOException
+    {
+        final VecModel model = VecModel.get(modelPath);
+        meta.put("model", modelPath.getFileName().toString());
+        meta.put("model dim", model.dim());
+        meta.put("model words", model.size());
+        return model;
     }
 }

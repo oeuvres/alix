@@ -548,6 +548,7 @@ public class AlixServlet extends HttpServlet
         ops.put("cooc-profile", new OpCoocProfile());
         ops.put("doc", new OpDoc());
         ops.put("freqlist", new OpFreqlist());
+        ops.put("neighbors", new OpNeighbors());
         ops.put("results", new OpResults());
         ops.put("snippets", new OpSnippets());
         ops.put("suggest", new OpSuggest());

@@ -1,7 +1,6 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,12 +18,10 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
-import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
 
-import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -70,19 +67,14 @@ import static com.github.oeuvres.alix.web.Pars.*;
  */
 public class OpCompass extends Op
 {
-    /** Property for the directory of models */
-    private static final String ALIX_MODELS_ROOT = "alix.models.root";
     /** Similar words listed for each query word, a display choice. */
-    private static final int NEAREST = 20;
+    private static final int NEAREST = 10;
     /**
      * Number of model words nearest to the query pivots that define the PCA
      * plane with {@code plane=local}. They fit the plane and are not
      * displayed. Unused with the default keyword plane.
      */
     private static final int NEIGHBORS = 300;
-
-    /** Vector model used by the current experiment. */
-    private static String modelDefault;
 
     /**
      * Answers a request that cannot be served: status 400, the reason logged
@@ -259,9 +251,12 @@ public class OpCompass extends Op
             badRequest(request, response, meta, "[no term selection]");
             return;
         }
-        final Path modelsRoot = modelsRoot(request);
-        final String modelName = pars.getString("model", modelDefault);
-        final VecModel model = VecModel.get(modelsRoot.resolve(modelName));
+        final Path modelPath = modelPath(request, pars, meta);
+        if (modelPath == null) {
+            AlixServlet.jsonError(request, response);
+            return;
+        }
+        final VecModel model = vecModel(modelPath, meta);
 
         final List<TopTerms.ExcludedTerm> pivots = new ArrayList<>();
         for (final TopTerms.ExcludedTerm pivot : topTerms.excludedTerms()) {
@@ -395,37 +390,6 @@ public class OpCompass extends Op
             json.endObject();
             json.endObject();
         }
-    }
-
-    /**
-     * Returns the configured models root directory.
-     *
-     * @param request HTTP request
-     * @return models root directory
-     * @throws IOException if the parameter does not designate a directory, or
-     *         the directory holds no model
-     * @throws ServletException if the parameter is missing
-     */
-    private static Path modelsRoot(final HttpServletRequest request) throws IOException, ServletException
-    {
-        final ServletContext context = request.getServletContext();
-
-        final Object cached = context.getAttribute(ALIX_MODELS_ROOT);
-        if (cached instanceof Path path) {
-            return path;
-        }
-        final String value = HttpPars.requiresInitParameter(context, ALIX_MODELS_ROOT);
-        final Path path = Path.of(value).toAbsolutePath().normalize();
-        if (!Files.isDirectory(path)) {
-            throw new IOException(ALIX_MODELS_ROOT + " is not a directory: " + path);
-        }
-        Path model = Dir.firstFile(path, "*.bin");
-        if (model == null) {
-            throw new IOException(ALIX_MODELS_ROOT + ": no model *.bin found");
-        }
-        modelDefault = model.getFileName().toString();
-        context.setAttribute(ALIX_MODELS_ROOT, path);
-        return path;
     }
 
     /**

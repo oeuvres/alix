@@ -15,12 +15,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.stream.IntStream;
 
 /**
  * Immutable in-memory word2vec binary model for cosine comparison.
@@ -37,6 +39,12 @@ import java.util.PriorityQueue;
  * instance may be shared safely by concurrent readers such as servlet request
  * threads. The vocabulary lookup map and coordinate storage are never exposed
  * for mutation.
+ * </p>
+ *
+ * <p>
+ * The neighbourhood densities used by {@link #nearestCsls(int[], int)} are
+ * derived from the coordinates alone. They are computed once, on the first
+ * call, then shared like the rest of the model.
  * </p>
  *
  * <p>
@@ -61,6 +69,13 @@ public final class VecModel
         int id,
         double distance
     ) {}
+    /**
+     * Number of nearest neighbours whose mean cosine gives the neighbourhood
+     * density of a word in {@link #nearestCsls(int[], int)}: the value of
+     * Conneau et al. (2018).
+     */
+    private static final int CSLS_K = 10;
+
     /** Flat row-major {@code size x dim} coordinates, each row L2-normalised. */
     private final float[] dat;
 
@@ -69,6 +84,12 @@ public final class VecModel
 
     /** Dense vector id for each form. */
     private final Map<String, Integer> idByWord;
+
+    /**
+     * Mean cosine of each vector to its {@link #CSLS_K} nearest neighbours,
+     * or null until {@link #knnCosine()} has computed it.
+     */
+    private volatile float[] knnCosine;
 
     /** Term forms in vector-id order. */
     private final String[] words;
@@ -423,6 +444,119 @@ public final class VecModel
     }
 
     /**
+     * Returns the closest non-pivot vectors to one or more query pivots,
+     * ranked by cross-domain similarity local scaling (CSLS).
+     *
+     * <pre>
+     * r(w)       = mean cosine of w to its 10 nearest neighbours
+     * csls(p, c) = 2 * cosine(p, c) - r(p) - r(c)
+     * </pre>
+     *
+     * <p>The cosine of a word with few occurrences is low with every other
+     * word, so it is pushed down the list of a frequent pivot, while that
+     * pivot is first in its own list. CSLS subtracts from the cosine the
+     * density of the neighbourhood of each word, and gives the same score
+     * in both directions. With several pivots, the cosine and r(p) are means
+     * over the pivots; r(p) is then the same for every candidate and is left
+     * out of the ranking, which is that of
+     * {@code 2 * mean(cosine) - r(c)}.</p>
+     *
+     * <p>The result is sorted by decreasing CSLS, then by vector id. The
+     * {@link Neighbor#distance()} stays {@code 1 - mean(cosine)}, as in
+     * {@link #nearest(int[], int)}, so it does not always grow down the
+     * list. The first call computes r for every vector, see
+     * {@link #knnCosine()}.</p>
+     *
+     * <p>Conneau, A., Lample, G., Ranzato, M., Denoyer, L. &amp; Jégou, H.
+     * (2018). "Word Translation Without Parallel Data." ICLR 2018.</p>
+     *
+     * @param pivotIds query pivot vector ids
+     * @param limit maximum number of neighbours to return
+     * @return immutable nearest-neighbour list
+     * @throws IllegalArgumentException if no pivot is supplied or limit is less
+     *         than one
+     * @throws IndexOutOfBoundsException if a pivot id is invalid
+     * @throws NullPointerException if {@code pivotIds} is {@code null}
+     */
+    public List<Neighbor> nearestCsls(
+        final int[] pivotIds,
+        final int limit
+    ) {
+        Objects.requireNonNull(pivotIds, "pivotIds");
+        if (pivotIds.length == 0) {
+            throw new IllegalArgumentException("at least one pivot is required");
+        }
+        if (limit < 1) {
+            throw new IllegalArgumentException("limit must be >= 1: " + limit);
+        }
+
+        final boolean[] excluded = new boolean[words.length];
+        int excludedCount = 0;
+        for (final int pivotId : pivotIds) {
+            checkId(pivotId);
+            if (!excluded[pivotId]) {
+                excluded[pivotId] = true;
+                excludedCount++;
+            }
+        }
+
+        final int capacity = Math.min(limit, words.length - excludedCount);
+        if (capacity == 0) {
+            return List.of();
+        }
+
+        final double[] query = new double[dim];
+        for (final int pivotId : pivotIds) {
+            final int base = pivotId * dim;
+            for (int axis = 0; axis < dim; axis++) {
+                query[axis] += dat[base + axis];
+            }
+        }
+        for (int axis = 0; axis < dim; axis++) {
+            query[axis] /= pivotIds.length;
+        }
+
+        final float[] density = knnCosine();
+        final double[] cosines = new double[words.length];
+        final double[] scores = new double[words.length];
+        final Comparator<Integer> order = (a, b) -> {
+            final int cmp = Double.compare(scores[b], scores[a]);
+            return cmp != 0 ? cmp : Integer.compare(a, b);
+        };
+        final PriorityQueue<Integer> heap =
+            new PriorityQueue<>(capacity, order.reversed());
+
+        for (int candidate = 0; candidate < words.length; candidate++) {
+            if (excluded[candidate]) {
+                continue;
+            }
+            final int base = candidate * dim;
+            double cosine = 0d;
+            for (int axis = 0; axis < dim; axis++) {
+                cosine += dat[base + axis] * query[axis];
+            }
+            cosines[candidate] = cosine;
+            scores[candidate] = 2d * cosine - density[candidate];
+
+            if (heap.size() < capacity) {
+                heap.add(candidate);
+            }
+            else if (order.compare(candidate, heap.peek()) < 0) {
+                heap.poll();
+                heap.add(candidate);
+            }
+        }
+
+        final List<Integer> ids = new ArrayList<>(heap);
+        ids.sort(order);
+        final List<Neighbor> result = new ArrayList<>(ids.size());
+        for (final int id : ids) {
+            result.add(new Neighbor(words[id], id, 1d - cosines[id]));
+        }
+        return List.copyOf(result);
+    }
+
+    /**
      * Returns the number of vectors.
      *
      * @return vector count
@@ -593,6 +727,78 @@ public final class VecModel
         }
         final long capacity = (long) Math.ceil(expected / 0.75d);
         return (int) Math.min(capacity, 1L << 30);
+    }
+
+    /**
+     * Returns the mean cosine of each vector to its {@link #CSLS_K} nearest
+     * neighbours, itself excluded, computing it on the first call.
+     *
+     * <p>The computation compares every pair of vectors, in parallel over the
+     * rows. Later calls return the same array; callers must not modify it.</p>
+     *
+     * @return one mean cosine per vector id
+     */
+    private float[] knnCosine()
+    {
+        float[] density = knnCosine;
+        if (density != null) {
+            return density;
+        }
+        synchronized (this) {
+            density = knnCosine;
+            if (density != null) {
+                return density;
+            }
+            final int size = words.length;
+            final int k = Math.min(CSLS_K, size - 1);
+            final float[] computed = new float[size];
+            if (k > 0) {
+                IntStream.range(0, size).parallel().forEach(row -> {
+                    // the k highest cosines of the row, in increasing order
+                    final float[] top = new float[k];
+                    Arrays.fill(top, Float.NEGATIVE_INFINITY);
+                    final int rowBase = row * dim;
+                    for (int other = 0; other < size; other++) {
+                        if (other == row) {
+                            continue;
+                        }
+                        final int otherBase = other * dim;
+                        // four partial sums: independent additions run faster
+                        float sum0 = 0f;
+                        float sum1 = 0f;
+                        float sum2 = 0f;
+                        float sum3 = 0f;
+                        int axis = 0;
+                        for (; axis + 3 < dim; axis += 4) {
+                            sum0 += dat[rowBase + axis] * dat[otherBase + axis];
+                            sum1 += dat[rowBase + axis + 1] * dat[otherBase + axis + 1];
+                            sum2 += dat[rowBase + axis + 2] * dat[otherBase + axis + 2];
+                            sum3 += dat[rowBase + axis + 3] * dat[otherBase + axis + 3];
+                        }
+                        for (; axis < dim; axis++) {
+                            sum0 += dat[rowBase + axis] * dat[otherBase + axis];
+                        }
+                        final float cosine = (sum0 + sum1) + (sum2 + sum3);
+                        if (cosine <= top[0]) {
+                            continue;
+                        }
+                        int slot = 0;
+                        while (slot + 1 < k && top[slot + 1] < cosine) {
+                            top[slot] = top[slot + 1];
+                            slot++;
+                        }
+                        top[slot] = cosine;
+                    }
+                    double sum = 0d;
+                    for (final float value : top) {
+                        sum += value;
+                    }
+                    computed[row] = (float) (sum / k);
+                });
+            }
+            knnCosine = computed;
+            return computed;
+        }
     }
 
     /**
