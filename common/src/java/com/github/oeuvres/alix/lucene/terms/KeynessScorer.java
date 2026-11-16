@@ -729,7 +729,7 @@ public abstract class KeynessScorer
     public static class SimpleMaths extends KeynessScorer
     {
         /** Smoothing constant per million at {@code s = 0}. */
-        public static final double K_MAX = 100_000d;
+        public static final double K_MAX = 10_000_000d;
 
         /** Smoothing constant per million at {@code s = 1}. */
         public static final double K_MIN = 0.1d;
@@ -750,14 +750,16 @@ public abstract class KeynessScorer
 
         /**
          * Creates a scorer with an explicit centre k0 of the specificity
-         * variation.
+         * variation. {@link Double#NaN} means no explicit centre: the scorer
+         * behaves exactly as built by {@link #SimpleMaths()}, with the
+         * default centre of {@link #k0(double)}.
          *
-         * @param k positive per-million smoothing constant at {@code s = 0.5}
-         * @throws IllegalArgumentException if k is not finite and positive
+         * @param k positive per-million smoothing constant at {@code s = 0.5},
+         *          or {@link Double#NaN} for the default centre
+         * @throws IllegalArgumentException if k is neither NaN nor finite and positive
          */
         public SimpleMaths(final double k)
         {
-            // NaN as default value for no k
             if (!Double.isNaN(k)) {
                 if (!Double.isFinite(k) || k <= 0d) {
                     throw new IllegalArgumentException("k must be finite and > 0: " + k);
@@ -781,7 +783,7 @@ public abstract class KeynessScorer
         {
             super.focus(focusTokens, pivotCount);
             if (!kSet) {
-                k0 = 4d * Math.sqrt(focusTokens * 100_000d / (focusTokens + 100_000d));
+                k0 = k0(focusTokens);
             }
             
             if (specif == 0.5) {
@@ -815,6 +817,19 @@ public abstract class KeynessScorer
         }
 
         /**
+         * Returns the default centre k0 of the specificity variation for a
+         * focus, used when no k was given to the constructor. Subclasses
+         * override it to set their own centre.
+         *
+         * @param focusTokens candidate tokens of the focus, pivot occurrences excluded
+         * @return positive per-million smoothing constant at {@code s = 0.5}
+         */
+        protected double k0(final double focusTokens)
+        {
+            return 4d * Math.sqrt(focusTokens * 100_000d / (focusTokens + 100_000d));
+        }
+
+        /**
          * Returns the score of statistical independence for the current
          * specificity. Interior Simple Maths scores are ratios centred on 1;
          * its raw-frequency and exclusive-frequency endpoints are centred on 0.
@@ -844,6 +859,140 @@ public abstract class KeynessScorer
             final double rfFocus = tf * 1_000_000d / focusTokens + k;
             final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
             return rfFocus / rfRest;
+        }
+    }
+
+    /**
+     * Simple Maths log ratio weighted by residual IDF, interpolated
+     * geometrically by specificity.
+     *
+     * <pre>
+     * lr       = ln(SimpleMaths(k(s)))                token contrast focus / rest
+     * expected = corpusDocs * (1 - exp(-cf / corpusDocs))
+     *                                                 df expected under Poisson
+     * ridf     = max(ln(expected / df), 0)            burstiness of the term
+     * score    = sign(lr) * |lr|^(2(1-s)) * ridf^(2s)
+     * </pre>
+     *
+     * <p>
+     * Residual IDF is the observed IDF minus the IDF predicted by a Poisson
+     * distribution of the {@code cf} occurrences over the documents. It is
+     * high for terms that recur in the documents where they occur, and near
+     * 0 for terms scattered one or two at a time, such as recurring
+     * bibliographic formulas, and for hapaxes, where Poisson cannot be told
+     * apart from burstiness. A negative residual (more dispersed than
+     * Poisson) gives no evidence of burstiness and is set to 0.
+     * </p>
+     *
+     * <p>
+     * The score ranks as {@code sign(lr) * |lr| * ridf^alpha} with
+     * {@code alpha = s / (1 - s)}: 0 toward {@code s = 0}, 1 at
+     * {@code s = 0.5}, without bound toward {@code s = 1}. No constant is
+     * added: at {@code s = 0.5} the score is exactly {@code lr * ridf}. The
+     * exponents never exceed 2, so the score cannot overflow. The smoothing
+     * constant {@code k(s)} is inherited from {@link SimpleMaths}, around
+     * its own centre {@link #k0(double)}.
+     * </p>
+     *
+     * <p>
+     * The Poisson expectation assumes documents of equal length,
+     * {@code corpusTokens / corpusDocs}. With unequal lengths the true
+     * expectation is lower (concavity of {@code 1 - exp(-x)}), so this
+     * residual is overstated, most for terms with {@code cf} near
+     * {@code corpusDocs}. Independence and terms with no burstiness score 0.
+     * The endpoints follow the common contract: raw TF at 0, exclusive TF
+     * at 1.
+     * </p>
+     *
+     * <p>
+     * Church, K. W. &amp; Gale, W. A. (1995). "Inverse Document Frequency
+     * (IDF): A Measure of Deviations from Poisson." Proceedings of the Third
+     * Workshop on Very Large Corpora: 121-130.
+     * Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of the
+     * Corpus Linguistics Conference CL2009, University of Liverpool.
+     * </p>
+     */
+    public static class SimpleRidfAlpha extends SimpleMaths
+    {
+        /**
+         * Empirical centre on the Piaget corpus: with this k0 the top 50 at
+         * {@code s = 0.5} has the geometric-mean tf of the top 50 of
+         * {@link FisherAlpha}, within 12 % for five foci of 39 000 to 880 000
+         * tokens; flat from 3 000 to 10 000. Too high for the one focus
+         * measured below that range, 14 000 tokens (centre near 1 300).
+         */
+        private static final double K0_PLATEAU = 100_000d;
+
+        /**
+         * Creates a scorer with the default centre {@link #K0_PLATEAU}.
+         */
+        public SimpleRidfAlpha()
+        {
+            super();
+        }
+
+        /**
+         * Creates a scorer with an explicit Simple Maths centre k0.
+         * {@link Double#NaN} means no explicit centre: the scorer behaves
+         * exactly as built by {@link #SimpleRidfAlpha()}.
+         *
+         * @param k positive per-million smoothing constant at {@code s = 0.5},
+         *          or {@link Double#NaN} for the default centre
+         * @throws IllegalArgumentException if k is neither NaN nor finite and positive
+         */
+        public SimpleRidfAlpha(final double k)
+        {
+            super(k);
+        }
+
+        /**
+         * Returns the empirical centre, the same for every focus size.
+         * Residual IDF favours rarer terms, so the smoothing is stronger
+         * than for {@link SimpleMaths}. The measured centre does not vary
+         * with the focus from 39 000 to 880 000 tokens; the single smaller
+         * focus measured is not enough to fit a law in {@code focusTokens}.
+         *
+         * @param focusTokens candidate tokens of the focus, ignored
+         * @return {@link #K0_PLATEAU}
+         */
+        @Override
+        protected double k0(final double focusTokens)
+        {
+            return K0_PLATEAU;
+        }
+
+        /**
+         * Returns zero: independence, and terms without burstiness, score 0
+         * at every specificity.
+         *
+         * @return neutral association score
+         */
+        @Override
+        public double neutral()
+        {
+            return 0d;
+        }
+
+        /**
+         * Computes the Simple Maths log ratio weighted by residual IDF.
+         *
+         * @param tf occurrences in the focus
+         * @param cf occurrences in the corpus
+         * @param df documents containing the term in the active corpus
+         * @return the signed score, or {@link Double#NaN} for invalid counts
+         */
+        @Override
+        public double score(final double tf, final double cf, final int df)
+        {
+            final double ratio = super.score(tf, cf, df);
+            if (specif == 0d || specif == 1d || Double.isNaN(ratio)) return ratio;
+            if (df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
+            final double lr = Math.log(ratio);
+            if (lr == 0d) return 0d;
+            final double expected = -corpusDocs * Math.expm1(-cf / corpusDocs);
+            final double ridf = Math.max(Math.log(expected / df), 0d);
+            final double score = Math.pow(Math.abs(lr), 2d * (1d - specif)) * Math.pow(ridf, 2d * specif);
+            return lr > 0d ? score : -score;
         }
     }
 

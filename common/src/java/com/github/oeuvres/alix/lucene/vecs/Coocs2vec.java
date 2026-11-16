@@ -618,6 +618,7 @@ public final class Coocs2vec
             case "fisher" -> new KeynessScorer.FisherAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
+            case "simpleridf" -> new KeynessScorer.SimpleRidfAlpha();
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
@@ -634,7 +635,7 @@ public final class Coocs2vec
         if (distance) counting += "dw";
         String scoring = scorerName;
         if ("simple".equals(scorerName)) scoring += "k" + number(simplek);
-        scoring += "s" + number(specif);
+        if (specif != 0.5) scoring += "s" + number(specif);
         if (cellPower != 0.5d) scoring += "cp" + number(cellPower);
         String reduction = String.format("d%03d", dims);
         if (weightAxes != 0.5d) reduction += "aw" + number(weightAxes);

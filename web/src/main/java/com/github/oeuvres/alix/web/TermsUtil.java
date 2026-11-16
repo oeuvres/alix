@@ -68,7 +68,7 @@ public class TermsUtil
                 jw.name("form").value(pivot.form());
                 jw.name("type").value("pivot");
                 jw.name("docs").value(pivot.docs());
-                if (hasContexts) jw.name("snippets").value(pivot.contexts());
+                if (hasContexts) jw.name("contexts").value(pivot.contexts());
                 jw.name("freq").value(pivot.freq());
                 jw.name("fieldDocs").value(pivot.fieldDocs());
                 jw.name("fieldFreq").value(pivot.fieldFreq());
@@ -84,7 +84,7 @@ public class TermsUtil
                 jw.name("id").value(term.termId());
                 jw.name("html").value(term.hilite()); // for suggest
                 jw.name("docs").value(term.docs());
-                if (hasContexts) jw.name("snippets").value(term.contexts());
+                if (hasContexts) jw.name("contexts").value(term.contexts());
                 jw.name("fieldDocs").value(term.fieldDocs());
                 jw.name("freq").value(term.freq());
                 jw.name("fieldFreq").value(term.fieldFreq());

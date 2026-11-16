@@ -73,7 +73,7 @@ public class OpCompass extends Op
     /** Property for the directory of models */
     private static final String ALIX_MODELS_ROOT = "alix.models.root";
     /** Similar words listed for each query word, a display choice. */
-    private static final int NEAREST = 10;
+    private static final int NEAREST = 20;
     /**
      * Number of model words nearest to the query pivots that define the PCA
      * plane with {@code plane=local}. They fit the plane and are not
