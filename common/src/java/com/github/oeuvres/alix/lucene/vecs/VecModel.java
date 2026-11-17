@@ -101,6 +101,13 @@ public final class VecModel
      * created or replaced while the JVM is alive.</p>
      */
     private static final Map<Path, VecModel> MODELS = new HashMap<>();
+
+    /**
+     * Modification time and size of the file of each cached model, keyed like
+     * {@link #MODELS}: a model file rewritten under the same name is loaded
+     * again.
+     */
+    private static final Map<Path, String> STAMPS = new HashMap<>();
     /**
      * Constructs an already validated model.
      */
@@ -193,11 +200,16 @@ public final class VecModel
     }
 
     /**
-     * Returns a cached model, loading it on the first successful request.
+     * Returns a cached model, loading it on the first successful request, and
+     * again when its file has changed.
      *
-     * <p>Failed loads are not cached. Use {@link #load(Path)} to bypass the
-     * cache, or {@link #uncache(Path)} before {@code get(path)} after replacing
-     * a model file.</p>
+     * <p>The cache keeps, with each model, the modification time and the size
+     * of its file; when either differs, the file was rewritten, for example by
+     * a new run of {@code Coocs2vec} under the same name, and is loaded again.
+     * The word2vec format holds no date, so the file system gives it. Failed
+     * loads are not cached: a file read while it is being written fails to
+     * load, and the next request tries again. Use {@link #load(Path)} to
+     * bypass the cache.</p>
      *
      * @param path word2vec binary model
      * @return cached or newly loaded model
@@ -206,13 +218,15 @@ public final class VecModel
     public static synchronized VecModel get(final Path path) throws IOException
     {
         final Path key = cacheKey(path);
+        final String stamp = Files.getLastModifiedTime(key).toMillis() + ":" + Files.size(key);
         final VecModel cached = MODELS.get(key);
-        if (cached != null) {
+        if (cached != null && stamp.equals(STAMPS.get(key))) {
             return cached;
         }
 
         final VecModel model = load(key);
         MODELS.put(key, model);
+        STAMPS.put(key, stamp);
         return model;
     }
 
@@ -574,6 +588,7 @@ public final class VecModel
      */
     public static synchronized VecModel uncache(final Path path)
     {
+        STAMPS.remove(cacheKey(path));
         return MODELS.remove(cacheKey(path));
     }
 

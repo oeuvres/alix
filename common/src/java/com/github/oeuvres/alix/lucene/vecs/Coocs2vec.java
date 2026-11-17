@@ -761,7 +761,15 @@ public final class Coocs2vec
                 log("mean distance weight %.4f, rescaled to 1", table.meanWeight());
             }
             words = table.words();
-            logSmoothing(scorer, table);
+            final double[] rates = contextRates(table);
+            log("context rate per million, mean of the columns: order 0 (1e6 / columns) %.2f, "
+                + "order 1 (1e6 * exp(sum p ln p)) %.2f, order 2 (1e6 * sum p^2) %.2f",
+                rates[0], rates[1], rates[2]);
+            if (scorer instanceof KeynessScorer.SimpleMaths simpleMaths && Double.isNaN(simplek)) {
+                simpleMaths.contextRate(rates[1]);
+            }
+            logSmoothing(scorer, table, rates[1]);
+            logRidf(table, selected, stats);
             svd = new SparseSvd(
                 termCount, 1, table.rows(), table.cols(), null, table.values());
             log("preparing directed %s matrix (specif=%.3f, cellPower=%.3f)",
@@ -800,6 +808,52 @@ public final class Coocs2vec
             log("done");
             writeDiagnosis(Paths.get(outName + ".json"), outName, args, logBuffer);
         }
+    }
+
+    /**
+     * Returns three mean rates per million of the columns of the table, the
+     * inverses of the effective numbers of columns of orders 0, 1 and 2
+     * (Hill 1973), p being the share of each column in the total mass:
+     * {@code 1e6 / n} over the n columns with mass, {@code 1e6 * exp(sum p ln p)},
+     * the geometric mean of the rates weighted by mass, and
+     * {@code 1e6 * sum p^2}. See {@link KeynessScorer.SimpleMaths}.
+     *
+     * @param table co-occurrence table
+     * @return rates per million, orders 0, 1, 2
+     */
+    private static double[] contextRates(final Table table)
+    {
+        final int size = table.words().length;
+        final double[] margins = new double[size];
+        double total = 0d;
+        for (int i = 0; i < table.values().length; i++) {
+            final int row = table.rows()[i];
+            final int col = table.cols()[i];
+            final double value = table.values()[i];
+            margins[row] += value;
+            total += value;
+            if (col != row) {
+                margins[col] += value;
+                total += value;
+            }
+        }
+        int columns = 0;
+        double entropy = 0d;
+        double square = 0d;
+        for (final double margin : margins) {
+            if (!(margin > 0d)) {
+                continue;
+            }
+            columns++;
+            final double p = margin / total;
+            entropy -= p * Math.log(p);
+            square += p * p;
+        }
+        return new double[] {
+            1_000_000d / columns,
+            1_000_000d * Math.exp(-entropy),
+            1_000_000d * square
+        };
     }
 
     /**
@@ -917,6 +971,135 @@ public final class Coocs2vec
     }
 
     /**
+     * Logs the residual IDF of the columns as {@code SimpleRidfAlpha} gets it
+     * from {@link SparseSvd#keyness}, beside the residual computed with the
+     * exact expectation. Debug, before changing the scorer.
+     *
+     * <p>In the table, the "document frequency" of a column is its number of
+     * distinct partners, the rows it co-occurs with, and the number of
+     * documents is the number of rows, n. The scorer expects
+     * {@code n * (1 - exp(-m / n))} partners for a column of mass m, which
+     * supposes rows of equal mass. With rows of mass m(a) and a total N, the
+     * cell (a, b) is Poisson of mean {@code m(a) * m / N} under independence,
+     * so the exact expectation is {@code sum over a of (1 - exp(-m(a) * m / N))}.
+     * For the summary over all columns, rows are grouped by mass in bins of
+     * 1% (log scale), each bin counted at its mean mass.</p>
+     *
+     * <p>One line per named column: mass, partners, the two expectations, the
+     * two residuals (clipped at 0, as in the scorer). Then, by frequency
+     * class of the word (powers of 2): number of columns, median partners,
+     * median present and exact residual, share of exact residuals at 0.</p>
+     *
+     * @param table co-occurrence table
+     * @param selected selected vocabulary in matrix order
+     * @param stats field statistics giving corpus frequencies
+     */
+    private static void logRidf(final Table table, final SelectedTerm[] selected, final TermStats stats)
+    {
+        final String[] words = table.words();
+        final int size = words.length;
+        final double[] margins = new double[size];
+        final int[] partners = new int[size];
+        double total = 0d;
+        for (int i = 0; i < table.values().length; i++) {
+            final int row = table.rows()[i];
+            final int col = table.cols()[i];
+            final double value = table.values()[i];
+            margins[row] += value;
+            total += value;
+            partners[col]++;
+            if (col != row) {
+                margins[col] += value;
+                total += value;
+                partners[row]++;
+            }
+        }
+        // rows grouped by mass, 1% bins on a log scale
+        final double width = Math.log(1.01d);
+        final java.util.TreeMap<Long, double[]> bins = new java.util.TreeMap<>();
+        for (final double margin : margins) {
+            if (!(margin > 0d)) {
+                continue;
+            }
+            final double[] bin = bins.computeIfAbsent(
+                (long) Math.floor(Math.log(margin) / width), key -> new double[2]);
+            bin[0]++;
+            bin[1] += margin;
+        }
+        final double[] binCount = new double[bins.size()];
+        final double[] binMass = new double[bins.size()];
+        int b = 0;
+        for (final double[] bin : bins.values()) {
+            binCount[b] = bin[0];
+            binMass[b] = bin[1] / bin[0];
+            b++;
+        }
+        final double n = size;
+        final double sum = total;
+        final double[] present = new double[size];
+        final double[] exact = new double[size];
+        java.util.stream.IntStream.range(0, size).parallel().forEach(col -> {
+            final double m = margins[col];
+            if (!(m > 0d)) {
+                return;
+            }
+            present[col] = -n * Math.expm1(-m / n);
+            double expected = 0d;
+            for (int bin = 0; bin < binCount.length; bin++) {
+                expected -= binCount[bin] * Math.expm1(-binMass[bin] * m / sum);
+            }
+            exact[col] = expected;
+        });
+        log("ridf: column, mass, partners, expected partners present / exact, residual present / exact");
+        final String[] names = {
+            "Pittrat", "Baillière", "Alvania", "Mac-Graw-Hill", "Niestlé", "Atti",
+            "adulte", "sujet", "bébé", "utilisation", "conditionnement", "enfant", "instrumental"
+        };
+        for (final String name : names) {
+            for (int col = 0; col < size; col++) {
+                if (!name.equals(words[col]) || !(margins[col] > 0d)) {
+                    continue;
+                }
+                log("ridf: %-16s mass %12.1f  partners %6d  expected %9.1f / %9.1f  residual %6.3f / %6.3f",
+                    name, margins[col], partners[col], present[col], exact[col],
+                    Math.max(Math.log(present[col] / partners[col]), 0d),
+                    Math.max(Math.log(exact[col] / partners[col]), 0d));
+            }
+        }
+        final java.util.List<java.util.List<double[]>> classes = new java.util.ArrayList<>();
+        for (int i = 0; i < 64; i++) {
+            classes.add(new java.util.ArrayList<>());
+        }
+        for (int col = 0; col < size; col++) {
+            if (!(margins[col] > 0d)) {
+                continue;
+            }
+            final long freq = Math.max(1L, stats.termFreq(selected[col].termId()));
+            classes.get(63 - Long.numberOfLeadingZeros(freq)).add(new double[] {
+                partners[col],
+                Math.max(Math.log(present[col] / partners[col]), 0d),
+                Math.max(Math.log(exact[col] / partners[col]), 0d)
+            });
+        }
+        log("ridf: %17s %8s %9s %9s %9s %9s", "freq", "columns", "partners", "present", "exact", "exact=0");
+        for (int c = 0; c < 64; c++) {
+            final java.util.List<double[]> list = classes.get(c);
+            if (list.isEmpty()) {
+                continue;
+            }
+            final double[] medians = new double[3];
+            for (int k = 0; k < 3; k++) {
+                final int key = k;
+                final double[] values = list.stream().mapToDouble(v -> v[key]).sorted().toArray();
+                medians[k] = values[values.length / 2];
+            }
+            final long zeros = list.stream().filter(v -> v[2] == 0d).count();
+            log("ridf: %17s %,8d %9.0f %9.3f %9.3f %8.1f%%", (1L << c) + "-" + ((1L << (c + 1)) - 1),
+                list.size(), medians[0], medians[1], medians[2], 100d * zeros / list.size());
+        }
+    }
+
+    /**
      * Logs, for SimpleMaths, the smoothing constant k per million that the
      * scorer actually applies to rows of several masses, and the class file
      * it was loaded from. Debug: tells which code runs.
@@ -926,15 +1109,16 @@ public final class Coocs2vec
      * The scorer gets the totals that {@link SparseSvd#keyness} gives it:
      * corpus = total mass of the table, documents = vocabulary rows, focus =
      * row mass. Beside the probed k are the value of the present default k0,
-     * {@code 1e6 * (1 / f + 1 / rows)}, and of the former one,
+     * {@code 1e6 / f + rate}, and of the former one,
      * {@code 4 * sqrt(f * 1e5 / (f + 1e5))}. Rows probed: smallest, median and
      * largest mass, and <i>enfant</i>, <i>instrumental</i> when present. The
      * state of the scorer is overwritten; {@code keyness} sets it again.</p>
      *
      * @param scorer scorer of the run
      * @param table co-occurrence table
+     * @param rate context rate per million given to the scorer
      */
-    private static void logSmoothing(final KeynessScorer scorer, final Table table)
+    private static void logSmoothing(final KeynessScorer scorer, final Table table, final double rate)
     {
         if (!(scorer instanceof KeynessScorer.SimpleMaths)
             || scorer instanceof KeynessScorer.SimpleRidfAlpha) {
@@ -988,7 +1172,7 @@ public final class Coocs2vec
             scorer.focus(f, 0d);
             final double ratio = scorer.score(1d, 1d, 1);
             final double k = 1_000_000d / (f * (ratio - 1d));
-            final double present = 1_000_000d * (1d / f + 1d / size);
+            final double present = 1_000_000d / f + rate;
             final double former = 4d * Math.sqrt(f * 100_000d / (f + 100_000d));
             log("smoothing: %-16s mass %12.1f  k %10.2f  present %10.2f  former %10.2f  pseudo-occurrences %8.2f",
                 words[row], f, k, present, former, k * f / 1_000_000d);

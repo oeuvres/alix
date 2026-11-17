@@ -726,7 +726,7 @@ public abstract class KeynessScorer
      * mislead, see {@link #k0(double)}:</p>
      *
      * <pre>
-     * k0 = 1_000_000 * (c / focusTokens + 1 / corpusDocs)
+     * k0 = 1_000_000 * c / focusTokens + contextRate
      * </pre>
      *
      * <p>Written in counts, the score is {@code (tf + s) / (E + s)}, with E
@@ -740,17 +740,25 @@ public abstract class KeynessScorer
      * {@code (tf + c) / (E + c)}, the posterior mean of the ratio under a
      * Gamma prior of mean 1 worth c observations (DuMouchel 1999).</p>
      *
-     * <p>The second term is a constant rate, which pulls a ratio by
-     * {@code r / (r + rate)}, r being the rate per million of the candidate
-     * in the rest, whatever the focus: it discounts rare candidates, which
-     * matters in large foci, where even a rare candidate is observed often
-     * enough for its ratio to be certain (references, formulas). The rate is
-     * that of the mean candidate, 1 / corpusDocs per token. In a
-     * co-occurrence table, {@code SparseSvd.keyness} passes the number of
-     * vocabulary rows as corpusDocs, so the rate is the mean rate of a
-     * context: a context rarer than the mean context is discounted, by half
-     * at the mean. For a list of keywords, where corpusDocs counts documents,
-     * give k0 to the constructor.</p>
+     * <p>The second term is a constant rate per million, which pulls a
+     * ratio by {@code r / (r + contextRate)}, r being the rate per million of
+     * the candidate in the rest, whatever the focus: it discounts rare
+     * candidates, which matters in large foci, where even a rare candidate is
+     * observed often enough for its ratio to be certain (references,
+     * formulas). A candidate at that rate is discounted by half. The rate is
+     * a mean rate of the candidates, set by {@link #contextRate(double)}.
+     * Rates span orders of magnitude, so the mean that fits them is the
+     * geometric one, weighted by mass:
+     * {@code 1_000_000 * exp(sum p * ln p)}, p being the share of each
+     * candidate, the inverse of the effective number of candidates of order
+     * 1 (Hill 1973). Its neighbours in the family are the arithmetic mean
+     * {@code 1_000_000 / n} (order 0, every candidate counted once, so a
+     * hapax counts as much as a grammatical word) and
+     * {@code 1_000_000 * sum p^2} (order 2, the rate of the candidate met by
+     * an average occurrence, ruled by the most frequent words). Without a
+     * rate set, the scorer falls back to order 0 with {@code n = corpusDocs},
+     * which {@code SparseSvd.keyness} sets to the number of vocabulary rows.
+     * For a list of keywords, give k0 to the constructor.</p>
      *
      * <p>The default c is {@link #PSEUDO_COUNT}, set by
      * {@link #pseudoCount(double)}; a fixed k0 per million may be given to
@@ -763,7 +771,9 @@ public abstract class KeynessScorer
      * the Corpus Linguistics Conference CL2009, University of Liverpool.
      * DuMouchel, W. (1999). "Bayesian Data Mining in Large Frequency Tables,
      * with an Application to the FDA Spontaneous Reporting System." The
-     * American Statistician 53(3): 177-190.</p>
+     * American Statistician 53(3): 177-190.
+     * Hill, M. O. (1973). "Diversity and Evenness: A Unifying Notation and
+     * Its Consequences." Ecology 54(2): 427-432.</p>
      */
     public static class SimpleMaths extends KeynessScorer
     {
@@ -788,6 +798,9 @@ public abstract class KeynessScorer
 
         /** Pseudo-count of the default centre, see {@link #k0(double)}. */
         private double pseudoCount = PSEUDO_COUNT;
+
+        /** Rate per million of the default centre, or NaN for {@code 1_000_000 / corpusDocs}. */
+        private double contextRate = Double.NaN;
 
         /** True if the pseudo-count has been set by {@link #pseudoCount(double)}. */
         protected boolean pseudoSet;
@@ -821,6 +834,24 @@ public abstract class KeynessScorer
                 this.k0 = k;
                 kSet = true;
             }
+        }
+
+        /**
+         * Sets the rate per million of the second term of the default
+         * centre, see the class comment. Takes effect at the next
+         * {@link #focus(double, double)}.
+         *
+         * @param rate positive rate per million
+         * @return this scorer
+         * @throws IllegalArgumentException if rate is not finite and positive
+         */
+        public SimpleMaths contextRate(final double rate)
+        {
+            if (!Double.isFinite(rate) || rate <= 0d) {
+                throw new IllegalArgumentException("context rate must be finite and > 0: " + rate);
+            }
+            contextRate = rate;
+            return this;
         }
 
         /**
@@ -874,17 +905,18 @@ public abstract class KeynessScorer
         /**
          * Returns the default centre k0 of the specificity variation for a
          * focus, used when no k was given to the constructor:
-         * {@code 1_000_000 * (pseudoCount / focusTokens + 1 / corpusDocs)},
-         * the pseudo-count as a rate of the focus plus the mean rate of a
-         * candidate, see the class comment. Subclasses override it to set
-         * their own centre.
+         * {@code 1_000_000 * pseudoCount / focusTokens + contextRate}, the
+         * pseudo-count as a rate of the focus plus a mean rate of the
+         * candidates, {@code 1_000_000 / corpusDocs} if none was set, see the
+         * class comment. Subclasses override it to set their own centre.
          *
          * @param focusTokens tokens of the focus, pivot occurrences included
          * @return positive per-million smoothing constant at {@code s = 0.5}
          */
         protected double k0(final double focusTokens)
         {
-            return 1_000_000d * (pseudoCount / focusTokens + 1d / corpusDocs);
+            final double rate = Double.isNaN(contextRate) ? 1_000_000d / corpusDocs : contextRate;
+            return 1_000_000d * pseudoCount / focusTokens + rate;
         }
 
         /**
