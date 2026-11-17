@@ -715,16 +715,55 @@ public abstract class KeynessScorer
      * score   = (rfFocus + k) / (rfRest + k)
      * </pre>
      *
-     * The smoothing constant k, per million, is {@link #k(double, double)}:
+     * <p>The smoothing constant k, per million, is {@link #k(double, double)}:
      * {@code k0} at {@code s = 0.5}, geometric toward {@link #K_MAX} at
-     * {@code s = 0} and toward {@link #K_MIN} at {@code s = 1}. The centre
-     * k0 is given to the constructor, 170 by default. High k favours frequent
-     * words, low k rare words; toward {@code s = 0} the ranking approaches the
-     * rate difference {@code rfFocus - rfRest}, not raw frequency, and the
-     * endpoint overrides it.
+     * {@code s = 0} and toward {@link #K_MIN} at {@code s = 1}. High k
+     * favours frequent words, low k rare words; toward {@code s = 0} the
+     * ranking approaches the rate difference {@code rfFocus - rfRest}, not raw
+     * frequency, and the endpoint overrides it.</p>
      *
-     * Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of the
-     * Corpus Linguistics Conference CL2009, University of Liverpool.
+     * <p>The default centre has two terms, one for each way a ratio can
+     * mislead, see {@link #k0(double)}:</p>
+     *
+     * <pre>
+     * k0 = 1_000_000 * (c / focusTokens + 1 / corpusDocs)
+     * </pre>
+     *
+     * <p>Written in counts, the score is {@code (tf + s) / (E + s)}, with E
+     * the count expected in the focus at the rate of the rest, and
+     * {@code s = k0 * focusTokens / 1_000_000} pseudo-occurrences. The pull
+     * of a ratio toward 1 is {@code E / (E + s)}.</p>
+     *
+     * <p>The first term is a pseudo-count c, the same number of occurrences
+     * whatever the focus: it pulls toward 1 the ratios that rest on little
+     * evidence, which matters in small foci. Alone, it gives
+     * {@code (tf + c) / (E + c)}, the posterior mean of the ratio under a
+     * Gamma prior of mean 1 worth c observations (DuMouchel 1999).</p>
+     *
+     * <p>The second term is a constant rate, which pulls a ratio by
+     * {@code r / (r + rate)}, r being the rate per million of the candidate
+     * in the rest, whatever the focus: it discounts rare candidates, which
+     * matters in large foci, where even a rare candidate is observed often
+     * enough for its ratio to be certain (references, formulas). The rate is
+     * that of the mean candidate, 1 / corpusDocs per token. In a
+     * co-occurrence table, {@code SparseSvd.keyness} passes the number of
+     * vocabulary rows as corpusDocs, so the rate is the mean rate of a
+     * context: a context rarer than the mean context is discounted, by half
+     * at the mean. For a list of keywords, where corpusDocs counts documents,
+     * give k0 to the constructor.</p>
+     *
+     * <p>The default c is {@link #PSEUDO_COUNT}, set by
+     * {@link #pseudoCount(double)}; a fixed k0 per million may be given to
+     * the constructor. The geometric mapping of {@link #k} is decreasing
+     * only if {@code K_MIN < k0 < K_MAX}: always true for the second term
+     * below a vocabulary of 10 million, for the first above
+     * {@code c / 10} tokens.</p>
+     *
+     * <p>Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of
+     * the Corpus Linguistics Conference CL2009, University of Liverpool.
+     * DuMouchel, W. (1999). "Bayesian Data Mining in Large Frequency Tables,
+     * with an Application to the FDA Spontaneous Reporting System." The
+     * American Statistician 53(3): 177-190.</p>
      */
     public static class SimpleMaths extends KeynessScorer
     {
@@ -733,26 +772,41 @@ public abstract class KeynessScorer
 
         /** Smoothing constant per million at {@code s = 1}. */
         public static final double K_MIN = 0.1d;
-        
-        /** True if centered k has been set by constructor */
+
+        /**
+         * Default pseudo-count: a prior worth one observation, Laplace's
+         * choice. A conventional value, not measured; an estimate from the
+         * table itself may replace it.
+         */
+        public static final double PSEUDO_COUNT = 1d;
+
+        /** True if a fixed centre k0 per million has been given to the constructor. */
         private boolean kSet;
 
         /** Smoothing constant per million at {@code s = 0.5}, centre of the specificity variation. */
-        private double k0 = 170;
+        private double k0 = Double.NaN;
+
+        /** Pseudo-count of the default centre, see {@link #k0(double)}. */
+        private double pseudoCount = PSEUDO_COUNT;
+
+        /** True if the pseudo-count has been set by {@link #pseudoCount(double)}. */
+        protected boolean pseudoSet;
 
         /** Smoothing constant added to per-million rates, set by focus(); NaN until then. */
         private double k = Double.NaN;
 
         /**
-         * Creates a scorer with the default centre {@code k0 = 170}.
+         * Creates a scorer with the default centre, a pseudo-count of
+         * {@link #PSEUDO_COUNT}, see {@link #k0(double)}.
          */
         public SimpleMaths() {}
 
         /**
          * Creates a scorer with an explicit centre k0 of the specificity
-         * variation. {@link Double#NaN} means no explicit centre: the scorer
-         * behaves exactly as built by {@link #SimpleMaths()}, with the
-         * default centre of {@link #k0(double)}.
+         * variation, a constant rate per million whatever the focus.
+         * {@link Double#NaN} means no explicit centre: the scorer behaves
+         * exactly as built by {@link #SimpleMaths()}, with the default centre
+         * of {@link #k0(double)}.
          *
          * @param k positive per-million smoothing constant at {@code s = 0.5},
          *          or {@link Double#NaN} for the default centre
@@ -783,9 +837,10 @@ public abstract class KeynessScorer
         {
             super.focus(focusTokens, pivotCount);
             if (!kSet) {
-                k0 = k0(focusTokens);
+                // the focus of the rates, pivot occurrences included
+                k0 = k0(this.focusTokens);
             }
-            
+
             if (specif == 0.5) {
                 k = k0;
             }
@@ -818,15 +873,18 @@ public abstract class KeynessScorer
 
         /**
          * Returns the default centre k0 of the specificity variation for a
-         * focus, used when no k was given to the constructor. Subclasses
-         * override it to set their own centre.
+         * focus, used when no k was given to the constructor:
+         * {@code 1_000_000 * (pseudoCount / focusTokens + 1 / corpusDocs)},
+         * the pseudo-count as a rate of the focus plus the mean rate of a
+         * candidate, see the class comment. Subclasses override it to set
+         * their own centre.
          *
-         * @param focusTokens candidate tokens of the focus, pivot occurrences excluded
+         * @param focusTokens tokens of the focus, pivot occurrences included
          * @return positive per-million smoothing constant at {@code s = 0.5}
          */
         protected double k0(final double focusTokens)
         {
-            return 4d * Math.sqrt(focusTokens * 100_000d / (focusTokens + 100_000d));
+            return 1_000_000d * (pseudoCount / focusTokens + 1d / corpusDocs);
         }
 
         /**
@@ -840,6 +898,26 @@ public abstract class KeynessScorer
         public double neutral()
         {
             return specif == 0d || specif == 1d ? 0d : 1d;
+        }
+
+        /**
+         * Sets the pseudo-count of the default centre and drops any fixed
+         * centre given to the constructor. Takes effect at the next
+         * {@link #focus(double, double)}.
+         *
+         * @param c positive pseudo-count, a number of occurrences
+         * @return this scorer
+         * @throws IllegalArgumentException if c is not finite and positive
+         */
+        public SimpleMaths pseudoCount(final double c)
+        {
+            if (!Double.isFinite(c) || c <= 0d) {
+                throw new IllegalArgumentException("pseudo-count must be finite and > 0: " + c);
+            }
+            pseudoCount = c;
+            pseudoSet = true;
+            kSet = false;
+            return this;
         }
 
         /**
@@ -891,7 +969,8 @@ public abstract class KeynessScorer
      * added: at {@code s = 0.5} the score is exactly {@code lr * ridf}. The
      * exponents never exceed 2, so the score cannot overflow. The smoothing
      * constant {@code k(s)} is inherited from {@link SimpleMaths}, around
-     * its own centre {@link #k0(double)}.
+     * its own centre {@link #k0(double)}, a fixed rate per million unless a
+     * pseudo-count is set by {@link #pseudoCount(double)}.
      * </p>
      *
      * <p>
@@ -946,19 +1025,21 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Returns the empirical centre, the same for every focus size.
-         * Residual IDF favours rarer terms, so the smoothing is stronger
-         * than for {@link SimpleMaths}. The measured centre does not vary
-         * with the focus from 39 000 to 880 000 tokens; the single smaller
-         * focus measured is not enough to fit a law in {@code focusTokens}.
+         * Returns the empirical centre, the same for every focus size, or,
+         * once {@link #pseudoCount(double)} has been called, the pseudo-count
+         * centre of {@link SimpleMaths}. Residual IDF favours rarer terms, so
+         * the empirical smoothing is stronger than for {@link SimpleMaths}.
+         * The measured centre does not vary with the focus from 39 000 to
+         * 880 000 tokens; the single smaller focus measured is not enough to
+         * fit a law in {@code focusTokens}.
          *
-         * @param focusTokens candidate tokens of the focus, ignored
-         * @return {@link #K0_PLATEAU}
+         * @param focusTokens tokens of the focus, pivot occurrences included
+         * @return {@link #K0_PLATEAU}, or the pseudo-count per million
          */
         @Override
         protected double k0(final double focusTokens)
         {
-            return K0_PLATEAU;
+            return pseudoSet ? super.k0(focusTokens) : K0_PLATEAU;
         }
 
         /**

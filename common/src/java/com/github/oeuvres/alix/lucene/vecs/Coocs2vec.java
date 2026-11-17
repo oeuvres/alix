@@ -549,7 +549,7 @@ public final class Coocs2vec
         int terms = 15_000;
         int minDocFreq = 1;
         String scorerName = "simple";
-        double simplek = 1000d;
+        double simplek = Double.NaN;
         double specif = 0.5d;
         double cellPower = 0.5d;
         double weightAxes = 0.5d;
@@ -613,7 +613,7 @@ public final class Coocs2vec
             throw new IllegalArgumentException(
                 "specif must be in [0, 1]: " + specif);
         }
-        if (!Double.isFinite(simplek) || simplek <= 0d) {
+        if (simplek <= 0d) {
             throw new IllegalArgumentException("simplek must be finite and > 0: " + simplek);
         }
         if (gramDist < 0) {
@@ -669,7 +669,7 @@ public final class Coocs2vec
             if (decay != 1d) counting += number(decay);
         }
         String scoring = scorerName;
-        if ("simple".equals(scorerName)) scoring += "k" + number(simplek);
+        if ("simple".equals(scorerName) && !Double.isNaN(simplek)) scoring += "k" + number(simplek);
         if (specif != 0.5) scoring += "s" + number(specif);
         if (cellPower != 0.5d) scoring += "cp" + number(cellPower);
         String reduction = String.format("d%03d", dims);
@@ -761,6 +761,7 @@ public final class Coocs2vec
                 log("mean distance weight %.4f, rescaled to 1", table.meanWeight());
             }
             words = table.words();
+            logSmoothing(scorer, table);
             svd = new SparseSvd(
                 termCount, 1, table.rows(), table.cols(), null, table.values());
             log("preparing directed %s matrix (specif=%.3f, cellPower=%.3f)",
@@ -912,6 +913,85 @@ public final class Coocs2vec
             }
             log("%17s %,8d %6.2f", (1L << c) + "-" + ((1L << (c + 1)) - 1),
                 rowsByClass[c], 100d * byClass[c] / total);
+        }
+    }
+
+    /**
+     * Logs, for SimpleMaths, the smoothing constant k per million that the
+     * scorer actually applies to rows of several masses, and the class file
+     * it was loaded from. Debug: tells which code runs.
+     *
+     * <p>k is probed through the public score: with {@code tf = cf = 1}, the
+     * score is {@code (1e6 / f + k) / k}, so {@code k = 1e6 / (f * (score - 1))}.
+     * The scorer gets the totals that {@link SparseSvd#keyness} gives it:
+     * corpus = total mass of the table, documents = vocabulary rows, focus =
+     * row mass. Beside the probed k are the value of the present default k0,
+     * {@code 1e6 * (1 / f + 1 / rows)}, and of the former one,
+     * {@code 4 * sqrt(f * 1e5 / (f + 1e5))}. Rows probed: smallest, median and
+     * largest mass, and <i>enfant</i>, <i>instrumental</i> when present. The
+     * state of the scorer is overwritten; {@code keyness} sets it again.</p>
+     *
+     * @param scorer scorer of the run
+     * @param table co-occurrence table
+     */
+    private static void logSmoothing(final KeynessScorer scorer, final Table table)
+    {
+        if (!(scorer instanceof KeynessScorer.SimpleMaths)
+            || scorer instanceof KeynessScorer.SimpleRidfAlpha) {
+            return;
+        }
+        final java.security.CodeSource source = scorer.getClass().getProtectionDomain().getCodeSource();
+        log("smoothing: %s loaded from %s", scorer.getClass().getName(),
+            source == null ? "unknown" : source.getLocation());
+        final String[] words = table.words();
+        final int size = words.length;
+        final double[] margins = new double[size];
+        double total = 0d;
+        for (int i = 0; i < table.values().length; i++) {
+            final int row = table.rows()[i];
+            final int col = table.cols()[i];
+            final double value = table.values()[i];
+            margins[row] += value;
+            total += value;
+            if (col != row) {
+                margins[col] += value;
+                total += value;
+            }
+        }
+        final Integer[] order = new Integer[size];
+        for (int row = 0; row < size; row++) {
+            order[row] = row;
+        }
+        Arrays.sort(order, (a, b) -> Double.compare(margins[a], margins[b]));
+        int first = 0;
+        while (first < size - 1 && !(margins[order[first]] > 0d)) {
+            first++;
+        }
+        final IntList probes = new IntList();
+        probes.push(order[first]);
+        probes.push(order[(first + size) / 2]);
+        probes.push(order[size - 1]);
+        for (int row = 0; row < size; row++) {
+            if ("enfant".equals(words[row]) || "instrumental".equals(words[row])) {
+                probes.push(row);
+            }
+        }
+        scorer.corpus(total, size);
+        log("smoothing: total mass %.0f, %,d rows; k per million probed, then present and former default k0",
+            total, size);
+        for (int i = 0; i < probes.size(); i++) {
+            final int row = probes.get(i);
+            final double f = margins[row];
+            if (!(f > 0d && f < total)) {
+                continue;
+            }
+            scorer.focus(f, 0d);
+            final double ratio = scorer.score(1d, 1d, 1);
+            final double k = 1_000_000d / (f * (ratio - 1d));
+            final double present = 1_000_000d * (1d / f + 1d / size);
+            final double former = 4d * Math.sqrt(f * 100_000d / (f + 100_000d));
+            log("smoothing: %-16s mass %12.1f  k %10.2f  present %10.2f  former %10.2f  pseudo-occurrences %8.2f",
+                words[row], f, k, present, former, k * f / 1_000_000d);
         }
     }
 
