@@ -797,13 +797,10 @@ public abstract class KeynessScorer
         private double k0 = Double.NaN;
 
         /** Pseudo-count of the default centre, see {@link #k0(double)}. */
-        private double pseudoCount = PSEUDO_COUNT;
+        protected double pseudoCount = PSEUDO_COUNT;
 
         /** Rate per million of the default centre, or NaN for {@code 1_000_000 / corpusDocs}. */
         private double contextRate = Double.NaN;
-
-        /** True if the pseudo-count has been set by {@link #pseudoCount(double)}. */
-        protected boolean pseudoSet;
 
         /** Smoothing constant added to per-million rates, set by focus(); NaN until then. */
         private double k = Double.NaN;
@@ -947,7 +944,6 @@ public abstract class KeynessScorer
                 throw new IllegalArgumentException("pseudo-count must be finite and > 0: " + c);
             }
             pseudoCount = c;
-            pseudoSet = true;
             kSet = false;
             return this;
         }
@@ -999,10 +995,40 @@ public abstract class KeynessScorer
      * {@code alpha = s / (1 - s)}: 0 toward {@code s = 0}, 1 at
      * {@code s = 0.5}, without bound toward {@code s = 1}. No constant is
      * added: at {@code s = 0.5} the score is exactly {@code lr * ridf}. The
-     * exponents never exceed 2, so the score cannot overflow. The smoothing
-     * constant {@code k(s)} is inherited from {@link SimpleMaths}, around
-     * its own centre {@link #k0(double)}, a fixed rate per million unless a
-     * pseudo-count is set by {@link #pseudoCount(double)}.
+     * exponents never exceed 2, so the score cannot overflow.
+     * </p>
+     *
+     * <p>
+     * The centre of the smoothing depends on what the documents are, see
+     * {@link #k0(double)}. For keywords, documents are texts: the residual
+     * measures burstiness, and it rewards a rare name repeated in one text
+     * ({@code cf = 3}, {@code df = 1}: ridf = ln 3), so the smoothing must
+     * discount rare candidates; the default centre is a rate,
+     * {@link #K0_PLATEAU} per million, calibrated against {@link FisherAlpha}.
+     * In a co-occurrence table, rows are the documents and the residual is
+     * 0 for rare candidates (see below), so the smoothing has only to guard
+     * the ratios that rest on little evidence: {@link #pseudoCount(double)}
+     * sets a pseudo-count c, so that {@code lr = ln((tf + c) / (E + c))};
+     * {@link #PSEUDO_COUNT} is the value for a vector model.
+     * </p>
+     *
+     * <p>
+     * In a co-occurrence table ({@code SparseSvd.keyness}), the documents are
+     * the vocabulary rows and the document frequency of a candidate is its
+     * number of distinct partners. Rows differ in mass by orders of
+     * magnitude, far from the equal lengths that the Poisson expectation
+     * assumes, so the residual measures less the burstiness of a context than
+     * its frequency: measured on the Piaget corpus (window 15, decay 2, gram
+     * distance 2), the median residual of the contexts is 0 below 8
+     * occurrences, 0.5 around 100, 1.2 around 700, 1.7 around 5 000, 2.2
+     * around 20 000, then falls to 0.7 for the two most frequent. With the
+     * exact expectation of partners, {@code sum over rows a of
+     * (1 - exp(-m(a) * cf / N))}, it is 0 up to 500 occurrences and 0.6 at
+     * most: little burstiness beyond independence. The residual thus works as
+     * a weight of the contexts, 0 for the rare ones, where single references
+     * and taxa (<i>Baillière</i>, <i>Mac-Graw-Hill</i>, <i>Alvania</i>) would
+     * otherwise enter the neighbours of frequent words; with the exact
+     * expectation, most contexts would weigh 0 and the model would lose them.
      * </p>
      *
      * <p>
@@ -1034,8 +1060,12 @@ public abstract class KeynessScorer
          */
         private static final double K0_PLATEAU = 5_000d;
 
+        /** True once {@link #pseudoCount(double)} has set a pseudo-count centre. */
+        private boolean pseudo;
+
         /**
-         * Creates a scorer with the default centre {@link #K0_PLATEAU}.
+         * Creates a scorer with the default centre {@link #K0_PLATEAU}, for
+         * keywords.
          */
         public SimpleRidfAlpha()
         {
@@ -1057,21 +1087,35 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Returns the empirical centre, the same for every focus size, or,
-         * once {@link #pseudoCount(double)} has been called, the pseudo-count
-         * centre of {@link SimpleMaths}. Residual IDF favours rarer terms, so
-         * the empirical smoothing is stronger than for {@link SimpleMaths}.
-         * The measured centre does not vary with the focus from 39 000 to
-         * 880 000 tokens; the single smaller focus measured is not enough to
-         * fit a law in {@code focusTokens}.
+         * Returns the centre: {@link #K0_PLATEAU} per million for keywords,
+         * the same for every focus size; once {@link #pseudoCount(double)}
+         * has been called, the pseudo-count as a rate of the focus,
+         * {@code pseudoCount * 1_000_000 / focusTokens}, without the context
+         * rate of {@link SimpleMaths}, see the class comment.
          *
          * @param focusTokens tokens of the focus, pivot occurrences included
-         * @return {@link #K0_PLATEAU}, or the pseudo-count per million
+         * @return positive per-million smoothing constant at {@code s = 0.5}
          */
         @Override
         protected double k0(final double focusTokens)
         {
-            return pseudoSet ? super.k0(focusTokens) : K0_PLATEAU;
+            return pseudo ? 1_000_000d * pseudoCount / focusTokens : K0_PLATEAU;
+        }
+
+        /**
+         * Sets a pseudo-count centre, see {@link #k0(double)}: the smoothing
+         * of a vector model.
+         *
+         * @param c positive pseudo-count, a number of occurrences
+         * @return this scorer
+         * @throws IllegalArgumentException if c is not finite and positive
+         */
+        @Override
+        public SimpleRidfAlpha pseudoCount(final double c)
+        {
+            super.pseudoCount(c);
+            pseudo = true;
+            return this;
         }
 
         /**

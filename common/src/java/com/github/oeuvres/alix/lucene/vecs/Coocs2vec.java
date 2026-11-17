@@ -647,7 +647,7 @@ public final class Coocs2vec
             case "fisher" -> new KeynessScorer.FisherAlpha();
             case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
-            case "simpleridf" -> new KeynessScorer.SimpleRidfAlpha();
+            case "simpleridf" -> new KeynessScorer.SimpleRidfAlpha().pseudoCount(KeynessScorer.SimpleMaths.PSEUDO_COUNT);
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
@@ -1100,17 +1100,24 @@ public final class Coocs2vec
     }
 
     /**
-     * Logs, for SimpleMaths, the smoothing constant k per million that the
-     * scorer actually applies to rows of several masses, and the class file
-     * it was loaded from. Debug: tells which code runs.
+     * Logs, for SimpleMaths and SimpleRidfAlpha, the smoothing constant k per
+     * million that the scorer actually applies to rows of several masses, and
+     * the class file it was loaded from. Debug: tells which code runs.
      *
-     * <p>k is probed through the public score: with {@code tf = cf = 1}, the
-     * score is {@code (1e6 / f + k) / k}, so {@code k = 1e6 / (f * (score - 1))}.
+     * <p>k is probed through the public score, with {@code tf = 1},
+     * {@code cf = 2}, {@code df = 1}: the ratio is
+     * {@code (1e6 / f + k) / (r + k)}, r being {@code 1e6 / (N - f)}, the
+     * rate of the one occurrence left in the rest, so
+     * {@code k = (1e6 / f - ratio * r) / (ratio - 1)}. SimpleMaths returns the
+     * ratio; SimpleRidfAlpha returns {@code ln(ratio) * ridf}, with
+     * {@code ridf = ln(n * (1 - exp(-2 / n)))} for one partner.
      * The scorer gets the totals that {@link SparseSvd#keyness} gives it:
      * corpus = total mass of the table, documents = vocabulary rows, focus =
      * row mass. Beside the probed k are the value of the present default k0,
-     * {@code 1e6 / f + rate}, and of the former one,
-     * {@code 4 * sqrt(f * 1e5 / (f + 1e5))}. Rows probed: smallest, median and
+     * {@code 1e6 / f + rate} for SimpleMaths, {@code 1e6 / f} for
+     * SimpleRidfAlpha, and of the former one,
+     * {@code 4 * sqrt(f * 1e5 / (f + 1e5))} for SimpleMaths, 5000 for
+     * SimpleRidfAlpha. Rows probed: smallest, median and
      * largest mass, and <i>enfant</i>, <i>instrumental</i> when present. The
      * state of the scorer is overwritten; {@code keyness} sets it again.</p>
      *
@@ -1120,10 +1127,10 @@ public final class Coocs2vec
      */
     private static void logSmoothing(final KeynessScorer scorer, final Table table, final double rate)
     {
-        if (!(scorer instanceof KeynessScorer.SimpleMaths)
-            || scorer instanceof KeynessScorer.SimpleRidfAlpha) {
+        if (!(scorer instanceof KeynessScorer.SimpleMaths)) {
             return;
         }
+        final boolean ridf = scorer instanceof KeynessScorer.SimpleRidfAlpha;
         final java.security.CodeSource source = scorer.getClass().getProtectionDomain().getCodeSource();
         log("smoothing: %s loaded from %s", scorer.getClass().getName(),
             source == null ? "unknown" : source.getLocation());
@@ -1170,10 +1177,14 @@ public final class Coocs2vec
                 continue;
             }
             scorer.focus(f, 0d);
-            final double ratio = scorer.score(1d, 1d, 1);
-            final double k = 1_000_000d / (f * (ratio - 1d));
-            final double present = 1_000_000d / f + rate;
-            final double former = 4d * Math.sqrt(f * 100_000d / (f + 100_000d));
+            final double score = scorer.score(1d, 2d, 1);
+            final double ratio = ridf
+                ? Math.exp(score / Math.log(size * -Math.expm1(-2d / size)))
+                : score;
+            final double rest = 1_000_000d / (total - f);
+            final double k = (1_000_000d / f - ratio * rest) / (ratio - 1d);
+            final double present = ridf ? 1_000_000d / f : 1_000_000d / f + rate;
+            final double former = ridf ? 5_000d : 4d * Math.sqrt(f * 100_000d / (f + 100_000d));
             log("smoothing: %-16s mass %12.1f  k %10.2f  present %10.2f  former %10.2f  pseudo-occurrences %8.2f",
                 words[row], f, k, present, former, k * f / 1_000_000d);
         }
