@@ -27,8 +27,10 @@ import com.github.oeuvres.alix.util.WordTokenizer;
  * <p>
  * Terms outside parentheses are combined in an unordered
  * {@link SpanNearQuery}. Terms inside parentheses are combined in a
- * {@link SpanOrQuery}. Quoted text is interpreted as one indexed multiword
- * term. The historical underscore notation remains supported, so
+ * {@link SpanOrQuery}. Quoted text matches a single indexed term literally,
+ * without Hunspell lemmatization or stopword filtering. Quoted multiword
+ * expressions are also treated as one indexed term.
+ * The historical underscore notation remains supported, so
  * {@code Bachelard_Suzanne} has the same meaning as
  * {@code "Bachelard Suzanne"}.
  * </p>
@@ -37,8 +39,8 @@ import com.github.oeuvres.alix.util.WordTokenizer;
  * Exact terms are resolved against the configured frozen index reader. When
  * Hunspell is available, indexed dictionary roots are preferred. Otherwise,
  * the indexed surface form is retained. Terms for which neither an indexed
- * root nor an indexed surface form exists are suppressed. Wildcard and prefix
- * expressions retain their original multi-term behaviour.
+ * root nor an indexed surface form exists are suppressed. Unquoted wildcard
+ * and prefix expressions retain their original multi-term behaviour.
  * </p>
  *
  * <p>
@@ -74,6 +76,7 @@ public class SpanQueryParser
      * @param reader frozen reader used to resolve indexed terms
      * @param tokenizer tokenizer used to normalize query text
      * @param hunspell optional Hunspell lemmatizer, or {@code null}
+     * @param stopwords optional set of stopwords, or {@code null}
      * @throws IllegalArgumentException if {@code field} is blank
      * @throws NullPointerException if {@code reader} or {@code tokenizer} is
      *         {@code null}
@@ -99,7 +102,7 @@ public class SpanQueryParser
     /**
      * Result of parsing user text.
      *
-     * @param query assembled Lucene query, or {@code null} when no usable term
+     * @param spanQuery assembled Lucene query, or {@code null} when no usable term
      *        remains
      * @param queryString canonical replayable query string
      */
@@ -170,7 +173,9 @@ public class SpanQueryParser
                     break;
 
                 case TERM: {
-                    final ResolvedTerm resolved = spanTerm(token.text());
+                    final ResolvedTerm resolved = spanTerm(
+                        token.text(), token.exact()
+                    );
                     if (resolved == null) {
                         break;
                     }
@@ -256,7 +261,7 @@ public class SpanQueryParser
 
         for (final String word : tokenizer.tokenize(text.toString())) {
             if (!word.isBlank()) {
-                tokens.add(QueryToken.term(word));
+                tokens.add(QueryToken.term(word, false));
             }
         }
     }
@@ -288,7 +293,7 @@ public class SpanQueryParser
         }
 
         if (!term.isEmpty()) {
-            tokens.add(QueryToken.term(term.toString()));
+            tokens.add(QueryToken.term(term.toString(), true));
         }
     }
 
@@ -400,7 +405,7 @@ public class SpanQueryParser
     /**
      * Renders one resolved term or one OR group in parser syntax.
      *
-     * @param alternatives canonical alternatives
+     * @param alternatives rendered canonical alternatives
      * @return replayable parser syntax
      */
     private static String renderAlternatives(
@@ -410,7 +415,7 @@ public class SpanQueryParser
             new LinkedHashSet<>(alternatives);
 
         if (unique.size() == 1) {
-            return renderTerm(unique.iterator().next());
+            return unique.iterator().next();
         }
 
         final StringBuilder result = new StringBuilder("(");
@@ -418,7 +423,7 @@ public class SpanQueryParser
             if (result.length() > 1) {
                 result.append(' ');
             }
-            result.append(renderTerm(alternative));
+            result.append(alternative);
         }
 
         return result.append(')').toString();
@@ -428,10 +433,15 @@ public class SpanQueryParser
      * Renders one canonical term in parser syntax.
      *
      * @param term resolved indexed term
+     * @param exact whether literal-match quotes must be preserved
      * @return replayable term syntax
      */
-    private static String renderTerm(final String term)
+    private static String renderTerm(final String term, final boolean exact)
     {
+        if (exact) {
+            return "\"" + term + "\"";
+        }
+
         for (int i = 0; i < term.length(); i++) {
             final char character = term.charAt(i);
             if (
@@ -450,20 +460,37 @@ public class SpanQueryParser
      * Builds a resolved span clause for one ordinary or multiword term.
      *
      * <p>
-     * Wildcard and prefix terms retain their existing behaviour. For an exact
-     * term, a form that Hunspell itself reports as a root is kept unchanged.
-     * Otherwise, indexed Hunspell roots are preferred when available, then the
-     * indexed surface form is retained as a fallback. The method returns
-     * {@code null} when no indexed exact term can be produced.
+     * Quoted terms match indexed terms literally, bypassing wildcard expansion,
+     * stopword filtering, and Hunspell. Unquoted wildcard and prefix terms
+     * retain their existing behaviour. For an unquoted ordinary term, a form
+     * that Hunspell itself reports as a root is kept unchanged. Otherwise,
+     * indexed Hunspell roots are preferred when available, then the indexed
+     * surface form is retained as a fallback. The method returns {@code null}
+     * when no indexed exact term can be produced.
      * </p>
      *
      * @param word normalized token or quoted multiword term
+     * @param exact whether the token was quoted
      * @return resolved query and canonical terms, or {@code null}
      * @throws IOException if indexed terms cannot be read
      */
-    private ResolvedTerm spanTerm(final String word) throws IOException
-    {
+    private ResolvedTerm spanTerm(
+        final String word,
+        final boolean exact
+    ) throws IOException {
         final String text = word.replace('_', ' ');
+
+        if (exact) {
+            final Term term = new Term(field, text);
+            if (reader.docFreq(term) <= 0) {
+                return null;
+            }
+            return new ResolvedTerm(
+                new SpanTermQuery(term),
+                List.of(renderTerm(text, true))
+            );
+        }
+
         final boolean hasJoker =
             text.indexOf('*') >= 0 || text.indexOf('?') >= 0;
 
@@ -472,7 +499,7 @@ public class SpanQueryParser
             if (query == null) {
                 return null;
             }
-            return new ResolvedTerm(query, List.of(text));
+            return new ResolvedTerm(query, List.of(word));
         }
 
         if (stopwords != null && stopwords.contains(text)) {
@@ -491,7 +518,7 @@ public class SpanQueryParser
             if (roots.contains(text) && reader.docFreq(exactTerm) > 0) {
                 return new ResolvedTerm(
                     new SpanTermQuery(exactTerm),
-                    List.of(text)
+                    List.of(renderTerm(text, false))
                 );
             }
 
@@ -505,7 +532,7 @@ public class SpanQueryParser
                 }
 
                 rootClauses.add(new SpanTermQuery(term));
-                rootTerms.add(root);
+                rootTerms.add(renderTerm(root, false));
             }
 
             if (!rootClauses.isEmpty()) {
@@ -525,7 +552,7 @@ public class SpanQueryParser
 
         return new ResolvedTerm(
             new SpanTermQuery(exactTerm),
-            List.of(text)
+            List.of(renderTerm(text, false))
         );
     }
 
@@ -615,8 +642,9 @@ public class SpanQueryParser
      *
      * @param kind token kind
      * @param text term text, or {@code null} for a parenthesis marker
+     * @param exact whether the term was quoted
      */
-    private record QueryToken(TokenKind kind, String text)
+    private record QueryToken(TokenKind kind, String text, boolean exact)
     {
         /**
          * Creates a closing-parenthesis marker.
@@ -625,7 +653,7 @@ public class SpanQueryParser
          */
         private static QueryToken orClose()
         {
-            return new QueryToken(TokenKind.OR_CLOSE, null);
+            return new QueryToken(TokenKind.OR_CLOSE, null, false);
         }
 
         /**
@@ -635,18 +663,21 @@ public class SpanQueryParser
          */
         private static QueryToken orOpen()
         {
-            return new QueryToken(TokenKind.OR_OPEN, null);
+            return new QueryToken(TokenKind.OR_OPEN, null, false);
         }
 
         /**
          * Creates a term token.
          *
          * @param text non-empty term text
+         * @param exact whether the term was quoted
          * @return term token
          */
-        private static QueryToken term(final String text)
-        {
-            return new QueryToken(TokenKind.TERM, text);
+        private static QueryToken term(
+            final String text,
+            final boolean exact
+        ) {
+            return new QueryToken(TokenKind.TERM, text, exact);
         }
     }
 
@@ -654,7 +685,7 @@ public class SpanQueryParser
      * One resolved query token.
      *
      * @param query Lucene span query
-     * @param queryTerms canonical terms represented by the query
+     * @param queryTerms rendered canonical alternatives represented by the query
      */
     private record ResolvedTerm(
         SpanQuery query,
