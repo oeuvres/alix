@@ -17,6 +17,14 @@ public class Fisher
     private static final double EPSILON = 1e-16d;
 
     /**
+     * Relative tolerance of the two-sided test: a table counts as no more
+     * probable than the observed one when its probability is within this
+     * factor of it, so that tables of equal probability are not lost to
+     * rounding. The value of R's {@code fisher.test}.
+     */
+    private static final double TIE_TOLERANCE = 1d + 1e-7d;
+
+    /**
      * Returns the log of the inclusive upper hypergeometric tail.
      *
      * <p>If {@code X ~ Hypergeom(corpusTokens, cf, focusTokens)}, returns
@@ -91,7 +99,7 @@ public class Fisher
             final double probability = hypergeometricProbability(i, r, s, m, n);
             if (i <= n11) result[1] += probability;
             if (i >= n11) result[2] += probability;
-            if (probability <= cutoff) result[0] += probability;
+            if (probability <= cutoff * TIE_TOLERANCE) result[0] += probability;
             if (i == max) break;
         }
         for (int i = 0; i < result.length; i++) {

@@ -325,7 +325,7 @@ public class Gamma
                         xden = xden * xm2 + q2[i];
                     }
 
-                    res = corr + xm1 * (d2 + xm2 * (xnum / xden));
+                    res = corr + xm2 * (d2 + xm2 * (xnum / xden));
                 }
             } else if (y <= 4.0D) {
                 // .5 .LT. X .LE. 4.0
@@ -509,6 +509,7 @@ public class Gamma
             double a = alpha;
 
             do {
+                iter++;
                 a++;
                 term *= x / a;
                 gin += term;

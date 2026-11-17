@@ -921,7 +921,7 @@ public abstract class KeynessScorer
          * tokens; flat from 3 000 to 10 000. Too high for the one focus
          * measured below that range, 14 000 tokens (centre near 1 300).
          */
-        private static final double K0_PLATEAU = 100_000d;
+        private static final double K0_PLATEAU = 5_000d;
 
         /**
          * Creates a scorer with the default centre {@link #K0_PLATEAU}.

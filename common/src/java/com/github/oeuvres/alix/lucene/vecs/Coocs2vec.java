@@ -1,5 +1,6 @@
 package com.github.oeuvres.alix.lucene.vecs;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,8 @@ import us.ascendtech.primme.PrimmeSvds;
  * <p>The selected vocabulary serves as both rows and columns. Each unordered
  * positional pair is counted once. Its count is mirrored in the symmetric
  * contingency table, with same-word pairs contributing two diagonal counts.
- * The table is stored as upper-triangular sparse integer counts.</p>
+ * The table is stored as upper-triangular sparse counts, weighted with
+ * {@code --distance}.</p>
  *
  * <p>{@link SparseSvd#keyness(KeynessScorer, double)} scores each direction
  * separately. SimpleMaths therefore retains its focus-dependent asymmetry.
@@ -57,24 +59,45 @@ import us.ascendtech.primme.PrimmeSvds;
  * <i>le sujet</i>, <i>il le</i>).</p>
  *
  * <p>{@code --distance} weights each positional pair by its distance d
- * instead of counting it 1. Each word gets a
- * reach that grows with its idf, {@code max(1, window * idf / ln N)}, N being
- * the number of documents; a pair's reach R is the shorter of its two words'
- * reaches; the pair counts 1 for {@code d <= R}, then {@code R / d},
- * the harmonic decay of GloVe (Pennington, Socher &amp; Manning 2014).
- * Weights are rescaled to a mean of 1 over all counted pairs, so the table
- * keeps the mass of the raw counts. SimpleMaths is unchanged by that scale;
- * with tests (G²) or BM25 saturation the option is experimental. The counting
- * part of the filename gets {@code dw}.</p>
+ * instead of counting it 1:
+ * {@code ((window - d + 1) / window)^decay}, the same for every pair of
+ * words. {@code --decay} sets the exponent, 1 by default: a straight line
+ * from 1 at distance 1 to {@code 1 / window} at the edge of the window, the
+ * expected weight of the dynamic window of word2vec, which draws its width
+ * uniformly from 1 to the window for each occurrence (Mikolov et al. 2013;
+ * Levy, Goldberg &amp; Dagan 2015). Toward 0 the weights tend to the flat
+ * count of the window; above 1 they fall faster, so that the nearest
+ * positions weigh more against the edge of the window (at window 5:
+ * 1, 0.8, 0.6, 0.4, 0.2 with decay 1; 1, 0.64, 0.36, 0.16, 0.04 with
+ * decay 2; 1, 0.89, 0.77, 0.63, 0.45 with decay 0.5). {@code --decay}
+ * implies {@code --distance}; the weights are written to the log. The gram
+ * distance applies as without weighting: a pair with a stopword counts,
+ * with its weight, only within {@code --gramdist}. Weights are rescaled to
+ * a mean of 1 over all counted pairs, so the table keeps the mass of the raw
+ * counts. SimpleMaths is unchanged by that scale; with tests (G²) or BM25
+ * saturation the option is experimental; Fisher needs whole counts and is
+ * refused. The counting part of the filename gets {@code dw}, followed by
+ * the exponent when it is not 1, before the gram distance:
+ * {@code w5dwgram2}, {@code w5dw2gram2}.</p>
  *
- * <p>Negative result: the longer reach, that of the pair's less widespread
- * word, was tried (Piaget corpus, SimpleMaths, 200 dimensions) and dropped.
- * A frequent word then takes the long reach of every rarer partner, so all
- * frequent words acquire the same long-range profile, a frequency direction:
- * mean cosine of random pairs rose from 0.029 to 0.041, and the top-12
- * neighbours of <i>sujet</i> became function words only (median neighbour
- * frequency 12,061 with the shorter reach, 70,050 with the longer one). The
- * shorter reach keeps frequent words local and avoids that profile.</p>
+ * <p>Negative result: a weight depending on the two words was tried and
+ * dropped (Piaget corpus, window 30, SimpleMaths k = 1000). Each word had a
+ * reach growing with its idf, {@code max(1, window * idf / ln N)}, N being
+ * the number of documents; a pair counted 1 up to its reach R, then
+ * {@code R / d}, the harmonic decay of GloVe (Pennington, Socher &amp;
+ * Manning 2014). Document frequency does not tell a content word present in
+ * most documents from a grammatical word: both get a reach of 1, so that all
+ * their pairs weigh {@code 1 / d}, 1.5 in all for distances 1–2 against 2.49
+ * for distances 3–30. The row of such a word is its grammatical frame. With
+ * R the shorter reach of the two words, the neighbours of <i>enfant</i> were
+ * frequent words (<i>comprendre</i>, <i>manière</i>, <i>chez</i>,
+ * <i>sujet</i>), and without the gram distance function words (<i>chez</i>,
+ * <i>que</i>, <i>pour</i>, <i>à</i>). With R the longer reach, a frequent
+ * word took the long reach of every rarer partner, so all frequent words
+ * acquired the same long-range profile, a frequency direction: mean cosine
+ * of random pairs rose from 0.029 to 0.041, and the top-12 neighbours of
+ * <i>sujet</i> became function words only (median neighbour frequency
+ * 12,061 with the shorter reach, 70,050 with the longer one).</p>
  *
  * <p>Three files are written: {@code <name>.bin}, the row vectors (a word as
  * focus: the contexts it expects); {@code <name>.ctx}, in the same word2vec
@@ -85,13 +108,13 @@ import us.ascendtech.primme.PrimmeSvds;
  * row(a) . ctx(b) approximates (a, b) within the retained axes; cosine
  * between row vectors stays the symmetric, second-order comparison;
  * {@code <name>.json}, the diagnosis of the run: model name, command-line
- * arguments and the whole log (block scales, inertia by frequency class,
+ * arguments and the whole log (distance weights, inertia by frequency class,
  * solver times, refinement losses).</p>
  *
  * <p>The name lists the stages of the pipeline in order, separated by
  * {@code -}, never inside a stage, so that models built from the same matrix
  * sort together: corpus and field, vocabulary ({@code terms37175}), counting
- * ({@code b5_10_30}, or {@code w30} with {@code dw} or {@code gram2}),
+ * ({@code w30}, then {@code dw} and {@code gram2}),
  * scoring ({@code simplek1000s0.5}, {@code g2s0.5}, then {@code cp} if
  * cellPower differs from 0.5), reduction ({@code d200}, dimensions on three
  * digits, then {@code aw}, {@code eps}, {@code test} when not default), and
@@ -99,21 +122,14 @@ import us.ascendtech.primme.PrimmeSvds;
  * passes differ from 4). For example
  * {@code piaget-word2vec-terms37175-w30gram2-simplek1000s0.5-d200}.</p>
  *
- * <p>{@code --bands 1,3,7,15,30} counts each pair in the band of its
- * distance, given by the inclusive upper bounds, the last one equal to the
- * window. The default bounds {@code 2^k - 1} give bands of equal width in log
- * distance. Each band becomes a column block, scored against its own totals
- * and balanced by its first singular value (see {@link SparseSvd}). The
- * gram distance applies as without bands: a pair with a stopword counts only
- * within {@code --gramdist}, so in the first band when it is not wider, and
- * content pairs count in every band. The option excludes {@code --distance}. Row
- * vectors stay one per word; context vectors are one per (word, band),
- * labelled {@code word@upper}, e.g. {@code sujet@1}, {@code sujet@30}. The
- * counting part of the filename is {@code b1_3_7_15_30}. The log shows the share of inertia
- * of each band by frequency class of the rows, frequencies in powers of 2.</p>
- * 
- * <p>Negative result: bands were tried (Piaget corpus, gram distance 2,
- * SimpleMaths k = 1000, 200 dimensions) and add nothing to the cosine
+ * <p>Negative result: distance bands were tried and their code dropped.
+ * Each pair was counted in the band of its distance, given by inclusive
+ * upper bounds ({@code --bands 2,8,30}); each band became a column block,
+ * scored against its own totals and balanced by its first singular value,
+ * as in a multiple factor analysis; a pair with a stopword counted only in
+ * the bands within the gram distance. Measured on the Piaget corpus
+ * (gram distance 2, SimpleMaths k = 1000, 200 dimensions), bands add
+ * nothing to the cosine
  * between row vectors. With bounds {@code 2,30}, {@code 2,8,30} and
  * {@code 2,5,12,30}, the share of hapaxes among the top-20 neighbours of
  * mid-frequency words (20–200 occurrences) is 0.31, 0.19 and 0.15, against
@@ -145,8 +161,8 @@ import us.ascendtech.primme.PrimmeSvds;
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
  *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5] \
  *     [--cellpower 0.5] [--weightaxes 0.5] \
- *     [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--gramdist 2]
- *     [--bands 1,3,7,15,30] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]
+ *     [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--decay 1]
+ *     [--gramdist 2] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]
  *     [--sidedir DIR]
  * }</pre>
  *
@@ -176,7 +192,6 @@ public final class Coocs2vec
      * @param rows sparse observed row ranks
      * @param cols sparse observed column ranks
      * @param values sparse observed counts, weighted when distance weighting is on
-     * @param bands distance band of each observed cell, or null without bands
      * @param pairs number of unordered positional pairs visited
      * @param meanWeight mean distance weight before rescaling, 1 without weighting
      */
@@ -185,7 +200,6 @@ public final class Coocs2vec
         int[] rows,
         int[] cols,
         double[] values,
-        int[] bands,
         long pairs,
         double meanWeight
     ) {
@@ -436,8 +450,8 @@ public final class Coocs2vec
         "usage: Coocs2vec <indexDir> <field>"
             + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5]"
             + " [--cellpower 0.5] [--weightaxes 0.5]"
-            + " [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--gramdist 2]"
-            + " [--bands 1,3,7,15,30] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]"
+            + " [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--decay 1]"
+            + " [--gramdist 2] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]"
             + " [--sidedir DIR]";
 
     /** Wall-clock start, set once at the beginning of {@link #main(String[])}. */
@@ -518,8 +532,8 @@ public final class Coocs2vec
         boolean deflate = false;
         boolean test = false;
         boolean distance = false;
+        double decay = 1d;
         int gramDist = GRAM_DIST;
-        int[] bounds = null;
         double refine = 0d;
         String cellWeightName = "logstrength";
         int refineIters = 4;
@@ -539,9 +553,11 @@ public final class Coocs2vec
                 case "--deflate" -> deflate = true;
                 case "--test" -> test = true;
                 case "--distance" -> distance = true;
+                case "--decay" -> {
+                    decay = Double.parseDouble(args[++i]);
+                    distance = true;
+                }
                 case "--gramdist" -> gramDist = Integer.parseInt(args[++i]);
-                case "--bands" -> bounds = Arrays.stream(args[++i].split(","))
-                    .map(String::trim).mapToInt(Integer::parseInt).toArray();
                 case "--refine" -> refine = Double.parseDouble(args[++i]);
                 case "--cellweight" -> cellWeightName = args[++i];
                 case "--refineiters" -> refineIters = Integer.parseInt(args[++i]);
@@ -581,22 +597,10 @@ public final class Coocs2vec
         if (!Double.isFinite(eps) || eps <= 0d) {
             throw new IllegalArgumentException("eps must be finite and > 0: " + eps);
         }
-        if (bounds != null) {
-            if (distance) {
-                throw new IllegalArgumentException("--bands and --distance are exclusive");
-            }
-            for (int b = 0; b < bounds.length; b++) {
-                if (bounds[b] < 1 || (b > 0 && bounds[b] <= bounds[b - 1])) {
-                    throw new IllegalArgumentException(
-                        "bands must be positive and strictly increasing: " + Arrays.toString(bounds));
-                }
-            }
-            if (bounds.length == 0 || bounds[bounds.length - 1] != window) {
-                throw new IllegalArgumentException(
-                    "last band bound must equal the window (" + window + "): " + Arrays.toString(bounds));
-            }
+        if (!Double.isFinite(decay) || decay <= 0d) {
+            throw new IllegalArgumentException(
+                "decay must be finite and > 0 (without weighting, omit --distance): " + decay);
         }
-        final int bandCount = bounds == null ? 1 : bounds.length;
         final SparseSvd.CellWeight cellWeight = switch (cellWeightName) {
             case "logstrength" -> SparseSvd.CellWeight.LOG_STRENGTH;
             case "log" -> SparseSvd.CellWeight.LOG;
@@ -622,6 +626,10 @@ public final class Coocs2vec
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
+        if (distance && "fisher".equals(scorerName)) {
+            throw new IllegalArgumentException(
+                "--distance gives weighted counts, fisher requires whole counts");
+        }
         scorer.specif(specif);
         if (terms != -1 && terms < 2) {
             throw new IllegalArgumentException("terms must be -1 or >= 2: " + terms);
@@ -630,9 +638,11 @@ public final class Coocs2vec
             throw new IllegalArgumentException("minDocFreq must be >= 0: " + minDocFreq);
         }
 
-        String counting = bounds == null ? "w" + window : "b" + String.join("_",
-            Arrays.stream(bounds).mapToObj(Integer::toString).toArray(String[]::new));
-        if (distance) counting += "dw";
+        String counting = "w" + window;
+        if (distance) {
+            counting += "dw";
+            if (decay != 1d) counting += number(decay);
+        }
         String scoring = scorerName;
         if ("simple".equals(scorerName)) scoring += "k" + number(simplek);
         if (specif != 0.5) scoring += "s" + number(specif);
@@ -656,7 +666,12 @@ public final class Coocs2vec
             final String[] words;
             final SparseSvd svd;
             final int termCount;
-            InputStream stop = Files.exists(stopPath) ? Files.newInputStream(stopPath) : null;
+            InputStream stop = null;
+            if (Files.exists(stopPath)) {
+                // the index writes a straight apostrophe: a curly one in the list would never match
+                final String list = Files.readString(stopPath, StandardCharsets.UTF_8).replace('\u2019', '\'');
+                stop = new ByteArrayInputStream(list.getBytes(StandardCharsets.UTF_8));
+            }
             final TermLexicon lexicon = new TermLexicon(reader, field, null, null, stop);
             final boolean stopwords = (gramDist > 0) && !lexicon.bits(TermFlag.STOPWORD).isEmpty();
             if (stopwords) {
@@ -692,21 +707,24 @@ public final class Coocs2vec
                 + (refinement.isEmpty() ? "" : "-" + refinement);
             log("model name %s", outName);
 
-            final long cellCount = (long) termCount * termCount * bandCount;
+            final long cellCount = (long) termCount * termCount;
             log(
-                "building sparse %,d x %,d positional cooccurrence matrix, window +/-%d%s",
-                termCount, termCount * bandCount, window,
-                bounds == null ? "" : ", bands " + Arrays.toString(bounds));
-            final double[] reach = distance ? reaches(selected, stats, window) : null;
+                "building sparse %,d x %,d positional cooccurrence matrix, window +/-%d",
+                termCount, termCount, window);
+            final double[] weights = distance ? weights(window, decay) : null;
             if (distance) {
-                log("distance weighting: reach = max(1, %d * idf / ln %,d), pair reach = min, then R / d",
-                    window, stats.fieldDocs());
+                final StringBuilder line = new StringBuilder();
+                for (int d = 1; d <= window; d++) {
+                    line.append(String.format(" %.3f", weights[d]));
+                }
+                log("distance weighting: a pair at distance d counts ((%d - d + 1) / %d)^%s, d = 1..%d:%s",
+                    window, window, number(decay), window, line);
                 if (!"simple".equals(scorerName)) {
                     log("warning: %s depends on the scale of counts; distance weighting is experimental with it",
                         scorerName);
                 }
             }
-            final Table table = coocTable(rail, lexicon, selected, window, reach, bounds, stopwords ? gramDist : 0);
+            final Table table = coocTable(rail, lexicon, selected, window, weights, stopwords ? gramDist : 0);
             log(
                 "matrix built: %,d logical non-zero cells (%.2f%% dense), "
                     + "%,d upper-triangle cells stored, %,d positional pairs counted",
@@ -719,16 +737,11 @@ public final class Coocs2vec
             }
             words = table.words();
             svd = new SparseSvd(
-                termCount, bandCount, table.rows(), table.cols(), table.bands(), table.values());
+                termCount, 1, table.rows(), table.cols(), null, table.values());
             log("preparing directed %s matrix (specif=%.3f, cellPower=%.3f)",
                 scorerName, specif, cellPower);
             svd.keyness(scorer, cellPower);
-            if (bounds != null) {
-                log("band blocks divided by their first singular value: %s",
-                    Arrays.toString(Arrays.stream(svd.blockScales())
-                        .mapToObj(v -> String.format("%.3f", v)).toArray()));
-            }
-            logInertia(svd.rowInertia(), selected, stats, bounds);
+            logInertia(svd.rowInertia(), selected, stats);
             final int retained;
             final PrimmeSvds.Method method = test
                 ? PrimmeSvds.Method.HYBRID
@@ -756,7 +769,7 @@ public final class Coocs2vec
             if (weightAxes != 0.5d) {
                 log("warning: row . context reconstructs directed cells only with --weightaxes 0.5");
             }
-            writeVectors(Paths.get(outName + ".ctx"), columnLabels(words, bounds), svd.contexts());
+            writeVectors(Paths.get(outName + ".ctx"), words, svd.contexts());
 
             log("done");
             writeDiagnosis(Paths.get(outName + ".json"), outName, args, logBuffer);
@@ -835,49 +848,22 @@ public final class Coocs2vec
     }
 
     /**
-     * Returns the labels of the matrix columns.
-     *
-     * <p>Without bands, the words. With bands, {@code word@upper} for each
-     * band in order, upper being the band's inclusive distance bound.</p>
-     *
-     * @param words vocabulary in matrix order
-     * @param bounds inclusive upper distance of each band, or null
-     * @return one label per column
-     */
-    private static String[] columnLabels(final String[] words, final int[] bounds)
-    {
-        if (bounds == null) {
-            return words;
-        }
-        final String[] labels = new String[words.length * bounds.length];
-        for (int band = 0; band < bounds.length; band++) {
-            for (int word = 0; word < words.length; word++) {
-                labels[band * words.length + word] = words[word] + "@" + bounds[band];
-            }
-        }
-        return labels;
-    }
-
-    /**
-     * Logs the share of prepared inertia of each band by frequency class.
+     * Logs the share of prepared inertia by frequency class of the rows.
      *
      * <p>Rows are grouped by the power of 2 of their corpus frequency
      * (1, 2-3, 4-7, ...). Each line gives the number of rows of the class and
-     * its percentage of the total inertia, overall and in each band.</p>
+     * its percentage of the total inertia.</p>
      *
-     * @param inertia squared row norms, rows by bands
+     * @param inertia squared row norms, one array per row
      * @param selected selected vocabulary in matrix order
      * @param stats field statistics giving corpus frequencies
-     * @param bounds inclusive upper distance of each band, or null
      */
     private static void logInertia(
         final double[][] inertia,
         final SelectedTerm[] selected,
-        final TermStats stats,
-        final int[] bounds
+        final TermStats stats
     ) {
-        final int bandCount = inertia.length == 0 ? 1 : inertia[0].length;
-        final double[][] byClass = new double[64][bandCount];
+        final double[] byClass = new double[64];
         final int[] rowsByClass = new int[64];
         double total = 0d;
         int maxClass = 0;
@@ -886,35 +872,21 @@ public final class Coocs2vec
             final int c = 63 - Long.numberOfLeadingZeros(freq);
             maxClass = Math.max(maxClass, c);
             rowsByClass[c]++;
-            for (int band = 0; band < bandCount; band++) {
-                byClass[c][band] += inertia[row][band];
-                total += inertia[row][band];
+            for (final double value : inertia[row]) {
+                byClass[c] += value;
+                total += value;
             }
         }
         if (!(total > 0d)) {
             return;
         }
-        final StringBuilder head = new StringBuilder("inertia %  freq      rows    all");
-        if (bounds != null) {
-            for (final int bound : bounds) {
-                head.append(String.format(" %6s", "@" + bound));
-            }
-        }
-        log("%s", head);
+        log("%s", "inertia %  freq      rows    all");
         for (int c = 0; c <= maxClass; c++) {
             if (rowsByClass[c] == 0) {
                 continue;
             }
-            double all = 0d;
-            final StringBuilder line = new StringBuilder();
-            for (int band = 0; band < bandCount; band++) {
-                all += byClass[c][band];
-                if (bounds != null) {
-                    line.append(String.format(" %6.2f", 100d * byClass[c][band] / total));
-                }
-            }
-            log("%17s %,8d %6.2f%s", (1L << c) + "-" + ((1L << (c + 1)) - 1),
-                rowsByClass[c], 100d * all / total, line);
+            log("%17s %,8d %6.2f", (1L << c) + "-" + ((1L << (c + 1)) - 1),
+                rowsByClass[c], 100d * byClass[c] / total);
         }
     }
 
@@ -1021,14 +993,12 @@ public final class Coocs2vec
      *
      * @param svd prepared sparse reduction pipeline
      * @param words vocabulary in matrix order
-     * @param labels column labels, see {@link #columnLabels(String[], int[])}
      * @param word row word to inspect
      * @param topK number of columns to print
      */
     private static void printPreparedTop(
         final SparseSvd svd,
         final String[] words,
-        final String[] labels,
         final String word,
         final int topK
     ) {
@@ -1059,7 +1029,7 @@ public final class Coocs2vec
             if (col == pivot || !(values[col] > 0d)) {
                 continue;
             }
-            out.append(' ').append(labels[col])
+            out.append(' ').append(words[col])
                 .append('(').append(String.format("%.4f", values[col])).append(')');
             if (++shown >= topK) {
                 break;
@@ -1077,23 +1047,21 @@ public final class Coocs2vec
      * @param row matrix row of the earlier occurrence
      * @param col matrix row of the later occurrence
      * @param weight weight of this pair, 1 without distance weighting
-     * @param base band offset of the column key, {@code band * termCount}, 0 without bands
      */
     private static void bump(
         final SparseCounts counts,
         final int row,
         final int col,
-        final double weight,
-        final int base
+        final double weight
     ) {
         if (row == col) {
-            counts.add(row, base + row, 2d * weight);
+            counts.add(row, row, 2d * weight);
         }
         else if (row < col) {
-            counts.add(row, base + col, weight);
+            counts.add(row, col, weight);
         }
         else {
-            counts.add(col, base + row, weight);
+            counts.add(col, row, weight);
         }
     }
 
@@ -1106,22 +1074,17 @@ public final class Coocs2vec
      * resolved once into a per-row {@code boolean[]} so the hot loop never touches
      * the lexicon or a bitset.</p>
      *
-     * <p>With {@code reach}, every pair within the window is weighted by
-     * distance (see the class comment) and the gram distance is off; weights
-     * are then rescaled to a mean of 1.</p>
-     *
-     * <p>With {@code bounds}, every pair within the window is counted 1 in the
-     * band of its distance, a pair with a stopword only within
-     * {@code gramDist} when it is positive. The band is carried
-     * in the column key during the scan, {@code band * termCount + col}, then
-     * split into the table's {@code cols} and {@code bands}.</p>
+     * <p>With {@code weights}, a counted pair at distance d weighs
+     * {@code weights[d]} instead of 1 (see the class comment); the gram
+     * distance applies in the same way. Weights are then rescaled to a mean
+     * of 1.</p>
      *
      * @param rail positional term rail
      * @param lexicon term-id lexicon corresponding to the rail
      * @param selected selected vocabulary
      * @param window maximum positional distance, inclusive
-     * @param reach reach of each selected row, or null for unweighted counts
-     * @param bounds inclusive upper distance of each band, or null without bands
+     * @param weights weight of a pair by its distance, index 1 to window, or
+     *        null to count each pair 1, see {@link #weights(int, double)}
      * @param gramDist maximum distance of a pair with a stopword, 0 to count
      *        every pair up to the window
      * @return selected forms and their sparse raw cooccurrence table
@@ -1131,8 +1094,7 @@ public final class Coocs2vec
         final TermLexicon lexicon,
         final SelectedTerm[] selected,
         final int window,
-        final double[] reach,
-        final int[] bounds,
+        final double[] weights,
         final int gramDist
     ) {
         final BitSet stopwords = lexicon.bits(TermFlag.STOPWORD);
@@ -1142,17 +1104,6 @@ public final class Coocs2vec
         final String[] words = new String[termCount];
         final boolean[] rowIsStop = new boolean[termCount];
         final SparseCounts counts = new SparseCounts(termCount);
-        int[] bandBase = null;
-        if (bounds != null) {
-            bandBase = new int[window + 1];
-            int band = 0;
-            for (int d = 1; d <= window; d++) {
-                if (d > bounds[band]) {
-                    band++;
-                }
-                bandBase[d] = Math.multiplyExact(band, termCount);
-            }
-        }
 
         final int[] rowByTermId = new int[lexicon.vocabSize()];
         Arrays.fill(rowByTermId, -1);
@@ -1193,34 +1144,19 @@ public final class Coocs2vec
                     continue;
                 }
                 final int fullEnd = Math.min(docLen, position + window + 1);
-                if (reach != null) {
+                if (weights != null) {
                     for (int next = position + 1; next < fullEnd; next++) {
                         final int col = rows[next];
                         if (col < 0) {
                             continue;
                         }
                         final int d = next - position;
-                        final double r = Math.min(reach[row], reach[col]);
-                        final double weight = d <= r ? 1d : r / d;
                         if (hasStopwords && d > gramDist && (rowIsStop[row] || rowIsStop[col])) {
                             continue;
                         }
-                        bump(counts, row, col, weight, 0);
+                        final double weight = weights[d];
+                        bump(counts, row, col, weight);
                         weightSum += weight;
-                        pairs++;
-                    }
-                    continue;
-                }
-                if (bandBase != null) {
-                    for (int next = position + 1; next < fullEnd; next++) {
-                        final int col = rows[next];
-                        if (col < 0) {
-                            continue;
-                        }
-                        if (hasStopwords && next - position > gramDist && (rowIsStop[row] || rowIsStop[col])) {
-                            continue;
-                        }
-                        bump(counts, row, col, 1d, bandBase[next - position]);
                         pairs++;
                     }
                     continue;
@@ -1235,7 +1171,7 @@ public final class Coocs2vec
                     if (col < 0) {
                         continue;
                     }
-                    bump(counts, row, col, 1d, 0);
+                    bump(counts, row, col, 1d);
                     pairs++;
                 }
 
@@ -1247,7 +1183,7 @@ public final class Coocs2vec
                         if (col < 0 || rowIsStop[col]) {
                             continue;
                         }
-                        bump(counts, row, col, 1d, 0);
+                        bump(counts, row, col, 1d);
                         pairs++;
                     }
                 }
@@ -1255,53 +1191,15 @@ public final class Coocs2vec
         }
 
         final SparseCells cells = counts.toSparseCells();
-        int[] bands = null;
-        if (bounds != null) {
-            final int[] cols = cells.cols();
-            bands = new int[cols.length];
-            for (int i = 0; i < cols.length; i++) {
-                bands[i] = cols[i] / termCount;
-                cols[i] -= bands[i] * termCount;
-            }
-        }
         double meanWeight = 1d;
-        if (reach != null && pairs > 0L) {
+        if (weights != null && pairs > 0L) {
             meanWeight = weightSum / pairs;
             final double[] values = cells.values();
             for (int i = 0; i < values.length; i++) {
                 values[i] /= meanWeight;
             }
         }
-        return new Table(words, cells.rows(), cells.cols(), cells.values(), bands, pairs, meanWeight);
-    }
-
-    /**
-     * Computes the distance reach of each selected word from its idf.
-     *
-     * <p>{@code reach = max(1, window * idf / ln N)} with
-     * {@code idf = ln(N / df)} and N the number of documents of the field:
-     * a word present in every document reaches 1 position, a word present in
-     * one document the whole window.</p>
-     *
-     * @param selected selected vocabulary
-     * @param stats field statistics giving document frequencies
-     * @param window maximum positional distance, inclusive
-     * @return reach of each selected row, in positions
-     */
-    private static double[] reaches(
-        final SelectedTerm[] selected,
-        final TermStats stats,
-        final int window
-    ) {
-        final int docs = stats.fieldDocs();
-        final double maxIdf = Math.log(docs);
-        final double[] reach = new double[selected.length];
-        for (int row = 0; row < selected.length; row++) {
-            final int df = Math.max(1, stats.termDocs(selected[row].termId()));
-            final double idf = Math.log((double) docs / df);
-            reach[row] = maxIdf > 0d ? Math.max(1d, window * idf / maxIdf) : 1d;
-        }
-        return reach;
+        return new Table(words, cells.rows(), cells.cols(), cells.values(), pairs, meanWeight);
     }
 
     /**
@@ -1316,5 +1214,23 @@ public final class Coocs2vec
             "[%,8d ms] %s%n",
             System.currentTimeMillis() - started,
             String.format(format, args));
+    }
+
+    /**
+     * Returns the weight of a positional pair by its distance,
+     * {@code ((window - d + 1) / window)^decay}: 1 at distance 1, decreasing
+     * to {@code (1 / window)^decay} at the edge of the window.
+     *
+     * @param window maximum positional distance, inclusive
+     * @param decay positive exponent, 1 for the linear weight of word2vec
+     * @return weights indexed by distance, index 0 unused
+     */
+    private static double[] weights(final int window, final double decay)
+    {
+        final double[] weights = new double[window + 1];
+        for (int d = 1; d <= window; d++) {
+            weights[d] = Math.pow((window - d + 1) / (double) window, decay);
+        }
+        return weights;
     }
 }
