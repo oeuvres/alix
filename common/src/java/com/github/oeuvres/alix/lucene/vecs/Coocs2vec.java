@@ -148,6 +148,31 @@ import us.ascendtech.primme.PrimmeSvds;
  * enfant, bébé, nourrisson), not the partners of locutions; those stay in the
  * directed cells, see {@code <name>.ctx}.</p>
  *
+ * <p>Negative result: a significance filter was tried and its code dropped.
+ * Before scoring, each cell was tested by Fisher's exact test on its raw
+ * count (one test per unordered pair, margins and total of the raw table),
+ * and a cell that did not pass was not scored, with a correction for
+ * multiple tests: Bonferroni ({@code --fwer 0.05}, threshold
+ * {@code -ln p >= ln(m / 0.05)}, 18.4 for 4.85 million cells at window 15)
+ * or Benjamini &amp; Hochberg ({@code --fdr 0.05}). Measured on the Piaget
+ * corpus (window 15, decay 2, gram distance 2, simpleridf, 300 dimensions),
+ * against the same model without filter. Bonferroni left 17,345 words with
+ * a vector out of 37,102; many kept one or two cells, so that their vector
+ * is the context vector of a single partner: <i>Feldweg</i> and
+ * <i>Baechler</i> came first among the neighbours of <i>enfant</i>, at the
+ * same distance, 0.146, against 0.52 for <i>adulte</i>. Benjamini &amp;
+ * Hochberg removed 7 words only, but the neighbours of <i>enfant</i> lost
+ * <i>nourrisson</i>, <i>nouveau-né</i>, <i>enfance</i> and gained
+ * <i>surrenversement</i>, <i>masturbateur</i>, <i>Aspergillus</i>,
+ * <i>prohibitif</i>, absent without filter. The test measures surprise,
+ * which depends on rarity: a single co-occurrence of two rare words is
+ * improbable under independence ({@code -ln p} about 11), a single
+ * co-occurrence of a rare word with a frequent one is not (below 1). The
+ * filter keeps the first and drops the second, so that a rare word loses
+ * the links to the common vocabulary that place it in the space, and keeps
+ * the rare–rare cells that the smoothing of SimpleMaths distrusts. With
+ * SimpleMaths, the constant k already acts as a soft evidence threshold.</p>
+ *
  * <p>{@code --refine alpha} replaces the truncated SVD by a weighted
  * low-rank fit of the same directed matrix, started from the SVD (see
  * {@link SparseSvd#refine(double, SparseSvd.CellWeight, int)}): stored cells
