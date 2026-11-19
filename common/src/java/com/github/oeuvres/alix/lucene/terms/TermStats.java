@@ -5,27 +5,29 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
+import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.IOUtil;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.EOFException;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.BitSet;
 import java.util.Objects;
+import java.util.Set;
+
+import static com.github.oeuvres.alix.common.Names.ALIX_ID;
 
 /**
  * Immutable reference statistics for one indexed field of one frozen Lucene directory.
@@ -74,21 +76,17 @@ import java.util.Objects;
  *
  * <h2>Persistence format</h2>
  * <p>
- * One binary sidecar file {@code <field>.stats} in the Lucene directory, version 3 layout:
+ * Two UTF-8 TSV files in the Lucene directory, with header rows:
  * </p>
- * <ol>
- * <li>4B magic {@code 0x46535453} ("FSTS")</li>
- * <li>4B format version {@code 3}</li>
- * <li>UTF-8 field name (4B length prefix + bytes)</li>
- * <li>4B {@code maxDoc}</li>
- * <li>{@code maxDoc × 4B docWidths}</li>
- * <li>{@code maxDoc × 4B docTokens}</li>
- * <li>4B {@code vocabSize}</li>
- * <li>{@code vocabSize × 4B termDocs}</li>
- * <li>{@code vocabSize × 8B termCounts}</li>
- * </ol>
+ * <ul>
+ * <li>{@code <field>-terms.tsv}: {@code termId, term, df, tf} (term IDs start at 1).</li>
+ * <li>{@code <field>-docs.tsv}: {@code docId, alix.id, docWidth, docTokens}.
+ * All {@code docId} slots are present, including deleted documents.</li>
+ * </ul>
  * <p>
- * Multi-byte values are big-endian through {@link DataOutputStream}.
+ * Text cells use CSV-compatible quoting, with tab as the separator. Term ID 0
+ * is the absent-term sentinel and is not written. Both files are specific to the
+ * same frozen Lucene snapshot; their row identities are checked at open.
  * </p>
  *
  * <h2>Order compatibility</h2>
@@ -112,13 +110,7 @@ import java.util.Objects;
  */
 public final class TermStats
 {
-    /** File magic: ASCII "FSTS". */
-    private static final int MAGIC = 0x46535453;
-    
-    /** On-disk format version. */
-    private static final int VERSION = 3;
-    
-    /** Lucene directory that contains both the index and the {@code <field>.stats} file. */
+    /** Lucene directory that contains the index and the TSV files. */
     private final Path sideDir;
     
     /** Indexed field covered by these statistics. */
@@ -167,10 +159,11 @@ public final class TermStats
     /**
      * Creates an immutable statistics object from already-loaded arrays and derived scalars.
      *
-     * @param sideDir    Lucene directory that contains the index and the stats file
+     * @param sideDir    Lucene directory that contains the index and the TSV files
      * @param field      indexed field
      * @param maxDoc     Lucene document-address space size
      * @param docWidths  per-document widths by global doc id
+     * @param maxWidth   largest document width
      * @param docTokens  per-document token counts by global doc id
      * @param vocabSize  number of distinct terms (including id 0 sentinel)
      * @param termDocs   per-term document frequencies
@@ -222,68 +215,103 @@ public final class TermStats
     }
     
     /**
-     * Builds and persists the statistics file for one field from an already opened snapshot reader.
+     * Builds the two TSV statistics files for one indexed field.
      * <p>
-     * One unified per-document pass (positions + frequencies) produces both {@code docWidths}
-     * and {@code docTokens}. A separate per-term pass produces {@code termDocs} and {@code termCounts}.
-     * The file is written atomically via a temporary path.
+     * Width and token counts are computed in one postings pass; document frequencies
+     * and term totals are computed in a second pass. Existing TSV files are not replaced.
+     * Each temporary file is moved into place after both have been written; if either
+     * move fails, files moved by this invocation are removed.
      * </p>
      *
-     * @param reader  snapshot reader
-     * @param sideDir directory that will receive the {@code <field>.stats} file
-     * @param field   indexed field name
-     * @param report  progress reporter; may be {@code null}
-     * @throws IOException if the field has no terms, if frequencies are unavailable,
-     *                     if a target file already exists, or if writing fails
+     * @param reader snapshot reader
+     * @param sideDir directory that will receive the TSV files
+     * @param field indexed field name
+     * @param report progress reporter; may be {@code null}
+     * @throws IOException if terms or positions are unavailable, either output already
+     *                     exists, or a file cannot be written
      */
     public static void build(final IndexReader reader, final Path sideDir, final String field, Report report)
         throws IOException
     {
-        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
         if (report == null)
             report = Report.ReportNull.INSTANCE;
-        
-        final int maxDoc = reader.maxDoc();
-        final DocStats d = docStats(reader, field, report);
-        final VocabCounts t = vocabCounts(reader, field, report);
-        
-        final Path statsPath = statsPath(sideDir, field);
-        IOUtil.ensureAbsent(statsPath);
-        final Path tmp = IOUtil.tmpPath(statsPath);
-        IOUtil.ensureAbsent(tmp);
-        
-        try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(tmp, StandardOpenOption.CREATE_NEW));
-                DataOutputStream out = new DataOutputStream(os))
-        {
-            out.writeInt(MAGIC);
-            out.writeInt(VERSION);
-            IOUtil.writeUtf8(out, field);
-            
-            out.writeInt(maxDoc);
-            for (int w : d.docWidths)
-                out.writeInt(w);
-            for (int n : d.docTokens)
-                out.writeInt(n);
-            
-            out.writeInt(t.vocabSize);
-            for (int df : t.termDocs)
-                out.writeInt(df);
-            for (long tf : t.termCounts)
-                out.writeLong(tf);
-        } catch (IOException | RuntimeException e) {
-            IOUtil.deleteIfExists(tmp);
-            throw e;
-        }
+
+        final Path docsPath = docsPath(sideDir, field);
+        final Path termsPath = termsPath(sideDir, field);
+        IOUtil.ensureAbsent(docsPath);
+        IOUtil.ensureAbsent(termsPath);
+        final Path docsTmp = IOUtil.tmpPath(docsPath);
+        final Path termsTmp = IOUtil.tmpPath(termsPath);
+        IOUtil.ensureAbsent(docsTmp);
+        IOUtil.ensureAbsent(termsTmp);
+
+        final DocStats docs = docStats(reader, field, report);
+        final VocabCounts counts = vocabCounts(reader, field, report);
+        boolean docsMoved = false;
         try {
-            IOUtil.moveTemp(tmp, statsPath);
+            try (BufferedWriter out = Files.newBufferedWriter(
+                    docsTmp, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)) {
+                out.write("docId\talix.id\tdocWidth\tdocTokens\n");
+                final StoredFields stored = reader.storedFields();
+                final BitSet live = liveDocs(reader);
+                int missingIds = 0;
+                for (int docId = 0; docId < reader.maxDoc(); docId++) {
+                    final String id = live.get(docId) ? documentId(stored, docId) : "";
+                    if (live.get(docId) && id.isEmpty())
+                        missingIds++;
+                    out.write(Integer.toString(docId));
+                    out.write('\t');
+                    writeTsvCell(out, id);
+                    out.write('\t');
+                    out.write(Integer.toString(docs.docWidths[docId]));
+                    out.write('\t');
+                    out.write(Integer.toString(docs.docTokens[docId]));
+                    out.write('\n');
+                }
+                if (missingIds > 0)
+                    report.warn("field=\"" + field + "\": " + missingIds
+                            + " live documents without stored alix.id");
+            }
+
+            try (BufferedWriter out = Files.newBufferedWriter(
+                    termsTmp, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)) {
+                out.write("termId\tterm\tdf\ttf\n");
+                final Terms terms = MultiTerms.getTerms(reader, field);
+                final TermsEnum iterator = terms.iterator();
+                BytesRef term;
+                int termId = 1;
+                while ((term = iterator.next()) != null) {
+                    if (termId >= counts.vocabSize)
+                        throw new IOException("Vocabulary changed while writing TSV for field '" + field + "'");
+                    out.write(Integer.toString(termId));
+                    out.write('\t');
+                    writeTsvCell(out, term.utf8ToString());
+                    out.write('\t');
+                    out.write(Integer.toString(counts.termDocs[termId]));
+                    out.write('\t');
+                    out.write(Long.toString(counts.termCounts[termId]));
+                    out.write('\n');
+                    termId++;
+                }
+                if (termId != counts.vocabSize)
+                    throw new IOException("Vocabulary changed while writing TSV for field '" + field + "'");
+            }
+
+            IOUtil.moveTemp(docsTmp, docsPath);
+            docsMoved = true;
+            IOUtil.moveTemp(termsTmp, termsPath);
         } catch (IOException | RuntimeException e) {
-            IOUtil.deleteIfExists(tmp);
+            IOUtil.deleteIfExists(docsTmp);
+            IOUtil.deleteIfExists(termsTmp);
+            if (docsMoved)
+                IOUtil.deleteIfExists(docsPath);
             throw e;
         }
     }
-    
+
     /**
      * Computes a corpus-level weight for every vocabulary term.
      *
@@ -305,7 +333,7 @@ public final class TermStats
      * document is in focus, and the scorer accumulates into focus or rest separately.
      * </p>
      *
-     * @param reader    snapshot reader matching this FieldStats
+     * @param reader    snapshot reader matching these statistics
      * @param scorer    scorer to weight terms
      * @param focusDocs optional focus bitset for contrastive scoring; {@code null} for non-contrastive
      * @return weight vector indexed by dense term id
@@ -525,11 +553,11 @@ public final class TermStats
     }
     
     /**
-     * Give direct access to a vector, by internal Lucene docId, of “width”
-     * (position indexed, even empty positions, for example, if stopwords have 
-     * been removed).
-     * 
-     * @return
+     * Returns the internal per-document field-width array, indexed by global Lucene docId.
+     * Widths include gaps left by stopwords removed during indexing.
+     * Callers must not modify the returned array.
+     *
+     * @return the per-document width array
      */
     public int[] docWidths()
     {
@@ -537,13 +565,13 @@ public final class TermStats
     }
     
     /**
-     * Redo the parse of index to get the width of docs, for TermRail.
-     * 
-     * @param reader
-     * @param field
-     * @param report
-     * @return
-     * @throws IOException
+     * Recomputes document widths directly from indexed positions, for TermRail.
+     *
+     * @param reader snapshot reader
+     * @param field indexed field name
+     * @param report progress reporter; may be {@code null}
+     * @return document widths by global Lucene document ID
+     * @throws IOException if reading postings or positions fails
      */
     public static int[] docWidths(IndexReader reader, String field, Report report) throws IOException
     {
@@ -551,20 +579,21 @@ public final class TermStats
     }
     
     /**
-     * Returns {@code true} if the persisted statistics file for the field exists as a regular file.
-     * Cheap presence test only; does not validate content.
+     * Returns {@code true} if both persisted TSV files for the field exist.
+     * This is a presence check, not content validation.
      *
      * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code true} if {@code <field>.stats} exists
+     * @param field indexed field name
+     * @return {@code true} if both TSV files exist
      */
     public static boolean exists(final Path indexDir, final String field)
     {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(field, "field");
-        return Files.isRegularFile(statsPath(indexDir, field));
+        return Files.isRegularFile(docsPath(indexDir, field))
+                && Files.isRegularFile(termsPath(indexDir, field));
     }
-    
+
     /**
      * Returns the indexed field covered by these statistics.
      *
@@ -651,7 +680,7 @@ public final class TermStats
     /**
      * From the biggest document, returns the width in positions.
      *
-     * @return biggest with
+     * @return largest width in positions
      */
     public int maxWidth()
     {
@@ -659,19 +688,19 @@ public final class TermStats
     }
     
     /**
-     * Opens the persisted statistics for one field from a frozen Lucene directory.
+     * Loads the two TSV files into primitive arrays for the current Lucene snapshot.
      * <p>
-     * Derives {@code width}, {@code tokens}, {@code docs} from the per-document arrays.
-     * Validates the invariant {@code docTokens[d] ≤ docWidths[d]}; violations are reported
-     * via {@code report.warn} but do not abort the open.
+     * Document and term IDs must be consecutive, and their textual identifiers must
+     * agree with the reader. The sums and largest document width are derived during
+     * loading. A document with more indexed tokens than positions produces a warning.
      * </p>
      *
-     * @param reader  snapshot reader used to cross-check maxDoc
-     * @param sideDir directory containing the stats file
-     * @param field   indexed field name
-     * @param report  progress reporter; may be {@code null}
-     * @return opened immutable field statistics
-     * @throws IOException if the file is missing, inconsistent, or unreadable
+     * @param reader snapshot reader used for consistency checks
+     * @param sideDir directory containing the TSV files
+     * @param field indexed field name
+     * @param report progress reporter; may be {@code null}
+     * @return loaded field statistics
+     * @throws IOException if a file is missing, malformed or inconsistent with the reader
      */
     public static TermStats open(
         final IndexReader reader,
@@ -679,108 +708,103 @@ public final class TermStats
         final String field,
         Report report) throws IOException
     {
+        Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(sideDir, "sideDir");
         Objects.requireNonNull(field, "field");
         if (report == null)
             report = Report.ReportNull.INSTANCE;
-        
-        final Path path = statsPath(sideDir, field);
-        IOUtil.ensureRegularFile(path);
-        
-        try (DataInputStream in = new DataInputStream(
-                new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ))))
-        {
-            final int magic = in.readInt();
-            if (magic != MAGIC) {
-                throw new IOException("Invalid stats file magic: " + path);
-            }
-            final int version = in.readInt();
-            if (version != VERSION) {
-                throw new IOException("Unsupported stats file version " + version + ": " + path);
-            }
-            final String fieldFound = IOUtil.readUtf8(in);
-            if (!field.equals(fieldFound)) {
-                throw new IOException(
-                        "Field mismatch in stats file: requested '" + field + "', found '" + fieldFound + "'");
-            }
-            
-            final int maxDoc = in.readInt();
-            if (maxDoc != reader.maxDoc()) {
-                throw new IOException(
-                        "Read maxDoc=" + maxDoc + " inconsistent with IndexReader.maxDoc()=" + reader.maxDoc());
-            }
-            
-            final int[] docWidths = new int[maxDoc];
-            long width = 0L;
-            int maxWidth = 0;
+
+        final Path docsPath = docsPath(sideDir, field);
+        final Path termsPath = termsPath(sideDir, field);
+        IOUtil.ensureRegularFile(docsPath);
+        IOUtil.ensureRegularFile(termsPath);
+
+        final int maxDoc = reader.maxDoc();
+        final int[] docWidths = new int[maxDoc];
+        final int[] docTokens = new int[maxDoc];
+        long width = 0L;
+        long tokens = 0L;
+        int maxWidth = 0;
+        int docs = 0;
+        int invariantViolations = 0;
+
+        try (CSVReader csv = new CSVReader(docsPath).separator('\t')) {
+            checkHeader(csv, "docId", ALIX_ID, "docWidth", "docTokens");
+            final StoredFields stored = reader.storedFields();
+            final BitSet live = liveDocs(reader);
             for (int docId = 0; docId < maxDoc; docId++) {
-                final int v = in.readInt();
-                if (v < 0)
-                    throw new IOException("Invalid docWidth=" + v + " for docId=" + docId);
-                docWidths[docId] = v;
-                width += v;
-                maxWidth = Math.max(maxWidth, v);
-            }
-            
-            final int[] docTokens = new int[maxDoc];
-            long tokens = 0L;
-            int docs = 0;
-            int invariantViolations = 0;
-            for (int docId = 0; docId < maxDoc; docId++) {
-                final int v = in.readInt();
-                if (v < 0)
-                    throw new IOException("Invalid docTokens=" + v + " for docId=" + docId);
-                docTokens[docId] = v;
-                tokens += v;
-                if (v > 0)
+                if (!csv.readRow())
+                    throw new IOException("Missing docId=" + docId + " in " + docsPath);
+                checkColumns(csv, 4);
+                if (parseInt(csv, 0, "docId") != docId)
+                    throw new IOException("Out-of-order docId at " + docsPath + ':' + csv.getLineNo());
+                final String expectedId = live.get(docId) ? documentId(stored, docId) : "";
+                if (!expectedId.contentEquals(csv.getCell(1)))
+                    throw new IOException("alix.id mismatch for docId=" + docId + " in " + docsPath);
+                final int docWidth = parseInt(csv, 2, "docWidth");
+                final int docTokenCount = parseInt(csv, 3, "docTokens");
+                docWidths[docId] = docWidth;
+                docTokens[docId] = docTokenCount;
+                width += docWidth;
+                tokens += docTokenCount;
+                maxWidth = Math.max(maxWidth, docWidth);
+                if (docTokenCount > 0)
                     docs++;
-                if (v > docWidths[docId])
+                if (docTokenCount > docWidth)
                     invariantViolations++;
+                if (!live.get(docId) && (docWidth != 0 || docTokenCount != 0))
+                    throw new IOException("Nonzero statistics for deleted docId=" + docId + " in " + docsPath);
             }
-            if (invariantViolations > 0) {
-                report.warn("field=\"" + field + "\": "
-                        + invariantViolations + " documents with docTokens > docWidths");
-            }
-            
-            final int vocabSize = in.readInt();
-            if (vocabSize < 0) {
-                throw new IOException("Invalid vocabSize in stats file: " + vocabSize);
-            }
-            final int[] termDocs = new int[vocabSize];
-            for (int termId = 0; termId < vocabSize; termId++) {
-                termDocs[termId] = in.readInt();
-            }
-            final long[] termCounts = new long[vocabSize];
-            for (int termId = 0; termId < vocabSize; termId++) {
-                termCounts[termId] = in.readLong();
-            }
-            if (in.read() != -1) {
-                throw new IOException("Trailing bytes in stats file: " + path);
-            }
-            
-            return new TermStats(
-                    sideDir,
-                    field,
-                    maxDoc,
-                    docWidths,
-                    maxWidth,
-                    docTokens,
-                    vocabSize,
-                    termDocs,
-                    termCounts,
-                    docs,
-                    width,
-                    tokens);
-        } catch (EOFException e) {
-            throw new IOException("Truncated stats file: " + path, e);
+            if (csv.readRow())
+                throw new IOException("Extra document rows in " + docsPath + " at line " + csv.getLineNo());
         }
+        if (invariantViolations > 0) {
+            report.warn("field=\"" + field + "\": "
+                    + invariantViolations + " documents with docTokens > docWidths");
+        }
+
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null)
+            throw new IOException("Field without terms: " + field);
+        final int vocabSize = vocabSize(terms, report);
+        final int[] termDocs = new int[vocabSize];
+        final long[] termCounts = new long[vocabSize];
+
+        try (CSVReader csv = new CSVReader(termsPath).separator('\t')) {
+            checkHeader(csv, "termId", "term", "df", "tf");
+            final TermsEnum iterator = terms.iterator();
+            for (int termId = 1; termId < vocabSize; termId++) {
+                if (!csv.readRow())
+                    throw new IOException("Missing termId=" + termId + " in " + termsPath);
+                checkColumns(csv, 4);
+                if (parseInt(csv, 0, "termId") != termId)
+                    throw new IOException("Out-of-order termId at " + termsPath + ':' + csv.getLineNo());
+                final BytesRef indexedTerm = iterator.next();
+                if (indexedTerm == null || !indexedTerm.utf8ToString().contentEquals(csv.getCell(1)))
+                    throw new IOException("Term mismatch for termId=" + termId + " in " + termsPath);
+                final int df = parseInt(csv, 2, "df");
+                final long tf = parseLong(csv, 3, "tf");
+                if (df > reader.numDocs())
+                    throw new IOException("df exceeds reader.numDocs() for termId=" + termId);
+                if (!reader.hasDeletions() && (df != iterator.docFreq() || tf != iterator.totalTermFreq()))
+                    throw new IOException("Statistics mismatch for termId=" + termId + " in " + termsPath);
+                termDocs[termId] = df;
+                termCounts[termId] = tf;
+            }
+            if (iterator.next() != null || csv.readRow())
+                throw new IOException("Extra terms in " + termsPath + " or vocabulary changed");
+        }
+
+        return new TermStats(
+                sideDir, field, maxDoc, docWidths, maxWidth, docTokens,
+                vocabSize, termDocs, termCounts, docs, width, tokens);
     }
-    
+
     /**
-     * Opens the field statistics, building the sidecar file first if it does not exist.
+     * Opens the field statistics, building both TSV files first if they do not exist.
      *
-     * @param reader  snapshot reader (used for building if needed and for maxDoc cross-check)
-     * @param sideDir directory that may receive the sidecar file
+     * @param reader  snapshot reader used for building and consistency checks
+     * @param sideDir directory that may receive the TSV files
      * @param field   indexed field name
      * @return opened immutable field statistics
      * @throws IOException if building or opening fails
@@ -792,10 +816,10 @@ public final class TermStats
     }
     
     /**
-     * Opens the field statistics, building the sidecar file first if it does not exist.
+     * Opens the field statistics, building both TSV files first if they do not exist.
      *
      * @param reader  snapshot reader
-     * @param sideDir directory that may receive the sidecar file
+     * @param sideDir directory that may receive the TSV files
      * @param field   indexed field name
      * @param report  progress reporter; may be {@code null}
      * @return opened immutable field statistics
@@ -808,6 +832,8 @@ public final class TermStats
         final Report report) throws IOException
     {
         if (!exists(sideDir, field)) {
+            if (Files.exists(docsPath(sideDir, field)) || Files.exists(termsPath(sideDir, field)))
+                throw new IOException("Incomplete TSV statistics for field '" + field + "' in " + sideDir);
             build(reader, sideDir, field, report);
         }
         return open(reader, sideDir, field, report);
@@ -872,59 +898,6 @@ public final class TermStats
     }
     
     /**
-     * Collects per-term document frequencies and total occurrences in one pass over the
-     * merged {@link TermsEnum}. Arrays are indexed by dense term id; id 0 is the sentinel.
-     *
-     * @param reader snapshot reader
-     * @param field  indexed field name
-     * @param report progress reporter; may be {@code null}
-     * @return per-term statistics
-     * @throws IOException              if term iteration fails or frequencies are unavailable
-     * @throws IllegalArgumentException if the field does not exist or has no terms
-     */
-    public static VocabCounts vocabCounts(final IndexReader reader, final String field, Report report)
-        throws IOException
-    {
-        Objects.requireNonNull(reader, "reader");
-        Objects.requireNonNull(field, "field");
-        if (report == null)
-            report = Report.ReportNull.INSTANCE;
-        
-        final Terms terms = MultiTerms.getTerms(reader, field);
-        if (terms == null) {
-            throw new IllegalArgumentException("Field not found or without terms: " + field);
-        }
-        report.setAttribute("field", field);
-        
-        final int vocabSize = vocabSize(terms, report);
-        final int[] termDocs = new int[vocabSize];
-        final long[] termCounts = new long[vocabSize];
-        int termId = 1;
-        final TermsEnum te = terms.iterator();
-        while (te.next() != null) {
-            if (termId >= vocabSize) {
-                throw new IOException(
-                        "Vocabulary size changed during FieldStats build for field '" + field
-                                + "': seen more than " + vocabSize + " terms");
-            }
-            final int df = te.docFreq();
-            if (df < 0) {
-                throw new IOException("Negative docFreq for termId " + termId + " in field '" + field + "'");
-            }
-            termDocs[termId] = df;
-            
-            final long tf = te.totalTermFreq();
-            if (tf < 0L) {
-                throw new IOException(
-                        "Term frequencies unavailable for field '" + field + "'");
-            }
-            termCounts[termId] = tf;
-            termId++;
-        }
-        return new VocabCounts(vocabSize, termDocs, termCounts);
-    }
-    
-    /**
      * Returns the cached corpus-level term weight for one term.
      *
      * @param termId dense term id in {@code [0, vocabSize)}
@@ -945,20 +918,10 @@ public final class TermStats
     }
     
     /**
-     * Get reference to the last generated weights.
-     * 
-     * @return {@link #termWeights}
-     */
-    public double[] termWeightsRef()
-    {
-        return termWeights;
-    }
-    
-    /**
      * Returns the cached term weight vector, computing it on first call or when the
      * scorer changes. Subsequent calls with an equivalent scorer return the same array.
      *
-     * @param reader snapshot reader matching this FieldStats
+     * @param reader snapshot reader matching these statistics
      * @param scorer scorer used to weight terms
      * @return weight vector indexed by dense term id
      * @throws IOException if term iteration fails
@@ -975,6 +938,82 @@ public final class TermStats
         return termWeights;
     }
     
+    /**
+     * Get reference to the last generated weights.
+     * 
+     * @return {@link #termWeights}
+     */
+    public double[] termWeightsRef()
+    {
+        return termWeights;
+    }
+    
+    /**
+     * Collects document frequencies and term totals in merged lexicographic order.
+     * Deleted documents are excluded from the counts, consistently with {@link #docStats}.
+     *
+     * @param reader snapshot reader
+     * @param field indexed field name
+     * @param report progress reporter; may be {@code null}
+     * @return counts indexed by dense term ID, with ID 0 reserved
+     * @throws IOException if postings cannot be read or frequencies are unavailable
+     * @throws IllegalArgumentException if the field has no terms
+     */
+    public static VocabCounts vocabCounts(final IndexReader reader, final String field, Report report)
+        throws IOException
+    {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(field, "field");
+        if (report == null)
+            report = Report.ReportNull.INSTANCE;
+
+        final Terms terms = MultiTerms.getTerms(reader, field);
+        if (terms == null)
+            throw new IllegalArgumentException("Field not found or without terms: " + field);
+        if (!terms.hasFreqs())
+            throw new IllegalArgumentException("Term frequencies unavailable for field: " + field);
+        report.setAttribute("field", field);
+
+        final int vocabSize = vocabSize(terms, report);
+        final int[] termDocs = new int[vocabSize];
+        final long[] termCounts = new long[vocabSize];
+        final boolean hasDeletions = reader.hasDeletions();
+        final BitSet live = hasDeletions ? liveDocs(reader) : null;
+        final TermsEnum iterator = terms.iterator();
+        PostingsEnum postings = null;
+        int termId = 1;
+        while (iterator.next() != null) {
+            if (termId >= vocabSize)
+                throw new IOException("Vocabulary changed while collecting counts for field '" + field + "'");
+
+            int df;
+            long tf;
+            if (hasDeletions) {
+                df = 0;
+                tf = 0L;
+                postings = iterator.postings(postings, PostingsEnum.FREQS);
+                for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS;
+                        docId = postings.nextDoc()) {
+                    if (live.get(docId)) {
+                        df++;
+                        tf += postings.freq();
+                    }
+                }
+            } else {
+                df = iterator.docFreq();
+                tf = iterator.totalTermFreq();
+            }
+            if (df < 0 || tf < 0)
+                throw new IOException("Invalid frequencies for termId=" + termId + " in field '" + field + "'");
+            termDocs[termId] = df;
+            termCounts[termId] = tf;
+            termId++;
+        }
+        if (termId != vocabSize)
+            throw new IOException("Vocabulary changed while collecting counts for field '" + field + "'");
+        return new VocabCounts(vocabSize, termDocs, termCounts);
+    }
+
     /**
      * Returns the vocabulary size, including the id 0 absent-term sentinel.
      *
@@ -1034,6 +1073,20 @@ public final class TermStats
     }
     
     /**
+     * Verifies the number of columns in the current TSV record.
+     *
+     * @param csv reader positioned on a record
+     * @param count required column count
+     * @throws IOException if the count differs
+     */
+    private static void checkColumns(final CSVReader csv, final int count) throws IOException
+    {
+        if (csv.getCellCount() != count)
+            throw new IOException("Expected " + count + " columns in " + csv.getSpec()
+                    + " at line " + csv.getLineNo() + ", got " + csv.getCellCount());
+    }
+
+    /**
      * Validates a global Lucene document id against {@code maxDoc}.
      *
      * @param docId global doc id
@@ -1047,6 +1100,25 @@ public final class TermStats
         }
     }
     
+    /**
+     * Verifies the header and column names of a TSV file.
+     *
+     * @param csv positioned before the first row
+     * @param names expected column names, in order
+     * @throws IOException if the header is missing or differs
+     */
+    private static void checkHeader(final CSVReader csv, final String... names) throws IOException
+    {
+        if (!csv.readRow())
+            throw new IOException("Missing TSV header in " + csv.getSpec());
+        checkColumns(csv, names.length);
+        for (int i = 0; i < names.length; i++) {
+            if (!names[i].contentEquals(csv.getCell(i)))
+                throw new IOException("Invalid TSV header in " + csv.getSpec()
+                        + ": column " + (i + 1) + " must be '" + names[i] + "'");
+        }
+    }
+
     /**
      * Validates a dense term id against {@code vocabSize}.
      *
@@ -1062,17 +1134,89 @@ public final class TermStats
     }
     
     /**
-     * Path of the persisted statistics file for one field.
+     * Returns the per-document TSV path for an indexed field.
      *
-     * @param indexDir Lucene directory
-     * @param field    indexed field name
-     * @return {@code <field>.stats}
+     * @param sideDir directory containing index sidecars
+     * @param field indexed field name
+     * @return path to the document TSV
      */
-    private static Path statsPath(final Path indexDir, final String field)
+    private static Path docsPath(final Path sideDir, final String field)
     {
-        return indexDir.resolve(field + ".stats");
+        return sideDir.resolve(field + "-docs.tsv");
     }
-    
+
+    /**
+     * Returns the stored document identifier, or an empty string if unavailable.
+     *
+     * @param stored index reader's stored fields
+     * @param docId global Lucene document ID
+     * @return the stored {@code alix.id}, or an empty string
+     * @throws IOException if stored fields cannot be retrieved
+     */
+    private static String documentId(final StoredFields stored, final int docId) throws IOException
+    {
+        final String id = stored.document(docId, Set.of(ALIX_ID)).get(ALIX_ID);
+        return id == null ? "" : id;
+    }
+
+    /**
+     * Reads a nonnegative integer from a TSV cell.
+     *
+     * @param csv reader positioned on a record
+     * @param column zero-based column
+     * @param name value name used for diagnostics
+     * @return parsed integer
+     * @throws IOException if the value is invalid
+     */
+    private static int parseInt(final CSVReader csv, final int column, final String name) throws IOException
+    {
+        final StringBuilder value = csv.getCell(column);
+        try {
+            final int number = Integer.parseInt(value, 0, value.length(), 10);
+            if (number >= 0)
+                return number;
+        } catch (NumberFormatException e) {
+            // Fall through to the contextual error below.
+        }
+        throw new IOException("Invalid " + name + " in " + csv.getSpec() + " at line " + csv.getLineNo()
+                + ": '" + value + "'");
+    }
+
+    /**
+     * Reads a nonnegative long from a TSV cell.
+     *
+     * @param csv reader positioned on a record
+     * @param column zero-based column
+     * @param name value name used for diagnostics
+     * @return parsed long
+     * @throws IOException if the value is invalid
+     */
+    private static long parseLong(final CSVReader csv, final int column, final String name) throws IOException
+    {
+        final StringBuilder value = csv.getCell(column);
+        try {
+            final long number = Long.parseLong(value, 0, value.length(), 10);
+            if (number >= 0)
+                return number;
+        } catch (NumberFormatException e) {
+            // Fall through to the contextual error below.
+        }
+        throw new IOException("Invalid " + name + " in " + csv.getSpec() + " at line " + csv.getLineNo()
+                + ": '" + value + "'");
+    }
+
+    /**
+     * Returns the per-term TSV path for an indexed field.
+     *
+     * @param sideDir directory containing index sidecars
+     * @param field indexed field name
+     * @return path to the terms TSV
+     */
+    private static Path termsPath(final Path sideDir, final String field)
+    {
+        return sideDir.resolve(field + "-terms.tsv");
+    }
+
     /**
      * Resolves vocabulary size directly from a {@link Terms} instance.
      *
@@ -1107,5 +1251,27 @@ public final class TermStats
             report.warn("No terms field=" + report.getAttribute("field", "?"));
         }
         return (int) size;
+    }    /**
+     * Writes a TSV text cell, quoting it if it contains control delimiters or quotes.
+     *
+     * @param out destination writer
+     * @param value text to write
+     * @throws IOException if writing fails
+     */
+    private static void writeTsvCell(final Writer out, final String value) throws IOException
+    {
+        if (value.indexOf('\t') < 0 && value.indexOf('\r') < 0
+                && value.indexOf('\n') < 0 && value.indexOf('"') < 0) {
+            out.write(value);
+            return;
+        }
+        out.write('"');
+        for (int i = 0; i < value.length(); i++) {
+            final char c = value.charAt(i);
+            if (c == '"')
+                out.write('"');
+            out.write(c);
+        }
+        out.write('"');
     }
 }
