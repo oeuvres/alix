@@ -744,6 +744,86 @@ public abstract class KeynessScorer
     }
 
     /**
+     * Simple Maths with corpus coverage and within-document repetition applied
+     * to the observed rates rather than to the finished ratio.
+     *
+     * <pre>
+     * M      = 1_000_000
+     * idf    = ln(corpusDocs / df)
+     * repeat = max(0, ln(cf / df))
+     * weight = idf / (1 + idf) * repeat
+     * score  = (weight * M * tf / focusTokens + k)
+     *        / (weight * M * (cf - tf) / (corpusTokens - focusTokens) + k)
+     * </pre>
+     *
+     * <p>The bounded IDF factor discounts corpus-wide terms without reducing
+     * smoothing below its original value on the basis of rarity alone. The
+     * repetition factor discounts terms occurring about once per containing
+     * document, including bibliographic references. Their product is not
+     * bounded above: frequent repetition may reduce effective smoothing below
+     * the Simple Maths baseline. This is an empirical heuristic, not a
+     * probabilistic model. The neutral score remains one.</p>
+     *
+     * <p>Weighted occurrence mass can be smaller than document frequency.
+     * In this case the repetition factor is zero, so the score is neutral.
+     * The specificity endpoints and automatic smoothing are inherited from
+     * {@link SimpleMaths}.</p>
+     */
+    public static class SimpleDf extends SimpleMaths
+    {
+        /**
+         * Creates the scorer with automatic Simple Maths smoothing.
+         */
+        public SimpleDf() {}
+
+        /**
+         * Creates the scorer with explicit Simple Maths smoothing.
+         *
+         * @param k positive smoothing constant per million at specificity 0.5,
+         *          or {@link Double#NaN} for automatic smoothing
+         * @throws IllegalArgumentException if k is invalid
+         */
+        public SimpleDf(final double k)
+        {
+            super(k);
+        }
+
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code simpledf}
+         */
+        @Override
+        public String code()
+        {
+            return "simpledf";
+        }
+
+        /**
+         * Scores the smoothed focus/background ratio with empirical coverage
+         * and repetition weighting of both observed rates.
+         *
+         * @param tf term frequency in the focus
+         * @param cf collection frequency, possibly distance-weighted
+         * @param df number of corpus documents containing the term
+         * @return adjusted Simple Maths ratio, or {@link Double#NaN} for invalid counts
+         * @throws IllegalStateException if corpus or focus is not initialized
+         */
+        @Override
+        public double score(final double tf, final double cf, final int df)
+        {
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
+            if (cf <= df || df == corpusDocs) return 1d;
+            final double idf = Math.log((double) corpusDocs / df);
+            final double weight = idf / (1d + idf) * Math.log(cf / df);
+            final double rfFocus = weight * tf * 1_000_000d / focusTokens + k;
+            final double rfRest = weight * (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
+            return rfFocus / rfRest;
+        }
+    }
+
+    /**
      * Simple Maths log contrast weighted by observed corpus-wide dispersion.
      *
      * <pre>
@@ -930,7 +1010,7 @@ public abstract class KeynessScorer
         private double contextRate = Double.NaN;
 
         /** Smoothing constant added to per-million rates, set by focus(); NaN until then. */
-        private double k = Double.NaN;
+        protected double k = Double.NaN;
 
         /**
          * Creates a scorer with the default centre, a pseudo-count of
@@ -1112,175 +1192,6 @@ public abstract class KeynessScorer
             super.specif(specif);
             if (focusTokens >= 0d) k = specif == 0.5d ? k0 : k(specif, k0);
             return this;
-        }
-    }
-
-    /**
-     * Simple Maths log contrast weighted by a fast occupancy-surprise bound.
-     * The midpoint is calibrated to a Fisher-like frequency profile.
-     *
-     * <pre>
-     * D      = corpusDocs
-     * L      = ln((rfFocus + k) / (rfRest + k))
-     * weight = max(0, ln(D / df) - ln(binomial(D, df)) / cf)
-     * score  = sign(L) * |L|^(2(1-s)) * weight^(4s/3)
-     * </pre>
-     *
-     * <p>At specificity 0.5, the score is {@code L * weight^(2/3)}.
-     * This has the same ranking as the previous implementation at specificity
-     * 0.4 with fixed k, where the relative occupancy exponent was 2/3.
-     * Smoothing is independent of specificity: the default is
-     * 5000 per million for keyword ranking. An explicit
-     * pseudo-count can be selected for vector models.</p>
-     *
-     * <p>Under uniform independent allocation of occurrences to documents,
-     * {@code P(K <= df) <= binomial(D, df) * (df / D)^cf} by a union bound.
-     * The weight is a lower bound on negative log occupancy probability per
-     * occurrence, not an exact probability. It is used as a linguistic
-     * heuristic, including for fractional distance-weighted counts.
-     * The previous exact occupancy recurrence was rejected because of its
-     * O(cf * df) cost. The log-binomial table requires O(D) setup, and each
-     * score requires O(1) work.</p>
-     *
-     * <p>As for other scorers, s=0 and s=1 use the common raw-frequency and
-     * exclusive-frequency endpoints.</p>
-     */
-    public static class SimpleOccupancyAlpha extends KeynessScorer
-    {
-        /** Default keyword smoothing constant per million. */
-        private static final double K_DEFAULT = 5_000d;
-
-        /** Current smoothing constant per million, held fixed across specificity. */
-        private double k = K_DEFAULT;
-
-        /** Cached log-binomial coefficients for the current corpus. */
-        private double[] logBinomial;
-
-        /** Whether smoothing was explicitly selected as a pseudo-count. */
-        private boolean pseudo;
-
-        /** Pseudo-count for vector models, when enabled. */
-        private double pseudoCount = 1d;
-
-        /**
-         * Creates a scorer with fixed keyword smoothing of 5000 per million.
-         */
-        public SimpleOccupancyAlpha() {}
-
-        /**
-         * Creates a scorer with an explicit fixed smoothing constant.
-         *
-         * @param k positive smoothing per million, or NaN for the default
-         * @throws IllegalArgumentException if k is invalid
-         */
-        public SimpleOccupancyAlpha(final double k)
-        {
-            if (!Double.isNaN(k)) {
-                if (!Double.isFinite(k) || k <= 0d) {
-                    throw new IllegalArgumentException("k must be finite and > 0: " + k);
-                }
-                this.k = k;
-            }
-        }
-
-        /**
-         * Returns the canonical scorer code.
-         *
-         * @return {@code simpleoccupancy}
-         */
-        @Override
-        public String code()
-        {
-            return "simpleocc";
-        }
-
-        /**
-         * Initializes corpus statistics and precomputes log-binomial coefficients.
-         *
-         * @param corpusTokens total corpus occurrence mass
-         * @param corpusDocs number of corpus documents
-         * @throws IllegalArgumentException if corpus statistics are invalid
-         */
-        @Override
-        public void corpus(final double corpusTokens, final int corpusDocs)
-        {
-            super.corpus(corpusTokens, corpusDocs);
-            logBinomial = new double[corpusDocs + 1];
-            for (int df = 1; df <= corpusDocs; df++) {
-                logBinomial[df] = logBinomial[df - 1]
-                        + Math.log(corpusDocs - df + 1d) - Math.log(df);
-            }
-        }
-
-        /**
-         * Initializes the focus and, if requested, its pseudo-count smoothing.
-         *
-         * @param focusTokens candidate tokens of the focus, excluding the pivot
-         * @param pivotCount pivot occurrences included in the focus
-         * @throws IllegalStateException if corpus statistics are not initialized
-         * @throws IllegalArgumentException if focus statistics are invalid
-         */
-        @Override
-        public void focus(final double focusTokens, final double pivotCount)
-        {
-            super.focus(focusTokens, pivotCount);
-            if (pseudo) k = 1_000_000d * pseudoCount / this.focusTokens;
-        }
-
-        /**
-         * Returns zero, the neutral signed log-contrast score.
-         *
-         * @return zero for every specificity
-         */
-        @Override
-        public double neutral()
-        {
-            return 0d;
-        }
-
-        /**
-         * Selects focus-relative pseudo-count smoothing for vector models.
-         * Takes effect at the next {@link #focus(double, double)} call.
-         *
-         * @param c positive pseudo-count in focus occurrences
-         * @return this scorer
-         * @throws IllegalArgumentException if the pseudo-count is invalid
-         */
-        public SimpleOccupancyAlpha pseudoCount(final double c)
-        {
-            if (!Double.isFinite(c) || c <= 0d) {
-                throw new IllegalArgumentException("pseudo-count must be finite and > 0: " + c);
-            }
-            pseudoCount = c;
-            pseudo = true;
-            return this;
-        }
-
-        /**
-         * Scores signed Simple Maths contrast with a bounded-exponent
-         * occupancy-surprise weight.
-         *
-         * @param tf term frequency in the focus
-         * @param cf term frequency in the corpus, possibly distance-weighted
-         * @param df number of corpus documents containing the term
-         * @return signed occupancy-weighted contrast, or NaN for invalid counts
-         * @throws IllegalStateException if corpus or focus is not initialized
-         */
-        @Override
-        public double score(final double tf, final double cf, final int df)
-        {
-            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
-            final double rfFocus = tf * 1_000_000d / focusTokens + k;
-            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
-            final double lr = Math.log(rfFocus / rfRest);
-            if (lr == 0d || cf <= df || df == corpusDocs) return 0d;
-            final double weight = Math.max(0d,
-                    Math.log((double) corpusDocs / df) - logBinomial[df] / cf);
-            if (weight == 0d) return 0d;
-            final double score = Math.pow(Math.abs(lr), 2d * (1d - specif))
-                    * Math.pow(weight, (4d / 3d) * specif);
-            return lr > 0d ? score : -score;
         }
     }
 
