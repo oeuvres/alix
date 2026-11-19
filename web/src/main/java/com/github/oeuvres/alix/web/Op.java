@@ -542,7 +542,6 @@ public abstract class Op
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
             case "simpledf" -> new KeynessScorer.SimpleDf(simplek);
             case "simpledisp" -> new KeynessScorer.SimpleDispersion(simplek);
-            case "simpleocc" -> new KeynessScorer.SimpleOccupancyAlpha(simplek);
             default -> new KeynessScorer.SimpleMaths(simplek);
         };
         return scorer.specif(specif);

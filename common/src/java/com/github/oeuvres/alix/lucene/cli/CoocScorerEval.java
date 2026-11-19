@@ -182,7 +182,6 @@ public final class CoocScorerEval
             case "simple" -> new KeynessScorer.SimpleMaths(k);
             case "simpledf" -> new KeynessScorer.SimpleDf(k);
             case "simpledisp" -> new KeynessScorer.SimpleDispersion(k);
-            case "simpleocc" -> new KeynessScorer.SimpleOccupancyAlpha(k);
             default -> throw new IllegalArgumentException("Unsupported scorer: " + name);
         };
     }

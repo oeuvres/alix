@@ -495,7 +495,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         scorer.corpus(corpusTokens, corpusDocs);
-        scorer.focus(tokens, pivotCount, distinctTerms);
+        scorer.focus(tokens, pivotCount);
 
         for (int termId = rankingInclude.nextSetBit(1);
                 termId >= 0;
