@@ -642,12 +642,11 @@ public final class Coocs2vec
             throw new IllegalArgumentException("refineIters must be >= 1: " + refineIters);
         }
         final KeynessScorer scorer = switch (scorerName) {
-            case "g2" -> new KeynessScorer.G2();
+            case "g2" -> new KeynessScorer.G2Alpha();
             case "bm25" -> new KeynessScorer.BM25Alpha(50, 0.75f);
             case "fisher" -> new KeynessScorer.FisherAlpha();
-            case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
-            case "simpleridf" -> new KeynessScorer.SimpleRidfAlpha().pseudoCount(KeynessScorer.SimpleMaths.PSEUDO_COUNT);
+            // case "simpleridf" -> new KeynessScorer.SimpleRidfAlpha().pseudoCount(KeynessScorer.SimpleMaths.PSEUDO_COUNT);
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };
@@ -1130,7 +1129,7 @@ public final class Coocs2vec
         if (!(scorer instanceof KeynessScorer.SimpleMaths)) {
             return;
         }
-        final boolean ridf = scorer instanceof KeynessScorer.SimpleRidfAlpha;
+        final boolean ridf = false; // scorer instanceof KeynessScorer.SimpleRidfAlpha;
         final java.security.CodeSource source = scorer.getClass().getProtectionDomain().getCodeSource();
         log("smoothing: %s loaded from %s", scorer.getClass().getName(),
             source == null ? "unknown" : source.getLocation());

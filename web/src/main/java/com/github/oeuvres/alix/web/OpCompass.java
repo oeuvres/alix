@@ -185,7 +185,7 @@ public class OpCompass extends Op
         record Cooc(int source, int target, int contexts, double score) {}
         final List<Cooc> coocs = new ArrayList<>();
         if (mat != null && mat.total() > 0L) {
-            final KeynessScorer scorer = new KeynessScorer.G2();
+            final KeynessScorer scorer = new KeynessScorer.G2Alpha();
             scorer.corpus(mat.total(), (int) mat.total());
             for (int a = 0; a < nodeIds.length; a++) {
                 if (entries.get(a) == null) {

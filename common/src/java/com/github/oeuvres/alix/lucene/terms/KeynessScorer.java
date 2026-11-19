@@ -8,7 +8,7 @@ import com.github.oeuvres.alix.maths.Fisher;
  * <p>
  * Call order: {@link #specif(double)} (optional, allowed at any time),
  * {@link #corpus(double, int)}, {@link #focus(double, double)}, then
- * {@link #score(double, double, int)} for each candidate term. {@link Count} needs
+ * {@link #score(double, double, int)} for each candidate term. {@link Tf} needs
  * no initialization. Scorers are mutable and should not be shared between
  * concurrent rankings.
  * </p>
@@ -33,8 +33,7 @@ import com.github.oeuvres.alix.maths.Fisher;
  * Counts are {@code double}: plain integer counts are passed unchanged, and
  * weighted counts (for example co-occurrences weighted by distance) are
  * accepted by every scorer except {@link FisherAlpha}, whose hypergeometric
- * tail is defined for whole counts only. Ratio scorers (SimpleMaths, Log
- * Ratio) are unchanged by a common scale of the counts; tests (G², χ²) and
+ * tail is defined for whole counts only. Ratio scorers such as SimpleMaths are unchanged by a common scale of the counts; tests (G², χ²) and
  * BM25 saturation are not, so weighted counts should keep the mass of the
  * raw counts.
  * </p>
@@ -557,23 +556,24 @@ public abstract class KeynessScorer
      * {@link KeynessScorer} itself. Needs no corpus or focus statistics; at
      * {@code s = 1} keeps exclusive terms only.
      */
-    public static class Count extends KeynessScorer
+    public static class Tf extends KeynessScorer
     {
         /**
          * Returns the canonical scorer code.
          *
-         * @return {@code count}
+         * @return {@code tf}
          */
         @Override
         public String code()
         {
-            return "count";
+            return "tf";
         }
 
     }
 
     /**
-     * Signed G² log-likelihood ratio on a 2 x 2 term/focus table.
+     * Signed G² log-likelihood ratio on a 2 x 2 term/focus table,
+     * interpolated by specificity.
      *
      * <pre>
      * G2 = 2 * sum(O * ln(O / E))
@@ -595,12 +595,12 @@ public abstract class KeynessScorer
      * Dunning, T. (1993). "Accurate Methods for the Statistics of Surprise
      * and Coincidence." Computational Linguistics 19(1): 61-74.
      */
-    public static class G2 extends KeynessScorer
+    public static class G2Alpha extends KeynessScorer
     {
         /**
          * Returns the canonical scorer code.
          *
-         * @return {@code g2}
+         * @return {@code g2alpha}
          */
         @Override
         public String code()
@@ -740,54 +740,6 @@ public abstract class KeynessScorer
             super.specif(specif);
             exponent = alpha(specif, ALPHA_MIDDLE, ALPHA_UPPER);
             return this;
-        }
-    }
-
-    /**
-     * Hardie's Log Ratio. Ignores specificity between the endpoints.
-     *
-     * <pre>
-     * log2((tf / focusTokens) / ((cf - tf) / (corpusTokens - focusTokens)))
-     * </pre>
-     *
-     * A zero term count on either side is replaced with 0.5 (Alix convention,
-     * not stated by Hardie). Log Ratio is an effect size; terms exclusive to
-     * the focus with tf = 1 tie at the top.
-     *
-     * Hardie, A. (2014). "Log Ratio – an informal introduction." ESRC Centre
-     * for Corpus Approaches to Social Science (CASS), Lancaster University,
-     * 28 April 2014.
-     */
-    public static class LogRatio extends KeynessScorer
-    {
-        /**
-         * Returns the canonical scorer code.
-         *
-         * @return {@code logratio}
-         */
-        @Override
-        public String code()
-        {
-            return "logratio";
-        }
-
-        /**
-         * Computes Hardie's Log Ratio.
-         *
-         * @param tf occurrences in focus
-         * @param cf occurrences in corpus
-         * @param df document frequency, used only at the endpoints
-         * @return the base-2 log ratio, or {@link Double#NaN} for an invalid table
-         */
-        @Override
-        public double score(final double tf, final double cf, final int df)
-        {
-            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (!table(tf, cf)) return Double.NaN;
-            final double otherTf = cf - tf;
-            final double focusCount = tf > 0d ? tf : 0.5d;
-            final double otherCount = otherTf > 0d ? otherTf : 0.5d;
-            return Math.log((focusCount / focusTokens) / (otherCount / (corpusTokens - focusTokens))) / LN2;
         }
     }
 
@@ -1177,8 +1129,8 @@ public abstract class KeynessScorer
      * <p>At specificity 0.5, the score is {@code L * weight^(2/3)}.
      * This has the same ranking as the previous implementation at specificity
      * 0.4 with fixed k, where the relative occupancy exponent was 2/3.
-     * Unlike {@link SimpleRidfAlpha}, smoothing is independent of specificity:
-     * the default is 5000 per million for keyword ranking. An explicit
+     * Smoothing is independent of specificity: the default is
+     * 5000 per million for keyword ranking. An explicit
      * pseudo-count can be selected for vector models.</p>
      *
      * <p>Under uniform independent allocation of occurrences to documents,
@@ -1239,7 +1191,7 @@ public abstract class KeynessScorer
         @Override
         public String code()
         {
-            return "simpleoccupancy";
+            return "simpleocc";
         }
 
         /**
@@ -1329,380 +1281,6 @@ public abstract class KeynessScorer
             final double score = Math.pow(Math.abs(lr), 2d * (1d - specif))
                     * Math.pow(weight, (4d / 3d) * specif);
             return lr > 0d ? score : -score;
-        }
-    }
-
-    /**
-     * Simple Maths log ratio weighted by residual IDF, interpolated
-     * geometrically by specificity.
-     *
-     * <pre>
-     * lr       = ln((rfFocus + k(s)) / (rfRest + k(s)))  token contrast focus / rest
-     * expected = corpusDocs * (1 - exp(-cf / corpusDocs))
-     *                                                 df expected under Poisson
-     * ridf     = max(ln(expected / df), 0)            burstiness of the term
-     * score    = sign(lr) * |lr|^(2(1-s)) * ridf^(2s)
-     * </pre>
-     *
-     * <p>
-     * Residual IDF is the observed IDF minus the IDF predicted by a Poisson
-     * distribution of the {@code cf} occurrences over the documents. It is
-     * high for terms that recur in the documents where they occur, and near
-     * 0 for terms scattered one or two at a time, such as recurring
-     * bibliographic formulas, and for hapaxes, where Poisson cannot be told
-     * apart from burstiness. A negative residual (more dispersed than
-     * Poisson) gives no evidence of burstiness and is set to 0.
-     * </p>
-     *
-     * <p>
-     * The score ranks as {@code sign(lr) * |lr| * ridf^alpha} with
-     * {@code alpha = s / (1 - s)}: 0 toward {@code s = 0}, 1 at
-     * {@code s = 0.5}, without bound toward {@code s = 1}. No constant is
-     * added: at {@code s = 0.5} the score is exactly {@code lr * ridf}. The
-     * exponents never exceed 2, so the score cannot overflow.
-     * </p>
-     *
-     * <p>
-     * The centre of the smoothing depends on what the documents are, see
-     * {@link #k0(double)}. For keywords, documents are texts: the residual
-     * measures burstiness, and it rewards a rare name repeated in one text
-     * ({@code cf = 3}, {@code df = 1}: ridf = ln 3), so the smoothing must
-     * discount rare candidates; the default centre is a rate,
-     * {@link #K0_PLATEAU} per million, calibrated against {@link FisherAlpha}.
-     * In a co-occurrence table, rows are the documents and the residual is
-     * 0 for rare candidates (see below), so the smoothing has only to guard
-     * the ratios that rest on little evidence: {@link #pseudoCount(double)}
-     * sets a pseudo-count c, so that {@code lr = ln((tf + c) / (E + c))};
-     * {@link #PSEUDO_COUNT} is the default pseudo-count for a vector model.
-     * </p>
-     *
-     * <p>
-     * In a co-occurrence table ({@code SparseSvd.keyness}), the documents are
-     * the vocabulary rows and the document frequency of a candidate is its
-     * number of distinct partners. Rows differ in mass by orders of
-     * magnitude, far from the equal lengths that the Poisson expectation
-     * assumes, so the residual measures less the burstiness of a context than
-     * its frequency: measured on the Piaget corpus (window 15, decay 2, gram
-     * distance 2), the median residual of the contexts is 0 below 8
-     * occurrences, 0.5 around 100, 1.2 around 700, 1.7 around 5 000, 2.2
-     * around 20 000, then falls to 0.7 for the two most frequent. With the
-     * exact expectation of partners, {@code sum over rows a of
-     * (1 - exp(-m(a) * cf / N))}, it is 0 up to 500 occurrences and 0.6 at
-     * most: little burstiness beyond independence. The residual thus works as
-     * a weight of the contexts, 0 for the rare ones, where single references
-     * and taxa (<i>Baillière</i>, <i>Mac-Graw-Hill</i>, <i>Alvania</i>) would
-     * otherwise enter the neighbours of frequent words; with the exact
-     * expectation, most contexts would weigh 0 and the model would lose them.
-     * </p>
-     *
-     * <p>
-     * The Poisson expectation assumes documents of equal length,
-     * {@code corpusTokens / corpusDocs}. With unequal lengths the true
-     * expectation is lower (concavity of {@code 1 - exp(-x)}), so this
-     * residual is overstated, most for terms with {@code cf} near
-     * {@code corpusDocs}. Independence and terms with no burstiness score 0.
-     * The endpoints follow the common contract: raw TF at 0, exclusive TF
-     * at 1.
-     * </p>
-     *
-     * <p>
-     * Church, K. W. &amp; Gale, W. A. (1995). "Inverse Document Frequency
-     * (IDF): A Measure of Deviations from Poisson." Proceedings of the Third
-     * Workshop on Very Large Corpora: 121-130.
-     * Kilgarriff, A. (2009). "Simple Maths for Keywords." Proceedings of the
-     * Corpus Linguistics Conference CL2009, University of Liverpool.
-     * </p>
-     */
-    public static class SimpleRidfAlpha extends KeynessScorer
-    {
-        /** Upper smoothing reference per million for the specificity mapping. */
-        public static final double K_MAX = 10_000_000d;
-
-        /** Lower smoothing reference per million for the specificity mapping. */
-        public static final double K_MIN = 0.1d;
-
-        /** Default pseudo-count when explicitly enabled for vector models. */
-        public static final double PSEUDO_COUNT = 1d;
-
-        /**
-         * Empirical centre on the Piaget corpus: with this k0 the top 50 at
-         * {@code s = 0.5} has the geometric-mean tf of the top 50 of
-         * {@link FisherAlpha}, within 12 % for five foci of 39 000 to 880 000
-         * tokens; flat from 3 000 to 10 000. Too high for the one focus
-         * measured below that range, 14 000 tokens (centre near 1 300).
-         */
-        private static final double K0_PLATEAU = 5_000d;
-
-        /** True when a fixed centre was provided to the constructor. */
-        private boolean kSet;
-
-        /** True when pseudo-count smoothing is enabled for vector models. */
-        private boolean pseudo;
-
-        /** Pseudo-count used only when explicitly enabled. */
-        private double pseudoCount = PSEUDO_COUNT;
-
-        /** Smoothing centre per million at specificity 0.5. */
-        private double k0 = Double.NaN;
-
-        /** Smoothing per million at the current specificity. */
-        private double k = Double.NaN;
-
-        /**
-         * Creates a standalone residual-IDF scorer with the keyword centre.
-         */
-        public SimpleRidfAlpha() {}
-
-        /**
-         * Creates a standalone residual-IDF scorer with an explicit centre.
-         *
-         * @param k positive smoothing centre per million at specificity 0.5,
-         *          or {@link Double#NaN} for the default
-         * @throws IllegalArgumentException if k is invalid
-         */
-        public SimpleRidfAlpha(final double k)
-        {
-            if (!Double.isNaN(k)) {
-                if (!Double.isFinite(k) || k <= 0d) {
-                    throw new IllegalArgumentException("k must be finite and > 0: " + k);
-                }
-                k0 = k;
-                kSet = true;
-            }
-        }
-
-        /**
-         * Returns the canonical scorer code.
-         *
-         * @return {@code simpleridf}
-         */
-        @Override
-        public String code()
-        {
-            return "simpleridf";
-        }
-
-        /**
-         * Returns residual IDF, or a different dispersion statistic in a
-         * subclass. Called only when the Simple Maths log contrast is nonzero.
-         *
-         * @param cf collection frequency of the term
-         * @param df number of documents containing the term
-         * @return nonnegative dispersion weight
-         */
-        protected double dispersion(final double cf, final int df)
-        {
-            final double expected = -corpusDocs * Math.expm1(-cf / corpusDocs);
-            return Math.max(Math.log(expected / df), 0d);
-        }
-
-        /**
-         * Sets the focus and calculates smoothing independently of SimpleMaths.
-         *
-         * @param focusTokens candidate tokens in the focus, excluding the pivot
-         * @param pivotCount occurrences of the pivot included in the focus
-         * @throws IllegalStateException if the corpus is not initialized
-         * @throws IllegalArgumentException if focus statistics are invalid
-         */
-        @Override
-        public void focus(final double focusTokens, final double pivotCount)
-        {
-            super.focus(focusTokens, pivotCount);
-            if (!kSet) k0 = k0(this.focusTokens);
-            k = specif == 0.5d ? k0 : k(specif, k0);
-        }
-
-        /**
-         * Maps specificity geometrically to this scorer's smoothing value.
-         *
-         * @param specif normalized specificity in [0, 1]
-         * @param k0 positive midpoint smoothing per million
-         * @return the smoothing constant per million
-         */
-        public static double k(final double specif, final double k0)
-        {
-            if (specif <= 0.5d) return k0 * Math.pow(K_MAX / k0, 1d - 2d * specif);
-            return k0 * Math.pow(K_MIN / k0, 2d * specif - 1d);
-        }
-
-        /**
-         * Returns the default centre, either the keyword plateau or a pseudo-count.
-         *
-         * @param focusTokens tokens in the focus, including the pivot
-         * @return the smoothing centre per million at specificity 0.5
-         */
-        protected double k0(final double focusTokens)
-        {
-            return pseudo ? 1_000_000d * pseudoCount / focusTokens : K0_PLATEAU;
-        }
-
-        /**
-         * Returns zero, since this score measures signed log contrast.
-         *
-         * @return zero for all specificity settings
-         */
-        @Override
-        public double neutral()
-        {
-            return 0d;
-        }
-
-        /**
-         * Uses a pseudo-count smoothing centre for vector models, replacing
-         * any fixed constructor centre at the next focus initialization.
-         *
-         * @param c positive pseudo-count in focus occurrences
-         * @return this scorer
-         * @throws IllegalArgumentException if c is invalid
-         */
-        public SimpleRidfAlpha pseudoCount(final double c)
-        {
-            if (!Double.isFinite(c) || c <= 0d) {
-                throw new IllegalArgumentException("pseudo-count must be finite and > 0: " + c);
-            }
-            pseudoCount = c;
-            pseudo = true;
-            kSet = false;
-            return this;
-        }
-
-        /**
-         * Computes the original Simple Maths log ratio weighted by residual IDF.
-         *
-         * @param tf occurrences in the focus
-         * @param cf occurrences in the corpus
-         * @param df documents containing the term in the active corpus
-         * @return the signed score, or {@link Double#NaN} for invalid counts
-         */
-        @Override
-        public double score(final double tf, final double cf, final int df)
-        {
-            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
-            final double rfFocus = tf * 1_000_000d / focusTokens + k;
-            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
-            final double lr = Math.log(rfFocus / rfRest);
-            if (lr == 0d) return 0d;
-            final double weight = dispersion(cf, df);
-            final double score = Math.pow(Math.abs(lr), 2d * (1d - specif))
-                    * Math.pow(weight, 2d * specif);
-            return lr > 0d ? score : -score;
-        }
-
-        /**
-         * Updates specificity and recomputes smoothing if a focus is set.
-         *
-         * @param specif normalized specificity in [0, 1]
-         * @return this scorer
-         * @throws IllegalArgumentException if specificity is invalid
-         */
-        @Override
-        public SimpleRidfAlpha specif(final double specif)
-        {
-            super.specif(specif);
-            if (focusTokens >= 0d) k = specif == 0.5d ? k0 : k(specif, k0);
-            return this;
-        }
-    }
-
-    /**
-     * Sublinear TF-IDF interpolated from raw TF to a tuned logarithmic scorer.
-     *
-     * <pre>
-     * u       = 4 * s * (1 - s)                              for s &lt;= 0.5
-     *           1                                             for s &gt; 0.5
-     * alpha   = u * ALPHA_MIDDLE                            for s &lt;= 0.5
-     *           ALPHA_MIDDLE * (ALPHA_UPPER / ALPHA_MIDDLE)^(2 * s - 1)
-     *                                                         for s &gt; 0.5
-     * tfWeight = tf^(1 - u) * (1 + ln(tf))^(u * TF_LOG_POWER)
-     * score   = tfWeight * ln(corpusDocs / df)^alpha
-     * </pre>
-     *
-     * <p>The midpoint exactly matches the previous implementation at
-     * {@code specif = 0.6}: power 1.5 for the logarithmic TF factor, and the
-     * corresponding IDF exponent. Below 0.5, a quadratic ease-out progression
-     * changes both TF compression and IDF weighting earlier in the range,
-     * rather than leaving most of the low-specificity interval almost inert. Above
-     * 0.5, it grows geometrically toward the upper reference value. The
-     * endpoints return raw TF and exclusive TF, respectively.</p>
-     *
-     * <p>Experimental TF-IDF interpolation, not a standard sublinear TF-IDF
-     * formulation. Salton, G. &amp; Buckley, C. (1988). "Term-weighting approaches
-     * in automatic text retrieval." Information Processing &amp; Management
-     * 24(5): 513-523.</p>
-     */
-    public static class SubTfIdfAlpha extends KeynessScorer
-    {
-        /**
-         * Returns the canonical scorer code.
-         *
-         * @return {@code subtfidfa}
-         */
-        @Override
-        public String code()
-        {
-            return "subtfidfa";
-        }
-
-        /** IDF exponent at midpoint, equal to the previous scorer at s = 0.6. */
-        private static final double ALPHA_MIDDLE = 0.35577063364800476d;
-
-        /** Upper reference IDF exponent before exclusive term selection. */
-        private static final double ALPHA_UPPER = 4d;
-
-        /** Logarithmic TF power at and above the midpoint. */
-        private static final double TF_LOG_POWER = 1.5d;
-
-        /** Cached IDF exponent. */
-        private double exponent = ALPHA_MIDDLE;
-
-        /** Cached raw-TF power. */
-        private double tfPower = 0d;
-
-        /** Cached log-TF power. */
-        private double logPower = TF_LOG_POWER;
-
-        /**
-         * Calculates the interpolated TF and IDF weighting independently.
-         *
-         * @param tf occurrences in the focus
-         * @param cf occurrences in the corpus
-         * @param df document frequency in the corpus
-         * @return weighted score, or {@link Double#NaN} for invalid counts
-         * @throws IllegalStateException if corpus or focus is not initialized
-         */
-        @Override
-        public double score(final double tf, final double cf, final int df)
-        {
-            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (focusTokens < 0d) {
-                throw new IllegalStateException("call corpus() and focus() before score()");
-            }
-            final double count = super.score(tf, cf, df);
-            if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
-            final double tfWeight = (tfPower == 0d ? 1d : Math.pow(tf, tfPower))
-                    * Math.pow(1d + Math.log(tf), logPower);
-            final double idf = Math.log((double) corpusDocs / df);
-            return tfWeight * Math.pow(idf, exponent);
-        }
-
-        /**
-         * Updates specificity and caches the TF and IDF powers.
-         *
-         * @param specif normalized specificity in [0, 1]
-         * @return this scorer
-         * @throws IllegalArgumentException if specificity is invalid
-         */
-        @Override
-        public SubTfIdfAlpha specif(final double specif)
-        {
-            super.specif(specif);
-            final double u = specif <= 0.5d ? 4d * specif * (1d - specif) : 1d;
-            exponent = specif <= 0.5d ? u * ALPHA_MIDDLE :
-                    ALPHA_MIDDLE * Math.pow(ALPHA_UPPER / ALPHA_MIDDLE, 2d * specif - 1d);
-            tfPower = 1d - u;
-            logPower = u * TF_LOG_POWER;
-            return this;
         }
     }
 

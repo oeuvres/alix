@@ -409,7 +409,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     public TopTerms rank(final int topK)
     {
-        return rank(new KeynessScorer.Count(), topK);
+        return rank(new KeynessScorer.Tf(), topK);
     }
 
     /**
@@ -428,7 +428,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     public TopTerms rank(final int topK, final TermFlag... flags)
     {
-        return rank(new KeynessScorer.Count(), topK, flags);
+        return rank(new KeynessScorer.Tf(), topK, flags);
     }
 
     /**
@@ -476,7 +476,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         final int topK,
         final TermFlag... flags)
     {
-        if (scorer == null) scorer = new KeynessScorer.Count();
+        if (scorer == null) scorer = new KeynessScorer.Tf();
 
         final BitSet filter = rankingFilter(flags);
         checkTopK(topK);
