@@ -33,9 +33,17 @@ import com.github.oeuvres.alix.maths.Fisher;
  * Counts are {@code double}: plain integer counts are passed unchanged, and
  * weighted counts (for example co-occurrences weighted by distance) are
  * accepted by every scorer except {@link FisherAlpha}, whose hypergeometric
- * tail is defined for whole counts only. Ratio scorers such as SimpleMaths are unchanged by a common scale of the counts; tests (G², χ²) and
- * BM25 saturation are not, so weighted counts should keep the mass of the
- * raw counts.
+ * tail is defined for whole counts only. Scaling {@code tf}, {@code cf},
+ * {@code focusTokens} and {@code corpusTokens} by a common factor, document
+ * counts unchanged, leaves unchanged the rankings of {@link SimpleMaths}
+ * with a fixed k, {@link TfIdfAlpha}, {@link Chi2}, {@link Chi2Alpha} and
+ * {@link G2Alpha}; the values of the tests scale with the counts and lose
+ * their meaning as significance. It changes the rankings of
+ * {@link SimpleMaths} with the automatic centre (its pseudo-count is a
+ * number of occurrences), of {@link SimpleDf} and {@link SimpleDispersion}
+ * (the repetition {@code cf / df} compares a mass with a number of
+ * documents) and of {@link BM25Alpha} (saturation is set in occurrences).
+ * Weighted counts should therefore keep the mass of the raw counts.
  * </p>
  *
  * <p>
@@ -122,23 +130,6 @@ public abstract class KeynessScorer
     }
 
     /**
-     * Sets the focus with its number of distinct candidate terms.
-     * Scorers that do not use lexical diversity ignore this additional count.
-     *
-     * @param focusTokens candidate occurrences in the focus, excluding pivot occurrences
-     * @param pivotCount pivot occurrences included in the focus
-     * @param distinctTerms number of different candidate terms with positive frequency
-     * @throws IllegalArgumentException if distinctTerms is negative or exceeds focusTokens
-     */
-    public void focus(final double focusTokens, final double pivotCount, final int distinctTerms)
-    {
-        if (distinctTerms < 0 || distinctTerms > focusTokens) {
-            throw new IllegalArgumentException("distinctTerms must be between 0 and focusTokens");
-        }
-        focus(focusTokens, pivotCount);
-    }
-
-    /**
      * Returns the score of an independent association, to be subtracted when
      * constructing a sparse positive-association matrix.
      *
@@ -197,7 +188,8 @@ public abstract class KeynessScorer
     /**
      * Tells whether a term forms a consistent, non-degenerate 2 x 2 table with
      * the focus: {@code 0 < focusTokens < corpusTokens},
-     * {@code 0 < cf < corpusTokens}, and counts within their margins.
+     * {@code 0 < cf < corpusTokens}, {@code tf > 0} (a term absent from the
+     * focus is out of the list), and counts within their margins.
      *
      * @param tf term frequency in the focus population
      * @param cf collection frequency in the active corpus
@@ -209,7 +201,7 @@ public abstract class KeynessScorer
         if (focusTokens < 0d) throw new IllegalStateException("call corpus() and focus() before score()");
         return focusTokens > 0d && focusTokens < corpusTokens
                 && cf > 0d && cf < corpusTokens
-                && tf >= 0d && tf - cf <= ROUNDING_TOLERANCE * cf && tf <= focusTokens
+                && tf > 0d && tf - cf <= ROUNDING_TOLERANCE * cf && tf <= focusTokens
                 && cf - tf <= corpusTokens - focusTokens;
     }
 
@@ -380,7 +372,7 @@ public abstract class KeynessScorer
                 throw new IllegalStateException("call corpus() and focus() before score()");
             }
             final double count = super.score(tf, cf, df);
-            if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
+            if (Double.isNaN(count) || df <= 0 || df > corpusDocs) return Double.NaN;
             final double k = k1 * saturationScale * (1d - bScaled + bScaled * focusLength);
             final double tfWeight = tf * (k + 1d) / (tf + k);
             final double idf = Math.log1p((corpusDocs - df + 0.5d) / (df + 0.5d));
@@ -479,15 +471,15 @@ public abstract class KeynessScorer
      * <pre>
      * X2     = signed Pearson chi-square on the 2 x 2 table
      * score  = sign(X2) * tf * (abs(X2) / tf)^alpha
-     * alpha  = alpha(specif, 1, 16)
+     * alpha  = alpha(specif, 0.3, 5)
      * </pre>
      *
-     * <p>At specificity 0.5 (alpha = 1), the score is exactly signed
-     * {@link Chi2}. Negative scores indicate underrepresentation and can be
-     * filtered by the caller. For tf = 0, the continuous limit is zero when
-     * alpha &lt; 1 and negative infinity when alpha &gt; 1; at alpha = 1 the
-     * signed chi-square value is returned. The endpoints follow the common
-     * contract: raw frequency at 0 and exclusive term frequency at 1.</p>
+     * <p>At specificity 0.5, alpha is 0.3: the score is
+     * {@code tf^0.7 * abs(X2)^0.3} with the sign of X2, not {@link Chi2}
+     * itself, which is reached at alpha = 1, near specificity 0.67.
+     * Negative scores indicate underrepresentation and can be filtered by
+     * the caller. The endpoints follow the common contract: raw frequency at
+     * 0 and exclusive term frequency at 1.</p>
      *
      * <p>Pearson, K. (1900). "On the criterion that a given system of
      * deviations from the probable in the case of a correlated system of
@@ -530,7 +522,6 @@ public abstract class KeynessScorer
         {
             final double chi2 = super.score(tf, cf, df);
             if (specif == 0d || specif == 1d || Double.isNaN(chi2)) return chi2;
-            if (tf == 0d) return specif < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
             final double score = tf * Math.pow(Math.abs(chi2) / tf, exponent);
             return chi2 > 0d ? score : -score;
         }
@@ -552,112 +543,12 @@ public abstract class KeynessScorer
     }
 
     /**
-     * Raw term frequency in the focus population, the score of
-     * {@link KeynessScorer} itself. Needs no corpus or focus statistics; at
-     * {@code s = 1} keeps exclusive terms only.
-     */
-    public static class Tf extends KeynessScorer
-    {
-        /**
-         * Returns the canonical scorer code.
-         *
-         * @return {@code tf}
-         */
-        @Override
-        public String code()
-        {
-            return "tf";
-        }
-
-    }
-
-    /**
-     * Signed G² log-likelihood ratio on a 2 x 2 term/focus table,
-     * interpolated by specificity.
-     *
-     * <pre>
-     * G2 = 2 * sum(O * ln(O / E))
-     * </pre>
-     *
-     * The sign is positive for overrepresentation in the focus. Between the
-     * specificity endpoints, the score is
-     *
-     * <pre>
-     * sign * tf^(2(1-s)) * (G2 / tf)^(2s)
-     * </pre>
-     *
-     * exactly signed G² at {@code s = 0.5}, weighting frequency toward
-     * {@code s = 0} and G² per occurrence toward {@code s = 1}. It ranks as
-     * {@code tf * (G2/tf)^(s/(1-s))}, but its exponents never exceed 2, so it
-     * cannot overflow. For a term absent from the focus, the limit is 0 below
-     * 0.5 and negative infinity above.
-     *
-     * Dunning, T. (1993). "Accurate Methods for the Statistics of Surprise
-     * and Coincidence." Computational Linguistics 19(1): 61-74.
-     */
-    public static class G2Alpha extends KeynessScorer
-    {
-        /**
-         * Returns the canonical scorer code.
-         *
-         * @return {@code g2alpha}
-         */
-        @Override
-        public String code()
-        {
-            return "g2";
-        }
-
-        /**
-         * Computes signed G², weighted by specificity.
-         *
-         * @param tf occurrences in focus
-         * @param cf occurrences in corpus
-         * @param df document frequency, used only at the endpoints
-         * @return the signed score, or {@link Double#NaN} for an invalid table
-         */
-        @Override
-        public double score(final double tf, final double cf, final int df)
-        {
-            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (!table(tf, cf)) return Double.NaN;
-            final double n = corpusTokens;
-            final double f = focusTokens;
-            final double o = n - f;
-            final double rest = n - cf;
-            final double expected = f * cf / n;
-            double g2 = cell(tf, expected)
-                    + cell(cf - tf, o * cf / n)
-                    + cell(focusTokens - tf, f * rest / n)
-                    + cell(corpusTokens - focusTokens - cf + tf, o * rest / n);
-            g2 = Math.max(2d * g2, 0d);
-            final double sign = tf >= expected ? 1d : -1d;
-            if (specif == 0.5d) return sign * g2;
-            if (g2 == 0d) return 0d;
-            if (tf == 0d) return specif < 0.5d ? 0d : Double.NEGATIVE_INFINITY;
-            return sign * Math.pow(tf, 2d * (1d - specif)) * Math.pow(g2 / tf, 2d * specif);
-        }
-
-        /**
-         * Computes one cell term {@code O * ln(O / E)}, zero for an empty cell.
-         *
-         * @param observed observed cell count
-         * @param expected expected cell count, positive
-         * @return the cell term
-         */
-        private static double cell(final double observed, final double expected)
-        {
-            return observed > 0d ? observed * Math.log(observed / expected) : 0d;
-        }
-    }
-
-    /**
      * Parametric, one-sided hypergeometric surprise for a term in the focus.
      *
      * <pre>
      * HGT   = -ln(P(X >= tf)), X ~ Hypergeom(corpusTokens, cf, focusTokens)
      * score = tf * (HGT / tf)^alpha
-     * alpha = (2 * specif)^4
+     * alpha = alpha(specif, 1, 4) = (2 * specif)^2
      * </pre>
      *
      * <p>At specificity 0.5, alpha is 1 and the score is ordinary HGT.
@@ -715,7 +606,7 @@ public abstract class KeynessScorer
             }
             if (tf != Math.rint(tf) || cf != Math.rint(cf)
                     || focusTokens != Math.rint(focusTokens) || corpusTokens != Math.rint(corpusTokens)) {
-                throw new IllegalArgumentException("HgtAlpha requires whole counts");
+                throw new IllegalArgumentException("FisherAlpha requires whole counts");
             }
             final double count = super.score(tf, cf, df);
             if (Double.isNaN(count)) return Double.NaN;
@@ -744,23 +635,107 @@ public abstract class KeynessScorer
     }
 
     /**
-     * Simple Maths with corpus coverage and within-document repetition applied
-     * to the observed rates rather than to the finished ratio.
+     * Signed G² log-likelihood ratio on a 2 x 2 term/focus table,
+     * interpolated by specificity.
+     *
+     * <pre>
+     * G2 = 2 * sum(O * ln(O / E))
+     * </pre>
+     *
+     * The sign is positive for overrepresentation in the focus. Between the
+     * specificity endpoints, the score is
+     *
+     * <pre>
+     * sign * tf^(2(1-s)) * (G2 / tf)^(2s)
+     * </pre>
+     *
+     * exactly signed G² at {@code s = 0.5}, weighting frequency toward
+     * {@code s = 0} and G² per occurrence toward {@code s = 1}. It ranks as
+     * {@code tf * (G2/tf)^(s/(1-s))}, but its exponents never exceed 2, so it
+     * cannot overflow.
+     *
+     * Dunning, T. (1993). "Accurate Methods for the Statistics of Surprise
+     * and Coincidence." Computational Linguistics 19(1): 61-74.
+     */
+    public static class G2Alpha extends KeynessScorer
+    {
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code g2}
+         */
+        @Override
+        public String code()
+        {
+            return "g2";
+        }
+
+        /**
+         * Computes signed G², weighted by specificity.
+         *
+         * @param tf occurrences in focus
+         * @param cf occurrences in corpus
+         * @param df document frequency, used only at the endpoints
+         * @return the signed score, or {@link Double#NaN} for an invalid table
+         */
+        @Override
+        public double score(final double tf, final double cf, final int df)
+        {
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (!table(tf, cf)) return Double.NaN;
+            final double n = corpusTokens;
+            final double f = focusTokens;
+            final double o = n - f;
+            final double rest = n - cf;
+            final double expected = f * cf / n;
+            double g2 = cell(tf, expected)
+                    + cell(cf - tf, o * cf / n)
+                    + cell(focusTokens - tf, f * rest / n)
+                    + cell(corpusTokens - focusTokens - cf + tf, o * rest / n);
+            g2 = Math.max(2d * g2, 0d);
+            final double sign = tf >= expected ? 1d : -1d;
+            if (specif == 0.5d) return sign * g2;
+            if (g2 == 0d) return 0d;
+            return sign * Math.pow(tf, 2d * (1d - specif)) * Math.pow(g2 / tf, 2d * specif);
+        }
+
+        /**
+         * Computes one cell term {@code O * ln(O / E)}, zero for an empty cell.
+         *
+         * @param observed observed cell count
+         * @param expected expected cell count, positive
+         * @return the cell term
+         */
+        private static double cell(final double observed, final double expected)
+        {
+            return observed > 0d ? observed * Math.log(observed / expected) : 0d;
+        }
+    }
+
+    /**
+     * Simple Maths with a smoothing specific to each term, set by its corpus
+     * coverage and its within-document repetition.
      *
      * <pre>
      * M      = 1_000_000
      * idf    = ln(corpusDocs / df)
      * repeat = max(0, ln(cf / df))
      * weight = idf / (1 + idf) * repeat
-     * score  = (weight * M * tf / focusTokens + k)
-     *        / (weight * M * (cf - tf) / (corpusTokens - focusTokens) + k)
+     * kTerm  = k / weight
+     * score  = (M * tf / focusTokens + kTerm)
+     *        / (M * (cf - tf) / (corpusTokens - focusTokens) + kTerm)
      * </pre>
      *
-     * <p>The bounded IDF factor discounts corpus-wide terms without reducing
-     * smoothing below its original value on the basis of rarity alone. The
-     * repetition factor discounts terms occurring about once per containing
-     * document, including bibliographic references. Their product is not
-     * bounded above: frequent repetition may reduce effective smoothing below
+     * <p>The score is the Simple Maths ratio with the smoothing k divided by
+     * the weight of the term: a prior toward 1 whose strength depends on the
+     * term, worth {@code pseudoCount / weight} occurrences for the
+     * pseudo-count part of the default centre. Multiplying both observed
+     * rates by the weight gives the same ratio. The bounded IDF factor
+     * discounts corpus-wide terms without reducing smoothing below its
+     * original value on the basis of rarity alone. The repetition factor
+     * discounts terms occurring about once per containing document,
+     * including bibliographic references. Their product is not bounded
+     * above: a weight above 1, frequent repetition, gives less smoothing than
      * the Simple Maths baseline. This is an empirical heuristic, not a
      * probabilistic model. The neutral score remains one.</p>
      *
@@ -800,8 +775,9 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Scores the smoothed focus/background ratio with empirical coverage
-         * and repetition weighting of both observed rates.
+         * Scores the focus/background ratio with the smoothing of the term,
+         * the Simple Maths smoothing divided by its coverage and repetition
+         * weight.
          *
          * @param tf term frequency in the focus
          * @param cf collection frequency, possibly distance-weighted
@@ -817,8 +793,9 @@ public abstract class KeynessScorer
             if (cf <= df || df == corpusDocs) return 1d;
             final double idf = Math.log((double) corpusDocs / df);
             final double weight = idf / (1d + idf) * Math.log(cf / df);
-            final double rfFocus = weight * tf * 1_000_000d / focusTokens + k;
-            final double rfRest = weight * (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
+            final double kTerm = k / weight;
+            final double rfFocus = tf * 1_000_000d / focusTokens + kTerm;
+            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + kTerm;
             return rfFocus / rfRest;
         }
     }
@@ -1053,7 +1030,8 @@ public abstract class KeynessScorer
 
         /**
          * Sets the rate per million of the second term of the default
-         * centre, see the class comment. Takes effect at the next
+         * centre, see the class comment, and drops any fixed centre given to
+         * the constructor. Takes effect at the next
          * {@link #focus(double, double)}.
          *
          * @param rate positive rate per million
@@ -1066,6 +1044,7 @@ public abstract class KeynessScorer
                 throw new IllegalArgumentException("context rate must be finite and > 0: " + rate);
             }
             contextRate = rate;
+            kSet = false;
             return this;
         }
 
@@ -1196,6 +1175,26 @@ public abstract class KeynessScorer
     }
 
     /**
+     * Raw term frequency in the focus population, the score of
+     * {@link KeynessScorer} itself. Needs no corpus or focus statistics; at
+     * {@code s = 1} keeps exclusive terms only.
+     */
+    public static class Tf extends KeynessScorer
+    {
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code tf}
+         */
+        @Override
+        public String code()
+        {
+            return "tf";
+        }
+
+    }
+
+    /**
      * TF-IDF with a specificity-dependent IDF exponent, interpolated
      * geometrically between TF and IDF.
      *
@@ -1298,7 +1297,7 @@ public abstract class KeynessScorer
                 throw new IllegalStateException("call corpus() and focus() before score()");
             }
             final double count = super.score(tf, cf, df);
-            if (Double.isNaN(count) || df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
+            if (Double.isNaN(count) || df <= 0 || df > corpusDocs) return Double.NaN;
             final double idf = Math.log((double) corpusDocs / df);
             return Math.pow(count, tfPower) * Math.pow(idf, idfPower);
         }
