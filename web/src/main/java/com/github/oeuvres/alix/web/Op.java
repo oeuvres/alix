@@ -533,15 +533,16 @@ public abstract class Op
         final int k1 = pars.getInt("k1", 250);
 
         final KeynessScorer scorer = switch (pars.getString(TSORT, "")) {
-            case "count", "raw" -> new KeynessScorer.Count();
-            case "g2" -> new KeynessScorer.G2();
-            case "logratio" -> new KeynessScorer.LogRatio();
+            case "count", "raw", "tf" -> new KeynessScorer.Tf();
+            case "g2" -> new KeynessScorer.G2Alpha();
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
-            case "subtfidf" -> new KeynessScorer.SubTfIdfAlpha();
             case "fisher" -> new KeynessScorer.FisherAlpha();
             case "chi2" -> new KeynessScorer.Chi2Alpha();
             case "bm25a" -> new KeynessScorer.BM25Alpha(150, 0.75f);
-            case "simpleridf" -> new KeynessScorer.SimpleRidfAlpha(simplek);
+            case "simple" -> new KeynessScorer.SimpleMaths(simplek);
+            case "simpledf" -> new KeynessScorer.SimpleDf(simplek);
+            case "simpledisp" -> new KeynessScorer.SimpleDispersion(simplek);
+            case "simpleocc" -> new KeynessScorer.SimpleOccupancyAlpha(simplek);
             default -> new KeynessScorer.SimpleMaths(simplek);
         };
         return scorer.specif(specif);
