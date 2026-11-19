@@ -44,7 +44,7 @@ public final class CoocScorerEval
 {
     /** Scorers evaluated in output order. */
     private static final String[] SCORERS = {
-        "simple", "fisher", "simpledisp", "simpleocc", "simpledf"
+        "simple", "fisher", "simpledisp", "simpleridf", "simpledf"
     };
 
     /** Default pivots spanning several Piaget research themes. */
@@ -182,6 +182,7 @@ public final class CoocScorerEval
             case "simple" -> new KeynessScorer.SimpleMaths(k);
             case "simpledf" -> new KeynessScorer.SimpleDf(k);
             case "simpledisp" -> new KeynessScorer.SimpleDispersion(k);
+            case "simpleridf" -> new KeynessScorer.SimpleRidf(k);
             default -> throw new IllegalArgumentException("Unsupported scorer: " + name);
         };
     }

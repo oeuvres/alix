@@ -648,6 +648,7 @@ public final class Coocs2vec
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
             case "simpledf" -> new KeynessScorer.SimpleDf(simplek);
             case "simpledisp" -> new KeynessScorer.SimpleDispersion(simplek);
+            case "simpleridf" -> new KeynessScorer.SimpleRidf(simplek);
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
             default -> throw new IllegalArgumentException("unknown scorer: " + scorerName);
         };

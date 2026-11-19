@@ -540,6 +540,7 @@ public abstract class Op
             case "chi2" -> new KeynessScorer.Chi2Alpha();
             case "bm25a" -> new KeynessScorer.BM25Alpha(150, 0.75f);
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
+            case "simpleridf" -> new KeynessScorer.SimpleRidf(simplek);
             case "simpledf" -> new KeynessScorer.SimpleDf(simplek);
             case "simpledisp" -> new KeynessScorer.SimpleDispersion(simplek);
             default -> new KeynessScorer.SimpleMaths(simplek);

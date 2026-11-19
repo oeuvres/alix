@@ -40,9 +40,9 @@ import com.github.oeuvres.alix.maths.Fisher;
  * {@link G2Alpha}; the values of the tests scale with the counts and lose
  * their meaning as significance. It changes the rankings of
  * {@link SimpleMaths} with the automatic centre (its pseudo-count is a
- * number of occurrences), of {@link SimpleDf} and {@link SimpleDispersion}
- * (the repetition {@code cf / df} compares a mass with a number of
- * documents) and of {@link BM25Alpha} (saturation is set in occurrences).
+ * number of occurrences), of {@link SimpleDf}, {@link SimpleDispersion} and
+ * {@link SimpleRidf} (the repetition {@code cf / df} compares a mass with a
+ * number of documents) and of {@link BM25Alpha} (saturation is set in occurrences).
  * Weighted counts should therefore keep the mass of the raw counts.
  * </p>
  *
@@ -1171,6 +1171,104 @@ public abstract class KeynessScorer
             super.specif(specif);
             if (focusTokens >= 0d) k = specif == 0.5d ? k0 : k(specif, k0);
             return this;
+        }
+    }
+
+    /**
+     * Simple Maths with a smoothing specific to each term, set by its
+     * residual IDF: the excess of its within-document repetition over the
+     * repetition of a term whose occurrences fall independently in the
+     * documents.
+     *
+     * <pre>
+     * M      = 1_000_000
+     * lambda = cf / corpusDocs
+     * ridf   = ln(corpusDocs * (1 - exp(-lambda)) / df)
+     * weight = max(0, ridf)
+     * kTerm  = k / weight
+     * score  = (M * tf / focusTokens + kTerm)
+     *        / (M * (cf - tf) / (corpusTokens - focusTokens) + kTerm)
+     * </pre>
+     *
+     * <p>Under the Poisson law of mean {@code lambda} per document, a term
+     * is expected in {@code corpusDocs * (1 - exp(-lambda))} documents, and
+     * repeated {@code lambda / (1 - exp(-lambda))} times in each document
+     * containing it. The log of the observed repetition {@code cf / df} over
+     * this expectation is exactly ridf, the observed IDF minus the IDF
+     * expected under Poisson (Church &amp; Gale 1995). The Poisson law is the
+     * null hypothesis, not a model of the text: it is the only reference
+     * fixed by cf alone, leaving df to be compared with it, and the binomial
+     * independence of tokens assumed by G² is the same hypothesis. Unlike
+     * {@code ln(cf / df)}, ridf does not grow with frequency for terms
+     * spread at random, so no IDF factor is needed: a term present in every
+     * document has a ridf near or below zero.</p>
+     *
+     * <p>Terms whose repetition does not exceed the Poisson expectation,
+     * bibliographic references among them, get a weight near zero, a
+     * smoothing without bound, and a score near the neutral one. A weight
+     * above 1 gives less smoothing than the Simple Maths baseline. Weighted
+     * occurrence mass smaller than the document count gives a negative ridf,
+     * so a neutral score.</p>
+     *
+     * <p>The Poisson law assumes documents of equal length. With chapters
+     * and articles of unequal lengths, it overestimates the expected document
+     * count, so ridf is biased upward for every term.</p>
+     *
+     * <p>Church, K. W. &amp; Gale, W. A. (1995). "Inverse Document Frequency
+     * (IDF): A Measure of Deviations from Poisson." Proceedings of the Third
+     * Workshop on Very Large Corpora: 121-130.</p>
+     */
+    public static class SimpleRidf extends SimpleMaths
+    {
+        /**
+         * Creates the scorer with automatic Simple Maths smoothing.
+         */
+        public SimpleRidf() {}
+
+        /**
+         * Creates the scorer with explicit Simple Maths smoothing.
+         *
+         * @param k positive smoothing constant per million at specificity 0.5,
+         *          or {@link Double#NaN} for automatic smoothing
+         * @throws IllegalArgumentException if k is invalid
+         */
+        public SimpleRidf(final double k)
+        {
+            super(k);
+        }
+
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code simpleridf}
+         */
+        @Override
+        public String code()
+        {
+            return "simpleridf";
+        }
+
+        /**
+         * Scores the focus/background ratio with the smoothing of the term,
+         * the Simple Maths smoothing divided by its residual IDF.
+         *
+         * @param tf term frequency in the focus
+         * @param cf collection frequency, possibly distance-weighted
+         * @param df number of corpus documents containing the term
+         * @return adjusted Simple Maths ratio, or {@link Double#NaN} for invalid counts
+         * @throws IllegalStateException if corpus or focus is not initialized
+         */
+        @Override
+        public double score(final double tf, final double cf, final int df)
+        {
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
+            final double ridf = Math.log(-Math.expm1(-cf / corpusDocs) * corpusDocs / df);
+            if (!(ridf > 0d)) return 1d;
+            final double kTerm = k / ridf;
+            final double rfFocus = tf * 1_000_000d / focusTokens + kTerm;
+            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + kTerm;
+            return rfFocus / rfRest;
         }
     }
 
