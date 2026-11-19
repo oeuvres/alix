@@ -74,6 +74,14 @@ public abstract class KeynessScorer
     protected double specif = 0.5d;
 
     /**
+     * Returns the stable, short code identifying this scorer in CLI and exports.
+     * The code is independent of constructor parameters and specificity.
+     *
+     * @return canonical lowercase scorer code
+     */
+    public abstract String code();
+
+    /**
      * Sets corpus statistics, shared by every term in a ranking, and
      * invalidates the previous focus.
      *
@@ -330,6 +338,17 @@ public abstract class KeynessScorer
         }
 
         /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code bm25}
+         */
+        @Override
+        public String code()
+        {
+            return "bm25";
+        }
+
+        /**
          * Initializes the focus and caches its length in average documents.
          *
          * @param focusTokens candidate tokens, excluding pivot occurrences
@@ -422,6 +441,17 @@ public abstract class KeynessScorer
     public static class Chi2 extends KeynessScorer
     {
         /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code chi2}
+         */
+        @Override
+        public String code()
+        {
+            return "chi2";
+        }
+
+        /**
          * Computes signed Pearson X² in closed form.
          *
          * @param tf occurrences in focus
@@ -468,6 +498,17 @@ public abstract class KeynessScorer
      */
     public static class Chi2Alpha extends Chi2
     {
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code chi2a}
+         */
+        @Override
+        public String code()
+        {
+            return "chi2a";
+        }
+
         /** Exponent at the specificity midpoint. */
         private static final double ALPHA_MIDDLE = 0.3d;
 
@@ -518,6 +559,17 @@ public abstract class KeynessScorer
      */
     public static class Count extends KeynessScorer
     {
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code count}
+         */
+        @Override
+        public String code()
+        {
+            return "count";
+        }
+
     }
 
     /**
@@ -545,6 +597,17 @@ public abstract class KeynessScorer
      */
     public static class G2 extends KeynessScorer
     {
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code g2}
+         */
+        @Override
+        public String code()
+        {
+            return "g2";
+        }
+
         /**
          * Computes signed G², weighted by specificity.
          *
@@ -609,6 +672,17 @@ public abstract class KeynessScorer
      */
     public static class FisherAlpha extends KeynessScorer
     {
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code fisher}
+         */
+        @Override
+        public String code()
+        {
+            return "fisher";
+        }
+
         /** Exponent at the specificity midpoint. */
         private static final double ALPHA_MIDDLE = 1d;
 
@@ -687,6 +761,17 @@ public abstract class KeynessScorer
     public static class LogRatio extends KeynessScorer
     {
         /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code logratio}
+         */
+        @Override
+        public String code()
+        {
+            return "logratio";
+        }
+
+        /**
          * Computes Hardie's Log Ratio.
          *
          * @param tf occurrences in focus
@@ -703,6 +788,96 @@ public abstract class KeynessScorer
             final double focusCount = tf > 0d ? tf : 0.5d;
             final double otherCount = otherTf > 0d ? otherTf : 0.5d;
             return Math.log((focusCount / focusTokens) / (otherCount / (corpusTokens - focusTokens))) / LN2;
+        }
+    }
+
+    /**
+     * Simple Maths log contrast weighted by observed corpus-wide dispersion.
+     *
+     * <pre>
+     * simple = (tf + a) / (E + a)
+     * E      = (cf - tf) * focusTokens / (corpusTokens - focusTokens)
+     * a      = k * focusTokens / 1_000_000
+     * weight = max(0, ln(cf / df)) * (1 - df / corpusDocs)
+     * score  = ln(simple) * weight
+     * </pre>
+     *
+     * <p>The first factor of the weight measures occurrences per containing
+     * document; the second penalizes terms appearing in many documents.
+     * No expected document frequency or probability model is needed. The
+     * score is signed and centred on zero, unlike the Simple Maths ratio.
+     * At specificity 0 and 1 the common frequency endpoints apply.</p>
+     *
+     * <p>Negative results (Piaget, terms within 30 words of "enfant"):
+     * "SimpleRepeat" multiplied the Simple Maths contrast by
+     * {@code max(0, 1 - df / cf)}; "SimpleDfSmooth" used that fraction
+     * to increase smoothing. Neither removed bibliographic references
+     * (Piaget, Inhelder, Paris, Delachaux, Niestlé). The fraction measures
+     * repetition, not corpus coverage: Piaget had cf=5582 and df=1424
+     * (all documents), yet retained a weight of 0.745. Both variants
+     * were removed in favour of this scorer.</p>
+     *
+     * <p>Distance-weighted co-occurrence counts may have {@code cf < df}.
+     * In that case the repetition factor is clamped to zero: weighted
+     * occurrence mass is not an integer occurrence count.</p>
+     */
+    public static class SimpleDispersion extends SimpleMaths
+    {
+        /**
+         * Creates a scorer with the automatic Simple Maths smoothing centre.
+         */
+        public SimpleDispersion() {}
+
+        /**
+         * Creates a scorer with a fixed smoothing centre per million.
+         *
+         * @param k positive smoothing centre at specificity 0.5, or NaN for automatic
+         * @throws IllegalArgumentException if the smoothing centre is invalid
+         */
+        public SimpleDispersion(final double k)
+        {
+            super(k);
+        }
+
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code simpledisp}
+         */
+        @Override
+        public String code()
+        {
+            return "simpledisp";
+        }
+
+        /**
+         * Returns the zero score of terms independent of the focus.
+         *
+         * @return zero for every specificity
+         */
+        @Override
+        public double neutral()
+        {
+            return 0d;
+        }
+
+        /**
+         * Scores the Simple Maths log contrast with empirical dispersion.
+         *
+         * @param tf term frequency in the focus
+         * @param cf collection frequency, possibly distance-weighted
+         * @param df document frequency in the corpus
+         * @return signed dispersion-weighted contrast, or {@link Double#NaN}
+         *         for invalid counts
+         */
+        @Override
+        public double score(final double tf, final double cf, final int df)
+        {
+            final double simple = super.score(tf, cf, df);
+            if (specif == 0d || specif == 1d || Double.isNaN(simple)) return simple;
+            if (df <= 0 || df > corpusDocs) return Double.NaN;
+            if (cf <= df || df == corpusDocs) return 0d;
+            return Math.log(simple) * Math.log(cf / df) * (1d - (double) df / corpusDocs);
         }
     }
 
@@ -834,6 +1009,17 @@ public abstract class KeynessScorer
         }
 
         /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code simple}
+         */
+        @Override
+        public String code()
+        {
+            return "simple";
+        }
+
+        /**
          * Sets the rate per million of the second term of the default
          * centre, see the class comment. Takes effect at the next
          * {@link #focus(double, double)}.
@@ -869,14 +1055,8 @@ public abstract class KeynessScorer
                 k0 = k0(this.focusTokens);
             }
 
-            if (specif == 0.5) {
-                k = k0;
-            }
-            else {
-                k = k(specif, k0);
-            }
+            k = specif == 0.5d ? k0 : k(specif, k0);
         }
-
 
         /**
          * Maps specificity to the smoothing constant, geometrically on each
@@ -905,7 +1085,7 @@ public abstract class KeynessScorer
          * {@code 1_000_000 * pseudoCount / focusTokens + contextRate}, the
          * pseudo-count as a rate of the focus plus a mean rate of the
          * candidates, {@code 1_000_000 / corpusDocs} if none was set, see the
-         * class comment. Subclasses override it to set their own centre.
+         * class comment.
          *
          * @param focusTokens tokens of the focus, pivot occurrences included
          * @return positive per-million smoothing constant at {@code s = 0.5}
@@ -966,6 +1146,190 @@ public abstract class KeynessScorer
             final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
             return rfFocus / rfRest;
         }
+
+        /**
+         * Sets specificity and refreshes cached smoothing if the focus is set.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @return this scorer
+         * @throws IllegalArgumentException if specificity is invalid
+         */
+        @Override
+        public SimpleMaths specif(final double specif)
+        {
+            super.specif(specif);
+            if (focusTokens >= 0d) k = specif == 0.5d ? k0 : k(specif, k0);
+            return this;
+        }
+    }
+
+    /**
+     * Simple Maths log contrast weighted by a fast occupancy-surprise bound.
+     * The midpoint is calibrated to a Fisher-like frequency profile.
+     *
+     * <pre>
+     * D      = corpusDocs
+     * L      = ln((rfFocus + k) / (rfRest + k))
+     * weight = max(0, ln(D / df) - ln(binomial(D, df)) / cf)
+     * score  = sign(L) * |L|^(2(1-s)) * weight^(4s/3)
+     * </pre>
+     *
+     * <p>At specificity 0.5, the score is {@code L * weight^(2/3)}.
+     * This has the same ranking as the previous implementation at specificity
+     * 0.4 with fixed k, where the relative occupancy exponent was 2/3.
+     * Unlike {@link SimpleRidfAlpha}, smoothing is independent of specificity:
+     * the default is 5000 per million for keyword ranking. An explicit
+     * pseudo-count can be selected for vector models.</p>
+     *
+     * <p>Under uniform independent allocation of occurrences to documents,
+     * {@code P(K <= df) <= binomial(D, df) * (df / D)^cf} by a union bound.
+     * The weight is a lower bound on negative log occupancy probability per
+     * occurrence, not an exact probability. It is used as a linguistic
+     * heuristic, including for fractional distance-weighted counts.
+     * The previous exact occupancy recurrence was rejected because of its
+     * O(cf * df) cost. The log-binomial table requires O(D) setup, and each
+     * score requires O(1) work.</p>
+     *
+     * <p>As for other scorers, s=0 and s=1 use the common raw-frequency and
+     * exclusive-frequency endpoints.</p>
+     */
+    public static class SimpleOccupancyAlpha extends KeynessScorer
+    {
+        /** Default keyword smoothing constant per million. */
+        private static final double K_DEFAULT = 5_000d;
+
+        /** Current smoothing constant per million, held fixed across specificity. */
+        private double k = K_DEFAULT;
+
+        /** Cached log-binomial coefficients for the current corpus. */
+        private double[] logBinomial;
+
+        /** Whether smoothing was explicitly selected as a pseudo-count. */
+        private boolean pseudo;
+
+        /** Pseudo-count for vector models, when enabled. */
+        private double pseudoCount = 1d;
+
+        /**
+         * Creates a scorer with fixed keyword smoothing of 5000 per million.
+         */
+        public SimpleOccupancyAlpha() {}
+
+        /**
+         * Creates a scorer with an explicit fixed smoothing constant.
+         *
+         * @param k positive smoothing per million, or NaN for the default
+         * @throws IllegalArgumentException if k is invalid
+         */
+        public SimpleOccupancyAlpha(final double k)
+        {
+            if (!Double.isNaN(k)) {
+                if (!Double.isFinite(k) || k <= 0d) {
+                    throw new IllegalArgumentException("k must be finite and > 0: " + k);
+                }
+                this.k = k;
+            }
+        }
+
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code simpleoccupancy}
+         */
+        @Override
+        public String code()
+        {
+            return "simpleoccupancy";
+        }
+
+        /**
+         * Initializes corpus statistics and precomputes log-binomial coefficients.
+         *
+         * @param corpusTokens total corpus occurrence mass
+         * @param corpusDocs number of corpus documents
+         * @throws IllegalArgumentException if corpus statistics are invalid
+         */
+        @Override
+        public void corpus(final double corpusTokens, final int corpusDocs)
+        {
+            super.corpus(corpusTokens, corpusDocs);
+            logBinomial = new double[corpusDocs + 1];
+            for (int df = 1; df <= corpusDocs; df++) {
+                logBinomial[df] = logBinomial[df - 1]
+                        + Math.log(corpusDocs - df + 1d) - Math.log(df);
+            }
+        }
+
+        /**
+         * Initializes the focus and, if requested, its pseudo-count smoothing.
+         *
+         * @param focusTokens candidate tokens of the focus, excluding the pivot
+         * @param pivotCount pivot occurrences included in the focus
+         * @throws IllegalStateException if corpus statistics are not initialized
+         * @throws IllegalArgumentException if focus statistics are invalid
+         */
+        @Override
+        public void focus(final double focusTokens, final double pivotCount)
+        {
+            super.focus(focusTokens, pivotCount);
+            if (pseudo) k = 1_000_000d * pseudoCount / this.focusTokens;
+        }
+
+        /**
+         * Returns zero, the neutral signed log-contrast score.
+         *
+         * @return zero for every specificity
+         */
+        @Override
+        public double neutral()
+        {
+            return 0d;
+        }
+
+        /**
+         * Selects focus-relative pseudo-count smoothing for vector models.
+         * Takes effect at the next {@link #focus(double, double)} call.
+         *
+         * @param c positive pseudo-count in focus occurrences
+         * @return this scorer
+         * @throws IllegalArgumentException if the pseudo-count is invalid
+         */
+        public SimpleOccupancyAlpha pseudoCount(final double c)
+        {
+            if (!Double.isFinite(c) || c <= 0d) {
+                throw new IllegalArgumentException("pseudo-count must be finite and > 0: " + c);
+            }
+            pseudoCount = c;
+            pseudo = true;
+            return this;
+        }
+
+        /**
+         * Scores signed Simple Maths contrast with a bounded-exponent
+         * occupancy-surprise weight.
+         *
+         * @param tf term frequency in the focus
+         * @param cf term frequency in the corpus, possibly distance-weighted
+         * @param df number of corpus documents containing the term
+         * @return signed occupancy-weighted contrast, or NaN for invalid counts
+         * @throws IllegalStateException if corpus or focus is not initialized
+         */
+        @Override
+        public double score(final double tf, final double cf, final int df)
+        {
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
+            final double rfFocus = tf * 1_000_000d / focusTokens + k;
+            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
+            final double lr = Math.log(rfFocus / rfRest);
+            if (lr == 0d || cf <= df || df == corpusDocs) return 0d;
+            final double weight = Math.max(0d,
+                    Math.log((double) corpusDocs / df) - logBinomial[df] / cf);
+            if (weight == 0d) return 0d;
+            final double score = Math.pow(Math.abs(lr), 2d * (1d - specif))
+                    * Math.pow(weight, (4d / 3d) * specif);
+            return lr > 0d ? score : -score;
+        }
     }
 
     /**
@@ -973,7 +1337,7 @@ public abstract class KeynessScorer
      * geometrically by specificity.
      *
      * <pre>
-     * lr       = ln(SimpleMaths(k(s)))                token contrast focus / rest
+     * lr       = ln((rfFocus + k(s)) / (rfRest + k(s)))  token contrast focus / rest
      * expected = corpusDocs * (1 - exp(-cf / corpusDocs))
      *                                                 df expected under Poisson
      * ridf     = max(ln(expected / df), 0)            burstiness of the term
@@ -1009,7 +1373,7 @@ public abstract class KeynessScorer
      * 0 for rare candidates (see below), so the smoothing has only to guard
      * the ratios that rest on little evidence: {@link #pseudoCount(double)}
      * sets a pseudo-count c, so that {@code lr = ln((tf + c) / (E + c))};
-     * {@link #PSEUDO_COUNT} is the value for a vector model.
+     * {@link #PSEUDO_COUNT} is the default pseudo-count for a vector model.
      * </p>
      *
      * <p>
@@ -1049,8 +1413,17 @@ public abstract class KeynessScorer
      * Corpus Linguistics Conference CL2009, University of Liverpool.
      * </p>
      */
-    public static class SimpleRidfAlpha extends SimpleMaths
+    public static class SimpleRidfAlpha extends KeynessScorer
     {
+        /** Upper smoothing reference per million for the specificity mapping. */
+        public static final double K_MAX = 10_000_000d;
+
+        /** Lower smoothing reference per million for the specificity mapping. */
+        public static final double K_MIN = 0.1d;
+
+        /** Default pseudo-count when explicitly enabled for vector models. */
+        public static final double PSEUDO_COUNT = 1d;
+
         /**
          * Empirical centre on the Piaget corpus: with this k0 the top 50 at
          * {@code s = 0.5} has the geometric-mean tf of the top 50 of
@@ -1060,69 +1433,113 @@ public abstract class KeynessScorer
          */
         private static final double K0_PLATEAU = 5_000d;
 
-        /** True once {@link #pseudoCount(double)} has set a pseudo-count centre. */
+        /** True when a fixed centre was provided to the constructor. */
+        private boolean kSet;
+
+        /** True when pseudo-count smoothing is enabled for vector models. */
         private boolean pseudo;
 
-        /**
-         * Creates a scorer with the default centre {@link #K0_PLATEAU}, for
-         * keywords.
-         */
-        public SimpleRidfAlpha()
-        {
-            super();
-        }
+        /** Pseudo-count used only when explicitly enabled. */
+        private double pseudoCount = PSEUDO_COUNT;
+
+        /** Smoothing centre per million at specificity 0.5. */
+        private double k0 = Double.NaN;
+
+        /** Smoothing per million at the current specificity. */
+        private double k = Double.NaN;
 
         /**
-         * Creates a scorer with an explicit Simple Maths centre k0.
-         * {@link Double#NaN} means no explicit centre: the scorer behaves
-         * exactly as built by {@link #SimpleRidfAlpha()}.
+         * Creates a standalone residual-IDF scorer with the keyword centre.
+         */
+        public SimpleRidfAlpha() {}
+
+        /**
+         * Creates a standalone residual-IDF scorer with an explicit centre.
          *
-         * @param k positive per-million smoothing constant at {@code s = 0.5},
-         *          or {@link Double#NaN} for the default centre
-         * @throws IllegalArgumentException if k is neither NaN nor finite and positive
+         * @param k positive smoothing centre per million at specificity 0.5,
+         *          or {@link Double#NaN} for the default
+         * @throws IllegalArgumentException if k is invalid
          */
         public SimpleRidfAlpha(final double k)
         {
-            super(k);
+            if (!Double.isNaN(k)) {
+                if (!Double.isFinite(k) || k <= 0d) {
+                    throw new IllegalArgumentException("k must be finite and > 0: " + k);
+                }
+                k0 = k;
+                kSet = true;
+            }
         }
 
         /**
-         * Returns the centre: {@link #K0_PLATEAU} per million for keywords,
-         * the same for every focus size; once {@link #pseudoCount(double)}
-         * has been called, the pseudo-count as a rate of the focus,
-         * {@code pseudoCount * 1_000_000 / focusTokens}, without the context
-         * rate of {@link SimpleMaths}, see the class comment.
+         * Returns the canonical scorer code.
          *
-         * @param focusTokens tokens of the focus, pivot occurrences included
-         * @return positive per-million smoothing constant at {@code s = 0.5}
+         * @return {@code simpleridf}
          */
         @Override
+        public String code()
+        {
+            return "simpleridf";
+        }
+
+        /**
+         * Returns residual IDF, or a different dispersion statistic in a
+         * subclass. Called only when the Simple Maths log contrast is nonzero.
+         *
+         * @param cf collection frequency of the term
+         * @param df number of documents containing the term
+         * @return nonnegative dispersion weight
+         */
+        protected double dispersion(final double cf, final int df)
+        {
+            final double expected = -corpusDocs * Math.expm1(-cf / corpusDocs);
+            return Math.max(Math.log(expected / df), 0d);
+        }
+
+        /**
+         * Sets the focus and calculates smoothing independently of SimpleMaths.
+         *
+         * @param focusTokens candidate tokens in the focus, excluding the pivot
+         * @param pivotCount occurrences of the pivot included in the focus
+         * @throws IllegalStateException if the corpus is not initialized
+         * @throws IllegalArgumentException if focus statistics are invalid
+         */
+        @Override
+        public void focus(final double focusTokens, final double pivotCount)
+        {
+            super.focus(focusTokens, pivotCount);
+            if (!kSet) k0 = k0(this.focusTokens);
+            k = specif == 0.5d ? k0 : k(specif, k0);
+        }
+
+        /**
+         * Maps specificity geometrically to this scorer's smoothing value.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @param k0 positive midpoint smoothing per million
+         * @return the smoothing constant per million
+         */
+        public static double k(final double specif, final double k0)
+        {
+            if (specif <= 0.5d) return k0 * Math.pow(K_MAX / k0, 1d - 2d * specif);
+            return k0 * Math.pow(K_MIN / k0, 2d * specif - 1d);
+        }
+
+        /**
+         * Returns the default centre, either the keyword plateau or a pseudo-count.
+         *
+         * @param focusTokens tokens in the focus, including the pivot
+         * @return the smoothing centre per million at specificity 0.5
+         */
         protected double k0(final double focusTokens)
         {
             return pseudo ? 1_000_000d * pseudoCount / focusTokens : K0_PLATEAU;
         }
 
         /**
-         * Sets a pseudo-count centre, see {@link #k0(double)}: the smoothing
-         * of a vector model.
+         * Returns zero, since this score measures signed log contrast.
          *
-         * @param c positive pseudo-count, a number of occurrences
-         * @return this scorer
-         * @throws IllegalArgumentException if c is not finite and positive
-         */
-        @Override
-        public SimpleRidfAlpha pseudoCount(final double c)
-        {
-            super.pseudoCount(c);
-            pseudo = true;
-            return this;
-        }
-
-        /**
-         * Returns zero: independence, and terms without burstiness, score 0
-         * at every specificity.
-         *
-         * @return neutral association score
+         * @return zero for all specificity settings
          */
         @Override
         public double neutral()
@@ -1131,7 +1548,26 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Computes the Simple Maths log ratio weighted by residual IDF.
+         * Uses a pseudo-count smoothing centre for vector models, replacing
+         * any fixed constructor centre at the next focus initialization.
+         *
+         * @param c positive pseudo-count in focus occurrences
+         * @return this scorer
+         * @throws IllegalArgumentException if c is invalid
+         */
+        public SimpleRidfAlpha pseudoCount(final double c)
+        {
+            if (!Double.isFinite(c) || c <= 0d) {
+                throw new IllegalArgumentException("pseudo-count must be finite and > 0: " + c);
+            }
+            pseudoCount = c;
+            pseudo = true;
+            kSet = false;
+            return this;
+        }
+
+        /**
+         * Computes the original Simple Maths log ratio weighted by residual IDF.
          *
          * @param tf occurrences in the focus
          * @param cf occurrences in the corpus
@@ -1141,15 +1577,31 @@ public abstract class KeynessScorer
         @Override
         public double score(final double tf, final double cf, final int df)
         {
-            final double ratio = super.score(tf, cf, df);
-            if (specif == 0d || specif == 1d || Double.isNaN(ratio)) return ratio;
-            if (df <= 0 || df > corpusDocs || df > cf) return Double.NaN;
-            final double lr = Math.log(ratio);
+            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
+            if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
+            final double rfFocus = tf * 1_000_000d / focusTokens + k;
+            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + k;
+            final double lr = Math.log(rfFocus / rfRest);
             if (lr == 0d) return 0d;
-            final double expected = -corpusDocs * Math.expm1(-cf / corpusDocs);
-            final double ridf = Math.max(Math.log(expected / df), 0d);
-            final double score = Math.pow(Math.abs(lr), 2d * (1d - specif)) * Math.pow(ridf, 2d * specif);
+            final double weight = dispersion(cf, df);
+            final double score = Math.pow(Math.abs(lr), 2d * (1d - specif))
+                    * Math.pow(weight, 2d * specif);
             return lr > 0d ? score : -score;
+        }
+
+        /**
+         * Updates specificity and recomputes smoothing if a focus is set.
+         *
+         * @param specif normalized specificity in [0, 1]
+         * @return this scorer
+         * @throws IllegalArgumentException if specificity is invalid
+         */
+        @Override
+        public SimpleRidfAlpha specif(final double specif)
+        {
+            super.specif(specif);
+            if (focusTokens >= 0d) k = specif == 0.5d ? k0 : k(specif, k0);
+            return this;
         }
     }
 
@@ -1181,6 +1633,17 @@ public abstract class KeynessScorer
      */
     public static class SubTfIdfAlpha extends KeynessScorer
     {
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code subtfidfa}
+         */
+        @Override
+        public String code()
+        {
+            return "subtfidfa";
+        }
+
         /** IDF exponent at midpoint, equal to the previous scorer at s = 0.6. */
         private static final double ALPHA_MIDDLE = 0.35577063364800476d;
 
@@ -1298,6 +1761,17 @@ public abstract class KeynessScorer
         public TfIdfAlpha()
         {
             this(ALPHA_MIDDLE);
+        }
+
+        /**
+         * Returns the canonical scorer code.
+         *
+         * @return {@code tfidfa}
+         */
+        @Override
+        public String code()
+        {
+            return "tfidfa";
         }
 
         /**
