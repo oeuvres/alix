@@ -46,9 +46,6 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * <li>{@code model}: file name of a model of the models root, see
  * {@link Op#modelPath}.</li>
  * <li>{@code terms}: number of neighbours.</li>
- * <li>{@code rank}: {@code csls} ranks the neighbours by CSLS, see
- * {@link VecModel#nearestCsls(int[], int)}; absent or any other value, by
- * cosine.</li>
  * </ul>
  *
  * <h2>Response</h2>
@@ -61,9 +58,7 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * <li>{@code form}: the word;</li>
  * <li>{@code distance}: {@code 1 - mean(cosine)} to the query words, see
  * {@link VecModel#nearest(int[], int)}. A single query word is at 0 from
- * itself; with several, each one is at its distance to the whole query.
- * With {@code rank=csls} it is still the cosine distance, so it does not
- * always grow down the list;</li>
+ * itself; with several, each one is at its distance to the whole query;</li>
  * <li>{@code fieldDocs}, {@code fieldFreq}: documents and occurrences of the
  * form in the field the model was built from, so the counts the model was
  * computed on. They are absent when that field is unknown.</li>
@@ -75,12 +70,6 @@ import static com.github.oeuvres.alix.web.Pars.*;
  */
 public class OpNeighbors extends Op
 {
-    /** Parameter choosing the ranking of the neighbours. */
-    private static final String RANK = "rank";
-
-    /** Value of {@link #RANK} for the CSLS ranking. */
-    private static final String RANK_CSLS = "csls";
-
     /**
      * Returns the indexed forms an item of the query resolves to, when it is
      * analysed like a search query of the field: lemma, or the forms matched
@@ -243,13 +232,7 @@ public class OpNeighbors extends Op
         final int[] pivotIds = pivotSet.stream().mapToInt(Integer::intValue).toArray();
 
         final int limit = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT);
-        final boolean csls = RANK_CSLS.equals(pars.getString(RANK, null));
-        if (csls) {
-            meta.put("rank", RANK_CSLS);
-        }
-        final List<VecModel.Neighbor> neighbors = csls
-            ? model.nearestCsls(pivotIds, limit)
-            : model.nearest(pivotIds, limit);
+        final List<VecModel.Neighbor> neighbors = model.nearest(pivotIds, limit);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");

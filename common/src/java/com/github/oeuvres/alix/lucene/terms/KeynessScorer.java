@@ -1186,9 +1186,22 @@ public abstract class KeynessScorer
      * ridf   = ln(corpusDocs * (1 - exp(-lambda)) / df)
      * weight = max(0, ridf)
      * kTerm  = k / weight
-     * score  = (M * tf / focusTokens + kTerm)
-     *        / (M * (cf - tf) / (corpusTokens - focusTokens) + kTerm)
+     * score  = ln((M * tf / focusTokens + kTerm)
+     *           / (M * (cf - tf) / (corpusTokens - focusTokens) + kTerm))
      * </pre>
+     *
+     * <p>The score is the log of the smoothed ratio, so the neutral score
+     * is 0. Within a focus the log keeps the order of the ratio, so keyword
+     * lists are the same as with the ratio. In a co-occurrence matrix
+     * ({@code SparseSvd.keyness}) the values of different foci are compared:
+     * every row is a focus, and its smoothing grows with its mass, so the
+     * ratios of frequent rows stay near 1 while those of rare rows are
+     * unbounded. The log compresses the large ratios of rare rows. Measured
+     * on the Piaget corpus (window 15, decay 2, gram distance 2, 300
+     * dimensions), with the ratio the 1,000 most frequent rows held 8.9% of
+     * the squared norm of the vectors, against 22.5% for the former
+     * SimpleRidfAlpha ({@code ln(ratio) * ridf}, smoothed by a pseudo-count
+     * only).</p>
      *
      * <p>Under the Poisson law of mean {@code lambda} per document, a term
      * is expected in {@code corpusDocs * (1 - exp(-lambda))} documents, and
@@ -1249,13 +1262,25 @@ public abstract class KeynessScorer
         }
 
         /**
-         * Scores the focus/background ratio with the smoothing of the term,
-         * the Simple Maths smoothing divided by its residual IDF.
+         * Returns the score of independence, and of terms without residual
+         * IDF: zero at every specificity.
+         *
+         * @return zero
+         */
+        @Override
+        public double neutral()
+        {
+            return 0d;
+        }
+
+        /**
+         * Scores the log of the focus/background ratio with the smoothing of
+         * the term, the Simple Maths smoothing divided by its residual IDF.
          *
          * @param tf term frequency in the focus
          * @param cf collection frequency, possibly distance-weighted
          * @param df number of corpus documents containing the term
-         * @return adjusted Simple Maths ratio, or {@link Double#NaN} for invalid counts
+         * @return log of the adjusted Simple Maths ratio, or {@link Double#NaN} for invalid counts
          * @throws IllegalStateException if corpus or focus is not initialized
          */
         @Override
@@ -1264,11 +1289,11 @@ public abstract class KeynessScorer
             if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
             if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
             final double ridf = Math.log(-Math.expm1(-cf / corpusDocs) * corpusDocs / df);
-            if (!(ridf > 0d)) return 1d;
+            if (!(ridf > 0d)) return 0d;
             final double kTerm = k / ridf;
             final double rfFocus = tf * 1_000_000d / focusTokens + kTerm;
             final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + kTerm;
-            return rfFocus / rfRest;
+            return Math.log(rfFocus / rfRest);
         }
     }
 

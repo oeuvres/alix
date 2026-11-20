@@ -50,7 +50,7 @@ public final class CoocScorerEval
     /** Default pivots spanning several Piaget research themes. */
     private static final List<String> DEFAULT_PIVOTS = List.of(
         "enfant", "connaissance", "pensée", "instrument", "instrumental", "outil", "assimilation",
-        "égocentrisme", "langage", "morale", "bâton", "société"
+        "égocentrisme", "autisme", "sociologie", "langage", "morale", "bâton", "société", "rêve"
     );
 
     /** Prevents instantiation of this CLI. */

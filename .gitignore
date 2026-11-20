@@ -22,8 +22,9 @@ common/src/java/com/github/oeuvres/alix/lucene/terms/*.html
 common/src/resources/com/github/oeuvres/alix/fr/*.zip
 common/src/resources/com/github/oeuvres/alix/fr/*.txt
 *.bin
+common/*.ctx
 common/*.csv
 common/*.tsv
+common/*.json
 common/word2vec*
 common/hs_err_pid*.log
-*.ctx
