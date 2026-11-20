@@ -46,6 +46,12 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * <li>{@code model}: file name of a model of the models root, see
  * {@link Op#modelPath}.</li>
  * <li>{@code terms}: number of neighbours.</li>
+ * <li>{@code rank}: {@code tau} or {@code quality} ranks the neighbours by
+ * cosine shrunk by the evidence of each candidate, see
+ * {@link VecModel#nearestShrunk(int[], int, VecModel.Shrink)}, so that a word
+ * seen once falls in the list of a frequent word; absent or any other value,
+ * by cosine. Both need the vocabulary file of the model; without it the
+ * ranking is by cosine, and the meta says so.</li>
  * </ul>
  *
  * <h2>Response</h2>
@@ -58,7 +64,9 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * <li>{@code form}: the word;</li>
  * <li>{@code distance}: {@code 1 - mean(cosine)} to the query words, see
  * {@link VecModel#nearest(int[], int)}. A single query word is at 0 from
- * itself; with several, each one is at its distance to the whole query;</li>
+ * itself; with several, each one is at its distance to the whole query.
+ * With a shrunk {@code rank} it is still the cosine distance, so it does not
+ * always grow down the list;</li>
  * <li>{@code fieldDocs}, {@code fieldFreq}: documents and occurrences of the
  * form in the field the model was built from, so the counts the model was
  * computed on. They are absent when that field is unknown.</li>
@@ -70,6 +78,9 @@ import static com.github.oeuvres.alix.web.Pars.*;
  */
 public class OpNeighbors extends Op
 {
+    /** Parameter choosing the ranking of the neighbours. */
+    private static final String RANK = "rank";
+
     /**
      * Returns the indexed forms an item of the query resolves to, when it is
      * analysed like a search query of the field: lemma, or the forms matched
@@ -232,7 +243,23 @@ public class OpNeighbors extends Op
         final int[] pivotIds = pivotSet.stream().mapToInt(Integer::intValue).toArray();
 
         final int limit = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT);
-        final List<VecModel.Neighbor> neighbors = model.nearest(pivotIds, limit);
+        final String rankName = pars.getString(RANK, null);
+        VecModel.Shrink shrink = null;
+        for (final VecModel.Shrink value : VecModel.Shrink.values()) {
+            if (value.name().equalsIgnoreCase(rankName)) {
+                shrink = value;
+            }
+        }
+        if (shrink != null && !model.canShrink(shrink)) {
+            meta.log("[rank " + rankName + " needs the vocabulary file of the model, ranked by cosine]");
+            shrink = null;
+        }
+        if (shrink != null) {
+            meta.put("rank", shrink.name().toLowerCase());
+        }
+        final List<VecModel.Neighbor> neighbors = (shrink == null)
+            ? model.nearest(pivotIds, limit)
+            : model.nearestShrunk(pivotIds, limit, shrink);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");

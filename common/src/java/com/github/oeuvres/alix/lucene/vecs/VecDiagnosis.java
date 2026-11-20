@@ -23,11 +23,13 @@ import java.util.stream.IntStream;
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.VecDiagnosis <model.bin> \
  *     [--freqs terms.tsv] [--words enfant,outil|@words.txt] [--pairs enfant:adulte,...|@pairs.txt] \
- *     [--top 20] [--sample 200] [--seed 1]
+ *     [--rank cos|tau|quality] [--top 20] [--sample 200] [--seed 1]
  * }</pre>
  *
  * <p>The model is read by {@link VecModel#load(Path)}, and neighbours and
- * cosines come from {@link VecModel#nearest(int[], int)} and
+ * cosines come from {@link VecModel#nearest(int[], int)}, or with
+ * {@code --rank tau|quality} from
+ * {@link VecModel#nearestShrunk(int[], int, VecModel.Shrink)}, and from
  * {@link VecModel#cosine(int, int)}: the lists are those served from the same
  * model.</p>
  *
@@ -35,9 +37,11 @@ import java.util.stream.IntStream;
  * header naming the columns {@code term} and {@code tf} (other columns are
  * ignored), exported from the field of the model. Words of the model absent
  * from the file have no frequency and are left out of the frequency
- * classes. Without {@code --freqs}, the row order of the model stands for the
- * frequency rank, as written by {@link Coocs2vec}; classes are then classes
- * of rank, and the hapax shares are not available.</p>
+ * classes. Without {@code --freqs}, the {@code tf} column of the vocabulary
+ * file of the model is used, see {@link VecModel#attribute(int, String)};
+ * without either, the row order of the model stands for the frequency rank,
+ * as written by {@link Coocs2vec}; classes are then classes of rank, and the
+ * hapax shares are not available.</p>
  *
  * <p>Output, plain text with tab-separated columns, one block per measure:</p>
  *
@@ -74,7 +78,7 @@ public final class VecDiagnosis
     /** Command-line usage. */
     private static final String USAGE =
         "usage: VecDiagnosis <model.bin> [--freqs terms.tsv] [--words w1,w2|@file]"
-            + " [--pairs a:b,c:d|@file] [--top 20] [--sample 200] [--seed 1]";
+            + " [--pairs a:b,c:d|@file] [--rank cos|tau|quality] [--top 20] [--sample 200] [--seed 1]";
 
     /** Corpus frequency of each vector, or -1 when unknown; the rank without a frequency file. */
     private final long[] freqs;
@@ -85,18 +89,37 @@ public final class VecDiagnosis
     /** The model diagnosed. */
     private final VecModel model;
 
+    /** Factor of the shrunk ranking, or null to rank by cosine. */
+    private final VecModel.Shrink shrink;
+
     /**
      * Loads a model and its frequencies.
      *
      * @param path word2vec binary file
-     * @param freqFile frequency file, or null to use the row order
+     * @param freqFile frequency file, or null for the vocabulary file of the
+     *        model, or else the row order
+     * @param shrink factor of the shrunk ranking, or null to rank by cosine
      * @throws IOException if a file cannot be read
+     * @throws IllegalArgumentException if the model cannot give the factor
      */
-    private VecDiagnosis(final Path path, final Path freqFile) throws IOException
+    private VecDiagnosis(final Path path, final Path freqFile, final VecModel.Shrink shrink) throws IOException
     {
         model = VecModel.load(path);
+        this.shrink = shrink;
+        if (shrink != null && !model.canShrink(shrink)) {
+            throw new IllegalArgumentException("--rank " + shrink.name().toLowerCase()
+                + " needs the vocabulary file of the model");
+        }
         freqs = new long[model.size()];
-        hasFreqs = freqFile != null;
+        final boolean vocab = freqFile == null && model.attributes().contains("tf");
+        hasFreqs = freqFile != null || vocab;
+        if (vocab) {
+            for (int id = 0; id < freqs.length; id++) {
+                final double tf = model.attribute(id, "tf");
+                freqs[id] = Double.isNaN(tf) ? -1L : (long) tf;
+            }
+            return;
+        }
         if (!hasFreqs) {
             for (int id = 0; id < freqs.length; id++) {
                 freqs[id] = id + 1L;
@@ -142,6 +165,7 @@ public final class VecDiagnosis
         int top = 20;
         int sample = 200;
         long seed = 1L;
+        VecModel.Shrink shrink = null;
         for (int i = 1; i < args.length; i++) {
             switch (args[i]) {
                 case "--freqs" -> freqFile = Paths.get(args[++i]);
@@ -150,6 +174,10 @@ public final class VecDiagnosis
                 case "--top" -> top = Integer.parseInt(args[++i]);
                 case "--sample" -> sample = Integer.parseInt(args[++i]);
                 case "--seed" -> seed = Long.parseLong(args[++i]);
+                case "--rank" -> {
+                    final String rank = args[++i];
+                    shrink = "cos".equals(rank) ? null : VecModel.Shrink.valueOf(rank.toUpperCase(Locale.ROOT));
+                }
                 default -> {
                     System.err.println("unknown option: " + args[i]);
                     System.err.println(USAGE);
@@ -163,11 +191,13 @@ public final class VecDiagnosis
         }
         System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
         final Path path = Paths.get(args[0]);
-        final VecDiagnosis diagnosis = new VecDiagnosis(path, freqFile);
-        System.out.printf(Locale.ROOT, "model\t%s%nrows\t%d%ndims\t%d%nfrequencies\t%s%n",
+        final VecDiagnosis diagnosis = new VecDiagnosis(path, freqFile, shrink);
+        System.out.printf(Locale.ROOT, "model\t%s%nrows\t%d%ndims\t%d%nfrequencies\t%s%nrank\t%s%ntau\t%.4f%n",
             path.getFileName(), diagnosis.model.size(), diagnosis.model.dim(),
-            freqFile == null ? "row rank" : freqFile.getFileName() + ", "
-                + diagnosis.known() + " rows with a frequency");
+            freqFile != null ? freqFile.getFileName() + ", " + diagnosis.known() + " rows with a frequency"
+                : diagnosis.hasFreqs ? "vocabulary file, " + diagnosis.known() + " rows with a frequency"
+                : "row rank",
+            shrink == null ? "cosine" : shrink.name().toLowerCase(), diagnosis.model.tau());
         diagnosis.printClasses(top, sample, seed);
         diagnosis.printGlobal(top, seed);
         if (wordsArg != null) {
@@ -201,7 +231,7 @@ public final class VecDiagnosis
      */
     private double[] neighbourFigures(final int query, final int top)
     {
-        final List<VecModel.Neighbor> near = model.nearest(new int[] {query}, top);
+        final List<VecModel.Neighbor> near = neighbours(query, top);
         final double[] f = new double[near.size()];
         int counted = 0;
         int hapax = 0;
@@ -219,6 +249,19 @@ public final class VecDiagnosis
             median(Arrays.copyOf(f, counted)),
             counted > 0 ? (double) hapax / counted : Double.NaN
         };
+    }
+
+    /**
+     * Returns the top neighbours of a vector with the ranking of the run.
+     *
+     * @param query vector id
+     * @param top number of neighbours
+     * @return neighbours, nearest first
+     */
+    private List<VecModel.Neighbor> neighbours(final int query, final int top)
+    {
+        final int[] pivot = {query};
+        return shrink == null ? model.nearest(pivot, top) : model.nearestShrunk(pivot, top, shrink);
     }
 
     /**
@@ -427,7 +470,7 @@ public final class VecDiagnosis
             System.out.printf(Locale.ROOT, "%s\t%s %d\tnorm %.3f%n",
                 word, hasFreqs ? "freq" : "rank", freqs[query], model.norm(query));
             int rank = 0;
-            for (final VecModel.Neighbor neighbor : model.nearest(new int[] {query}, top)) {
+            for (final VecModel.Neighbor neighbor : neighbours(query, top)) {
                 final long freq = freqs[neighbor.id()];
                 System.out.printf(Locale.ROOT, "%d\t%s\t%.4f\t%s%n", ++rank, neighbor.word(),
                     1d - neighbor.distance(), freq > 0L ? Long.toString(freq) : "");

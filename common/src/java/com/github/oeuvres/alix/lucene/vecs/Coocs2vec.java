@@ -11,8 +11,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.List;
+import java.util.Locale;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.FSDirectory;
@@ -99,7 +102,7 @@ import us.ascendtech.primme.PrimmeSvds;
  * <i>sujet</i> became function words only (median neighbour frequency
  * 12,061 with the shorter reach, 70,050 with the longer one).</p>
  *
- * <p>Three files are written: {@code <name>.bin}, the row vectors (a word as
+ * <p>Four files are written: {@code <name>.bin}, the row vectors (a word as
  * focus: the contexts it expects); {@code <name>.ctx}, in the same word2vec
  * binary format, kept out of {@code *.bin} listings of models, the context
  * vectors (a word as context: the focuses that expect it). The prepared
@@ -109,7 +112,15 @@ import us.ascendtech.primme.PrimmeSvds;
  * between row vectors stays the symmetric, second-order comparison;
  * {@code <name>.json}, the diagnosis of the run: model name, command-line
  * arguments and the whole log (distance weights, inertia by frequency class,
- * solver times, refinement losses).</p>
+ * solver times, refinement losses, quality by frequency class);
+ * {@code <name>.vocab}, a tab-separated table with a header, one line per
+ * selected word, also those without a vector: {@code word}, written as in the
+ * {@code .bin} by {@link VecModel#write}, {@code tf} and {@code df}, its
+ * occurrences and documents in the field, and {@code quality}, the share of
+ * its prepared row kept by the retained axes, see {@link SparseSvd#quality()}.
+ * The vocabulary file follows the {@code -save-vocab} file of word2vec, one
+ * word and its count per line; readers find its columns by name, so that
+ * columns may be added.</p>
  *
  * <p>The name lists the stages of the pipeline in order, separated by
  * {@code -}, never inside a stage, so that models built from the same matrix
@@ -646,7 +657,6 @@ public final class Coocs2vec
             case "bm25" -> new KeynessScorer.BM25Alpha(50, 0.75f);
             case "fisher" -> new KeynessScorer.FisherAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(simplek);
-            case "simpledf" -> new KeynessScorer.SimpleDf(simplek);
             case "simpledisp" -> new KeynessScorer.SimpleDispersion(simplek);
             case "simpleridf" -> new KeynessScorer.SimpleRidf(simplek);
             case "tfidf" -> new KeynessScorer.TfIdfAlpha();
@@ -797,13 +807,15 @@ public final class Coocs2vec
                 throw new IllegalStateException("no nonzero singular dimensions: " + scorerName);
             }
             log("decomposition done, retained %,d dimensions", retained);
-
+            final double[] quality = svd.quality();
+            logQuality(quality, selected, stats);
 
             writeVectors(Paths.get(outName + ".bin"), words, svd.project(retained).coords());
             if (weightAxes != 0.5d) {
                 log("warning: row . context reconstructs directed cells only with --weightaxes 0.5");
             }
             writeVectors(Paths.get(outName + ".ctx"), words, svd.contexts());
+            writeVocab(Paths.get(outName + ".vocab"), words, selected, stats, quality);
 
             log("done");
             writeDiagnosis(Paths.get(outName + ".json"), outName, args, logBuffer);
@@ -971,6 +983,46 @@ public final class Coocs2vec
     }
 
     /**
+     * Logs the median quality of representation of the rows by frequency
+     * class, see {@link SparseSvd#quality()}.
+     *
+     * <p>Rows are grouped by the power of 2 of their corpus frequency, as in
+     * {@link #logInertia(double[][], SelectedTerm[], TermStats)}. Each line
+     * gives the number of rows of the class and their median quality.</p>
+     *
+     * @param quality quality of each row
+     * @param selected selected vocabulary in matrix order
+     * @param stats field statistics giving corpus frequencies
+     */
+    private static void logQuality(
+        final double[] quality,
+        final SelectedTerm[] selected,
+        final TermStats stats
+    ) {
+        final List<List<Double>> classes = new ArrayList<>();
+        for (int c = 0; c < 64; c++) {
+            classes.add(new ArrayList<>());
+        }
+        for (int row = 0; row < quality.length; row++) {
+            final long freq = Math.max(1L, stats.termFreq(selected[row].termId()));
+            classes.get(63 - Long.numberOfLeadingZeros(freq)).add(quality[row]);
+        }
+        log("%s", "quality    freq      rows  median");
+        for (int c = 0; c < 64; c++) {
+            final List<Double> values = classes.get(c);
+            if (values.isEmpty()) {
+                continue;
+            }
+            values.sort(null);
+            final int mid = values.size() / 2;
+            final double median = values.size() % 2 == 1
+                ? values.get(mid)
+                : (values.get(mid - 1) + values.get(mid)) / 2d;
+            log("%17s %,8d %7.3f", (1L << c) + "-" + ((1L << (c + 1)) - 1), values.size(), median);
+        }
+    }
+
+    /**
      * Logs the SimpleMaths smoothing constant k per million for selected rows,
      * and the class file from which the scorer was loaded.
      *
@@ -1095,6 +1147,40 @@ public final class Coocs2vec
         VecModel.write(out,
             Arrays.copyOf(outputWords, outputCount),
             Arrays.copyOf(outputVectors, outputCount));
+    }
+
+    /**
+     * Writes the vocabulary file of the model: a header, then one line per
+     * selected word in matrix order, also those without a vector, with the
+     * columns {@code word}, {@code tf}, {@code df}, {@code quality}. The word
+     * is written as {@link VecModel#write} writes it, white space replaced by
+     * {@code _}, so that it is the key of the {@code .bin}.
+     *
+     * @param out output file
+     * @param words vocabulary in matrix order
+     * @param selected selected vocabulary in matrix order
+     * @param stats field statistics giving occurrences and documents
+     * @param quality quality of representation of each row
+     * @throws IOException if writing fails
+     */
+    private static void writeVocab(
+        final Path out,
+        final String[] words,
+        final SelectedTerm[] selected,
+        final TermStats stats,
+        final double[] quality
+    ) throws IOException {
+        final StringBuilder tsv = new StringBuilder("word\ttf\tdf\tquality\n");
+        for (int row = 0; row < words.length; row++) {
+            final int termId = selected[row].termId();
+            tsv.append(words[row].replaceAll("\\s", "_"))
+                .append('\t').append(stats.termFreq(termId))
+                .append('\t').append(stats.termDocs(termId))
+                .append('\t').append(String.format(Locale.ROOT, "%.6f", quality[row]))
+                .append('\n');
+        }
+        Files.writeString(out, tsv, StandardCharsets.UTF_8);
+        log("writing vocabulary of %,d words to %s", words.length, out);
     }
 
     /**

@@ -626,6 +626,67 @@ public final class SparseSvd
     }
 
     /**
+     * Returns, for each row, the share of its squared norm in the prepared
+     * matrix that the retained axes keep: the quality of representation of
+     * correspondence analysis, the squared cosine between the row and its
+     * projection on the span of the retained right singular vectors.
+     *
+     * <pre>
+     * quality(a) = |M_a V|^2 / |M_a|^2
+     * </pre>
+     *
+     * <p>V are the unit right singular vectors, the context vectors divided by
+     * the power of the singular values applied by {@link #weightAxes(double)}.
+     * The product {@code M V} is one pass over the stored cells. A row the axes
+     * represent poorly, such as a word seen once, has a small quality: its
+     * cosine with other rows rests on the small part of it the axes keep.
+     * After {@link #refine(double, CellWeight, int)}, V are the right vectors of
+     * the refined fit, put back in SVD form, so the quality is that of the
+     * refined subspace.</p>
+     *
+     * <p>Greenacre, M. (2007). Correspondence Analysis in Practice, 2nd ed.
+     * Chapman &amp; Hall/CRC, chapter 11.</p>
+     *
+     * @return quality in [0, 1] of each row, 0 for an empty row
+     * @throws IllegalStateException before decomposition
+     */
+    public double[] quality()
+    {
+        requireEmbedding();
+        final SparseMatrix m = requirePrepared();
+        final double[] out = new double[size];
+        final int axes = rank;
+        if (axes == 0) {
+            return out;
+        }
+        final double[] v = new double[Math.multiplyExact(colCount, axes)];
+        for (int axis = 0; axis < axes; axis++) {
+            final double scale = axesWeighted ? Math.pow(singularValues[axis], axesPower) : 1d;
+            for (int col = 0; col < colCount; col++) {
+                v[col * axes + axis] = contexts[col][axis] / scale;
+            }
+        }
+        final double[] mv = new double[Math.multiplyExact(size, axes)];
+        m.multiplyBlock(v, mv, axes, false);
+        for (int row = 0; row < size; row++) {
+            double total = 0d;
+            for (int at = m.offsets[row]; at < m.offsets[row + 1]; at++) {
+                total += m.values[at] * m.values[at];
+            }
+            if (!(total > 0d)) {
+                continue;
+            }
+            double kept = 0d;
+            for (int axis = 0; axis < axes; axis++) {
+                final double value = mv[row * axes + axis];
+                kept += value * value;
+            }
+            out[row] = Math.min(1d, kept / total);
+        }
+        return out;
+    }
+
+    /**
      * Refines the decomposition by a weighted low-rank fit of the prepared matrix.
      *
      * <p>Minimises {@code sum w_ab (M_ab - e_a . c_b)^2} over all cells, with
