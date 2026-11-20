@@ -40,7 +40,7 @@ import com.github.oeuvres.alix.maths.Fisher;
  * {@link G2Alpha}; the values of the tests scale with the counts and lose
  * their meaning as significance. It changes the rankings of
  * {@link SimpleMaths} with the automatic centre (its pseudo-count is a
- * number of occurrences), of {@link SimpleDf}, {@link SimpleDispersion} and
+ * number of occurrences), of {@link SimpleDispersion} and
  * {@link SimpleRidf} (the repetition {@code cf / df} compares a mass with a
  * number of documents) and of {@link BM25Alpha} (saturation is set in occurrences).
  * Weighted counts should therefore keep the mass of the raw counts.
@@ -713,94 +713,6 @@ public abstract class KeynessScorer
     }
 
     /**
-     * Simple Maths with a smoothing specific to each term, set by its corpus
-     * coverage and its within-document repetition.
-     *
-     * <pre>
-     * M      = 1_000_000
-     * idf    = ln(corpusDocs / df)
-     * repeat = max(0, ln(cf / df))
-     * weight = idf / (1 + idf) * repeat
-     * kTerm  = k / weight
-     * score  = (M * tf / focusTokens + kTerm)
-     *        / (M * (cf - tf) / (corpusTokens - focusTokens) + kTerm)
-     * </pre>
-     *
-     * <p>The score is the Simple Maths ratio with the smoothing k divided by
-     * the weight of the term: a prior toward 1 whose strength depends on the
-     * term, worth {@code pseudoCount / weight} occurrences for the
-     * pseudo-count part of the default centre. Multiplying both observed
-     * rates by the weight gives the same ratio. The bounded IDF factor
-     * discounts corpus-wide terms without reducing smoothing below its
-     * original value on the basis of rarity alone. The repetition factor
-     * discounts terms occurring about once per containing document,
-     * including bibliographic references. Their product is not bounded
-     * above: a weight above 1, frequent repetition, gives less smoothing than
-     * the Simple Maths baseline. This is an empirical heuristic, not a
-     * probabilistic model. The neutral score remains one.</p>
-     *
-     * <p>Weighted occurrence mass can be smaller than document frequency.
-     * In this case the repetition factor is zero, so the score is neutral.
-     * The specificity endpoints and automatic smoothing are inherited from
-     * {@link SimpleMaths}.</p>
-     */
-    public static class SimpleDf extends SimpleMaths
-    {
-        /**
-         * Creates the scorer with automatic Simple Maths smoothing.
-         */
-        public SimpleDf() {}
-
-        /**
-         * Creates the scorer with explicit Simple Maths smoothing.
-         *
-         * @param k positive smoothing constant per million at specificity 0.5,
-         *          or {@link Double#NaN} for automatic smoothing
-         * @throws IllegalArgumentException if k is invalid
-         */
-        public SimpleDf(final double k)
-        {
-            super(k);
-        }
-
-        /**
-         * Returns the canonical scorer code.
-         *
-         * @return {@code simpledf}
-         */
-        @Override
-        public String code()
-        {
-            return "simpledf";
-        }
-
-        /**
-         * Scores the focus/background ratio with the smoothing of the term,
-         * the Simple Maths smoothing divided by its coverage and repetition
-         * weight.
-         *
-         * @param tf term frequency in the focus
-         * @param cf collection frequency, possibly distance-weighted
-         * @param df number of corpus documents containing the term
-         * @return adjusted Simple Maths ratio, or {@link Double#NaN} for invalid counts
-         * @throws IllegalStateException if corpus or focus is not initialized
-         */
-        @Override
-        public double score(final double tf, final double cf, final int df)
-        {
-            if (specif == 0d || specif == 1d) return super.score(tf, cf, df);
-            if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
-            if (cf <= df || df == corpusDocs) return 1d;
-            final double idf = Math.log((double) corpusDocs / df);
-            final double weight = idf / (1d + idf) * Math.log(cf / df);
-            final double kTerm = k / weight;
-            final double rfFocus = tf * 1_000_000d / focusTokens + kTerm;
-            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + kTerm;
-            return rfFocus / rfRest;
-        }
-    }
-
-    /**
      * Simple Maths log contrast weighted by observed corpus-wide dispersion.
      *
      * <pre>
@@ -1185,10 +1097,15 @@ public abstract class KeynessScorer
      * lambda = cf / corpusDocs
      * ridf   = ln(corpusDocs * (1 - exp(-lambda)) / df)
      * weight = max(0, ridf)
-     * kTerm  = k / weight
-     * score  = ln((M * tf / focusTokens + kTerm)
-     *           / (M * (cf - tf) / (corpusTokens - focusTokens) + kTerm))
+     * rfFocus = M * tf / focusTokens
+     * rfRest  = M * (cf - tf) / (corpusTokens - focusTokens)
+     * score  = ln(1 + weight * (rfFocus - rfRest) / (k + weight * rfRest))
      * </pre>
+     *
+     * <p>The score is algebraically identical to the log ratio with
+     * {@code kTerm = k / weight} for positive weight, but avoids division
+     * by a potentially tiny weight and uses {@link Math#log1p(double)}
+     * for precision close to independence.</p>
      *
      * <p>The score is the log of the smoothed ratio, so the neutral score
      * is 0. Within a focus the log keeps the order of the ratio, so keyword
@@ -1290,10 +1207,9 @@ public abstract class KeynessScorer
             if (!table(tf, cf) || df <= 0 || df > corpusDocs) return Double.NaN;
             final double ridf = Math.log(-Math.expm1(-cf / corpusDocs) * corpusDocs / df);
             if (!(ridf > 0d)) return 0d;
-            final double kTerm = k / ridf;
-            final double rfFocus = tf * 1_000_000d / focusTokens + kTerm;
-            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens) + kTerm;
-            return Math.log(rfFocus / rfRest);
+            final double rfFocus = tf * 1_000_000d / focusTokens;
+            final double rfRest = (cf - tf) * 1_000_000d / (corpusTokens - focusTokens);
+            return Math.log1p(ridf * (rfFocus - rfRest) / (k + ridf * rfRest));
         }
     }
 

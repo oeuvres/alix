@@ -180,7 +180,6 @@ public final class CoocScorerEval
         return switch (name) {
             case "fisher" -> new KeynessScorer.FisherAlpha();
             case "simple" -> new KeynessScorer.SimpleMaths(k);
-            case "simpledf" -> new KeynessScorer.SimpleDf(k);
             case "simpledisp" -> new KeynessScorer.SimpleDispersion(k);
             case "simpleridf" -> new KeynessScorer.SimpleRidf(k);
             default -> throw new IllegalArgumentException("Unsupported scorer: " + name);
