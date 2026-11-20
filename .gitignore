@@ -1,5 +1,6 @@
 target/
 work/
+/web/models/
 /web/lucene/
 /web/conf/
 pom.xml.tag
@@ -18,10 +19,8 @@ buildNumber.properties
 .project
 .~*
 *.bak
-common/src/java/com/github/oeuvres/alix/lucene/terms/*.html
-common/src/resources/com/github/oeuvres/alix/fr/*.zip
-common/src/resources/com/github/oeuvres/alix/fr/*.txt
-*.bin
+common/*.bin
+common/*.vocab
 common/*.ctx
 common/*.csv
 common/*.tsv

@@ -1,4 +1,4 @@
-128625
+128612
 à	po:ADP
 à-côté/S.	po:NOUN
 à-coup/S.	po:NOUN
@@ -1014,7 +1014,6 @@ additivité/S.	po:NOUN
 adducteur/S.	po:NOUN
 adduction/S.	po:NOUN
 adduit/S.	po:NOUN
-adèle/S.	po:NOUN
 adelphe/S.	po:NOUN po:ADJ
 adelphie/S.	po:NOUN
 adelphophagie/S.	po:NOUN
@@ -2029,8 +2028,6 @@ alberge/S.	po:NOUN
 albergier/S.	po:NOUN
 albertain/F.	po:NOUN po:ADJ
 albigeois/F.	po:NOUN po:ADJ
-albin/F.	po:ADJ
-albine/S.	po:NOUN
 albinisme/S.	po:NOUN
 albinos	po:NOUN po:ADJ
 albite/S.	po:NOUN
@@ -3199,7 +3196,6 @@ androlâtrie/S.	po:NOUN
 andrologie/S.	po:NOUN
 andrologique/S.	po:ADJ
 andrologue/S.	po:NOUN
-andromède/S.	po:NOUN
 andropause/S.	po:NOUN
 androphobie/S.	po:NOUN
 androsace/S.	po:NOUN
@@ -4216,7 +4212,6 @@ aphoristique/S.	po:ADJ
 aphotique/S.	po:ADJ
 aphrodisiaque/S.	po:NOUN po:ADJ
 aphrodisie/S.	po:NOUN
-aphrodite/S.	po:NOUN
 aphte/S.	po:NOUN
 aphteux/W.	po:ADJ
 aphylle/S.	po:ADJ
@@ -4291,7 +4286,6 @@ apolipoprotéine/S.	po:NOUN
 apolitique/S.	po:ADJ
 apolitisme/S.	po:NOUN
 apollinien/F+	po:ADJ
-apollon/S.	po:NOUN
 apologétique/S.	po:NOUN po:ADJ
 apologie/S.	po:NOUN
 apologique/S.	po:ADJ
@@ -5993,7 +5987,6 @@ auprès	po:ADV
 auquel	po:PRON po:ADP+PRON
 aura/S.	po:NOUN
 aurantiacée/S.	po:NOUN
-aurélie/S.	po:NOUN
 auréole/S.	po:NOUN
 auréolé/F.	po:ADJ
 auréoler/a0p+	po:VERB
@@ -19146,7 +19139,6 @@ dalmate/S.	po:NOUN po:ADJ
 dalmatien/F+	po:NOUN
 dalmatique/S.	po:ADJ
 dalot/S.	po:NOUN
-dalton/S.	po:NOUN
 daltonien/F+	po:NOUN po:ADJ
 daltonisme/S.	po:NOUN
 dam/S.	po:NOUN
@@ -31362,7 +31354,6 @@ fifre/S.	po:NOUN
 fifrelin/S.	po:NOUN
 fifties	po:NOUN is:inv
 fifty-fifty	po:ADV
-figaro/S.	po:NOUN
 figé/F.	po:ADJ
 figeage/S.	po:NOUN
 figement/S.	po:NOUN
@@ -35698,7 +35689,6 @@ guignolet/S.	po:NOUN
 guignon/S.	po:NOUN
 guilde/S.	po:NOUN
 guili-guili/S.	po:NOUN
-guillaume/S.	po:NOUN
 guilledou/S.	po:NOUN
 guillemet/S.	po:NOUN
 guillemeté/F.	po:ADJ
@@ -36626,7 +36616,6 @@ hermaphrodisme/S.	po:NOUN
 hermaphrodite/S.	po:NOUN po:ADJ
 herméneute/S.	po:NOUN
 herméneutique/S.	po:NOUN po:ADJ
-hermès	po:NOUN
 hermesse/S.	po:NOUN
 herméticité/S.	po:NOUN
 hermétique/S.	po:ADJ
@@ -43217,7 +43206,6 @@ lentillon/S.	po:NOUN
 lentisque/S.	po:NOUN
 lentivirus	po:NOUN is:inv
 lento	po:ADV
-léonard/F.	po:NOUN po:ADJ
 léonardesque/S.	po:ADJ
 léonin/F.	po:ADJ
 léontocéphale/S.	po:ADJ
@@ -43816,7 +43804,6 @@ liséré/S.	po:NOUN po:ADJ
 liserer/b0p+	po:VERB
 lisérer/c0p+	po:VERB
 liseron/S.	po:NOUN
-lisette/S.	po:NOUN
 liseur/Fs	po:NOUN
 lisibilité/S.	po:NOUN
 lisible/S.	po:ADJ

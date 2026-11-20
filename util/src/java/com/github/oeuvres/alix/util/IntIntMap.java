@@ -40,6 +40,11 @@ import java.util.Objects;
  * {@link #indexInsert}, and {@link #indexReplace} act on that result without re-probing.
  * </p>
  *
+ * <p>
+ * Sizing, growth and hashing are those of {@link OpenHash}, shared with
+ * {@link IntDoubleMap} and {@link LongIntMap}.
+ * </p>
+ *
  * <h2>Limitations</h2>
  *
  * <ul>
@@ -57,8 +62,8 @@ public final class IntIntMap
     /** Default load factor, balancing memory and probe length. */
     public static final float DEFAULT_LOAD_FACTOR = 0.70f;
     
-    /** Maximum supported table capacity (must be a power of two). */
-    private static final int MAX_CAPACITY = 1 << 30;
+    /** Maximum supported table capacity, see {@link OpenHash#MAX_CAPACITY}. */
+    private static final int MAX_CAPACITY = OpenHash.MAX_CAPACITY;
     
     /**
      * Primitive functional consumer over {@code (key, value)} pairs. Used by
@@ -76,7 +81,10 @@ public final class IntIntMap
         void accept(int key, int value);
     }
     
+    /** Fraction of slots occupied before rehash. */
     private final float loadFactor;
+
+    /** Value returned for absent keys, never stored. */
     private final int missingValue;
     
     /** Bitmask for slot arithmetic; always {@code table.length - 1}. */
@@ -123,16 +131,11 @@ public final class IntIntMap
      */
     public IntIntMap(final int expectedSize, final float loadFactor, final int missingValue)
     {
-        if (!(loadFactor > 0.0f && loadFactor < 1.0f)) {
-            throw new IllegalArgumentException("loadFactor must be in (0,1), got " + loadFactor);
-        }
-        if (expectedSize < 0) {
-            throw new IllegalArgumentException("expectedSize must be >= 0");
-        }
+        OpenHash.checkArguments(expectedSize, loadFactor);
         this.loadFactor = loadFactor;
         this.missingValue = missingValue;
         
-        final int cap = tableSize(Math.max(2, expectedSize), loadFactor);
+        final int cap = OpenHash.tableSize(Math.max(2, expectedSize), loadFactor);
         allocate(cap);
     }
     
@@ -219,7 +222,7 @@ public final class IntIntMap
         }
         if (expectedSize <= resizeAt)
             return;
-        final int cap = tableSize(expectedSize, loadFactor);
+        final int cap = OpenHash.tableSize(expectedSize, loadFactor);
         if (cap > table.length) {
             rehash(cap);
         }
@@ -349,7 +352,7 @@ public final class IntIntMap
         if (key == 0) {
             return hasZeroKey ? ZERO_KEY_INDEX : ~ZERO_KEY_INDEX;
         }
-        int slot = mixPhi(key) & mask;
+        int slot = OpenHash.mixPhi(key) & mask;
         while (true) {
             final long e = table[slot];
             if (e == 0L)
@@ -524,15 +527,10 @@ public final class IntIntMap
     }
     
     /**
-     * Sentinel logical index for the out-of-band zero key. Chosen as {@code -2} so it cannot
-     * collide with a valid slot index ({@code >= 0}) and so its bitwise complement
-     * ({@code ~-2 == 1}) is never an in-band slot when the map is in its initial state.
-     *
-     * <p>
-     * Implementation detail: the contract is "negative means absent, non-negative means present."
-     * {@code ZERO_KEY_INDEX} stays negative-when-absent, non-negative-when-present by using a fixed
-     * pair of values that never overlap with table slot ids.
-     * </p>
+     * Logical index of the out-of-band zero key: {@link Integer#MAX_VALUE}, which no slot index
+     * reaches since the capacity is at most {@link #MAX_CAPACITY}. {@link #indexOf(int)} returns
+     * it when key zero is present, and its bitwise complement, {@link Integer#MIN_VALUE}, when
+     * absent, so that the contract "negative means absent, non-negative means present" holds.
      */
     private static final int ZERO_KEY_INDEX = Integer.MAX_VALUE;
     
@@ -547,7 +545,7 @@ public final class IntIntMap
     {
         table = new long[capacity];
         mask = capacity - 1;
-        resizeAt = (int) (capacity * loadFactor);
+        resizeAt = OpenHash.resizeAt(capacity, loadFactor);
         hasZeroKey = false;
         zeroValue = missingValue;
         size = 0;
@@ -575,7 +573,7 @@ public final class IntIntMap
      */
     private int findSlot(final int key)
     {
-        int slot = mixPhi(key) & mask;
+        int slot = OpenHash.mixPhi(key) & mask;
         while (true) {
             final long e = table[slot];
             if (e == 0L)
@@ -595,7 +593,7 @@ public final class IntIntMap
      */
     private int insertSlot(final int key)
     {
-        int slot = mixPhi(key) & mask;
+        int slot = OpenHash.mixPhi(key) & mask;
         while (true) {
             final long e = table[slot];
             if (e == 0L || unpackKey(e) == key)
@@ -613,43 +611,7 @@ public final class IntIntMap
     {
         if (size <= resizeAt)
             return;
-        if (table.length >= MAX_CAPACITY) {
-            throw new IllegalStateException(
-                    "IntIntMap exceeded maximum capacity " + MAX_CAPACITY);
-        }
-        rehash(table.length << 1);
-    }
-    
-    /**
-     * Murmur3-style 32-bit finalizer. Strong dispersion at the cost of three rounds per call. Kept
-     * for callers that depended on its exact bit pattern; new code should prefer
-     * {@link #mixPhi(int)}.
-     *
-     * @param h raw key
-     * @return dispersed hash
-     */
-    static int mix32(int h)
-    {
-        h ^= (h >>> 16);
-        h *= 0x85ebca6b;
-        h ^= (h >>> 13);
-        h *= 0xc2b2ae35;
-        h ^= (h >>> 16);
-        return h;
-    }
-    
-    /**
-     * 32-bit Fibonacci mixer. One multiply by {@code 2^32 / φ} (the largest odd integer below it),
-     * one xor-shift to spread bits to the low half. Cheaper than {@link #mix32} and adequate for
-     * dense int keys (Lucene docIds, dense termIds).
-     *
-     * @param h raw key
-     * @return dispersed hash
-     */
-    static int mixPhi(int h)
-    {
-        final int product = h * 0x9E3779B1;
-        return product ^ (product >>> 16);
+        rehash(OpenHash.nextCapacity(table.length, "IntIntMap"));
     }
     
     /**
@@ -688,7 +650,7 @@ public final class IntIntMap
         for (int i = 0; i < oldTable.length; i++) {
             final long e = oldTable[i];
             if (e != 0L) {
-                int slot = mixPhi(unpackKey(e)) & mask;
+                int slot = OpenHash.mixPhi(unpackKey(e)) & mask;
                 while (table[slot] != 0L) {
                     slot = (slot + 1) & mask;
                 }
@@ -696,28 +658,6 @@ public final class IntIntMap
                 size++;
             }
         }
-    }
-    
-    /**
-     * Returns the smallest power-of-two table capacity sufficient to hold {@code expected} entries
-     * at load factor {@code f}.
-     *
-     * @param expected number of entries to accommodate; must be {@code > 0}
-     * @param f        load factor in {@code (0, 1)}
-     * @return table capacity as a power of two
-     * @throws IllegalArgumentException if the required capacity exceeds {@link #MAX_CAPACITY}
-     */
-    static int tableSize(final int expected, final float f)
-    {
-        final long needed = (long) Math.ceil(expected / (double) f);
-        if (needed > MAX_CAPACITY) {
-            throw new IllegalArgumentException(
-                    "Required capacity " + needed + " exceeds maximum " + MAX_CAPACITY);
-        }
-        int cap = 1;
-        while (cap < needed)
-            cap <<= 1;
-        return cap;
     }
     
     /**

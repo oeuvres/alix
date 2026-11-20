@@ -26,6 +26,7 @@ import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.vecs.LuceneData.SelectedTerm;
+import com.github.oeuvres.alix.util.IntDoubleMap;
 import com.github.oeuvres.alix.util.IntList;
 import com.github.oeuvres.alix.util.Report;
 import us.ascendtech.primme.PrimmeSvds;
@@ -82,6 +83,24 @@ import us.ascendtech.primme.PrimmeSvds;
  * refused. The counting part of the filename gets {@code dw}, followed by
  * the exponent when it is not 1, before the gram distance:
  * {@code w5dwgram2}, {@code w5dw2gram2}.</p>
+ *
+ * <p>{@code --wstart} sets the first distance counted, 1 by default: a pair
+ * counts when its distance d is in {@code [wstart, window]}. The near
+ * positions carry the grammatical frame of a word: at distances 1–2, 65% of
+ * the pairs of a content word are with a stopword (see the negative result
+ * on bands below), and the adverbs and governing verbs next to a word make
+ * words of the same construction similar. Measured on the Piaget corpus with
+ * simpleridf, the more weight the near positions get, the more the
+ * neighbours of <i>comprendre</i> share its part of speech: <i>compréhension</i>
+ * is its 79th neighbour at window 15 with decay 2, 11th at window 30 with
+ * decay 2, 2nd at window 30 without weighting. A {@code wstart} beyond the
+ * gram distance ({@code --wstart 3} with the default gram distance 2) counts
+ * no pair with a stopword, so stopwords get no vector, and keeps the
+ * co-occurrences of content words further apart: a lexical model, meant to
+ * be less dependent on syntax. Locutions not indexed as one token are lost.
+ * With {@code --distance}, weights stay those of the distance d. The
+ * counting part of the filename starts with {@code w<wstart>to<window>} when
+ * {@code wstart} is not 1: {@code w3to30gram2}.</p>
  *
  * <p>Negative result: a weight depending on the two words was tried and
  * dropped (Piaget corpus, window 30, SimpleMaths k = 1000). Each word had a
@@ -195,7 +214,7 @@ import us.ascendtech.primme.PrimmeSvds;
  *
  * <pre>{@code
  * java com.github.oeuvres.alix.lucene.vecs.Coocs2vec <indexDir> <field> \
- *     [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5] \
+ *     [--window 30] [--wstart 1] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5] \
  *     [--cellpower 0.5] [--weightaxes 0.5] \
  *     [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--decay 1]
  *     [--gramdist 2] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]
@@ -264,138 +283,10 @@ public final class Coocs2vec
         }
     }
 
-    /** Minimal primitive integer-to-double open-addressing map. */
-    private static final class IntDoubleMap
-    {
-        /** Empty-key sentinel; matrix columns are always non-negative. */
-        private static final int EMPTY = -1;
-
-        /** Hash keys. */
-        private int[] keys;
-
-        /** Number of mapped keys. */
-        private int size;
-
-        /** Hash values. */
-        private double[] values;
-
-        /**
-         * Creates a small empty map.
-         */
-        private IntDoubleMap()
-        {
-            keys = new int[16];
-            Arrays.fill(keys, EMPTY);
-            values = new double[keys.length];
-        }
-
-        /**
-         * Adds an amount to one key.
-         *
-         * @param key non-negative key
-         * @param amount amount to add
-         * @return true if the key was inserted, false if it already existed
-         */
-        private boolean add(final int key, final double amount)
-        {
-            if ((size + 1) * 10 >= keys.length * 7) {
-                rehash(keys.length << 1);
-            }
-            final int mask = keys.length - 1;
-            int slot = hash(key) & mask;
-            while (true) {
-                final int present = keys[slot];
-                if (present == EMPTY) {
-                    keys[slot] = key;
-                    values[slot] = amount;
-                    size++;
-                    return true;
-                }
-                if (present == key) {
-                    values[slot] += amount;
-                    return false;
-                }
-                slot = (slot + 1) & mask;
-            }
-        }
-
-        /**
-         * Returns the value mapped to a known key.
-         *
-         * @param key mapped key
-         * @return mapped value
-         * @throws IllegalStateException if the key is absent
-         */
-        private double get(final int key)
-        {
-            final int mask = keys.length - 1;
-            int slot = hash(key) & mask;
-            while (true) {
-                final int present = keys[slot];
-                if (present == key) {
-                    return values[slot];
-                }
-                if (present == EMPTY) {
-                    throw new IllegalStateException("missing sparse key: " + key);
-                }
-                slot = (slot + 1) & mask;
-            }
-        }
-
-        /**
-         * Mixes a non-negative integer key.
-         *
-         * @param key key to hash
-         * @return mixed hash
-         */
-        private static int hash(final int key)
-        {
-            int x = key;
-            x ^= x >>> 16;
-            x *= 0x7feb352d;
-            x ^= x >>> 15;
-            x *= 0x846ca68b;
-            return x ^ (x >>> 16);
-        }
-
-        /**
-         * Rebuilds this map at a larger power-of-two capacity.
-         *
-         * @param capacity new capacity
-         */
-        private void rehash(final int capacity)
-        {
-            final int[] oldKeys = keys;
-            final double[] oldValues = values;
-            keys = new int[capacity];
-            Arrays.fill(keys, EMPTY);
-            values = new double[capacity];
-            final int mask = capacity - 1;
-            for (int i = 0; i < oldKeys.length; i++) {
-                final int key = oldKeys[i];
-                if (key == EMPTY) {
-                    continue;
-                }
-                int slot = hash(key) & mask;
-                while (keys[slot] != EMPTY) {
-                    slot = (slot + 1) & mask;
-                }
-                keys[slot] = key;
-                values[slot] = oldValues[i];
-            }
-        }
-    }
-
     /** Sparse mutable count table used while scanning positional rails. */
     private static final class SparseCounts
     {
-        /** Columns first seen in each row, used to enumerate primitive maps. */
-        private final IntList[] columns;
-
-        /** Number of non-zero matrix cells. */
-        private int nonZero;
-
-        /** Primitive column-to-count map for each row. */
+        /** Column-to-count map of each row, null for a row without a cell. */
         private final IntDoubleMap[] rows;
 
         /**
@@ -405,7 +296,6 @@ public final class Coocs2vec
          */
         private SparseCounts(final int size)
         {
-            columns = new IntList[size];
             rows = new IntDoubleMap[size];
         }
 
@@ -420,41 +310,45 @@ public final class Coocs2vec
         {
             IntDoubleMap map = rows[row];
             if (map == null) {
-                map = new IntDoubleMap();
+                // a first table of 16 slots, as most rows hold few cells
+                map = new IntDoubleMap(8);
                 rows[row] = map;
-                columns[row] = new IntList();
             }
-            if (map.add(col, amount)) {
-                columns[row].push(col);
-                nonZero++;
-            }
+            map.addTo(col, amount);
         }
 
         /**
-         * Flattens this sparse table into COO arrays ordered by row and first
-         * occurrence within each row.
+         * Flattens this sparse table into COO arrays ordered by row, then by
+         * slot of the map within each row. {@link SparseSvd} does not depend
+         * on the order of the cells, and the slot order is the same for the
+         * same counts.
          *
          * @return row ranks, column ranks and values
          */
         private SparseCells toSparseCells()
         {
+            int nonZero = 0;
+            for (final IntDoubleMap map : rows) {
+                if (map != null) {
+                    nonZero += map.size();
+                }
+            }
             final int[] sparseRows = new int[nonZero];
             final int[] sparseCols = new int[nonZero];
             final double[] sparseValues = new double[nonZero];
-            int index = 0;
+            final int[] index = {0};
             for (int row = 0; row < rows.length; row++) {
-                final IntList keys = columns[row];
-                if (keys == null) {
+                final IntDoubleMap map = rows[row];
+                if (map == null) {
                     continue;
                 }
-                final IntDoubleMap map = rows[row];
-                for (int i = 0; i < keys.size(); i++) {
-                    final int col = keys.get(i);
-                    sparseRows[index] = row;
-                    sparseCols[index] = col;
-                    sparseValues[index] = map.get(col);
-                    index++;
-                }
+                final int r = row;
+                map.forEach((col, value) -> {
+                    final int at = index[0]++;
+                    sparseRows[at] = r;
+                    sparseCols[at] = col;
+                    sparseValues[at] = value;
+                });
             }
             return new SparseCells(sparseRows, sparseCols, sparseValues);
         }
@@ -484,7 +378,7 @@ public final class Coocs2vec
     /** Command-line usage. */
     private static final String USAGE =
         "usage: Coocs2vec <indexDir> <field>"
-            + " [--window 30] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5]"
+            + " [--window 30] [--wstart 1] [--dims 100] [--scorer g2|simple] [--simplek 1000] [--specif 0.5]"
             + " [--cellpower 0.5] [--weightaxes 0.5]"
             + " [--terms 15000|-1] [--mindocfreq 0] [--eps 1e-4] [--test] [--distance] [--decay 1]"
             + " [--gramdist 2] [--refine 10] [--cellweight logstrength|log|log1p] [--refineiters 4]"
@@ -556,6 +450,7 @@ public final class Coocs2vec
 
 
         int window = 30;
+        int wstart = 1;
         int dims = 100;
         int terms = 15_000;
         int minDocFreq = 1;
@@ -577,6 +472,7 @@ public final class Coocs2vec
         for (int i = 2; i < args.length; i++) {
             switch (args[i]) {
                 case "--window" -> window = Integer.parseInt(args[++i]);
+                case "--wstart" -> wstart = Integer.parseInt(args[++i]);
                 case "--dims" -> dims = Integer.parseInt(args[++i]);
                 case "--scorer" -> scorerName = args[++i];
                 case "--simplek" -> simplek = Double.parseDouble(args[++i]);
@@ -608,6 +504,9 @@ public final class Coocs2vec
         }
         if (window < 1) {
             throw new IllegalArgumentException("window must be >= 1: " + window);
+        }
+        if (wstart < 1 || wstart > window) {
+            throw new IllegalArgumentException("wstart must be in [1, window]: " + wstart);
         }
         if (dims < 1) {
             throw new IllegalArgumentException("dims must be >= 1: " + dims);
@@ -674,7 +573,7 @@ public final class Coocs2vec
             throw new IllegalArgumentException("minDocFreq must be >= 0: " + minDocFreq);
         }
 
-        String counting = "w" + window;
+        String counting = (wstart == 1) ? "w" + window : "w" + wstart + "to" + window;
         if (distance) {
             counting += "dw";
             if (decay != 1d) counting += number(decay);
@@ -713,6 +612,10 @@ public final class Coocs2vec
             if (stopwords) {
                 counting += "gram" + gramDist;
                 log("gram distance: pairs with a stopword counted only within +/-%d", gramDist);
+                if (wstart > gramDist) {
+                    log("no pair with a stopword is counted (wstart %d > gram distance %d): stopwords get no vector",
+                        wstart, gramDist);
+                }
             }
 
             if (!TermRail.exists(sideDir, field)) {
@@ -745,8 +648,8 @@ public final class Coocs2vec
 
             final long cellCount = (long) termCount * termCount;
             log(
-                "building sparse %,d x %,d positional cooccurrence matrix, window +/-%d",
-                termCount, termCount, window);
+                "building sparse %,d x %,d positional cooccurrence matrix, distances %d to %d",
+                termCount, termCount, wstart, window);
             final double[] weights = distance ? weights(window, decay) : null;
             if (distance) {
                 final StringBuilder line = new StringBuilder();
@@ -760,7 +663,7 @@ public final class Coocs2vec
                         scorerName);
                 }
             }
-            final Table table = coocTable(rail, lexicon, selected, window, weights, stopwords ? gramDist : 0);
+            final Table table = coocTable(rail, lexicon, selected, wstart, window, weights, stopwords ? gramDist : 0);
             log(
                 "matrix built: %,d logical non-zero cells (%.2f%% dense), "
                     + "%,d upper-triangle cells stored, %,d positional pairs counted",
@@ -1326,9 +1229,14 @@ public final class Coocs2vec
      * distance applies in the same way. Weights are then rescaled to a mean
      * of 1.</p>
      *
+     * <p>Only pairs at a distance from {@code wstart} to {@code window} are
+     * counted, see the class comment; with {@code wstart} beyond the gram
+     * distance, no pair with a stopword is counted.</p>
+     *
      * @param rail positional term rail
      * @param lexicon term-id lexicon corresponding to the rail
      * @param selected selected vocabulary
+     * @param wstart minimum positional distance, inclusive, at least 1
      * @param window maximum positional distance, inclusive
      * @param weights weight of a pair by its distance, index 1 to window, or
      *        null to count each pair 1, see {@link #weights(int, double)}
@@ -1340,6 +1248,7 @@ public final class Coocs2vec
         final TermRail rail,
         final TermLexicon lexicon,
         final SelectedTerm[] selected,
+        final int wstart,
         final int window,
         final double[] weights,
         final int gramDist
@@ -1391,8 +1300,9 @@ public final class Coocs2vec
                     continue;
                 }
                 final int fullEnd = Math.min(docLen, position + window + 1);
+                final int start = position + wstart;
                 if (weights != null) {
-                    for (int next = position + 1; next < fullEnd; next++) {
+                    for (int next = start; next < fullEnd; next++) {
                         final int col = rows[next];
                         if (col < 0) {
                             continue;
@@ -1412,8 +1322,8 @@ public final class Coocs2vec
                     ? Math.min(fullEnd, position + gramDist + 1)
                     : fullEnd;
 
-                // near range [1, gramDist]: every co-occurrence counts
-                for (int next = position + 1; next < nearEnd; next++) {
+                // near range [wstart, gramDist]: every co-occurrence counts
+                for (int next = start; next < nearEnd; next++) {
                     final int col = rows[next];
                     if (col < 0) {
                         continue;
@@ -1422,10 +1332,10 @@ public final class Coocs2vec
                     pairs++;
                 }
 
-                // far range (gramDist, window]: only when the pivot is content,
-                // and stopword columns are dropped as long-range noise
+                // far range (gramDist, window], from wstart: only when the pivot is
+                // content, and stopword columns are dropped as long-range noise
                 if (!rowIsStop[row]) {
-                    for (int next = nearEnd; next < fullEnd; next++) {
+                    for (int next = Math.max(nearEnd, start); next < fullEnd; next++) {
                         final int col = rows[next];
                         if (col < 0 || rowIsStop[col]) {
                             continue;
