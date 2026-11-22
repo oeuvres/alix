@@ -530,7 +530,6 @@ public abstract class Op
     {
         final double specif = pars.getDouble(SPECIF, SPECIF_RANGE, SPECIF_DEFAULT, SPECIF);
         final double simplek = pars.getDouble(SIMPLEK, SIMPLEK_RANGE, Double.NaN);
-        final int k1 = pars.getInt("k1", 250);
 
         final KeynessScorer scorer = switch (pars.getString(TSORT, "")) {
             case "count", "raw", "tf" -> new KeynessScorer.Tf();

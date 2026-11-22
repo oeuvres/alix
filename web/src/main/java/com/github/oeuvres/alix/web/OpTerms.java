@@ -3,6 +3,7 @@ package com.github.oeuvres.alix.web;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.BitSet;
+import java.util.List;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -15,12 +16,14 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
+import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.snippets.TopCoocSnippets;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
 import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
+import com.github.oeuvres.alix.lucene.terms.PoleTerms;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
@@ -66,7 +69,105 @@ import static com.github.oeuvres.alix.web.Pars.*;
 public final class OpTerms extends Op
 {
 
-    
+    /**
+     * Compares the poles of a query made of one top-level group, such as
+     * {@code ((assimilation assimiler) (accommodation accommoder))}.
+     *
+     * <p>
+     * Each pole is walked alone, so that its snippets are merged only with its
+     * own spans, and collected into its own population. Every pole is scored
+     * against the same corpus, the whole field or the documents of the filter
+     * query. A pole's own pivots are removed from its population; the pivots of
+     * the other poles remain tokens of its population but are excluded from its
+     * ranking, and their scores are reported apart as attraction between poles.
+     * Rankings are fused by {@link PoleTerms}.
+     * </p>
+     *
+     * @param index Lucene index
+     * @param pars request parameters
+     * @param meta response metadata
+     * @return fused pole terms, or {@code null} when the query does not compare
+     *         at least two poles
+     * @throws IOException if Lucene or rail access fails
+     */
+    protected static PoleTerms poleTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
+    {
+        final String q = pars.getString("q", null);
+        if (q == null || q.isBlank()) return null;
+        final FlucText contentFluc = contentFluc(index, pars, meta);
+        if (contentFluc == null) return null;
+        final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
+        final SpanQueryParser.ParseResult parsed = contentFluc.spanQueryParser().parse(q, slop);
+        final List<SpanQueryParser.Pole> poleQueries = parsed.poles();
+        if (poleQueries == null) return null;
+        meta.put("queryString", parsed.queryString());
+        meta.put("spanQuery", parsed.spanQuery().toString());
+
+        final int terms = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
+        final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
+        final int right = pars.getInt(RIGHT, RIGHT_RANGE, slop);
+        final TermLexicon contentLexicon = contentFluc.termLexicon();
+        final String include = pars.getString("include", null);
+        final int[] incIds = include == null ? null : contentLexicon.termIds(include.split(","));
+        final String exclude = pars.getString("exclude", null);
+        final int[] excIds = exclude == null ? null : contentLexicon.termIds(exclude.split(","));
+        final TermFlag[] tflags = pars.getEnums(TFLAG, TermFlag.NULL);
+        final KeynessScorer scorer = tsort(pars);
+
+        final Query filterQuery = filterQuery(index, pars, meta);
+        TopTerms corpus = null;
+        if (filterQuery != null) {
+            final FixedBitSet corpusDocs = index.searcher().search(
+                filterQuery,
+                new BitsCollectorManager(index.searcher())
+            );
+            corpus = contentFluc.topTerms().select(index.reader(), corpusDocs);
+        }
+
+        final int poleCount = poleQueries.size();
+        final String[] labels = new String[poleCount];
+        final TopTerms[] poles = new TopTerms[poleCount];
+        final int[][] pivotIds = new int[poleCount][];
+        int pivotTotal = 0;
+        for (int pole = 0; pole < poleCount; pole++) {
+            final SpanQueryParser.Pole poleQuery = poleQueries.get(pole);
+            final SpanWalker walker = new SpanWalker(
+                index.searcher(),
+                poleQuery.spanQuery(),
+                new DocSnippets(DocSnippets.Usage.POSITIONS, slop),
+                filterQuery
+            );
+            // rewritten query, wildcard expansions included
+            pivotIds[pole] = contentLexicon.termIds(walker.spanQuery());
+            pivotTotal += pivotIds[pole].length;
+            poles[pole] = contentFluc.topTerms();
+            final TopCoocSnippets consumer = new TopCoocSnippets(
+                contentFluc.termStats(),
+                contentFluc.termRail(),
+                left,
+                right
+            ).bindTo(poles[pole].beginPopulation(), corpus);
+            walker.walk(consumer);
+            consumer.complete();
+            poles[pole].populationExclude(pivotIds[pole]);
+            labels[pole] = poleQuery.queryString();
+        }
+
+        final int[] allPivotIds = new int[pivotTotal];
+        int offset = 0;
+        for (final int[] ids : pivotIds) {
+            System.arraycopy(ids, 0, allPivotIds, offset, ids.length);
+            offset += ids.length;
+        }
+        for (final TopTerms pole : poles) {
+            pole.exclude(excIds);
+            pole.exclude(allPivotIds);
+            pole.include(incIds);
+            pole.rank(scorer, terms, tflags);
+        }
+        return new PoleTerms(labels, poles, pivotIds, scorer, terms);
+    }
+
     protected static TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final int terms = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
@@ -192,6 +293,30 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
+        final PoleTerms poleTerms = poleTerms(index, pars, meta);
+        if (poleTerms != null) {
+            final Writer writer = response.getWriter();
+            final int poleCount = poleTerms.poleCount();
+            writer.append("<table class=\"terms poles\">\n  <tr>\n    <th class=\"no\"></th>\n    <th class=\"term\"></th>\n");
+            for (int pole = 0; pole < poleCount; pole++) {
+                writer.append("    <th class=\"pole\" colspan=\"2\">%s</th>\n".formatted(poleTerms.label(pole)));
+            }
+            writer.append("  </tr>\n");
+            for (int rank = 0; rank < poleTerms.size(); rank++) {
+                final int termId = poleTerms.termId(rank);
+                writer.append("  <tr>\n")
+                  .append("    <th class=\"no\">%d</th>\n".formatted(rank + 1))
+                  .append("    <td class=\"term\">%s</td>\n".formatted(poleTerms.pole(0).lexicon().form(termId)));
+                for (int pole = 0; pole < poleCount; pole++) {
+                    final String affiliated = poleTerms.affiliated(rank, pole) ? " affiliated" : "";
+                    writer.append("    <td class=\"count%s\" align=\"right\">%d</td>\n".formatted(affiliated, poleTerms.pole(pole).termFreq(termId)))
+                      .append("    <td class=\"score%s\" align=\"right\">%f</td>\n".formatted(affiliated, poleTerms.score(rank, pole)));
+                }
+                writer.append("  </tr>\n");
+            }
+            writer.append("</table>\n");
+            return;
+        }
         TopTerms topTerms = topTerms(index, pars, meta);
         Writer writer = response.getWriter();
         if (topTerms != null) {
@@ -222,6 +347,11 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
+        final PoleTerms poleTerms = poleTerms(index, pars, meta);
+        if (poleTerms != null) {
+            TermsUtil.json(request, response, poleTerms);
+            return;
+        }
         TopTerms topTerms = topTerms(index, pars, meta);
         TermsUtil.json(request, response, topTerms);
     }
@@ -235,6 +365,11 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
+        final PoleTerms poleTerms = poleTerms(index, pars, meta);
+        if (poleTerms != null) {
+            TermsUtil.txt(request, response, poleTerms);
+            return;
+        }
         TopTerms topTerms = topTerms(index, pars, meta);
         TermsUtil.txt(request, response, topTerms);
     }

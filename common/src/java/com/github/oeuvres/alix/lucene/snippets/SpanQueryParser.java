@@ -27,7 +27,12 @@ import com.github.oeuvres.alix.util.WordTokenizer;
  * <p>
  * Terms outside parentheses are combined in an unordered
  * {@link SpanNearQuery}. Terms inside parentheses are combined in a
- * {@link SpanOrQuery}. Quoted text matches a single indexed term literally,
+ * {@link SpanOrQuery}. Inside a top-level group, each member is a pole: a
+ * bare term is a pole of one term, a nested group is a pole of several terms
+ * united, and deeper parentheses are flattened into their pole. When the whole
+ * query is one group of at least two poles, {@link ParseResult#poles()} lists
+ * them, so that term lists can compare the poles; the span query remains their
+ * union, for search results. Quoted text matches a single indexed term literally,
  * without Hunspell lemmatization or stopword filtering. Quoted multiword
  * expressions are also treated as one indexed term.
  * The historical underscore notation remains supported, so
@@ -100,14 +105,37 @@ public class SpanQueryParser
     }
 
     /**
+     * One pole of a top-level group.
+     *
+     * @param spanQuery union of the resolved terms of the pole
+     * @param queryString canonical replayable syntax of the pole
+     */
+    public record Pole(SpanQuery spanQuery, String queryString)
+    {
+    }
+
+    /**
      * Result of parsing user text.
      *
      * @param spanQuery assembled Lucene query, or {@code null} when no usable term
      *        remains
      * @param queryString canonical replayable query string
+     * @param poles poles of the query when it is one top-level group of at
+     *        least two poles, otherwise {@code null}
      */
-    public record ParseResult(SpanQuery spanQuery, String queryString)
+    public record ParseResult(SpanQuery spanQuery, String queryString, List<Pole> poles)
     {
+        /**
+         * Creates a result without poles.
+         *
+         * @param spanQuery assembled Lucene query, or {@code null}
+         * @param queryString canonical replayable query string
+         */
+        public ParseResult(final SpanQuery spanQuery, final String queryString)
+        {
+            this(spanQuery, queryString, null);
+        }
+
         @Override
         public String toString()
         {
@@ -124,10 +152,16 @@ public class SpanQueryParser
      * extends to the end of the query.
      * </p>
      *
+     * <p>
+     * Poles are returned only when the query reduces to one top-level group
+     * of at least two distinct poles; next to other clauses, a group is a plain
+     * union inside the near query.
+     * </p>
+     *
      * @param queryText user query text
      * @param slop maximum number of unmatched token positions accepted by the
      *        final {@link SpanNearQuery}
-     * @return parsed query and canonical query string
+     * @return parsed query, canonical query string, and optional poles
      * @throws IllegalArgumentException if {@code slop} is negative
      * @throws IOException if indexed terms cannot be read
      */
@@ -147,16 +181,22 @@ public class SpanQueryParser
         final List<QueryToken> tokens = tokenize(queryText);
         final List<SpanQuery> clauses = new ArrayList<>();
         final List<String> queryClauses = new ArrayList<>();
-        List<SpanQuery> orClauses = null;
-        List<String> orTerms = null;
+        List<Pole> groupPoles = null;
+        List<SpanQuery> innerClauses = null;
+        List<String> innerTerms = null;
+        List<Pole> lastPoles = null;
         int orDepth = 0;
 
         for (final QueryToken token : tokens) {
             switch (token.kind()) {
                 case OR_OPEN:
-                    if (orDepth++ == 0) {
-                        orClauses = new ArrayList<>();
-                        orTerms = new ArrayList<>();
+                    orDepth++;
+                    if (orDepth == 1) {
+                        groupPoles = new ArrayList<>();
+                    }
+                    else if (orDepth == 2) {
+                        innerClauses = new ArrayList<>();
+                        innerTerms = new ArrayList<>();
                     }
                     break;
 
@@ -164,11 +204,18 @@ public class SpanQueryParser
                     if (orDepth == 0) {
                         break;
                     }
+                    if (orDepth == 2) {
+                        addPole(groupPoles, innerClauses, innerTerms);
+                        innerClauses = null;
+                        innerTerms = null;
+                    }
                     if (--orDepth == 0) {
-                        addCombinedOr(clauses, orClauses);
-                        addRenderedClause(queryClauses, orTerms);
-                        orClauses = null;
-                        orTerms = null;
+                        final List<Pole> added =
+                            addGroup(clauses, queryClauses, groupPoles);
+                        if (added != null) {
+                            lastPoles = added;
+                        }
+                        groupPoles = null;
                     }
                     break;
 
@@ -180,69 +227,104 @@ public class SpanQueryParser
                         break;
                     }
 
-                    if (orClauses == null) {
+                    if (orDepth == 0) {
                         clauses.add(resolved.query());
-                        queryClauses.add(
+                        queryClauses.add(renderGroup(List.of(
                             renderAlternatives(resolved.queryTerms())
-                        );
+                        )));
+                    }
+                    else if (orDepth == 1) {
+                        groupPoles.add(new Pole(
+                            resolved.query(),
+                            renderAlternatives(resolved.queryTerms())
+                        ));
                     }
                     else {
-                        orClauses.add(resolved.query());
-                        orTerms.addAll(resolved.queryTerms());
+                        innerClauses.add(resolved.query());
+                        innerTerms.addAll(resolved.queryTerms());
                     }
                     break;
                 }
             }
         }
 
-        if (orClauses != null) {
-            addCombinedOr(clauses, orClauses);
-            addRenderedClause(queryClauses, orTerms);
+        if (orDepth >= 2) {
+            addPole(groupPoles, innerClauses, innerTerms);
         }
+        if (orDepth >= 1) {
+            final List<Pole> added = addGroup(clauses, queryClauses, groupPoles);
+            if (added != null) {
+                lastPoles = added;
+            }
+        }
+
+        final List<Pole> poles =
+            clauses.size() == 1 && lastPoles != null && lastPoles.size() > 1
+                ? List.copyOf(lastPoles)
+                : null;
 
         return new ParseResult(
             combineNear(clauses, slop),
-            String.join(" ", queryClauses)
+            String.join(" ", queryClauses),
+            poles
         );
     }
 
     /**
-     * Adds an OR group to the main clause list, avoiding a redundant
-     * {@link SpanOrQuery} for a single alternative.
+     * Closes a top-level group: adds the union of its poles to the main
+     * clauses and its canonical syntax to the rendered clauses. Poles rendered
+     * identically are kept once.
      *
      * @param clauses destination clause list
-     * @param alternatives alternatives collected inside parentheses
+     * @param queryClauses destination rendered-clause list
+     * @param groupPoles poles collected inside the group
+     * @return distinct poles of the group, or {@code null} when none remains
      */
-    private static void addCombinedOr(
+    private static List<Pole> addGroup(
         final List<SpanQuery> clauses,
-        final List<SpanQuery> alternatives
+        final List<String> queryClauses,
+        final List<Pole> groupPoles
     ) {
-        if (alternatives == null || alternatives.isEmpty()) {
-            return;
-        }
-        if (alternatives.size() == 1) {
-            clauses.add(alternatives.get(0));
-            return;
+        if (groupPoles == null || groupPoles.isEmpty()) {
+            return null;
         }
 
-        clauses.add(new SpanOrQuery(alternatives.toArray(new SpanQuery[0])));
+        final LinkedHashSet<String> seen = new LinkedHashSet<>();
+        final List<Pole> distinct = new ArrayList<>();
+        final List<SpanQuery> queries = new ArrayList<>();
+        for (final Pole pole : groupPoles) {
+            if (!seen.add(pole.queryString())) {
+                continue;
+            }
+            distinct.add(pole);
+            queries.add(pole.spanQuery());
+        }
+
+        clauses.add(combineOr(queries));
+        queryClauses.add(renderGroup(new ArrayList<>(seen)));
+        return distinct;
     }
 
     /**
-     * Adds one rendered clause to the canonical query string.
+     * Closes a nested group as one pole of the enclosing top-level group.
      *
-     * @param clauses destination rendered-clause list
-     * @param alternatives resolved alternatives
+     * @param groupPoles destination pole list
+     * @param innerClauses resolved queries collected in the nested group
+     * @param innerTerms rendered alternatives collected in the nested group
      */
-    private static void addRenderedClause(
-        final List<String> clauses,
-        final List<String> alternatives
+    private static void addPole(
+        final List<Pole> groupPoles,
+        final List<SpanQuery> innerClauses,
+        final List<String> innerTerms
     ) {
-        if (alternatives == null || alternatives.isEmpty()) {
+        if (innerClauses == null || innerClauses.isEmpty()) {
             return;
         }
 
-        clauses.add(renderAlternatives(alternatives));
+        groupPoles.add(new Pole(
+            combineOr(innerClauses),
+            renderAlternatives(innerTerms)
+        ));
     }
 
     /**
@@ -320,6 +402,22 @@ public class SpanQueryParser
             slop,
             false
         );
+    }
+
+    /**
+     * Combines alternatives as a union, avoiding a redundant
+     * {@link SpanOrQuery} for a single alternative.
+     *
+     * @param alternatives non-empty alternatives
+     * @return the sole alternative, or their union
+     */
+    private static SpanQuery combineOr(final List<SpanQuery> alternatives)
+    {
+        if (alternatives.size() == 1) {
+            return alternatives.get(0);
+        }
+
+        return new SpanOrQuery(alternatives.toArray(new SpanQuery[0]));
     }
 
     /**
@@ -427,6 +525,27 @@ public class SpanQueryParser
         }
 
         return result.append(')').toString();
+    }
+
+    /**
+     * Renders a top-level group from the syntax of its poles.
+     *
+     * <p>
+     * A single pole of one term is rendered bare. Otherwise the poles are
+     * enclosed in parentheses, so that a single pole of several terms is
+     * rendered as {@code ((a b))} and is not replayed as two poles.
+     * </p>
+     *
+     * @param poles rendered poles, non-empty
+     * @return replayable group syntax
+     */
+    private static String renderGroup(final List<String> poles)
+    {
+        if (poles.size() == 1 && poles.get(0).charAt(0) != '(') {
+            return poles.get(0);
+        }
+
+        return "(" + String.join(" ", poles) + ")";
     }
 
     /**

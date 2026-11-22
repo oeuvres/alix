@@ -303,6 +303,16 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
     }
 
     /**
+     * Returns the pivot-event count published with the current population.
+     *
+     * @return pivot-event count, {@code 0} for the whole field or a document subset
+     */
+    public long pivotCount()
+    {
+        return pivotCount;
+    }
+
+    /**
      * Excludes terms from the current analytical population while preserving
      * immutable snapshots for display.
      *
@@ -644,6 +654,36 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         excludedTerms = ExcludedTerms.empty();
         clearRanking();
         return this;
+    }
+
+    /**
+     * Scores one term of the current population, independently of any ranking.
+     *
+     * <p>
+     * The scorer receives the same corpus marginals, focus tokens and pivot
+     * count as in {@link #rank(KeynessScorer, int, TermFlag...)}. Ranking flags,
+     * inclusions and exclusions are ignored; the current ranking is unchanged.
+     * This allows scoring a term that a ranking excluded or did not retain.
+     * </p>
+     *
+     * @param scorer scorer, re-initialized with this population by the call
+     * @param termId dense term id
+     * @return the score, or {@link Double#NaN} for a term absent from the
+     *         population or an invalid table
+     * @throws IllegalArgumentException if the term id is outside the vocabulary
+     * @throws NullPointerException if {@code scorer} is {@code null}
+     */
+    public double score(final KeynessScorer scorer, final int termId)
+    {
+        Objects.requireNonNull(scorer, "scorer");
+        checkTermId(termId, "termId");
+        final long corpusTokens = corpus == null ? termStats.fieldTokens() : corpus.tokens;
+        final int corpusDocs = corpus == null ? termStats.fieldDocs() : corpus.docs;
+        final long corpusFreq = corpus == null ? termStats.termFreq(termId) : corpus.termFreq[termId];
+        final int corpusDf = corpus == null ? termStats.termDocs(termId) : corpus.termDocs[termId];
+        scorer.corpus(corpusTokens, corpusDocs);
+        scorer.focus(tokens, pivotCount);
+        return scorer.score(termFreq[termId], corpusFreq, corpusDf);
     }
 
     /**
