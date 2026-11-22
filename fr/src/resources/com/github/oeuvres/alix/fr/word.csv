@@ -215738,6 +215738,10 @@ et,CCONJ,et,20879.73
 étasuniens,ADJ,étasunien,
 état,NOUN,état,192.03
 état-major,NOUN,état-major,18.31
+État-nation,NOUN,État-nation,
+États-nations,NOUN,État-nation,
+état-nation,NOUN,État-nation,
+états-nations,NOUN,État-nation,
 étatique,ADJ,étatique,0.07
 étatiques,ADJ,étatique,0.14
 étatisa,VERB,étatiser,
@@ -241751,7 +241755,7 @@ fume-cigarettes,NOUN,fume-cigarette,0.27
 fumée,NOUN,fumée,55.88
 fumée,ADJ,fumé,4.19
 fumée,VERBpartpast,fumer,0.95
-fumées,NOUN,fumé,11.49
+fumées,NOUN,fumée,11.49
 fumées,ADJ,fumé,1.55
 fumées,VERBpartpast,fumer,0.27
 fument,VERB,fumer,3.72
@@ -457675,6 +457679,14 @@ stato-financier,ADJ,stato-financier,
 stato-financière,ADJ,stato-financier,
 stato-financières,ADJ,stato-financier,
 stato-financiers,ADJ,stato-financier,
+stato-national,ADJ,stato-national,
+stato-nationale,ADJ,stato-national,
+stato-nationales,ADJ,stato-national,
+stato-nationalisme,ADJ,stato-national,
+stato-nationalismes,ADJ,stato-national,
+stato-nationaliste,ADJ,stato-national,
+stato-nationalistes,ADJ,stato-national,
+stato-nationaux,ADJ,stato-national,
 statocyste,NOUN,statocyste,
 statocystes,NOUN,statocyste,
 statokinésimètre,NOUN,statokinésimètre,

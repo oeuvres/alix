@@ -1,11 +1,11 @@
-GRAPH,NORM,TAG,freq
+GRAPH,TAG,LEM,freq
 d’Alembert,PROPN,,
 Karl Marx,PROPN,Marx,
 New York,PROPN,,
 Buenos Aires,PROPN,,
 Le Caire,PROPN,,
-au Caire,PROPN,,
+au Caire,PROPN,Le Caire,
 La Ciotat,PROPN,,
 Don Juan,PROPN,,
 Ned Land,PROPN,,
-
+Longo Maï,PROPN,,

@@ -146,6 +146,12 @@ public class MarkupTokenizer extends Tokenizer
     /** Number of valid chars in {@link #buffer}. */
     private int bufferLength;
 
+    /** A short raw-character preview for recognizing grouped numbers across IO refills. */
+    private final char[] numberPreview = new char[5];
+
+    /** Number of previewed characters not yet consumed by {@link #skip()}. */
+    private int numberPreviewLength;
+
     /** Source offset (UTF-16 code units) of the next char to read. */
     private int offset;
 
@@ -637,6 +643,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private int peek() throws IOException
     {
+        if (numberPreviewLength > 0) return numberPreview[0];
         if (bufferIndex >= bufferLength) {
             CharacterUtils.fill(buffer, input);
             bufferLength = buffer.getLength();
@@ -644,6 +651,28 @@ public class MarkupTokenizer extends Tokenizer
             if (bufferLength == 0) return -1;
         }
         return buffer.getBuffer()[bufferIndex];
+    }
+
+    /**
+     * Preview a raw character without advancing the logical source offset. Previewed characters
+     * remain available to {@link #peek()} and {@link #skip()}, even across IO buffer refills.
+     *
+     * @param distance zero-based distance from the current cursor (maximum four)
+     * @return the character, or {@code -1} at end of input
+     * @throws IOException if the input cannot be read
+     */
+    private int peekAhead(final int distance) throws IOException
+    {
+        while (numberPreviewLength <= distance) {
+            if (bufferIndex >= bufferLength) {
+                CharacterUtils.fill(buffer, input);
+                bufferLength = buffer.getLength();
+                bufferIndex = 0;
+                if (bufferLength == 0) return -1;
+            }
+            numberPreview[numberPreviewLength++] = buffer.getBuffer()[bufferIndex++];
+        }
+        return numberPreview[distance];
     }
 
     /**
@@ -717,9 +746,13 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Read a number: digits with at most one {@code '.'} or {@code ','} between digit runs.
-     * A separator left dangling at the end of the number is stripped and re-emitted as
-     * punctuation by the next call, except at end of input where it stays attached.
+     * Read a number, removing spaces used as thousands separators. A space is recognized as
+     * a grouping separator only after one to three digits and before exactly three digits;
+     * ordinary spaces and decimal separators keep their existing behavior. Accepted grouping
+     * spaces are ASCII space, no-break space, narrow no-break space, and thin space.
+     *
+     * <p>A trailing {@code '.'} or {@code ','} is stripped and re-emitted as punctuation by
+     * the next call, except at end of input or immediately before an XML tag.</p>
      *
      * <p>Entered with the cursor on a digit, either from {@link #readToken()} or from
      * {@link #readWord()} when the term is a single minus sign.</p>
@@ -731,12 +764,24 @@ public class MarkupTokenizer extends Tokenizer
     private boolean readNumber(final int start) throws IOException
     {
         posAtt.setPos(DIGIT.code);
+        int digitsInGroup = 0;
         int c;
         while ((c = peek()) >= 0) {
             final char ch = (char) c;
-            if (!Char.isDigit(ch)) {
+            if (Char.isDigit(ch)) {
+                digitsInGroup++;
+            }
+            else if (isThousandsSeparator(ch) && digitsInGroup > 0 && digitsInGroup <= 3
+                    && Char.isDigit((char) peekAhead(1)) && Char.isDigit((char) peekAhead(2))
+                    && Char.isDigit((char) peekAhead(3)) && !Char.isDigit((char) peekAhead(4))) {
+                skip(); // remove the grouping space from the term, retaining its source offset
+                digitsInGroup = 0;
+                continue;
+            }
+            else {
                 final char last = termAtt.charAt(termAtt.length() - 1);
                 if ((ch != '.' && ch != ',') || last == '.' || last == ',') break;
+                digitsInGroup = 0;
             }
             termAtt.append(ch);
             skip();
@@ -893,6 +938,17 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
+     * Test whether a character may separate groups of three digits.
+     *
+     * @param c character to test
+     * @return {@code true} for common thousands-grouping spaces
+     */
+    private static boolean isThousandsSeparator(final char c)
+    {
+        return c == ' ' || c == '\u00A0' || c == '\u202F' || c == '\u2009';
+    }
+
+    /**
      * Read a word-like token: letters, digits, apostrophes, hyphens, decoded XML entities,
      * and internal or trailing dots after letters. Hands over to {@link #readNumber(int)}
      * when the term is a single literal minus sign followed by a digit.
@@ -1032,6 +1088,7 @@ public class MarkupTokenizer extends Tokenizer
         super.reset();
         bufferIndex = 0;
         bufferLength = 0;
+        numberPreviewLength = 0;
         offset = 0;
         pendingChar = -1;
         afterColon = false;
@@ -1103,7 +1160,12 @@ public class MarkupTokenizer extends Tokenizer
      */
     private void skip()
     {
-        bufferIndex++;
+        if (numberPreviewLength > 0) {
+            System.arraycopy(numberPreview, 1, numberPreview, 0, --numberPreviewLength);
+        }
+        else {
+            bufferIndex++;
+        }
         offset++;
     }
 
