@@ -70,7 +70,8 @@ public final class OpTerms extends Op
 {
 
     /**
-     * Compares the poles of a query made of one top-level group, such as
+     * Collects the co-occurrents of a span query, as one pole, or as several
+     * poles compared when the query is one top-level group, such as
      * {@code ((assimilation assimiler) (accommodation accommoder))}.
      *
      * <p>
@@ -86,22 +87,26 @@ public final class OpTerms extends Op
      * @param index Lucene index
      * @param pars request parameters
      * @param meta response metadata
-     * @return fused pole terms, or {@code null} when the query does not compare
-     *         at least two poles
+     * @return pole terms, or {@code null} without a usable span query
      * @throws IOException if Lucene or rail access fails
      */
     protected static PoleTerms poleTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
-        final String q = pars.getString("q", null);
+        final String q = pars.getString(Q, null);
         if (q == null || q.isBlank()) return null;
         final FlucText contentFluc = contentFluc(index, pars, meta);
         if (contentFluc == null) return null;
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanQueryParser.ParseResult parsed = contentFluc.spanQueryParser().parse(q, slop);
-        final List<SpanQueryParser.Pole> poleQueries = parsed.poles();
-        if (poleQueries == null) return null;
+        if (parsed.spanQuery() == null) return null;
+        // without poles, the whole query is one pole
+        final List<SpanQueryParser.Pole> poleQueries = parsed.poles() != null
+            ? parsed.poles()
+            : List.of(new SpanQueryParser.Pole(parsed.spanQuery(), parsed.queryString()));
+        // same entries as Op.spanQuery()
+        final SpanQuery rewritten = (SpanQuery) index.searcher().rewrite(parsed.spanQuery());
+        meta.put("spanQuery", rewritten.toString(contentFluc.name()));
         meta.put("queryString", parsed.queryString());
-        meta.put("spanQuery", parsed.spanQuery().toString());
 
         final int terms = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
         final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
@@ -126,6 +131,7 @@ public final class OpTerms extends Op
 
         final int poleCount = poleQueries.size();
         final String[] labels = new String[poleCount];
+        final SpanQuery[] spanQueries = new SpanQuery[poleCount];
         final TopTerms[] poles = new TopTerms[poleCount];
         final int[][] pivotIds = new int[poleCount][];
         int pivotTotal = 0;
@@ -151,6 +157,7 @@ public final class OpTerms extends Op
             consumer.complete();
             poles[pole].populationExclude(pivotIds[pole]);
             labels[pole] = poleQuery.queryString();
+            spanQueries[pole] = walker.spanQuery();
         }
 
         final int[] allPivotIds = new int[pivotTotal];
@@ -165,7 +172,7 @@ public final class OpTerms extends Op
             pole.include(incIds);
             pole.rank(scorer, terms, tflags);
         }
-        return new PoleTerms(labels, poles, pivotIds, scorer, terms);
+        return new PoleTerms(labels, spanQueries, poles, pivotIds, scorer, terms);
     }
 
     protected static TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException

@@ -79,25 +79,31 @@ public class TermsUtil
     }
 
     /**
-     * Writes a pole comparison as JSON.
+     * Writes the terms of one or several poles as JSON.
+     *
+     * <pre>
+     * { "meta": { … },
+     *   "data": {
+     *     "poles":  [ { "label", "docs", "contexts", "tokens", "pivotCount" } ],
+     *     "pivots": [ { "id", "form", "fieldFreq", "fieldDocs", "pole", "poles": [ PoleStats ] } ],
+     *     "terms":  [ { "rank", "id", "form", "fieldFreq", "fieldDocs", "poles": [ PoleStats ] } ] } }
+     *
+     * PoleStats = { "rank", "freq", "docs", "contexts", "score", "affiliated" }
+     * </pre>
      *
      * <p>
-     * Besides {@code meta}, a {@code poles} array describes each pole: label,
-     * focus totals, and {@code attraction}, the scores of the other poles'
-     * pivots in its contexts. In {@code data}, pivots come first, tagged by
-     * {@code pole}, as for a single population. Each ranked term then carries
-     * its field statistics, {@code affiliation} (indices of the poles where its
-     * score exceeds independence), and per-pole {@code freq}, {@code docs},
-     * {@code contexts} and {@code score}. Top-level {@code freq} is the sum of
-     * the pole counts and top-level {@code score} the highest pole score, for
-     * clients that expect one value per term; scores of different poles are
-     * comparable only for ratio scorers, not for test statistics. Non-finite
-     * scores are written as {@code null}.
+     * The index of a pole in {@code poles} is its number; every
+     * {@code poles} array of a pivot or a term has one entry per pole, in the
+     * same order. A pivot entry for its own pole gives its counts in its own
+     * contexts, with no score and no rank. A pivot entry for another pole is
+     * the attraction between the two poles, with the rank the pivot would take
+     * in that pole list. {@code rank} and {@code score} are {@code null} when
+     * absent; {@code affiliated} means a score above independence.
      * </p>
      *
      * @param request servlet request carrying meta and parameters
      * @param response servlet response
-     * @param poles fused pole terms
+     * @param poles pole terms
      * @throws IOException if writing fails
      */
     static void json(
@@ -109,7 +115,6 @@ public class TermsUtil
         jw.setIndent("  ");
         final MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
         final int poleCount = poles.poleCount();
-        final TermStats termStats = poles.pole(0).termStats();
         jw.beginObject();
 
         jw.name("meta");
@@ -117,92 +122,47 @@ public class TermsUtil
         meta.toJson(jw, (HttpPars)request.getAttribute(ALIX_PARS));
         jw.endObject(); // meta
 
-        jw.name("poles");
-        jw.beginArray();
-        for (int pole = 0; pole < poleCount; pole++) {
-            final TopTerms terms = poles.pole(pole);
-            jw.beginObject();
-            jw.name("pole").value(pole);
-            jw.name("label").value(poles.label(pole));
-            jw.name("docs").value(terms.docs());
-            jw.name("contexts").value(terms.contexts());
-            jw.name("tokens").value(terms.tokens());
-            jw.name("pivotCount").value(terms.pivotCount());
-            jw.name("attraction");
-            jw.beginArray();
-            final int[] ids = poles.crossPivotIds(pole);
-            final double[] scores = poles.crossPivotScores(pole);
-            for (int i = 0; i < ids.length; i++) {
-                jw.beginObject();
-                jw.name("form").value(terms.lexicon().form(ids[i]));
-                jw.name("id").value(ids[i]);
-                jw.name("freq").value(terms.termFreq(ids[i]));
-                jw.name("score");
-                number(jw, scores[i]);
-                jw.endObject();
-            }
-            jw.endArray(); // attraction
-            jw.endObject();
-        }
-        jw.endArray(); // poles
-
         jw.name("data");
+        jw.beginObject();
+        jw.name("poles");
+        poles(jw, poles);
+
+        jw.name("pivots");
         jw.beginArray();
-        for (int pole = 0; pole < poleCount; pole++) {
-            for (final TopTerms.ExcludedTerm pivot : poles.pole(pole).excludedTerms()) {
+        for (int owner = 0; owner < poleCount; owner++) {
+            for (final TopTerms.ExcludedTerm pivot : poles.pole(owner).excludedTerms()) {
                 jw.beginObject();
-                jw.name("form").value(pivot.form());
-                jw.name("type").value("pivot");
-                jw.name("pole").value(pole);
-                jw.name("docs").value(pivot.docs());
-                jw.name("contexts").value(pivot.contexts());
-                jw.name("freq").value(pivot.freq());
-                jw.name("fieldDocs").value(pivot.fieldDocs());
-                jw.name("fieldFreq").value(pivot.fieldFreq());
-                jw.name("id").value(pivot.termId());
+                pivotFields(jw, owner, pivot);
+                jw.name("poles");
+                jw.beginArray();
+                for (int pole = 0; pole < poleCount; pole++) {
+                    jw.beginObject();
+                    pivotPoleFields(jw, poles, owner, pivot, pole);
+                    jw.endObject();
+                }
+                jw.endArray();
                 jw.endObject();
             }
         }
+        jw.endArray(); // pivots
+
+        jw.name("terms");
+        jw.beginArray();
         for (int rank = 0; rank < poles.size(); rank++) {
-            final int termId = poles.termId(rank);
-            long freq = 0L;
-            double best = Double.NaN;
-            for (int pole = 0; pole < poleCount; pole++) {
-                freq += poles.pole(pole).termFreq(termId);
-                final double score = poles.score(rank, pole);
-                if (Double.isFinite(score) && !(score <= best)) best = score;
-            }
             jw.beginObject();
-            jw.name("rank").value(rank + 1);
-            jw.name("form").value(poles.pole(0).lexicon().form(termId));
-            jw.name("id").value(termId);
-            jw.name("fieldDocs").value(termStats.termDocs(termId));
-            jw.name("fieldFreq").value(termStats.termFreq(termId));
-            jw.name("freq").value(freq);
-            jw.name("score");
-            number(jw, best);
-            jw.name("affiliation");
-            jw.beginArray();
-            for (int pole = 0; pole < poleCount; pole++) {
-                if (poles.affiliated(rank, pole)) jw.value(pole);
-            }
-            jw.endArray();
+            termFields(jw, poles, rank);
             jw.name("poles");
             jw.beginArray();
             for (int pole = 0; pole < poleCount; pole++) {
-                final TopTerms terms = poles.pole(pole);
                 jw.beginObject();
-                jw.name("freq").value(terms.termFreq(termId));
-                jw.name("docs").value(terms.docs(termId));
-                jw.name("contexts").value(terms.contexts(termId));
-                jw.name("score");
-                number(jw, poles.score(rank, pole));
+                termPoleFields(jw, poles, rank, pole);
                 jw.endObject();
             }
-            jw.endArray(); // poles
+            jw.endArray();
             jw.endObject();
         }
-        jw.endArray(); // data
+        jw.endArray(); // terms
+        jw.endObject(); // data
 
         jw.endObject();
     }
@@ -224,18 +184,17 @@ public class TermsUtil
         meta.toJson(jw, (HttpPars)request.getAttribute(ALIX_PARS));
         jw.endObject(); // meta
         
-        // here, how to 
-
-        // data
+        // data: { pivots, terms }, pivots only when the population has some
         if (terms != null) {
             jw.name("data");
-            jw.beginArray();
-            
-            // loop on pivots
+            jw.beginObject();
+            if (!terms.excludedTerms().isEmpty()) {
+                jw.name("pivots");
+                jw.beginArray();
+            }
             for (final TopTerms.ExcludedTerm pivot : terms.excludedTerms()) {
                 jw.beginObject();
                 jw.name("form").value(pivot.form());
-                jw.name("type").value("pivot");
                 jw.name("docs").value(pivot.docs());
                 if (hasContexts) jw.name("contexts").value(pivot.contexts());
                 jw.name("freq").value(pivot.freq());
@@ -244,7 +203,12 @@ public class TermsUtil
                 jw.name("id").value(pivot.termId());
                 jw.endObject();
             }
-            
+            if (!terms.excludedTerms().isEmpty()) {
+                jw.endArray(); // pivots
+            }
+
+            jw.name("terms");
+            jw.beginArray();
             int rank = 1;
             for (TermEntry term : terms) {
                 jw.beginObject();
@@ -260,10 +224,148 @@ public class TermsUtil
                 jw.name("score").value(term.score()); // for terms
                 jw.endObject();
             }
-            jw.endArray();
+            jw.endArray(); // terms
+            jw.endObject(); // data
         }
 
         jw.endObject();
+    }
+
+    /**
+     * Writes the fields of a pivot common to every output: {@code id},
+     * {@code form}, {@code fieldFreq}, {@code fieldDocs} and its owning
+     * {@code pole}. The caller opens and closes the object.
+     *
+     * @param jw JSON writer inside an object
+     * @param owner index of the pole of the pivot
+     * @param pivot pivot snapshot
+     * @throws IOException if writing fails
+     */
+    static void pivotFields(final JsonWriter jw, final int owner, final TopTerms.ExcludedTerm pivot) throws IOException
+    {
+        jw.name("id").value(pivot.termId());
+        jw.name("form").value(pivot.form());
+        jw.name("fieldFreq").value(pivot.fieldFreq());
+        jw.name("fieldDocs").value(pivot.fieldDocs());
+        jw.name("pole").value(owner);
+    }
+
+    /**
+     * Writes the statistics of a pivot in one pole: {@code rank},
+     * {@code freq}, {@code docs}, {@code contexts}, {@code score},
+     * {@code affiliated}. In its own pole, the counts are those of its own
+     * contexts, without score or rank; in another pole, the score is the
+     * attraction and the rank the place it would take in that pole list.
+     * The caller opens and closes the object.
+     *
+     * @param jw JSON writer inside an object
+     * @param poles pole terms
+     * @param owner index of the pole of the pivot
+     * @param pivot pivot snapshot
+     * @param pole index of the pole described
+     * @throws IOException if writing fails
+     */
+    static void pivotPoleFields(
+        final JsonWriter jw,
+        final PoleTerms poles,
+        final int owner,
+        final TopTerms.ExcludedTerm pivot,
+        final int pole
+    ) throws IOException {
+        if (pole == owner) {
+            jw.name("rank").nullValue();
+            jw.name("freq").value(pivot.freq());
+            jw.name("docs").value(pivot.docs());
+            jw.name("contexts").value(pivot.contexts());
+            jw.name("score").nullValue();
+            jw.name("affiliated").value(false);
+            return;
+        }
+        final TopTerms terms = poles.pole(pole);
+        final int termId = pivot.termId();
+        final double score = poles.pivotScore(pole, termId);
+        rank(jw, poles.pivotRank(pole, termId));
+        jw.name("freq").value(terms.termFreq(termId));
+        jw.name("docs").value(terms.docs(termId));
+        jw.name("contexts").value(terms.contexts(termId));
+        jw.name("score");
+        number(jw, score);
+        jw.name("affiliated").value(score > poles.neutral());
+    }
+
+    /**
+     * Writes the array of the poles: {@code label}, {@code docs},
+     * {@code contexts}, {@code tokens} (pivots excluded) and
+     * {@code pivotCount} of each pole population.
+     *
+     * @param jw JSON writer positioned after a name
+     * @param poles pole terms
+     * @throws IOException if writing fails
+     */
+    static void poles(final JsonWriter jw, final PoleTerms poles) throws IOException
+    {
+        jw.beginArray();
+        for (int pole = 0; pole < poles.poleCount(); pole++) {
+            final TopTerms terms = poles.pole(pole);
+            jw.beginObject();
+            jw.name("label").value(poles.label(pole));
+            jw.name("docs").value(terms.docs());
+            jw.name("contexts").value(terms.contexts());
+            jw.name("tokens").value(terms.tokens());
+            jw.name("pivotCount").value(terms.pivotCount());
+            jw.endObject();
+        }
+        jw.endArray();
+    }
+
+    /**
+     * Writes the fields of a fused term common to every output:
+     * {@code rank} (1-based), {@code id}, {@code form}, {@code fieldFreq},
+     * {@code fieldDocs}. The caller opens and closes the object.
+     *
+     * @param jw JSON writer inside an object
+     * @param poles pole terms
+     * @param rank zero-based fused rank
+     * @throws IOException if writing fails
+     */
+    static void termFields(final JsonWriter jw, final PoleTerms poles, final int rank) throws IOException
+    {
+        final int termId = poles.termId(rank);
+        final TermStats termStats = poles.pole(0).termStats();
+        jw.name("rank").value(rank + 1);
+        jw.name("id").value(termId);
+        jw.name("form").value(poles.pole(0).lexicon().form(termId));
+        jw.name("fieldFreq").value(termStats.termFreq(termId));
+        jw.name("fieldDocs").value(termStats.termDocs(termId));
+    }
+
+    /**
+     * Writes the statistics of a fused term in one pole: {@code rank} in the
+     * pole list, {@code freq}, {@code docs}, {@code contexts},
+     * {@code score}, {@code affiliated}. The caller opens and closes the
+     * object.
+     *
+     * @param jw JSON writer inside an object
+     * @param poles pole terms
+     * @param rank zero-based fused rank
+     * @param pole pole index
+     * @throws IOException if writing fails
+     */
+    static void termPoleFields(
+        final JsonWriter jw,
+        final PoleTerms poles,
+        final int rank,
+        final int pole
+    ) throws IOException {
+        final TopTerms terms = poles.pole(pole);
+        final int termId = poles.termId(rank);
+        rank(jw, poles.poleRank(rank, pole));
+        jw.name("freq").value(terms.termFreq(termId));
+        jw.name("docs").value(terms.docs(termId));
+        jw.name("contexts").value(terms.contexts(termId));
+        jw.name("score");
+        number(jw, poles.score(rank, pole));
+        jw.name("affiliated").value(poles.affiliated(rank, pole));
     }
 
     /**
@@ -274,9 +376,23 @@ public class TermsUtil
      * @param value number to write
      * @throws IOException if writing fails
      */
-    private static void number(final JsonWriter jw, final double value) throws IOException
+    static void number(final JsonWriter jw, final double value) throws IOException
     {
         if (Double.isFinite(value)) jw.value(value);
+        else jw.nullValue();
+    }
+
+    /**
+     * Writes a 1-based rank as {@code "rank"}, or {@code null} for 0.
+     *
+     * @param jw JSON writer inside an object
+     * @param rank 1-based rank, 0 when absent
+     * @throws IOException if writing fails
+     */
+    private static void rank(final JsonWriter jw, final int rank) throws IOException
+    {
+        jw.name("rank");
+        if (rank > 0) jw.value(rank);
         else jw.nullValue();
     }
 }
