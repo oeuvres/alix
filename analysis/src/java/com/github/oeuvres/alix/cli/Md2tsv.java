@@ -15,6 +15,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.ingest.IngestConfig;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
@@ -24,38 +25,53 @@ import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
 
+import static com.github.oeuvres.alix.ingest.IngestConfig.KeyGlob.*;
+
 /**
  * Convert Markdown files to TSV files containing Lucene terms, lemmas,
  * part-of-speech tags.
  *
  * <p>YAML front matter is copied to the TSV header as comment metadata.
- * The Markdown body is then passed directly to the Lucene analyzer.</p>
+ * The Markdown body is then passed directly to the Lucene analyzer.
+ * With {@code --config}, corpus normalizations, expressions, and stopwords
+ * are loaded before processing any files.</p>
  */
 public class Md2tsv
 {
     /**
      * Run the Markdown to TSV conversion.
      *
-     * @param args first argument is the output directory; following arguments
-     *             are input file globs
-     * @throws IOException if an input or output file cannot be processed
+     * @param args output directory, input file globs, and optional
+     *             {@code --config corpus-properties.xml}
+     * @throws IOException if a configuration, input, or output file cannot be processed
      */
     public static void main(String[] args) throws IOException
     {
         Report report = new ReportConsole();
-        if (args.length < 2) {
-            System.err.println("mandatory args: outdir folder/*.md");
-            System.exit(1);
+        Path configPath = null;
+        List<String> positional = new ArrayList<>();
+        for (int i = 0; i < args.length; i++) {
+            if ("--config".equals(args[i])) {
+                if (configPath != null || i + 1 >= args.length || args[i + 1].startsWith("--")) {
+                    throw new IllegalArgumentException("--config requires one configuration file");
+                }
+                configPath = Path.of(args[++i]);
+            } else {
+                positional.add(args[i]);
+            }
+        }
+        if (positional.size() < 2) {
+            System.err.println("usage: Md2tsv [--config corpus-properties.xml] outdir folder/*.md ...");
+            return;
         }
 
-        Path outDir = Path.of(args[0]);
+        Path outDir = Path.of(positional.get(0));
         Files.createDirectories(outDir);
 
         List<Path> files = new ArrayList<>();
         Set<Path> seen = new HashSet<>();
 
-        for (int i = 1; i < args.length; i++) {
-            String glob = args[i];
+        for (String glob : positional.subList(1, positional.size())) {
             List<Path> matches = Dir.ls(glob);
             if (matches.isEmpty()) {
                 report.warn("‘" + glob + "’ has matched no files.");
@@ -75,6 +91,12 @@ public class Md2tsv
         int processed = 0;
         int total = files.size();
         try (FrenchAnalyzer analyzer = new FrenchAnalyzer(MarkupMode.NONE)) {
+            if (configPath != null) {
+                IngestConfig cfg = IngestConfig.load(configPath, report);
+                analyzer.addNormalizations(cfg.files(NORMALIZATIONS));
+                analyzer.addExpressions(cfg.files(EXPRESSIONS));
+                analyzer.addStopwords(cfg.files(STOPWORDS));
+            }
             for (Path md : files) {
                 Path tsv = outputPath(outDir, md);
 
