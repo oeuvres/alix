@@ -340,9 +340,9 @@
     <xsl:text>&#10;</xsl:text>
   </xsl:template>
   <!-- no output -->
-  <xsl:template match="tei:trailer"/>
+  <xsl:template match="tei:trailer" priority="1"/>
   <!-- hide speaker from indexation -->
-  <xsl:template match="tei:speaker">
+  <xsl:template match="tei:speaker" priority="1">
     <xsl:processing-instruction name="index_off"/>
     <xsl:value-of select="$lf"/>
     <p class="speaker">

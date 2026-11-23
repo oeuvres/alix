@@ -102,22 +102,23 @@ public final class TeiIngester
     }
     
     /**
-     * Ingest one corpus described by {@link IngestConfig}.
-     * @throws IOException 
-     * @throws ParserConfigurationException 
-     * @throws SAXException 
-     * @throws TransformerConfigurationException 
+     * Ingest one corpus described by {@link IngestConfig} into the staging directory
+     * {@code luceneRoot/name.tmp}, with its {@code alix.xml}. The live index is not touched;
+     * call {@link #publish(IngestConfig)} once sidecars have been added to the returned directory.
+     * @return the staged index directory
+     * @throws IOException
+     * @throws ParserConfigurationException
+     * @throws SAXException
+     * @throws TransformerConfigurationException
      */
-    public void ingest(IngestConfig config, IndexWriterConfig iwc) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException 
+    public Path ingest(IngestConfig config, IndexWriterConfig iwc) throws IOException, TransformerConfigurationException, SAXException, ParserConfigurationException
     {
         Objects.requireNonNull(config, "IngestConfig");
         Objects.requireNonNull(iwc, "IndexWriterConfig");
 
-        
-        Path current = config.luceneRoot.resolve(config.name).toAbsolutePath().normalize();
+
         Path tmp = config.luceneRoot.resolve(config.name + ".tmp").toAbsolutePath().normalize();
-        Path old = config.luceneRoot.resolve(config.name + ".old").toAbsolutePath().normalize();
-        
+
         Files.createDirectories(config.luceneRoot);
         
         // Prepare tmp directory
@@ -153,16 +154,37 @@ public final class TeiIngester
             writer.forceMerge(1);
         }
         
-        swapIndexDirs(current, tmp, old);
-        final Path propsFile = current.resolve("alix.xml");
-        
+        final Path propsFile = tmp.resolve("alix.xml");
+
         try (OutputStream output = Files.newOutputStream(propsFile)) {
             config.props.storeToXML(output, null, StandardCharsets.UTF_8);
         }
-        
-        rep.info("Indexed and merged: " + config.name + " -> " + current);
+
+        rep.info("Indexed and merged: " + config.name + " -> " + tmp);
+        return tmp;
     }
-    
+
+    /**
+     * Makes the staged index live: {@code luceneRoot/name.tmp} becomes {@code name},
+     * the previous {@code name} becomes {@code name.old}. On failure the staged
+     * directory is left complete, so publication can be retried.
+     *
+     * @param config ingest configuration giving the index root and name
+     * @throws IOException if there is no staged index or the swap fails
+     */
+    public void publish(IngestConfig config) throws IOException
+    {
+        Objects.requireNonNull(config, "IngestConfig");
+        Path current = config.luceneRoot.resolve(config.name).toAbsolutePath().normalize();
+        Path tmp = config.luceneRoot.resolve(config.name + ".tmp").toAbsolutePath().normalize();
+        Path old = config.luceneRoot.resolve(config.name + ".old").toAbsolutePath().normalize();
+        if (!Files.isDirectory(tmp)) {
+            throw new IOException("No staged index to publish: " + tmp);
+        }
+        swapIndexDirs(current, tmp, old);
+        rep.info("Published: " + config.name + " -> " + current);
+    }
+
     /**
      * Formats a concise per-file diagnostic while avoiding repeated wrapper messages.
      *

@@ -70,29 +70,29 @@ public final class CorpusIngester
             new SortField(Names.ALIX_ID, SortField.Type.STRING, false, SortField.STRING_LAST)
         ));
         TeiIngester ingester = new TeiIngester(report);
-        ingester.ingest(cfg, iwc);
-        hunspell(cfg, report);
+        Path staged = ingester.ingest(cfg, iwc);
+        hunspell(cfg, staged, report);
         String field = cfg.props.getProperty("content", "content");
-        Path indexPath = cfg.luceneRoot.resolve(cfg.name);
-        stopwords(analyzer.stopwords(), indexPath, field, report);
-        stopwords(analyzer.stopwords(), indexPath, "word2vec", report);
+        stopwords(analyzer.stopwords(), staged, field, report);
+        stopwords(analyzer.stopwords(), staged, "word2vec", report);
+        ingester.publish(cfg);
     }
     
     /**
      * Compiles the field-restricted Hunspell sidecars after ingestion. The index is reopened frozen at
-     * {@code luceneRoot/name}; the word sources are the global French pair from the classpath followed by
+     * {@code indexPath}; the word sources are the global French pair from the classpath followed by
      * the corpus dics declared under the config {@code hunspell} key; the field is the config
      * {@code content} key. Output is {@code <field>.dic} / {@code <field>.aff} inside the index directory,
      * pruned to the field's indexed terms.
      *
-     * @param cfg    resolved ingest configuration
-     * @param report reporter for the kept count
+     * @param cfg       resolved ingest configuration
+     * @param indexPath Lucene index directory (the staged one, before publication)
+     * @param report    reporter for the kept count
      * @throws IOException on directory, resource, or write failure
      */
-    private static void hunspell(IngestConfig cfg, Report report) throws IOException
+    private static void hunspell(IngestConfig cfg, Path indexPath, Report report) throws IOException
     {
         String field = cfg.props.getProperty("content", "content");
-        Path indexPath = cfg.luceneRoot.resolve(cfg.name);
         List<Path> customs = cfg.files(IngestConfig.KeyGlob.HUNSPELL);
         InputStream[] dics = new InputStream[customs.size() + 1];
         try (Directory dir = FSDirectory.open(indexPath);
