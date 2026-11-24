@@ -1,12 +1,18 @@
 package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
 import java.util.logging.Logger;
 
 import org.apache.lucene.index.Term;
@@ -52,17 +58,12 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * /{index}/{op}.html    -> operation HTML fragment
  * }</pre>
  *
- * <h2>Configuration</h2>
+ * <h2>Index configuration</h2>
  * <p>
- * The configuration directory is resolved from {@value #CONF_DIR_PARAM}. The
- * servlet init parameter is checked first, then the servlet-context parameter.
- * If neither is defined, the servlet falls back to {@code /WEB-INF}.
- * </p>
- *
- * <p>
- * The configuration directory is scanned for {@code *.xml} files. Each file is
- * opened as a {@link LuceneIndex}. Duplicate index names are accepted, but the
- * later loaded index replaces the previous one.
+ * Each index may contain an {@code alix.xml} properties file, loaded at index
+ * opening by {@link LuceneIndex}. Public configuration entries are exposed in
+ * the root index list and individual index description. Indexing inputs and
+ * private entries are excluded; computed index metadata remains authoritative.
  * </p>
  */
 public class AlixServlet extends HttpServlet
@@ -79,6 +80,15 @@ public class AlixServlet extends HttpServlet
     private static final Logger LOG = Logger.getLogger(AlixServlet.class.getName());
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>(){}.getType();
     private static final long serialVersionUID = 1L;
+    /** Search-time keys excluded from public metadata. */
+    private static final Set<String> CONFIG_EXCLUDE = Set.of(
+        "tei", "exclude", "normalizations", "expressions", "luceneroot"
+    );
+    /** Keys written from validated index metadata rather than raw configuration. */
+    private static final Set<String> CONFIG_RESERVED = Set.of(
+        "name", "label", "numDocs", "content", "docline",
+        "fields", "servletStarted", "indexModified"
+    );
 
     /** Resolved root directory holding one subdirectory per corpus. */
     private Path luceneRoot;
@@ -86,6 +96,8 @@ public class AlixServlet extends HttpServlet
     private IndexRegistry registry;
     /** Registered operations, keyed by URL operation name. */
     private final Map<String, Op> ops = new LinkedHashMap<>();
+    /** Filtered XML properties, cached for the lifetime of each opened index. */
+    private final Map<LuceneIndex, Map<String, String>> publicConfigCache = new WeakHashMap<>();
     /** Time at which this servlet instance was initialized, in epoch milliseconds. */
     private volatile long servletStartedMillis;
 
@@ -99,6 +111,9 @@ public class AlixServlet extends HttpServlet
         if (registry != null) {
             registry.stop();
             registry = null;
+        }
+        synchronized (publicConfigCache) {
+            publicConfigCache.clear();
         }
     }
 
@@ -301,14 +316,13 @@ public class AlixServlet extends HttpServlet
      * Describes one index as JSON.
      *
      * <p>
-     * The output includes index identity, document count, configured content
-     * and document-line fields, and a field inventory built from
-     * {@link Fluc#description}.
+     * Adds public XML properties to the authoritative index metadata and
+     * includes the Lucene field inventory.
      * </p>
      *
      * @param index index to describe
      * @param response HTTP response
-     * @throws IOException if writing the response fails
+     * @throws IOException if configuration or response writing fails
      */
     private void describeIndex(
         final LuceneIndex index,
@@ -321,18 +335,9 @@ public class AlixServlet extends HttpServlet
             jw.beginObject();
 
             jw.name("name").value(index.name());
-            jw.name("label").value(index.label());
-            jw.name("numDocs").value(index.numDocs());
+            writePublicMetadata(jw, index);
             jw.name("servletStarted").value(Instant.ofEpochMilli(servletStartedMillis).toString());
             jw.name("indexModified").value(Instant.ofEpochMilli(index.lastModified()).toString());
-            
-            if (index.content() != null) {
-                jw.name("content").value(index.content());
-            }
-
-            if (index.docline() != null) {
-                jw.name("docline").value(index.docline());
-            }
 
             jw.name("fields");
             jw.beginObject();
@@ -418,12 +423,14 @@ public class AlixServlet extends HttpServlet
      * Lists configured indices as JSON.
      *
      * <p>
-     * Each entry is keyed by index name and includes its label, document count,
-     * content field if configured, and document-line field if configured.
+     * Each entry contains validated public metadata and all XML properties
+     * not excluded by {@link #CONFIG_EXCLUDE}, {@link #CONFIG_RESERVED}, or
+     * the {@code private.} prefix. The full field inventory is intentionally
+     * reserved for the individual index description.
      * </p>
      *
      * @param response HTTP response
-     * @throws IOException if writing the response fails
+     * @throws IOException if configuration or response writing fails
      */
     private void listIndices(final HttpServletResponse response) throws IOException
     {
@@ -436,22 +443,73 @@ public class AlixServlet extends HttpServlet
             for (LuceneIndex index : registry.all()) {
                 jw.name(index.name());
                 jw.beginObject();
-
-                jw.name("label").value(index.label());
-                jw.name("numDocs").value(index.numDocs());
-
-                if (index.content() != null) {
-                    jw.name("content").value(index.content());
-                }
-
-                if (index.docline() != null) {
-                    jw.name("docline").value(index.docline());
-                }
-
+                writePublicMetadata(jw, index);
                 jw.endObject();
             }
 
             jw.endObject();
+        }
+    }
+
+    /**
+     * Loads and caches the public properties of one opened index.
+     *
+     * <p>
+     * The cache uses weak keys so replaced index handles do not remain
+     * referenced. Changes to {@code alix.xml} take effect when the index is
+     * reopened, consistent with {@link LuceneIndex#open(Path)}.
+     * </p>
+     *
+     * @param index opened Lucene index
+     * @return immutable, alphabetically sorted public properties
+     * @throws IOException if the XML configuration cannot be read
+     */
+    private Map<String, String> publicConfig(final LuceneIndex index) throws IOException
+    {
+        synchronized (publicConfigCache) {
+            final Map<String, String> cached = publicConfigCache.get(index);
+            if (cached != null) return cached;
+
+            final Properties props = new Properties();
+            final Path file = index.indexDir().resolve(LuceneIndex.CONFIG_NAME);
+            if (Files.isRegularFile(file)) {
+                try (InputStream in = Files.newInputStream(file)) {
+                    props.loadFromXML(in);
+                }
+            }
+
+            final Map<String, String> entries = new TreeMap<>();
+            for (String key : props.stringPropertyNames()) {
+                if (CONFIG_EXCLUDE.contains(key)
+                    || CONFIG_RESERVED.contains(key)
+                    || key.startsWith("private.")) continue;
+                entries.put(key, props.getProperty(key));
+            }
+            final Map<String, String> result = Collections.unmodifiableMap(entries);
+            publicConfigCache.put(index, result);
+            return result;
+        }
+    }
+
+    /**
+     * Writes validated metadata followed by optional public XML properties.
+     *
+     * @param jw open JSON object writer
+     * @param index opened Lucene index
+     * @throws IOException if configuration or JSON writing fails
+     */
+    private void writePublicMetadata(final JsonWriter jw, final LuceneIndex index) throws IOException
+    {
+        jw.name("label").value(index.label());
+        jw.name("numDocs").value(index.numDocs());
+        if (index.content() != null) {
+            jw.name("content").value(index.content());
+        }
+        if (index.docline() != null) {
+            jw.name("docline").value(index.docline());
+        }
+        for (Map.Entry<String, String> entry : publicConfig(index).entrySet()) {
+            jw.name(entry.getKey()).value(entry.getValue());
         }
     }
 

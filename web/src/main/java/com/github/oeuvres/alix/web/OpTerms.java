@@ -2,7 +2,7 @@ package com.github.oeuvres.alix.web;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.BitSet;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -23,7 +23,7 @@ import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
 import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
-import com.github.oeuvres.alix.lucene.terms.PoleTerms;
+import com.github.oeuvres.alix.lucene.snippets.FocusTerms;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
@@ -70,27 +70,16 @@ public final class OpTerms extends Op
 {
 
     /**
-     * Collects the co-occurrents of a span query, as one pole, or as several
-     * poles compared when the query is one top-level group, such as
-     * {@code ((assimilation assimiler) (accommodation accommoder))}.
-     *
-     * <p>
-     * Each pole is walked alone, so that its snippets are merged only with its
-     * own spans, and collected into its own population. Every pole is scored
-     * against the same corpus, the whole field or the documents of the filter
-     * query. A pole's own pivots are removed from its population; the pivots of
-     * the other poles remain tokens of its population but are excluded from its
-     * ranking, and their scores are reported apart as attraction between poles.
-     * Rankings are fused by {@link PoleTerms}.
-     * </p>
+     * Collects and ranks the ordinary search snippets, partitioning by exact
+     * focus membership only for a top-level union of two to four focuses.
      *
      * @param index Lucene index
      * @param pars request parameters
      * @param meta response metadata
-     * @return pole terms, or {@code null} without a usable span query
-     * @throws IOException if Lucene or rail access fails
+     * @return cooccurrence terms, or null without a usable query
+     * @throws IOException if index or rail access fails
      */
-    protected static PoleTerms poleTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
+    protected static FocusTerms focusTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final String q = pars.getString(Q, null);
         if (q == null || q.isBlank()) return null;
@@ -99,10 +88,6 @@ public final class OpTerms extends Op
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final SpanQueryParser.ParseResult parsed = contentFluc.spanQueryParser().parse(q, slop);
         if (parsed.spanQuery() == null) return null;
-        // without poles, the whole query is one pole
-        final List<SpanQueryParser.Pole> poleQueries = parsed.poles() != null
-            ? parsed.poles()
-            : List.of(new SpanQueryParser.Pole(parsed.spanQuery(), parsed.queryString()));
         // same entries as Op.spanQuery()
         final SpanQuery rewritten = (SpanQuery) index.searcher().rewrite(parsed.spanQuery());
         meta.put("spanQuery", rewritten.toString(contentFluc.name()));
@@ -129,50 +114,25 @@ public final class OpTerms extends Op
             corpus = contentFluc.topTerms().select(index.reader(), corpusDocs);
         }
 
-        final int poleCount = poleQueries.size();
-        final String[] labels = new String[poleCount];
-        final SpanQuery[] spanQueries = new SpanQuery[poleCount];
-        final TopTerms[] poles = new TopTerms[poleCount];
-        final int[][] pivotIds = new int[poleCount][];
-        int pivotTotal = 0;
-        for (int pole = 0; pole < poleCount; pole++) {
-            final SpanQueryParser.Pole poleQuery = poleQueries.get(pole);
-            final SpanWalker walker = new SpanWalker(
-                index.searcher(),
-                poleQuery.spanQuery(),
-                new DocSnippets(DocSnippets.Usage.POSITIONS, slop),
-                filterQuery
-            );
-            // rewritten query, wildcard expansions included
-            pivotIds[pole] = contentLexicon.termIds(walker.spanQuery());
-            pivotTotal += pivotIds[pole].length;
-            poles[pole] = contentFluc.topTerms();
-            final TopCoocSnippets consumer = new TopCoocSnippets(
-                contentFluc.termStats(),
-                contentFluc.termRail(),
-                left,
-                right
-            ).bindTo(poles[pole].beginPopulation(), corpus);
-            walker.walk(consumer);
-            consumer.complete();
-            poles[pole].populationExclude(pivotIds[pole]);
-            labels[pole] = poleQuery.queryString();
-            spanQueries[pole] = walker.spanQuery();
+        final List<SpanQueryParser.Focus> focuses = parsed.focuses();
+        final List<String> labels = new ArrayList<>();
+        int[][] focusIds = new int[0][];
+        if (focuses != null && focuses.size() <= FocusTerms.MAX_FOCUSES) {
+            focusIds = new int[focuses.size()][];
+            for (int i = 0; i < focuses.size(); i++) {
+                final SpanQueryParser.Focus focus = focuses.get(i);
+                labels.add(focus.queryString());
+                focusIds[i] = contentLexicon.termIds(index.searcher().rewrite(focus.spanQuery()));
+            }
         }
-
-        final int[] allPivotIds = new int[pivotTotal];
-        int offset = 0;
-        for (final int[] ids : pivotIds) {
-            System.arraycopy(ids, 0, allPivotIds, offset, ids.length);
-            offset += ids.length;
-        }
-        for (final TopTerms pole : poles) {
-            pole.exclude(excIds);
-            pole.exclude(allPivotIds);
-            pole.include(incIds);
-            pole.rank(scorer, terms, tflags);
-        }
-        return new PoleTerms(labels, spanQueries, poles, pivotIds, scorer, terms);
+        final FocusTerms result = new FocusTerms(rewritten, contentFluc.termStats(),
+            contentLexicon, contentFluc.termRail(), corpus, left, right, labels, focusIds);
+        final SpanWalker walker = new SpanWalker(index.searcher(), rewritten,
+            new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery);
+        walker.walk(result);
+        result.complete(scorer, terms, incIds, excIds, tflags);
+        meta.put("pivotCount", result.spanCount());
+        return result;
     }
 
     protected static TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
@@ -183,7 +143,7 @@ public final class OpTerms extends Op
         TermLexicon contentLexicon = contentFluc.termLexicon();
         TopTerms topTerms = contentFluc.topTerms();
         String include = pars.getString("include", null);
-        int[] incIds = null; // set include after exclusion of pivots from population
+        int[] incIds = null;
         if (include != null) {
             String[] incs = include.split(",");
             incIds = contentLexicon.termIds(incs);
@@ -282,8 +242,8 @@ public final class OpTerms extends Op
             ).bindTo(population, corpus);
             walker.walk(consumer);
             consumer.complete(); // update TopTerms population
-            topTerms.populationExclude(pivotIds);
             topTerms.include(incIds);
+            topTerms.exclude(pivotIds);
             meta.put("pivotIds", pivotIds);
             meta.put("focusDocs", consumer.documentCount());
             meta.put("focusTokens", consumer.tokenCount());
@@ -300,28 +260,9 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final PoleTerms poleTerms = poleTerms(index, pars, meta);
-        if (poleTerms != null) {
-            final Writer writer = response.getWriter();
-            final int poleCount = poleTerms.poleCount();
-            writer.append("<table class=\"terms poles\">\n  <tr>\n    <th class=\"no\"></th>\n    <th class=\"term\"></th>\n");
-            for (int pole = 0; pole < poleCount; pole++) {
-                writer.append("    <th class=\"pole\" colspan=\"2\">%s</th>\n".formatted(poleTerms.label(pole)));
-            }
-            writer.append("  </tr>\n");
-            for (int rank = 0; rank < poleTerms.size(); rank++) {
-                final int termId = poleTerms.termId(rank);
-                writer.append("  <tr>\n")
-                  .append("    <th class=\"no\">%d</th>\n".formatted(rank + 1))
-                  .append("    <td class=\"term\">%s</td>\n".formatted(poleTerms.pole(0).lexicon().form(termId)));
-                for (int pole = 0; pole < poleCount; pole++) {
-                    final String affiliated = poleTerms.affiliated(rank, pole) ? " affiliated" : "";
-                    writer.append("    <td class=\"count%s\" align=\"right\">%d</td>\n".formatted(affiliated, poleTerms.pole(pole).termFreq(termId)))
-                      .append("    <td class=\"score%s\" align=\"right\">%f</td>\n".formatted(affiliated, poleTerms.score(rank, pole)));
-                }
-                writer.append("  </tr>\n");
-            }
-            writer.append("</table>\n");
+        final FocusTerms focusTerms = focusTerms(index, pars, meta);
+        if (focusTerms != null) {
+            TermsUtil.html(response.getWriter(), focusTerms);
             return;
         }
         TopTerms topTerms = topTerms(index, pars, meta);
@@ -354,9 +295,9 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final PoleTerms poleTerms = poleTerms(index, pars, meta);
-        if (poleTerms != null) {
-            TermsUtil.json(request, response, poleTerms);
+        final FocusTerms focusTerms = focusTerms(index, pars, meta);
+        if (focusTerms != null) {
+            TermsUtil.json(request, response, focusTerms);
             return;
         }
         TopTerms topTerms = topTerms(index, pars, meta);
@@ -372,9 +313,9 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final PoleTerms poleTerms = poleTerms(index, pars, meta);
-        if (poleTerms != null) {
-            TermsUtil.txt(request, response, poleTerms);
+        final FocusTerms focusTerms = focusTerms(index, pars, meta);
+        if (focusTerms != null) {
+            TermsUtil.txt(request, response, focusTerms);
             return;
         }
         TopTerms topTerms = topTerms(index, pars, meta);

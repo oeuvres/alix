@@ -30,8 +30,8 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms;
  * the row from {@link #entryRank(int)} without recomputing rankings client-side.
  * </p>
  * <p>
- * Scoring uses the focus counts collected at each tick together with an active corpus and a
- * pivot-event marginal. By default the active corpus is the whole field from {@link TermStats};
+ * Scoring uses the focus counts collected at each tick together with an active corpus.
+ * Raw query matches are descriptive metadata and are not added to token totals. By default the active corpus is the whole field from {@link TermStats};
  * {@link #corpus(TopTerms)} may replace it with a filtered population built from the same statistics.
  * {@link CoocProfileSnippets} accumulates the raw pivot-query match count independently of snippet
  * merging. Because these marginals are retained, {@link #score} is computed on demand and a renderer
@@ -308,7 +308,7 @@ public final class CoocProfile
 
     /**
      * Computes the keyness of a selected term at a tick from the tick's cumulative focus counts,
-     * active-corpus marginals, and accumulated pivot-event count. Computed on demand so a renderer
+     * and active-corpus marginals. Computed on demand so a renderer
      * may pass a measure different from the one used for {@link #select}.
      *
      * @param row    row index in {@code [0, rows())}
@@ -325,7 +325,7 @@ public final class CoocProfile
         scorer.corpus(
             corpus == null ? stats.fieldTokens() : corpus.tokens(),
             corpus == null ? stats.fieldDocs() : corpus.docs());
-        scorer.focus(tokensByTick[tick], pivotCount);
+        scorer.focus(tokensByTick[tick], 0d);
         final int termId = rowIds[row];
         return applyScore(scorer, termId, rowFreq[row][tick]);
     }
@@ -446,7 +446,7 @@ public final class CoocProfile
     }
 
     /**
-     * Adds raw pivot-query matches to the profile's pivot marginal.
+     * Adds raw pivot-query matches to the profile's raw match count.
      *
      * @param count number of raw query matches to add
      * @throws IllegalArgumentException if {@code count < 0}
@@ -557,7 +557,7 @@ public final class CoocProfile
         final LinkedHashSet<Integer> union
     ) {
         final int last = ticks.length - 1;
-        scorer.focus(tokensByTick[last], pivotCount);
+        scorer.focus(tokensByTick[last], 0d);
         final Cand[] order = new Cand[union.size()];
         int k = 0;
         for (final int id : union) {
@@ -646,7 +646,7 @@ public final class CoocProfile
             return new Cand[0];
         }
 
-        scorer.focus(tokensByTick[tick], pivotCount);
+        scorer.focus(tokensByTick[tick], 0d);
         final long[] col = freqWide[tick];
         final int vocab = stats.vocabSize();
         final PriorityQueue<Cand> heap = new PriorityQueue<>(WORST_FIRST);

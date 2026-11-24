@@ -14,8 +14,7 @@ import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.terms.PoleTerms;
-import com.github.oeuvres.alix.lucene.terms.TopTerms;
+import com.github.oeuvres.alix.lucene.snippets.FocusTerms;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
 import com.github.oeuvres.alix.util.IntMatrixById;
@@ -29,47 +28,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import static com.github.oeuvres.alix.web.Pars.*;
 
 /**
- * Produces a two-dimensional map of the terms selected for a query by
- * {@link OpTerms#poleTerms}, one pole or several.
- *
- * <p>By default, the PCA plane is fitted to the selected terms, without
- * including query pivots in the fit. The request parameter {@code plane=local}
- * instead fits the PCA plane to the {@link #NEIGHBORS} model words nearest to
- * the query pivots. Both modes project pivots and terms into their
- * respective planes. {@code layout=pca|mds|centred} selects the layout
- * (default {@code pca}; the former {@code mds=true} still selects
- * {@code mds}).</p>
- *
- * <p>Two sources are kept apart. The model gives positions,
- * {@code pivotDistance} and {@code neighbors}. The contexts of each pole give
- * the counts, scores and {@code coocs}.</p>
- *
- * <p>The JSON {@code data} is the one of terms.json (see
- * {@link TermsUtil#json(HttpServletRequest, HttpServletResponse, PoleTerms)}),
- * extended:</p>
- * <ul>
- * <li>{@code axes}: the settings of the map;</li>
- * <li>{@code poles}: as in terms.json;</li>
- * <li>{@code pivots}: as in terms.json, with {@code x}, {@code y},
- * {@code quality} and {@code neighbors}, the {@link #NEAREST} words of the
- * whole model most similar to the pivot, when the pivot is in the model;</li>
- * <li>{@code terms}: as in terms.json, with {@code x}, {@code y} and
- * {@code quality} when the term is in the model;</li>
- * <li>in the {@code poles} array of a pivot or a term,
- * {@code pivotDistance}: model cosine distance to the nearest pivot of that
- * pole, {@code null} when the term or the pole has no vector;</li>
- * <li>{@code coocs}: for each pair of placed terms present together in at
- * least one context of a pole, {@code source} and {@code target} (term ids),
- * and for each pole the number of shared {@code contexts} and the
- * {@code score} of the pair: signed G² of {@link KeynessScorer.G2Alpha} on
- * the 2 x 2 table of the pole contexts (containing the first term or not,
- * containing the second or not), {@code null} when absent or without table.
- * Pairs are in the order of the terms, not sorted by score: scores of
- * poles of different sizes are not comparable.</li>
- * </ul>
- *
- * <p>Forms that could not be placed, absent from the model, are listed in
- * {@code meta.notInModel}.</p>
+ * Projects the selected cooccurrence terms and query pivots into a vector plane.
+ * The term statistics are the same as in terms.json. One matrix over the
+ * original union contexts gives shared-context counts and signed G² for edges.
+ * The model gives coordinates and distance to the nearest query pivot.
+ * The plane and layout parameters retain their existing meanings.
  */
 public class OpCompass extends Op
 {
@@ -105,15 +68,15 @@ public class OpCompass extends Op
     }
 
     /**
-     * Counts, for the placed terms, the contexts of one pole in which each
-     * term and each pair of terms are present. This is a second walk of the
-     * contexts walked by {@link OpTerms#poleTerms}, with the same pole query,
+     * Counts the union contexts in which each placed term and pair occur.
+     * This is a second walk of the contexts walked by {@link OpTerms#focusTerms},
+     * with the same original query,
      * filter and margins, read from the same parameters.
      *
      * @param lucene Lucene index
      * @param pars resolved parameters
      * @param meta meta of the request
-     * @param spanQuery span query of the pole
+     * @param spanQuery original span query
      * @param termIds lexicon ids of the placed terms
      * @return square matrix by term id: a cell is the number of contexts
      *         containing both terms, an identity cell the number of contexts
@@ -136,7 +99,7 @@ public class OpCompass extends Op
             return null;
         }
         final Query filterQuery = filterQuery(lucene, pars, meta);
-        // same as in OpTerms.poleTerms
+        // same as in OpTerms.focusTerms
         final int slop = pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP);
         final int left = pars.getInt(LEFT, LEFT_RANGE, slop);
         final int right = pars.getInt(RIGHT, RIGHT_RANGE, slop);
@@ -159,62 +122,32 @@ public class OpCompass extends Op
     }
 
     /**
-     * Writes the array of the pairs of placed terms sharing at least one
-     * context in at least one pole, see {@link #coocMatrix}, with the number
-     * of shared contexts and the score of the pair in each pole.
-     *
-     * <p>The score is signed G² at its midpoint specificity. For a pair
-     * (a, b) in one pole, the corpus is the contexts of the pole, the focus
-     * the contexts containing a, the scored term b: counts are contexts, not
-     * occurrences. The 2 x 2 table is the same from the side of b, so one
-     * score serves both terms. A pair absent from a pole, or a term present
-     * in every context, has no table and a {@code null} score.</p>
-     *
-     * @param json writer, positioned after the name of the array
-     * @param mats context counts of each pole, an entry may be null
-     * @param termIds lexicon ids of the placed terms
-     * @throws IOException if response writing fails
+     * Writes one global edge per pair sharing at least one union context.
+     * @param json writer positioned after the array name
+     * @param mat union context matrix, or null
+     * @param termIds placed term ids
+     * @throws IOException if writing fails
      */
-    private static void coocs(
-        final JsonWriter json,
-        final IntMatrixById[] mats,
-        final int[] termIds
-    ) throws IOException {
-        final KeynessScorer scorer = new KeynessScorer.G2Alpha();
+    private static void coocs(final JsonWriter json, final IntMatrixById mat,
+            final int[] termIds) throws IOException
+    {
         json.beginArray();
-        for (int a = 0; a < termIds.length; a++) {
-            for (int b = a + 1; b < termIds.length; b++) {
-                boolean shared = false;
-                for (final IntMatrixById mat : mats) {
-                    if (mat != null && mat.count(termIds[a], termIds[b]) > 0) {
-                        shared = true;
-                        break;
-                    }
-                }
-                if (!shared) {
-                    continue;
-                }
-                json.beginObject();
-                json.name("source").value(termIds[a]);
-                json.name("target").value(termIds[b]);
-                json.name("poles");
-                json.beginArray();
-                for (final IntMatrixById mat : mats) {
-                    final int contexts = mat == null ? 0 : mat.count(termIds[a], termIds[b]);
-                    double score = Double.NaN;
-                    if (contexts > 0 && mat.total() > 0L) {
-                        scorer.corpus(mat.total(), (int) mat.total());
-                        scorer.focus(mat.count(termIds[a], termIds[a]), 0d);
-                        score = scorer.score(contexts, mat.count(termIds[b], termIds[b]), 0);
-                    }
+        if (mat != null && mat.total() > 0L) {
+            final KeynessScorer scorer = new KeynessScorer.G2Alpha();
+            scorer.corpus(mat.total(), (int) mat.total());
+            for (int a = 0; a < termIds.length; a++) {
+                scorer.focus(mat.count(termIds[a], termIds[a]), 0d);
+                for (int b = a + 1; b < termIds.length; b++) {
+                    final int count = mat.count(termIds[a], termIds[b]);
+                    if (count == 0) continue;
                     json.beginObject();
-                    json.name("contexts").value(contexts);
+                    json.name("source").value(termIds[a]);
+                    json.name("target").value(termIds[b]);
+                    json.name("contexts").value(count);
                     json.name("score");
-                    rounded(json, score);
+                    rounded(json, scorer.score(count, mat.count(termIds[b], termIds[b]), 0));
                     json.endObject();
                 }
-                json.endArray();
-                json.endObject();
             }
         }
         json.endArray();
@@ -222,7 +155,7 @@ public class OpCompass extends Op
 
     /**
      * Writes query pivots and terms in the selected plane, with their
-     * statistics in every pole, the contexts shared by placed terms, and the
+     * statistics in each population, the contexts shared by placed terms, and the
      * model words most similar to each pivot.
      *
      * @param lucene Lucene index
@@ -239,8 +172,8 @@ public class OpCompass extends Op
     ) throws IOException, ServletException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final PoleTerms poles = OpTerms.poleTerms(lucene, pars, meta);
-        if (poles == null) {
+        final FocusTerms terms = OpTerms.focusTerms(lucene, pars, meta);
+        if (terms == null) {
             badRequest(request, response, meta, "[no term selection]");
             return;
         }
@@ -250,41 +183,26 @@ public class OpCompass extends Op
             return;
         }
         final VecModel model = vecModel(modelPath, meta);
-        final int poleCount = poles.poleCount();
         final List<String> notInModel = new ArrayList<>();
-
-        // Pivots of every pole in pole order, with their owner and model id.
-        final List<TopTerms.ExcludedTerm> pivots = new ArrayList<>();
-        final List<Integer> owners = new ArrayList<>();
+        final int[] pivots = terms.pivotIds();
         final List<Integer> pivotVecs = new ArrayList<>();
-        final int[][] poleVecIds = new int[poleCount][];
-        for (int pole = 0; pole < poleCount; pole++) {
-            final List<Integer> ids = new ArrayList<>();
-            for (final TopTerms.ExcludedTerm pivot : poles.pole(pole).excludedTerms()) {
-                final int id = modelId(model, pivot.form());
-                pivots.add(pivot);
-                owners.add(pole);
-                pivotVecs.add(id);
-                if (id >= 0) {
-                    ids.add(id);
-                }
-                else {
-                    notInModel.add(pivot.form());
-                }
-            }
-            poleVecIds[pole] = ids.stream().mapToInt(Integer::intValue).toArray();
+        for (final int pivot : pivots) {
+            final String form = terms.lexicon().form(pivot);
+            final int id = modelId(model, form);
+            pivotVecs.add(id);
+            if (id < 0) notInModel.add(form);
         }
-        final int[] allPivotVecIds = pivotVecs.stream().mapToInt(Integer::intValue).filter(id -> id >= 0).toArray();
+        final int[] allPivotVecIds = pivotVecs.stream().mapToInt(Integer::intValue).filter(id -> id >= 0).distinct().toArray();
         if (allPivotVecIds.length == 0) {
             badRequest(request, response, meta, "[no query pivot found in vector model]");
             return;
         }
 
-        final int termCount = poles.size();
+        final int termCount = terms.size();
         final int[] termVecs = new int[termCount];
         final List<Integer> keywordIds = new ArrayList<>();
         for (int rank = 0; rank < termCount; rank++) {
-            final String form = poles.pole(0).lexicon().form(poles.termId(rank));
+            final String form = terms.lexicon().form(terms.termId(rank));
             termVecs[rank] = modelId(model, form);
             if (termVecs[rank] >= 0) {
                 keywordIds.add(termVecs[rank]);
@@ -332,7 +250,7 @@ public class OpCompass extends Op
         }
 
         // Points: pivots first, then terms; null outside the model.
-        final int pivotCount = pivots.size();
+        final int pivotCount = pivots.length;
         final CompassVec.Point[] points = new CompassVec.Point[pivotCount + termCount];
         final List<Integer> nodeVecs = new ArrayList<>();
         for (int k = 0; k < pivotCount; k++) {
@@ -349,35 +267,22 @@ public class OpCompass extends Op
         }
         final int[] nodeIds = nodeVecs.stream().mapToInt(Integer::intValue).toArray();
 
-        // distances[node][pole], aligned with points; NaN without vector.
-        final double[][] distances = new double[points.length][poleCount];
-        for (int pole = 0; pole < poleCount; pole++) {
-            final double[] values = poleVecIds[pole].length == 0 || nodeIds.length == 0
-                ? null
-                : compass.pivotDistances(nodeIds, poleVecIds[pole]);
-            int node = 0;
-            for (int i = 0; i < points.length; i++) {
-                if (points[i] == null) {
-                    distances[i][pole] = Double.NaN;
-                    continue;
-                }
-                distances[i][pole] = values == null ? Double.NaN : values[node];
-                node++;
-            }
+        // Model distance to the nearest pivot of the whole query.
+        final double[] distances = new double[points.length];
+        final double[] values = nodeIds.length == 0 ? new double[0]
+            : compass.pivotDistances(nodeIds, allPivotVecIds);
+        int placedNode = 0;
+        for (int i = 0; i < points.length; i++) {
+            distances[i] = points[i] == null ? Double.NaN : values[placedNode++];
         }
 
-        // Co-occurrences of placed terms, pole by pole.
+        // One global matrix; no partition-specific edge statistics.
         final List<Integer> placed = new ArrayList<>();
         for (int rank = 0; rank < termCount; rank++) {
-            if (points[pivotCount + rank] != null) {
-                placed.add(poles.termId(rank));
-            }
+            if (points[pivotCount + rank] != null) placed.add(terms.termId(rank));
         }
         final int[] placedIds = placed.stream().mapToInt(Integer::intValue).toArray();
-        final IntMatrixById[] mats = new IntMatrixById[poleCount];
-        for (int pole = 0; pole < poleCount; pole++) {
-            mats[pole] = coocMatrix(lucene, pars, meta, poles.spanQuery(pole), placedIds);
-        }
+        final IntMatrixById mat = coocMatrix(lucene, pars, meta, terms.query(), placedIds);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");
@@ -397,58 +302,35 @@ public class OpCompass extends Op
             json.name("reference").value(compass.referenceCount());
             json.endObject();
 
-            json.name("poles");
-            TermsUtil.poles(json, poles);
+            TermsUtil.populations(json, terms);
 
-            json.name("pivots");
-            json.beginArray();
+            json.name("pivots").beginArray();
             for (int k = 0; k < pivotCount; k++) {
-                final TopTerms.ExcludedTerm pivot = pivots.get(k);
-                final int owner = owners.get(k);
                 json.beginObject();
-                TermsUtil.pivotFields(json, owner, pivot);
+                TermsUtil.pivotFields(json, terms, pivots[k]);
                 point(json, points[k]);
                 if (points[k] != null) {
                     json.name("neighbors");
                     neighbors(json, model, pivotVecs.get(k));
                 }
-                json.name("poles");
-                json.beginArray();
-                for (int pole = 0; pole < poleCount; pole++) {
-                    json.beginObject();
-                    TermsUtil.pivotPoleFields(json, poles, owner, pivot, pole);
-                    json.name("pivotDistance");
-                    rounded(json, distances[k][pole]);
-                    json.endObject();
-                }
-                json.endArray();
                 json.endObject();
             }
-            json.endArray(); // pivots
+            json.endArray();
 
-            json.name("terms");
-            json.beginArray();
+            json.name("terms").beginArray();
             for (int rank = 0; rank < termCount; rank++) {
                 final int node = pivotCount + rank;
                 json.beginObject();
-                TermsUtil.termFields(json, poles, rank);
+                TermsUtil.termFields(json, terms, rank);
                 point(json, points[node]);
-                json.name("poles");
-                json.beginArray();
-                for (int pole = 0; pole < poleCount; pole++) {
-                    json.beginObject();
-                    TermsUtil.termPoleFields(json, poles, rank, pole);
-                    json.name("pivotDistance");
-                    rounded(json, distances[node][pole]);
-                    json.endObject();
-                }
-                json.endArray();
+                json.name("pivotDistance");
+                rounded(json, distances[node]);
                 json.endObject();
             }
-            json.endArray(); // terms
+            json.endArray();
 
             json.name("coocs");
-            coocs(json, mats, placedIds);
+            coocs(json, mat, placedIds);
 
             json.endObject(); // data
             json.endObject();

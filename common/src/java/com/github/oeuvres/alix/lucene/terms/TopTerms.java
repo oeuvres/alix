@@ -83,7 +83,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      */
     private TopTerms corpus;
 
-    /** Caller-defined pivot-event count in the active corpus. */
+    /** Caller-defined raw query-event count (descriptive metadata only). */
     private long pivotCount;
 
     /** Term ids forbidden from rankings without changing population counts. */
@@ -445,10 +445,9 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Ranks the current population with a keyness scorer.
      *
      * <p>
-     * The current population is the scorer focus. Corpus marginals and an
-     * optional pivot-event count are properties of the population itself. By
-     * default, the corpus is the immutable whole field and the pivot count is
-     * {@code 0}. External collectors may publish different scoring metadata
+     * The current population is the scorer focus. Its token total is passed
+     * unchanged to the scorer; raw query events are descriptive metadata. By
+     * default, the corpus is the immutable whole field. External collectors may publish metadata
      * through {@link Population#complete(long, int, int, TopTerms, long)}.
      * </p>
      *
@@ -467,7 +466,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      *
      * <p>
      * The flags restrict ordinary ranking candidates only. Population counts,
-     * corpus marginals, and the pivot-event count are unchanged. Stored
+     * corpus marginals, and the descriptive pivot-event count are unchanged. Stored
      * exclusions are omitted. The scorer receives the number of distinct terms
      * with positive frequency in the entire analytical population, independently
      * of ranking flags and inclusions. Stored inclusions bypass the flag filter,
@@ -505,7 +504,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         }
 
         scorer.corpus(corpusTokens, corpusDocs);
-        scorer.focus(tokens, pivotCount);
+        scorer.focus(tokens, 0d);
 
         for (int termId = rankingInclude.nextSetBit(1);
                 termId >= 0;
@@ -660,8 +659,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
      * Scores one term of the current population, independently of any ranking.
      *
      * <p>
-     * The scorer receives the same corpus marginals, focus tokens and pivot
-     * count as in {@link #rank(KeynessScorer, int, TermFlag...)}. Ranking flags,
+     * The scorer receives the same corpus marginals and focus tokens as in {@link #rank(KeynessScorer, int, TermFlag...)}. Ranking flags,
      * inclusions and exclusions are ignored; the current ranking is unchanged.
      * This allows scoring a term that a ranking excluded or did not retain.
      * </p>
@@ -682,7 +680,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
         final long corpusFreq = corpus == null ? termStats.termFreq(termId) : corpus.termFreq[termId];
         final int corpusDf = corpus == null ? termStats.termDocs(termId) : corpus.termDocs[termId];
         scorer.corpus(corpusTokens, corpusDocs);
-        scorer.focus(tokens, pivotCount);
+        scorer.focus(tokens, 0d);
         return scorer.score(termFreq[termId], corpusFreq, corpusDf);
     }
 
@@ -1505,7 +1503,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
 
         /**
          * Publishes population totals with the whole field as scoring corpus and
-         * no pivot marginal.
+         * no raw query events.
          *
          * @param tokens population token count
          * @param docs population document count
@@ -1529,6 +1527,7 @@ public final class TopTerms implements Iterable<TopTerms.TermEntry>
          * A null {@code corpus} means the immutable whole field. The
          * {@code pivotCount} is a generic caller-defined event count; this class
          * does not assume that the event is a term, span, snippet, or document.
+         * It is not added to the focus token total during scoring.
          * </p>
          *
          * @param tokens population token count

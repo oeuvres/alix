@@ -135,6 +135,7 @@ public final class CoocProfileSnippets implements SnippetsConsumer
         final DocSnippets snippets
     )
         throws IOException {
+        profile.addPivotCount(snippets.spanCount());
         final int n = left.length;
         for (int i = 0; i < n; i++) {
             mask[i].clear();

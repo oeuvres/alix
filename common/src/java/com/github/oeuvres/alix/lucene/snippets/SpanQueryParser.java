@@ -27,11 +27,11 @@ import com.github.oeuvres.alix.util.WordTokenizer;
  * <p>
  * Terms outside parentheses are combined in an unordered
  * {@link SpanNearQuery}. Terms inside parentheses are combined in a
- * {@link SpanOrQuery}. Inside a top-level group, each member is a pole: a
- * bare term is a pole of one term, a nested group is a pole of several terms
- * united, and deeper parentheses are flattened into their pole. When the whole
- * query is one group of at least two poles, {@link ParseResult#poles()} lists
- * them, so that term lists can compare the poles; the span query remains their
+ * {@link SpanOrQuery}. Inside a top-level group, each member is a focus: a
+ * bare term is a focus of one term, a nested group is a focus of several terms
+ * united, and deeper parentheses are flattened into their focus. When the whole
+ * query is one group of at least two focuses, {@link ParseResult#focuses()} lists
+ * them, so that term lists can compare the focuses; the span query remains their
  * union, for search results. Quoted text matches a single indexed term literally,
  * without Hunspell lemmatization or stopword filtering. Quoted multiword
  * expressions are also treated as one indexed term.
@@ -105,12 +105,12 @@ public class SpanQueryParser
     }
 
     /**
-     * One pole of a top-level group.
+     * One focus of a top-level group.
      *
-     * @param spanQuery union of the resolved terms of the pole
-     * @param queryString canonical replayable syntax of the pole
+     * @param spanQuery union of the resolved terms of the focus
+     * @param queryString canonical replayable syntax of the focus
      */
-    public record Pole(SpanQuery spanQuery, String queryString)
+    public record Focus(SpanQuery spanQuery, String queryString)
     {
     }
 
@@ -120,13 +120,13 @@ public class SpanQueryParser
      * @param spanQuery assembled Lucene query, or {@code null} when no usable term
      *        remains
      * @param queryString canonical replayable query string
-     * @param poles poles of the query when it is one top-level group of at
-     *        least two poles, otherwise {@code null}
+     * @param focuses focuses of the query when it is one top-level group of at
+     *        least two focuses, otherwise {@code null}
      */
-    public record ParseResult(SpanQuery spanQuery, String queryString, List<Pole> poles)
+    public record ParseResult(SpanQuery spanQuery, String queryString, List<Focus> focuses)
     {
         /**
-         * Creates a result without poles.
+         * Creates a result without focuses.
          *
          * @param spanQuery assembled Lucene query, or {@code null}
          * @param queryString canonical replayable query string
@@ -153,15 +153,15 @@ public class SpanQueryParser
      * </p>
      *
      * <p>
-     * Poles are returned only when the query reduces to one top-level group
-     * of at least two distinct poles; next to other clauses, a group is a plain
+     * Focuses are returned only when the query reduces to one top-level group
+     * of at least two distinct focuses; next to other clauses, a group is a plain
      * union inside the near query.
      * </p>
      *
      * @param queryText user query text
      * @param slop maximum number of unmatched token positions accepted by the
      *        final {@link SpanNearQuery}
-     * @return parsed query, canonical query string, and optional poles
+     * @return parsed query, canonical query string, and optional focuses
      * @throws IllegalArgumentException if {@code slop} is negative
      * @throws IOException if indexed terms cannot be read
      */
@@ -181,10 +181,10 @@ public class SpanQueryParser
         final List<QueryToken> tokens = tokenize(queryText);
         final List<SpanQuery> clauses = new ArrayList<>();
         final List<String> queryClauses = new ArrayList<>();
-        List<Pole> groupPoles = null;
+        List<Focus> groupFocuses = null;
         List<SpanQuery> innerClauses = null;
         List<String> innerTerms = null;
-        List<Pole> lastPoles = null;
+        List<Focus> lastFocuses = null;
         int orDepth = 0;
 
         for (final QueryToken token : tokens) {
@@ -192,7 +192,7 @@ public class SpanQueryParser
                 case OR_OPEN:
                     orDepth++;
                     if (orDepth == 1) {
-                        groupPoles = new ArrayList<>();
+                        groupFocuses = new ArrayList<>();
                     }
                     else if (orDepth == 2) {
                         innerClauses = new ArrayList<>();
@@ -205,17 +205,17 @@ public class SpanQueryParser
                         break;
                     }
                     if (orDepth == 2) {
-                        addPole(groupPoles, innerClauses, innerTerms);
+                        addFocus(groupFocuses, innerClauses, innerTerms);
                         innerClauses = null;
                         innerTerms = null;
                     }
                     if (--orDepth == 0) {
-                        final List<Pole> added =
-                            addGroup(clauses, queryClauses, groupPoles);
+                        final List<Focus> added =
+                            addGroup(clauses, queryClauses, groupFocuses);
                         if (added != null) {
-                            lastPoles = added;
+                            lastFocuses = added;
                         }
-                        groupPoles = null;
+                        groupFocuses = null;
                     }
                     break;
 
@@ -234,7 +234,7 @@ public class SpanQueryParser
                         )));
                     }
                     else if (orDepth == 1) {
-                        groupPoles.add(new Pole(
+                        groupFocuses.add(new Focus(
                             resolved.query(),
                             renderAlternatives(resolved.queryTerms())
                         ));
@@ -249,55 +249,55 @@ public class SpanQueryParser
         }
 
         if (orDepth >= 2) {
-            addPole(groupPoles, innerClauses, innerTerms);
+            addFocus(groupFocuses, innerClauses, innerTerms);
         }
         if (orDepth >= 1) {
-            final List<Pole> added = addGroup(clauses, queryClauses, groupPoles);
+            final List<Focus> added = addGroup(clauses, queryClauses, groupFocuses);
             if (added != null) {
-                lastPoles = added;
+                lastFocuses = added;
             }
         }
 
-        final List<Pole> poles =
-            clauses.size() == 1 && lastPoles != null && lastPoles.size() > 1
-                ? List.copyOf(lastPoles)
+        final List<Focus> focuses =
+            clauses.size() == 1 && lastFocuses != null && lastFocuses.size() > 1
+                ? List.copyOf(lastFocuses)
                 : null;
 
         return new ParseResult(
             combineNear(clauses, slop),
             String.join(" ", queryClauses),
-            poles
+            focuses
         );
     }
 
     /**
-     * Closes a top-level group: adds the union of its poles to the main
-     * clauses and its canonical syntax to the rendered clauses. Poles rendered
+     * Closes a top-level group: adds the union of its focuses to the main
+     * clauses and its canonical syntax to the rendered clauses. Focuses rendered
      * identically are kept once.
      *
      * @param clauses destination clause list
      * @param queryClauses destination rendered-clause list
-     * @param groupPoles poles collected inside the group
-     * @return distinct poles of the group, or {@code null} when none remains
+     * @param groupFocuses focuses collected inside the group
+     * @return distinct focuses of the group, or {@code null} when none remains
      */
-    private static List<Pole> addGroup(
+    private static List<Focus> addGroup(
         final List<SpanQuery> clauses,
         final List<String> queryClauses,
-        final List<Pole> groupPoles
+        final List<Focus> groupFocuses
     ) {
-        if (groupPoles == null || groupPoles.isEmpty()) {
+        if (groupFocuses == null || groupFocuses.isEmpty()) {
             return null;
         }
 
         final LinkedHashSet<String> seen = new LinkedHashSet<>();
-        final List<Pole> distinct = new ArrayList<>();
+        final List<Focus> distinct = new ArrayList<>();
         final List<SpanQuery> queries = new ArrayList<>();
-        for (final Pole pole : groupPoles) {
-            if (!seen.add(pole.queryString())) {
+        for (final Focus focus : groupFocuses) {
+            if (!seen.add(focus.queryString())) {
                 continue;
             }
-            distinct.add(pole);
-            queries.add(pole.spanQuery());
+            distinct.add(focus);
+            queries.add(focus.spanQuery());
         }
 
         clauses.add(combineOr(queries));
@@ -306,14 +306,14 @@ public class SpanQueryParser
     }
 
     /**
-     * Closes a nested group as one pole of the enclosing top-level group.
+     * Closes a nested group as one focus of the enclosing top-level group.
      *
-     * @param groupPoles destination pole list
+     * @param groupFocuses destination focus list
      * @param innerClauses resolved queries collected in the nested group
      * @param innerTerms rendered alternatives collected in the nested group
      */
-    private static void addPole(
-        final List<Pole> groupPoles,
+    private static void addFocus(
+        final List<Focus> groupFocuses,
         final List<SpanQuery> innerClauses,
         final List<String> innerTerms
     ) {
@@ -321,7 +321,7 @@ public class SpanQueryParser
             return;
         }
 
-        groupPoles.add(new Pole(
+        groupFocuses.add(new Focus(
             combineOr(innerClauses),
             renderAlternatives(innerTerms)
         ));
@@ -528,24 +528,24 @@ public class SpanQueryParser
     }
 
     /**
-     * Renders a top-level group from the syntax of its poles.
+     * Renders a top-level group from the syntax of its focuses.
      *
      * <p>
-     * A single pole of one term is rendered bare. Otherwise the poles are
-     * enclosed in parentheses, so that a single pole of several terms is
-     * rendered as {@code ((a b))} and is not replayed as two poles.
+     * A single focus of one term is rendered bare. Otherwise the focuses are
+     * enclosed in parentheses, so that a single focus of several terms is
+     * rendered as {@code ((a b))} and is not replayed as two focuses.
      * </p>
      *
-     * @param poles rendered poles, non-empty
+     * @param focuses rendered focuses, non-empty
      * @return replayable group syntax
      */
-    private static String renderGroup(final List<String> poles)
+    private static String renderGroup(final List<String> focuses)
     {
-        if (poles.size() == 1 && poles.get(0).charAt(0) != '(') {
-            return poles.get(0);
+        if (focuses.size() == 1 && focuses.get(0).charAt(0) != '(') {
+            return focuses.get(0);
         }
 
-        return "(" + String.join(" ", poles) + ")";
+        return "(" + String.join(" ", focuses) + ")";
     }
 
     /**

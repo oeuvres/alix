@@ -73,6 +73,9 @@ public final class TopCoocSnippets implements SnippetsConsumer
     /** Number of Lucene documents containing at least one merged snippet. */
     private int documentCount;
 
+    /** Last document credited to this accumulator, or -1 before collection. */
+    private int lastDocId = -1;
+
     /** Field statistics used to validate count-vector sizes. */
     private final TermStats fieldStats;
 
@@ -103,7 +106,7 @@ public final class TopCoocSnippets implements SnippetsConsumer
     /** Terms already counted in the current Lucene document. */
     private final BitSet termSeenInDocument;
 
-    /** Total non-pivot occurrences counted across snippet contexts. */
+    /** Total indexed occurrences counted across snippet contexts. */
     private long tokenCount;
 
     /**
@@ -230,37 +233,41 @@ public final class TopCoocSnippets implements SnippetsConsumer
         requireCollecting();
 
         pivotCount += snippets.spanCount();
-        final int count = snippets.count();
-        if (count == 0) {
-            return;
+        for (int ord = 0; ord < snippets.count(); ord++) {
+            collectContext(docId, snippets.snipStartPosition(ord), snippets.snipEndPosition(ord));
         }
+    }
 
-        documentCount++;
-        termSeenInDocument.clear();
-
-        for (int snippetOrd = 0; snippetOrd < count; snippetOrd++) {
-            termSeenInContext.clear();
-
-            final int start = snippets.snipStartPosition(snippetOrd);
-            final int end = snippets.snipEndPosition(snippetOrd);
-
-            rail.scanWindow(docId, start - left, end + right, termId -> {
-                termFreq[termId]++;
-                tokenCount++;
-
-                if (!termSeenInContext.get(termId)) {
-                    termSeenInContext.set(termId);
-                    termContexts[termId]++;
-                }
-
-                if (!termSeenInDocument.get(termId)) {
-                    termSeenInDocument.set(termId);
-                    termDocs[termId]++;
-                }
-            });
-
-            contextCount++;
+    /**
+     * Accumulates one merged snippet. Documents must arrive in increasing order;
+     * several contexts of the same document may be interleaved with other accumulators.
+     *
+     * @param docId global Lucene document id
+     * @param start inclusive snippet start position
+     * @param end exclusive snippet end position
+     */
+    void collectContext(final int docId, final int start, final int end)
+    {
+        requireCollecting();
+        if (docId != lastDocId) {
+            documentCount++;
+            termSeenInDocument.clear();
+            lastDocId = docId;
         }
+        termSeenInContext.clear();
+        rail.scanWindow(docId, start - left, end + right, termId -> {
+            termFreq[termId]++;
+            tokenCount++;
+            if (!termSeenInContext.get(termId)) {
+                termSeenInContext.set(termId);
+                termContexts[termId]++;
+            }
+            if (!termSeenInDocument.get(termId)) {
+                termSeenInDocument.set(termId);
+                termDocs[termId]++;
+            }
+        });
+        contextCount++;
     }
 
     /**
@@ -277,8 +284,8 @@ public final class TopCoocSnippets implements SnippetsConsumer
      * Returns the number of raw query spans seen across all walked documents.
      *
      * <p>
-     * This count is independent of snippet merging and is suitable as the pivot
-     * marginal for collocation scorers.
+     * This count is independent of snippet merging. It is descriptive metadata,
+     * not a token marginal for keyness scoring.
      * </p>
      *
      * @return raw query-span count
@@ -301,6 +308,7 @@ public final class TopCoocSnippets implements SnippetsConsumer
         completed = false;
         contextCount = 0;
         documentCount = 0;
+        lastDocId = -1;
         pivotCount = 0L;
         tokenCount = 0L;
         termSeenInContext.clear();
@@ -345,7 +353,7 @@ public final class TopCoocSnippets implements SnippetsConsumer
     }
 
     /**
-     * Returns the total non-pivot occurrences counted across snippet contexts.
+     * Returns the total indexed occurrences counted across snippet contexts.
      *
      * @return token occurrence count
      */

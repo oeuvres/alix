@@ -4,8 +4,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Locale;
 
-import com.github.oeuvres.alix.lucene.terms.PoleTerms;
-import com.github.oeuvres.alix.lucene.terms.TermStats;
+import com.github.oeuvres.alix.lucene.snippets.FocusTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -20,41 +19,58 @@ import static com.github.oeuvres.alix.web.Pars.*;
 public class TermsUtil
 {
     /**
-     * Writes a pole comparison as plain text: rank, term, then for each pole
-     * its score and occurrence count, an asterisk marking affiliation.
-     *
-     * @param request servlet request carrying meta and parameters
+     * Writes the selected terms and per-population counts and scores as text.
+     * @param request servlet request carrying metadata
      * @param response servlet response
-     * @param poles fused pole terms
+     * @param terms partitioned cooccurrence terms
      * @throws IOException if writing fails
      */
-    static void txt(
-        final HttpServletRequest request,
-        final HttpServletResponse response,
-        final PoleTerms poles
-    ) throws IOException {
+    static void txt(final HttpServletRequest request, final HttpServletResponse response,
+            final FocusTerms terms) throws IOException
+    {
         final Writer writer = response.getWriter();
-        final MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
-        meta.toString(writer, (HttpPars)request.getAttribute(ALIX_PARS));
-        final int poleCount = poles.poleCount();
-        for (int pole = 0; pole < poleCount; pole++) {
-            writer.append(String.valueOf(pole + 1)).append(" = ").append(poles.label(pole)).append("\n");
+        final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
+        meta.toString(writer, (HttpPars) request.getAttribute(ALIX_PARS));
+        for (final FocusTerms.Population pop : terms.populations()) {
+            writer.append(label(terms, pop.mask())).append("\n");
         }
-        for (int rank = 0; rank < poles.size(); rank++) {
-            final int termId = poles.termId(rank);
-            writer.append(String.valueOf(rank + 1)).append(". ")
-            .append(poles.pole(0).lexicon().form(termId))
-            .append(" (");
-            for (int pole = 0; pole < poleCount; pole++) {
-                if (pole > 0) writer.append(" | ");
-                final double score = poles.score(rank, pole);
-                writer.append(Double.isFinite(score) ? String.format(Locale.FRANCE, "%.5g", score) : "–")
-                .append(" ; ")
-                .append(String.valueOf(poles.pole(pole).termFreq(termId)));
-                if (poles.affiliated(rank, pole)) writer.append("*");
+        for (int r = 0; r < terms.size(); r++) {
+            final int id = terms.termId(r);
+            writer.append(String.valueOf(r + 1)).append(". ").append(terms.lexicon().form(id)).append(" (");
+            for (int p = 0; p < terms.populations().size(); p++) {
+                if (p > 0) writer.append(" | ");
+                writer.append(String.valueOf(terms.populations().get(p).terms().termFreq(id)))
+                    .append(" ; ").append(String.format(Locale.ROOT, "%.5g", terms.score(p, id)));
             }
             writer.append("), ");
         }
+    }
+
+    /**
+     * Writes a table with one count and one score column per population.
+     * @param writer HTML writer
+     * @param terms partitioned cooccurrence terms
+     * @throws IOException if writing fails
+     */
+    static void html(final Writer writer, final FocusTerms terms) throws IOException
+    {
+        writer.append("<table class=\"terms\"><tr><th></th><th></th>");
+        for (final FocusTerms.Population pop : terms.populations()) {
+            writer.append("<th colspan=\"2\">").append(escape(label(terms, pop.mask()))).append("</th>");
+        }
+        writer.append("</tr>\n");
+        for (int r = 0; r < terms.size(); r++) {
+            final int id = terms.termId(r);
+            writer.append("<tr><th class=\"no\">").append(String.valueOf(r + 1))
+                .append("</th><td class=\"term\">").append(escape(terms.lexicon().form(id))).append("</td>");
+            for (int p = 0; p < terms.populations().size(); p++) {
+                writer.append("<td class=\"count\">").append(String.valueOf(terms.populations().get(p).terms().termFreq(id)))
+                    .append("</td><td class=\"score\">").append(String.format(Locale.ROOT, "%.5g", terms.score(p, id)))
+                    .append("</td>");
+            }
+            writer.append("</tr>\n");
+        }
+        writer.append("</table>\n");
     }
 
     static void txt(
@@ -79,91 +95,40 @@ public class TermsUtil
     }
 
     /**
-     * Writes the terms of one or several poles as JSON.
-     *
-     * <pre>
-     * { "meta": { … },
-     *   "data": {
-     *     "poles":  [ { "label", "docs", "contexts", "tokens", "pivotCount" } ],
-     *     "pivots": [ { "id", "form", "fieldFreq", "fieldDocs", "pole", "poles": [ PoleStats ] } ],
-     *     "terms":  [ { "rank", "id", "form", "fieldFreq", "fieldDocs", "poles": [ PoleStats ] } ] } }
-     *
-     * PoleStats = { "rank", "freq", "docs", "contexts", "score", "affiliated" }
-     * </pre>
-     *
-     * <p>
-     * The index of a pole in {@code poles} is its number; every
-     * {@code poles} array of a pivot or a term has one entry per pole, in the
-     * same order. A pivot entry for its own pole gives its counts in its own
-     * contexts, with no score and no rank. A pivot entry for another pole is
-     * the attraction between the two poles, with the rank the pivot would take
-     * in that pole list. {@code rank} and {@code score} are {@code null} when
-     * absent; {@code affiliated} means a score above independence.
-     * </p>
-     *
-     * @param request servlet request carrying meta and parameters
+     * Writes cooccurrence terms, query pivots and exact-membership populations.
+     * @param request servlet request carrying metadata
      * @param response servlet response
-     * @param poles pole terms
+     * @param terms partitioned cooccurrence terms
      * @throws IOException if writing fails
      */
-    static void json(
-        final HttpServletRequest request,
-        final HttpServletResponse response,
-        final PoleTerms poles
-    ) throws IOException {
+    static void json(final HttpServletRequest request, final HttpServletResponse response,
+            final FocusTerms terms) throws IOException
+    {
         final JsonWriter jw = new JsonWriter(response.getWriter());
         jw.setIndent("  ");
-        final MetaUtil meta = (MetaUtil)request.getAttribute(ALIX_META);
-        final int poleCount = poles.poleCount();
         jw.beginObject();
-
         jw.name("meta");
         jw.beginObject();
-        meta.toJson(jw, (HttpPars)request.getAttribute(ALIX_PARS));
-        jw.endObject(); // meta
-
+        ((MetaUtil) request.getAttribute(ALIX_META)).toJson(jw, (HttpPars) request.getAttribute(ALIX_PARS));
+        jw.endObject();
         jw.name("data");
         jw.beginObject();
-        jw.name("poles");
-        poles(jw, poles);
-
-        jw.name("pivots");
-        jw.beginArray();
-        for (int owner = 0; owner < poleCount; owner++) {
-            for (final TopTerms.ExcludedTerm pivot : poles.pole(owner).excludedTerms()) {
-                jw.beginObject();
-                pivotFields(jw, owner, pivot);
-                jw.name("poles");
-                jw.beginArray();
-                for (int pole = 0; pole < poleCount; pole++) {
-                    jw.beginObject();
-                    pivotPoleFields(jw, poles, owner, pivot, pole);
-                    jw.endObject();
-                }
-                jw.endArray();
-                jw.endObject();
-            }
-        }
-        jw.endArray(); // pivots
-
-        jw.name("terms");
-        jw.beginArray();
-        for (int rank = 0; rank < poles.size(); rank++) {
+        populations(jw, terms);
+        jw.name("pivots").beginArray();
+        for (final int id : terms.pivotIds()) {
             jw.beginObject();
-            termFields(jw, poles, rank);
-            jw.name("poles");
-            jw.beginArray();
-            for (int pole = 0; pole < poleCount; pole++) {
-                jw.beginObject();
-                termPoleFields(jw, poles, rank, pole);
-                jw.endObject();
-            }
-            jw.endArray();
+            pivotFields(jw, terms, id);
             jw.endObject();
         }
-        jw.endArray(); // terms
-        jw.endObject(); // data
-
+        jw.endArray();
+        jw.name("terms").beginArray();
+        for (int r = 0; r < terms.size(); r++) {
+            jw.beginObject();
+            termFields(jw, terms, r);
+            jw.endObject();
+        }
+        jw.endArray();
+        jw.endObject();
         jw.endObject();
     }
 
@@ -232,140 +197,129 @@ public class TermsUtil
     }
 
     /**
-     * Writes the fields of a pivot common to every output: {@code id},
-     * {@code form}, {@code fieldFreq}, {@code fieldDocs} and its owning
-     * {@code pole}. The caller opens and closes the object.
-     *
-     * @param jw JSON writer inside an object
-     * @param owner index of the pole of the pivot
-     * @param pivot pivot snapshot
-     * @throws IOException if writing fails
+     * Escapes text embedded in an HTML cell.
+     * @param value cell text
+     * @return escaped text
      */
-    static void pivotFields(final JsonWriter jw, final int owner, final TopTerms.ExcludedTerm pivot) throws IOException
+    private static String escape(final String value)
     {
-        jw.name("id").value(pivot.termId());
-        jw.name("form").value(pivot.form());
-        jw.name("fieldFreq").value(pivot.fieldFreq());
-        jw.name("fieldDocs").value(pivot.fieldDocs());
-        jw.name("pole").value(owner);
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     /**
-     * Writes the statistics of a pivot in one pole: {@code rank},
-     * {@code freq}, {@code docs}, {@code contexts}, {@code score},
-     * {@code affiliated}. In its own pole, the counts are those of its own
-     * contexts, without score or rank; in another pole, the score is the
-     * attraction and the rank the place it would take in that pole list.
-     * The caller opens and closes the object.
-     *
-     * @param jw JSON writer inside an object
-     * @param poles pole terms
-     * @param owner index of the pole of the pivot
-     * @param pivot pivot snapshot
-     * @param pole index of the pole described
-     * @throws IOException if writing fails
+     * Labels an exact-membership population, including the absent focuses.
+     * @param terms partitioned cooccurrence terms
+     * @param mask population membership mask
+     * @return human-readable label
      */
-    static void pivotPoleFields(
-        final JsonWriter jw,
-        final PoleTerms poles,
-        final int owner,
-        final TopTerms.ExcludedTerm pivot,
-        final int pole
-    ) throws IOException {
-        if (pole == owner) {
-            jw.name("rank").nullValue();
-            jw.name("freq").value(pivot.freq());
-            jw.name("docs").value(pivot.docs());
-            jw.name("contexts").value(pivot.contexts());
-            jw.name("score").nullValue();
-            jw.name("affiliated").value(false);
-            return;
+    private static String label(final FocusTerms terms, final int mask)
+    {
+        if (terms.focuses().isEmpty()) return "All contexts";
+        final StringBuilder label = new StringBuilder();
+        for (int i = 0; i < terms.focuses().size(); i++) {
+            if (i > 0) label.append(" ∧ ");
+            if ((mask & (1 << i)) == 0) label.append("¬");
+            label.append(terms.focuses().get(i));
         }
-        final TopTerms terms = poles.pole(pole);
-        final int termId = pivot.termId();
-        final double score = poles.pivotScore(pole, termId);
-        rank(jw, poles.pivotRank(pole, termId));
-        jw.name("freq").value(terms.termFreq(termId));
-        jw.name("docs").value(terms.docs(termId));
-        jw.name("contexts").value(terms.contexts(termId));
-        jw.name("score");
-        number(jw, score);
-        jw.name("affiliated").value(score > poles.neutral());
+        return label.toString();
     }
 
     /**
-     * Writes the array of the poles: {@code label}, {@code docs},
-     * {@code contexts}, {@code tokens} (pivots excluded) and
-     * {@code pivotCount} of each pole population.
-     *
-     * @param jw JSON writer positioned after a name
-     * @param poles pole terms
+     * Writes common population definitions and totals in mask order.
+     * @param jw JSON writer inside data object
+     * @param terms partitioned cooccurrence terms
      * @throws IOException if writing fails
      */
-    static void poles(final JsonWriter jw, final PoleTerms poles) throws IOException
+    static void populations(final JsonWriter jw, final FocusTerms terms) throws IOException
     {
-        jw.beginArray();
-        for (int pole = 0; pole < poles.poleCount(); pole++) {
-            final TopTerms terms = poles.pole(pole);
+        jw.name("focuses").beginArray();
+        for (final String label : terms.focuses()) jw.value(label);
+        jw.endArray();
+        jw.name("populations").beginArray();
+        for (final FocusTerms.Population pop : terms.populations()) {
             jw.beginObject();
-            jw.name("label").value(poles.label(pole));
-            jw.name("docs").value(terms.docs());
-            jw.name("contexts").value(terms.contexts());
-            jw.name("tokens").value(terms.tokens());
-            jw.name("pivotCount").value(terms.pivotCount());
+            jw.name("mask").value(pop.mask());
+            jw.name("label").value(label(terms, pop.mask()));
+            jw.name("docs").value(pop.terms().docs());
+            jw.name("contexts").value(pop.terms().contexts());
+            jw.name("tokens").value(pop.terms().tokens());
             jw.endObject();
         }
         jw.endArray();
     }
 
     /**
-     * Writes the fields of a fused term common to every output:
-     * {@code rank} (1-based), {@code id}, {@code form}, {@code fieldFreq},
-     * {@code fieldDocs}. The caller opens and closes the object.
-     *
-     * @param jw JSON writer inside an object
-     * @param poles pole terms
-     * @param rank zero-based fused rank
+     * Writes a query pivot and its counts in each population.
+     * @param jw JSON writer inside a pivot object
+     * @param terms partitioned cooccurrence terms
+     * @param id dense term id
      * @throws IOException if writing fails
      */
-    static void termFields(final JsonWriter jw, final PoleTerms poles, final int rank) throws IOException
+    static void pivotFields(final JsonWriter jw, final FocusTerms terms, final int id) throws IOException
     {
-        final int termId = poles.termId(rank);
-        final TermStats termStats = poles.pole(0).termStats();
-        jw.name("rank").value(rank + 1);
-        jw.name("id").value(termId);
-        jw.name("form").value(poles.pole(0).lexicon().form(termId));
-        jw.name("fieldFreq").value(termStats.termFreq(termId));
-        jw.name("fieldDocs").value(termStats.termDocs(termId));
+        identity(jw, terms, id);
+        jw.name("mask").value(terms.pivotMask(id));
+        termPopulations(jw, terms, id, false);
     }
 
     /**
-     * Writes the statistics of a fused term in one pole: {@code rank} in the
-     * pole list, {@code freq}, {@code docs}, {@code contexts},
-     * {@code score}, {@code affiliated}. The caller opens and closes the
-     * object.
-     *
-     * @param jw JSON writer inside an object
-     * @param poles pole terms
-     * @param rank zero-based fused rank
-     * @param pole pole index
+     * Writes one selected term and its counts, scores and ranks by population.
+     * @param jw JSON writer inside a term object
+     * @param terms partitioned cooccurrence terms
+     * @param rank zero-based final rank
      * @throws IOException if writing fails
      */
-    static void termPoleFields(
-        final JsonWriter jw,
-        final PoleTerms poles,
-        final int rank,
-        final int pole
-    ) throws IOException {
-        final TopTerms terms = poles.pole(pole);
-        final int termId = poles.termId(rank);
-        rank(jw, poles.poleRank(rank, pole));
-        jw.name("freq").value(terms.termFreq(termId));
-        jw.name("docs").value(terms.docs(termId));
-        jw.name("contexts").value(terms.contexts(termId));
-        jw.name("score");
-        number(jw, poles.score(rank, pole));
-        jw.name("affiliated").value(poles.affiliated(rank, pole));
+    static void termFields(final JsonWriter jw, final FocusTerms terms, final int rank) throws IOException
+    {
+        final int id = terms.termId(rank);
+        jw.name("rank").value(rank + 1);
+        identity(jw, terms, id);
+        if (terms.populations().size() > 1) jw.name("rrf").value(terms.rrf(id));
+        termPopulations(jw, terms, id, true);
+    }
+
+    /**
+     * Writes lexicon identity and whole-field counts.
+     * @param jw JSON writer inside an object
+     * @param terms partitioned cooccurrence terms
+     * @param id dense term id
+     * @throws IOException if writing fails
+     */
+    private static void identity(final JsonWriter jw, final FocusTerms terms, final int id) throws IOException
+    {
+        jw.name("id").value(id);
+        jw.name("form").value(terms.lexicon().form(id));
+        jw.name("fieldFreq").value(terms.stats().termFreq(id));
+        jw.name("fieldDocs").value(terms.stats().termDocs(id));
+    }
+
+    /**
+     * Writes counts in the same order as the population definitions.
+     * @param jw JSON writer inside a pivot or term object
+     * @param terms partitioned cooccurrence terms
+     * @param id dense term id
+     * @param ranked whether to include ranking statistics
+     * @throws IOException if writing fails
+     */
+    private static void termPopulations(final JsonWriter jw, final FocusTerms terms, final int id,
+            final boolean ranked) throws IOException
+    {
+        jw.name("populations").beginArray();
+        int p = 0;
+        for (final FocusTerms.Population pop : terms.populations()) {
+            jw.beginObject();
+            jw.name("freq").value(pop.terms().termFreq(id));
+            jw.name("docs").value(pop.terms().docs(id));
+            jw.name("contexts").value(pop.terms().contexts(id));
+            if (ranked) {
+                rank(jw, terms.rank(p, id));
+                jw.name("score");
+                number(jw, terms.score(p, id));
+            }
+            jw.endObject();
+            p++;
+        }
+        jw.endArray();
     }
 
     /**
