@@ -11,10 +11,10 @@ import org.apache.lucene.queries.spans.SpanQuery;
 
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
-import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
-import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
+import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
+import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 
 /**
  * Collects and ranks disjoint populations of merged query snippets. A population
@@ -24,7 +24,7 @@ import com.github.oeuvres.alix.lucene.terms.TopTerms;
  * terms without comparing keyness values between populations.
  * This collector is request-local and single-use.
  */
-public final class FocusTerms implements SpanWalker.SnippetsConsumer
+public final class FocusPivots implements SpanWalker.SnippetsConsumer
 {
     /** Maximum number of focuses for partitioned collection. */
     public static final int MAX_FOCUSES = 4;
@@ -54,6 +54,12 @@ public final class FocusTerms implements SpanWalker.SnippetsConsumer
     private final List<Map<Integer, Integer>> ranks = new ArrayList<>();
     private final Map<Integer, Double> fusion = new HashMap<>();
     private int[] selected = new int[0];
+    /** Distinct documents containing at least one selected context. */
+    private int documentCount;
+    /** Terms seen across all populations of the current document. */
+    private final BitSet documentTerms;
+    /** Union document frequencies, allocated only for partitioned collection. */
+    private final int[] unionTermDocs;
     private long spanCount;
     private int snippetMask;
     private boolean completed;
@@ -71,7 +77,7 @@ public final class FocusTerms implements SpanWalker.SnippetsConsumer
      * @param focuses labels of the partitioning focuses; empty for a single population
      * @param focusIds parallel arrays of rewritten term ids for each focus
      */
-    public FocusTerms(final SpanQuery query, final TermStats stats, final TermLexicon lexicon,
+    public FocusPivots(final SpanQuery query, final TermStats stats, final TermLexicon lexicon,
             final TermRail rail, final TopTerms corpus, final int left, final int right,
             final List<String> focuses, final int[][] focusIds)
     {
@@ -92,6 +98,8 @@ public final class FocusTerms implements SpanWalker.SnippetsConsumer
                 for (final int id : focusIds[i]) term2mask[id] |= 1 << i;
             }
         }
+        documentTerms = partition ? new BitSet(stats.vocabSize()) : null;
+        unionTermDocs = partition ? new int[stats.vocabSize()] : null;
         collectors = new TopCoocSnippets[1 << this.focuses.size()];
         termsByMask = new TopTerms[collectors.length];
     }
@@ -151,6 +159,29 @@ public final class FocusTerms implements SpanWalker.SnippetsConsumer
     }
 
     /**
+     * Returns the total number of selected contexts across populations.
+     * @return context count
+     */
+    public int contexts()
+    {
+        int count = 0;
+        for (final Population pop : populations) count += pop.terms().contexts();
+        return count;
+    }
+
+    /**
+     * Returns the number of selected contexts containing a term.
+     * @param termId dense term id
+     * @return context count across populations
+     */
+    public int contexts(final int termId)
+    {
+        int count = 0;
+        for (final Population pop : populations) count += pop.terms().contexts(termId);
+        return count;
+    }
+
+    /**
      * Classifies and collects each ordinary merged snippet once.
      * @param docId global Lucene document id
      * @param snippets merged snippets of this document
@@ -161,6 +192,7 @@ public final class FocusTerms implements SpanWalker.SnippetsConsumer
     {
         if (completed) throw new IllegalStateException("already completed");
         spanCount += snippets.spanCount();
+        if (snippets.count() > 0) documentCount++;
         if (term2mask == null) {
             collector(0).docSnippets(docId, snippets);
             return;
@@ -173,12 +205,48 @@ public final class FocusTerms implements SpanWalker.SnippetsConsumer
             if (snippetMask == 0) throw new IllegalStateException("union snippet has no focus");
             collector(snippetMask).collectContext(docId, start, end);
         }
+        documentTerms.clear();
+        for (final TopCoocSnippets collector : collectors) {
+            if (collector != null) collector.orDocumentTerms(docId, documentTerms);
+        }
+        for (int id = documentTerms.nextSetBit(0); id >= 0; id = documentTerms.nextSetBit(id + 1)) {
+            unionTermDocs[id]++;
+        }
+    }
+
+    /**
+     * Returns the number of distinct documents with selected contexts.
+     * @return document count across populations
+     */
+    public int docs() { return documentCount; }
+
+    /**
+     * Returns the number of distinct documents containing a term in selected contexts.
+     * @param termId dense term id
+     * @return document count, deduplicated across populations
+     */
+    public int docs(final int termId)
+    {
+        if (unionTermDocs != null) return unionTermDocs[termId];
+        return populations.isEmpty() ? 0 : populations.get(0).terms().docs(termId);
     }
 
     /** Returns the labels of the query focuses.
      * @return labels in bit order, empty for an unpartitioned query
      */
     public List<String> focuses() { return focuses; }
+
+    /**
+     * Returns the occurrence count of a term in all selected context windows.
+     * @param termId dense term id
+     * @return occurrence count, with the existing per-context counting convention
+     */
+    public long freq(final int termId)
+    {
+        long count = 0L;
+        for (final Population pop : populations) count += pop.terms().termFreq(termId);
+        return count;
+    }
 
     /** Returns the lexicon used for this collection.
      * @return field lexicon
@@ -258,6 +326,17 @@ public final class FocusTerms implements SpanWalker.SnippetsConsumer
      * @return dense term id
      */
     public int termId(final int rank) { return selected[rank]; }
+
+    /**
+     * Returns the total number of tokens counted in all selected context windows.
+     * @return token count across populations
+     */
+    public long tokens()
+    {
+        long count = 0L;
+        for (final Population pop : populations) count += pop.terms().tokens();
+        return count;
+    }
 
     /**
      * Allocates a population only when first needed.

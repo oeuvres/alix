@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Locale;
 
-import com.github.oeuvres.alix.lucene.snippets.FocusTerms;
+import com.github.oeuvres.alix.lucene.snippets.FocusPivots;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -26,12 +26,12 @@ public class TermsUtil
      * @throws IOException if writing fails
      */
     static void txt(final HttpServletRequest request, final HttpServletResponse response,
-            final FocusTerms terms) throws IOException
+            final FocusPivots terms) throws IOException
     {
         final Writer writer = response.getWriter();
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         meta.toString(writer, (HttpPars) request.getAttribute(ALIX_PARS));
-        for (final FocusTerms.Population pop : terms.populations()) {
+        for (final FocusPivots.Population pop : terms.populations()) {
             writer.append(label(terms, pop.mask())).append("\n");
         }
         for (int r = 0; r < terms.size(); r++) {
@@ -52,10 +52,10 @@ public class TermsUtil
      * @param terms partitioned cooccurrence terms
      * @throws IOException if writing fails
      */
-    static void html(final Writer writer, final FocusTerms terms) throws IOException
+    static void html(final Writer writer, final FocusPivots terms) throws IOException
     {
         writer.append("<table class=\"terms\"><tr><th></th><th></th>");
-        for (final FocusTerms.Population pop : terms.populations()) {
+        for (final FocusPivots.Population pop : terms.populations()) {
             writer.append("<th colspan=\"2\">").append(escape(label(terms, pop.mask()))).append("</th>");
         }
         writer.append("</tr>\n");
@@ -102,7 +102,7 @@ public class TermsUtil
      * @throws IOException if writing fails
      */
     static void json(final HttpServletRequest request, final HttpServletResponse response,
-            final FocusTerms terms) throws IOException
+            final FocusPivots terms) throws IOException
     {
         final JsonWriter jw = new JsonWriter(response.getWriter());
         jw.setIndent("  ");
@@ -212,7 +212,7 @@ public class TermsUtil
      * @param mask population membership mask
      * @return human-readable label
      */
-    private static String label(final FocusTerms terms, final int mask)
+    private static String label(final FocusPivots terms, final int mask)
     {
         if (terms.focuses().isEmpty()) return "All contexts";
         final StringBuilder label = new StringBuilder();
@@ -225,18 +225,22 @@ public class TermsUtil
     }
 
     /**
-     * Writes common population definitions and totals in mask order.
+     * Writes union totals and, only for a comparison, population definitions in mask order.
      * @param jw JSON writer inside data object
      * @param terms partitioned cooccurrence terms
      * @throws IOException if writing fails
      */
-    static void populations(final JsonWriter jw, final FocusTerms terms) throws IOException
+    static void populations(final JsonWriter jw, final FocusPivots terms) throws IOException
     {
+        jw.name("docs").value(terms.docs());
+        jw.name("contexts").value(terms.contexts());
+        jw.name("tokens").value(terms.tokens());
+        if (terms.populations().size() <= 1) return;
         jw.name("focuses").beginArray();
         for (final String label : terms.focuses()) jw.value(label);
         jw.endArray();
         jw.name("populations").beginArray();
-        for (final FocusTerms.Population pop : terms.populations()) {
+        for (final FocusPivots.Population pop : terms.populations()) {
             jw.beginObject();
             jw.name("mask").value(pop.mask());
             jw.name("label").value(label(terms, pop.mask()));
@@ -255,11 +259,13 @@ public class TermsUtil
      * @param id dense term id
      * @throws IOException if writing fails
      */
-    static void pivotFields(final JsonWriter jw, final FocusTerms terms, final int id) throws IOException
+    static void pivotFields(final JsonWriter jw, final FocusPivots terms, final int id) throws IOException
     {
         identity(jw, terms, id);
-        jw.name("mask").value(terms.pivotMask(id));
-        termPopulations(jw, terms, id, false);
+        if (terms.populations().size() > 1) {
+            jw.name("mask").value(terms.pivotMask(id));
+            termPopulations(jw, terms, id, false);
+        }
     }
 
     /**
@@ -269,26 +275,35 @@ public class TermsUtil
      * @param rank zero-based final rank
      * @throws IOException if writing fails
      */
-    static void termFields(final JsonWriter jw, final FocusTerms terms, final int rank) throws IOException
+    static void termFields(final JsonWriter jw, final FocusPivots terms, final int rank) throws IOException
     {
         final int id = terms.termId(rank);
         jw.name("rank").value(rank + 1);
         identity(jw, terms, id);
-        if (terms.populations().size() > 1) jw.name("rrf").value(terms.rrf(id));
-        termPopulations(jw, terms, id, true);
+        if (terms.populations().size() > 1) {
+            jw.name("rrf").value(terms.rrf(id));
+            termPopulations(jw, terms, id, true);
+        }
+        else {
+            jw.name("score");
+            number(jw, terms.populations().isEmpty() ? Double.NaN : terms.score(0, id));
+        }
     }
 
     /**
-     * Writes lexicon identity and whole-field counts.
+     * Writes lexicon identity, selected-context counts and whole-field counts.
      * @param jw JSON writer inside an object
      * @param terms partitioned cooccurrence terms
      * @param id dense term id
      * @throws IOException if writing fails
      */
-    private static void identity(final JsonWriter jw, final FocusTerms terms, final int id) throws IOException
+    private static void identity(final JsonWriter jw, final FocusPivots terms, final int id) throws IOException
     {
         jw.name("id").value(id);
         jw.name("form").value(terms.lexicon().form(id));
+        jw.name("freq").value(terms.freq(id));
+        jw.name("docs").value(terms.docs(id));
+        jw.name("contexts").value(terms.contexts(id));
         jw.name("fieldFreq").value(terms.stats().termFreq(id));
         jw.name("fieldDocs").value(terms.stats().termDocs(id));
     }
@@ -301,12 +316,12 @@ public class TermsUtil
      * @param ranked whether to include ranking statistics
      * @throws IOException if writing fails
      */
-    private static void termPopulations(final JsonWriter jw, final FocusTerms terms, final int id,
+    private static void termPopulations(final JsonWriter jw, final FocusPivots terms, final int id,
             final boolean ranked) throws IOException
     {
         jw.name("populations").beginArray();
         int p = 0;
-        for (final FocusTerms.Population pop : terms.populations()) {
+        for (final FocusPivots.Population pop : terms.populations()) {
             jw.beginObject();
             jw.name("freq").value(pop.terms().termFreq(id));
             jw.name("docs").value(pop.terms().docs(id));

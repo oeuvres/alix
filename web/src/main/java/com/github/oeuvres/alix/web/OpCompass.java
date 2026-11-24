@@ -12,9 +12,9 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
+import com.github.oeuvres.alix.lucene.snippets.FocusPivots;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
-import com.github.oeuvres.alix.lucene.snippets.FocusTerms;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
 import com.github.oeuvres.alix.util.IntMatrixById;
@@ -172,7 +172,7 @@ public class OpCompass extends Op
     ) throws IOException, ServletException {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final FocusTerms terms = OpTerms.focusTerms(lucene, pars, meta);
+        final FocusPivots terms = OpTerms.focusTerms(lucene, pars, meta);
         if (terms == null) {
             badRequest(request, response, meta, "[no term selection]");
             return;

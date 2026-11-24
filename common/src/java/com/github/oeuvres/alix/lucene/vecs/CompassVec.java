@@ -39,10 +39,12 @@ import java.util.Objects;
  * references. The pivot mean, or the reference centroid in keyword mode, stays
  * at {@code (0, 0)}.</p>
  *
- * <p>{@link Layout#MDS_CENTRED} runs the same MDS on centred cosine
- * distances: the reference centroid is subtracted from every vector, which is
- * then renormalized, so the component shared by all references no longer
- * dominates the distances. This is a layout device only.</p>
+ * <p>{@link Layout#MDS_CENTRED} runs the same MDS on Euclidean distances
+ * between centred, renormalized vectors. {@link Layout#MDS_COSINE} uses
+ * half the squared Euclidean distance between the original unit vectors,
+ * equivalent to cosine dissimilarity. This increases the contrast between
+ * near and far pairs. Both variants are layout devices only; model links
+ * and neighbour rankings remain unchanged.</p>
  *
  * <p>{@link #links(int[], int, LinkMode)} selects, among displayed terms, the
  * pairs worth drawing as lines. Links are always computed on plain model
@@ -74,6 +76,9 @@ public final class CompassVec
     /** Whether MDS distances are computed on centred, renormalized vectors. */
     private final boolean centred;
 
+    /** Whether MDS uses cosine dissimilarity rather than Euclidean distance. */
+    private final boolean cosineMds;
+
     /** Mean of the reference vectors, origin of the centred PCA scores. */
     private final double[] centroid;
 
@@ -103,7 +108,7 @@ public final class CompassVec
 
     /**
      * Share of centred reference-vector variance represented by the PCA plane,
-     * or one minus Kruskal's stress-1 of the MDS layout.
+     * or one minus normalized stress against the selected MDS dissimilarity.
      */
     private final double quality;
 
@@ -123,8 +128,10 @@ public final class CompassVec
         PCA,
         /** Metric MDS on model distances, started from and aligned to PCA. */
         MDS,
-        /** Metric MDS on centred cosine distances, started from and aligned to PCA. */
-        MDS_CENTRED
+        /** Metric MDS on centred, renormalized Euclidean distances. */
+        MDS_CENTRED,
+        /** Metric MDS on cosine dissimilarities (1 - cosine). */
+        MDS_COSINE
     }
 
     /** Selection rule for the links drawn between displayed terms. */
@@ -341,6 +348,7 @@ public final class CompassVec
         focus = pivotIds == null ? referenceMean : pivotMean(model, pivotIds);
         centroid = referenceMean;
         centred = layout == Layout.MDS_CENTRED;
+        cosineMds = layout == Layout.MDS_COSINE;
 
         final double[][] points = new double[size][2];
         final double[][] scores = new double[size][2];
@@ -367,7 +375,7 @@ public final class CompassVec
             final double[][] dissimilarity = new double[size][size];
             for (int i = 0; i < size; i++) {
                 for (int j = i + 1; j < size; j++) {
-                    final double value = distance(targets[i], targets[j]);
+                    final double value = layoutDistance(targets[i], targets[j]);
                     dissimilarity[i][j] = value;
                     dissimilarity[j][i] = value;
                 }
@@ -673,7 +681,7 @@ public final class CompassVec
                 if (row == index) {
                     continue;
                 }
-                final double modelDistance = distance(target, layoutVectors[row]);
+                final double modelDistance = layoutDistance(target, layoutVectors[row]);
                 final double shown = distance(raw, layout[row]);
                 misfit += (shown - modelDistance) * (shown - modelDistance);
                 scale += modelDistance * modelDistance;
@@ -728,7 +736,8 @@ public final class CompassVec
 
     /**
      * Returns the share of centred reference-vector variance represented by
-     * the compass plane, or for an MDS layout one minus Kruskal's stress-1.
+     * the compass plane, or one minus normalized stress against the selected
+     * MDS dissimilarity. Values for different objectives are not directly comparable.
      *
      * @return value in {@code [0, 1]}
      */
@@ -1149,6 +1158,24 @@ public final class CompassVec
     }
 
     /**
+     * Returns the dissimilarity used by the selected MDS objective.
+     *
+     * <p>In cosine mode, the input vectors are unit vectors and half their
+     * squared Euclidean distance equals one minus their cosine similarity.
+     * The transformed dissimilarity is used consistently when fitting the
+     * reference layout, placing new terms, and computing stress.</p>
+     *
+     * @param first first layout vector
+     * @param second second layout vector
+     * @return target dissimilarity for MDS
+     */
+    private double layoutDistance(final double[] first, final double[] second)
+    {
+        final double value = distance(first, second);
+        return cosineMds ? 0.5d * value * value : value;
+    }
+
+    /**
      * Returns the vector on which MDS distances are measured: the vector
      * itself, or for a centred layout the vector minus the reference
      * centroid, renormalized.
@@ -1332,7 +1359,7 @@ public final class CompassVec
         final double[] moved = layoutVector(vector);
         final double[] target = new double[size];
         for (int row = 0; row < size; row++) {
-            target[row] = distance(moved, layoutVectors[row]);
+            target[row] = layoutDistance(moved, layoutVectors[row]);
         }
         double[] current = new double[2];
         for (int axis = 0; axis < vector.length; axis++) {

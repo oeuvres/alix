@@ -16,6 +16,7 @@ import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
+import com.github.oeuvres.alix.lucene.snippets.FocusPivots;
 import com.github.oeuvres.alix.lucene.snippets.SpanQueryParser;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.snippets.TopCoocSnippets;
@@ -23,7 +24,6 @@ import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
 import com.github.oeuvres.alix.lucene.terms.PartScorer;
 import com.github.oeuvres.alix.lucene.terms.Partition;
 import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
-import com.github.oeuvres.alix.lucene.snippets.FocusTerms;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
 import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
@@ -79,7 +79,7 @@ public final class OpTerms extends Op
      * @return cooccurrence terms, or null without a usable query
      * @throws IOException if index or rail access fails
      */
-    protected static FocusTerms focusTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
+    protected static FocusPivots focusTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final String q = pars.getString(Q, null);
         if (q == null || q.isBlank()) return null;
@@ -117,7 +117,7 @@ public final class OpTerms extends Op
         final List<SpanQueryParser.Focus> focuses = parsed.focuses();
         final List<String> labels = new ArrayList<>();
         int[][] focusIds = new int[0][];
-        if (focuses != null && focuses.size() <= FocusTerms.MAX_FOCUSES) {
+        if (focuses != null && focuses.size() <= FocusPivots.MAX_FOCUSES) {
             focusIds = new int[focuses.size()][];
             for (int i = 0; i < focuses.size(); i++) {
                 final SpanQueryParser.Focus focus = focuses.get(i);
@@ -125,7 +125,7 @@ public final class OpTerms extends Op
                 focusIds[i] = contentLexicon.termIds(index.searcher().rewrite(focus.spanQuery()));
             }
         }
-        final FocusTerms result = new FocusTerms(rewritten, contentFluc.termStats(),
+        final FocusPivots result = new FocusPivots(rewritten, contentFluc.termStats(),
             contentLexicon, contentFluc.termRail(), corpus, left, right, labels, focusIds);
         final SpanWalker walker = new SpanWalker(index.searcher(), rewritten,
             new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery);
@@ -260,7 +260,7 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final FocusTerms focusTerms = focusTerms(index, pars, meta);
+        final FocusPivots focusTerms = focusTerms(index, pars, meta);
         if (focusTerms != null) {
             TermsUtil.html(response.getWriter(), focusTerms);
             return;
@@ -295,7 +295,7 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final FocusTerms focusTerms = focusTerms(index, pars, meta);
+        final FocusPivots focusTerms = focusTerms(index, pars, meta);
         if (focusTerms != null) {
             TermsUtil.json(request, response, focusTerms);
             return;
@@ -313,7 +313,7 @@ public final class OpTerms extends Op
     {
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
-        final FocusTerms focusTerms = focusTerms(index, pars, meta);
+        final FocusPivots focusTerms = focusTerms(index, pars, meta);
         if (focusTerms != null) {
             TermsUtil.txt(request, response, focusTerms);
             return;

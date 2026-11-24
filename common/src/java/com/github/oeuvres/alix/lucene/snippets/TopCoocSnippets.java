@@ -281,6 +281,17 @@ public final class TopCoocSnippets implements SnippetsConsumer
     }
 
     /**
+     * Adds the terms seen in a document to a shared document-level set.
+     * Collectors that did not process this document contribute nothing.
+     * @param docId global Lucene document id
+     * @param target set receiving the union of terms
+     */
+    void orDocumentTerms(final int docId, final BitSet target)
+    {
+        if (lastDocId == docId) target.or(termSeenInDocument);
+    }
+
+    /**
      * Returns the number of raw query spans seen across all walked documents.
      *
      * <p>
