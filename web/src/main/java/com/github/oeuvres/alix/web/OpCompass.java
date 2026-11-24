@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
@@ -227,6 +228,8 @@ public class OpCompass extends Op
         final CompassVec.Layout layout = switch (layoutName) {
             case "pca" -> CompassVec.Layout.PCA;
             case "mds" -> CompassVec.Layout.MDS;
+            case "mds_cosine" -> CompassVec.Layout.MDS_COSINE;
+            case "umap" -> CompassVec.Layout.UMAP;
             case "centred" -> CompassVec.Layout.MDS_CENTRED;
             default -> null;
         };
@@ -235,18 +238,48 @@ public class OpCompass extends Op
             return;
         }
 
-        final CompassVec compass;
-        if (keywords) {
-            if (keywordIds.size() < 3) {
-                badRequest(request, response, meta,
-                    "[keyword PCA requires at least three words in the vector model]");
+        final boolean pca = layout == CompassVec.Layout.PCA;
+        int axisX = 1;
+        int axisY = 2;
+        if (pca) {
+            final String axes = pars.getString("axes", "1,2");
+            final String[] components = axes.split(",", -1);
+            try {
+                if (components.length != 2) throw new IllegalArgumentException();
+                axisX = Integer.parseInt(components[0].trim());
+                axisY = Integer.parseInt(components[1].trim());
+                if (axisX < 1 || axisY < 1 || axisX == axisY) throw new IllegalArgumentException();
+            }
+            catch (IllegalArgumentException e) {
+                badRequest(request, response, meta, "[axes requires two distinct positive component ranks: " + axes + "]");
                 return;
             }
-            compass = new CompassVec(
-                model, keywordIds.stream().mapToInt(Integer::intValue).toArray(), layout);
         }
-        else {
-            compass = new CompassVec(model, allPivotVecIds, NEIGHBORS, layout);
+
+        final CompassVec compass;
+        try {
+            if (layout == CompassVec.Layout.UMAP || (pca && keywords)) {
+                if (!keywords) {
+                    badRequest(request, response, meta, "[UMAP requires plane=keywords]");
+                    return;
+                }
+                final int[] ids = IntStream.concat(keywordIds.stream().mapToInt(Integer::intValue),
+                    IntStream.of(allPivotVecIds)).distinct().toArray();
+                compass = pca ? new CompassVec(model, ids, axisX, axisY)
+                    : new CompassVec(model, ids, layout);
+            }
+            else if (keywords) {
+                compass = new CompassVec(
+                    model, keywordIds.stream().mapToInt(Integer::intValue).toArray(), layout);
+            }
+            else {
+                compass = pca ? new CompassVec(model, allPivotVecIds, NEIGHBORS, axisX, axisY)
+                    : new CompassVec(model, allPivotVecIds, NEIGHBORS, layout);
+            }
+        }
+        catch (IllegalArgumentException e) {
+            badRequest(request, response, meta, "[" + e.getMessage() + "]");
+            return;
         }
 
         // Points: pivots first, then terms; null outside the model.
@@ -296,10 +329,20 @@ public class OpCompass extends Op
             json.beginObject();
             json.name("axes");
             json.beginObject();
-            json.name("unit").value(layout == CompassVec.Layout.PCA ? "vector-projection" : "model-distance");
+            json.name("unit").value(switch (layout) {
+                case PCA -> "vector-projection";
+                case UMAP -> "layout-coordinate";
+                default -> "model-distance";
+            });
+            if (layout == CompassVec.Layout.UMAP) {
+                json.name("qualityMetric").value("neighbor-recall@5");
+            }
             json.name("plane").value(keywords ? "keywords" : "local");
             json.name("layout").value(layoutName);
             json.name("reference").value(compass.referenceCount());
+            if (pca) {
+                json.name("components").beginArray().value(axisX).value(axisY).endArray();
+            }
             json.endObject();
 
             TermsUtil.populations(json, terms);
