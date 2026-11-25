@@ -56,7 +56,7 @@ import com.github.oeuvres.alix.util.Char;
 /**
  * Tokenizer for Latin-script languages and markup-oriented lexical events. Keeps XML-like tags
  * as tokens (flags XML), clause punctuation as tokens (flags PUNCTclause), sentence punctuation
- * runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT), and runs of two or more
+ * runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT or NUMord), and runs of two or more
  * logical line endings as one token containing one {@value #LINE_BREAK_MARK} per line ending
  * (flags PUNCTstruct).
  *
@@ -146,8 +146,8 @@ public class MarkupTokenizer extends Tokenizer
     /** Number of valid chars in {@link #buffer}. */
     private int bufferLength;
 
-    /** A short raw-character preview for recognizing grouped numbers across IO refills. */
-    private final char[] numberPreview = new char[5];
+    /** A short raw-character preview for grouped numbers and ordinal suffixes across IO refills. */
+    private final char[] numberPreview = new char[6];
 
     /** Number of previewed characters not yet consumed by {@link #skip()}. */
     private int numberPreviewLength;
@@ -657,7 +657,7 @@ public class MarkupTokenizer extends Tokenizer
      * Preview a raw character without advancing the logical source offset. Previewed characters
      * remain available to {@link #peek()} and {@link #skip()}, even across IO buffer refills.
      *
-     * @param distance zero-based distance from the current cursor (maximum four)
+     * @param distance zero-based distance from the current cursor (maximum five)
      * @return the character, or {@code -1} at end of input
      * @throws IOException if the input cannot be read
      */
@@ -787,6 +787,14 @@ public class MarkupTokenizer extends Tokenizer
             skip();
         }
 
+        // Keep attached French ordinal suffixes in the same token (12e, 1er, etc.).
+        // Do not consume a suffix after a signed or fractional number.
+        if (readOrdinalSuffix()) {
+            posAtt.setPos(NUMord.code);
+            offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+            return true;
+        }
+
         // Historical quirk kept for output stability: before a tag ('<'), as at end of
         // input, a dangling separator stays inside the number ("p. 12.</p>" gives "12.").
         final int length = termAtt.length();
@@ -801,6 +809,49 @@ public class MarkupTokenizer extends Tokenizer
         }
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
         return true;
+    }
+
+    /**
+     * Reads an attached French ordinal suffix after an unsigned integer.
+     * A complete suffix is required, so scientific notation such as 3e10 and
+     * unit strings such as 12euros are not classified as ordinals.
+     *
+     * @return true if an ordinal suffix was consumed
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readOrdinalSuffix() throws IOException
+    {
+        final int first = peek();
+        if (first != 'e' && first != 'è' && first != 'i' && first != 'r'
+                && first != 'ᵉ' && first != 'ʳ') return false;
+        for (int i = 0; i < termAtt.length(); i++) {
+            if (!Char.isDigit(termAtt.charAt(i))) return false;
+        }
+        final StringBuilder suffix = new StringBuilder(5);
+        for (int i = 0; i <= 5; i++) {
+            final int c = peekAhead(i);
+            if (c < 0 || !Character.isLetterOrDigit(c)) break;
+            if (i == 5) return false;
+            suffix.append((char) c);
+        }
+        // A signed exponent is not an ordinal suffix.
+        if (suffix.length() == 1 && suffix.charAt(0) == 'e') {
+            final int next = peekAhead(1);
+            if ((next == '+' || next == '-') && Character.isDigit(peekAhead(2))) {
+                return false;
+            }
+        }
+        switch (suffix.toString()) {
+            case "e", "es", "er", "ers", "re", "res", "ème", "èmes",
+                 "eme", "emes", "ième", "ièmes", "ᵉ", "ᵉʳ", "ʳᵉ":
+                for (int i = 0; i < suffix.length(); i++) {
+                    termAtt.append(suffix.charAt(i));
+                    skip();
+                }
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**

@@ -195,8 +195,21 @@ public final class FrenchLexicons
             LexiconHelper.CsvHeader.SKIP,
             0,
             1,
-            3,
+            3, // freq filter, to avoid to much pos that will confuse the tagger
             freqMin,
+            wordPosResolver()
+        );
+        // add multi words expressions, especially grammatical words that confuse the tagger
+        LexiconHelper.loadTags(
+            tagDic,
+            FrenchLexicons.class,
+            "/com/github/oeuvres/alix/fr/mwe-words.csv",
+            ',',
+            LexiconHelper.CsvHeader.SKIP,
+            0,
+            1,
+            -1, // no freq filter
+            -1,
             wordPosResolver()
         );
         // Load PROPN words

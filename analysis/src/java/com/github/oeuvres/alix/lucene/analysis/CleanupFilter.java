@@ -34,6 +34,7 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
@@ -77,8 +78,9 @@ import com.github.oeuvres.alix.util.Char;
  * (their {@code posInc} is not propagated). This is intended for markup artifacts and other
  * non-text noise
  * that should not affect distances.</li>
- * <li><b>Number unification</b>: numeric tokens ({@code DIGIT}/{@code NUM}) are mapped to a single
- * marker {@code "#"}.</li>
+ * <li><b>Training output</b>: when no rejected-word set is supplied, cardinal
+ * numbers ({@code DIGIT}/{@code NUM}) become {@code "#"}, ordinals retain their
+ * value, and grammatical words retain their normalized surface forms.</li>
  * </ul>
  *
  * <p>
@@ -151,21 +153,56 @@ public class CleanupFilter extends TokenFilter
      */
     protected static final int MIN_TERM_LEN = 3;
     
-    /** Marker used to normalize all numbers. */
+    /** Marker used to normalize cardinal numbers in training output. */
     protected static final String NUMBER_MARKER = "#";
+
+    /** Arabic ordinal forms, including those produced by upstream normalization. */
+    private static final Pattern ORDINAL = Pattern.compile(
+        "\\p{Nd}+(?:e|es|er|ers|re|res|ème|èmes|eme|emes|ième|ièmes|ᵉ|ᵉʳ|ʳᵉ)"
+    );
     
 
     /**
      * 
      * @param input Source tokens
      * @param skipped Tokens to skip (suppress position)
-     * @param rejected Tokens to remove from stream (position kept)
+     * @param rejected Tokens to remove from stream (position kept), or null
+     *                 to retain grammatical surface forms and normalize numbers
      */
     public CleanupFilter(TokenStream input, final CharArraySet skipped, final CharArraySet rejected)
     {
         super(input);
         this.rejected = rejected;
         this.skipped = skipped;
+    }
+    
+    /**
+     * Called at end-of-stream.
+     *
+     * <p>
+     * If the stream ends after a sequence of rejected tokens (e.g., trailing punctuation), their
+     * accumulated
+     * {@link #pendingHoles} would otherwise be lost. We therefore add them to the final position
+     * increment
+     * reported by {@link TokenStream#end()}.
+     * </p>
+     *
+     * <p>
+     * Note: this does not affect {@code FieldInvertState.getLength()} (which counts emitted
+     * tokens), but it
+     * preserves correct final position semantics for consumers that care about positions.
+     * </p>
+     */
+    @Override
+    public void end() throws IOException
+    {
+        super.end();
+        if (pendingHoles != 0) {
+            posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + pendingHoles);
+            pendingHoles = 0;
+        }
+        boundaryAtt.setBoundary(pendingBoundary);
+        pendingBoundary = BoundaryAttribute.NONE;
     }
     
     /**
@@ -245,35 +282,6 @@ public class CleanupFilter extends TokenFilter
     }
     
     /**
-     * Called at end-of-stream.
-     *
-     * <p>
-     * If the stream ends after a sequence of rejected tokens (e.g., trailing punctuation), their
-     * accumulated
-     * {@link #pendingHoles} would otherwise be lost. We therefore add them to the final position
-     * increment
-     * reported by {@link TokenStream#end()}.
-     * </p>
-     *
-     * <p>
-     * Note: this does not affect {@code FieldInvertState.getLength()} (which counts emitted
-     * tokens), but it
-     * preserves correct final position semantics for consumers that care about positions.
-     * </p>
-     */
-    @Override
-    public void end() throws IOException
-    {
-        super.end();
-        if (pendingHoles != 0) {
-            posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + pendingHoles);
-            pendingHoles = 0;
-        }
-        boundaryAtt.setBoundary(pendingBoundary);
-        pendingBoundary = BoundaryAttribute.NONE;
-    }
-    
-    /**
      * Accepts (and optionally rewrites) the current token.
      *
      * <p>
@@ -309,6 +317,20 @@ public class CleanupFilter extends TokenFilter
             return false;
         }
         
+        // Training output: handle numbers and elided articles before the generic
+        // character rejection rules. Numeric POS is preserved by PosTaggingFilter.
+        if (rejected == null) {
+            if (isOrdinal(pos)) {
+                posAtt.setPos(NUMord.code);
+                return true;
+            }
+            if (pos == DIGIT.code || pos == NUM.code) {
+                termAtt.setEmpty().append(NUMBER_MARKER);
+                return true;
+            }
+            if (isElidedArticle()) return true;
+        }
+
         char first = termAtt.charAt(0);
         // Example: tokens starting with <, >, ≤, etc. (implementation-specific in Char.isMath()).
         if (Char.isMath(first) || Char.isDigit(first) || first == '-' || first == '\'') {
@@ -319,22 +341,12 @@ public class CleanupFilter extends TokenFilter
             return false;
         }
         
-        /*
-        // unify numbers
-        if (Upos.isNum(pos)) {
-            termAtt.setEmpty().append(NUMBER_MARKER);
-            return true;
-        }
-        */
-        
-        // final char last = termAtt.charAt(len - 1);
-        
-        // copy lemma
-        if (!lemmaAtt.isEmpty()) {
+        // Keep grammatical surface forms for training; content words use lemmas.
+        if (!lemmaAtt.isEmpty() && (rejected != null || !isGrammar(pos))) {
             termAtt.copyBuffer(lemmaAtt.buffer(), 0, lemmaAtt.length());
             return true;
         }
-        
+
         final char[] term = termAtt.buffer();
         for (int i = 0; i < len; i++) {
             final char c = term[i];
@@ -360,6 +372,47 @@ public class CleanupFilter extends TokenFilter
         if (pos == PUNCTpara.code) return BoundaryAttribute.PARAGRAPH;
         if (pos == PUNCTsent.code) return BoundaryAttribute.SENTENCE;
         return BoundaryAttribute.NONE;
+    }
+
+    /**
+     * Tests the elided French article or object pronoun emitted by the clitic splitter.
+     *
+     * @return true for the normalized surface form {@code l'}
+     */
+    private boolean isElidedArticle()
+    {
+        return termAtt.length() == 2 && termAtt.charAt(0) == 'l'
+            && termAtt.charAt(1) == '\'';
+    }
+
+    /**
+     * Tests whether a POS retains its surface form in training output.
+     *
+     * @param pos POS code, including extended categories
+     * @return true for a grammatical category
+     */
+    private static boolean isGrammar(final int pos)
+    {
+        final Upos upos = Upos.get(pos);
+        if (upos == null) return false;
+        return switch (upos) {
+            case AUX, ADP, ADP_DET, ADP_PRON, CCONJ, SCONJ, PART,
+                 DET, DETart, DETdem, DETind, DETint, DETneg, DETprs,
+                 PRON, PRONdem, PRONind, PRONint, PRONneg, PRONprs, PRONrel -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * Detects tokenizer ordinals and Arabic ordinal forms created by normalization.
+     *
+     * @param pos current POS code
+     * @return true if the token should retain its ordinal value
+     */
+    private boolean isOrdinal(final int pos)
+    {
+        return pos == NUMord.code || (termAtt.length() > 1
+            && Char.isDigit(termAtt.charAt(0)) && ORDINAL.matcher(termAtt).matches());
     }
 
     /**
@@ -392,29 +445,27 @@ public class CleanupFilter extends TokenFilter
         if (len == 0) {
             return true;
         }
-        // structural event, \n\n, used by Mrakdown, should have been processed
+        // structural event, \n\n, used by Markdown, should have been processed
         if (termAtt.charAt(0) == '↵') {
             return true;
         }
         
-        // known noise tokens, resorb position, but keep punctuation
-        if (skipped != null && !Upos.isPunct(pos) && skipped.contains(termAtt.buffer(), 0, termAtt.length())) {
-            // System.out.println(termAtt + " " + Upos.name(pos));
+        // Protect training numbers and elided articles even if listed as noise.
+        if (rejected == null && (pos == DIGIT.code || pos == NUM.code
+                || isOrdinal(pos) || isElidedArticle())) {
+            return false;
+        }
+
+        // Known noise tokens: collapse positions.
+        if (skipped != null && skipped.contains(termAtt.buffer(), 0, termAtt.length())) {
             return true;
         }
-       
-        
+
         // short function word, OK, not noise
         if (termAtt.length() == 1) {
-            switch (Upos.get(pos)) {
-                case ADP:
-                case AUX:
-                case PRON:
-                case VERB:
-                    return false;
-                default:
-                    return true;
-            }
+            if (rejected == null && isGrammar(pos)) return false;
+            return pos != ADP.code && pos != AUX.code
+                && pos != PRON.code && pos != VERB.code;
         }
         
         final char last = termAtt.charAt(len - 1);

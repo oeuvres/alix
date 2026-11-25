@@ -231,7 +231,13 @@ public class PosTaggingFilter extends TokenFilter
             final int origPos = pos.getPos();
 
             if (origPos == XML.code) {
-                final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
+                // The tokenizer has identified these from their orthography. Keep
+            // that information even if the statistical model proposes ADJ or X.
+            if (pos.getPos() == Upos.DIGIT.code || pos.getPos() == Upos.NUMord.code) {
+                continue;
+            }
+
+            final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
                 if (prob != null) {
                     prob.setProb(1.0);
                 }
@@ -290,6 +296,12 @@ public class PosTaggingFilter extends TokenFilter
 
             final PosAttribute pos = queue.get(i).getAttribute(PosAttribute.class);
             if (pos == null || Upos.isPunct(pos.getPos())) {
+                continue;
+            }
+
+            // The tokenizer has identified these from their orthography. Keep
+            // that information even if the statistical model proposes ADJ or X.
+            if (pos.getPos() == Upos.DIGIT.code || pos.getPos() == Upos.NUMord.code) {
                 continue;
             }
 
