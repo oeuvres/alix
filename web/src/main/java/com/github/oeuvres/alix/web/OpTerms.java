@@ -135,6 +135,16 @@ public final class OpTerms extends Op
         return result;
     }
 
+    /**
+     * Ranks whole-field theme terms, filtered terms or span cooccurrences.
+     * Used by the terms operation and by the query-free compass.
+     *
+     * @param index Lucene index
+     * @param pars request parameters
+     * @param meta response metadata
+     * @return ranked terms, or null when the content field is unavailable
+     * @throws IOException if index access fails
+     */
     protected static TopTerms topTerms(final LuceneIndex index, final HttpPars pars, final MetaUtil meta) throws IOException
     {
         final int terms = pars.getInt(TERMS, TERMS_RANGE, TERMS_DEFAULT, TERMS);
@@ -163,7 +173,8 @@ public final class OpTerms extends Op
         
         // Build a filter query from years and tags
         final Query filterQuery = filterQuery(index, pars, meta);
-        final SpanQuery spanQuery = spanQuery(index, pars, meta);
+        final String q = pars.getString(Q, null);
+        final SpanQuery spanQuery = q == null || q.isBlank() ? null : spanQuery(index, pars, meta);
         
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {

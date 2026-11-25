@@ -16,6 +16,8 @@ import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.FocusPivots;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
+import com.github.oeuvres.alix.lucene.terms.TopTerms;
+import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
 import com.github.oeuvres.alix.util.IntMatrixById;
@@ -33,7 +35,9 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * The term statistics are the same as in terms.json. One matrix over the
  * original union contexts gives shared-context counts and signed G² for edges.
  * The model gives coordinates and distance to the nearest query pivot.
- * The plane and layout parameters retain their existing meanings.
+ * Without a text query or document filter, projects the ranked theme terms
+ * of the whole field instead, without pivots, focuses or snippet edges.
+ * Theme mode uses the keyword plane and its reference-vector centroid.
  */
 public class OpCompass extends Op
 {
@@ -157,7 +161,8 @@ public class OpCompass extends Op
     /**
      * Writes query pivots and terms in the selected plane, with their
      * statistics in each population, the contexts shared by placed terms, and the
-     * model words most similar to each pivot.
+     * model words most similar to each pivot. Without a query or filter, writes
+     * the ranked theme terms and their coordinates in the keyword plane.
      *
      * @param lucene Lucene index
      * @param request HTTP request
@@ -174,10 +179,29 @@ public class OpCompass extends Op
         final HttpPars pars = (HttpPars) request.getAttribute(ALIX_PARS);
         final MetaUtil meta = (MetaUtil) request.getAttribute(ALIX_META);
         final FocusPivots terms = OpTerms.focusTerms(lucene, pars, meta);
+        final TopTerms themes;
         if (terms == null) {
-            badRequest(request, response, meta, "[no term selection]");
-            return;
+            final String q = pars.getString(Q, null);
+            if (q != null && !q.isBlank()) {
+                badRequest(request, response, meta, "[no term selection]");
+                return;
+            }
+            if (filterQuery(lucene, pars, meta) != null) {
+                badRequest(request, response, meta, "[document filter without text query is not supported]");
+                return;
+            }
+            themes = OpTerms.topTerms(lucene, pars, meta);
+            if (themes == null) {
+                badRequest(request, response, meta, "[no term selection]");
+                return;
+            }
         }
+        else {
+            themes = null;
+        }
+        final boolean theme = themes != null;
+        final List<TermEntry> themeEntries = new ArrayList<>();
+        if (theme) themes.forEach(themeEntries::add);
         final Path modelPath = modelPath(request, pars, meta);
         if (modelPath == null) {
             AlixServlet.jsonError(request, response);
@@ -185,7 +209,7 @@ public class OpCompass extends Op
         }
         final VecModel model = vecModel(modelPath, meta);
         final List<String> notInModel = new ArrayList<>();
-        final int[] pivots = terms.pivotIds();
+        final int[] pivots = theme ? new int[0] : terms.pivotIds();
         final List<Integer> pivotVecs = new ArrayList<>();
         for (final int pivot : pivots) {
             final String form = terms.lexicon().form(pivot);
@@ -194,16 +218,16 @@ public class OpCompass extends Op
             if (id < 0) notInModel.add(form);
         }
         final int[] allPivotVecIds = pivotVecs.stream().mapToInt(Integer::intValue).filter(id -> id >= 0).distinct().toArray();
-        if (allPivotVecIds.length == 0) {
+        if (!theme && allPivotVecIds.length == 0) {
             badRequest(request, response, meta, "[no query pivot found in vector model]");
             return;
         }
 
-        final int termCount = terms.size();
+        final int termCount = theme ? themeEntries.size() : terms.size();
         final int[] termVecs = new int[termCount];
         final List<Integer> keywordIds = new ArrayList<>();
         for (int rank = 0; rank < termCount; rank++) {
-            final String form = terms.lexicon().form(terms.termId(rank));
+            final String form = theme ? themeEntries.get(rank).form() : terms.lexicon().form(terms.termId(rank));
             termVecs[rank] = modelId(model, form);
             if (termVecs[rank] >= 0) {
                 keywordIds.add(termVecs[rank]);
@@ -222,6 +246,10 @@ public class OpCompass extends Op
             return;
         }
         final boolean keywords = !"local".equals(plane);
+        if (theme && !keywords) {
+            badRequest(request, response, meta, "[theme terms require plane=keywords]");
+            return;
+        }
 
         final String layoutName = pars.getString(
             "layout", pars.getBoolean("mds", false) ? "mds" : "pca");
@@ -259,7 +287,12 @@ public class OpCompass extends Op
 
         final CompassVec compass;
         try {
-            if (layout == CompassVec.Layout.UMAP || (keywords && (pca || layout == CompassVec.Layout.LPP))) {
+            if (theme) {
+                final int[] ids = keywordIds.stream().mapToInt(Integer::intValue).distinct().toArray();
+                compass = pca ? new CompassVec(model, ids, axisX, axisY)
+                    : new CompassVec(model, ids, layout);
+            }
+            else if (layout == CompassVec.Layout.UMAP || (keywords && (pca || layout == CompassVec.Layout.LPP))) {
                 if (!keywords) {
                     badRequest(request, response, meta, "[UMAP requires plane=keywords]");
                     return;
@@ -294,29 +327,33 @@ public class OpCompass extends Op
         for (int rank = 0; rank < termCount; rank++) {
             points[pivotCount + rank] = termVecs[rank] < 0 ? null : compass.point(model.word(termVecs[rank]));
         }
-        for (final CompassVec.Point point : points) {
-            if (point != null) {
-                nodeVecs.add(point.id());
-            }
-        }
-        final int[] nodeIds = nodeVecs.stream().mapToInt(Integer::intValue).toArray();
-
-        // Model distance to the nearest pivot of the whole query.
+        // Pivot distances and snippet cooccurrence edges exist only in query mode.
         final double[] distances = new double[points.length];
-        final double[] values = nodeIds.length == 0 ? new double[0]
-            : compass.pivotDistances(nodeIds, allPivotVecIds);
-        int placedNode = 0;
-        for (int i = 0; i < points.length; i++) {
-            distances[i] = points[i] == null ? Double.NaN : values[placedNode++];
+        final int[] placedIds;
+        final IntMatrixById mat;
+        if (theme) {
+            placedIds = new int[0];
+            mat = null;
         }
+        else {
+            for (final CompassVec.Point point : points) {
+                if (point != null) nodeVecs.add(point.id());
+            }
+            final int[] nodeIds = nodeVecs.stream().mapToInt(Integer::intValue).toArray();
+            final double[] values = nodeIds.length == 0 ? new double[0]
+                : compass.pivotDistances(nodeIds, allPivotVecIds);
+            int placedNode = 0;
+            for (int i = 0; i < points.length; i++) {
+                distances[i] = points[i] == null ? Double.NaN : values[placedNode++];
+            }
 
-        // One global matrix; no partition-specific edge statistics.
-        final List<Integer> placed = new ArrayList<>();
-        for (int rank = 0; rank < termCount; rank++) {
-            if (points[pivotCount + rank] != null) placed.add(terms.termId(rank));
+            final List<Integer> placed = new ArrayList<>();
+            for (int rank = 0; rank < termCount; rank++) {
+                if (points[pivotCount + rank] != null) placed.add(terms.termId(rank));
+            }
+            placedIds = placed.stream().mapToInt(Integer::intValue).toArray();
+            mat = coocMatrix(lucene, pars, meta, terms.query(), placedIds);
         }
-        final int[] placedIds = placed.stream().mapToInt(Integer::intValue).toArray();
-        final IntMatrixById mat = coocMatrix(lucene, pars, meta, terms.query(), placedIds);
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
             json.setIndent("  ");
@@ -346,7 +383,15 @@ public class OpCompass extends Op
             }
             json.endObject();
 
-            TermsUtil.populations(json, terms);
+            if (theme) {
+                json.name("docs").value(themes.docs());
+                json.name("tokens").value(themes.tokens());
+                json.name("focuses").beginArray().endArray();
+                json.name("populations").beginArray().endArray();
+            }
+            else {
+                TermsUtil.populations(json, terms);
+            }
 
             json.name("pivots").beginArray();
             for (int k = 0; k < pivotCount; k++) {
@@ -365,10 +410,17 @@ public class OpCompass extends Op
             for (int rank = 0; rank < termCount; rank++) {
                 final int node = pivotCount + rank;
                 json.beginObject();
-                TermsUtil.termFields(json, terms, rank);
+                if (theme) {
+                    TermsUtil.termFields(json, themeEntries.get(rank), rank, false);
+                }
+                else {
+                    TermsUtil.termFields(json, terms, rank);
+                }
                 point(json, points[node]);
-                json.name("pivotDistance");
-                rounded(json, distances[node]);
+                if (!theme) {
+                    json.name("pivotDistance");
+                    rounded(json, distances[node]);
+                }
                 json.endObject();
             }
             json.endArray();

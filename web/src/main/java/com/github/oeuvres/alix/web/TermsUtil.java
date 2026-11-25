@@ -15,7 +15,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import static com.github.oeuvres.alix.web.Pars.*;
 
-
+/**
+ * Serializes ranked terms and query populations for the web operations.
+ */
 public class TermsUtil
 {
     /**
@@ -73,6 +75,13 @@ public class TermsUtil
         writer.append("</table>\n");
     }
 
+    /**
+     * Writes a ranked term list as text.
+     * @param request servlet request carrying metadata
+     * @param response servlet response
+     * @param terms ranked terms
+     * @throws IOException if writing fails
+     */
     static void txt(
         final HttpServletRequest request,
         final HttpServletResponse response,
@@ -132,6 +141,13 @@ public class TermsUtil
         jw.endObject();
     }
 
+    /**
+     * Writes a ranked term list and any excluded pivots as JSON.
+     * @param request servlet request carrying metadata
+     * @param response servlet response
+     * @param terms ranked terms, or null when unavailable
+     * @throws IOException if writing fails
+     */
     static void json(
         final HttpServletRequest request,
         final HttpServletResponse response,
@@ -148,7 +164,7 @@ public class TermsUtil
         jw.beginObject();
         meta.toJson(jw, (HttpPars)request.getAttribute(ALIX_PARS));
         jw.endObject(); // meta
-        
+
         // data: { pivots, terms }, pivots only when the population has some
         if (terms != null) {
             jw.name("data");
@@ -174,19 +190,10 @@ public class TermsUtil
 
             jw.name("terms");
             jw.beginArray();
-            int rank = 1;
+            int rank = 0;
             for (TermEntry term : terms) {
                 jw.beginObject();
-                jw.name("rank").value(rank++);
-                jw.name("form").value(term.form());
-                jw.name("id").value(term.termId());
-                jw.name("html").value(term.hilite()); // for suggest
-                jw.name("docs").value(term.docs());
-                if (hasContexts) jw.name("contexts").value(term.contexts());
-                jw.name("fieldDocs").value(term.fieldDocs());
-                jw.name("freq").value(term.freq());
-                jw.name("fieldFreq").value(term.fieldFreq());
-                jw.name("score").value(term.score()); // for terms
+                termFields(jw, term, rank++, hasContexts);
                 jw.endObject();
             }
             jw.endArray(); // terms
@@ -266,6 +273,30 @@ public class TermsUtil
             jw.name("mask").value(terms.pivotMask(id));
             termPopulations(jw, terms, id, false);
         }
+    }
+
+    /**
+     * Writes one ranked term and its statistics, without opening or closing the
+     * term object, so callers may append vector coordinates or other fields.
+     * @param jw JSON writer inside a term object
+     * @param term ranked term entry
+     * @param rank zero-based rank
+     * @param hasContexts whether to include context counts
+     * @throws IOException if writing fails
+     */
+    static void termFields(final JsonWriter jw, final TermEntry term, final int rank,
+            final boolean hasContexts) throws IOException
+    {
+        jw.name("rank").value(rank + 1);
+        jw.name("form").value(term.form());
+        jw.name("id").value(term.termId());
+        jw.name("html").value(term.hilite()); // for suggest
+        jw.name("docs").value(term.docs());
+        if (hasContexts) jw.name("contexts").value(term.contexts());
+        jw.name("fieldDocs").value(term.fieldDocs());
+        jw.name("freq").value(term.freq());
+        jw.name("fieldFreq").value(term.fieldFreq());
+        jw.name("score").value(term.score()); // for terms
     }
 
     /**
