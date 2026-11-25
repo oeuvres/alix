@@ -369,7 +369,8 @@ abstraction/S.	po:NOUN
 abstractionnisme/S.	po:NOUN
 abstracto	po:ADV
 abstraire/wL	po:VERB
-abstrait/S.	po:ADJ po:NOUN
+abstrait/S.	po:NOUN
+abstrait/F.	po:ADJ
 abstraitement	po:ADV
 abstrus/F.	po:ADJ
 absurde/S.	po:ADJ po:NOUN
@@ -1929,6 +1930,7 @@ aimanter/a0p+	po:VERB
 aimantin/F.	po:ADJ
 aimantin/S.	po:NOUN
 aimé/F.	po:NOUN
+aimé/F.	po:ADJ
 aimer/a0p+	po:VERB
 aindinois/F.	po:NOUN po:ADJ
 aine/S.	po:NOUN
@@ -3236,6 +3238,7 @@ anesthésier/a0p+	po:VERB
 anesthésiologie/S.	po:NOUN
 anesthésiologiste/S.	po:NOUN
 anesthésique/S.	po:ADJ
+anesthésique/S.	po:NOUN
 anesthésiste/S.	po:NOUN
 aneth/S.	po:NOUN
 aneuploïde/S.	po:ADJ
@@ -3401,7 +3404,8 @@ animation/S.	po:NOUN
 animatique/S.	po:NOUN
 animato	po:ADV
 animatronique/S.	po:NOUN
-animé/S.	po:ADJ po:NOUN
+animé/S.	po:NOUN
+animé/F.	po:ADJ
 animelle/S.	po:NOUN
 animer/a0p+	po:VERB
 animique/S.	po:ADJ
@@ -4518,6 +4522,7 @@ apraxique/S.	po:NOUN po:ADJ
 âpre/S.	po:ADJ
 âprement	po:ADV
 après	po:ADP
+après	po:ADV
 après-demain	po:ADV
 après-dîner/S.	po:NOUN
 après-guerre/S.	po:NOUN
@@ -5043,7 +5048,8 @@ arrérages	po:NOUN is:inv
 arrestation/S.	po:NOUN
 arrêt/S.	po:NOUN
 arrêtable/S.	po:ADJ
-arrêté/S.	po:NOUN po:ADJ
+arrêté/S.	po:NOUN
+arrêté/F.	po:ADJ
 arrête-bœuf/S.	po:NOUN
 arrêter/a0p+	po:VERB
 arrêtiste/S.	po:NOUN
@@ -5052,6 +5058,7 @@ arrhes	po:NOUN
 arriération/S.	po:NOUN
 arriéré/S.	po:ADJ po:NOUN
 arrière/S.	po:NOUN
+arrière	po:ADV
 arrière-ban/S.	po:NOUN
 arrière-bec/S.	po:NOUN
 arrière-bouche/S.	po:NOUN
@@ -5116,7 +5123,8 @@ arrogant/F.	po:NOUN po:ADJ
 arrogé/F.	po:ADJ
 arroger/a0p+	po:VERB
 arroi/S.	po:NOUN
-arrondi/S.	po:ADJ po:NOUN
+arrondi/S.	po:NOUN
+arrondi/F.	po:ADJ
 arrondir/f0p+	po:VERB
 arrondissage/S.	po:NOUN
 arrondissement/S.	po:NOUN
@@ -6904,7 +6912,9 @@ bahreïni/F.	po:NOUN po:ADJ
 baht/S.	po:NOUN
 bahut/S.	po:NOUN
 bahutage/S.	po:NOUN
-bai/F.	po:ADJ po:NOUN
+bai/F.	po:ADJ
+bai/S.	po:NOUN
+baie/S.	po:NOUN
 baignade/S.	po:NOUN
 baigné/F.	po:ADJ
 baigner/a0p+	po:VERB
@@ -7681,6 +7691,7 @@ béatifique/S.	po:ADJ
 béatitude/S.	po:NOUN
 beatnik/S.	po:NOUN
 beau/Wx	po:ADJ po:NOUN
+beau	po:ADV
 beau-fils	po:NOUN is:singular
 beau-frère	po:NOUN is:singular
 beau-père	po:NOUN is:singular
@@ -8945,7 +8956,8 @@ bleuté/F.	po:ADJ
 bleuter/a0p+	po:VERB
 blindage/S.	po:NOUN
 blinde/S.	po:NOUN
-blindé/S.	po:NOUN po:ADJ
+blindé/S.	po:NOUN
+blindé/F.	po:ADJ
 blinder/a0p+	po:VERB
 blindicide/S.	po:NOUN
 bling-bling	po:NOUN is:*
@@ -9167,6 +9179,7 @@ bombinette/S.	po:NOUN
 bombyx	po:NOUN
 bôme/S.	po:NOUN
 bon/F+	po:NOUN po:ADJ
+bon	po:ADV
 bon-chrétien	po:NOUN is:singular
 bon-papa	po:NOUN is:singular
 bonace/S.	po:NOUN
@@ -9953,6 +9966,7 @@ bredouiller/a0p+	po:VERB
 bredouilleur/Fs	po:NOUN po:ADJ
 bredouillis	po:NOUN
 bref/F.	po:ADJ po:NOUN
+bref	po:ADV
 breffage/S.	po:NOUN
 bregmatique/S.	po:ADJ
 bréhaigne/S.	po:NOUN po:ADJ
@@ -10053,6 +10067,7 @@ briguer/a0p+	po:VERB
 brillamment	po:ADV
 brillance/S.	po:NOUN
 brillant/F.	po:ADJ
+brillant/S.	po:NOUN
 brillantage/S.	po:NOUN
 brillanté/F.	po:ADJ
 brillanter/a0p+	po:VERB
@@ -10607,6 +10622,14 @@ byzantinisme/S.	po:NOUN
 byzantiniste/S.	po:NOUN
 byzantinologie/S.	po:NOUN
 byzantinologue/S.	po:NOUN
+carron/S.	po:NOUN
+centigramme/S.	po:NOUN
+centilitre/S.	po:NOUN
+centimètre/S.	po:NOUN
+chef-d’œuvre	po:NOUN is:singular
+chefs-d’œuvre	po:NOUN st:chef-d’œuvre is:plural
+choser/a0p+	po:VERB
+courre	po:VERB is:inv
 c’est-à-dire	po:CCONJ
 c’est-à-dire	po:SCONJ
 ça	po:PRON
@@ -11076,6 +11099,7 @@ callose/S.	po:NOUN
 callosité/S.	po:NOUN
 callune/S.	po:NOUN
 calmant/F.	po:ADJ
+calmant/S.	po:NOUN
 calmar/S.	po:NOUN
 calme/S.	po:ADJ po:NOUN
 calmé/F.	po:ADJ
@@ -11098,6 +11122,7 @@ calopsitte/S.	po:NOUN po:ADJ
 calorescence/S.	po:NOUN
 calorie/S.	po:NOUN
 calorifère/S.	po:ADJ
+calorifère/S.	po:NOUN
 calorification/S.	po:NOUN
 calorifique/S.	po:ADJ
 calorifuge/S.	po:ADJ
@@ -12517,6 +12542,7 @@ cent-milliardième/S.	po:NOUN po:ADJ
 cent-millième/S.	po:NOUN po:ADJ
 cent-millionième/S.	po:NOUN po:ADJ
 centaine/S.	po:NUM
+centaine/S.	po:NOUN
 centaure/F+	po:NOUN
 centaurée/S.	po:NOUN
 centavo/S.	po:NOUN
@@ -13238,6 +13264,7 @@ chatterie/S.	po:NOUN
 chatterton/S.	po:NOUN
 chatteur/Fs	po:NOUN
 chaud/F.	po:ADJ po:NOUN
+chaud	po:ADV
 chaud-froid	po:NOUN is:singular
 chaudasse/S.	po:NOUN
 chaudeau/X.	po:NOUN
@@ -13402,6 +13429,7 @@ chèque-restaurant	po:NOUN is:singular
 chèques-restaurant	po:NOUN st:chèque-restaurant is:plural
 chéquier/S.	po:NOUN
 cher/F.	po:ADJ
+cher	po:ADV
 cherché/F.	po:ADJ
 chercher/a0p+	po:VERB
 chercheur/Fs	po:NOUN po:ADJ
@@ -14180,6 +14208,7 @@ cinoche/S.	po:NOUN
 cinoque/S.	po:NOUN po:ADJ
 cinq	po:NUM
 cinquantaine/S.	po:NUM
+cinquantaine/S.	po:NOUN
 cinquante	po:NUM
 cinquante-cinq	po:NUM
 cinquante-cinquième/S.	po:NOUN po:ADJ
@@ -14598,6 +14627,7 @@ cligné/F.	po:ADJ
 clignement/S.	po:NOUN
 cligner/a0p+	po:VERB
 clignotant/F.	po:ADJ
+clignotant/S.	po:NOUN
 clignotement/S.	po:NOUN
 clignoter/a0p.	po:VERB
 clignoteur/S.	po:NOUN
@@ -15469,6 +15499,7 @@ commandité/F.	po:ADJ
 commanditer/a0p+	po:VERB
 commando/S.	po:NOUN
 comme	po:SCONJ
+comme	po:ADV
 commémoraison/S.	po:NOUN
 commémoratif/F.	po:ADJ
 commémoration/S.	po:NOUN
@@ -15547,6 +15578,7 @@ commuable/S.	po:ADJ
 commué/F.	po:ADJ
 commuer/a0p+	po:VERB
 commun/F.	po:ADJ
+commun/S.	po:NOUN
 communal/W.	po:NOUN po:ADJ
 communalisation/S.	po:NOUN
 communalisé/F.	po:ADJ
@@ -15861,7 +15893,8 @@ concélébrer/c0p+	po:VERB
 concentrateur/S.	po:NOUN
 concentration/S.	po:NOUN
 concentrationnaire/S.	po:ADJ
-concentré/S.	po:NOUN po:ADJ
+concentré/S.	po:NOUN
+concentré/F.	po:ADJ
 concentrer/a0p+	po:VERB
 concentreur/Fs	po:NOUN
 concentricité/S.	po:NOUN
@@ -16238,7 +16271,7 @@ conjoint/F.	po:NOUN po:ADJ
 conjointement	po:ADV
 conjoncteur/S.	po:NOUN
 conjonctif/F.	po:ADJ
-conjonctive/s.	po:NOUN po:ADJ
+conjonctive/S.	po:NOUN
 conjonction/S.	po:NOUN
 conjonctival/W.	po:ADJ
 conjonctivite/S.	po:NOUN
@@ -16296,7 +16329,8 @@ connotatif/F.	po:ADJ
 connotation/S.	po:NOUN
 connoté/F.	po:ADJ
 connoter/a0p+	po:VERB
-connu/S.	po:ADJ po:NOUN
+connu/S.	po:NOUN
+connu/F.	po:ADJ
 conobré/F.	po:ADJ
 conobrer/a0p+	po:VERB
 conodale/S.	po:NOUN
@@ -16587,6 +16621,7 @@ continental/W.	po:ADJ
 continentalité/S.	po:NOUN
 contingence/S.	po:NOUN
 contingent/F.	po:ADJ
+contingent/S.	po:NOUN
 contingenté/F.	po:ADJ
 contingentement/S.	po:NOUN
 contingenter/a0p+	po:VERB
@@ -17512,6 +17547,7 @@ cosigner/a0p+	po:VERB
 cosinus	po:NOUN
 cosméticien/F+	po:NOUN
 cosmétique/S.	po:ADJ
+cosmétique/S.	po:NOUN
 cosmétiqué/F.	po:ADJ
 cosmétiquer/a0p+	po:VERB
 cosmétologie/S.	po:NOUN
@@ -17818,6 +17854,7 @@ coursier/F.	po:NOUN
 coursive/S.	po:NOUN
 courson/F+	po:NOUN po:ADJ
 court/F.	po:ADJ
+court	po:ADV
 court-bouillon	po:NOUN is:singular
 court-circuit	po:NOUN is:singular
 court-circuitage/S.	po:NOUN
@@ -19078,6 +19115,10 @@ cytotoxique/S.	po:ADJ
 czar/S.	po:NOUN
 czardas	po:NOUN is:inv
 czimbalum/S.	po:NOUN
+décilitre/S.	po:NOUN
+décimètre/S.	po:NOUN
+dominante/S.	po:NOUN
+due/S.	po:ADJ st:dû
 d’abord	po:ADV
 d’accord	po:ADV
 d’ailleurs	po:ADV
@@ -19137,6 +19178,7 @@ dalleur/Fs	po:NOUN
 dalmate/S.	po:NOUN po:ADJ
 dalmatien/F+	po:NOUN
 dalmatique/S.	po:ADJ
+dalmatique/S.	po:NOUN
 dalot/S.	po:NOUN
 daltonien/F+	po:NOUN po:ADJ
 daltonisme/S.	po:NOUN
@@ -19459,6 +19501,7 @@ débourser/a0p+	po:VERB
 déboussolé/F.	po:ADJ
 déboussoler/a0p+	po:VERB
 debout	po:ADJ
+debout	po:ADV
 débouté/S.	po:NOUN po:ADJ
 déboutement/S.	po:NOUN
 débouter/a0p+	po:VERB
@@ -19593,6 +19636,7 @@ décanteur/Fs	po:NOUN
 décapacitation/S.	po:NOUN
 décapage/S.	po:NOUN
 décapant/F.	po:ADJ
+décapant/S.	po:NOUN
 décapé/F.	po:ADJ
 décapelé/F.	po:ADJ
 décapeler/d0p+	po:VERB
@@ -19609,6 +19653,7 @@ décapiteur/Fs	po:NOUN po:ADJ
 décapode/S.	po:NOUN po:ADJ
 décapole/S.	po:NOUN
 décapotable/S.	po:ADJ
+décapotable/S.	po:NOUN
 décapoté/F.	po:ADJ
 décapoter/a0p+	po:VERB
 décapsidation/S.	po:NOUN
@@ -20847,7 +20892,8 @@ délibérant/F.	po:ADJ
 délibératif/F.	po:ADJ
 délibération/S.	po:NOUN
 délibératoire/S.	po:ADJ
-délibéré/S.	po:NOUN po:ADJ
+délibéré/S.	po:NOUN
+délibéré/F.	po:ADJ
 délibérément	po:ADV
 délibérer/c0p+	po:VERB
 délicat/F.	po:ADJ po:NOUN
@@ -20858,7 +20904,8 @@ délicieusement	po:ADV
 délicieux/W.	po:ADJ
 délictuel/F+	po:ADJ
 délictueux/W.	po:ADJ
-délié/S.	po:NOUN po:ADJ
+délié/S.	po:NOUN
+délié/F.	po:ADJ
 déliement/S.	po:NOUN
 délier/a0p+	po:VERB
 délignage/S.	po:NOUN
@@ -22384,6 +22431,7 @@ désexualisé/F.	po:ADJ
 désexualiser/a0p+	po:VERB
 déshabillage/S.	po:NOUN
 déshabillé/F.	po:ADJ
+déshabillé/S.	po:NOUN
 déshabiller/a0p+	po:VERB
 déshabitué/F.	po:ADJ
 déshabituer/a0p+	po:VERB
@@ -22477,6 +22525,7 @@ désindustrialiser/a0p+	po:VERB
 désinence/S.	po:NOUN
 désinentiel/F+	po:ADJ
 désinfectant/F.	po:ADJ
+désinfectant/S.	po:NOUN
 désinfecté/F.	po:ADJ
 désinfecter/a0p+	po:VERB
 désinfecteur/Fc	po:NOUN
@@ -23441,7 +23490,8 @@ diffamer/a0p+	po:VERB
 difféologie/S.	po:NOUN
 difféomorphe/S.	po:ADJ
 difféomorphisme/S.	po:NOUN
-différé/S.	po:ADJ po:NOUN
+différé/S.	po:NOUN
+différé/F.	po:ADJ
 différemment	po:ADV
 différence/S.	po:NOUN
 différence-étalon	po:NOUN is:singular
@@ -24058,7 +24108,8 @@ distyle/S.	po:ADJ
 disubstitué/F.	po:ADJ
 disulfirame/S.	po:NOUN
 disulfure/S.	po:NOUN
-dit/S.	po:NOUN po:ADJ
+dit/S.	po:NOUN
+dit/F.	po:ADJ
 diterpène/S.	po:NOUN
 dithyrambe/S.	po:NOUN
 dithyrambique/S.	po:ADJ
@@ -24150,6 +24201,7 @@ dixièmement	po:ADV
 dixit	po:ADJ is:inv
 dizain/S.	po:NOUN
 dizaine/S.	po:NUM
+dizaine/S.	po:NOUN
 dizygote/S.	po:NOUN po:ADJ
 djaïnisme/S.	po:NOUN
 djebel/S.	po:NOUN
@@ -24633,6 +24685,7 @@ droguiste/S.	po:NOUN
 droïde/S.	po:NOUN
 droit/S.	po:NOUN
 droit/F.	po:ADJ
+droit	po:ADV
 droite/S.	po:NOUN
 droit-de-l’hommiste/S.	po:ADJ
 droit-fil	po:NOUN is:singular
@@ -24690,7 +24743,8 @@ dry-farming/S.	po:NOUN
 dryade/S.	po:NOUN
 dryopithèque/S.	po:NOUN
 du	po:DET po:ADP+DET
-dû/S.	po:NOUN
+dû	po:NOUN
+dû	po:ADJ
 dual/W.	po:ADJ
 dualisation/S.	po:NOUN
 dualisme/S.	po:NOUN
@@ -24804,7 +24858,8 @@ durite/S.	po:NOUN
 durkheimien/F+	po:ADJ
 durkheimisme/S.	po:NOUN
 dürüm/S.	po:NOUN
-dus	po:NOUN is:inv po:ADJ
+dus	po:NOUN st:dû is:plural
+dus	po:ADJ st:dû is:plural
 duumvir/S.	po:NOUN
 duumvirat/S.	po:NOUN
 duumviri	po:NOUN is:*
@@ -25500,7 +25555,8 @@ ecdysone/S.	po:NOUN
 écrier/a0p+	po:VERB
 écrin/S.	po:NOUN
 écrire/y1	po:VERB
-écrit/S.	po:NOUN po:ADJ
+écrit/S.	po:NOUN
+écrit/F.	po:ADJ
 écriteau/X.	po:NOUN
 écritoire/S.	po:NOUN
 écriture/S.	po:NOUN
@@ -25748,6 +25804,7 @@ effusivité/S.	po:NOUN
 égaillé/F.	po:ADJ
 égailler/a0p+	po:VERB
 égal/W.	po:ADJ
+égal/W.	po:NOUN
 égalable/S.	po:ADJ
 égalé/F.	po:ADJ
 également	po:ADV
@@ -26114,6 +26171,7 @@ elfique/S.	po:ADJ
 éliminateur/Fc	po:NOUN po:ADJ
 élimination/S.	po:NOUN
 éliminatoire/S.	po:ADJ
+éliminatoire/S.	po:NOUN
 éliminé/F.	po:ADJ
 éliminer/a0p+	po:VERB
 élingue/S.	po:NOUN
@@ -27566,6 +27624,7 @@ enraciné/F.	po:ADJ
 enracinement/S.	po:NOUN
 enraciner/a0p+	po:VERB
 enragé/F.	po:NOUN
+enragé/F.	po:ADJ
 enrageant/F.	po:ADJ
 enragement/S.	po:NOUN
 enrager/a0p.	po:VERB
@@ -29819,6 +29878,7 @@ excluant/F.	po:ADJ
 exclure/xL	po:VERB
 exclusif/F.	po:ADJ
 exclusion/S.	po:NOUN
+exclusive/S.	po:NOUN
 exclusivement	po:ADV
 exclusivisme/S.	po:NOUN
 exclusiviste/S.	po:NOUN po:ADJ
@@ -30130,7 +30190,8 @@ exportation/S.	po:NOUN
 exporté/F.	po:ADJ
 exporter/a0p+	po:VERB
 exposant/F.	po:NOUN
-exposé/S.	po:NOUN po:ADJ
+exposé/S.	po:NOUN
+exposé/F.	po:ADJ
 exposer/a0p+	po:VERB
 exposition/S.	po:NOUN
 exprès	po:ADV
@@ -30341,6 +30402,7 @@ extraversion/S.	po:NOUN
 extraverti/F.	po:NOUN po:ADJ
 extrémal/W.	po:ADJ
 extrême/S.	po:ADJ
+extrême/S.	po:NOUN
 extrême-onction/S.	po:NOUN
 extrême-oriental/W.	po:ADJ
 extrêmement	po:ADV
@@ -30842,6 +30904,7 @@ fauvette/S.	po:NOUN
 fauvisme/S.	po:NOUN
 fauviste/S.	po:NOUN po:ADJ
 faux/Wx	po:ADJ po:NOUN
+faux	po:ADV
 faux-bourdon/S.	po:NOUN
 faux-cul/S.	po:NOUN
 faux-équilibre/S.	po:NOUN
@@ -31150,6 +31213,7 @@ fessée/S.	po:NOUN
 fesser/a0p+	po:VERB
 fesseur/Fs	po:NOUN
 fessier/F.	po:ADJ
+fessier/S.	po:NOUN
 fessu/F.	po:ADJ
 fest-noz	po:NOUN is:inv
 festif/F.	po:ADJ
@@ -31302,6 +31366,7 @@ fichoir/S.	po:NOUN
 fichtre	po:INTJ
 fichtrement	po:ADV
 fichu/F.	po:ADJ
+fichu/S.	po:NOUN
 fictif/F.	po:ADJ
 fiction/S.	po:NOUN
 fictionnalisation/S.	po:NOUN
@@ -31679,7 +31744,7 @@ flapi/F.	po:ADJ
 flaque/S.	po:NOUN
 flaquer/a0p.	po:VERB
 flash/A.	po:NOUN
-flash-back	po:NOUN
+flash-back/S.	po:NOUN
 flash-ball/S.	po:NOUN
 flashage/S.	po:NOUN
 flashback/S.	po:NOUN
@@ -31856,6 +31921,7 @@ flotter/a0p+	po:VERB
 flotteur/S.	po:NOUN
 flottille/S.	po:NOUN
 flou/F.	po:ADJ
+flou/S.	po:NOUN
 floué/F.	po:ADJ
 flouer/a0p+	po:VERB
 flouser/a0p.	po:VERB
@@ -31952,6 +32018,7 @@ focométrie/S.	po:NOUN
 focométrique/S.	po:ADJ
 focus	po:NOUN
 foehn/S.	po:NOUN
+fœhn/S.	po:NOUN
 foéné/F.	po:ADJ
 foène/S.	po:NOUN
 foëne/S.	po:NOUN
@@ -31979,6 +32046,7 @@ foirer/a0p.	po:VERB
 foireux/W.	po:NOUN po:ADJ
 foirolle/S.	po:NOUN
 foiron/S.	po:NOUN
+fois	po:NOUN is:inv
 foison/S.	po:NOUN
 foisonnant/F.	po:ADJ
 foisonnement/S.	po:NOUN
@@ -32242,6 +32310,7 @@ fortement	po:ADV
 forteresse/S.	po:NOUN
 fortiche/S.	po:ADJ
 fortifiant/F.	po:ADJ
+fortifiant/S.	po:NOUN
 fortification/S.	po:NOUN
 fortifié/F.	po:ADJ
 fortifier/a0p+	po:VERB
@@ -32345,6 +32414,7 @@ fourbement	po:ADV
 fourber/a0p+	po:VERB
 fourberie/S.	po:NOUN
 fourbi/F.	po:ADJ
+fourbi/S.	po:NOUN
 fourbir/f0p+	po:VERB
 fourbissage/S.	po:NOUN
 fourbisseur/S.	po:NOUN
@@ -32478,6 +32548,7 @@ fraîchissant/F.	po:ADJ
 frairie/S.	po:NOUN
 frais/Fx	po:ADJ
 frais	po:ADV
+frais	po:NOUN is:plural
 fraisage/S.	po:NOUN
 fraise/S.	po:NOUN
 fraisé/F.	po:ADJ
@@ -32511,6 +32582,7 @@ franc-quartier	po:NOUN is:singular
 franc-tireur	po:NOUN is:*
 franc-tireuse	po:NOUN is:*
 français/F.	po:ADJ po:NOUN
+franche/S.	po:ADJ st:franc
 franchement	po:ADV
 franchi/F.	po:ADJ
 franchir/f0p+	po:VERB
@@ -33036,9 +33108,11 @@ fumagine/S.	po:NOUN
 fumaison/S.	po:NOUN
 fumant/F.	po:ADJ
 fumariacée/S.	po:NOUN po:ADJ
-fumé/F.	po:ADJ po:NOUN
+fumé/F.	po:ADJ
+fumé/S.	po:NOUN
 fume-cigare	po:NOUN
 fume-cigarette	po:NOUN
+fumée/S.	po:NOUN
 fumer/a0p+	po:VERB
 fumerie/S.	po:NOUN
 fumerolien/F+	po:ADJ
@@ -33426,7 +33500,7 @@ gamétophyte/S.	po:NOUN
 gamétophytique/S.	po:ADJ
 gameur/Fs	po:NOUN
 gamin/F.	po:ADJ
-gamin/S.	po:NOUN
+gamin/F.	po:NOUN
 gaminer/a0p.	po:VERB
 gaminerie/S.	po:NOUN
 gamma	po:NOUN
@@ -33545,6 +33619,7 @@ gardes-voies	po:NOUN is:*
 gardeur/Fs	po:NOUN
 gardian/F.	po:NOUN
 gardien/F+	po:NOUN
+gardien/F+	po:ADJ
 gardiennage/S.	po:NOUN
 gardienné/F.	po:ADJ
 gardienner/a0p+	po:VERB
@@ -34601,6 +34676,7 @@ gnosie/S.	po:NOUN
 gnosique/S.	po:ADJ
 gnosticisme/S.	po:NOUN
 gnostique/S.	po:ADJ
+gnostique/S.	po:NOUN
 gnotobiotique/S.	po:ADJ
 gnou/S.	po:NOUN
 gnouf/S.	po:NOUN
@@ -35006,10 +35082,11 @@ grammaticalité/S.	po:NOUN
 grammatiste/S.	po:NOUN
 grammatologie/S.	po:NOUN
 grammatologique/S.	po:ADJ
-gramme	po:NOUN is:*
+gramme/S.	po:NOUN is:*
 gramophone/S.	po:NOUN
 gramscisme/S.	po:NOUN
 grand/F.	po:NOUN po:ADJ
+grand	po:ADV
 grand-angle	po:NOUN is:singular
 grand-angulaire	po:NOUN is:singular
 grand-chose	po:PRON
@@ -35391,7 +35468,8 @@ grillagé/F.	po:ADJ
 grillager/a0p+	po:VERB
 grillageur/S.	po:NOUN
 grille/S.	po:NOUN
-grillé/S.	po:NOUN po:ADJ
+grillé/S.	po:NOUN
+grillé/F.	po:ADJ
 grille-pain	po:NOUN
 griller/a0p+	po:VERB
 grillet/F+	po:NOUN
@@ -35509,6 +35587,7 @@ grondin/S.	po:NOUN
 groom/S.	po:NOUN
 groove	po:NOUN is:*
 gros/F+	po:ADJ po:NOUN
+gros	po:ADV
 gros-boutiste/S.	po:ADJ
 gros-grain/S.	po:NOUN
 gros-porteur/S.	po:NOUN
@@ -36291,6 +36370,7 @@ hécatombe/S.	po:NOUN
 hectare/S.	po:NOUN
 hectique/S.	po:ADJ
 hectisie/S.	po:NOUN
+hectomètre/S.	po:NOUN
 hectométrique/S.	po:ADJ
 hectopièze/S.	po:NOUN
 hédenbergite/S.	po:NOUN
@@ -37253,6 +37333,7 @@ hors-bord	po:NOUN
 hors-champ/S.	po:NOUN
 hors-concours	po:ADJ is:inv
 hors-cote	po:NOUN po:ADJ
+hors-d’œuvre	po:NOUN is:inv
 hors-jeu	po:NOUN
 hors-la-loi	po:NOUN
 hors-ligne	po:NOUN
@@ -38650,6 +38731,7 @@ impensé/F.	po:ADJ
 impenses	po:NOUN is:inv
 imper/S.	po:NOUN
 impératif/F.	po:ADJ
+impératif/S.	po:NOUN
 impérativement	po:ADV
 impératrice/S.	po:NOUN
 imperçable/S.	po:ADJ
@@ -38750,6 +38832,7 @@ impolitesse/S.	po:NOUN
 impolitique/S.	po:ADJ
 impondérabilité/S.	po:NOUN
 impondérable/S.	po:ADJ
+impondérable/S.	po:NOUN
 impondéré/F.	po:ADJ
 impopulaire/S.	po:ADJ
 impopularité/S.	po:NOUN
@@ -39880,6 +39963,7 @@ infoutu/F.	po:ADJ
 infox	po:NOUN is:inv
 infra	po:ADV
 infra-classe/S.	po:NOUN
+infra-déterminisme/S.	po:NOUN
 infra-embranchement/S.	po:NOUN
 infra-logique/S.	po:ADJ
 infra-monde/S.	po:NOUN
@@ -40303,6 +40387,7 @@ instancier/a0p+	po:VERB
 instant/F.	po:ADJ
 instant/S.	po:NOUN
 instantané/F.	po:ADJ
+instantané/S.	po:NOUN
 instantanéiste/S.	po:ADJ
 instantanéité/S.	po:NOUN
 instantanément	po:ADV
@@ -40574,7 +40659,8 @@ interdimensionnel/F+	po:ADJ
 interdire/yD	po:VERB
 interdisciplinaire/S.	po:ADJ
 interdisciplinarité/S.	po:NOUN
-interdit/S.	po:NOUN po:ADJ
+interdit/S.	po:NOUN
+interdit/F.	po:ADJ
 interentreprises	po:ADJ is:inv
 interépidémique/S.	po:ADJ
 intéressant/F.	po:ADJ
@@ -40939,6 +41025,7 @@ intrépidement	po:ADV
 intrépidité/S.	po:NOUN
 intrication/S.	po:NOUN
 intrigant/F.	po:ADJ
+intrigant/F.	po:NOUN
 intrigue/S.	po:NOUN
 intrigué/F.	po:ADJ
 intriguer/a0p+	po:VERB
@@ -41797,7 +41884,8 @@ jet-society/A.	po:NOUN
 jet-stream/S.	po:NOUN
 jetable/S.	po:ADJ
 jetage/S.	po:NOUN
-jeté/S.	po:NOUN po:ADJ
+jeté/S.	po:NOUN
+jeté/F.	po:ADJ
 jetée/S.	po:NOUN
 jeter/d0p+	po:VERB
 jeteur/Fs	po:NOUN
@@ -41853,7 +41941,8 @@ joie/S.	po:NOUN
 joignabilité/S.	po:NOUN
 joignable/S.	po:ADJ
 joindre/wB	po:VERB
-joint/S.	po:NOUN po:ADJ
+joint/S.	po:NOUN
+joint/F.	po:ADJ
 joint-venture/S.	po:NOUN
 jointé/F.	po:ADJ
 jointée/S.	po:NOUN
@@ -42330,9 +42419,11 @@ kilim/S.	po:NOUN
 kilo/S.	po:NOUN
 kilobase/S.	po:NOUN
 kilobit/S.	po:NOUN
+kilogramme/S.	po:NOUN
 kilogrammètre/S.	po:NOUN
 kilométrage/S.	po:NOUN
 kilométré/F.	po:ADJ
+kilomètre/S.	po:NOUN
 kilométrer/c0p+	po:VERB
 kilométrique/S.	po:ADJ
 kilooctet/S.	po:NOUN
@@ -43898,6 +43989,7 @@ littératie/S.	po:NOUN
 littérature/S.	po:NOUN
 littérisme/S.	po:NOUN
 littoral/W.	po:ADJ
+littoral/W.	po:NOUN
 littoralisation/S.	po:NOUN
 littorine/S.	po:NOUN
 lituanien/F+	po:NOUN po:ADJ
@@ -44248,6 +44340,7 @@ loups-cerviers	po:NOUN st:loup-cervier is:plural
 loups-garous	po:NOUN st:loup-garou is:plural
 louquer/a0p+	po:VERB
 lourd/F.	po:ADJ
+lourd	po:ADV
 lourdaud/F.	po:NOUN
 lourdé/F.	po:ADJ
 lourdement	po:ADV
@@ -44294,6 +44387,7 @@ luba-kasaï/S.	po:NOUN
 lubie/S.	po:NOUN
 lubricité/S.	po:NOUN
 lubrifiant/F.	po:ADJ
+lubrifiant/S.	po:NOUN
 lubrificateur/Fc	po:ADJ
 lubrificateur/S.	po:NOUN
 lubrification/S.	po:NOUN
@@ -44907,6 +45001,7 @@ maillot/S.	po:NOUN
 maillotin/S.	po:NOUN
 maillure/S.	po:NOUN
 main/S.	po:NOUN
+main-d’œuvre/S.	po:NOUN
 main-forte/S.	po:NOUN
 mainate/S.	po:NOUN
 mainlevée/S.	po:NOUN
@@ -45424,6 +45519,7 @@ manucure/S.	po:NOUN
 manucuré/F.	po:ADJ
 manucurer/a0p+	po:VERB
 manuel/F+	po:ADJ
+manuel/S.	po:NOUN
 manuélin/F.	po:ADJ
 manuellement	po:ADV
 manufacturable/S.	po:ADJ
@@ -46562,6 +46658,7 @@ mensualisé/F.	po:ADJ
 mensualiser/a0p+	po:VERB
 mensualité/S.	po:NOUN
 mensuel/F+	po:ADJ
+mensuel/S.	po:NOUN
 mensuellement	po:ADV
 mensurable/S.	po:ADJ
 mensuration/S.	po:NOUN
@@ -46728,6 +46825,8 @@ mésaventure/S.	po:NOUN
 mescal/S.	po:NOUN
 mescaline/S.	po:NOUN
 mesclun/S.	po:NOUN
+mesdames	po:NOUN st:madame is:plural
+mesdemoiselles	po:NOUN st:mademoiselle is:plural
 mésemploi/S.	po:NOUN
 mésencéphale/S.	po:NOUN
 mésencéphalique/S.	po:ADJ
@@ -46809,7 +46908,7 @@ messicole/S.	po:ADJ
 messidor/S.	po:NOUN
 messie/S.	po:NOUN
 messier/S.	po:NOUN
-messieurs	po:NOUN is:inv
+messieurs	po:NOUN st:monsieur is:plural
 messin/F.	po:NOUN po:ADJ
 messire/S.	po:NOUN
 mestre/S.	po:NOUN
@@ -47071,7 +47170,8 @@ metteure/S.	po:NOUN
 mettre/vA	po:VERB
 meublant/F.	po:ADJ
 meuble/S.	po:NOUN po:ADJ
-meublé/S.	po:NOUN po:ADJ
+meublé/S.	po:NOUN
+meublé/F.	po:ADJ
 meubler/a0p+	po:VERB
 meuf/S.	po:NOUN
 meuglement/S.	po:NOUN
@@ -47298,6 +47398,7 @@ micromélange/S.	po:NOUN
 micromélangeage/S.	po:NOUN
 micromélie/S.	po:NOUN
 micrométéorite/S.	po:NOUN
+micromètre/S.	po:NOUN
 micrométrie/S.	po:NOUN
 micrométrique/S.	po:ADJ
 micrométriquement	po:ADV
@@ -47496,18 +47597,24 @@ millet/S.	po:NOUN
 milliaire/S.	po:NOUN po:ADJ
 milliampèremètre/S.	po:NOUN
 milliard/S.	po:NUM
+milliard/S.	po:NOUN
 milliardaire/S.	po:NOUN
 milliardième/S.	po:NOUN po:ADJ
 milliasse/S.	po:NOUN
 millibar/S.	po:NOUN
 millième/S.	po:NOUN po:ADJ
 millier/S.	po:NUM
+millier/S.	po:NOUN
 milligrade/S.	po:NOUN
+milligramme/S.	po:NOUN
+millilitre/S.	po:NOUN
 millime/S.	po:NOUN
 millimétré/F.	po:ADJ
+millimètre/S.	po:NOUN
 millimétrique/S.	po:ADJ
 millimicron/S.	po:NOUN
 million/S.	po:NUM
+million/S.	po:NOUN
 millionième/S.	po:NOUN po:ADJ
 millionnaire/S.	po:NOUN po:ADJ
 milliröntgen/S.	po:NOUN
@@ -47556,6 +47663,7 @@ miné/F.	po:ADJ
 miner/a0p+	po:VERB
 minerai/S.	po:NOUN
 minéral/W.	po:ADJ
+minéral/S.	po:NOUN
 minéralier/S.	po:NOUN
 minéralier-pétrolier/S.	po:NOUN
 minéralisable/S.	po:ADJ
@@ -47957,6 +48065,7 @@ moineau/X.	po:NOUN
 moinerie/S.	po:NOUN
 moinillon/S.	po:NOUN
 moins	po:ADP po:NOUN
+moins	po:ADV
 moins-disant/F.	po:NOUN po:ADJ
 moins-perçu/S.	po:NOUN
 moins-que-rien	po:NOUN is:*
@@ -47974,7 +48083,8 @@ moise/S.	po:NOUN
 moisé/F.	po:ADJ
 moïse/S.	po:NOUN
 moiser/a0p+	po:VERB
-moisi/S.	po:NOUN po:ADJ
+moisi/S.	po:NOUN
+moisi/F.	po:ADJ
 moisir/f0p+	po:VERB
 moisissure/S.	po:NOUN
 moissine/S.	po:NOUN
@@ -47992,6 +48102,7 @@ moiter/a0p.	po:VERB
 moiteur/S.	po:NOUN
 moiti/F.	po:ADJ
 moitié/S.	po:NOUN
+moitié	po:ADV
 moitié-moitié	po:ADV
 moitir/f0p+	po:VERB
 mojito/S.	po:NOUN
@@ -48763,6 +48874,7 @@ mousseline/S.	po:NOUN
 mousser/a0p.	po:VERB
 mousseron/S.	po:NOUN
 mousseux/W.	po:ADJ
+mousseux/S.	po:NOUN
 moussoir/S.	po:NOUN
 mousson/S.	po:NOUN
 moussu/F.	po:ADJ
@@ -48798,9 +48910,9 @@ moviola/S.	po:NOUN
 moxa/S.	po:NOUN
 moxibustion/S.	po:NOUN
 moyé/F.	po:ADJ
-moyen/S+	po:NOUN
+moyen/S.	po:NOUN
 moyen/F+	po:ADJ
-moyenne/S+	po:NOUN
+moyenne/S.	po:NOUN
 moyen-âge/S.	po:NOUN
 moyen-courrier/S.	po:NOUN
 moyen-oriental/W.	po:ADJ
@@ -49388,6 +49500,7 @@ n-ième/S.	po:ADJ
 n-linéaire/S.	po:ADJ
 n-uple/S.	po:NOUN
 n-uplet/S.	po:NOUN
+nouvelle/S.	po:NOUN
 n’empêche	po:ADV
 n’est-ce	po:ADV
 n’importe	po:ADV
@@ -49628,6 +49741,7 @@ naturopathie/S.	po:NOUN
 naucore/S.	po:NOUN
 naufrage/S.	po:NOUN
 naufragé/F.	po:ADJ
+naufragé/F.	po:NOUN
 naufrager/a0p.	po:VERB
 naufrageur/Fs	po:NOUN
 naumachie/S.	po:NOUN
@@ -49692,6 +49806,7 @@ né/F.	po:ADJ
 néandertalien/F+	po:ADJ
 néandertalien/S.	po:NOUN
 néanmoins	po:CCONJ
+néanmoins	po:ADV
 néant/S.	po:NOUN
 néantisation/S.	po:NOUN
 néantisé/F.	po:ADJ
@@ -50695,6 +50810,7 @@ nordiste/S.	po:NOUN
 noria/S.	po:NOUN
 norite/S.	po:NOUN
 normal/W.	po:ADJ
+normal/W.	po:NOUN
 normale/S.	po:NOUN
 normalement	po:ADV
 normalien/F+	po:NOUN po:ADJ
@@ -50793,7 +50909,8 @@ nourriture/S.	po:NOUN
 nous	po:PRON
 nous-même	po:PRON
 nous-mêmes	po:PRON
-nouveau/Wx	po:ADJ po:NOUN
+nouveau/Wx	po:ADJ
+nouveau/X.	po:NOUN
 nouveau-né/F.	po:NOUN po:ADJ
 nouveauté/S.	po:NOUN
 nouvel	po:ADJ st:nouveau
@@ -51855,6 +51972,7 @@ opposabilité/S.	po:NOUN
 opposable/S.	po:ADJ
 opposant/F.	po:NOUN po:ADJ
 opposé/F.	po:NOUN
+opposé/F.	po:ADJ
 opposer/a0p+	po:VERB
 opposite/S.	po:NOUN po:ADJ
 oppositif/F.	po:ADJ
@@ -52561,6 +52679,7 @@ ovaire/S.	po:NOUN
 ovalaire/S.	po:ADJ
 ovalbumine/S.	po:NOUN
 ovale/S.	po:ADJ
+ovale/S.	po:NOUN
 ovalie/S.	po:NOUN
 ovalisation/S.	po:NOUN
 ovalisé/F.	po:ADJ
@@ -52683,6 +52802,9 @@ ozonisé/F.	po:ADJ
 ozoniser/a0p+	po:VERB
 ozoniseur/S.	po:NOUN
 ozonosphère/S.	po:NOUN
+plaine/S.	po:NOUN
+plante/S.	po:NOUN
+presqu’île/S.	po:NOUN
 p’tit/F.	po:ADJ
 paca/S.	po:NOUN
 pacage/S.	po:NOUN
@@ -52969,6 +53091,7 @@ pallasite/S.	po:NOUN
 palle/S.	po:NOUN
 palléal/W.	po:ADJ
 palliatif/F.	po:ADJ
+palliatif/S.	po:NOUN
 pallidectomie/S.	po:NOUN
 pallidum/S.	po:NOUN
 pallié/F.	po:ADJ
@@ -53108,6 +53231,7 @@ pandour/S.	po:NOUN
 pané/F.	po:ADJ
 panégyrie/S.	po:NOUN
 panégyrique/S.	po:ADJ
+panégyrique/S.	po:NOUN
 panégyriste/S.	po:NOUN
 panel/S.	po:NOUN
 panéliste/S.	po:NOUN
@@ -54187,7 +54311,8 @@ pavage/S.	po:NOUN
 pavane/S.	po:NOUN
 pavané/F.	po:ADJ
 pavaner/a0p+	po:VERB
-pavé/S.	po:NOUN po:ADJ
+pavé/S.	po:NOUN
+pavé/F.	po:ADJ
 pavement/S.	po:NOUN
 paver/a0p+	po:VERB
 paveur/S.	po:NOUN
@@ -54750,6 +54875,7 @@ perdreau/X.	po:NOUN
 perdrigon/S.	po:NOUN
 perdrix	po:NOUN
 perdu/F.	po:NOUN
+perdu/F.	po:ADJ
 perdurable/S.	po:ADJ
 perdurer/a0p.	po:VERB
 père/S.	po:NOUN
@@ -55218,6 +55344,7 @@ pétiole/S.	po:NOUN
 pétiolé/F.	po:ADJ
 petiot/F.	po:NOUN po:ADJ
 petit/F.	po:NOUN po:ADJ
+petit	po:ADV
 petit-beurre	po:NOUN is:singular
 petit-bois	po:NOUN is:singular
 petit-bourgeois	po:NOUN po:ADJ is:singular
@@ -56619,7 +56746,7 @@ planquer/a0p+	po:VERB
 plans-reliefs	po:NOUN st:plan-relief is:plural
 plans-séquences	po:NOUN st:plan-séquence is:plural
 plansichter/S.	po:NOUN
-plant/F.	po:NOUN
+plant/S.	po:NOUN
 plantage/S.	po:NOUN
 plantaginacée/S.	po:NOUN
 plantain/S.	po:NOUN
@@ -56945,6 +57072,7 @@ pluridimensionnel/F+	po:ADJ
 pluridisciplinaire/S.	po:ADJ
 pluridisciplinarité/S.	po:NOUN
 pluriel/F+	po:ADJ
+pluriel/S.	po:NOUN
 pluriethnique/S.	po:ADJ
 plurilatéral/W.	po:ADJ
 plurilingue/S.	po:NOUN po:ADJ
@@ -57816,6 +57944,7 @@ poser/a0p+	po:VERB
 poseur/Fs	po:NOUN po:ADJ
 posidonie/S.	po:NOUN
 positif/F.	po:ADJ
+positif/S.	po:NOUN
 position/S.	po:NOUN
 positionné/F.	po:ADJ
 positionnel/F+	po:ADJ
@@ -57847,6 +57976,7 @@ possessivité/S.	po:NOUN
 possessoire/S.	po:NOUN
 possibilité/S.	po:NOUN
 possible/S.	po:ADJ
+possible/S.	po:NOUN
 possiblement	po:ADV
 post	po:ADV
 post-abortum/S.	po:NOUN
@@ -57900,6 +58030,7 @@ poste-à-poste	po:NOUN is:*
 poster/S.	po:NOUN
 poster/a0p+	po:VERB
 postérieur/F.	po:ADJ
+postérieur/S.	po:NOUN
 postérieurement	po:ADV
 posteriori	po:ADV
 postériorité/S.	po:NOUN
@@ -58320,7 +58451,8 @@ précipice/S.	po:NOUN
 précipitable/S.	po:ADJ
 précipitamment	po:ADV
 précipitation/S.	po:NOUN
-précipité/S.	po:NOUN po:ADJ
+précipité/S.	po:NOUN
+précipité/F.	po:ADJ
 précipiter/a0p+	po:VERB
 préciput/S.	po:NOUN
 préciputaire/S.	po:ADJ
@@ -59355,7 +59487,8 @@ pronominal/W.	po:NOUN po:ADJ
 pronominalement	po:ADV
 pronominalisation/S.	po:NOUN
 prononçable/S.	po:ADJ
-prononcé/S.	po:NOUN po:ADJ
+prononcé/S.	po:NOUN
+prononcé/F.	po:ADJ
 prononcer/a0p+	po:VERB
 prononciation/S.	po:NOUN
 pronostic/S.	po:NOUN
@@ -60625,6 +60758,7 @@ quel/F+	po:DET
 quelconque/S.	po:ADJ
 quelque	po:DET
 quelque/S.	po:DET
+quelque	po:ADV
 quelquefois	po:ADV
 quelques-unes	po:PRON
 quelques-uns	po:PRON
@@ -61246,6 +61380,7 @@ rai-de-cœur	po:NOUN is:singular
 raïa/S.	po:NOUN
 raid/S.	po:NOUN
 raide/S.	po:ADJ
+raide	po:ADV
 raidement	po:ADV
 raider/S.	po:NOUN
 raideur/S.	po:NOUN
@@ -61800,6 +61935,7 @@ réactant/S.	po:NOUN
 réacteur/Fc	po:ADJ
 réacteur/S.	po:NOUN
 réactif/F.	po:ADJ
+réactif/S.	po:NOUN
 réaction/S.	po:NOUN
 réactionnaire/S.	po:NOUN po:ADJ
 réactionnel/F+	po:ADJ
@@ -62051,6 +62187,7 @@ recapitalisation/S.	po:NOUN
 recapitalisé/F.	po:ADJ
 recapitaliser/a0p+	po:VERB
 récapitulatif/F.	po:ADJ
+récapitulatif/S.	po:NOUN
 récapitulation/S.	po:NOUN
 récapitulé/F.	po:ADJ
 récapituler/a0p+	po:VERB
@@ -63333,7 +63470,8 @@ relevage/S.	po:NOUN
 relevailles	po:NOUN is:inv
 relevance/S.	po:NOUN
 relevant/F.	po:ADJ
-relevé/S.	po:NOUN po:ADJ
+relevé/S.	po:NOUN
+relevé/F.	po:ADJ
 relève/S.	po:NOUN
 relèvement/S.	po:NOUN
 relever/b0p+	po:VERB
@@ -63670,6 +63808,7 @@ rendossé/F.	po:ADJ
 rendosser/a0p+	po:VERB
 rendre/tA	po:VERB
 rendu/S.	po:NOUN
+rendu/F.	po:ADJ
 rendzine/S.	po:NOUN
 rené/F.	po:ADJ
 rêne/S.	po:NOUN
@@ -64089,9 +64228,11 @@ reprimarisation/S.	po:NOUN
 réprimé/F.	po:ADJ
 réprimer/a0p+	po:VERB
 reprint/S.	po:NOUN
-repris/F.	po:ADJ po:NOUN
+repris/F.	po:ADJ
+repris	po:NOUN
 reprisage/S.	po:NOUN
 reprisé/F.	po:ADJ
+reprise/S.	po:NOUN
 repriser/a0p+	po:VERB
 repriseuse/S.	po:NOUN
 réprobateur/Fc	po:NOUN po:ADJ
@@ -64439,6 +64580,7 @@ resucée/S.	po:NOUN
 resuffixation/S.	po:NOUN
 résultant/F.	po:ADJ po:NOUN
 résultante/S.	po:ADJ
+résultante/S.	po:NOUN
 résultat/S.	po:NOUN
 résultatif/F.	po:ADJ
 résulté/F.	po:ADJ
@@ -65452,7 +65594,8 @@ romantisme/S.	po:NOUN
 romarin/S.	po:NOUN
 rombier/F.	po:NOUN
 rompre/tA	po:VERB
-rompu/S.	po:NOUN po:ADJ
+rompu/S.	po:NOUN
+rompu/F.	po:ADJ
 ronce/S.	po:NOUN
 ronceraie/S.	po:NOUN
 ronceux/W.	po:ADJ
@@ -65504,6 +65647,7 @@ rongé/F.	po:ADJ
 rongement/S.	po:NOUN
 ronger/a0p+	po:VERB
 rongeur/Fs	po:ADJ
+rongeur/S.	po:NOUN
 rongeure/S.	po:NOUN
 rônier/S.	po:NOUN
 rônin/S.	po:NOUN
@@ -65860,6 +66004,7 @@ rumen/S.	po:NOUN
 rumeur/S.	po:NOUN
 rumex	po:NOUN
 ruminant/F.	po:ADJ
+ruminant/S.	po:NOUN
 rumination/S.	po:NOUN
 ruminé/F.	po:ADJ
 ruminement/S.	po:NOUN
@@ -65951,6 +66096,7 @@ rythmicien/F+	po:NOUN
 rythmicité/S.	po:NOUN
 rythmique/S.	po:ADJ
 rythmiquement	po:ADV
+subordonnée/S.	po:NOUN
 s’agir/f0p.	po:VERB
 saanen/S.	po:NOUN
 sabayon/S.	po:NOUN
@@ -66893,7 +67039,8 @@ scélérat/F.	po:NOUN po:ADJ
 scélératement	po:ADV
 scélératesse/S.	po:NOUN
 scellage/S.	po:NOUN
-scellé/S.	po:NOUN po:ADJ
+scellé/S.	po:NOUN
+scellé/F.	po:ADJ
 scellement/S.	po:NOUN
 sceller/a0p+	po:VERB
 scénarimage/S.	po:NOUN
@@ -67219,6 +67366,7 @@ séborrhéide/S.	po:NOUN
 séborrhéique/S.	po:NOUN po:ADJ
 sébum/S.	po:NOUN
 sec/F.	po:ADJ po:NOUN
+sec	po:ADV
 sécable/S.	po:ADJ
 secam/S.	po:NOUN
 sécant/F.	po:ADJ
@@ -67458,6 +67606,7 @@ semainier/F.	po:NOUN
 sémantème/S.	po:NOUN
 sémanticien/F+	po:NOUN
 sémantique/S.	po:ADJ
+sémantique/S.	po:NOUN
 sémantiquement	po:ADV
 sémantisme/S.	po:NOUN
 sémaphore/S.	po:NOUN
@@ -68351,6 +68500,7 @@ singulatif/F.	po:ADJ
 singulatif/S.	po:NOUN
 singulet/S.	po:NOUN
 singulier/F.	po:ADJ
+singulier/S.	po:NOUN
 singulièrement	po:ADV
 sinisant/F.	po:ADJ
 sinisation/S.	po:NOUN
@@ -70666,6 +70816,7 @@ subvertir/f0p+	po:VERB
 suc/S.	po:NOUN
 suçage/S.	po:NOUN
 succédané/F.	po:ADJ
+succédané/S.	po:NOUN
 succéder/c0p.	po:VERB
 succenturié/F.	po:ADJ
 succès	po:NOUN
@@ -70794,6 +70945,7 @@ suivant	po:ADP
 suivant/F.	po:ADJ po:NOUN
 suiveur/Fs	po:NOUN po:ADJ
 suivi/F.	po:ADJ
+suivi/S.	po:NOUN
 suivisme/S.	po:NOUN
 suiviste/S.	po:NOUN po:ADJ
 suivre/xQ	po:VERB
@@ -72998,6 +73150,7 @@ tentes-roulottes	po:NOUN st:tente-roulotte is:plural
 tenthrède/S.	po:NOUN
 tenture/S.	po:NOUN
 tenu/S.	po:NOUN
+tenu/F.	po:ADJ
 ténu/F.	po:ADJ
 tenue/S.	po:NOUN
 ténuité/S.	po:NOUN
@@ -74517,6 +74670,7 @@ tragédien/F+	po:NOUN
 tragi-comédie/S.	po:NOUN
 tragi-comique/S.	po:ADJ
 tragique/S.	po:ADJ
+tragique/S.	po:NOUN
 tragiquement	po:ADV
 trahi/F.	po:ADJ
 trahir/f0p+	po:VERB
@@ -74584,6 +74738,7 @@ trampoline/S.	po:NOUN
 tramway/S.	po:NOUN
 tranchage/S.	po:NOUN
 tranchant/F.	po:ADJ
+tranchant/S.	po:NOUN
 tranche/S.	po:NOUN
 tranché/F.	po:ADJ
 tranchée/S.	po:NOUN
@@ -74599,6 +74754,7 @@ tranchoir/S.	po:NOUN
 tranquille/S.	po:ADJ
 tranquillement	po:ADV
 tranquillisant/F.	po:ADJ
+tranquillisant/S.	po:NOUN
 tranquillisation/S.	po:NOUN
 tranquillisé/F.	po:ADJ
 tranquilliser/a0p+	po:VERB
@@ -74693,6 +74849,7 @@ transfo/S.	po:NOUN
 transformable/S.	po:ADJ
 transformant/F.	po:ADJ
 transformateur/Fc	po:ADJ
+transformateur/S.	po:NOUN
 transformation/S.	po:NOUN
 transformationnel/F+	po:ADJ
 transformé/F.	po:ADJ
@@ -75510,6 +75667,7 @@ trompable/S.	po:ADJ
 trompe/S.	po:NOUN
 trompé/F.	po:ADJ
 trompe-la-mort	po:NOUN
+trompe-l’œil	po:NOUN is:inv
 tromper/a0p+	po:VERB
 tromperie/S.	po:NOUN
 trompeté/F.	po:ADJ
@@ -76848,7 +77006,8 @@ vectoriel/F+	po:ADJ
 vectorisation/S.	po:NOUN
 vectorisé/F.	po:ADJ
 vectoriser/a0p+	po:VERB
-vécu/S.	po:ADJ po:NOUN
+vécu/S.	po:NOUN
+vécu/F.	po:ADJ
 vedettariat/S.	po:NOUN
 vedette/S.	po:NOUN
 vedettisation/S.	po:NOUN
@@ -77215,6 +77374,7 @@ verrucosité/S.	po:NOUN
 verrue/S.	po:NOUN
 verruqueux/W.	po:ADJ
 vers	po:ADP
+vers	po:NOUN is:inv
 vers-librisme/S.	po:NOUN
 vers-libriste/S.	po:NOUN po:ADJ
 versaillais/F.	po:NOUN po:ADJ
@@ -78467,6 +78627,7 @@ xylose/S.	po:NOUN
 xylostome/S.	po:NOUN
 xyste/S.	po:NOUN
 y	po:PRON
+y	po:NOUN is:inv
 yacht/S.	po:NOUN
 yacht-club/S.	po:NOUN
 yachting/S.	po:NOUN
@@ -78500,6 +78661,7 @@ yersiniose/S.	po:NOUN
 yeti/S.	po:NOUN
 yéti/S.	po:NOUN
 yeuse/S.	po:NOUN
+yeux	po:NOUN st:œil is:plural
 yézidi/F.	po:NOUN po:ADJ
 yézidisme/S.	po:NOUN
 yiddish	po:NOUN is:inv
