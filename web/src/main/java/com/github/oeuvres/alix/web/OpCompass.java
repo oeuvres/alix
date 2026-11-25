@@ -230,6 +230,7 @@ public class OpCompass extends Op
             case "mds" -> CompassVec.Layout.MDS;
             case "mds_cosine" -> CompassVec.Layout.MDS_COSINE;
             case "umap" -> CompassVec.Layout.UMAP;
+            case "lpp" -> CompassVec.Layout.LPP;
             case "centred" -> CompassVec.Layout.MDS_CENTRED;
             default -> null;
         };
@@ -258,7 +259,7 @@ public class OpCompass extends Op
 
         final CompassVec compass;
         try {
-            if (layout == CompassVec.Layout.UMAP || (pca && keywords)) {
+            if (layout == CompassVec.Layout.UMAP || (keywords && (pca || layout == CompassVec.Layout.LPP))) {
                 if (!keywords) {
                     badRequest(request, response, meta, "[UMAP requires plane=keywords]");
                     return;
@@ -331,10 +332,10 @@ public class OpCompass extends Op
             json.beginObject();
             json.name("unit").value(switch (layout) {
                 case PCA -> "vector-projection";
-                case UMAP -> "layout-coordinate";
+                case UMAP, LPP -> "layout-coordinate";
                 default -> "model-distance";
             });
-            if (layout == CompassVec.Layout.UMAP) {
+            if (layout == CompassVec.Layout.UMAP || layout == CompassVec.Layout.LPP) {
                 json.name("qualityMetric").value("neighbor-recall@5");
             }
             json.name("plane").value(keywords ? "keywords" : "local");

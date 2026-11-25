@@ -46,6 +46,10 @@ import java.util.Objects;
  * near and far pairs. Both variants are layout devices only; model links
  * and neighbour rankings remain unchanged.</p>
  *
+ * <p>{@link Layout#LPP} fits a linear locality-preserving projection. Reference
+ * words define a nearest-neighbour graph; new words are projected linearly.
+ * Quality is neighbourhood recall rather than explained variance.</p>
+ *
  * <p>{@link Layout#UMAP} fits all supplied reference ids jointly. Only these
  * ids can be plotted, and quality is top-five neighbourhood recall.
  * Coordinates have arbitrary units.</p>
@@ -83,16 +87,19 @@ public final class CompassVec
     /** Whether MDS uses cosine dissimilarity rather than Euclidean distance. */
     private final boolean cosineMds;
 
-    /** Local neighbourhood recall for UMAP references, null for other layouts. */
-    private final double[] umapQuality;
+    /** Local neighbourhood recall for UMAP and LPP references, null otherwise. */
+    private final double[] neighborQuality;
+
+    /** Whether the layout is a locality-preserving linear projection. */
+    private final boolean linearLpp;
 
     /** Mean of the reference vectors, origin of the centred PCA scores. */
     private final double[] centroid;
 
-    /** First orthonormal direction of the local PCA plane. */
+    /** First linear projection direction, orthonormal for PCA. */
     private final double[] directionX;
 
-    /** Second orthonormal direction of the local PCA plane. */
+    /** Second linear projection direction, orthonormal for PCA. */
     private final double[] directionY;
 
     /** Mean of pivot vectors or selected keywords, used as the plotted origin. */
@@ -140,7 +147,9 @@ public final class CompassVec
         /** Metric MDS on cosine dissimilarities (1 - cosine). */
         MDS_COSINE,
         /** UMAP on the supplied reference words, without out-of-sample placement. */
-        UMAP
+        UMAP,
+        /** Linear locality-preserving projection in a reduced PCA subspace. */
+        LPP
     }
 
     /** Selection rule for the links drawn between displayed terms. */
@@ -360,7 +369,7 @@ public final class CompassVec
         if (layout == Layout.UMAP && pivotIds != null) {
             throw new IllegalArgumentException("UMAP requires a joint reference set");
         }
-        if (layout == Layout.PCA) {
+        if (layout == Layout.PCA || layout == Layout.LPP) {
             referenceIds = pivotIds == null ? Arrays.stream(referenceIds).distinct().toArray()
                 : java.util.stream.IntStream.concat(Arrays.stream(referenceIds),
                     Arrays.stream(pivotIds)).distinct().toArray();
@@ -396,7 +405,8 @@ public final class CompassVec
             }
         }
 
-        final double[][] directions = layout == Layout.PCA
+        linearLpp = layout == Layout.LPP;
+        final double[][] directions = linearLpp ? Lpp.fit(vectors, centered) : layout == Layout.PCA
             ? principalComponents(centered, axisX, axisY) : principalPlane(centered);
         orient(directions, centered);
         directionX = directions[0];
@@ -404,7 +414,7 @@ public final class CompassVec
         focus = pivotIds == null ? referenceMean : pivotMean(model, pivotIds);
         centroid = referenceMean;
         centred = layout == Layout.MDS_CENTRED;
-        cosineMds = layout == Layout.MDS_COSINE || layout == Layout.UMAP;
+        cosineMds = layout == Layout.MDS_COSINE || layout == Layout.UMAP || linearLpp;
 
         final double[][] points = new double[size][2];
         final double[][] scores = new double[size][2];
@@ -436,22 +446,25 @@ public final class CompassVec
                     dissimilarity[j][i] = value;
                 }
             }
-            this.layout = align(layout == Layout.UMAP
+            this.layout = linearLpp ? scores : align(layout == Layout.UMAP
                 ? Umap.fit(dissimilarity, scores) : smacof(dissimilarity, scores), scores);
             layoutIds = referenceIds.clone();
             layoutVectors = targets;
             // SMACOF from centred scores keeps the centroid at (0, 0).
-            layoutOrigin = pivotIds == null ? new double[2] : place(focus);
+            layoutOrigin = pivotIds == null ? new double[2] : linearLpp
+                ? new double[] {dot(focus, directionX) - dot(centroid, directionX),
+                    dot(focus, directionY) - dot(centroid, directionY)} : place(focus);
             for (int row = 0; row < size; row++) {
                 points[row][0] = this.layout[row][0] - layoutOrigin[0];
                 points[row][1] = this.layout[row][1] - layoutOrigin[1];
             }
-            umapQuality = layout == Layout.UMAP ? Umap.quality(dissimilarity, this.layout) : null;
-            quality = umapQuality == null ? layoutQuality(dissimilarity, this.layout)
-                : Arrays.stream(umapQuality).average().orElse(0d);
+            neighborQuality = layout == Layout.UMAP || linearLpp
+                ? Umap.quality(dissimilarity, this.layout) : null;
+            quality = neighborQuality == null ? layoutQuality(dissimilarity, this.layout)
+                : Arrays.stream(neighborQuality).average().orElse(0d);
         }
         else {
-            umapQuality = null;
+            neighborQuality = null;
             this.layout = null;
             layoutIds = null;
             layoutVectors = null;
@@ -734,11 +747,17 @@ public final class CompassVec
                     break;
                 }
             }
-            if (umapQuality != null) {
-                if (index < 0) throw new IllegalArgumentException("word outside UMAP reference set");
+            if (neighborQuality != null) {
+                if (index < 0) {
+                    if (!linearLpp) throw new IllegalArgumentException("word outside UMAP reference set");
+                    final double[] xy = coordinates(vector);
+                    final double[] raw = {xy[0] + layoutOrigin[0], xy[1] + layoutOrigin[1]};
+                    return new Point(model.word(id), id, 1d - dot(vector, focus), xy[0], xy[1],
+                        Lpp.recall(vector, raw, layoutVectors, layout));
+                }
                 return new Point(model.word(id), id, 1d - dot(vector, focus),
                     layout[index][0] - layoutOrigin[0], layout[index][1] - layoutOrigin[1],
-                    umapQuality[index]);
+                    neighborQuality[index]);
             }
             final double[] raw = index >= 0 ? layout[index] : place(vector);
             final double[] target = layoutVector(vector);
@@ -804,7 +823,7 @@ public final class CompassVec
     /**
      * Returns the share of centred reference-vector variance represented by
      * the compass plane, or one minus normalized stress against the selected
-     * MDS dissimilarity, or mean top-five neighbourhood recall for UMAP.
+     * MDS dissimilarity, or mean top-five neighbourhood recall for UMAP and LPP.
      * Values for different objectives are not directly comparable.
      *
      * @return value in {@code [0, 1]}
@@ -1363,7 +1382,7 @@ public final class CompassVec
      * from the reference centroid, so the sign does not depend on the plotted
      * origin.</p>
      *
-     * @param directions orthonormal PCA directions, reflected in place
+     * @param directions linear directions, reflected in place
      * @param centered reference vectors centred on their mean
      */
     private static void orient(final double[][] directions, final double[][] centered)
@@ -1498,9 +1517,7 @@ public final class CompassVec
         final boolean gram = rows < dim;
         final int n = gram ? rows : dim;
         final double[][] a = new double[n][n];
-        final double[][] v = new double[n][n];
         for (int i = 0; i < n; i++) {
-            v[i][i] = 1d;
             for (int j = i; j < n; j++) {
                 double value = 0d;
                 if (gram) value = dot(matrix[i], matrix[j]);
@@ -1508,53 +1525,14 @@ public final class CompassVec
                 a[i][j] = a[j][i] = value;
             }
         }
-        double scale = 0d;
-        for (int i = 0; i < n; i++) scale = Math.max(scale, a[i][i]);
-        if (!(scale > 0d)) throw new IllegalArgumentException("reference cloud has no variance");
-        final double tolerance = 1e-13 * scale;
-        boolean converged = false;
-        for (int sweep = 0; sweep < 100; sweep++) {
-            double largest = 0d;
-            for (int p = 0; p < n - 1; p++) {
-                for (int q = p + 1; q < n; q++) {
-                    final double off = a[p][q];
-                    largest = Math.max(largest, Math.abs(off));
-                    if (Math.abs(off) <= tolerance) continue;
-                    final double tau = (a[q][q] - a[p][p]) / (2d * off);
-                    final double t = Math.copySign(1d, tau) / (Math.abs(tau) + Math.hypot(1d, tau));
-                    final double c = 1d / Math.hypot(1d, t);
-                    final double sn = t * c;
-                    a[p][p] -= t * off;
-                    a[q][q] += t * off;
-                    a[p][q] = a[q][p] = 0d;
-                    for (int k = 0; k < n; k++) {
-                        if (k != p && k != q) {
-                            final double kp = a[k][p];
-                            final double kq = a[k][q];
-                            a[k][p] = a[p][k] = c * kp - sn * kq;
-                            a[k][q] = a[q][k] = sn * kp + c * kq;
-                        }
-                        final double vp = v[k][p];
-                        final double vq = v[k][q];
-                        v[k][p] = c * vp - sn * vq;
-                        v[k][q] = sn * vp + c * vq;
-                    }
-                }
-            }
-            if (largest <= tolerance) {
-                converged = true;
-                break;
-            }
-        }
-        if (!converged) throw new IllegalArgumentException("PCA eigensolver did not converge");
-        final Integer[] order = new Integer[n];
-        for (int i = 0; i < n; i++) order[i] = i;
-        Arrays.sort(order, (i, j) -> Double.compare(a[j][j], a[i][i]));
+        final SymmetricEigen.Result eigen = SymmetricEigen.solve(a);
+        final double[] values = eigen.values();
+        final double[][] v = eigen.vectors();
         final int[] ranks = {axisX, axisY};
         final double[][] directions = new double[2][dim];
         for (int i = 0; i < 2; i++) {
-            final int col = order[ranks[i] - 1];
-            if (!(a[col][col] > a[order[0]][order[0]] * 1e-12)) {
+            final int col = ranks[i] - 1;
+            if (!(values[col] > values[0] * 1e-12)) {
                 throw new IllegalArgumentException("principal component " + ranks[i] + " exceeds numerical rank");
             }
             if (gram) {
