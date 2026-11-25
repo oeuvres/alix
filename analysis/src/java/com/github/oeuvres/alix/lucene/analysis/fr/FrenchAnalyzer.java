@@ -68,7 +68,7 @@ import opennlp.tools.postag.POSModel;
  * French analysis scenario used by Alix.
  *
  * <p>The analyzer owns mutable lexical resources. Expressions loaded through
- * {@link #addExpressions(List)} are compiled with the normalization and lemma
+ * {@link #addExpressions(List)} are compiled with the normalization
  * resources present at call time. Previously compiled expressions are not
  * rebuilt when those resources are modified later.</p>
  */
@@ -99,6 +99,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
 
     /** Analyzer used only to compile MWE lexicon entries. */
     private final Analyzer mweEntryAnalyzer;
+
+    /** Compiler retained for default and corpus-specific MWE declarations. */
+    private final VerbalMweCompiler mweCompiler;
 
     /** Observation-zone analyzer. */
     private final Analyzer observation;
@@ -166,7 +169,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         posTagger = new PosTagger(POS_MODEL, tagDic);
         
         mweEntryAnalyzer = new MweEntryAnalyzer();
-        expressions = FrenchLexicons.buildMweLexicon(mweEntryAnalyzer);
+        mweCompiler = FrenchLexicons.buildMweCompiler(mweEntryAnalyzer);
+        expressions = mweCompiler.lexicon();
 
         canonic = new CanonicAnalyzer();
         word2vec = new Word2vecAnalyzer();
@@ -195,7 +199,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /**
      * Adds one MWE whose declared form is also its canonical output.
      *
-     * <p>The expression is compiled with the normalization and lemma resources
+     * <p>The expression is compiled with the normalization resources
      * present when this method is called.</p>
      *
      * @param expression expression to analyze and register
@@ -210,7 +214,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /**
      * Adds one MWE with an explicit canonical output.
      *
-     * <p>The expression is compiled with the normalization and lemma resources
+     * <p>The expression is compiled with the normalization resources
      * present when this method is called.</p>
      *
      * @param expression expression to analyze and register
@@ -222,20 +226,15 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         final CharSequence expression,
         final CharSequence canonical)
     {
-        return LexiconHelper.addExpression(
-            expressions,
-            mweEntryAnalyzer,
-            expression,
-            canonical
-        );
+        return mweCompiler.addExpression(expression, "", canonical);
     }
 
     /**
      * Adds and freezes MWE files.
      *
-     * <p>Each entry is compiled with the current normalization and lemma
-     * resources. The expression's analyzed surface sequence and its
-     * lemma-or-surface sequence are both added when they differ.</p>
+     * <p>Each entry is compiled with the current normalization resources.
+     * Verbal declarations expand only their initial verbal head. Explicit
+     * declarations take precedence over generated variants across all files.</p>
      *
      * @param files CSV files to load
      * @throws IOException if a file cannot be read
@@ -243,7 +242,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public void addExpressions(final List<Path> files) throws IOException
     {
         for (Path path : files) {
-            LexiconHelper.loadExpressions(expressions, mweEntryAnalyzer, path);
+            mweCompiler.loadExpressions(path);
         }
         expressions.freeze();
     }
@@ -454,9 +453,10 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /**
      * Analyzer used to compile one MWE declaration from a CSV cell.
      *
-     * <p>The chain deliberately omits POS tagging, MWE recognition, cleanup,
-     * and stop-word removal. {@link LemmaFilter} therefore resolves through the
-     * POS-independent lemma mapping when no more specific mapping is available.</p>
+     * <p>The chain deliberately omits POS tagging, lemmatization, MWE recognition,
+     * cleanup, and stop-word removal. Unconditional lemma aliases would introduce
+     * false matches for fixed expressions, such as de faire for de fait.
+     * Verbal inflections are supplied separately by the MWE compiler.</p>
      */
     private final class MweEntryAnalyzer extends Analyzer
     {
@@ -473,7 +473,6 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
             TokenStream ts = tokenizer;
             ts = new FrenchCliticSplitFilter(ts);
             ts = new ReplaceFilter(ts, normalizer);
-            ts = new LemmaFilter(ts, lemmaLexicon, propn);
             return new TokenStreamComponents(tokenizer, ts);
         }
     }

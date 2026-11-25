@@ -34,11 +34,18 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.text.ParseException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.hunspell.Dictionary;
+import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.store.Directory;
 
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.PosResolver;
@@ -220,27 +227,64 @@ public final class FrenchLexicons
     }
 
     /**
-     * Builds the default MWE lexicon with the supplied entry analyzer.
+     * Lazily loads the canonical Hunspell dictionary once per class loader.
+     * The immutable dictionary is shared; each MWE compiler owns its generator.
+     */
+    private static final class HunspellResources
+    {
+        /** Unrestricted French lexical resource, independent of any index. */
+        private static final Dictionary DICTIONARY = loadHunspell();
+    }
+
+    /**
+     * Loads the existing canonical French Hunspell resources.
+     * Temporary storage and resource streams are closed after construction.
      *
-     * @param analyzer analyzer used to compile expression keys
+     * @return immutable Hunspell dictionary
+     * @throws UncheckedIOException if a resource cannot be read or parsed
+     */
+    private static Dictionary loadHunspell()
+    {
+        final String base = "/com/github/oeuvres/alix/fr/";
+        try (Directory tmp = new ByteBuffersDirectory();
+                InputStream aff = FrenchLexicons.class.getResourceAsStream(base + "fr-alix.aff");
+                InputStream dic = FrenchLexicons.class.getResourceAsStream(base + "fr-alix.dic")) {
+            if (aff == null || dic == null) {
+                throw new IOException("Missing French Hunspell resources: fr-alix.aff or fr-alix.dic");
+            }
+            return new Dictionary(tmp, "fr-hunspell", aff, dic);
+        } catch (ParseException e) {
+            throw new UncheckedIOException(new IOException("Cannot parse French Hunspell resources", e));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Builds a compiler populated with the default MWE declarations.
+     * Keep this compiler for subsequent corpus-specific additions so that
+     * automatically generated variants cannot overwrite explicit entries.
+     *
+     * @param analyzer normalized surface-form entry analyzer
+     * @return compiler with a mutable lexicon
+     */
+    static VerbalMweCompiler buildMweCompiler(final Analyzer analyzer)
+    {
+        final VerbalMweCompiler compiler = new VerbalMweCompiler(analyzer, HunspellResources.DICTIONARY);
+        compiler.loadExpressions(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/mwe-words.csv");
+        compiler.loadExpressions(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/mwe-propn.csv");
+        return compiler;
+    }
+
+    /**
+     * Builds the default MWE lexicon, including single-head verbal variants.
+     *
+     * @param analyzer analyzer used to compile normalized expression keys
      * @return mutable MWE lexicon populated with the default resources
      */
     public static MweLexicon buildMweLexicon(final Analyzer analyzer)
     {
-        final MweLexicon lexicon = new MweLexicon(2000);
-        LexiconHelper.loadExpressions(
-            lexicon,
-            analyzer,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/mwe-words.csv"
-        );
-        LexiconHelper.loadExpressions(
-            lexicon,
-            analyzer,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/mwe-propn.csv"
-        );
-        return lexicon;
+        return buildMweCompiler(analyzer).lexicon();
     }
 
     /**
