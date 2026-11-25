@@ -1,66 +1,210 @@
 __STOPWORDS
 # personne
-a
 A
-à
+a
 À
+à
 à base de
+à bien des égards
 à bord de
 à bout de
 à cause de
+à cause des
+à cause du
+à ce compte-là
+à ce moment-là
+à ce propos
+à ce sujet
+à ce titre
+à cela près que
+à cet effet
 à cet égard
+à chaque fois
 à chaque fois que
+à charge de
+à charge des
+à charge du
 à compter de
 à condition de
+à condition que
+a contrario
+à côté
 à côté de
+à côté des
+à côté du
 à coup de
+à défaut
 à défaut de
 à dessein de
 à destination de
+à dire le vrai
+à dire vrai
 à fin de
 à force de
+à force des
+à force du
 a fortiori
+à fortiori
 à grand renfort de
+à jamais
+à l'abri de
+à l'abri des
+à l'abri du
 à l'adresse de
 à l'aide de
+à l'aide des
+à l'aide du
+à l'approche de
+à l'approche des
+à l'approche du
 à l'appui de
+à l'aulne de
+à l'aune de
 à l'autre bout de
 à l'avenant
+à l'avenir
 à l'effet de
 à l'égal de
 à l'égard de
+à l'égard des
+à l'égard du
 à l'encontre
+à l'encontre de
+à l'encontre des
+à l'encontre du
 à l'endroit de
 à l'entour de
+à l'époque
 à l'épreuve de
+à l'exception de
+à l'exception des
+à l'exception du
+à l'exclusion de
+à l'exclusion des
+à l'exclusion du
 à l'exemple de
 à l'extérieur de
+à l'heure actuelle
+à l'image de
+à l'image des
+à l'image du
 à l'imitation de
+à l'instant
+à l'instant même
+à l'instant où
 à l'instar de
+à l'insu de
+à l'insu des
+à l'insu du
+à l'intention de
+à l'intention des
+à l'intention du
 à l'intérieur de
+à l'intérieur des
+à l'intérieur du
+à l'inverse
+à l'inverse de
+à l'inverse des
+à l'inverse du
+à l'issue de
+à l'issue des
+à l'issue du
+à l'occasion de
+à l'occasion des
+à l'occasion du
 à l'ombre de
 à l'opposé de
 à l'unisson
+à la charge de
+à la charge des
+à la charge du
 à la condition de
+à la différence de
+à la différence des
+à la différence du
+à la faveur de
+à la faveur des
+à la faveur du
+à la fin
 à la fois
+à la hauteur de
+à la hauteur des
+à la hauteur du
+à la limite
+à la limite de
+à la limite des
+à la limite du
+à la longue
 à la lumière de
 à la mémoire de
+à la merci de
+à la merci des
+à la merci du
 à la place de
+à la place des
+à la place du
+à la portée de
+à la portée des
+à la portée du
 à la réserve de
+à la rigueur
 à la sortie de
 à la suite de
+à la suite des
+à la suite du
+à la veille de
+à la veille des
+à la veille du
 à la vue de
+à la zeub
+à maints égards
+à mesure que
+à moins de
+à moins des
+à moins du
+à moins que
+à nouveau
 à part
 à part ça
 à partir de
 à partir de là
+à partir des
+à partir du
+à partir du moment où
+à peine
 à peine de
+à peu de chose près
 à peu près
+à plus forte raison
+a posteriori
+à posteriori
+à présent
+à présent que
+a priori
+à priori
+à proportion de
+à proportion des
+à proportion du
 à propos de
+à proprement parler
+à quoi bon
 à raison de
+à rebours de
+à savoir
+à seule fin de
+à seule fin des
+à seule fin du
+à seule fin que
+à supposer que
+à tel point que
 à terme
 à titre de
+à tous égards
+à tout le moins
+à tout moment
+à tout prendre
 à travers
+à vrai dire
 afin
 afin de
 afin que
@@ -71,56 +215,175 @@ aient
 aies
 ailleurs
 ainsi
+ainsi de suite
 ait
 allait
 aller
 aller aller
 alors
+alors même que
 alors que
 après
+après même que
 après que
 as
 assez
+assez de
 au
 au bas de
 au beau milieu de
+au bénéfice de
+au bénéfice des
+au bénéfice du
 au bord de
 au bout de
+au bout des
+au bout du
+au bout du compte
 au cas où
 au contraire
 au contraire de
 au cours de
+au cours des
+au cours du
+au début
+au dedans de
+au dedans des
+au dedans du
+au dehors de
+au dehors des
+au dehors du
+au delà
+au delà de
+au delà des
+au delà du
+au demeurant
+au dessous de
+au dessous des
+au dessous du
+au dessus de
+au dessus des
+au dessus du
 au détriment de
 au droit de
+au fait
+au fait de
+au fait des
+au fait du
+au fond
+au fur et à mesure
+au fur et à mesure que
+au grand dam de
+au grand dam des
+au grand dam du
+au gré de
+au gré des
+au gré du
+au juste
+au lendemain de
+au lendemain des
+au lendemain du
 au lieu de
+au lieu des
+au lieu du
+au lieu et place de
+au lieu que
+au maximum
+au même moment
+au mépris de
+au mépris des
+au mépris du
+au mieux
 au milieu de
+au milieu des
+au milieu du
+au minimum
 au moins
 au moment de
+au moment des
+au moment du
 au moment où
+au motif que
 au moyen de
+au moyen des
+au moyen desquels
+au moyen du
+au moyen duquel
 au niveau de
+au niveau des
+au niveau du
 au nom de
+au nom des
+au nom du
+au péril de
+au péril des
+au péril du
+au pire
+au plus
+au plus tard
+au plus tôt
+au point que
+au préalable
 au préjudice de
+au premier abord
+au premier chef
 au prétexte de
 au prix de
+au profit de
+au profit des
+au profit du
+au prorata de
+au prorata des
+au prorata du
 au ras de
 au rebours de
 au regard de
+au regard des
+au regard du
 au risque de
 au sein de
+au sein des
+au sein du
 au sortir de
 au spectacle de
 au sujet de
+au sujet des
+au sujet du
+au surplus
 au temps de
+au terme de
+au terme des
+au terme du
+au titre de
+au titre des
+au titre du
+au total
+au travers
 au travers de
+au travers des
+au travers du
 au vu de
 au vu et au su de
 au vu et su de
+au-dedans
 au-dedans de
 au-dehors
+au-dehors de
+au-dehors des
+au-dehors du
+au-delà
+au-delà de
+au-delà des
+au-delà du
 au-dessous
 au-dessous de
 au-dessus
+au-dessus de
+au-dessus des
+au-dessus du
+au-devant de
+au-devant des
+au-devant du
 aucun
 aucune
 aucunes
@@ -132,6 +395,8 @@ aujourd’hui
 auparavant
 auprès
 auprès de
+auprès des
+auprès du
 auquel
 auquel cas
 aura
@@ -148,17 +413,41 @@ auront
 ausdiz
 ausquelz
 aussi
+aussi bien que
+aussi longtemps que
 aussi peu que
+aussitôt que
 autant
+autant de
 autour
 autour de
+autour des
+autour du
 autre
+autre chose
+autre part
 autrefois
+autrement dire
 autrement dit
 autres
 autrui
 aux
+aux abords de
+aux abords des
+aux abords du
+aux alentours de
+aux alentours des
+aux alentours du
+aux confins de
+aux confins des
+aux confins du
+aux côtés de
+aux côtés des
+aux côtés du
 aux dépens de
+aux environs de
+aux environs des
+aux environs du
 aux fins de
 aux lieu et place de
 aux portes de
@@ -189,26 +478,49 @@ ayez
 ayons
 beaucoup
 beaucoup de
+bel et bien
 bien
+bien au contraire
+bien des
+bien entendu
 bien loin de
 bien que
+bien sûr
 bientôt
 bon
+bon nombre de
 c'est
 c’est
+c'est à dire
+c'est pourquoi
 c'est-à-dire
 c’est-à-dire
 c'était
 ça
+çà et là
 car
 ce
+ce faisant
+ce n'est pas que
 ceci
+ceci dit
+ceci étant
 cela
+cela dit
+cela étant
 celle
+celle ci
+celle là
 celle-ci
 celle-là
 celles
+celles ci
+celles là
+celles-ci
+celles-là
 celui
+celui ci
+celui là
 celui-ci
 celui-là
 celuy
@@ -226,14 +538,22 @@ cest
 ceste
 cet
 cette
+cette fois ci
+cette fois là
 cette fois où
+cette fois-ci
+cette fois-là
 ceulx
 ceux
+ceux ci
+ceux là
+ceux-ci
 ceux-là
 chacun
 chacune
 chapitre
 chaque
+chaque fois
 chaque fois que
 chascun
 chez
@@ -245,58 +565,144 @@ cinquante
 com
 combien
 comme
+comme quoi
+comme si
 comment
+compte tenu de
+compte tenu des
+compte tenu du
 conformément à
 conséquemment à
 contrairement à
 contre
 d'abord
 d’abord
+d'accord avec
 d'ailleurs
 d’ailleurs
 d'après
+d'au milieu de
+d'autant moins
+d'autant moins que
+d'autant plus
+d'autant plus que
 d'autant que
 d'autre
 d’autre
+d'autre part
 d'autres
 d’autres
 d'avec
+d'emblée
 d’emblée
 d'entre
 d'ici
+d'ici là
+d'ici peu
+d'ores et déjà
 d'un autre côté
+d'une façon générale
+d'une manière générale
+d'une part
 dans
+dans ce cas
+dans l'ensemble
+dans l'état actuel
+dans l'éventualité où
+dans l'hypothèse où
+dans l'intérêt de
+dans l'intérêt des
+dans l'intérêt du
+dans l'optique de
 dans la crainte de
 dans la mesure où
+dans la plupart des cas
+dans le but de
+dans le but des
+dans le but du
+dans le cadre de
+dans le cadre des
+dans le cadre du
+dans le cas où
 dans le moment où
 dans le moment que
-de
+dans le viseur de
+dans une certaine mesure
+dans une large mesure
+dans une moindre mesure
 De
+de
+de beaucoup
+de bonne heure
+de ce fait
+de concert avec
 de crainte de
+de crainte que
 de façon à
+de façon générale
+de façon que
+de jour en jour
 de la part de
+de loin
+de loin en loin
 de manière à
+de manière générale
+de manière que
 de même
 de même que
+de moins en moins
 de mon côté
 de niveau avec
+de nos jours
+de nouveau
+de pair avec
 de par
+de parmi
+de part et d'autre
+de part et d'autre de
+de part et d'autre des
+de part et d'autre du
+de peu
 de peur de
+de peur que
 de plus
+de plus belle
+de plus en plus
 de préférence à
+de prime abord
+de retour de
+de retour des
+de retour du
+de sitôt
 de sorte que
+de surcroît
+de telle façon que
+de telle manière que
+de telle sorte que
+de temps à autre
+de temps en temps
+de tout temps
+de toute façon
+de toute manière
 dedans
 défense de
 dehors
 déjà
 depuis
+depuis lors
+depuis que
+depuis toujours
 derrière
-des
 Des
+des
 dès
+dès à présent
 des fois que
+dès l'instant où
+dès l'instant que
 dès lors
 dès lors que
+dès maintenant
 dès que
 desdictes
 desdites
@@ -316,6 +722,7 @@ devant
 devant notaire
 devers
 devoir
+Dieu sait
 dieu sait
 dire
 dix
@@ -326,13 +733,30 @@ donc
 dont
 dorénavant
 douze
-du
 Du
+du
+du chef de
+du chef des
+du chef du
 du côté de
+du côté des
+du côté du
+du fait de
+du fait des
+du fait du
+du fait même que
 du fait que
 du même coup
 du milieu de
+du moins
+du moment où
+du moment que
 du point de vue
+du point de vue de
+du point de vue des
+du point de vue du
+du reste
+du seul fait que
 du temps que
 du vivant de
 dudict
@@ -340,60 +764,216 @@ dudit
 duquel
 durant
 eh
+eh bien
+eh non
+eh oui
 elle
+elle même
 elle-même
 elles
+elles mêmes
 elles-mêmes
 en
+en accord avec
+en admettant que
 en amont de
+en apparence
+en application de
+en application des
+en application du
+en arrière
 en arrière de
+en attendant
+en attendant de
+en attendant des
+en attendant du
+en attendant que
+en aucune façon
+en aucune manière
 en aval de
+en avant
 en avant de
+en bas
+en bref
+en cas de
+en cas des
+en cas du
+en ce moment
 en ce qui concerne
+en ce sens
 en compagnie de
 en comparaison de
+en conclusion
+en conformité avec
 en conformité de
+en conséquence
 en conséquence de
 en considération de
+en contradiction avec
+en contrebas de
+en contrebas des
+en contrebas du
+en contrepartie de
+en contrepartie des
+en contrepartie du
+en d'autres mots
+en d'autres termes
 en d’autres termes
 en deçà de
+en définitive
+en dehors de
+en dehors des
+en dehors du
 en dépit de
+en dépit des
+en dépit du
+en dernier
+en dernier lieu
+en dernier ressort
+en dernière analyse
+en dernière instance
 en dessous
+en dessous de
+en dessous des
+en dessous du
+en direction de
+en direction des
+en direction du
+en échange de
+en échange des
+en échange du
 en effet
 en exécution de
+en face
 en face de
+en face des
+en face du
+en fait
 en fait de
+en faveur de
+en faveur des
+en faveur du
+en fin de compte
 en fonction de
+en fonction des
+en fonction du
 en forme de
 en général
+en grande partie
 en guise de
+en haut
+en l'absence de
+en l'absence des
+en l'absence du
+en liaison avec
+en lieu de
+en lieu des
+en lieu du
 en lieu et place de
+en majeure partie
 en marge de
 en matière de
+en matière des
+en matière du
+en même temps
 en même temps que
 en mémoire de
+en opposition à
+en opposition au
+en opposition aux
 en outre
+en pareil cas
 en particulier
+en partie
+en passant
 en passe de
+en plus
+en premier
+en premier lieu
 en présence de
+en présence des
+en présence du
+en prévision de
+en prévision des
+en prévision du
+en principe
 en proie à
+en proportion de
+en proportion des
+en proportion du
+en qualité de
+en qualité des
+en qualité du
+en quelque façon
+en quelque sorte
 en raison de
+en raison des
+en raison du
+en rapport avec
+en réalité
+en référence à
+en référence au
+en référence aux
 en regard de
+en règle générale
+en relation avec
+en réponse à
+en réponse au
+en réponse aux
+en résumé
+en retour
+en revanche
+en rien
+en second lieu
+en soi
+en somme
 en sorte que
+en supposant que
+en sus
 en sus de
 en tant que
 en terme de
+en termes de
+en termes des
+en termes du
+en tous cas
+en tous les cas
+en tout
+en tout cas
+en tout état de cause
+en tout point
+en train de
+en travers de
+en travers des
+en travers du
+en troisième lieu
+en un mot
+en un sens
+en vérité
 en vertu de
+en vertu des
+en vertu du
 en vue de
+en vue des
+en vue du
+en-dessous de
+en-dessous des
+en-dessous du
 encore
+encore que
+encore une fois
 enfin
 ensuite
+entenant de
 entre
+entre temps
+entre-temps
 ère
 es
 ès
 est
 est-ce
+est-ce que
 estant
 este
 esté
@@ -401,8 +981,12 @@ estes
 estoient
 estoit
 estre
-et
 Et
+et
+et caetera
+et cætera
+et cetera
+et pour cause
 étaient
 étais
 était
@@ -436,9 +1020,11 @@ eust
 eut
 eût
 eux
+eux mêmes
 eux-mêmes
 ex
 excepté
+excepté que
 face à
 faire
 fais
@@ -460,6 +1046,8 @@ fassiez
 fassions
 faut
 faute de
+faute des
+faute du
 fera
 ferai
 feraient
@@ -497,7 +1085,12 @@ fut
 fût
 fûtes
 grâce à
+grâce au
+grâce aux
+grâces à
 grand
+grand chose
+grand'chose
 grand-chose
 guère
 ha
@@ -506,8 +1099,12 @@ hélas
 heu
 ho
 hormis
+hormis que
 hors
 hors de
+hors de portée de
+hors de portée des
+hors de portée du
 huit
 icelle
 icelles
@@ -517,39 +1114,75 @@ iceulx
 iceux
 ici
 il
+il n'empêche que
 il n'en reste pas moins que
 il pourrait bien se faire que
 il se pourrait que
 il serait possible que
+il va sans dire
 il y a
+il y a eu
+il y a eut
+il y ait
+il y aura
+il y aurait
+il y avait
+il y avait eu
+il y avoir
+il y eut
 ils
 in
+indépendamment de
+indépendamment des
+indépendamment du
 item
 ive
 jadis
 jamais
 je
+je ne sais quoi
 jour après jour
 jusqu
 jusqu'
+jusqu'à ce jour
 jusqu'à ce que
+jusqu'à concurrence de
+jusqu'à concurrence des
+jusqu'à concurrence du
 jusqu'à la fin
+jusqu'à maintenant
+jusqu'à présent
+jusqu'alors
+jusqu'au moment où
+jusqu'ici
 jusque
+jusque là
+jusque-là
 jusques
 jusques à
-l'
+jusques et y compris
 L'
-l’
 L’
+l'
+l’
 l'autre
 l’autre
 l'on
 l'un
 l’un
+l'un comme l'autre
+l'un et l'autre
+l'un l'autre
+l'un ou l'autre
 l'une
-la
+l'une comme l'autre
+l'une et l'autre
+l'une l'autre
+l'une ou l'autre
 La
+la
 là
+la fois où
 la même
 la mienne
 la plupart
@@ -562,22 +1195,30 @@ là-dessus
 ladicte
 ladite
 laquelle
-le
-le:PRON
 Le
+le
+le cas échéant
 le diable soit de
+le jour où
 le long de
 le long des
+le long du
 le même
 le mien
+le moins du monde
+le moment venu
+le nôtre
 le premier
 le second
 le sien
+le temps que
 le tien
+le vôtre
+le:PRON
 ledit
 lequel
-les
 Les
+les
 lès
 les fois où
 les fois que
@@ -589,6 +1230,12 @@ les siennes
 les siens
 les tiennes
 les tiens
+les unes et les autres
+les unes les autres
+les unes ou les autres
+les uns et les autres
+les uns les autres
+les uns ou les autres
 les vôtres
 lesdict
 lesdictes
@@ -602,14 +1249,20 @@ leurs
 lez
 loin
 loin de
+loin de là
+loin des
+loin du
 longtemps
 lors
 lors de
+lors des
+lors du
 lorsqu
 lorsqu'
 lorsqu’
 lorsque
 lui
+lui même
 lui-même
 m'
 m’
@@ -617,10 +1270,12 @@ ma
 maint
 mainte
 maintenant
+maintenant que
 maintes
 maints
 mais
 malgré
+malgré tout
 manque de
 me
 même
@@ -637,23 +1292,52 @@ mieux
 mil
 mille
 moi
+moi même
 moi-même
 moins
+moins d'un
+moins d'une
+moins de
 mon
-monsieur
 Monsieur
+monsieur
 moyennant
 Mu
 n'empêche que
+n'est ce pas
+n'est-ce pas
+n'importe comment
+n'importe laquelle
+n'importe lequel
+n'importe lesquelles
+n'importe lesquels
+n'importe où
+n'importe quand
+n'importe quel
+n'importe quelle
+n'importe quelles
+n'importe quels
 n'importe qui
 n'importe quoi
 ne
+ne serait-ce que
 néanmoins
 neuf
 ni
+ni l'un ni l'autre
+ni l'une ni l'autre
+ni les unes ni les autres
+ni les uns ni les autres
+ni plus ni moins
+nombre de
 non
 non content de
+non loin de
+non loin des
+non loin du
+non plus
 non plus que
+non que
 non sans
 non seulement
 nos
@@ -664,12 +1348,14 @@ notre
 nôtre
 nôtres
 nous
+nous mêmes
 nous-même
 nous-mêmes
 nul
 nulle
-ô
+nulle part
 Ô
+ô
 oh
 on
 ont
@@ -678,25 +1364,86 @@ or:CCONJ
 ou
 où
 ou bien
+où que ce soit
 ouais
 oudict
 oudit
 oudiz
 oui
+outre que
 par
 par ailleurs
+par analogie avec
+par anticipation
+par avance
 par certains côtés
+par comparaison à
+par comparaison au
+par comparaison aux
+par comparaison avec
 par conséquent
+par contraste avec
+par contre
 par crainte de
+par deçà
 par delà
+par devant
 par devers
+par égard pour
+par excès de
 par exemple
+par extension
+par hypothèse
+par ici
+par l'entremise de
+par l'entremise des
+par l'entremise du
 par l'intermédiaire de
+par l'intermédiaire des
+par l'intermédiaire du
+par là
+par là même
+par la même occasion
+par la suite
+par le biais de
+par le biais des
+par le biais du
+par le moyen de
+par le moyen des
+par le moyen du
+par le truchement de
+par le truchement des
+par le truchement du
 par manque de
+par manque des
+par manque du
+par moments
+par opposition
 par opposition à
+par opposition au
+par opposition aux
+par ordre de
+par préférence
 par préférence à
+par préférence au
+par préférence aux
+par principe
 par rapport à
+par rapport au
+par rapport aux
+par souci de
+par suite
 par suite de
+par suite des
+par suite du
+par surcroît
+par trop
+par voie de
+par voie de conséquence
+par voie des
+par voie du
+par-ci par-là
+par-deçà
 par-delà
 par-derrière
 par-dessous
@@ -710,57 +1457,97 @@ parfois
 parmi
 part
 pas
+pas du tout
+pas mal de
+pas même
 pas plus que
 pas plus tard que
 pendant
 pendant que
 personne_PRON
+petit à petit
 peu
 peu à peu
 peu de
+peu de chose
+peu ou prou
+peu s'en faut
 peut
 peut-être
 PI
 plus
+plus d'un
+plus d'une
+plus de
+plus ou moins
+plus tard
 plusieurs
 plutôt
 point
 pour
+pour ainsi dire
+pour autant
+pour autant que
 pour ce qui est de
+pour cette fois
 pour des prunes
+pour finir
+pour l'essentiel
+pour l'instant
+pour le cas où
+pour le compte de
+pour le compte des
+pour le compte du
+pour le dire autrement
+pour le moins
+pour le moment
 pour ma part
+pour partie
+pour peu que
 pour que
 pour sa part
 pour ta part
+pour toujours
 pour tout
 pour un peu
+pour une bonne part
+pour une fois
 pour une fois que
 pourquoi
 pourquoy
 pourtant
+pourvu que
 pouvait
 pouvoir
 près
 près de
+près des
+près du
 presque
 prêt à
 proche de
 proprement dit
 proprement dite
 proprement dites
+proprement dits
 puis
 puisqu
 puisqu'
 puisqu’
 puisque
 qu
+qu'à cela ne tienne
 qu'est-ce
 qu'est-ce que
 quand
+quand bien même
 quand et quand
 quand même
 quant
 quant à
+quant au
+quant aux
+quantité de
 quarante
 quarante-cinq
 quatorze
@@ -773,44 +1560,68 @@ quelle
 quelles
 quelqu'un
 quelqu’un
+quelqu'un d'autre
 quelqu'une
 quelqu’une
 quelque
 quelque chose
+quelque chose d'autre
+quelque part
+quelque peu
 quelquefois
 quelques
 quelques-unes
 quelques-uns
 quels
 qui
+qui pis est
+qui plus est
 qui que
+qui que ce soit
 quiconque
 quid
 quinze
 quitte à
+quitte à ce que
 quoi
 quoi qu'il en être
 quoi qu'il en fût
-quoi qu'il en soit
 quoi qu'il en sera
+quoi qu'il en soit
 quoi que
+quoi que ce soit
 quoique
 revoici
 revoilà
 rien
+rien de moins
+rien de plus
+rien que
+s'agissant de
+s'il le faut
 sa
 sans
+sans arrêt
 sans cela
+sans cesse
 sans compter
+sans conteste
 sans doute
+sans égard à
+sans égard au
+sans égard aux
+sans même que
 sans plus
 sans plus de
+sans pour autant
 sans préjudice de
 sans que
 sauf
 sauf à
+sauf que
 se
 selon
+selon que
 sept
 sept-huit
 sera
@@ -831,19 +1642,28 @@ seulement
 seules
 seuls
 si
+si besoin est
 si bien que
+si ce n'est que
+si j'ose dire
+si l'on veut
 si peu que
+si tant est que
+si vous voulez
 sien
 sienne
 siennes
 siens
 sinon
+sitôt que
 six
 soi
+soi même
 soi-même
 soient
 sois
 soit
+soit dit en passant
 soixante
 sommes
 son
@@ -851,64 +1671,149 @@ sont
 soudain
 sous
 sous couleur de
+sous couvert de
 sous forme de
+sous forme des
+sous forme du
+sous l'angle de
+sous l'angle des
+sous l'angle du
+sous l'autorité de
+sous l'autorité des
+sous l'autorité du
+sous l'effet de
+sous l'effet des
+sous l'effet du
+sous l'influence de
+sous l'influence des
+sous l'influence du
 sous l'ombre de
+sous la houlette de
 sous la plume de
 sous le couvert de
+sous le nom de
+sous le nom des
+sous le nom du
 sous le prétexte de
 sous le rapport de
+sous le signe de
+sous le signe des
+sous le signe du
 sous les yeux de
 sous peine de
+sous peu
 sous prétexte de
+sous prétexte des
+sous prétexte du
+sous prétexte que
+sous réserve de
+sous réserve des
+sous réserve du
+sous réserve que
 sous un nouveau jour
 souvent
 soyez
 soyons
 suis
 suite à
+suite au
+suite aux
+suivant que
 supposé que
 sur
+sur la base de
+sur la base des
+sur la base du
+sur la foi de
+sur la foi des
+sur la foi du
+sur le compte de
+sur le compte des
+sur le compte du
+sur le modèle de
+sur le modèle des
+sur le modèle du
+sur le moment
 sur le plan
+sur le plan de
+sur le plan des
+sur le plan du
 sur le point de
+sus le sujet de
 ta
 tandis
 tandis que
 tant
 tant de
 tant et si bien que
+tant pis
 tant qu'à
+tant que
+tant soit peu
 tantôt
 te
 tel
+tel ou tel
 telle
+telle ou telle
 telles
+telles ou telles
 tels
+tels ou tels
 tes
 tien
 toi
+toi même
 toi-même
 ton
+tôt ou tard
 toujours
+tour à tour
 tous
 tous deux
 tous les deux
 tous les trois
 tousjours
 tout
+tout à coup
+tout à fait
+tout au contraire
+tout au moins
+tout au plus
+tout autant
+tout comme
+tout compte fait
+tout d'un coup
+tout de même
+tout de suite
+tout et n'importe quoi
+tout juste
+tout le monde
+tout un chacun
 toute
 toutefois
 toutes
+toutes les fois
 toutes les fois que
-tout le monde
 trente
 très
 trois
 trop
+trop de
 tu
 un
+un grand nombre de
+un peu
 un peu de
+un tant soit peu
 une
+une autre fois
+une bonne fois
+une bonne fois pour toutes
 une bonne partie
+une fois de plus
+une fois encore
+une fois pour toutes
 une fois que
 unes
 uns
@@ -923,6 +1828,8 @@ vingt-deux
 vingt-quatre
 vingt-trois
 vis-à-vis de
+vis-à-vis des
+vis-à-vis du
 voici
 voilà
 voir
@@ -933,8 +1840,10 @@ vôtre
 vôtres
 vouloir
 vous
+vous même
+vous mêmes
 vous-même
 vous-mêmes
-y
 Y
+y
 y compris
