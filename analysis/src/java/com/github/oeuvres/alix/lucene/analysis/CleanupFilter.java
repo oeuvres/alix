@@ -80,7 +80,8 @@ import com.github.oeuvres.alix.util.Char;
  * that should not affect distances.</li>
  * <li><b>Training output</b>: when no rejected-word set is supplied, cardinal
  * numbers ({@code DIGIT}/{@code NUM}) become {@code "#"}, ordinals retain their
- * value, and grammatical words retain their normalized surface forms.</li>
+ * value, and ordinary words use their upstream lemmas when available.
+ * The training form policy is isolated in {@link #useLemma(int)}.</li>
  * </ul>
  *
  * <p>
@@ -111,23 +112,23 @@ public class CleanupFilter extends TokenFilter
 
     /** The term provided by the upstream TokenStream. */
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    
+
     /** Used to propagate/adjust holes when tokens are removed with preserved gaps. */
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-    
+
     /** Linguistic category (short code), see {@link Upos}. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-    
+
     /** Optional lemma override populated by the upstream lemmatizer. */
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
-    
+
     /** Function word set. */
     public final CharArraySet rejected;
 
     /** Noise tokens set. */
     public final CharArraySet skipped;
 
-    
+
     /**
      * Pending positional gaps to be applied to the next emitted token.
      *
@@ -146,13 +147,13 @@ public class CleanupFilter extends TokenFilter
 
     /** Strongest structural boundary waiting for the next emitted token. */
     private int pendingBoundary = BoundaryAttribute.NONE;
-    
+
     /**
      * Heuristic hook: drop very short tokens (typically non-informative for "terms" fields). Not
      * enforced by default.
      */
     protected static final int MIN_TERM_LEN = 3;
-    
+
     /** Marker used to normalize cardinal numbers in training output. */
     protected static final String NUMBER_MARKER = "#";
 
@@ -160,14 +161,15 @@ public class CleanupFilter extends TokenFilter
     private static final Pattern ORDINAL = Pattern.compile(
         "\\p{Nd}+(?:e|es|er|ers|re|res|ème|èmes|eme|emes|ième|ièmes|ᵉ|ᵉʳ|ʳᵉ)"
     );
-    
+
 
     /**
-     * 
+     * Creates a final token cleanup and normalization filter.
+     *
      * @param input Source tokens
      * @param skipped Tokens to skip (suppress position)
      * @param rejected Tokens to remove from stream (position kept), or null
-     *                 to retain grammatical surface forms and normalize numbers
+     *                 to retain function words and normalize numbers
      */
     public CleanupFilter(TokenStream input, final CharArraySet skipped, final CharArraySet rejected)
     {
@@ -175,7 +177,7 @@ public class CleanupFilter extends TokenFilter
         this.rejected = rejected;
         this.skipped = skipped;
     }
-    
+
     /**
      * Called at end-of-stream.
      *
@@ -204,7 +206,7 @@ public class CleanupFilter extends TokenFilter
         boundaryAtt.setBoundary(pendingBoundary);
         pendingBoundary = BoundaryAttribute.NONE;
     }
-    
+
     /**
      * Emits the next accepted token, applying {@link #skip()} and {@link #accept()}.
      *
@@ -218,8 +220,9 @@ public class CleanupFilter extends TokenFilter
      * <li>Tokens for which {@link #accept()} returns {@code false} are dropped and their
      * {@code posInc} contributes
      * to {@link #pendingHoles}, added to the next emitted token.</li>
-     * <li>Tokens for which {@link #accept()} returns {@code true} are emitted after applying any
-     * accumulated {@code pendingHoles}.</li>
+     * <li>Tokens for which {@link #accept()} returns {@code true} are normalized by
+     * {@link #rewriteTerm()} and emitted after applying any accumulated
+     * {@code pendingHoles}.</li>
      * </ol>
      *
      * <p>
@@ -253,6 +256,7 @@ public class CleanupFilter extends TokenFilter
             }
 
             if (accept()) {
+                rewriteTerm();
                 if (pendingHoles != 0) {
                     posIncrAtt.setPositionIncrement(
                         posIncrAtt.getPositionIncrement() + pendingHoles);
@@ -280,15 +284,15 @@ public class CleanupFilter extends TokenFilter
         pendingBoundary = BoundaryAttribute.NONE;
         boundaryAtt.setBoundary(BoundaryAttribute.NONE);
     }
-    
+
     /**
-     * Accepts (and optionally rewrites) the current token.
+     * Tests whether the current token should be emitted, without rewriting it.
      *
      * <p>
      * Contract:
      * </p>
      * <ul>
-     * <li>Return {@code true} to emit the token (possibly after rewriting {@link #termAtt}).</li>
+     * <li>Return {@code true} to emit the token after final normalization.</li>
      * <li>Return {@code false} to drop the token <em>but preserve a positional gap</em>
      * (its {@code posInc} will be added to the next emitted token via {@link #pendingHoles}).</li>
      * </ul>
@@ -306,29 +310,21 @@ public class CleanupFilter extends TokenFilter
         final int len = termAtt.length();
         if (len < 1) return false;
         final int pos = posAtt.getPos();
-        
+
         // Punctuation: drop, but preserve a positional gap (handled by pendingHoles).
         if (Upos.isPunct(pos)) {
             return false;
         }
-        
+
         // known stop words, reject
         if (rejected != null && rejected.contains(termAtt.buffer(), 0, termAtt.length())) {
             return false;
         }
-        
-        // Training output: handle numbers and elided articles before the generic
-        // character rejection rules. Numeric POS is preserved by PosTaggingFilter.
-        if (rejected == null) {
-            if (isOrdinal(pos)) {
-                posAtt.setPos(NUMord.code);
-                return true;
-            }
-            if (pos == DIGIT.code || pos == NUM.code) {
-                termAtt.setEmpty().append(NUMBER_MARKER);
-                return true;
-            }
-            if (isElidedArticle()) return true;
+
+        // Preserve the existing admission rules for training numbers and elided articles.
+        if (rejected == null && (isOrdinal(pos) || pos == DIGIT.code
+                || pos == NUM.code || isElidedArticle())) {
+            return true;
         }
 
         char first = termAtt.charAt(0);
@@ -340,10 +336,11 @@ public class CleanupFilter extends TokenFilter
         if (Char.isMath(last) || Char.isDigit(last) || last == '-' || last == '\'' || last == '.' ) {
             return false;
         }
-        
-        // Keep grammatical surface forms for training; content words use lemmas.
-        if (!lemmaAtt.isEmpty() && (rejected != null || !isGrammar(pos))) {
-            termAtt.copyBuffer(lemmaAtt.buffer(), 0, lemmaAtt.length());
+
+        // Preserve the previous admission rule: a resolved lemma bypasses the
+        // Latin-letter check except for training function words. This does not
+        // depend on the experimental output-form policy.
+        if (!lemmaAtt.isEmpty() && (rejected != null || !isFunctionWord(pos))) {
             return true;
         }
 
@@ -355,8 +352,8 @@ public class CleanupFilter extends TokenFilter
                 if (!Char.isLatin(c)) return false;
             }
         }
-        
-        // Default: keep token as-is (or rewritten by upstream filters).
+
+        // Default: accept the token.
         return true;
     }
 
@@ -386,21 +383,20 @@ public class CleanupFilter extends TokenFilter
     }
 
     /**
-     * Tests whether a POS retains its surface form in training output.
+     * Tests function-word categories for the existing token-admission rules only.
+     * Determiner and pronoun code families include the extended lexical categories
+     * if an upstream component supplies them; the OpenNLP dictionary normally
+     * collapses those categories to DET and PRON.
      *
-     * @param pos POS code, including extended categories
-     * @return true for a grammatical category
+     * @param pos POS code
+     * @return true for a function-word category
      */
-    private static boolean isGrammar(final int pos)
+    private static boolean isFunctionWord(final int pos)
     {
-        final Upos upos = Upos.get(pos);
-        if (upos == null) return false;
-        return switch (upos) {
-            case AUX, ADP, ADP_DET, ADP_PRON, CCONJ, SCONJ, PART,
-                 DET, DETart, DETdem, DETind, DETint, DETneg, DETprs,
-                 PRON, PRONdem, PRONind, PRONint, PRONneg, PRONprs, PRONrel -> true;
-            default -> false;
-        };
+        return (pos >= DET.code && pos <= ADP_DET.code)
+            || (pos >= PRON.code && pos <= PRONrel.code)
+            || pos == AUX.code || pos == ADP.code || pos == ADP_PRON.code
+            || pos == CCONJ.code || pos == SCONJ.code || pos == PART.code;
     }
 
     /**
@@ -413,6 +409,30 @@ public class CleanupFilter extends TokenFilter
     {
         return pos == NUMord.code || (termAtt.length() > 1
             && Char.isDigit(termAtt.charAt(0)) && ORDINAL.matcher(termAtt).matches());
+    }
+
+    /**
+     * Rewrites an accepted token. Numeric training conventions take precedence
+     * over the ordinary lemma policy. An elided article or pronoun is eligible
+     * for lemmatization just like any other word; if no lemma is available its
+     * surface form is retained.
+     */
+    private void rewriteTerm()
+    {
+        final int pos = posAtt.getPos();
+        if (rejected == null) {
+            if (isOrdinal(pos)) {
+                posAtt.setPos(NUMord.code);
+                return;
+            }
+            if (pos == DIGIT.code || pos == NUM.code) {
+                termAtt.setEmpty().append(NUMBER_MARKER);
+                return;
+            }
+        }
+        if (!lemmaAtt.isEmpty() && (rejected != null || useLemma(pos))) {
+            termAtt.copyBuffer(lemmaAtt.buffer(), 0, lemmaAtt.length());
+        }
     }
 
     /**
@@ -430,17 +450,17 @@ public class CleanupFilter extends TokenFilter
     {
         final int pos = posAtt.getPos();
         final int len = termAtt.length();
-        
+
         // Punctuation is rejected by accept(); do not collapse its position here.
         if (Upos.isPunct(pos)) {
             return false;
         }
-        
+
         // Markup / structural artifacts injected by XML processing.
         if (pos == XML.code) {
             return true;
         }
-        
+
         // defensive, should already be handled in incrementToken(), no count
         if (len == 0) {
             return true;
@@ -449,7 +469,7 @@ public class CleanupFilter extends TokenFilter
         if (termAtt.charAt(0) == '↵') {
             return true;
         }
-        
+
         // Protect training numbers and elided articles even if listed as noise.
         if (rejected == null && (pos == DIGIT.code || pos == NUM.code
                 || isOrdinal(pos) || isElidedArticle())) {
@@ -463,11 +483,11 @@ public class CleanupFilter extends TokenFilter
 
         // short function word, OK, not noise
         if (termAtt.length() == 1) {
-            if (rejected == null && isGrammar(pos)) return false;
+            if (rejected == null && isFunctionWord(pos)) return false;
             return pos != ADP.code && pos != AUX.code
                 && pos != PRON.code && pos != VERB.code;
         }
-        
+
         final char last = termAtt.charAt(len - 1);
         if (termAtt.length() == 2) {
             // a’ a', C. variables or initials not resolved to name
@@ -475,12 +495,32 @@ public class CleanupFilter extends TokenFilter
                 return true;
             }
         }
-        
+
         // Single trailing digit preceded by a non-digit: "abc4" (often a variable/label).
         if (len >= 2 && Char.isDigit(last) && !Char.isDigit(termAtt.charAt(len - 2)))
             return true;
-        
+
         // keep stop words (do not drop them here)
         return false;
     }
+    /**
+     * Selects the ordinary word representation for Word2Vec training only.
+     * This is the single experimental policy: return true to use the upstream
+     * lemma (when available), or false to retain the normalized surface form.
+     * The canonical indexing field always uses the lemma. Numeric rewriting,
+     * token admission, MWE recognition and positional gaps are independent of
+     * this choice.
+     *
+     * <p>The first experiment uses all available lemmas, including those of
+     * function words. To test determiner surface forms alone, for example,
+     * change the return expression to {@code pos != DET.code}.</p>
+     *
+     * @param pos upstream POS code, normally a coarse OpenNLP category
+     * @return true to emit the available lemma, false to keep the surface form
+     */
+    protected boolean useLemma(final int pos)
+    {
+        return true;
+    }
+
 }

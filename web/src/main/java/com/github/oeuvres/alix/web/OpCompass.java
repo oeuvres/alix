@@ -11,15 +11,18 @@ import org.apache.lucene.search.Query;
 
 import com.github.oeuvres.alix.lucene.LuceneIndex;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
+import com.github.oeuvres.alix.lucene.snippets.CoocMatRail;
 import com.github.oeuvres.alix.lucene.snippets.CoocMatSnippets;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.FocusPivots;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
-import com.github.oeuvres.alix.lucene.terms.KeynessScorer;
+import com.github.oeuvres.alix.lucene.terms.TermDispersion;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.vecs.CompassVec;
+import com.github.oeuvres.alix.lucene.vecs.CoocClusters;
 import com.github.oeuvres.alix.lucene.vecs.VecModel;
+import com.github.oeuvres.alix.util.AssociationMeasure;
 import com.github.oeuvres.alix.util.IntMatrixById;
 import com.github.oeuvres.alix.web.util.HttpPars;
 import com.google.gson.stream.JsonWriter;
@@ -36,7 +39,8 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * original union contexts gives shared-context counts and signed G² for edges.
  * The model gives coordinates and distance to the nearest query pivot.
  * Without a text query or document filter, projects the ranked theme terms
- * of the whole field instead, without pivots, focuses or snippet edges.
+ * of the whole field instead, with positional pair edges, lexical dispersion
+ * (1 - DP), graph clusters, and no pivots or focuses.
  * Theme mode uses the keyword plane and its reference-vector centroid.
  */
 public class OpCompass extends Op
@@ -127,42 +131,96 @@ public class OpCompass extends Op
     }
 
     /**
-     * Writes one global edge per pair sharing at least one union context.
+     * Writes the observed pair counts, expected counts under independence and
+     * signed association scores. Query mode counts shared snippet contexts;
+     * theme mode counts positional pairs with corpus-wide endpoint marginals.
      * @param json writer positioned after the array name
-     * @param mat union context matrix, or null
-     * @param termIds placed term ids
+     * @param mat cooccurrence matrix, or null
+     * @param railCoocs positional sample statistics, or null for snippet contexts
+     * @param scorer association measure for edges
+     * @return positive association matrix for theme mode, or null
      * @throws IOException if writing fails
      */
-    private static void coocs(final JsonWriter json, final IntMatrixById mat,
-            final int[] termIds) throws IOException
+    private static double[][] coocs(final JsonWriter json, final IntMatrixById mat,
+            final CoocMatRail railCoocs, final AssociationMeasure scorer) throws IOException
     {
+        final double[][] weights = railCoocs == null ? null : new double[mat.rowCount()][mat.colCount()];
         json.beginArray();
-        if (mat != null && mat.total() > 0L) {
-            final KeynessScorer scorer = new KeynessScorer.G2Alpha();
-            scorer.corpus(mat.total(), (int) mat.total());
-            for (int a = 0; a < termIds.length; a++) {
-                scorer.focus(mat.count(termIds[a], termIds[a]), 0d);
-                for (int b = a + 1; b < termIds.length; b++) {
-                    final int count = mat.count(termIds[a], termIds[b]);
-                    if (count == 0) continue;
-                    json.beginObject();
-                    json.name("source").value(termIds[a]);
-                    json.name("target").value(termIds[b]);
-                    json.name("contexts").value(count);
-                    json.name("score");
-                    rounded(json, scorer.score(count, mat.count(termIds[b], termIds[b]), 0));
-                    json.endObject();
+        if (mat != null) {
+            final boolean pairs = railCoocs != null;
+            final long total = pairs ? railCoocs.total() : mat.total();
+            if (total > 0L) {
+                for (int a = 0; a < mat.rowCount(); a++) {
+                    final int source = mat.rowId(a);
+                    final long rowMargin = pairs ? railCoocs.margin(source) : mat.countByRank(a, a);
+                    for (int b = a + 1; b < mat.colCount(); b++) {
+                        final int count = mat.countByRank(a, b);
+                        if (count == 0) continue;
+                        final int target = mat.colId(b);
+                        final long colMargin = pairs ? railCoocs.margin(target) : mat.countByRank(b, b);
+                        json.beginObject();
+                        json.name("source").value(source);
+                        json.name("target").value(target);
+                        json.name(pairs ? "count" : "contexts").value(count);
+                        json.name("expected").value((double) rowMargin * colMargin / total);
+                        json.name("score");
+                        final double score = scorer.score(count, rowMargin, colMargin, total);
+                        rounded(json, score);
+                        if (weights != null && Double.isFinite(score) && score > 0) {
+                            weights[a][b] = weights[b][a] = score;
+                        }
+                        json.endObject();
+                    }
                 }
             }
         }
         json.endArray();
+        return weights;
+    }
+
+    /**
+     * Writes spectral clusters, representative term ids and memberships.
+     * @param json writer inside the data object
+     * @param mat matrix defining vertex ranks
+     * @param weights complete positive association graph, or null
+     * @param requested requested cluster count, or AUTO
+     * @throws IOException if writing fails
+     */
+    private static void clusters(final JsonWriter json, final IntMatrixById mat,
+            final double[][] weights, final int requested) throws IOException
+    {
+        json.name("clusters").beginObject();
+        json.name("requested").value(requested == CoocClusters.AUTO ? "auto" : Integer.toString(requested));
+        if (weights != null) {
+            final CoocClusters.Result result = CoocClusters.analyse(weights, requested);
+            json.name("modularity");
+            rounded(json, result.modularity());
+            json.name("eigenvalues").beginArray();
+            for (final double value : result.eigenvalues()) rounded(json, value);
+            json.endArray();
+            json.name("groups").beginArray();
+            for (final int representative : result.representatives()) json.value(mat.rowId(representative));
+            json.endArray();
+            json.name("members").beginArray();
+            for (int i = 0; i < result.groups().length; i++) {
+                if (result.groups()[i] < 0) continue;
+                json.beginObject();
+                json.name("id").value(mat.rowId(i));
+                json.name("group").value(result.groups()[i]);
+                json.name("strength");
+                rounded(json, result.strengths()[i]);
+                json.endObject();
+            }
+            json.endArray();
+        }
+        json.endObject();
     }
 
     /**
      * Writes query pivots and terms in the selected plane, with their
      * statistics in each population, the contexts shared by placed terms, and the
      * model words most similar to each pivot. Without a query or filter, writes
-     * the ranked theme terms and their coordinates in the keyword plane.
+     * the ranked theme terms, their coordinates and positional cooccurrences.
      *
      * @param lucene Lucene index
      * @param request HTTP request
@@ -327,15 +385,9 @@ public class OpCompass extends Op
         for (int rank = 0; rank < termCount; rank++) {
             points[pivotCount + rank] = termVecs[rank] < 0 ? null : compass.point(model.word(termVecs[rank]));
         }
-        // Pivot distances and snippet cooccurrence edges exist only in query mode.
+        // Pivot distances exist only in query mode.
         final double[] distances = new double[points.length];
-        final int[] placedIds;
-        final IntMatrixById mat;
-        if (theme) {
-            placedIds = new int[0];
-            mat = null;
-        }
-        else {
+        if (!theme) {
             for (final CompassVec.Point point : points) {
                 if (point != null) nodeVecs.add(point.id());
             }
@@ -346,13 +398,55 @@ public class OpCompass extends Op
             for (int i = 0; i < points.length; i++) {
                 distances[i] = points[i] == null ? Double.NaN : values[placedNode++];
             }
+        }
 
-            final List<Integer> placed = new ArrayList<>();
-            for (int rank = 0; rank < termCount; rank++) {
-                if (points[pivotCount + rank] != null) placed.add(terms.termId(rank));
+        final List<Integer> placed = new ArrayList<>();
+        for (int rank = 0; rank < termCount; rank++) {
+            if (points[pivotCount + rank] != null) {
+                placed.add(theme ? themeEntries.get(rank).termId() : terms.termId(rank));
             }
-            placedIds = placed.stream().mapToInt(Integer::intValue).toArray();
+        }
+        final int[] placedIds = placed.stream().mapToInt(Integer::intValue).toArray();
+        int requestedClusters = 0;
+        if (theme) {
+            final String value = pars.getString("clusters", Integer.toString(CoocClusters.DEFAULT_CLUSTERS));
+            try {
+                requestedClusters = "auto".equals(value) ? CoocClusters.AUTO : Integer.parseInt(value);
+                if (requestedClusters > CoocClusters.MAX_CLUSTERS || requestedClusters < 0 && !"auto".equals(value)) {
+                    throw new IllegalArgumentException();
+                }
+            }
+            catch (IllegalArgumentException e) {
+                badRequest(request, response, meta, "[clusters requires 0 to 5 or auto: " + value + "]");
+                return;
+            }
+        }
+        final int distance = theme ? pars.getInt(SLOP, SLOP_RANGE, SLOP_DEFAULT, SLOP) : 0;
+        final IntMatrixById mat;
+        final CoocMatRail railCoocs;
+        final double[] dispersion;
+        if (theme) {
+            final FlucText contentFluc = contentFluc(lucene, pars, meta);
+            if (contentFluc == null) {
+                badRequest(request, response, meta, "[no content field]");
+                return;
+            }
+            final int[] themeIds = themeEntries.stream().mapToInt(TermEntry::termId).toArray();
+            dispersion = TermDispersion.scores(lucene.reader(), contentFluc.termLexicon(),
+                contentFluc.termStats(), themeIds);
+            if (placedIds.length >= 2 && distance > 0) {
+                mat = new IntMatrixById(placedIds, placedIds, null);
+                railCoocs = CoocMatRail.count(mat, contentFluc.termRail(), distance);
+            }
+            else {
+                mat = null;
+                railCoocs = null;
+            }
+        }
+        else {
+            dispersion = null;
             mat = coocMatrix(lucene, pars, meta, terms.query(), placedIds);
+            railCoocs = null;
         }
 
         try (JsonWriter json = new JsonWriter(response.getWriter())) {
@@ -384,6 +478,7 @@ public class OpCompass extends Op
             json.endObject();
 
             if (theme) {
+                json.name("dispersionMetric").value("1-DP");
                 json.name("docs").value(themes.docs());
                 json.name("tokens").value(themes.tokens());
                 json.name("focuses").beginArray().endArray();
@@ -412,6 +507,8 @@ public class OpCompass extends Op
                 json.beginObject();
                 if (theme) {
                     TermsUtil.termFields(json, themeEntries.get(rank), rank, false);
+                    json.name("dispersion");
+                    rounded(json, dispersion[rank]);
                 }
                 else {
                     TermsUtil.termFields(json, terms, rank);
@@ -425,8 +522,11 @@ public class OpCompass extends Op
             }
             json.endArray();
 
+            json.name("coocUnit").value(theme ? "pairs" : "contexts");
+            if (theme) json.name("coocDistance").value(distance);
             json.name("coocs");
-            coocs(json, mat, placedIds);
+            final double[][] weights = coocs(json, mat, railCoocs, new AssociationMeasure.LogLikelihood());
+            if (theme) clusters(json, mat, weights, requestedClusters);
 
             json.endObject(); // data
             json.endObject();
