@@ -167,6 +167,9 @@ public class MarkupTokenizer extends Tokenizer
     /** True after an emitted colon, across horizontal spacing only. */
     private boolean afterColon;
 
+    /** True when the preceding raw token was a digit or ordinal token. */
+    private boolean afterNumber;
+
     /** Buffered token states during trailing-dot resolution, then replayed in order. */
     private TokenStateQueue lookahead;
 
@@ -332,8 +335,8 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Emit punctuation already consumed from the source, for example the dot stripped from the
-     * end of a number or a decoded {@code &amp;quot;}. Sentence punctuation merges with an
+     * Emit punctuation already consumed from the source, for example a decoded
+     * {@code &amp;quot;}. Sentence punctuation merges with an
      * immediately following {@code .?!…} run.
      *
      * @return {@code true}
@@ -521,6 +524,17 @@ public class MarkupTokenizer extends Tokenizer
     private static boolean isSentencePunct(final char c)
     {
         return c == '.' || c == '…' || c == '?' || c == '!';
+    }
+
+    /**
+     * Test whether a character is an ASCII hyphen-minus or a Unicode minus sign.
+     *
+     * @param c character to test
+     * @return {@code true} for a potential minus sign
+     */
+    private static boolean isMinusSign(final char c)
+    {
+        return c == '-' || c == '\u2212';
     }
 
     /**
@@ -746,16 +760,15 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Read a number, removing spaces used as thousands separators. A space is recognized as
-     * a grouping separator only after one to three digits and before exactly three digits;
-     * ordinary spaces and decimal separators keep their existing behavior. Accepted grouping
-     * spaces are ASCII space, no-break space, narrow no-break space, and thin space.
+     * Read a number with at most one decimal separator, removing spaces used as
+     * thousands separators in the integer part. A grouping space is recognized
+     * only after one to three digits and before exactly three digits. A decimal
+     * separator is accepted only when immediately followed by a digit, leaving
+     * trailing punctuation in the input for the next token, including at EOF
+     * and before XML tags.
      *
-     * <p>A trailing {@code '.'} or {@code ','} is stripped and re-emitted as punctuation by
-     * the next call, except at end of input or immediately before an XML tag.</p>
-     *
-     * <p>Entered with the cursor on a digit, either from {@link #readToken()} or from
-     * {@link #readWord()} when the term is a single minus sign.</p>
+     * <p>Entered with the cursor on a digit, after an optional minus sign has
+     * already been appended by {@link #readRawToken()}.</p>
      *
      * @param start source start offset of the token
      * @return {@code true}
@@ -765,47 +778,34 @@ public class MarkupTokenizer extends Tokenizer
     {
         posAtt.setPos(DIGIT.code);
         int digitsInGroup = 0;
+        boolean decimal = false;
         int c;
         while ((c = peek()) >= 0) {
             final char ch = (char) c;
             if (Char.isDigit(ch)) {
                 digitsInGroup++;
             }
-            else if (isThousandsSeparator(ch) && digitsInGroup > 0 && digitsInGroup <= 3
+            else if (!decimal && isThousandsSeparator(ch)
+                    && digitsInGroup > 0 && digitsInGroup <= 3
                     && Char.isDigit((char) peekAhead(1)) && Char.isDigit((char) peekAhead(2))
                     && Char.isDigit((char) peekAhead(3)) && !Char.isDigit((char) peekAhead(4))) {
-                skip(); // remove the grouping space from the term, retaining its source offset
+                skip();
                 digitsInGroup = 0;
                 continue;
             }
+            else if (!decimal && (ch == '.' || ch == ',')
+                    && Char.isDigit((char) peekAhead(1))) {
+                decimal = true;
+            }
             else {
-                final char last = termAtt.charAt(termAtt.length() - 1);
-                if ((ch != '.' && ch != ',') || last == '.' || last == ',') break;
-                digitsInGroup = 0;
+                break;
             }
             termAtt.append(ch);
             skip();
         }
 
-        // Keep attached French ordinal suffixes in the same token (12e, 1er, etc.).
-        // Do not consume a suffix after a signed or fractional number.
         if (readOrdinalSuffix()) {
             posAtt.setPos(NUMord.code);
-            offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
-            return true;
-        }
-
-        // Historical quirk kept for output stability: before a tag ('<'), as at end of
-        // input, a dangling separator stays inside the number ("p. 12.</p>" gives "12.").
-        final int length = termAtt.length();
-        final char last = termAtt.charAt(length - 1);
-        if (c >= 0 && (markupMode != MarkupMode.XML || c != '<') && (last == '.' || last == ',')) {
-            termAtt.setLength(length - 1);
-            pendingChar = last;
-            pendingStart = offset - 1;
-            pendingEnd = offset;
-            offsetAtt.setOffset(correctOffset(start), correctOffset(offset - 1));
-            return true;
         }
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
         return true;
@@ -907,6 +907,21 @@ public class MarkupTokenizer extends Tokenizer
      */
     private boolean readToken() throws IOException
     {
+        final boolean found = readRawToken();
+        afterNumber = found && (posAtt.getPos() == DIGIT.code || posAtt.getPos() == NUMord.code);
+        return found;
+    }
+
+    /**
+     * Dispatch the next raw token using the preceding raw token's numeric status.
+     * A minus sign before a digit starts a signed number unless the previous raw
+     * token was numeric, in which case it remains a separate punctuation token.
+     *
+     * @return {@code true} when a token was read
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readRawToken() throws IOException
+    {
         clearAttributes();
         if (pendingChar >= 0) {
             return emitPendingChar();
@@ -955,6 +970,26 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 return readNumber(offset);
             }
+            if (isMinusSign(ch)) {
+                final int next = peekAhead(1);
+                if (next >= 0 && Char.isDigit((char) next) && !afterNumber) {
+                    final int start = offset;
+                    afterColon = false;
+                    termAtt.append(ch);
+                    skip();
+                    return readNumber(start);
+                }
+                if (ch == '\u2212' || next < 0 || !Char.isToken((char) next)
+                        || (afterNumber && Char.isDigit((char) next))) {
+                    final int start = offset;
+                    afterColon = false;
+                    termAtt.append(ch);
+                    skip();
+                    posAtt.setPos(PUNCTclause.code);
+                    offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+                    return true;
+                }
+            }
             if (Char.isToken(ch)) {
                 afterColon = false;
                 if (readWord()) return true;
@@ -1001,8 +1036,7 @@ public class MarkupTokenizer extends Tokenizer
 
     /**
      * Read a word-like token: letters, digits, apostrophes, hyphens, decoded XML entities,
-     * and internal or trailing dots after letters. Hands over to {@link #readNumber(int)}
-     * when the term is a single literal minus sign followed by a digit.
+     * and internal or trailing dots after letters.
      *
      * @return {@code true} if a token was produced, {@code false} when a decoded entity acted
      *         as a delimiter before any term content accumulated
@@ -1012,7 +1046,6 @@ public class MarkupTokenizer extends Tokenizer
     {
         int start = offset;
         int amp = -1;         // term index of a possible XML entity
-        char lastRaw = 0;     // last consumed source or entity-decoded char
         boolean trailingDot = false;
         int c;
 
@@ -1035,11 +1068,9 @@ public class MarkupTokenizer extends Tokenizer
                 final int entityStart = offset - (termAtt.length() - spellingStart);
                 final char decoded = decodeXmlEntity(termAtt.buffer(), spellingStart, termAtt.length());
                 if (decoded == 0) {
-                    lastRaw = ';';
                     continue;
                 }
                 termAtt.setLength(spellingStart);
-                lastRaw = decoded;
                 if (isClausePunct(decoded) || isSentencePunct(decoded)) {
                     pendingChar = decoded;
                     pendingStart = entityStart;
@@ -1067,14 +1098,8 @@ public class MarkupTokenizer extends Tokenizer
             if (ch == '.' && termAtt.length() > 0 && Char.isLetter(termAtt.charAt(termAtt.length() - 1))) {
                 termAtt.append('.');
                 skip();
-                lastRaw = '.';
                 trailingDot = true;
                 continue;
-            }
-
-            // "-42": a literal minus sign then a digit is a negative number.
-            if (Char.isDigit(ch) && termAtt.length() == 1 && lastRaw == '-') {
-                return readNumber(start);
             }
 
             // Clause punctuation, sentence punctuation, '<', whitespace: end of word.
@@ -1083,7 +1108,6 @@ public class MarkupTokenizer extends Tokenizer
             if (ch == '&') amp = termAtt.length();
             termAtt.append(normalizeTokenChar(ch));
             skip();
-            lastRaw = ch;
             if (termAtt.length() >= TOKEN_MAX_SIZE) break; // cut overly long tokens
         }
 
@@ -1143,6 +1167,7 @@ public class MarkupTokenizer extends Tokenizer
         offset = 0;
         pendingChar = -1;
         afterColon = false;
+        afterNumber = false;
         candidateCount = 0;
         if (lookahead != null) lookahead.clear();
         buffer.reset();
@@ -1234,7 +1259,7 @@ public class MarkupTokenizer extends Tokenizer
 
         final char first = term.charAt(0);
         if (Char.isDigit(first)) return true;
-        if (first == '-' && length > 1 && Char.isDigit(term.charAt(1))) return true;
+        if (isMinusSign(first) && length > 1 && Char.isDigit(term.charAt(1))) return true;
         return Character.isUpperCase(first) || Character.isTitleCase(first);
     }
 }
