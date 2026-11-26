@@ -47,8 +47,10 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * <h2>Parameters</h2>
  * <table>
  *   <tr><td>{@code field}</td><td>indexed field name; defaults to index content field</td></tr>
- *   <tr><td>{@code top}</td><td>number of results; default 50, max 500</td></tr>
- *   <tr><td>{@code idfExp}</td><td>BM25 IDF exponent; default 1.3 (theme terms only)</td></tr>
+ *   <tr><td>{@code terms}</td><td>number of results; default 50, max 5000</td></tr>
+ *   <tr><td>{@code tsort}</td><td>theme scoring: jslog (default), raw, or bm25</td></tr>
+ *   <tr><td>{@code tau}</td><td>JS-log frequency transition; default field tokens / 4000</td></tr>
+ *   <tr><td>{@code idfexp}</td><td>BM25 IDF exponent; used only with tsort=bm25 in theme mode</td></tr>
  *   <tr><td>{@code q}</td><td>query terms for co-occurrence mode (future)</td></tr>
  * </table>
  *
@@ -57,7 +59,7 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * {
  *   "meta": {
  *     "QTime": 42,
- *     "params": { "field": "text", "top": 50, "idfExp": 1.3 }
+ *     "params": { "field": "text", "terms": 50, "tsort": "jslog", "tau": 1000 }
  *   },
  *   "data": [
  *     { "term": "enfant", "count": 8234, "score": 12.47 },
@@ -178,15 +180,27 @@ public final class OpTerms extends Op
         
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
-            final String tsort = pars.getString(TSORT, "");
-            final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-            final ThemeTerms idf = switch (tsort) {
+            final String tsort = pars.getString(TSORT, "jslog");
+            final ThemeTerms theme = switch (tsort) {
                 case "raw" -> new ThemeTerms.Raw();
-                default -> new ThemeTerms.BM25(idfExp);
+                case "bm25" -> new ThemeTerms.BM25(pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP));
+                default -> {
+                    final long tokens = contentFluc.termStats().fieldTokens();
+                    final double defaultTau = tokens > 0L ? tokens / 4000d : 1d;
+                    final double tau = pars.getDouble(TAU, TAU_RANGE, defaultTau);
+                    meta.put("tau", tau);
+                    yield new ThemeTerms.JsLog(tau);
+                }
             };
-            // The weights for full field are cached if same idfExp is requested
-            final double[] weights = contentFluc.termStats().termWeights(index.reader(), idf);
-            // topTerms will ask the theme terms of corpus, cached if idfExp is always the same
+            meta.put("themeScorer", theme instanceof ThemeTerms.JsLog ? "jslog" : tsort);
+            // Match the Python nostops ranking without changing field statistics.
+            // Explicit term flags retain their existing semantics.
+            if (theme instanceof ThemeTerms.JsLog && (tflags.length == 0
+                    || (tflags.length == 1 && tflags[0] == TermFlag.NULL))) {
+                topTerms.exclude(contentLexicon.bits(TermFlag.STOPWORD).stream().toArray());
+            }
+            topTerms.include(incIds);
+            final double[] weights = contentFluc.termStats().termWeights(index.reader(), theme);
             return topTerms.ranking(weights, terms, tflags);
         }
         // no coocs, doc filter query, contrastive terms from a part

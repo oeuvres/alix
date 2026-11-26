@@ -57,6 +57,8 @@ public class Pars
     public static final int      TERMS_DEFAULT    = 50;
     public static final int[]    TERMS_RANGE      = {1, 5000};
     public static final String   TFLAG            = "tflag";
+    public static final String   TAU              = "tau";
+    public static final double[] TAU_RANGE        = {0, 1_000_000};
     public static final String   TSORT            = "tsort";
     public static final String   TYPE             = "type";
     public static final String   XTICKS           = "xticks";

@@ -149,12 +149,12 @@ public final class TermStats
     /**
      * Corpus-level term weight vector, indexed by dense term id.
      * {@code null} until {@link #termWeights} has been called.
-     * Written once and then read-only; declared volatile for safe publication.
+     * Replaced when the scorer configuration changes; published arrays are read-only.
      */
     private volatile double[] termWeights;
     
     /** The scorer used to calculate {@link #termWeights}. */
-    private volatile ThemeTerms termWeightsScorer;
+    private ThemeTerms termWeightsScorer;
     
     /**
      * Creates an immutable statistics object from already-loaded arrays and derived scalars.
@@ -326,16 +326,8 @@ public final class TermStats
      * by {@link TermLexicon}. Id 0 is reserved as the absent-term sentinel.
      * </p>
      *
-     * <p>
-     * When {@code focusDocs} is non-null, the focus subset's token total and document
-     * count are derived from the bitset and {@link #docTokens}, then passed to
-     * {@link ThemeTerms#focus}. Each posting visit then tells the scorer whether the
-     * document is in focus, and the scorer accumulates into focus or rest separately.
-     * </p>
-     *
      * @param reader    snapshot reader matching these statistics
      * @param scorer    scorer to weight terms
-     * @param focusDocs optional focus bitset for contrastive scoring; {@code null} for non-contrastive
      * @return weight vector indexed by dense term id
      * @throws IOException           if term or postings iteration fails
      * @throws IllegalStateException if the field has no terms or no frequencies
@@ -357,6 +349,7 @@ public final class TermStats
         }
         
         scorer.corpus(fieldTokens, fieldDocs);
+        final BitSet live = reader.hasDeletions() ? liveDocs(reader) : null;
         final double[] weights = new double[vocabSize];
         final TermsEnum tenum = terms.iterator();
         PostingsEnum postings = null;
@@ -372,6 +365,7 @@ public final class TermStats
             
             postings = tenum.postings(postings, PostingsEnum.FREQS);
             for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS; docId = postings.nextDoc()) {
+                if (live != null && !live.get(docId)) continue;
                 final int freq = postings.freq();
                 if (freq <= 0)
                     continue;
@@ -380,6 +374,9 @@ public final class TermStats
             
             weights[termId] = scorer.termScore();
             termId++;
+        }
+        if (termId != vocabSize) {
+            throw new IOException("Vocabulary size changed during buildTermWeights for field '" + field + "'");
         }
         return weights;
     }
@@ -926,16 +923,17 @@ public final class TermStats
      * @return weight vector indexed by dense term id
      * @throws IOException if term iteration fails
      */
-    public double[] termWeights(final IndexReader reader, final ThemeTerms scorer) throws IOException
+    public synchronized double[] termWeights(final IndexReader reader, final ThemeTerms scorer) throws IOException
     {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(scorer, "scorer");
         if (termWeights != null && scorer.equals(termWeightsScorer)) {
             return termWeights;
         }
+        final double[] weights = buildTermWeights(reader, scorer);
         termWeightsScorer = scorer;
-        termWeights = buildTermWeights(reader, scorer);
-        return termWeights;
+        termWeights = weights;
+        return weights;
     }
     
     /**

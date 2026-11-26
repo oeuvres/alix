@@ -2,7 +2,7 @@ package com.github.oeuvres.alix.lucene.terms;
 
 
 /**
- * Local scorer for one term across documents, optionally contrastive
+ * Corpus-level term scorer across documents, optionally contrastive
  * between a focus subset and the rest of the corpus.
  *
  * <p>
@@ -71,7 +71,7 @@ public abstract class ThemeTerms
     protected double otherAcc;
     
     /**
-     * Set corpus-level statistics. Called once before any {@link #term}.
+     * Set corpus-level statistics. Called once before any {@link #termStart(long, int)}.
      *
      * @param corpusTokens total token count in the corpus
      * @param corpusDocs   number of documents in the corpus
@@ -88,7 +88,7 @@ public abstract class ThemeTerms
     
     /**
      * Set focus-level statistics for contrastive scoring. Optional; called
-     * once between {@link #corpus} and the first {@link #term}.
+     * once between {@link #corpus} and the first {@link #termStart(long, int)}.
      *
      * @param focusTokens total token count of the focus subset
      * @param focusDocs   number of documents in the focus subset
@@ -102,7 +102,7 @@ public abstract class ThemeTerms
     
     /**
      * Prepare for a new term. Resets both accumulators.
-     * Subclasses should call {@code super.term()} first.
+     * Subclasses should call {@code super.termStart(corpusTermFreq, corpusTermDocs)} first.
      *
      * @param corpusTermFreq total occurrences of the term in the corpus
      * @param corpusTermDocs number of documents containing the term
@@ -191,7 +191,7 @@ public abstract class ThemeTerms
      * BM25-style scorer with contrastive support.
      *
      * <p>
-     * {@link #score} accumulates the tf-saturation component
+     * {@link #termDocAdd(long, long, boolean)} accumulates the tf-saturation component
      * <em>without</em> IDF into {@link #acc} (focus) or {@link #otherAcc}
      * (rest). IDF is factored out and applied once in {@link #termScore()}.
      * Focus-side term frequency and document count are also tracked
@@ -578,6 +578,126 @@ public abstract class ThemeTerms
         }
     }
     
+    /**
+     * Jensen–Shannon divergence of term occurrences against the distribution
+     * of indexed tokens across documents, weighted by log(1 + CF / tau).
+     * Natural logarithms are used. Only positive-frequency postings are needed:
+     * JS = log(2) minus half the sum of their overlap corrections.
+     * This scorer describes one complete population, not focus versus rest.
+     */
+    public static final class JsLog extends ThemeTerms
+    {
+        /** Frequency transition, expressed in token occurrences. */
+        private final double tau;
+
+        /**
+         * Creates a whole-population JS-log scorer.
+         *
+         * @param tau positive, finite frequency transition
+         * @throws IllegalArgumentException if tau is not positive and finite
+         */
+        public JsLog(final double tau)
+        {
+            if (!Double.isFinite(tau) || tau <= 0d) {
+                throw new IllegalArgumentException("tau must be finite and > 0: " + tau);
+            }
+            this.tau = tau;
+        }
+
+        /**
+         * Tests whether another scorer uses the same JS-log configuration.
+         *
+         * @param obj other object
+         * @return true for another JS-log scorer with the same tau
+         */
+        @Override
+        public boolean equals(final Object obj)
+        {
+            return obj instanceof JsLog other && Double.compare(tau, other.tau) == 0;
+        }
+
+        /**
+         * Rejects contrastive use: the reference distribution must be internal.
+         *
+         * @param focusTokens selected token count
+         * @param focusDocs selected document count
+         * @throws UnsupportedOperationException always
+         */
+        @Override
+        public void focus(final long focusTokens, final int focusDocs)
+        {
+            throw new UnsupportedOperationException("JS-log requires a complete population");
+        }
+
+        /**
+         * Returns a hash based on the scorer configuration.
+         *
+         * @return hash code
+         */
+        @Override
+        public int hashCode()
+        {
+            return Double.hashCode(tau);
+        }
+
+        /**
+         * Accumulates the sparse JS correction for one positive posting.
+         *
+         * @param docTermFreq term occurrences in the document
+         * @param docTokens indexed token count of the document
+         * @param inFocus must be true for this intrinsic scorer
+         * @return the nonnegative overlap correction, before the factor 1/2
+         * @throws IllegalArgumentException if the posting is outside the population
+         *                                  or has inconsistent counts
+         */
+        @Override
+        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
+        {
+            if (!inFocus) {
+                throw new IllegalArgumentException("JS-log requires a complete population");
+            }
+            if (docTermFreq == 0L) return 0d;
+            if (docTermFreq < 0L || docTermFreq > docTokens || docTermFreq > corpusTermFreq
+                    || docTokens > corpusTokens) {
+                throw new IllegalArgumentException("Inconsistent JS-log posting counts");
+            }
+            super.termDocAdd(docTermFreq, docTokens, inFocus);
+            final double q = docTermFreq / (double) corpusTermFreq;
+            final double p = docTokens / (double) corpusTokens;
+            final double correction = q * Math.log1p(p / q) + p * Math.log1p(q / p);
+            acc += correction;
+            return correction;
+        }
+
+        /**
+         * Returns the weighted Jensen–Shannon divergence for the current term.
+         *
+         * @return nonnegative score, or zero for an absent term or a population
+         *         with at most one nonempty document
+         */
+        @Override
+        public double termScore()
+        {
+            if (corpusTermFreq <= 0L || corpusTokens <= 0L || corpusDocs <= 1) return 0d;
+            final double js = Math.max(0d, Math.log(2d) - 0.5d * acc);
+            final double ratio = corpusTermFreq / tau;
+            final double weight = Double.isFinite(ratio) ? Math.log1p(ratio)
+                    : Math.log((double) corpusTermFreq) - Math.log(tau);
+            return js * weight;
+        }
+
+        /**
+         * Returns the scorer label including its frequency transition.
+         *
+         * @return scorer label
+         */
+        @Override
+        public String toString()
+        {
+            return "jslog-tau" + tau;
+        }
+    }
+
     /**
      * Raw term-frequency scorer.
      *
