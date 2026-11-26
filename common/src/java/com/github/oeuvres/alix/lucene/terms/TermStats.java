@@ -76,17 +76,21 @@ import static com.github.oeuvres.alix.common.Names.ALIX_ID;
  *
  * <h2>Persistence format</h2>
  * <p>
- * Two UTF-8 TSV files in the Lucene directory, with header rows:
+ * Three UTF-8 TSV files in the Lucene directory, with header rows. The filename
+ * prefix is the directory basename, followed by the indexed field name:
  * </p>
  * <ul>
- * <li>{@code <field>-terms.tsv}: {@code termId, term, df, tf} (term IDs start at 1).</li>
- * <li>{@code <field>-docs.tsv}: {@code docId, alix.id, docWidth, docTokens}.
+ * <li>{@code <index>-<field>-terms.tsv}: {@code termId, term, df, tf} (term IDs start at 1).</li>
+ * <li>{@code <index>-<field>-docs.tsv}: {@code docId, alix.id, docWidth, docTokens}.
  * All {@code docId} slots are present, including deleted documents.</li>
+ * <li>{@code <index>-<field>-postings.tsv}: {@code termId, docId, tf}.
+ * One row per live document and term with positive frequency, ordered by term ID
+ * and then global document ID. This export is not loaded into memory.</li>
  * </ul>
  * <p>
  * Text cells use CSV-compatible quoting, with tab as the separator. Term ID 0
- * is the absent-term sentinel and is not written. Both files are specific to the
- * same frozen Lucene snapshot; their row identities are checked at open.
+ * is the absent-term sentinel and is not written. All three files are specific to the
+ * same frozen Lucene snapshot; document and term row identities are checked at open.
  * </p>
  *
  * <h2>Order compatibility</h2>
@@ -215,19 +219,20 @@ public final class TermStats
     }
     
     /**
-     * Builds the two TSV statistics files for one indexed field.
+     * Builds the three TSV statistics files for one indexed field.
      * <p>
-     * Width and token counts are computed in one postings pass; document frequencies
-     * and term totals are computed in a second pass. Existing TSV files are not replaced.
-     * Each temporary file is moved into place after both have been written; if either
-     * move fails, files moved by this invocation are removed.
+     * Width and token counts are computed in one positional pass; term counts and
+     * the sparse postings export are written together in a second, frequency-only pass.
+     * Existing TSV files are not replaced. Temporary files are moved into place
+     * only after all three have been written; on failure, files moved by this
+     * invocation are removed.
      * </p>
      *
      * @param reader snapshot reader
      * @param sideDir directory that will receive the TSV files
      * @param field indexed field name
      * @param report progress reporter; may be {@code null}
-     * @throws IOException if terms or positions are unavailable, either output already
+     * @throws IOException if terms or positions are unavailable, any output already
      *                     exists, or a file cannot be written
      */
     public static void build(final IndexReader reader, final Path sideDir, final String field, Report report)
@@ -241,16 +246,20 @@ public final class TermStats
 
         final Path docsPath = docsPath(sideDir, field);
         final Path termsPath = termsPath(sideDir, field);
+        final Path postingsPath = postingsPath(sideDir, field);
         IOUtil.ensureAbsent(docsPath);
         IOUtil.ensureAbsent(termsPath);
+        IOUtil.ensureAbsent(postingsPath);
         final Path docsTmp = IOUtil.tmpPath(docsPath);
         final Path termsTmp = IOUtil.tmpPath(termsPath);
+        final Path postingsTmp = IOUtil.tmpPath(postingsPath);
         IOUtil.ensureAbsent(docsTmp);
         IOUtil.ensureAbsent(termsTmp);
+        IOUtil.ensureAbsent(postingsTmp);
 
         final DocStats docs = docStats(reader, field, report);
-        final VocabCounts counts = vocabCounts(reader, field, report);
         boolean docsMoved = false;
+        boolean termsMoved = false;
         try {
             try (BufferedWriter out = Files.newBufferedWriter(
                     docsTmp, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)) {
@@ -276,36 +285,28 @@ public final class TermStats
                             + " live documents without stored alix.id");
             }
 
-            try (BufferedWriter out = Files.newBufferedWriter(
-                    termsTmp, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)) {
-                out.write("termId\tterm\tdf\ttf\n");
-                final Terms terms = MultiTerms.getTerms(reader, field);
-                final TermsEnum iterator = terms.iterator();
-                BytesRef term;
-                int termId = 1;
-                while ((term = iterator.next()) != null) {
-                    if (termId >= counts.vocabSize)
-                        throw new IOException("Vocabulary changed while writing TSV for field '" + field + "'");
-                    out.write(Integer.toString(termId));
-                    out.write('\t');
-                    writeTsvCell(out, term.utf8ToString());
-                    out.write('\t');
-                    out.write(Integer.toString(counts.termDocs[termId]));
-                    out.write('\t');
-                    out.write(Long.toString(counts.termCounts[termId]));
-                    out.write('\n');
-                    termId++;
-                }
-                if (termId != counts.vocabSize)
-                    throw new IOException("Vocabulary changed while writing TSV for field '" + field + "'");
+            try (
+                BufferedWriter termsOut = Files.newBufferedWriter(
+                    termsTmp, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
+                BufferedWriter postingsOut = Files.newBufferedWriter(
+                    postingsTmp, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)
+            ) {
+                termsOut.write("termId\tterm\tdf\ttf\n");
+                postingsOut.write("termId\tdocId\ttf\n");
+                vocabCounts(reader, field, report, termsOut, postingsOut);
             }
 
             IOUtil.moveTemp(docsTmp, docsPath);
             docsMoved = true;
             IOUtil.moveTemp(termsTmp, termsPath);
+            termsMoved = true;
+            IOUtil.moveTemp(postingsTmp, postingsPath);
         } catch (IOException | RuntimeException e) {
             IOUtil.deleteIfExists(docsTmp);
             IOUtil.deleteIfExists(termsTmp);
+            IOUtil.deleteIfExists(postingsTmp);
+            if (termsMoved)
+                IOUtil.deleteIfExists(termsPath);
             if (docsMoved)
                 IOUtil.deleteIfExists(docsPath);
             throw e;
@@ -576,19 +577,20 @@ public final class TermStats
     }
     
     /**
-     * Returns {@code true} if both persisted TSV files for the field exist.
+     * Returns {@code true} if all three persisted TSV files for the field exist.
      * This is a presence check, not content validation.
      *
      * @param indexDir Lucene directory
      * @param field indexed field name
-     * @return {@code true} if both TSV files exist
+     * @return {@code true} if all three TSV files exist
      */
     public static boolean exists(final Path indexDir, final String field)
     {
         Objects.requireNonNull(indexDir, "indexDir");
         Objects.requireNonNull(field, "field");
         return Files.isRegularFile(docsPath(indexDir, field))
-                && Files.isRegularFile(termsPath(indexDir, field));
+                && Files.isRegularFile(termsPath(indexDir, field))
+                && Files.isRegularFile(postingsPath(indexDir, field));
     }
 
     /**
@@ -685,7 +687,8 @@ public final class TermStats
     }
     
     /**
-     * Loads the two TSV files into primitive arrays for the current Lucene snapshot.
+     * Loads document and term TSV files into primitive arrays for the current Lucene snapshot.
+     * The postings export is not read.
      * <p>
      * Document and term IDs must be consecutive, and their textual identifiers must
      * agree with the reader. The sums and largest document width are derived during
@@ -798,7 +801,7 @@ public final class TermStats
     }
 
     /**
-     * Opens the field statistics, building both TSV files first if they do not exist.
+     * Opens the field statistics, building the three TSV files first if they do not exist.
      *
      * @param reader  snapshot reader used for building and consistency checks
      * @param sideDir directory that may receive the TSV files
@@ -813,7 +816,7 @@ public final class TermStats
     }
     
     /**
-     * Opens the field statistics, building both TSV files first if they do not exist.
+     * Opens the field statistics, building the three TSV files first if they do not exist.
      *
      * @param reader  snapshot reader
      * @param sideDir directory that may receive the TSV files
@@ -829,7 +832,8 @@ public final class TermStats
         final Report report) throws IOException
     {
         if (!exists(sideDir, field)) {
-            if (Files.exists(docsPath(sideDir, field)) || Files.exists(termsPath(sideDir, field)))
+            if (Files.exists(docsPath(sideDir, field)) || Files.exists(termsPath(sideDir, field))
+                    || Files.exists(postingsPath(sideDir, field)))
                 throw new IOException("Incomplete TSV statistics for field '" + field + "' in " + sideDir);
             build(reader, sideDir, field, report);
         }
@@ -960,6 +964,30 @@ public final class TermStats
     public static VocabCounts vocabCounts(final IndexReader reader, final String field, Report report)
         throws IOException
     {
+        return vocabCounts(reader, field, report, null, null);
+    }
+
+    /**
+     * Collects term counts and optionally streams the terms and postings exports.
+     * When no postings writer is supplied, term metadata is used directly for
+     * readers without deletions.
+     *
+     * @param reader snapshot reader
+     * @param field indexed field name
+     * @param report progress reporter; may be {@code null}
+     * @param termsOut optional destination for term rows, after the header
+     * @param postingsOut optional destination for posting rows, after the header
+     * @return counts indexed by dense term ID, with ID 0 reserved
+     * @throws IOException if index access or TSV writing fails
+     */
+    private static VocabCounts vocabCounts(
+        final IndexReader reader,
+        final String field,
+        Report report,
+        final Writer termsOut,
+        final Writer postingsOut
+    ) throws IOException
+    {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(field, "field");
         if (report == null)
@@ -980,21 +1008,32 @@ public final class TermStats
         final TermsEnum iterator = terms.iterator();
         PostingsEnum postings = null;
         int termId = 1;
-        while (iterator.next() != null) {
+        BytesRef term;
+        while ((term = iterator.next()) != null) {
             if (termId >= vocabSize)
                 throw new IOException("Vocabulary changed while collecting counts for field '" + field + "'");
 
             int df;
             long tf;
-            if (hasDeletions) {
+            if (hasDeletions || postingsOut != null) {
                 df = 0;
                 tf = 0L;
                 postings = iterator.postings(postings, PostingsEnum.FREQS);
                 for (int docId = postings.nextDoc(); docId != DocIdSetIterator.NO_MORE_DOCS;
                         docId = postings.nextDoc()) {
-                    if (live.get(docId)) {
-                        df++;
-                        tf += postings.freq();
+                    if (live != null && !live.get(docId)) continue;
+                    final int freq = postings.freq();
+                    if (freq <= 0)
+                        throw new IOException("Invalid posting frequency for termId=" + termId);
+                    df++;
+                    tf += freq;
+                    if (postingsOut != null) {
+                        postingsOut.write(Integer.toString(termId));
+                        postingsOut.write('\t');
+                        postingsOut.write(Integer.toString(docId));
+                        postingsOut.write('\t');
+                        postingsOut.write(Integer.toString(freq));
+                        postingsOut.write('\n');
                     }
                 }
             } else {
@@ -1005,6 +1044,16 @@ public final class TermStats
                 throw new IOException("Invalid frequencies for termId=" + termId + " in field '" + field + "'");
             termDocs[termId] = df;
             termCounts[termId] = tf;
+            if (termsOut != null) {
+                termsOut.write(Integer.toString(termId));
+                termsOut.write('\t');
+                writeTsvCell(termsOut, term.utf8ToString());
+                termsOut.write('\t');
+                termsOut.write(Integer.toString(df));
+                termsOut.write('\t');
+                termsOut.write(Long.toString(tf));
+                termsOut.write('\n');
+            }
             termId++;
         }
         if (termId != vocabSize)
@@ -1140,7 +1189,7 @@ public final class TermStats
      */
     private static Path docsPath(final Path sideDir, final String field)
     {
-        return sideDir.resolve(field + "-docs.tsv");
+        return statsPath(sideDir, field, "docs");
     }
 
     /**
@@ -1204,6 +1253,34 @@ public final class TermStats
     }
 
     /**
+     * Returns the sparse postings TSV path for an indexed field.
+     *
+     * @param sideDir directory containing index sidecars
+     * @param field indexed field name
+     * @return path to the postings TSV
+     */
+    private static Path postingsPath(final Path sideDir, final String field)
+    {
+        return statsPath(sideDir, field, "postings");
+    }
+
+    /**
+     * Resolves a statistics filename using the index directory basename.
+     *
+     * @param sideDir directory containing index sidecars
+     * @param field indexed field name
+     * @param kind statistics file kind
+     * @return path to the requested TSV
+     */
+    private static Path statsPath(final Path sideDir, final String field, final String kind)
+    {
+        final Path name = sideDir.toAbsolutePath().normalize().getFileName();
+        if (name == null)
+            throw new IllegalArgumentException("Index directory has no name: " + sideDir);
+        return sideDir.resolve(name + "-" + field + "-" + kind + ".tsv");
+    }
+
+    /**
      * Returns the per-term TSV path for an indexed field.
      *
      * @param sideDir directory containing index sidecars
@@ -1212,7 +1289,7 @@ public final class TermStats
      */
     private static Path termsPath(final Path sideDir, final String field)
     {
-        return sideDir.resolve(field + "-terms.tsv");
+        return statsPath(sideDir, field, "terms");
     }
 
     /**
@@ -1249,7 +1326,9 @@ public final class TermStats
             report.warn("No terms field=" + report.getAttribute("field", "?"));
         }
         return (int) size;
-    }    /**
+    }
+
+    /**
      * Writes a TSV text cell, quoting it if it contains control delimiters or quotes.
      *
      * @param out destination writer
