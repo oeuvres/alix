@@ -148936,7 +148936,7 @@ déruralisations,NOUN,déruralisation,
 derviche,NOUN,derviche,1.35
 derviches,NOUN,derviche,0.41
 des,DETart,un,10624.93
-des,ADP+DET,un,10624.93
+des,ADP+DET,du,10624.93
 dés,NOUN,dé,7.91
 dès,ADP,dès,275.07
 désabonna,VERB,désabonner,0.07
@@ -265983,9 +265983,9 @@ ice-shelves,NOUN,ice-shelf,
 iceberg,NOUN,iceberg,1.08
 icebergs,NOUN,iceberg,0.34
 icelle,PRONdem,icelle,
-icelle,DETdem,icelle,
+icelle,DETdem,icelui,
 icelles,PRONdem,icelles,
-icelles,DETdem,icelles,
+icelles,DETdem,iceux,
 icelui,PRONdem,icelui,
 icelui,DETdem,icelui,
 iceux,PRONdem,iceux,
@@ -329895,7 +329895,7 @@ norvégiennes,ADJ,norvégien,0.14
 norvégiennes,NOUN,norvégien,0.07
 norvégiens,ADJ,norvégien,0.34
 norvégiens,NOUN,norvégien,0.20
-nos,DETprs,nos,579.19
+nos,DETprs,notre,579.19
 nos,NOUN,nos,
 nôs,NOUN,nô,
 noséane,NOUN,noséane,
@@ -481220,10 +481220,10 @@ tout-terrain,NOUN,tout-terrain,0.00
 tout-terrain,ADJ,tout-terrain,0.00
 tout-va,ADV,tout-va,
 tout-venant,NOUN,tout-venant,0.74
-toute,DETind,toute,194.26
-toute,PRON,toute,5.20
+toute,DETind,tout,194.26
+toute,PRON,tout,5.20
 toute,ADJ,tout,0.00
-toute,ADV,toute,
+toute,ADV,tout,
 toute-bonne,NOUN,toute-bonne,
 toute-épice,NOUN,toute-épice,
 toute-puissance,NOUN,toute-puissance,2.03
@@ -481231,10 +481231,10 @@ toute-puissances,NOUN,toute-puissance,
 toute-puissante,NOUN,toute-puissante,
 toute-puissante,ADJ,toute-puissante,1.15
 toutefois,ADV,toutefois,35.47
-toutes,DETind,toutes,50.47
-toutes,PRONind,toutes,24.19
+toutes,DETind,tous,50.47
+toutes,PRONind,tous,24.19
 toutes,ADJ,tout,0.00
-toutes,ADV,toutes,
+toutes,ADV,tout,
 toutes-boîtes,NOUN,toutes-boîtes,
 toutes-bonnes,NOUN,toute-bonne,
 toutes-épices,NOUN,toute-épice,
@@ -501796,7 +501796,7 @@ voracités,NOUN,voracité,
 vortex,NOUN,vortex,0.14
 vorticelle,NOUN,vorticelle,
 vorticelles,NOUN,vorticelle,
-vos,DETprs,vos,180.27
+vos,DETprs,votre,180.27
 vosgien,NOUN,vosgien,0.14
 vosgien,ADJ,vosgien,
 vosgienne,NOUN,vosgien,
