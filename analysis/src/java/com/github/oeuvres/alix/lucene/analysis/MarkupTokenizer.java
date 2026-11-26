@@ -104,6 +104,9 @@ public class MarkupTokenizer extends Tokenizer
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
 
+    /** Marker for one logical line ending in a structural event. */
+    private static final char LINE_BREAK_MARK = '↵';
+
     /** IO buffer size (chars). Tune for your workload; 2 MiB per instance is usually wasteful. */
     private static final int IO_BUFFER_SIZE = 32 * 1024;
 
@@ -146,8 +149,8 @@ public class MarkupTokenizer extends Tokenizer
     /** Number of valid chars in {@link #buffer}. */
     private int bufferLength;
 
-    /** A short raw-character preview for grouped numbers and ordinal suffixes across IO refills. */
-    private final char[] numberPreview = new char[6];
+    /** A short raw-character preview for numeric and markup recognition across IO refills. */
+    private final char[] numberPreview = new char[10];
 
     /** Number of previewed characters not yet consumed by {@link #skip()}. */
     private int numberPreviewLength;
@@ -169,6 +172,9 @@ public class MarkupTokenizer extends Tokenizer
 
     /** True when the preceding raw token was a digit or ordinal token. */
     private boolean afterNumber;
+
+    /** True inside a CDATA section; its contents are ordinary character data. */
+    private boolean inCdata;
 
     /** Buffered token states during trailing-dot resolution, then replayed in order. */
     private TokenStateQueue lookahead;
@@ -233,7 +239,7 @@ public class MarkupTokenizer extends Tokenizer
      * Build a tokenizer with configured brevidots, block tags, and markup mode.
      *
      * <p>In {@link MarkupMode#XML}, a {@code '<'} starts an XML-like token. In
-     * {@link MarkupMode#NONE}, angle brackets are ordinary delimiters and never start markup
+     * {@link MarkupMode#NONE}, angle brackets are mathematical punctuation and never start markup
      * parsing.</p>
      *
      * @param brevidots forms whose final dot always remains inside the token; null means none
@@ -347,7 +353,7 @@ public class MarkupTokenizer extends Tokenizer
         final char pc = (char) pendingChar;
         pendingChar = -1;
         termAtt.append(pc);
-        if (isClausePunct(pc)) {
+        if (isClausePunct(pc) || isNumericSymbol(pc)) {
             posAtt.setPos(PUNCTclause.code);
             offsetAtt.setOffset(correctOffset(pendingStart), correctOffset(pendingEnd));
             return true;
@@ -534,7 +540,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private static boolean isMinusSign(final char c)
     {
-        return c == '-' || c == '\u2212';
+        return c == '-' || c == '\u2212' || c == '\u2010' || c == '\u2011' || c == '\u00AD';
     }
 
     /**
@@ -671,7 +677,7 @@ public class MarkupTokenizer extends Tokenizer
      * Preview a raw character without advancing the logical source offset. Previewed characters
      * remain available to {@link #peek()} and {@link #skip()}, even across IO buffer refills.
      *
-     * @param distance zero-based distance from the current cursor (maximum five)
+     * @param distance zero-based distance from the current cursor (maximum nine)
      * @return the character, or {@code -1} at end of input
      * @throws IOException if the input cannot be read
      */
@@ -753,7 +759,7 @@ public class MarkupTokenizer extends Tokenizer
         }
 
         if (count < 2) return false;
-        termAtt.append("↵↵");
+        for (int i = 0; i < count; i++) termAtt.append(LINE_BREAK_MARK);
         posAtt.setPos(PUNCTstruct.code);
         offsetAtt.setOffset(correctOffset(start), correctOffset(end));
         return true;
@@ -762,7 +768,8 @@ public class MarkupTokenizer extends Tokenizer
     /**
      * Read a number with at most one decimal separator, removing spaces used as
      * thousands separators in the integer part. A grouping space is recognized
-     * only after one to three digits and before exactly three digits. A decimal
+     * only for non-breaking, narrow non-breaking or thin spaces, after one to three
+     * digits and before exactly three digits. A decimal
      * separator is accepted only when immediately followed by a digit, leaving
      * trailing punctuation in the input for the next token, including at EOF
      * and before XML tags.
@@ -780,7 +787,7 @@ public class MarkupTokenizer extends Tokenizer
         int digitsInGroup = 0;
         boolean decimal = false;
         int c;
-        while ((c = peek()) >= 0) {
+        while (termAtt.length() < TOKEN_MAX_SIZE && (c = peek()) >= 0) {
             final char ch = (char) c;
             if (Char.isDigit(ch)) {
                 digitsInGroup++;
@@ -804,7 +811,24 @@ public class MarkupTokenizer extends Tokenizer
             skip();
         }
 
-        if (readOrdinalSuffix()) {
+        final int next = peek();
+        if (!decimal && isVulgarFraction(next) && termAtt.length() < TOKEN_MAX_SIZE) {
+            termAtt.append((char) next);
+            skip();
+        }
+        else if (termAtt.length() <= TOKEN_MAX_SIZE - 3 && (next == 'e' || next == 'E') && hasExponent()) {
+            termAtt.append((char) next);
+            skip();
+            if (peek() == '+' || peek() == '-' || peek() == '−') {
+                termAtt.append((char) peek());
+                skip();
+            }
+            while (termAtt.length() < TOKEN_MAX_SIZE && peek() >= 0 && Char.isDigit((char) peek())) {
+                termAtt.append((char) peek());
+                skip();
+            }
+        }
+        else if (termAtt.length() <= TOKEN_MAX_SIZE - 5 && readOrdinalSuffix()) {
             posAtt.setPos(NUMord.code);
         }
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
@@ -875,26 +899,163 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Read an XML-like tag from {@code '<'} through {@code '>'} inclusive. A tag truncated by
-     * end of input is emitted as-is, without the XML flag.
+     * Reads an XML markup event. Quoted attribute values, comments, processing
+     * instructions and DOCTYPE internal subsets do not end at an embedded '>'.
+     * CDATA delimiters are markup events; the enclosed text remains visible.
      *
-     * @return {@code true}
+     * @return true when a token was produced
      * @throws IOException if the input cannot be read
      */
     private boolean readTag() throws IOException
     {
         final int start = offset;
+        if (rawStartsWith("<![CDATA[")) {
+            inCdata = true;
+            return readMarkupDelimiter("<![CDATA[");
+        }
+        if (rawStartsWith("<!--")) return readMarkupUntil("-->");
+        if (rawStartsWith("<?")) return readMarkupUntil("?>");
+        final boolean doctype = rawStartsWith("<!DOCTYPE");
+        int quote = 0;
+        int depth = 0;
         int c;
         while ((c = peek()) >= 0) {
+            if (doctype && quote == 0 && rawStartsWith("<!--")) {
+                appendThrough("-->");
+                continue;
+            }
+            if (doctype && quote == 0 && rawStartsWith("<?")) {
+                appendThrough("?>");
+                continue;
+            }
             termAtt.append((char) c);
             skip();
-            if (c == '>') {
+            if (quote != 0) {
+                if (c == quote) quote = 0;
+            }
+            else if (c == '\'' || c == '"') quote = c;
+            else if (doctype && c == '[') depth++;
+            else if (doctype && c == ']' && depth > 0) depth--;
+            else if (c == '>' && depth == 0) {
                 posAtt.setPos(XML.code);
                 break;
             }
         }
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
         return true;
+    }
+
+    /**
+     * Checks a short literal at the raw cursor, without consuming input.
+     * @param literal literal of at most ten characters
+     * @return whether the literal matches
+     * @throws IOException if the input cannot be read
+     */
+    private boolean rawStartsWith(final String literal) throws IOException
+    {
+        for (int i = 0; i < literal.length(); i++) {
+            if (peekAhead(i) != literal.charAt(i)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Appends input through the first terminator, inclusive.
+     * @param terminator closing markup delimiter
+     * @return whether the terminator was found
+     * @throws IOException if the input cannot be read
+     */
+    private boolean appendThrough(final String terminator) throws IOException
+    {
+        while (peek() >= 0) {
+            if (rawStartsWith(terminator)) {
+                for (int i = 0; i < terminator.length(); i++) {
+                    termAtt.append((char) peek());
+                    skip();
+                }
+                return true;
+            }
+            termAtt.append((char) peek());
+            skip();
+        }
+        return false;
+    }
+
+    /**
+     * Reads an opaque markup construct through its closing delimiter.
+     * @param terminator closing delimiter
+     * @return true when a token was produced
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readMarkupUntil(final String terminator) throws IOException
+    {
+        final int start = offset;
+        if (appendThrough(terminator)) posAtt.setPos(XML.code);
+        offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+        return true;
+    }
+
+    /**
+     * Reads a known markup delimiter as one XML event.
+     * @param literal delimiter at the cursor
+     * @return true when a token was produced
+     * @throws IOException if the input cannot be read
+     */
+    private boolean readMarkupDelimiter(final String literal) throws IOException
+    {
+        final int start = offset;
+        for (int i = 0; i < literal.length(); i++) skip();
+        termAtt.append(literal);
+        posAtt.setPos(XML.code);
+        offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+        return true;
+    }
+
+    /**
+     * Tests for a complete exponent introducer followed by a digit.
+     * @return whether the current cursor begins an exponent
+     * @throws IOException if the input cannot be read
+     */
+    private boolean hasExponent() throws IOException
+    {
+        int c = peekAhead(1);
+        if (c == '+' || c == '-' || c == '−') c = peekAhead(2);
+        return c >= 0 && Char.isDigit((char) c);
+    }
+
+    /**
+     * Tests for a Unicode vulgar fraction with a defined numerical value.
+     * @param c character or EOF
+     * @return whether the character is a vulgar fraction
+     */
+    private static boolean isVulgarFraction(final int c)
+    {
+        return c == 0x00BC || c == 0x00BD || c == 0x00BE
+            || (c >= 0x2150 && c <= 0x215E) || c == 0x2189;
+    }
+
+    /**
+     * Tests for symbols that must survive numerical and mathematical tokenization.
+     * @param c source character
+     * @return whether to emit the symbol separately
+     */
+    private static boolean isNumericSymbol(final char c)
+    {
+        return "%‰‱°+×÷=≠≤≥±∓√∑∏∞∫*/⁄<>^".indexOf(c) >= 0;
+    }
+
+    /**
+     * Tests whether a character can continue a word, including combining marks
+     * and non-ASCII hyphens inside words.
+     * @param c source character
+     * @return whether the character is word-like
+     */
+    private static boolean isWordChar(final char c)
+    {
+        final int type = Character.getType(c);
+        return !isNumericSymbol(c) && (Char.isToken(c) || c == '\u2010' || c == '\u2011'
+            || type == Character.NON_SPACING_MARK || type == Character.COMBINING_SPACING_MARK
+            || type == Character.LETTER_NUMBER || (type == Character.OTHER_NUMBER && !isVulgarFraction(c)));
     }
 
     /**
@@ -934,7 +1095,11 @@ public class MarkupTokenizer extends Tokenizer
                 if (readLineBreakRun()) return true;
                 continue;
             }
-            if (ch == '<' && markupMode == MarkupMode.XML) {
+            if (inCdata && ch == ']' && rawStartsWith("]]>")) {
+                inCdata = false;
+                return readMarkupDelimiter("]]>");
+            }
+            if (ch == '<' && markupMode == MarkupMode.XML && !inCdata) {
                 afterColon = false;
                 return readTag();
             }
@@ -970,27 +1135,45 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 return readNumber(offset);
             }
+            if (isVulgarFraction(ch)) {
+                final int start = offset;
+                afterColon = false;
+                termAtt.append(ch);
+                skip();
+                posAtt.setPos(DIGIT.code);
+                offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+                return true;
+            }
+            if (isNumericSymbol(ch)) {
+                final int start = offset;
+                afterColon = false;
+                termAtt.append(ch);
+                skip();
+                posAtt.setPos(PUNCTclause.code);
+                offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
+                return true;
+            }
             if (isMinusSign(ch)) {
                 final int next = peekAhead(1);
-                if (next >= 0 && Char.isDigit((char) next) && !afterNumber) {
+                if (next >= 0 && (Char.isDigit((char) next) || isVulgarFraction(next)) && !afterNumber && (ch == '-' || ch == '−')) {
                     final int start = offset;
                     afterColon = false;
                     termAtt.append(ch);
                     skip();
                     return readNumber(start);
                 }
-                if (ch == '\u2212' || next < 0 || !Char.isToken((char) next)
-                        || (afterNumber && Char.isDigit((char) next))) {
+                if (ch == '\u2212' || next < 0 || !isWordChar((char) next)
+                        || Char.isDigit((char) next) || isVulgarFraction(next)) {
                     final int start = offset;
                     afterColon = false;
-                    termAtt.append(ch);
+                    termAtt.append(normalizeTokenChar(ch));
                     skip();
                     posAtt.setPos(PUNCTclause.code);
                     offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                     return true;
                 }
             }
-            if (Char.isToken(ch)) {
+            if (isWordChar(ch)) {
                 afterColon = false;
                 if (readWord()) return true;
                 continue; // an entity decoded to a delimiter and the term evaporated
@@ -1031,7 +1214,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private static boolean isThousandsSeparator(final char c)
     {
-        return c == ' ' || c == '\u00A0' || c == '\u202F' || c == '\u2009';
+        return c == '\u00A0' || c == '\u202F' || c == '\u2009';
     }
 
     /**
@@ -1071,7 +1254,7 @@ public class MarkupTokenizer extends Tokenizer
                     continue;
                 }
                 termAtt.setLength(spellingStart);
-                if (isClausePunct(decoded) || isSentencePunct(decoded)) {
+                if (isClausePunct(decoded) || isSentencePunct(decoded) || isNumericSymbol(decoded)) {
                     pendingChar = decoded;
                     pendingStart = entityStart;
                     pendingEnd = offset;
@@ -1103,9 +1286,9 @@ public class MarkupTokenizer extends Tokenizer
             }
 
             // Clause punctuation, sentence punctuation, '<', whitespace: end of word.
-            if (!Char.isToken(ch)) break;
+            if (!isWordChar(ch)) break;
 
-            if (ch == '&') amp = termAtt.length();
+            if (ch == '&' && !inCdata) amp = termAtt.length();
             termAtt.append(normalizeTokenChar(ch));
             skip();
             if (termAtt.length() >= TOKEN_MAX_SIZE) break; // cut overly long tokens
@@ -1168,6 +1351,7 @@ public class MarkupTokenizer extends Tokenizer
         pendingChar = -1;
         afterColon = false;
         afterNumber = false;
+        inCdata = false;
         candidateCount = 0;
         if (lookahead != null) lookahead.clear();
         buffer.reset();

@@ -50,6 +50,7 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
+import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTagger;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
@@ -115,6 +116,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Lemma dictionary. */
     public final LemmaLexicon lemmaLexicon;
 
+    /** Shared numerical vocabulary. */
+    private final NumberFilter.Lexicon numbers;
+
     /** Term normalizer. */
     public final CharsMap normalizer;
 
@@ -157,6 +161,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         super(PER_FIELD_REUSE_STRATEGY);
         this.markupMode = (markupMode == null) ? MarkupMode.XML : markupMode;
 
+        numbers = FrenchLexicons.buildNumberLexicon();
         stopwords = FrenchLexicons.buildStopwords();
         gramwords = FrenchLexicons.buildGramwords();
         noisetokens = FrenchLexicons.buildNoisetokens();
@@ -360,6 +365,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts.addAttribute(BoundaryAttribute.class);
         
         ts = new MarkupBoundaryFilter(ts);
+        ts = new NumberFilter(ts, numbers);
         ts = new FrenchCliticSplitFilter(ts);
         ts = new ReplaceFilter(ts, normalizer);
         ts = new UppercaseFilter(ts, ucwords, 4);
@@ -471,6 +477,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
             TokenStream ts = tokenizer;
+            ts = new NumberFilter(ts, numbers);
             ts = new FrenchCliticSplitFilter(ts);
             ts = new ReplaceFilter(ts, normalizer);
             return new TokenStreamComponents(tokenizer, ts);

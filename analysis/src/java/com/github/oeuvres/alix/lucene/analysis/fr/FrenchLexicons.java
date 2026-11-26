@@ -42,11 +42,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.hunspell.Dictionary;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 
+import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.PosResolver;
 import com.github.oeuvres.alix.util.CSVReader;
@@ -167,6 +169,39 @@ public final class FrenchLexicons
             wordPosResolver()
         );
         return lexicon;
+    }
+
+    /**
+     * Returns the shared French numeric lookup table. Loaded lazily once per class loader.
+     * @return compiled immutable numerical vocabulary
+     */
+    public static NumberFilter.Lexicon buildNumberLexicon()
+    {
+        return NumberResources.LEXICON;
+    }
+
+    /** Lazy initialization for the immutable numerical vocabulary. */
+    private static final class NumberResources
+    {
+        private static final NumberFilter.Lexicon LEXICON = loadNumbers();
+    }
+
+    /**
+     * Loads the two-column numeric resource using the existing CSV loader.
+     * @return compiled numerical lexicon
+     * @throws UncheckedIOException if the resource cannot be read
+     */
+    private static NumberFilter.Lexicon loadNumbers()
+    {
+        final CharArrayMap<char[]> map = new CharArrayMap<>(5000, true);
+        try (CSVReader csv = new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/numbers-fr.csv")) {
+            csv.cellMax(2);
+            LexiconHelper.loadMap(map, csv, LexiconHelper.OnDuplicate.ERROR,
+                LexiconHelper.CsvHeader.SKIP, 0, 1, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return new NumberFilter.Lexicon(map);
     }
 
     /**
