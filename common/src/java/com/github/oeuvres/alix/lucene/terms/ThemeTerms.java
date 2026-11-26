@@ -1,5 +1,17 @@
 package com.github.oeuvres.alix.lucene.terms;
 
+import java.io.IOException;
+import java.util.BitSet;
+import java.util.Objects;
+
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+
+import com.github.oeuvres.alix.util.TopArray;
+
 
 /**
  * Corpus-level term scorer across documents, optionally contrastive
@@ -28,11 +40,24 @@ package com.github.oeuvres.alix.lucene.terms;
  * </p>
  *
  * <p>
- * Stateful. One instance must not be reused concurrently.
+ * The static {@link #rrf} method ranks themes by reciprocal-rank voting:
+ * each document contributes its own locally ranked keywords (SimpleRidf by default). An earlier
+ * experiment with Jensen–Shannon divergence weighted by log(1 + CF / tau)
+ * worked on Rougemont but over-ranked experimental objects and under-ranked
+ * recurrent concepts on Piaget. The divergence measures concentration rather
+ * than recurrence among the best keywords of independent texts.
+ * </p>
+ * <p>
+ * Stateful scorer instances must not be reused concurrently.
  * </p>
  */
 public abstract class ThemeTerms
 {
+    /** Default reciprocal-rank offset, configurable per index. */
+    public static final int DEFAULT_RRF = 10;
+    /** Default maximum number of votes cast by a document. */
+    public static final int DEFAULT_VOTES = 100;
+
     
     /** Total token count of the full corpus/field. */
     protected long corpusTokens;
@@ -124,6 +149,115 @@ public abstract class ThemeTerms
         this.termDocs = 0;
     }
     
+    /**
+     * Computes corpus themes using SimpleRidf with automatic smoothing and
+     * reciprocal-rank fusion of document keywords.
+     *
+     * @param reader frozen reader corresponding to the statistics
+     * @param stats cached statistics aligned with the reader and term ids
+     * @param candidates eligible dense term ids, or null for all terms
+     * @param specif normalized SimpleRidf specificity in [0, 1]
+     * @param rrf nonnegative reciprocal-rank offset
+     * @param votes maximum number of positive keywords per document
+     * @return corpus vote totals indexed by dense term id (zero at id 0)
+     * @throws IOException if postings cannot be read or the vocabulary changed
+     * @throws IllegalArgumentException if the parameters or reader are invalid
+     * @throws IllegalStateException if the field lacks term frequencies
+     */
+    public static double[] rrf(final IndexReader reader, final TermStats stats,
+            final BitSet candidates, final double specif, final int rrf, final int votes)
+        throws IOException
+    {
+        return rrf(reader, stats, candidates, new KeynessScorer.SimpleRidf().specif(specif), rrf, votes);
+    }
+
+    /**
+     * Computes corpus themes by reciprocal-rank fusion of document keywords.
+     * Each live, nonempty document is scored against the rest of the field by
+     * the supplied keyness scorer. Scores strictly above its neutral value
+     * enter a bounded ballot of at most {@code votes} terms. A term at one-based
+     * rank r receives {@code 1 / (rrf + r)}; absent or neutral terms receive no vote.
+     * Equal scores are ordered by dense term id, as in {@link TopArray}.
+     * Candidate filtering does not change document lengths, CF or DF.
+     * The postings are visited once. The request-local scorer is initialized
+     * once for the corpus and reset to the focus document for each posting,
+     * including the focus-dependent smoothing of {@link KeynessScorer.SimpleMaths}.
+     * The scorer must not be shared between concurrent calls.
+     *
+     * @param reader frozen reader corresponding to the statistics
+     * @param stats cached statistics aligned with the reader and term ids
+     * @param candidates eligible dense term ids, or null for all terms
+     * @param scorer configured local keyness scorer, exclusive to this call
+     * @param rrf nonnegative reciprocal-rank offset
+     * @param votes maximum number of eligible keywords per document
+     * @return corpus vote totals indexed by dense term id (zero at id 0)
+     * @throws IOException if postings cannot be read or the vocabulary changed
+     * @throws IllegalArgumentException if the parameters or reader are invalid
+     * @throws IllegalStateException if the field lacks term frequencies
+     */
+    public static double[] rrf(final IndexReader reader, final TermStats stats,
+            final BitSet candidates, final KeynessScorer scorer, final int rrf, final int votes)
+        throws IOException
+    {
+        Objects.requireNonNull(reader, "reader");
+        Objects.requireNonNull(stats, "stats");
+        Objects.requireNonNull(scorer, "scorer");
+        if (rrf < 0 || votes <= 0) {
+            throw new IllegalArgumentException("rrf must be >= 0 and votes > 0");
+        }
+        if (reader.maxDoc() != stats.maxDoc()) {
+            throw new IllegalArgumentException("Reader and term statistics do not match");
+        }
+        final double[] weights = new double[stats.vocabSize()];
+        if (stats.fieldDocs() == 0 || stats.fieldTokens() == 0L) return weights;
+        final Terms terms = MultiTerms.getTerms(reader, stats.field());
+        if (terms == null || !terms.hasFreqs()) {
+            throw new IllegalStateException("No term frequencies for field '" + stats.field() + "'");
+        }
+        final int maxDoc = reader.maxDoc();
+        final BitSet live = reader.hasDeletions() ? TermStats.liveDocs(reader) : null;
+        final int[] docTokens = stats.docTokens();
+        final TopArray[] ballots = new TopArray[maxDoc];
+        scorer.corpus(stats.fieldTokens(), stats.fieldDocs());
+        final double neutral = scorer.neutral();
+        final TermsEnum iterator = terms.iterator();
+        PostingsEnum postings = null;
+        int termId = 0;
+        while (iterator.next() != null) {
+            if (++termId >= weights.length) {
+                throw new IOException("Vocabulary changed for field '" + stats.field() + "'");
+            }
+            if (candidates != null && !candidates.get(termId)) continue;
+            final long cf = stats.termFreq(termId);
+            final int df = stats.termDocs(termId);
+            if (cf <= 0L || df <= 0) continue;
+            postings = iterator.postings(postings, PostingsEnum.FREQS);
+            for (int docId = postings.nextDoc(); docId != PostingsEnum.NO_MORE_DOCS;
+                    docId = postings.nextDoc()) {
+                if (docTokens[docId] <= 0 || (live != null && !live.get(docId))) continue;
+                scorer.focus(docTokens[docId], 0d);
+                final double score = scorer.score(postings.freq(), cf, df);
+                if (!Double.isFinite(score) || score <= neutral) continue;
+                TopArray ballot = ballots[docId];
+                if (ballot == null) {
+                    ballot = new TopArray(Math.min(votes, Math.min(docTokens[docId], weights.length - 1)));
+                    ballots[docId] = ballot;
+                }
+                ballot.push(termId, score);
+            }
+        }
+        if (termId != weights.length - 1) {
+            throw new IOException("Vocabulary changed for field '" + stats.field() + "'");
+        }
+        for (final TopArray ballot : ballots) {
+            if (ballot == null) continue;
+            for (int rank = 0; rank < ballot.size(); rank++) {
+                weights[ballot.id(rank)] += 1d / (rrf + (double) rank + 1d);
+            }
+        }
+        return weights;
+    }
+
     /**
      * Compute the local score for one document and fold it into
      * {@link #acc}.
@@ -578,126 +712,6 @@ public abstract class ThemeTerms
         }
     }
     
-    /**
-     * Jensen–Shannon divergence of term occurrences against the distribution
-     * of indexed tokens across documents, weighted by log(1 + CF / tau).
-     * Natural logarithms are used. Only positive-frequency postings are needed:
-     * JS = log(2) minus half the sum of their overlap corrections.
-     * This scorer describes one complete population, not focus versus rest.
-     */
-    public static final class JsLog extends ThemeTerms
-    {
-        /** Frequency transition, expressed in token occurrences. */
-        private final double tau;
-
-        /**
-         * Creates a whole-population JS-log scorer.
-         *
-         * @param tau positive, finite frequency transition
-         * @throws IllegalArgumentException if tau is not positive and finite
-         */
-        public JsLog(final double tau)
-        {
-            if (!Double.isFinite(tau) || tau <= 0d) {
-                throw new IllegalArgumentException("tau must be finite and > 0: " + tau);
-            }
-            this.tau = tau;
-        }
-
-        /**
-         * Tests whether another scorer uses the same JS-log configuration.
-         *
-         * @param obj other object
-         * @return true for another JS-log scorer with the same tau
-         */
-        @Override
-        public boolean equals(final Object obj)
-        {
-            return obj instanceof JsLog other && Double.compare(tau, other.tau) == 0;
-        }
-
-        /**
-         * Rejects contrastive use: the reference distribution must be internal.
-         *
-         * @param focusTokens selected token count
-         * @param focusDocs selected document count
-         * @throws UnsupportedOperationException always
-         */
-        @Override
-        public void focus(final long focusTokens, final int focusDocs)
-        {
-            throw new UnsupportedOperationException("JS-log requires a complete population");
-        }
-
-        /**
-         * Returns a hash based on the scorer configuration.
-         *
-         * @return hash code
-         */
-        @Override
-        public int hashCode()
-        {
-            return Double.hashCode(tau);
-        }
-
-        /**
-         * Accumulates the sparse JS correction for one positive posting.
-         *
-         * @param docTermFreq term occurrences in the document
-         * @param docTokens indexed token count of the document
-         * @param inFocus must be true for this intrinsic scorer
-         * @return the nonnegative overlap correction, before the factor 1/2
-         * @throws IllegalArgumentException if the posting is outside the population
-         *                                  or has inconsistent counts
-         */
-        @Override
-        public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
-        {
-            if (!inFocus) {
-                throw new IllegalArgumentException("JS-log requires a complete population");
-            }
-            if (docTermFreq == 0L) return 0d;
-            if (docTermFreq < 0L || docTermFreq > docTokens || docTermFreq > corpusTermFreq
-                    || docTokens > corpusTokens) {
-                throw new IllegalArgumentException("Inconsistent JS-log posting counts");
-            }
-            super.termDocAdd(docTermFreq, docTokens, inFocus);
-            final double q = docTermFreq / (double) corpusTermFreq;
-            final double p = docTokens / (double) corpusTokens;
-            final double correction = q * Math.log1p(p / q) + p * Math.log1p(q / p);
-            acc += correction;
-            return correction;
-        }
-
-        /**
-         * Returns the weighted Jensen–Shannon divergence for the current term.
-         *
-         * @return nonnegative score, or zero for an absent term or a population
-         *         with at most one nonempty document
-         */
-        @Override
-        public double termScore()
-        {
-            if (corpusTermFreq <= 0L || corpusTokens <= 0L || corpusDocs <= 1) return 0d;
-            final double js = Math.max(0d, Math.log(2d) - 0.5d * acc);
-            final double ratio = corpusTermFreq / tau;
-            final double weight = Double.isFinite(ratio) ? Math.log1p(ratio)
-                    : Math.log((double) corpusTermFreq) - Math.log(tau);
-            return js * weight;
-        }
-
-        /**
-         * Returns the scorer label including its frequency transition.
-         *
-         * @return scorer label
-         */
-        @Override
-        public String toString()
-        {
-            return "jslog-tau" + tau;
-        }
-    }
-
     /**
      * Raw term-frequency scorer.
      *

@@ -23,6 +23,7 @@ import com.github.oeuvres.alix.lucene.fluc.FlucCategory;
 import com.github.oeuvres.alix.lucene.fluc.FlucFacet;
 import com.github.oeuvres.alix.lucene.fluc.FlucNum;
 import com.github.oeuvres.alix.lucene.fluc.FlucText;
+import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
 
 import static com.github.oeuvres.alix.common.Names.*;
 
@@ -55,6 +56,8 @@ import static com.github.oeuvres.alix.common.Names.*;
  * <li><b>{@code docline}</b> — stored field carrying a compact
  * bibliographic line.</li>
  * <li><b>{@code lang}</b> — a Locale for interface and linguistic resource, default fr.</li>
+ * <li><b>{@code theme.rrf}</b> — nonnegative reciprocal-rank offset (default 10).</li>
+ * <li><b>{@code theme.votes}</b> — maximum keywords per document ballot (default 100).</li>
  * </ul>
  * <h2>Field inventory</h2>
  * <p>
@@ -86,6 +89,8 @@ public final class LuceneIndex implements Closeable
     private final String content;
     private final String docline;
     private final String year;
+    private final int themeRrf;
+    private final int themeVotes;
     private final Locale locale;
     private final Path indexDir;
     private final DirectoryReader reader;
@@ -100,6 +105,8 @@ public final class LuceneIndex implements Closeable
         final String content,
         final String docline,
         final String year,
+        final int themeRrf,
+        final int themeVotes,
         final Locale locale,
         final Path indexDir,
         final DirectoryReader reader,
@@ -112,6 +119,8 @@ public final class LuceneIndex implements Closeable
         this.content = content;
         this.docline = docline;
         this.year = year;
+        this.themeRrf = themeRrf;
+        this.themeVotes = themeVotes;
         this.locale = (locale == null)?Locale.getDefault():locale;
         this.indexDir = indexDir;
         this.reader = reader;
@@ -167,6 +176,9 @@ public final class LuceneIndex implements Closeable
         if (label == null)
             label = name;
 
+        final int themeRrf = themeInt(props, "theme.rrf", ThemeTerms.DEFAULT_RRF, 0);
+        final int themeVotes = themeInt(props, "theme.votes", ThemeTerms.DEFAULT_VOTES, 1);
+
         // Open Directory first. If DirectoryReader.open() fails, close
         // the Directory explicitly — otherwise its file descriptors leak.
         final Directory directory = FSDirectory.open(dir);
@@ -197,7 +209,8 @@ public final class LuceneIndex implements Closeable
             final Map<String, Fluc> frozen = Collections.unmodifiableMap(fields);
 
             return new LuceneIndex(
-                    name, label, content, docline, year, locale, dir, reader, searcher, frozen, lastModified);
+                    name, label, content, docline, year, themeRrf, themeVotes, locale,
+                    dir, reader, searcher, frozen, lastModified);
         } catch (IOException | RuntimeException ex) {
             reader.close();
             throw ex;
@@ -375,6 +388,22 @@ public final class LuceneIndex implements Closeable
         return searcher;
     }
 
+    /**
+     * Returns the editor-configured reciprocal-rank offset for theme ballots.
+     * @return nonnegative RRF offset
+     */
+    public int themeRrf() {
+        return themeRrf;
+    }
+
+    /**
+     * Returns the editor-configured maximum number of keywords per theme ballot.
+     * @return positive ballot capacity
+     */
+    public int themeVotes() {
+        return themeVotes;
+    }
+
     @Override
     public String toString() {
         return "LuceneIndex{name=" + name + ", label=\"" + label + "\"" + ", docs=" + numDocs() + ", content=" + content
@@ -458,7 +487,6 @@ public final class LuceneIndex implements Closeable
         // loop on numeric field, try first one
         for (Fluc fluc : fields.values()) {
             if (fluc instanceof FlucNum) {
-                // will check if field a good candidate for histo
                 ((FlucNum) fluc).cacheHisto();
                 return fluc.name();
             }
@@ -485,6 +513,28 @@ public final class LuceneIndex implements Closeable
             LOG.log(Level.WARNING, "Cannot read segments mtime for " + indexDir, ex);
             return 0L;
         }
+    }
+
+    /**
+     * Reads and validates an optional integer theme configuration key.
+     * @param props index configuration
+     * @param key property name
+     * @param fallback default when absent or blank
+     * @param min minimum accepted value
+     * @return validated value
+     * @throws IllegalArgumentException if the configured value is invalid
+     */
+    private static int themeInt(final Properties props, final String key,
+            final int fallback, final int min) {
+        final String value = trimOrNull(props.getProperty(key));
+        if (value == null) return fallback;
+        try {
+            final int number = Integer.parseInt(value);
+            if (number >= min) return number;
+        } catch (NumberFormatException e) {
+            // Report the configuration key below.
+        }
+        throw new IllegalArgumentException(key + " must be an integer >= " + min + ": " + value);
     }
 
     private static String trimOrNull(

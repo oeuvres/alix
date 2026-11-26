@@ -3,6 +3,7 @@ package com.github.oeuvres.alix.web;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -48,9 +49,13 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * <table>
  *   <tr><td>{@code field}</td><td>indexed field name; defaults to index content field</td></tr>
  *   <tr><td>{@code terms}</td><td>number of results; default 50, max 5000</td></tr>
- *   <tr><td>{@code tsort}</td><td>theme scoring: jslog (default), raw, or bm25</td></tr>
- *   <tr><td>{@code tau}</td><td>JS-log frequency transition; default field tokens / 4000</td></tr>
- *   <tr><td>{@code idfexp}</td><td>BM25 IDF exponent; used only with tsort=bm25 in theme mode</td></tr>
+ *   <tr><td>{@code tsort}</td><td>local keyness scorer for theme voting (default simpleridf); raw or bm25 with vote=none</td></tr>
+ *   <tr><td>{@code vote}</td><td>theme aggregation: rrf (default) or none for legacy whole-field scoring</td></tr>
+ *   <tr><td>{@code rrf}</td><td>nonnegative rank offset; defaults to index configuration</td></tr>
+ *   <tr><td>{@code votes}</td><td>maximum keywords per document ballot; defaults to index configuration</td></tr>
+ *   <tr><td>{@code specif}</td><td>local keyness specificity; default 0.5</td></tr>
+ *   <tr><td>{@code simplek}</td><td>optional smoothing centre for Simple Maths scorers</td></tr>
+ *   <tr><td>{@code idfexp}</td><td>BM25 IDF exponent; used with vote=none and tsort=bm25 in theme mode</td></tr>
  *   <tr><td>{@code q}</td><td>query terms for co-occurrence mode (future)</td></tr>
  * </table>
  *
@@ -59,7 +64,7 @@ import static com.github.oeuvres.alix.web.Pars.*;
  * {
  *   "meta": {
  *     "QTime": 42,
- *     "params": { "field": "text", "terms": 50, "tsort": "jslog", "tau": 1000 }
+ *     "params": { "field": "text", "terms": 50, "vote": "rrf", "tsort": "simpleridf", "specif": 0.5 }
  *   },
  *   "data": [
  *     { "term": "enfant", "count": 8234, "score": 12.47 },
@@ -170,9 +175,6 @@ public final class OpTerms extends Op
         
         final TermFlag[] tflags = pars.getEnums(TFLAG, TermFlag.NULL);
 
-        final KeynessScorer scorer = tsort(pars);
-        
-        
         // Build a filter query from years and tags
         final Query filterQuery = filterQuery(index, pars, meta);
         final String q = pars.getString(Q, null);
@@ -180,31 +182,59 @@ public final class OpTerms extends Op
         
         // no queries, theme terms
         if (filterQuery == null && spanQuery == null) {
-            final String tsort = pars.getString(TSORT, "jslog");
-            final ThemeTerms theme = switch (tsort) {
-                case "raw" -> new ThemeTerms.Raw();
-                case "bm25" -> new ThemeTerms.BM25(pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP));
-                default -> {
-                    final long tokens = contentFluc.termStats().fieldTokens();
-                    final double defaultTau = tokens > 0L ? tokens / 4000d : 1d;
-                    final double tau = pars.getDouble(TAU, TAU_RANGE, defaultTau);
-                    meta.put("tau", tau);
-                    yield new ThemeTerms.JsLog(tau);
+            final String vote = pars.getString("vote", "rrf");
+            final double[] weights;
+            if ("none".equals(vote)) {
+                final String tsort = pars.getString(TSORT, "bm25");
+                final ThemeTerms theme = "raw".equals(tsort) ? new ThemeTerms.Raw()
+                    : new ThemeTerms.BM25(pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP));
+                weights = contentFluc.termStats().termWeights(index.reader(), theme);
+                meta.put("themeScorer", "raw".equals(tsort) ? "raw" : "bm25");
+                meta.put("vote", "none");
+            }
+            else {
+                // Rank within the chosen vocabulary; never change CF, DF or lengths.
+                final BitSet candidates = new BitSet(contentLexicon.vocabSize());
+                boolean all = tflags.length == 0;
+                for (final TermFlag flag : tflags) {
+                    if (flag == TermFlag.NULL) { all = true; break; }
+                    candidates.or(contentLexicon.bits(flag));
                 }
-            };
-            meta.put("themeScorer", theme instanceof ThemeTerms.JsLog ? "jslog" : tsort);
-            // Match the Python nostops ranking without changing field statistics.
-            // Explicit term flags retain their existing semantics.
-            if (theme instanceof ThemeTerms.JsLog && (tflags.length == 0
-                    || (tflags.length == 1 && tflags[0] == TermFlag.NULL))) {
-                topTerms.exclude(contentLexicon.bits(TermFlag.STOPWORD).stream().toArray());
+                if (all) {
+                    candidates.set(1, contentLexicon.vocabSize());
+                    candidates.andNot(contentLexicon.bits(TermFlag.STOPWORD));
+                }
+                if (incIds != null) {
+                    for (final int id : incIds) if (id > 0) candidates.set(id);
+                }
+                final String tsort = pars.getString(TSORT, "simpleridf");
+                final KeynessScorer scorer;
+                if ("simpleridf".equals(tsort) || "rrf".equals(tsort)) {
+                    // The old tsort=rrf remains an alias for the default local scorer.
+                    final double specif = pars.getDouble(SPECIF, SPECIF_RANGE, SPECIF_DEFAULT, SPECIF);
+                    final double simplek = pars.getDouble(SIMPLEK, SIMPLEK_RANGE, Double.NaN);
+                    scorer = new KeynessScorer.SimpleRidf(simplek).specif(specif);
+                } else if ("bm25".equals(tsort)) {
+                    // BM25Alpha is the local keyness variant; the original
+                    // corpus BM25 sum remains available with vote=none.
+                    final double specif = pars.getDouble(SPECIF, SPECIF_RANGE, SPECIF_DEFAULT, SPECIF);
+                    scorer = new KeynessScorer.BM25Alpha(150, 0.75f).specif(specif);
+                } else {
+                    scorer = tsort(pars);
+                }
+                final int rrf = pars.getInt("rrf", new int[] {0, Integer.MAX_VALUE}, index.themeRrf());
+                final int votes = pars.getInt("votes", new int[] {1, Math.max(5000, index.themeVotes())}, index.themeVotes());
+                weights = ThemeTerms.rrf(index.reader(), contentFluc.termStats(), candidates,
+                    scorer, rrf, votes);
+                meta.put("themeScorer", scorer.code());
+                meta.put("vote", "rrf");
             }
             topTerms.include(incIds);
-            final double[] weights = contentFluc.termStats().termWeights(index.reader(), theme);
             return topTerms.ranking(weights, terms, tflags);
         }
         // no coocs, doc filter query, contrastive terms from a part
         else if (spanQuery == null) {
+            final KeynessScorer scorer = tsort(pars);
             // partition query on dates
             Query yearQuery = yearQuery(index, pars);
             // TODO tags
@@ -232,6 +262,7 @@ public final class OpTerms extends Op
             return topTerms.select(index.reader(), focusDocs).rank(scorer, terms, tflags);
         }
         else {
+            final KeynessScorer scorer = tsort(pars);
             meta.put("spanQuery", spanQuery.toString());
             // pivotsIds
             final int[] pivotIds = contentFluc.termLexicon().termIds(spanQuery);
