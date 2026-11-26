@@ -31,7 +31,7 @@ package com.github.oeuvres.alix.lucene.terms;
  * Stateful. One instance must not be reused concurrently.
  * </p>
  */
-public abstract class IdfTermScorer
+public abstract class ThemeTerms
 {
     
     /** Total token count of the full corpus/field. */
@@ -205,7 +205,7 @@ public abstract class IdfTermScorer
      * a matter of editing {@code result()} to the alternative formula.
      * </p>
      */
-    public static class BM25 extends IdfTermScorer
+    public static class BM25 extends ThemeTerms
     {
         /** Term frequency saturation. */
         protected double k1 = 1.2d;
@@ -382,7 +382,7 @@ public abstract class IdfTermScorer
         }
     }
 
-    public static class DklContrast extends IdfTermScorer
+    public static class DklContrast extends ThemeTerms
     {
         /** Σ tf_i on focus side for current term. */
         protected long focusTermFreqAcc;
@@ -535,7 +535,7 @@ public abstract class IdfTermScorer
      * {@code 2 × docTermFreq × ln(docTermFreq / expected)}.
      * Positive when over-represented, negative when under-represented.
      */
-    public static class G2 extends IdfTermScorer
+    public static class G2 extends ThemeTerms
     {
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
@@ -558,7 +558,7 @@ public abstract class IdfTermScorer
     /**
      * Count-form Jaccard: {@code docTermFreq / (docTokens + corpusTermFreq - docTermFreq)}.
      */
-    public static class Jaccard extends IdfTermScorer
+    public static class Jaccard extends ThemeTerms
     {
         @Override
         public double termDocAdd(final long docTermFreq, final long docTokens, final boolean inFocus)
@@ -588,7 +588,7 @@ public abstract class IdfTermScorer
      * subtracted from the final score.
      * </p>
      */
-    public static class Raw extends IdfTermScorer
+    public static class Raw extends ThemeTerms
     {
         /**
          * Compute the raw local score for one document and fold it into the

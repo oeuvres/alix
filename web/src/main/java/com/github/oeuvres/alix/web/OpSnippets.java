@@ -14,7 +14,7 @@ import com.github.oeuvres.alix.lucene.fluc.FlucText;
 import com.github.oeuvres.alix.lucene.snippets.ResultsSnippets;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
-import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
+import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.web.util.HttpPars;
@@ -90,7 +90,7 @@ public class OpSnippets extends Op
         final TermRail rail = contentFluc.termRail();
         final TermStats fieldStats = contentFluc.termStats();
         final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-        final double[]termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
+        final double[]termWeights = fieldStats.termWeights(index.reader(), new ThemeTerms.BM25(idfExp));
 
         // With a span walker, populate the snippets to list
         final int snipLimit = pars.getInt(SNIPPETS, SNIPPETS_RANGE, SNIPPETS_DEFAULT, SNIPPETS);

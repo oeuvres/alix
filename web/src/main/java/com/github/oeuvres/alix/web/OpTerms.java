@@ -26,7 +26,7 @@ import com.github.oeuvres.alix.lucene.terms.Partition;
 import com.github.oeuvres.alix.lucene.terms.PartitionScorer;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon;
 import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
-import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
+import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms;
 import com.github.oeuvres.alix.lucene.terms.TopTerms.TermEntry;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
@@ -180,9 +180,9 @@ public final class OpTerms extends Op
         if (filterQuery == null && spanQuery == null) {
             final String tsort = pars.getString(TSORT, "");
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-            final IdfTermScorer idf = switch (tsort) {
-                case "raw" -> new IdfTermScorer.Raw();
-                default -> new IdfTermScorer.BM25(idfExp);
+            final ThemeTerms idf = switch (tsort) {
+                case "raw" -> new ThemeTerms.Raw();
+                default -> new ThemeTerms.BM25(idfExp);
             };
             // The weights for full field are cached if same idfExp is requested
             final double[] weights = contentFluc.termStats().termWeights(index.reader(), idf);

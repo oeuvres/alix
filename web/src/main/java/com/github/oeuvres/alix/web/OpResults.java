@@ -26,7 +26,7 @@ import com.github.oeuvres.alix.lucene.snippets.SnippetScorer;
 import com.github.oeuvres.alix.lucene.snippets.DocSnippets;
 import com.github.oeuvres.alix.lucene.snippets.SpanWalker;
 import com.github.oeuvres.alix.lucene.snippets.TopSnippetCollector;
-import com.github.oeuvres.alix.lucene.terms.IdfTermScorer;
+import com.github.oeuvres.alix.lucene.terms.ThemeTerms;
 import com.github.oeuvres.alix.lucene.terms.TermRail;
 import com.github.oeuvres.alix.lucene.terms.TermStats;
 import com.github.oeuvres.alix.lucene.util.BitsCollectorManager;
@@ -97,7 +97,7 @@ public class OpResults extends Op {
         } else {
             final TermStats fieldStats = contentFluc.termStats();
             final double idfExp = pars.getDouble(IDFEXP, IDFEXP_DEFAULT, IDFEXP);
-            termWeights = fieldStats.termWeights(index.reader(), new IdfTermScorer.BM25(idfExp));
+            termWeights = fieldStats.termWeights(index.reader(), new ThemeTerms.BM25(idfExp));
             snipLimit = pars.getInt(SNIPPETS, SNIPPETS_RANGE, SNIPPETS_DEFAULT, SNIPPETS);
         }
         

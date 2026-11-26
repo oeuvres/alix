@@ -154,7 +154,7 @@ public final class TermStats
     private volatile double[] termWeights;
     
     /** The scorer used to calculate {@link #termWeights}. */
-    private volatile IdfTermScorer termWeightsScorer;
+    private volatile ThemeTerms termWeightsScorer;
     
     /**
      * Creates an immutable statistics object from already-loaded arrays and derived scalars.
@@ -329,7 +329,7 @@ public final class TermStats
      * <p>
      * When {@code focusDocs} is non-null, the focus subset's token total and document
      * count are derived from the bitset and {@link #docTokens}, then passed to
-     * {@link IdfTermScorer#focus}. Each posting visit then tells the scorer whether the
+     * {@link ThemeTerms#focus}. Each posting visit then tells the scorer whether the
      * document is in focus, and the scorer accumulates into focus or rest separately.
      * </p>
      *
@@ -340,7 +340,7 @@ public final class TermStats
      * @throws IOException           if term or postings iteration fails
      * @throws IllegalStateException if the field has no terms or no frequencies
      */
-    public double[] buildTermWeights(final IndexReader reader, final IdfTermScorer scorer)
+    public double[] buildTermWeights(final IndexReader reader, final ThemeTerms scorer)
         throws IOException
     {
         Objects.requireNonNull(reader, "reader");
@@ -902,7 +902,7 @@ public final class TermStats
      *
      * @param termId dense term id in {@code [0, vocabSize)}
      * @return cached weight, or {@code 0.0} for the absent-term sentinel (id 0)
-     * @throws IllegalStateException    if {@link #termWeights(IndexReader, IdfTermScorer)} has not been called
+     * @throws IllegalStateException    if {@link #termWeights(IndexReader, ThemeTerms)} has not been called
      * @throws IllegalArgumentException if {@code termId} is out of range
      */
     public double termWeight(final int termId)
@@ -926,7 +926,7 @@ public final class TermStats
      * @return weight vector indexed by dense term id
      * @throws IOException if term iteration fails
      */
-    public double[] termWeights(final IndexReader reader, final IdfTermScorer scorer) throws IOException
+    public double[] termWeights(final IndexReader reader, final ThemeTerms scorer) throws IOException
     {
         Objects.requireNonNull(reader, "reader");
         Objects.requireNonNull(scorer, "scorer");
