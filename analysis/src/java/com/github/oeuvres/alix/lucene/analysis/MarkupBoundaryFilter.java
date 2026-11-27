@@ -53,7 +53,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  * <ul>
  *   <li>The upstream tokenizer emits each tag as a token whose {@link CharTermAttribute} holds the
  *       literal tag, delimiters included ({@code <} … {@code >}).</li>
- *   <li>Tag tokens are recognised by {@link PosAttribute#getPos()} {@code == XML.code}.</li>
+ *   <li>Tag tokens are recognised by {@link PosAttribute#getPos()} {@code == XML.ordinal()}.</li>
  *   <li>Every other token (text, punctuation, …) is treated as visible and passes through unchanged
  *       with the offsets/positions the tokenizer assigned.</li>
  * </ul>
@@ -63,8 +63,8 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  *   <li>All markup tokens are dropped, except closing tags mapped to a boundary.</li>
  *   <li>A configured closing tag emits a synthetic boundary token:
  *     <ul>
- *       <li>paragraph: term {@value #PARA_MARK}, {@code PosAttribute = PUNCTpara.code};</li>
- *       <li>section: term {@value #SECTION_MARK}, {@code PosAttribute = PUNCTsection.code}.</li>
+ *       <li>paragraph: term {@value #PARA_MARK}, {@code PosAttribute = PUNCTpara.ordinal()};</li>
+ *       <li>section: term {@value #SECTION_MARK}, {@code PosAttribute = PUNCTsection.ordinal()}.</li>
  *     </ul>
  *   </li>
  *   <li>Only closing tags trigger boundaries; open and self-closing tags never do.</li>
@@ -117,7 +117,7 @@ public final class MarkupBoundaryFilter extends TokenFilter
 
     /**
      * Pending structural boundary to emit before the next visible token (or at EOF).
-     * Holds a POS code ({@code PUNCTpara.code} or {@code PUNCTsection.code}), or 0 for none.
+     * Holds a POS code ({@code PUNCTpara.ordinal()} or {@code PUNCTsection.ordinal()}), or 0 for none.
      */
     private int pendingBoundaryPos = 0;
 
@@ -211,7 +211,7 @@ public final class MarkupBoundaryFilter extends TokenFilter
         }
 
         while (input.incrementToken()) {
-            if (posAtt.getPos() != XML.code) {
+            if (posAtt.getPos() != XML.ordinal()) {
                 if (pendingBoundaryPos != 0) {
                     deferredVisibleToken = captureState();
                     emitPendingBoundary();
@@ -247,7 +247,7 @@ public final class MarkupBoundaryFilter extends TokenFilter
      * Classifies the current term as a markup token and, if it is a configured closing tag, returns the
      * matching boundary POS code. Section wins over paragraph when both sets would match.
      *
-     * @return {@code PUNCTsection.code}, {@code PUNCTpara.code}, or 0 when the tag maps to no boundary.
+     * @return {@code PUNCTsection.ordinal()}, {@code PUNCTpara.ordinal()}, or 0 when the tag maps to no boundary.
      */
     private int closeTagBoundaryPos()
     {
@@ -262,8 +262,8 @@ public final class MarkupBoundaryFilter extends TokenFilter
         if (end <= start) return 0;
 
         final int nameLen = end - start;
-        if (sectionOnClose.contains(buf, start, nameLen)) return PUNCTsection.code;
-        if (paraOnClose.contains(buf, start, nameLen)) return PUNCTpara.code;
+        if (sectionOnClose.contains(buf, start, nameLen)) return PUNCTsection.ordinal();
+        if (paraOnClose.contains(buf, start, nameLen)) return PUNCTpara.ordinal();
         return 0;
     }
 
@@ -273,7 +273,7 @@ public final class MarkupBoundaryFilter extends TokenFilter
      */
     private void requestBoundary(final int posCode)
     {
-        if (posCode != PUNCTpara.code && posCode != PUNCTsection.code) return;
+        if (posCode != PUNCTpara.ordinal() && posCode != PUNCTsection.ordinal()) return;
 
         if (pendingBoundaryPos == 0) {
             pendingBoundaryPos = posCode;
@@ -281,7 +281,7 @@ public final class MarkupBoundaryFilter extends TokenFilter
             return;
         }
 
-        if (pendingBoundaryPos == PUNCTpara.code && posCode == PUNCTsection.code) {
+        if (pendingBoundaryPos == PUNCTpara.ordinal() && posCode == PUNCTsection.ordinal()) {
             pendingBoundaryPos = posCode;
             pendingBoundaryState = captureState();
         }
@@ -296,12 +296,12 @@ public final class MarkupBoundaryFilter extends TokenFilter
         restoreState(pendingBoundaryState);
         pendingBoundaryState = null;
 
-        if (pendingBoundaryPos == PUNCTsection.code) {
-            posAtt.setPos(PUNCTsection.code);
+        if (pendingBoundaryPos == PUNCTsection.ordinal()) {
+            posAtt.setPos(PUNCTsection.ordinal());
             termAtt.setEmpty().append(SECTION_MARK);
         }
         else {
-            posAtt.setPos(PUNCTpara.code);
+            posAtt.setPos(PUNCTpara.ordinal());
             termAtt.setEmpty().append(PARA_MARK);
         }
 

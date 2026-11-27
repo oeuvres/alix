@@ -365,8 +365,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts.addAttribute(BoundaryAttribute.class);
         
         ts = new MarkupBoundaryFilter(ts);
-        ts = new NumberFilter(ts, numbers);
         ts = new FrenchCliticSplitFilter(ts);
+        ts = new NumberFilter(ts, numbers);
         ts = new ReplaceFilter(ts, normalizer);
         ts = new UppercaseFilter(ts, ucwords, 4);
         ts = new MweFilter(ts, expressions);

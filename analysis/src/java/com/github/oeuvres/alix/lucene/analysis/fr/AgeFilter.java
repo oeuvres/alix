@@ -211,8 +211,8 @@ public final class AgeFilter extends TokenFilter
         return token.getAttribute(BoundaryAttribute.class).getBoundary() != BoundaryAttribute.NONE
             || token.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1
             || token.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
-            || pos == Upos.PUNCTpara.code || pos == Upos.PUNCTsection.code
-            || pos == Upos.PUNCTstruct.code || pos == Upos.XML.code;
+            || pos == Upos.PUNCTpara.ordinal() || pos == Upos.PUNCTsection.ordinal()
+            || pos == Upos.PUNCTstruct.ordinal() || pos == Upos.XML.ordinal();
     }
 
     /**
@@ -323,7 +323,7 @@ public final class AgeFilter extends TokenFilter
     private String number(final int index) throws IOException
     {
         final AttributeSource token = at(index);
-        if (token == null || token.getAttribute(PosAttribute.class).getPos() == Upos.NUMord.code) return null;
+        if (token == null || token.getAttribute(PosAttribute.class).getPos() == Upos.NUMord.ordinal()) return null;
         final LemmaAttribute lemma = token.getAttribute(LemmaAttribute.class);
         final CharTermAttribute term = token.getAttribute(CharTermAttribute.class);
         String n = cardinal(lemma);
@@ -515,18 +515,18 @@ public final class AgeFilter extends TokenFilter
         final int start = between || from ? 1 : 0;
         final Age a = age(start, !between);
         if (a == null) return null;
-        if (a.ordinal) return start == 0 ? new Match(a.end, a.text, Upos.NUMord.code) : null;
+        if (a.ordinal) return start == 0 ? new Match(a.end, a.text, Upos.NUMord.ordinal()) : null;
         if (connector(a.end, between, from)) {
             final Age b = age(a.end + 1, true);
             if (b != null && !b.ordinal && b.unit != null) {
                 final Age left = a.unit == null
                     ? new Age(a.end, a.number + b.unit.suffix, a.number, b.unit,
                         a.months * b.unit.months, true, false) : a;
-                return new Match(b.end, range(left, b), Upos.NUMage.code);
+                return new Match(b.end, range(left, b), Upos.NUMage.ordinal());
             }
         }
         if (start != 0 || a.unit == null) return null;
-        return new Match(a.end, format(a), Upos.NUMage.code);
+        return new Match(a.end, format(a), Upos.NUMage.ordinal());
     }
 
     /**

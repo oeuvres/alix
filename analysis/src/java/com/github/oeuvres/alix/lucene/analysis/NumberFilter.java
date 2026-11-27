@@ -259,7 +259,7 @@ public final class NumberFilter extends TokenFilter
     /** Records whether the emitted token licenses a following single Roman numeral. */
     private void rememberRomanCue()
     {
-        romanCue = !Upos.isPunct(posAtt.getPos()) && posAtt.getPos() != XML.code
+        romanCue = !Upos.isPunct(posAtt.getPos()) && posAtt.getPos() != XML.ordinal()
             && lexicon.romanCues.contains(termAtt.buffer(), 0, termAtt.length());
     }
 

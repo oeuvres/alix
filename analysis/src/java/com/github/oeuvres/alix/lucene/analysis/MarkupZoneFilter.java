@@ -202,7 +202,7 @@ public final class MarkupZoneFilter extends TokenFilter
     {
         while (input.incrementToken())
         {
-            final boolean isXml = (posAtt.getPos() == XML.code);
+            final boolean isXml = (posAtt.getPos() == XML.ordinal());
 
             if (isXml) {
                 final char[] buf = termAtt.buffer();

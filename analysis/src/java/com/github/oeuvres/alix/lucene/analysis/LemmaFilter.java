@@ -190,7 +190,7 @@ public final class LemmaFilter extends TokenFilter
         }
 
         // XML and non-boundary punctuation do not consume sentence-start state.
-        if (posId == Upos.XML.code || Upos.isPunct(posId)) {
+        if (posId == Upos.XML.ordinal() || Upos.isPunct(posId)) {
             return true;
         }
 
@@ -329,7 +329,7 @@ public final class LemmaFilter extends TokenFilter
      */
     private static boolean hasPos(final int posId)
     {
-        return posId > PosAttribute.UNKNOWN && posId != Upos.UNKNOWN.code;
+        return posId > PosAttribute.UNKNOWN && posId != Upos.UNKNOWN.ordinal();
     }
 
     /**
@@ -351,9 +351,9 @@ public final class LemmaFilter extends TokenFilter
      */
     private static boolean isSentenceBoundary(final int posId)
     {
-        return posId == Upos.PUNCTsent.code
-            || posId == Upos.PUNCTpara.code
-            || posId == Upos.PUNCTsection.code
-            || posId == Upos.PUNCTstruct.code;
+        return posId == Upos.PUNCTsent.ordinal()
+            || posId == Upos.PUNCTpara.ordinal()
+            || posId == Upos.PUNCTsection.ordinal()
+            || posId == Upos.PUNCTstruct.ordinal()
     }
 }

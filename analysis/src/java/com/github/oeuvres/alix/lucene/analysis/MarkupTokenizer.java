@@ -354,7 +354,7 @@ public class MarkupTokenizer extends Tokenizer
         pendingChar = -1;
         termAtt.append(pc);
         if (isClausePunct(pc) || isNumericSymbol(pc)) {
-            posAtt.setPos(PUNCTclause.code);
+            posAtt.setPos(PUNCTclause.ordinal());
             offsetAtt.setOffset(correctOffset(pendingStart), correctOffset(pendingEnd));
             return true;
         }
@@ -421,7 +421,7 @@ public class MarkupTokenizer extends Tokenizer
             if (cand < last || !mergeLast) {
                 clearAttributes();
                 termAtt.append('.');
-                posAtt.setPos(PUNCTsent.code);
+                posAtt.setPos(PUNCTsent.ordinal());
                 offsetAtt.setOffset(candidateDotStarts[cand], candidateDotEnds[cand]);
                 lookahead.addLast(this);
             }
@@ -461,7 +461,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private boolean isLineBreakEvent()
     {
-        return posAtt.getPos() == PUNCTstruct.code;
+        return posAtt.getPos() == PUNCTstruct.ordinal();
     }
 
     /**
@@ -760,7 +760,7 @@ public class MarkupTokenizer extends Tokenizer
 
         if (count < 2) return false;
         for (int i = 0; i < count; i++) termAtt.append(LINE_BREAK_MARK);
-        posAtt.setPos(PUNCTstruct.code);
+        posAtt.setPos(PUNCTstruct.ordinal());
         offsetAtt.setOffset(correctOffset(start), correctOffset(end));
         return true;
     }
@@ -783,7 +783,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private boolean readNumber(final int start) throws IOException
     {
-        posAtt.setPos(DIGIT.code);
+        posAtt.setPos(DIGIT.ordinal());
         int digitsInGroup = 0;
         boolean decimal = false;
         int c;
@@ -829,7 +829,7 @@ public class MarkupTokenizer extends Tokenizer
             }
         }
         else if (termAtt.length() <= TOKEN_MAX_SIZE - 5 && readOrdinalSuffix()) {
-            posAtt.setPos(NUMord.code);
+            posAtt.setPos(NUMord.ordinal());
         }
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
         return true;
@@ -888,7 +888,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private boolean readSentencePunctRun(final int start) throws IOException
     {
-        posAtt.setPos(PUNCTsent.code);
+        posAtt.setPos(PUNCTsent.ordinal());
         int c;
         while ((c = peek()) >= 0 && isSentencePunct((char) c)) {
             termAtt.append((char) c);
@@ -937,7 +937,7 @@ public class MarkupTokenizer extends Tokenizer
             else if (doctype && c == '[') depth++;
             else if (doctype && c == ']' && depth > 0) depth--;
             else if (c == '>' && depth == 0) {
-                posAtt.setPos(XML.code);
+                posAtt.setPos(XML.ordinal());
                 break;
             }
         }
@@ -990,7 +990,7 @@ public class MarkupTokenizer extends Tokenizer
     private boolean readMarkupUntil(final String terminator) throws IOException
     {
         final int start = offset;
-        if (appendThrough(terminator)) posAtt.setPos(XML.code);
+        if (appendThrough(terminator)) posAtt.setPos(XML.ordinal());
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
         return true;
     }
@@ -1006,7 +1006,7 @@ public class MarkupTokenizer extends Tokenizer
         final int start = offset;
         for (int i = 0; i < literal.length(); i++) skip();
         termAtt.append(literal);
-        posAtt.setPos(XML.code);
+        posAtt.setPos(XML.ordinal());
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
         return true;
     }
@@ -1069,7 +1069,7 @@ public class MarkupTokenizer extends Tokenizer
     private boolean readToken() throws IOException
     {
         final boolean found = readRawToken();
-        afterNumber = found && (posAtt.getPos() == DIGIT.code || posAtt.getPos() == NUMord.code);
+        afterNumber = found && (posAtt.getPos() == DIGIT.ordinal() || posAtt.getPos() == NUMord.ordinal());
         return found;
     }
 
@@ -1117,10 +1117,10 @@ public class MarkupTokenizer extends Tokenizer
                 // starts with uppercase/titlecase. Lowercase quotations such as
                 // ": « le courage... »" remain ordinary clause punctuation.
                 if (ch == '«' && colonBefore && uppercaseAfterHorizontalSpace()) {
-                    posAtt.setPos(PUNCTsent.code);
+                    posAtt.setPos(PUNCTsent.ordinal());
                 }
                 else {
-                    posAtt.setPos(PUNCTclause.code);
+                    posAtt.setPos(PUNCTclause.ordinal());
                 }
                 if (ch == ':') afterColon = true;
 
@@ -1140,7 +1140,7 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 termAtt.append(ch);
                 skip();
-                posAtt.setPos(DIGIT.code);
+                posAtt.setPos(DIGIT.ordinal());
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
@@ -1149,7 +1149,7 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 termAtt.append(ch);
                 skip();
-                posAtt.setPos(PUNCTclause.code);
+                posAtt.setPos(PUNCTclause.ordinal());
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
@@ -1168,7 +1168,7 @@ public class MarkupTokenizer extends Tokenizer
                     afterColon = false;
                     termAtt.append(normalizeTokenChar(ch));
                     skip();
-                    posAtt.setPos(PUNCTclause.code);
+                    posAtt.setPos(PUNCTclause.ordinal());
                     offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                     return true;
                 }
@@ -1383,14 +1383,14 @@ public class MarkupTokenizer extends Tokenizer
             lookahead.addLast(this);
             final int pos = posAtt.getPos();
 
-            if (pos == XML.code) {
+            if (pos == XML.ordinal()) {
                 if (isBlockTag()) {
                     detachDots(null); // the sentence cannot cross a block boundary
                     return;
                 }
                 continue;
             }
-            if (pos == PUNCTclause.code) {
+            if (pos == PUNCTclause.ordinal()) {
                 final char c = termAtt.charAt(0);
                 if (c == ',' || c == ';' || c == ':') return; // keeps all pending dots
                 continue; // quotes, parentheses, dashes: transparent
@@ -1399,7 +1399,7 @@ public class MarkupTokenizer extends Tokenizer
                 rememberCandidate(lookahead.size() - 1);
                 continue;
             }
-            if (pos == PUNCTsent.code) {
+            if (pos == PUNCTsent.ordinal()) {
                 detachDots(lookahead.peekLast());
                 return;
             }

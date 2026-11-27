@@ -147,13 +147,13 @@ public final class SentenceStartLowerCaseFilter extends TokenFilter
 
     private static boolean isSentenceBoundary(final int posId)
     {
-        return (posId == PUNCTsent.code || posId == PUNCTpara.code || posId == PUNCTsection.code);
+        return (posId == PUNCTsent.ordinal() || posId == PUNCTpara.ordinal() || posId == PUNCTsection.ordinal());
     }
 
     private static boolean isIgnorableBeforeSentenceStart(final int posId)
     {
         // XML tags and clause punctuation do not consume sentence-start state.
         // (Sentence-boundary XML tags are not interpreted here.)
-        return (posId == XML.code || posId == PUNCTclause.code);
+        return (posId == XML.ordinal() || posId == PUNCTclause.ordinal());
     }
 }

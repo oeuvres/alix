@@ -240,7 +240,7 @@ public class Md2tsv
                 out.write('\t');
                 out.write(lemma);
                 out.write('\t');
-                out.write(Upos.name(posAtt.getPos()));
+                out.write(Upos.get(posAtt.getPos()).toString());
                 /*
                 out.write('\t');
                 out.write(Double.toString(probAtt.getProb()));

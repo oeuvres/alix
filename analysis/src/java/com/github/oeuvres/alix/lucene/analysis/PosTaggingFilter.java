@@ -200,10 +200,10 @@ public class PosTaggingFilter extends TokenFilter
      */
     private static boolean isSentenceBoundary(final int pos)
     {
-        return pos == PUNCTsection.code
-            || pos == PUNCTpara.code
-            || pos == PUNCTsent.code
-            || pos == PUNCTstruct.code;
+        return pos == PUNCTsection.ordinal()
+            || pos == PUNCTpara.ordinal()
+            || pos == PUNCTsent.ordinal()
+            || pos == PUNCTstruct.ordinal();
     }
 
     /**
@@ -230,7 +230,7 @@ public class PosTaggingFilter extends TokenFilter
 
             final int origPos = pos.getPos();
 
-            if (origPos == XML.code) {
+            if (origPos == XML.compareTo(PUNCTsection)) {
                 final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
                 if (prob != null) prob.setProb(1.0);
                 continue;
@@ -306,7 +306,7 @@ public class PosTaggingFilter extends TokenFilter
 
             final Upos taggedPos = Upos.get(tags.get(tagIndex));
             if (taggedPos != null) {
-                pos.setPos(taggedPos.code());
+                pos.setPos(taggedPos.ordinal());
             }
         }
     }

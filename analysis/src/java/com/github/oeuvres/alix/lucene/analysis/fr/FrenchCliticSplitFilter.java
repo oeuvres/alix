@@ -211,7 +211,7 @@ public class FrenchCliticSplitFilter extends TokenFilter
         }
 
         // do not try to split in XML tags
-        if (posAtt.getPos() == XML.code) {
+        if (posAtt.getPos() == XML.ordinal()) {
             return true;
         }
 

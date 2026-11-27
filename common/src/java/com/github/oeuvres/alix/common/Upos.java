@@ -4,277 +4,254 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Set of flags used during an analysis process (pos tagging, lemmatization).
- * Universal POS tags always used when possible
- * https://universaldependencies.org/u/pos/
- * Some other useful technical tags for semantic analysis
+ * Universal Dependencies parts of speech and Alix-specific refinements.
+ *
+ * <p>Standard UPOS categories are roots of the linguistic hierarchy. A
+ * refinement declares its immediate parent and inherits its standard UPOS
+ * base. Technical analysis categories have no standard UPOS base.</p>
+ *
+ * <p>Integer identifiers are enum ordinals, local to this version of the
+ * vocabulary. {@link #TOKEN} is ordinal zero, representing an unassigned
+ * annotation. Use {@link #name()} rather than {@link #ordinal()} for persistent
+ * data and external interfaces. Neither the order nor the names of categories
+ * imply a parent relationship.</p>
+ *
+ * <p>Annotation certainty and normalization policy are not properties of the
+ * grammatical hierarchy.</p>
+ *
+ * @see <a href="https://universaldependencies.org/u/pos/">Universal POS tags</a>
  */
-public enum Upos implements Tag
+public enum Upos
 {
-    // 0x, possible flags 
-    
-    /** No information */
-    TOKEN(0x00),
-    /** Known as unknown from dictionaries */
-    UNKNOWN(0x01),
-    /** Message sent by a process */
-    TEST(0x02),
-    /** XML tag */
-    XML(0x03),
-    /** Stop word */
-    STOP(0x04),
-    /** Non stop word */
-    NOSTOP(0x05),
-    /** Locution (maybe substantive, conjunction…) */
-    LOC(0x06),
-    
-    /** UDPOS, Punctuation */
-    PUNCT(0x08),
-    /** §, section punctuation, inferred from XML */
-    PUNCTsection(0x09),
-    /** ¶, paragraph punctuation, inferred from XML */
-    PUNCTpara(0x0A),
-    /** [.?!…] sentence punctuation */
-    PUNCTsent(0x0B),
-    /** [,;…] clause punctuation */
-    PUNCTclause(0x0C),
-    /** ↵↵ or other structural events, without semantic interpretation */
-    PUNCTstruct(0x0D),
-    /** https://universaldependencies.org/u/pos/X.html */
-    X(0x0F),
-    
-    // 1x, verbs
-    /** https://universaldependencies.org/u/pos/VERB.html */
-    VERB(0x10),
-    /** https://universaldependencies.org/u/pos/AUX_.html */
-    AUX(0x11),
-    /** https://universaldependencies.org/u/feat/VerbForm.html#inf-infinitive */
-    VERBinf(0x12),
-    /** https://universaldependencies.org/u/feat/VerbForm.html#part-participle-verbal-adjective */
-    VERBpartpast(0x13),
-    /** https://universaldependencies.org/u/feat/VerbForm.html#part-participle-verbal-adjective */
-    VERBpartpres(0x14),
+    /** No annotation has been assigned. */
+    TOKEN(null),
+    /** Form explicitly identified as unknown. */
+    UNKNOWN(null),
+    /** XML markup, not a linguistic token. */
+    XML(null),
+    /** Abbreviation awaiting resolution. */
+    ABBR(null),
+    /** Grammatical word awaiting resolution. */
+    MG(null),
 
-    // 2x, substantifs
-    /** UDPOS, substantive */
-    NOUN(0x20),
-    /** Person title */
-    // SUBpers(0x28, "Titulature", "Monsieur, madame, prince… (introduit des noms de personnes)."),
-    /** Adress substantive */
-    // SUBplace(0x29, "Adressage", "Faubourg, rue, hôtel… (introduit des noms de lieux)."),
+    /** Adjective. */
+    ADJ,
+    /** Ordinal adjective, including a canonical form such as 3e. */
+    ADJord(ADJ),
 
-    /** UDPOS, adjective */
-    ADJ(0x30),
+    /** Adposition. */
+    ADP,
+    /** Contracted adposition and determiner, e.g. du, aux. */
+    ADP_DET(ADP),
+    /** Contracted adposition and pronoun, e.g. duquel, auquel. */
+    ADP_PRON(ADP),
 
-    /** UDPOS Proper name */
-    PROPN(0x40),
-    /** Personal name */
-    PROPNprs(0x41),
-    /** Masculine given name */
-    PROPNgivmasc(0x42),
-    /** Feminine given name */
-    PROPNgivfem(0x43),
-    /** Place name */
-    PROPNgeo(0x44),
-    // non UD feats
-    /** Organisation name */
-    PROPNorg(0x45),
-    /** Event name */
-    PROPNevent(0x47),
-    /** Author name */
-    PROPNauthor(0x48),
-    /** Fiction character name */
-    PROPNfict(0x49),
-    /** Opus title name */
-    PROPNtitle(0x4A),
-    /** Natural species */
-    PROPNspec(0x4B),
-    /** People name */
-    PROPNpeople(0x4E),
-    /** God name */
-    PROPNgod(0x4F),
+    /** Adverb. */
+    ADV,
+    /** Aspectual adverb. */
+    ADVasp(ADV),
+    /** Degree adverb. */
+    ADVdeg(ADV),
+    /** Interrogative adverb. */
+    ADVint(ADV),
+    /** Negative adverb. */
+    ADVneg(ADV),
+    /** Spatial or temporal situation adverb. */
+    ADVsit(ADV),
 
-    // 5x, Adverbes
-    /** https://universaldependencies.org/u/pos/ADV.html */
-    ADV(0x50),
-    /** Interrogative adverb */
-    ADVint(0x51),
-    /** Negation adverb */
-    ADVneg(0x52),
-    /** https://universaldependencies.org/u/pos/PART.html fr: n’, ne */
-    PART(0x53),
-    /** Situation (space-time) adverb */
-    ADVsit(0x58),
-    /** Aspect adverb */
-    ADVasp(0x59),
-    /** Gradation adverb */
-    ADVdeg(0x5A),
+    /** Auxiliary. */
+    AUX,
+    /** Coordinating conjunction. */
+    CCONJ,
 
-    /** https://universaldependencies.org/u/pos/DET.html */
-    DET(0x60),
-    /** Article */
-    DETart(0x61),
-    /** Demonstrative determiner */
-    DETdem(0x62),
-    /** Determiner indefinite, ex fr: tous, quelques… */
-    DETind(0x63),
-    /** Interrogative determiner */
-    DETint(0x64),
-    /** Negative determiner, ex fr: nul, aucun*/
-    DETneg(0x65),
-    /** Personal determiner, usually possessive */
-    DETprs(0x66),
-    /** Prepositional determiner, UD ADP+DET, fr: du, aux */
-    ADP_DET(0x67),
+    /** Determiner. */
+    DET,
+    /** Article. */
+    DETart(DET),
+    /** Demonstrative determiner. */
+    DETdem(DET),
+    /** Indefinite determiner. */
+    DETind(DET),
+    /** Interrogative determiner. */
+    DETint(DET),
+    /** Negative determiner. */
+    DETneg(DET),
+    /** Possessive determiner. */
+    DETprs(DET),
 
-    // 7x, pronouns
-    /** https://universaldependencies.org/u/pos/PRON.html */
-    PRON(0x70),
-    /** Demonstrative pronoun */
-    PRONdem(0x71),
-    /** Indefinite pronoun */
-    PRONind(0x72),
-    /** Interrogative pronoun */
-    PRONint(0x73),
-    /** Negative pronoun */
-    PRONneg(0x74),
-    /** Personal pronoun */
-    PRONprs(0x75),
-    /** Relative pronoun */
-    PRONrel(0x76),
-    /** UD ADP+PRON, ex fr: duquel, auquel… */
-    ADP_PRON(0x89),
+    /** Interjection. */
+    INTJ,
 
-    // 8x, connectors
-    /** https://universaldependencies.org/u/pos/ADP.html “ad”position (pre or post in some languages) */
-    ADP(0x80),
-    /** https://universaldependencies.org/u/pos/CCONJ.html */
-    CCONJ(0x81),
-    /** https://universaldependencies.org/u/pos/SCONJ.html */
-    SCONJ(0x82),
-    
-    /** Adverbial conjunction */
-    // ADVconj(0x88, "Adv. conj.", "Cependant, désormais… (adverbe de connexion)."),
-    
-    // Ax, numerals
-    /** https://universaldependencies.org/u/pos/NUM.html */
-    NUM(0xA0),
-    /** https://universaldependencies.org/u/pos/SYM.html */
-    SYM(0xA1),
-    /** [0-9\-] numbers */
-    DIGIT(0x07),
-    /** Math operator */
-    MATH(0xA3),
-    /** Physical unit (cm, kg…) */
-    UNIT(0xA4),
-    /** A number reference, for example p. 50 */
-    NUMref(0xA5),
-    /** Ordinal */
-    NUMord(0xA6),
-    /** Ordinal */
-    NUMage(0xA7),
+    /** Common noun. */
+    NOUN,
+    /** Aggregated age expression, e.g. 8ans. */
+    NOUNage(NOUN),
+    /** Aggregated quantity expression, e.g. 25kg or 25%. */
+    NOUNqty(NOUN),
+    /** Lexical or alphabetic measurement unit, e.g. kilogramme or kg. */
+    NOUNunit(NOUN),
 
-    // misc
-    /** https://universaldependencies.org/u/pos/INTJ.html */
-    INTJ(0xF1),
-    /** Abbreviation before resolution to a pos */
-    ABBR(0xF8),
-    /** Grammatical word, before resolution */
-    MG(0xF9)
-    ;
-    
-    
-    public final int code;
+    /** Numeral. */
+    NUM,
+    /** Cardinal number with a resolved canonical numerical value. */
+    NUMcard(NUM),
 
-    private static final Upos[] BY_CODE;
+    /** Particle. */
+    PART,
+
+    /** Pronoun. */
+    PRON,
+    /** Demonstrative pronoun. */
+    PRONdem(PRON),
+    /** Indefinite pronoun. */
+    PRONind(PRON),
+    /** Interrogative pronoun. */
+    PRONint(PRON),
+    /** Negative pronoun. */
+    PRONneg(PRON),
+    /** Personal pronoun. */
+    PRONprs(PRON),
+    /** Relative pronoun. */
+    PRONrel(PRON),
+
+    /** Proper noun. */
+    PROPN,
+    /** Author name. */
+    PROPNauthor(PROPN),
+    /** Named event. */
+    PROPNevent(PROPN),
+    /** Fictional character name. */
+    PROPNfict(PROPN),
+    /** Geographical name. */
+    PROPNgeo(PROPN),
+    /** Feminine given name. */
+    PROPNgivfem(PROPN),
+    /** Masculine given name. */
+    PROPNgivmasc(PROPN),
+    /** Deity name. */
+    PROPNgod(PROPN),
+    /** Organization name. */
+    PROPNorg(PROPN),
+    /** People name. */
+    PROPNpeople(PROPN),
+    /** Personal name. */
+    PROPNprs(PROPN),
+    /** Natural species name. */
+    PROPNspec(PROPN),
+    /** Title of a work. */
+    PROPNtitle(PROPN),
+
+    /** Punctuation. */
+    PUNCT,
+    /** Clause punctuation. */
+    PUNCTclause(PUNCT),
+    /** Paragraph boundary. */
+    PUNCTpara(PUNCT),
+    /** Section boundary. */
+    PUNCTsection(PUNCT),
+    /** Sentence punctuation. */
+    PUNCTsent(PUNCT),
+    /** Structural punctuation without further interpretation. */
+    PUNCTstruct(PUNCT),
+
+    /** Subordinating conjunction. */
+    SCONJ,
+
+    /** Symbol. */
+    SYM,
+    /** Mathematical operator or relation, e.g. multiplication or equality. */
+    SYMmath(SYM),
+    /** Symbolic unit, e.g. %, degree or currency symbol. */
+    SYMunit(SYM),
+
+    /** Verb. */
+    VERB,
+    /** Infinitive. */
+    VERBinf(VERB),
+    /** Past participle. */
+    VERBpartpast(VERB),
+    /** Present participle. */
+    VERBpartpres(VERB),
+
+    /** Other linguistic category (standard UPOS X). */
+    X;
+
+    /** Cached ordinal lookup, avoiding repeated copies from values(). */
+    private static final Upos[] VALUES = values();
+    /** Exact, case-sensitive lookup by tag name. */
     private static final Map<String, Upos> BY_NAME;
 
-    static
-    {
-        final Upos[] values = values();
-        int maxCode = 0;
-        for (Upos upos : values) {
-            if (upos.code < 0) {
-                throw new IllegalArgumentException("Negative code=" + upos.code + " for " + upos);
-            }
-            if (upos.code > maxCode) {
-                maxCode = upos.code;
-            }
+    static {
+        final Map<String, Upos> names = new HashMap<>();
+        for (final Upos tag : VALUES) {
+            names.put(tag.name(), tag);
         }
-
-        final Upos[] byCode = new Upos[maxCode + 1];
-        final HashMap<String, Upos> byName = new HashMap<>(values.length * 2);
-
-        for (Upos upos : values) {
-            if (byCode[upos.code] != null) {
-                throw new IllegalArgumentException(
-                    "Duplicate code=" + upos.code + " for " + upos + " and " + byCode[upos.code]
-                );
-            }
-            byCode[upos.code] = upos;
-
-            final String name = upos.name();
-            byName.put(name, upos);
-            if (name.indexOf('_') >= 0) {
-                byName.put(name.replace('_', '+'), upos);
-            }
-        }
-
-        BY_CODE = byCode;
-        BY_NAME = Map.copyOf(byName);
+        BY_NAME = Map.copyOf(names);
     }
 
-    private Upos(final int code)
+    /** Immediate parent, or null for a root or a technical category. */
+    private final Upos parent;
+    /** Standard UPOS projection, or null for a technical category. */
+    private final Upos base;
+
+    /** Constructs a standard UPOS root. */
+    private Upos()
     {
-        this.code = code;
-    }
-    
-    static public boolean isPunct(final int code)
-    {
-        return (code == PUNCT.code 
-          || code == PUNCTsection.code 
-          || code == PUNCTpara.code 
-          || code == PUNCTsent.code 
-          || code == PUNCTclause.code
-        );
-    }
-    
-    static public boolean isNum(final int code)
-    {
-        return (code >= 0xA0 && code <= 0xAF);
+        this.parent = null;
+        this.base = this;
     }
 
-    
-    static public Upos get(final int code)
+    /**
+     * Constructs a refinement or a technical category.
+     *
+     * @param parent immediate parent, or null for a technical category
+     */
+    private Upos(final Upos parent)
     {
-        if (code < 0 || code >= BY_CODE.length) return null;
-        return BY_CODE[code];
+        this.parent = parent;
+        this.base = parent == null ? null : parent.base;
     }
 
-    static public Upos get(final String name)
+    /**
+     * Returns the standard UPOS projection. For aggregated expressions and
+     * contractions this is a single-category convention, not a full UD analysis.
+     *
+     * @return standard UPOS, or null for a technical category
+     */
+    public Upos base()
     {
-        if (name == null) return null;
-        return BY_NAME.get(name);
-    }
-    
-    static public String name(final int code)
-    {
-        Upos upos = get(code);
-        if (upos == null) return null;
-        return upos.name();
-    }
-    
-    static public int code(final String name)
-    {
-        Upos upos = get(name);
-        if (upos == null) return -1;
-        return upos.code();
+        return base;
     }
 
-    @Override
-    public int code()
+    /**
+     * Resolves an internal ordinal without allocating.
+     *
+     * @param ordinal internal tag identifier
+     * @return corresponding tag, or null if out of range
+     */
+    public static Upos get(final int ordinal)
     {
-        return code;
+        return ordinal >= 0 && ordinal < VALUES.length ? VALUES[ordinal] : null;
     }
-    
+
+    /**
+     * Resolves an exact, case-sensitive tag name without throwing on an unknown name.
+     *
+     * @param name tag name, possibly null
+     * @return corresponding tag, or null if unknown
+     */
+    public static Upos get(final String name)
+    {
+        return name == null ? null : BY_NAME.get(name);
+    }
+
+    /**
+     * Returns the immediate parent in the linguistic hierarchy.
+     *
+     * @return parent, or null for a root or a technical category
+     */
+    public Upos parent()
+    {
+        return parent;
+    }
 }
