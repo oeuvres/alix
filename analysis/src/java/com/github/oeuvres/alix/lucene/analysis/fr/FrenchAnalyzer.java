@@ -363,11 +363,11 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         
         // Must exist before filters such as MweFilter create AttributeSource snapshots.
         ts.addAttribute(BoundaryAttribute.class);
-        
         ts = new MarkupBoundaryFilter(ts);
         ts = new FrenchCliticSplitFilter(ts);
-        ts = new NumberFilter(ts, numbers);
         ts = new ReplaceFilter(ts, normalizer);
+        ts = new NumberFilter(ts, numbers);
+        ts = new AgeFilter(ts);
         ts = new UppercaseFilter(ts, ucwords, 4);
         ts = new MweFilter(ts, expressions);
         ts = new PosTaggingFilter(ts, posTagger);
