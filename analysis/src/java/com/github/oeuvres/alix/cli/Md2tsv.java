@@ -16,8 +16,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.ingest.IngestConfig;
-import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
+import com.github.oeuvres.alix.lucene.analysis.fr.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;

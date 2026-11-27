@@ -5,26 +5,26 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Consumer;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharArrayMap;
-import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.CharArrayMap;
+import org.apache.lucene.analysis.CharArraySet;
 
 import com.github.oeuvres.alix.common.Upos;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
-import com.github.oeuvres.alix.util.MweLexicon;
 import com.github.oeuvres.alix.util.Report;
+import com.github.oeuvres.alix.util.MweLexicon;
 
 import opennlp.tools.postag.MutableTagDictionary;
 import opennlp.tools.postag.POSModel;
@@ -94,229 +94,127 @@ public final class LexiconHelper
     }
     
     /**
-     * Functional interface used internally to process a validated CSV row.
-     */
-    private abstract static class CsvRowHandler
-    {
-        int read = 0;
-        int skipped = 0;
-        int accepted = 0;
-        
-        /**
-         * Consume the current row of {@code csv}. The row has already passed
-         * the common checks performed by
-         * {@link #forEachDataRow(CSVReader, int, int, boolean, CsvRowHandler)}.
-         *
-         * @param csv CSV reader positioned on the current row
-         * @throws UncheckedIOException if processing needs to propagate an I/O error
-         */
-        protected abstract boolean accept(CSVReader csv) throws UncheckedIOException;
-    }
-    
-    /**
-     * Analyzes and registers one expression under its normalized-form and
-     * lemma-or-form token sequences.
-     *
-     * @param lexicon target MWE lexicon
-     * @param analyzer analyzer used to compile the expression
+     * Registers a lexical expression using only its analyzed surface tokens.
+     * @param lexicon mutable target lexicon
+     * @param analyzer entry analyzer
      * @param expression source expression
-     * @param canonical canonical form emitted for either accepted sequence
-     * @return {@code true} when the normalized-form sequence contains at least
-     *         two tokens and was therefore eligible for insertion
-     * @throws IOException if token-stream consumption fails
-     * @throws NullPointerException if an argument is null
+     * @param canonical canonical output (blank means the source expression)
+     * @return true if at least two tokens were registered
+     * @throws UncheckedIOException if analysis fails
      */
-    public static boolean addExpression(
-        final MweLexicon lexicon,
-        final Analyzer analyzer,
-        final CharSequence expression,
-        final CharSequence canonical)
-        throws UncheckedIOException
+    public static boolean addExpression(final MweLexicon lexicon, final Analyzer analyzer,
+        final CharSequence expression, final CharSequence canonical)
     {
-        Objects.requireNonNull(lexicon, "lexicon");
-        Objects.requireNonNull(analyzer, "analyzer");
-        Objects.requireNonNull(expression, "expression");
-        Objects.requireNonNull(canonical, "canonical");
-
-        final StringBuilder analyzedExpression = new StringBuilder(expression);
-        Char.trim(analyzedExpression);
-        if (analyzedExpression.length() == 0) {
-            return false;
-        }
-
-        final StringBuilder canonicalForm = new StringBuilder(canonical);
-        Char.trim(canonicalForm);
-        if (canonicalForm.length() == 0) {
-            return false;
-        }
-        Char.translate(
-            canonicalForm,
-            "\u2019\u2018\u02BC\u2010\u2011\u00AD",
-            "'''---"
-        );
-
-        final List<String> forms = new ArrayList<>();
-        final List<String> lemmas = new ArrayList<>();
-        boolean lemmaDiffers = false;
-
-        try (TokenStream stream = analyzer.tokenStream("mwe", analyzedExpression.toString())) {
-            final CharTermAttribute termAtt = stream.addAttribute(CharTermAttribute.class);
-            final LemmaAttribute lemmaAtt = stream.addAttribute(LemmaAttribute.class);
-
-            stream.reset();
-            while (stream.incrementToken()) {
-                if (termAtt.length() == 0) {
-                    continue;
-                }
-
-                final String form = termAtt.toString();
-                final String lemma = lemmaAtt.length() > 0 ? lemmaAtt.toString() : form;
-                forms.add(form);
-                lemmas.add(lemma);
-                lemmaDiffers |= !form.equals(lemma);
-            }
-            stream.end();
-        }
-        catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
-        }
-
-        if (forms.size() < 2) {
-            return false;
-        }
-
-        lexicon.addExpression(forms, canonicalForm);
-        if (lemmaDiffers) {
-            lexicon.addExpression(lemmas, canonicalForm);
-        }
+        final List<String> forms = expressionForms(analyzer, expression);
+        final String output = expressionOutput(expression, canonical);
+        if (forms.size() < 2 || output.isEmpty()) return false;
+        lexicon.addExpression(forms, output);
         return true;
     }
 
     /**
-     * Loads multi-word expressions from a CSV file.
-     *
-     * <p>Column 0 contains the expression to analyze. Column 1 contains the
-     * canonical form emitted by {@link MweFilter}; when empty, column 0 is used.
-     * Each expression is analyzed into a normalized-form sequence and a
-     * lemma-or-form sequence. Both sequences are registered when they differ.</p>
-     *
-     * @param lexicon target MWE lexicon
-     * @param analyzer analyzer producing normalized forms in
-     *                 {@link CharTermAttribute} and optional lemmas in
-     *                 {@link LemmaAttribute}
-     * @param file CSV file
-     * @throws UncheckedIOException on read or analysis error
-     * @throws NullPointerException if an argument is null
+     * Analyzes an expression into nonempty surface tokens, without lemma aliases.
+     * @param analyzer entry analyzer
+     * @param expression source expression
+     * @return analyzed forms, or an empty list if a token was suppressed
+     * @throws UncheckedIOException if analysis fails
      */
-    public static void loadExpressions(
-        final MweLexicon lexicon,
-        final Analyzer analyzer,
-        final Path file)
+    public static List<String> expressionForms(final Analyzer analyzer, final CharSequence expression)
     {
-        Objects.requireNonNull(file, "file");
-        try (CSVReader csv = new CSVReader(file)) {
-            csv.cellMax(3);
-            loadExpressions(lexicon, analyzer, csv, 0, 2, CsvHeader.SKIP);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    /**
-     * Loads multi-word expressions from a classpath CSV resource.
-     *
-     * <p>Column 0 contains the expression to analyze. Column 1 contains the
-     * canonical form emitted by {@link MweFilter}; when empty, column 0 is used.
-     * Each expression is analyzed into a normalized-form sequence and a
-     * lemma-or-form sequence. Both sequences are registered when they differ.</p>
-     *
-     * @param lexicon target MWE lexicon
-     * @param analyzer analyzer producing normalized forms in
-     *                 {@link CharTermAttribute} and optional lemmas in
-     *                 {@link LemmaAttribute}
-     * @param anchor class used to resolve the resource path
-     * @param resourcePath classpath resource path
-     * @throws UncheckedIOException on read or analysis error
-     * @throws NullPointerException if an argument is null
-     */
-    public static void loadExpressions(
-        final MweLexicon lexicon,
-        final Analyzer analyzer,
-        final Class<?> anchor,
-        final String resourcePath)
-    {
-        Objects.requireNonNull(anchor, "anchor");
-        Objects.requireNonNull(resourcePath, "resourcePath");
-        try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
-            csv.cellMax(3);
-            loadExpressions(lexicon, analyzer, csv, 0, 2, CsvHeader.SKIP);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    /**
-     * Loads multi-word expressions from a CSV reader.
-     *
-     * <p>The analyzer is the authority for tokenization, filtering,
-     * normalization, and lemma annotation. For every accepted row, the
-     * normalized surface sequence is registered first. A second sequence using each
-     * non-empty {@link LemmaAttribute}, with fallback to the normalized form, is
-     * registered only when at least one component differs.</p>
-     *
-     * @param lexicon target MWE lexicon
-     * @param analyzer analyzer producing normalized forms and optional lemmas
-     * @param csv CSV reader
-     * @param colExpression column containing the expression to analyze
-     * @param colCanonical column containing the canonical output form
-     * @param csvHeader header policy
-     * @throws UncheckedIOException on analysis error
-     * @throws NullPointerException if an argument is null
-     * @throws IllegalArgumentException if a column index is negative
-     */
-    public static void loadExpressions(
-        final MweLexicon lexicon,
-        final Analyzer analyzer,
-        final CSVReader csv,
-        final int colExpression,
-        final int colCanonical,
-        final CsvHeader csvHeader)
-    {
-        Objects.requireNonNull(lexicon, "lexicon");
-        Objects.requireNonNull(analyzer, "analyzer");
-        Objects.requireNonNull(csv, "csv");
-        Objects.requireNonNull(csvHeader, "csvHeader");
-        checkColumnIndex(colExpression, "colExpression");
-        checkColumnIndex(colCanonical, "colCanonical");
-
-        final CsvRowHandler handler = new CsvRowHandler()
-        {
-            @Override
-            protected boolean accept(final CSVReader row) throws UncheckedIOException
-            {
-                final StringBuilder expression = row.getCell(colExpression);
-                final CharSequence canonical = row.getCell(colCanonical).length() > 0
-                    ? row.getCell(colCanonical)
-                    : expression;
-
-                try {
-                    return addExpression(lexicon, analyzer, expression, canonical);
-                } catch (UncheckedIOException e) {
-                    throw new RuntimeException (
-                        row.getSpec() + ":" + row.getLineNo() + " cannot analyze MWE: " + expression,
-                        e
-                    );
-                }
+        final String source = expression.toString().strip();
+        if (source.isEmpty()) return List.of();
+        final List<String> forms = new ArrayList<>();
+        boolean suppressed = false;
+        try (TokenStream stream = analyzer.tokenStream("mwe", source)) {
+            final CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
+            stream.reset();
+            while (stream.incrementToken()) {
+                if (term.length() == 0) suppressed = true;
+                else forms.add(term.toString());
             }
-        };
+            stream.end();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return suppressed ? List.of() : forms;
+    }
 
-        forEachDataRow(
-            csv,
-            csvHeader,
-            maxRequiredCol(colExpression, colCanonical),
-            Report.ReportNull.INSTANCE,
-            handler
-        );
+    /**
+     * Normalizes the declared output's apostrophes and hyphens, preserving case.
+     * @param expression source expression
+     * @param canonical optional canonical output; blank means source expression
+     * @return normalized output
+     */
+    public static String expressionOutput(final CharSequence expression, final CharSequence canonical)
+    {
+        final StringBuilder output = new StringBuilder(canonical.toString().isBlank() ? expression : canonical);
+        Char.trim(output);
+        Char.translate(output, "\u2019\u2018\u02BC\u2010\u2011\u00AD", "'''---");
+        return output.toString();
+    }
+
+    /**
+     * Loads simple lexical MWEs from caller-selected CSV columns, without inflection.
+     * @param lexicon mutable target lexicon
+     * @param analyzer entry analyzer
+     * @param csv open CSV reader, owned by the caller
+     * @param colExpression source expression column
+     * @param colCanonical canonical output column; use -1 for no separate output column
+     * @param header header policy
+     * @throws UncheckedIOException if reading or analysis fails
+     */
+    public static void loadExpressions(final MweLexicon lexicon, final Analyzer analyzer,
+        final CSVReader csv, final int colExpression, final int colCanonical, final CsvHeader header)
+    {
+        final int columns = colCanonical < 0 ? maxRequiredCol(colExpression)
+            : maxRequiredCol(colExpression, colCanonical);
+        csv.cellMax(columns);
+        forEachDataRow(csv, header, columns, Report.ReportNull.INSTANCE, row -> {
+            final String form = row.getCellAsString(colExpression);
+            final String output = colCanonical < 0 ? form : row.getCellAsString(colCanonical);
+            try {
+                addExpression(lexicon, analyzer, form, output);
+            } catch (UncheckedIOException e) {
+                throw new UncheckedIOException(new IOException(row.getSpec() + ":" + row.getLineNo()
+                    + " cannot analyze MWE: " + form, e));
+            }
+        });
+    }
+
+    /**
+     * Loads headered form, POS, canonical declarations using a caller-supplied compiler.
+     * @param csv open CSV reader, owned by the caller
+     * @param handler expression registration callback
+     * @throws UncheckedIOException if reading or analysis fails
+     */
+    public static void loadExpressions(final CSVReader csv, final ExpressionHandler handler)
+    {
+        csv.cellMax(3);
+        forEachDataRow(csv, CsvHeader.SKIP, 3, Report.ReportNull.INSTANCE, row -> {
+            final String form = row.getCellAsString(0).strip();
+            if (form.isEmpty()) return;
+            final String pos = row.getCellAsString(1).strip();
+            final String canonical = row.getCellAsString(2);
+            try {
+                handler.add(form, pos, canonical.isBlank() ? form : canonical);
+            } catch (UncheckedIOException e) {
+                throw new UncheckedIOException(new IOException(row.getSpec() + ":" + row.getLineNo()
+                    + " cannot analyze MWE: " + form, e));
+            }
+        });
+    }
+
+    /** Callback for registering a lexical declaration. */
+    @FunctionalInterface
+    public interface ExpressionHandler
+    {
+        /**
+         * Registers a declaration.
+         * @param form source expression
+         * @param pos declared POS, possibly empty
+         * @param canonical canonical output
+         */
+        void add(String form, String pos, String canonical);
     }
 
     /**
@@ -348,32 +246,26 @@ public final class LexiconHelper
         final Report rep = orSilent(report);
         csv.report(rep);
 
-        final CsvRowHandler handler = new CsvRowHandler()
-        {
-            @Override
-            protected boolean accept(final CSVReader row) throws UncheckedIOException
-            {
-                final StringBuilder key = row.getCell(keyCol);
-                if (map.containsKey(key)) {
-                    switch (policy) {
-                        case IGNORE:
-                            return false;
-                        case REPLACE:
-                            map.put(key, row.getCellToCharArray(valueCol));
-                            return true;
-                        case ERROR:
-                            throw new RuntimeException("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
-                                    + " duplicate key=" + key);
-                        case REPORT:
-                            rep.warn("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
-                                    + " duplicate key=" + key + " oldValue=" + new String(map.get(key))
-                                    + " newValue=" + row.getCell(valueCol));
-                            return false;
-                    }
+        final Consumer<CSVReader> handler = row -> {
+            final StringBuilder key = row.getCell(keyCol);
+            if (map.containsKey(key)) {
+                switch (policy) {
+                    case IGNORE:
+                        return;
+                    case REPLACE:
+                        map.put(key, row.getCellToCharArray(valueCol));
+                        return;
+                    case ERROR:
+                        throw new RuntimeException("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                + " duplicate key=" + key);
+                    case REPORT:
+                        rep.warn("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                + " duplicate key=" + key + " oldValue=" + new String(map.get(key))
+                                + " newValue=" + row.getCell(valueCol));
+                        return;
                 }
-                map.put(key, row.getCellToCharArray(valueCol));
-                return true;
             }
+            map.put(key, row.getCellToCharArray(valueCol));
         };
 
         forEachDataRow(csv, csvHeader, maxRequiredCol(keyCol, valueCol), rep, handler);
@@ -493,33 +385,27 @@ public final class LexiconHelper
         final Report rep = orSilent(report);
         csv.report(rep);
 
-        final CsvRowHandler handler = new CsvRowHandler()
-        {
-            @Override
-            protected boolean accept(final CSVReader row) throws UncheckedIOException
-            {
-                final StringBuilder key = row.getCell(keyCol);
-                final int keyOrd = map.keyOrd(key);
-                if (keyOrd >= 0) {
-                    switch (policy) {
-                        case IGNORE:
-                            return false;
-                        case REPLACE:
-                            map.put(keyOrd, row.getCell(valueCol));
-                            return true;
-                        case ERROR:
-                            throw new RuntimeException("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
-                                    + " duplicate key=" + key);
-                        case REPORT:
-                            rep.warn("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
-                                    + " duplicate key=" + key + " oldValue=" + new String(map.get(key))
-                                    + " newValue=" + row.getCell(valueCol));
-                            return false;
-                    }
+        final Consumer<CSVReader> handler = row -> {
+            final StringBuilder key = row.getCell(keyCol);
+            final int keyOrd = map.keyOrd(key);
+            if (keyOrd >= 0) {
+                switch (policy) {
+                    case IGNORE:
+                        return;
+                    case REPLACE:
+                        map.put(keyOrd, row.getCell(valueCol));
+                        return;
+                    case ERROR:
+                        throw new RuntimeException("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                + " duplicate key=" + key);
+                    case REPORT:
+                        rep.warn("LexiconHelper.loadMap " + row.getSpec() + ":" + row.getLineNo()
+                                + " duplicate key=" + key + " oldValue=" + new String(map.get(key))
+                                + " newValue=" + row.getCell(valueCol));
+                        return;
                 }
-                map.put(key, row.getCell(valueCol));
-                return true;
             }
+            map.put(key, row.getCell(valueCol));
         };
 
         forEachDataRow(csv, csvHeader, maxRequiredCol(keyCol, valueCol), rep, handler);
@@ -623,18 +509,13 @@ public final class LexiconHelper
         Objects.requireNonNull(csv, "csv");
         checkColumnIndex(col, "col");
         
-        final CsvRowHandler handler = new CsvRowHandler()
-        {
-            @Override
-            protected boolean accept(final CSVReader row) throws UncheckedIOException
-            {
-                final StringBuilder form = row.getCell(col);
-                Char.trim(form);
-                if (form.length() == 0) {
-                    return false; // rtrim may empty the cell
-                }
-                return set.add(form);
+        final Consumer<CSVReader> handler = row -> {
+            final StringBuilder form = row.getCell(col);
+            Char.trim(form);
+            if (form.length() == 0) {
+                return; // rtrim may empty the cell
             }
+            set.add(form);
         };
         
         forEachDataRow(csv, csvHeader, col + 1, Report.ReportNull.INSTANCE, handler);
@@ -650,14 +531,15 @@ public final class LexiconHelper
      * </p>
      *
      * @param lex          lemma lexicon to populate
-     * @param policy       duplicate handling policy for {@link LemmaLexicon#putEntry}
      * @param anchor       class used to resolve the resource path
      * @param resourcePath classpath resource path
      * @param sep          CSV separator
      * @param formCol      column of inflected/surface form
      * @param posCol       column of POS name
      * @param lemmaCol     column of lemma form
-     * 
+     * @param csvHeader    header policy
+     * @param posResolver  optional POS mapping; null uses Upos.get
+     *
      * @throws UncheckedIOException     on read error
      * @throws NullPointerException     if any required argument is null
      * @throws IllegalArgumentException if any column index is negative
@@ -671,7 +553,7 @@ public final class LexiconHelper
         final int formCol,
         final int posCol,
         final int lemmaCol,
-        PosResolver posResolver)
+        Function<String, Upos> posResolver)
         throws UncheckedIOException
     {
         Objects.requireNonNull(anchor, "anchor");
@@ -687,41 +569,18 @@ public final class LexiconHelper
     }
     
     /**
-     * Load a lemma dictionary from a CSV reader with configurable POS
-     * normalization and handling.
-     * <p>
-     * Processing order for the POS column:
-     * </p>
-     * <ol>
-     * <li>Read raw POS name from {@code posCol}</li>
-     * <li>Apply {@code posNormalizer} if non-null (e.g. trim, uppercase, strip
-     * prefix)</li>
-     * <li>Apply alias map ({@code posAliases}) if non-null and a match
-     * exists</li>
-     * <li>Resolve via {@link Upos#code(String)}</li>
-     * </ol>
-     * <p>
-     * Unknown POS behavior:
-     * </p>
-     * <ul>
-     * <li>If POS cannot be resolved, {@code unknownPosConsumer} is called (if
-     * non-null)</li>
-     * <li>If {@code unknownPosFallback >= 0}, that fallback is used</li>
-     * <li>Otherwise (fallback &lt; 0), the row is skipped</li>
-     * </ul>
+     * Loads a lemma dictionary with optional POS-specific entries. Every
+     * accepted form has a POS-independent entry, even if its POS is unknown.
      *
-     * @param lex           lemma lexicon to populate
-     * @param policy        duplicate handling policy for {@link LemmaLexicon#putEntry}
-     * @param csv           CSV reader
-     * @param skipHeader    if {@code true}, skip the first row
-     * @param formCol       column of inflected/surface form
-     * @param posCol        column of POS name
-     * @param lemmaCol      column of lemma form
-     * @param posNormalizer optional POS normalization function applied before aliasing and Upos
-     *                      lookup
-     *
-     * @throws UncheckedIOException     on read error
-     * @throws NullPointerException     if {@code lex}, {@code policy}, or {@code csv} is null
+     * @param lex lemma lexicon to populate
+     * @param csv CSV reader
+     * @param csvHeader header policy
+     * @param formCol column of surface form
+     * @param posCol column of POS name
+     * @param lemmaCol column of lemma form
+     * @param posResolver POS resolver, or null for the default resolver
+     * @throws UncheckedIOException on read error
+     * @throws NullPointerException if lex or csv is null
      * @throws IllegalArgumentException if a column index is negative
      */
     public static void loadLemma(
@@ -731,7 +590,7 @@ public final class LexiconHelper
         final int formCol,
         final int posCol,
         final int lemmaCol,
-        final PosResolver posResolver)
+        final Function<String, Upos> posResolver)
         throws UncheckedIOException
     {
         Objects.requireNonNull(lex, "lex");
@@ -740,46 +599,33 @@ public final class LexiconHelper
         checkColumnIndex(formCol, "formCol");
         checkColumnIndex(posCol, "posCol");
         checkColumnIndex(lemmaCol, "lemmaCol");
-        // put the default posResolver
+        final PosResolver pr = new PosResolver(posResolver);
         
-        final PosResolver pr;
-        if (posResolver == null)
-            pr = DEFAULT_POS_RESOLVER;
-        else
-            pr = posResolver;
-        pr.reset();
-        
-        final CsvRowHandler handler = new CsvRowHandler()
-        {
-            @Override
-            protected boolean accept(final CSVReader row) throws UncheckedIOException
-            {
-                // normalize some chars before input entries
-                StringBuilder form = row.getCell(formCol);
-                Char.translate(form, "’", "'");
-                Char.trim(form);
-                if (form.isEmpty()) return false;
-                StringBuilder lemma = row.getCell(lemmaCol);
-                if (!lemma.isEmpty()) {
-                    Char.translate(lemma, "’", "'");
-                    Char.trim(lemma);
-                }
-                // form=lemma
-                else {
-                    lemma = form;
-                }
-                lex.put(form, lemma);
-                final String rawPosName = row.getCellAsString(posCol);
-                int posId = pr.posInt(rawPosName);
-                if (posId >= 0) {
-                    lex.put(form, posId, lemma);
-                }
-                return true;
+        final Consumer<CSVReader> handler = row -> {
+            // normalize some chars before input entries
+            StringBuilder form = row.getCell(formCol);
+            Char.translate(form, "’", "'");
+            Char.trim(form);
+            if (form.isEmpty()) return;
+            StringBuilder lemma = row.getCell(lemmaCol);
+            if (!lemma.isEmpty()) {
+                Char.translate(lemma, "’", "'");
+                Char.trim(lemma);
+            }
+            // form=lemma
+            else {
+                lemma = form;
+            }
+            lex.put(form, lemma);
+            final String rawPosName = row.getCellAsString(posCol);
+            final Upos tag = pr.resolve(rawPosName);
+            if (tag != null) {
+                lex.put(form, tag.ordinal(), lemma);
             }
         };
         
         forEachDataRow(csv, csvHeader, maxRequiredCol(formCol, posCol, lemmaCol), Report.ReportNull.INSTANCE, handler);
-        pr.endFile(null);
+        pr.report(csv.getSpec());
     }
     
 
@@ -796,7 +642,7 @@ public final class LexiconHelper
      * @param tagCol       column containing the source POS tag
      * @param freqCol      frequency column; if negative, frequency is ignored
      * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
-     * @param posResolver  POS resolver; {@code null} uses {@link #DEFAULT_POS_RESOLVER}
+     * @param posResolver  POS resolver; {@code null} uses {@code Upos::get}
      * @throws UncheckedIOException on read error
      */
     public static void loadTags(
@@ -809,7 +655,7 @@ public final class LexiconHelper
         final int tagCol,
         final int freqCol,
         final double freqMin,
-        final PosResolver posResolver)
+        final Function<String, Upos> posResolver)
         throws UncheckedIOException
     {
         Objects.requireNonNull(anchor, "anchor");
@@ -838,17 +684,10 @@ public final class LexiconHelper
     }
     
     /**
-     * Loads PROPN forms.
-     *
-     * @param tagDic       mutable tag dictionary to populate
-     * @param csv          CSV reader
-     * @param csvHeader    header policy
-     * @param formCol      column containing the surface form
-     * @param tagCol       column containing the source POS tag
-     * @param freqCol      frequency column; if negative, frequency is ignored
-     * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
-     * @param posResolver  POS resolver; {@code null} uses {@link #DEFAULT_POS_RESOLVER}
-     * @param report       report sink; {@code null} is silent
+     * Loads proper-name forms from the first column of a headerless CSV.
+     * @param tagDic target tag dictionary
+     * @param csv open CSV reader
+     * @param report optional report sink
      * @throws UncheckedIOException on read error
      */
     public static void loadPROPN(
@@ -861,39 +700,15 @@ public final class LexiconHelper
         Objects.requireNonNull(csv, "csv");
         final Report rep = orSilent(report);
         csv.report(rep);
-        final CsvRowHandler handler = new CsvRowHandler()
-        {
-            @Override
-            protected boolean accept(final CSVReader row)
-                throws UncheckedIOException
-            {
-                final String tag = "PROPN";
-                final StringBuilder form = row.getCell(0);
-                Char.translate(form, "’", "'");
-                Char.trim(form);
-                if (form.isEmpty()) {
-                    return false;
-                }
-                final String word = form.toString();
-                final String[] oldTags = tagDic.getTags(word);
-
-                if (oldTags == null || oldTags.length == 0) {
-                    tagDic.put(word, tag);
-                    return true;
-                }
-
-                for (String oldTag : oldTags) {
-                    if (tag.equals(oldTag)) {
-                        return false;
-                    }
-                }
-
-                final String[] tags =
-                    java.util.Arrays.copyOf(oldTags, oldTags.length + 1);
-                tags[oldTags.length] = tag;
-                tagDic.put(word, tags);
-                return true;
+        final Consumer<CSVReader> handler = row -> {
+            final String tag = Upos.PROPN.name();
+            final StringBuilder form = row.getCell(0);
+            Char.translate(form, "’", "'");
+            Char.trim(form);
+            if (form.isEmpty()) {
+                return;
             }
+            addTag(tagDic, form.toString(), tag);
         };
         forEachDataRow(csv, CsvHeader.KEEP, 1, rep, handler);
     }
@@ -913,7 +728,7 @@ public final class LexiconHelper
      * @param tagCol       column containing the source POS tag
      * @param freqCol      frequency column; if negative, frequency is ignored
      * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
-     * @param posResolver  POS resolver; {@code null} uses {@link #DEFAULT_POS_RESOLVER}
+     * @param posResolver  POS resolver; {@code null} uses {@code Upos::get}
      * @param report       report sink; {@code null} is silent
      * @throws UncheckedIOException on read error
      */
@@ -925,7 +740,7 @@ public final class LexiconHelper
         final int tagCol,
         final int freqCol,
         final double freqMin,
-        final PosResolver posResolver,
+        final Function<String, Upos> posResolver,
         final Report report)
         throws UncheckedIOException
     {
@@ -935,9 +750,7 @@ public final class LexiconHelper
         checkColumnIndex(formCol, "formCol");
         checkColumnIndex(tagCol, "tagCol");
 
-        final PosResolver pr =
-            (posResolver == null) ? DEFAULT_POS_RESOLVER : posResolver;
-        pr.reset();
+        final PosResolver pr = new PosResolver(posResolver);
 
         final Report rep = orSilent(report);
         csv.report(rep);
@@ -946,74 +759,51 @@ public final class LexiconHelper
             ? maxRequiredCol(formCol, tagCol)
             : maxRequiredCol(formCol, tagCol, freqCol);
 
-        final CsvRowHandler handler = new CsvRowHandler()
-        {
-            @Override
-            protected boolean accept(final CSVReader row)
-                throws UncheckedIOException
-            {
-                if (freqCol >= 0) {
-                    final String freqText = row.getCellAsString(freqCol);
-                    if (freqText == null || freqText.isBlank()) {
-                        return false;
-                    }
-
-                    final double frequency;
-                    try {
-                        frequency = Double.parseDouble(freqText.trim());
-                    } catch (NumberFormatException e) {
-                        rep.warn(
-                            row.getSpec() + ":" + row.getLineNo()
-                            + " invalid frequency=" + freqText
-                        );
-                        return false;
-                    }
-
-                    if (!Double.isFinite(frequency) || frequency < freqMin) {
-                        return false;
-                    }
+        final Consumer<CSVReader> handler = row -> {
+            if (freqCol >= 0) {
+                final String freqText = row.getCellAsString(freqCol);
+                if (freqText == null || freqText.isBlank()) {
+                    return;
                 }
 
-                final String tag = pr.posTag(row.getCellAsString(tagCol));
-                if (tag == null) {
-                    return false;
+                final double frequency;
+                try {
+                    frequency = Double.parseDouble(freqText.trim());
+                } catch (NumberFormatException e) {
+                    rep.warn(
+                        row.getSpec() + ":" + row.getLineNo()
+                        + " invalid frequency=" + freqText
+                    );
+                    return;
                 }
 
-                final StringBuilder form = row.getCell(formCol);
-                Char.translate(form, "’", "'");
-                Char.trim(form);
-                if (form.isEmpty()) {
-                    return false;
+                if (!Double.isFinite(frequency) || frequency < freqMin) {
+                    return;
                 }
-
-                final String word = form.toString();
-                final String[] oldTags = tagDic.getTags(word);
-
-                if (oldTags == null || oldTags.length == 0) {
-                    tagDic.put(word, tag);
-                    return true;
-                }
-
-                for (String oldTag : oldTags) {
-                    if (tag.equals(oldTag)) {
-                        return false;
-                    }
-                }
-
-                final String[] tags =
-                    java.util.Arrays.copyOf(oldTags, oldTags.length + 1);
-                tags[oldTags.length] = tag;
-                tagDic.put(word, tags);
-                return true;
             }
+
+            final Upos pos = pr.resolve(row.getCellAsString(tagCol));
+            if (pos == null) {
+                return;
+            }
+            final String tag = pos.name();
+
+            final StringBuilder form = row.getCell(formCol);
+            Char.translate(form, "’", "'");
+            Char.trim(form);
+            if (form.isEmpty()) {
+                return;
+            }
+
+            addTag(tagDic, form.toString(), tag);
         };
 
         forEachDataRow(csv, csvHeader, minCols, rep, handler);
-        pr.endFile(null);
+        pr.report(csv.getSpec());
     }
 
     /**
-     * Convenience overload using {@link #DEFAULT_POS_RESOLVER}.
+     * Convenience overload using {@code Upos::get}.
      */
     public static void loadTags(
         final MutableTagDictionary tagDic,
@@ -1039,7 +829,15 @@ public final class LexiconHelper
         );
     }
 
-    public static POSModel loadPosModel(final Class<?> anchor, String path)
+    /**
+     * Loads an OpenNLP POS model from a classpath resource.
+     * @param anchor class used for resource lookup
+     * @param path resource path
+     * @return loaded POS model
+     * @throws IllegalStateException if the resource is missing
+     * @throws ExceptionInInitializerError if the resource cannot be read
+     */
+    public static POSModel loadPosModel(final Class<?> anchor, final String path)
     {
         try (InputStream in = anchor.getResourceAsStream(path)) {
             if (in == null)
@@ -1100,7 +898,7 @@ public final class LexiconHelper
         final CsvHeader csvHeader,
         final int minCols,
         final Report report,
-        final CsvRowHandler handler)
+        final Consumer<CSVReader> handler)
     {
         Objects.requireNonNull(csv, "csv");
         Objects.requireNonNull(report, "report");
@@ -1118,18 +916,12 @@ public final class LexiconHelper
                 if (first.length() > 0 && first.charAt(0) == '#') {
                     continue; // comment
                 }
-                handler.read++;
                 if (count < minCols) {
                     report.warn(csv.getSpec() + ":" + csv.getLineNo()
                             + " expected at least " + minCols + " columns, got " + count);
-                    handler.skipped++;
                     continue;
                 }
-                if (handler.accept(csv)) {
-                    handler.accepted++;
-                } else {
-                    handler.skipped++;
-                }
+                handler.accept(csv);
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -1157,343 +949,68 @@ public final class LexiconHelper
     }
     
     /**
-     * Resolves part-of-speech labels (read from a lexical CSV resource) into
-     * integer POS ids.
-     * <p>
-     * This class is designed as a small template-method framework for lexicon
-     * loading:
-     * </p>
-     * <ul>
-     * <li>{@link #posInt(String)} is the final entry point used by loaders</li>
-     * <li>subclasses customize behavior through hooks such as
-     * {@link #posRewrite(String)}</li>
-     * <li>unknown POS labels are counted by default and can be reported at end
-     * of file</li>
-     * </ul>
-     *
-     * <h2>Resolution contract</h2>
-     * <ul>
-     * <li>Return value {@code >= 0}: valid POS id, row can be loaded</li>
-     * <li>Return value {@code < 0}: unknown/unsupported POS, row should be
-     * skipped (unless the caller chooses another interpretation)</li>
-     * </ul>
-     *
-     * <h2>Lifecycle</h2>
-     * <p>
-     * A resolver instance may be reused across files. Call {@link #reset()}
-     * before a new parsing session if you want to clear the accumulated
-     * unknown-tag counters.
-     * </p>
-     *
-     * <h2>Thread safety</h2>
-     * <p>
-     * This class is <strong>not thread-safe</strong>. It maintains mutable
-     * counters intended for single-threaded resource loading.
-     * </p>
+     * Adds one distinct tag to a word's dictionary entry.
+     * @param dictionary target tag dictionary
+     * @param word normalized word
+     * @param tag tag to add
      */
-    public static abstract class PosResolver
+    private static void addTag(final MutableTagDictionary dictionary, final String word,
+        final String tag)
     {
-        /**
-         * Unknown tag frequencies accumulated during the current parsing
-         * session. Keys are normalized display labels produced by
-         * {@link #reportUnknown(String)}.
-         */
-        private final Map<String, Integer> unknownCounts = new HashMap<>();
-        
-        /**
-         * Reset internal counters so this resolver can be reused for another
-         * file/resource.
-         * <p>
-         * This does not change any subclass configuration; it only clears
-         * accumulated unknown-tag counts.
-         * </p>
-         */
-        public final void reset()
-        {
-            unknownCounts.clear();
+        final String[] old = dictionary.getTags(word);
+        if (old == null || old.length == 0) {
+            dictionary.put(word, tag);
+            return;
         }
-        
-        /**
-         * Resolve a raw POS label (as read from the CSV file) into a POS id.
-         * <p>
-         * This method is the stable contract used by lexicon loaders. It
-         * performs the standard steps:
-         * </p>
-         * <ol>
-         * <li>reject {@code null} or blank raw values</li>
-         * <li>trim and rewrite via {@link #posRewrite(String)}</li>
-         * <li>reject {@code null} or blank rewritten values</li>
-         * <li>lookup via {@link #posLookup(String)}</li>
-         * <li>on failure, report via {@link #reportUnknown(String)} and return
-         * {@link #fallbackPosId()}</li>
-         * </ol>
-         *
-         * @param rawPosName raw POS label from the CSV cell (may be
-         *                   {@code null})
-         * @return a POS id ({@code >= 0}) if resolved, or a negative value to
-         *         signal "skip row"
-         */
-        public final int posInt(final String rawPosName)
-        {
-            if (rawPosName == null || rawPosName.isBlank()) {
-                reportUnknown(rawPosName);
-                return fallbackPosId();
-            }
-            
-            final String posName = posRewrite(rawPosName.trim());
-            if (posName == null || posName.isBlank()) {
-                // Report the raw source value; this is usually what users need to diagnose the dictionary.
-                reportUnknown(rawPosName);
-                return fallbackPosId();
-            }
-            
-            final int posId = posLookup(posName);
-            if (posId >= 0) {
-                return posId;
-            }
-            
-            reportUnknown(rawPosName);
-            return fallbackPosId();
+        for (String value : old) {
+            if (tag.equals(value)) return;
         }
-        
+        final String[] tags = java.util.Arrays.copyOf(old, old.length + 1);
+        tags[old.length] = tag;
+        dictionary.put(word, tags);
+    }
+
+    /** Resolves POS names and counts unknown labels for one resource load. */
+    private static final class PosResolver
+    {
+        private final Function<String, Upos> mapping;
+        private final Map<String, Integer> unknown = new HashMap<>();
 
         /**
-         * Resolve a raw POS label to its rewritten tag name.
-         * <p>
-         * The same {@link #posRewrite(String)} and {@link #posLookup(String)}
-         * hooks are used as by {@link #posInt(String)}. The returned string is
-         * the rewritten tag itself; this class does not assign any semantics to
-         * tag names.
-         * </p>
-         *
-         * @param rawPosName raw POS label from the CSV cell
-         * @return rewritten and validated POS tag, or {@code null} if unsupported
+         * Creates a resolver local to one load.
+         * @param mapping optional source-specific mapping; null uses Upos.get
          */
-        public final String posTag(final String rawPosName)
+        private PosResolver(final Function<String, Upos> mapping)
         {
-            if (rawPosName == null || rawPosName.isBlank()) {
-                reportUnknown(rawPosName);
-                return null;
-            }
-
-            final String posName = posRewrite(rawPosName.trim());
-            if (posName == null || posName.isBlank()) {
-                reportUnknown(rawPosName);
-                return null;
-            }
-
-            if (posLookup(posName) < 0) {
-                reportUnknown(rawPosName);
-                return null;
-            }
-
-            return posName;
+            this.mapping = mapping == null ? Upos::get : mapping;
         }
 
         /**
-         * Rewrite / normalize a POS label before lookup.
-         * <p>
-         * Input is already trimmed and non-blank.
-         * </p>
-         * <p>
-         * Typical uses:
-         * </p>
-         * <ul>
-         * <li>alias mapping (e.g. {@code "Nc" -> "NOUN"})</li>
-         * <li>case normalization</li>
-         * <li>regex cleanup</li>
-         * <li>prefix/suffix stripping</li>
-         * </ul>
-         *
-         * @param posName trimmed non-blank POS label
-         * @return rewritten POS label; may return {@code null} or blank to
-         *         force unknown/fallback handling
+         * Resolves a source POS label and counts unsupported labels.
+         * @param raw source label
+         * @return resolved tag, or null
          */
-        protected String posRewrite(final String posName)
+        private Upos resolve(final String raw)
         {
-            return posName;
-        }
-        
-        /**
-         * Map a rewritten POS label to an integer POS id.
-         * <p>
-         * Default implementation delegates to {@link Upos#code(String)}.
-         * </p>
-         *
-         * @param posName rewritten POS label (typically non-blank)
-         * @return POS id ({@code >= 0}) if known; negative otherwise
-         */
-        protected int posLookup(final String posName)
-        {
-            return Upos.code(posName);
-        }
-        
-        /**
-         * Fallback POS id used when the POS label is unknown or rejected.
-         * <p>
-         * Default is {@code -1}, which signals "skip row" to the loader.
-         * Override to return a non-negative default POS id if your lexicon
-         * policy prefers a fallback.
-         * </p>
-         *
-         * @return fallback POS id (negative by default)
-         */
-        protected int fallbackPosId()
-        {
-            return -1;
-        }
-        
-        /**
-         * Report an unknown POS label.
-         * <p>
-         * Default behavior: normalize the label to a display key
-         * ({@code "<null>"} / {@code "<blank>"} for missing values) and
-         * increment a frequency counter.
-         * </p>
-         * <p>
-         * Subclasses may override to suppress reporting, emit logs, or route
-         * data elsewhere. If you still want the default counting behavior, call
-         * {@code super.reportUnknown(rawPosName)}.
-         * </p>
-         *
-         * @param rawPosName raw source POS label; may be {@code null} or blank
-         */
-        protected void reportUnknown(String rawPosName)
-        {
-            if (rawPosName == null) {
-                rawPosName = "<null>";
-            } else if (rawPosName.isBlank()) {
-                rawPosName = "<blank>";
+            final Upos tag = raw == null || raw.isBlank() ? null : mapping.apply(raw.strip());
+            if (tag == null) {
+                final String label = raw == null ? "<null>" : raw.isBlank() ? "<blank>" : raw.strip();
+                unknown.merge(label, 1, Integer::sum);
             }
-            unknownCounts.merge(rawPosName, 1, Integer::sum);
+            return tag;
         }
-        
+
         /**
-         * End-of-file hook called by the loader once after parsing a
-         * file/resource.
-         * <p>
-         * The default implementation prints a concise report to
-         * {@link System#err} when at least one unknown POS label was observed.
-         * </p>
-         * <p>
-         * Loaders should preferably call this method in a {@code finally} block
-         * so it also runs on partial parses (with partial stats).
-         * </p>
-         *
-         * @param stats load statistics for the parsed resource (must not be
-         *              {@code null})
+         * Reports unsupported labels once per file.
+         * @param source source description
          */
-        public void endFile(final LoadStats stats)
+        private void report(final String source)
         {
-            
-            final Map<String, Integer> unknowns = unknownCounts();
-            if (unknowns.isEmpty()) {
-                return;
-            }
-            
-            if (stats != null)
-                System.out.println(
-                        (stats.path() == null ? "<unknown source>" : stats.path())
-                                + " rows read=" + stats.rowsRead()
-                                + ", loaded=" + stats.rowsLoaded()
-                                + ", skipped=" + stats.rowsSkipped());
-            
-            final int totalUnknownOccurrences = unknowns.values().stream()
-                    .mapToInt(Integer::intValue)
-                    .sum();
-            
-            System.err.println(
-                    "Unknown POS tags: distinct=" + unknowns.size()
-                            + ", occurrences=" + totalUnknownOccurrences);
-            
-            unknowns.entrySet().stream()
-                    .sorted((a, b) -> {
-                        final int byFreq = Integer.compare(b.getValue(), a.getValue()); // descending frequency
-                        return (byFreq != 0) ? byFreq : a.getKey().compareTo(b.getKey()); // ascending label
-                    })
-                    .forEach(e -> System.err.println(e.getKey() + ": " + e.getValue()));
-        }
-        
-        /**
-         * Return an immutable snapshot of unknown POS frequencies.
-         * <p>
-         * The returned map is a defensive copy: subsequent resolver updates do
-         * not affect the snapshot.
-         * </p>
-         *
-         * @return immutable snapshot of unknown POS frequencies
-         */
-        public final Map<String, Integer> unknownCounts()
-        {
-            return Collections.unmodifiableMap(new HashMap<>(unknownCounts));
-        }
-        
-        /**
-         * Number of distinct unknown POS labels seen in the current session.
-         *
-         * @return distinct unknown label count
-         */
-        public final int unknownDistinctCount()
-        {
-            return unknownCounts.size();
-        }
-        
-        /**
-         * Total number of unknown POS occurrences seen in the current session.
-         * <p>
-         * This is the sum of all values in {@link #unknownCounts()}.
-         * </p>
-         *
-         * @return total unknown occurrence count
-         */
-        public final int unknownTotalCount()
-        {
-            int total = 0;
-            for (int count : unknownCounts.values()) {
-                total += count;
-            }
-            return total;
+            if (unknown.isEmpty()) return;
+            System.err.println(source + " unknown POS tags: " + unknown.size());
+            unknown.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(e -> System.err.println(e.getKey() + ": " + e.getValue()));
         }
     }
-    
-    public static final PosResolver DEFAULT_POS_RESOLVER = new PosResolver()
-    {
-    };
-    
-    /**
-     * Immutable statistics collected while loading a lexical resource.
-     * <p>
-     * Instances are typically created once at end of parsing and passed to
-     * {@link PosResolver#endFile(LoadStats)}.
-     * </p>
-     *
-     * @param path        source identifier (file path, resource name, etc.);
-     *                    may be {@code null} if unknown
-     * @param rowsRead    total number of CSV rows read/considered after header
-     *                    handling
-     * @param rowsLoaded  number of rows successfully inserted into the target
-     *                    lexicon
-     * @param rowsSkipped number of rows skipped for any reason
-     */
-    public record LoadStats(
-            String path,
-            int rowsRead,
-            int rowsLoaded,
-            int rowsSkipped)
-    {
-        /**
-         * Validate non-negative counters.
-         *
-         * @throws IllegalArgumentException if any counter is negative
-         */
-        public LoadStats {
-            if (rowsRead < 0)
-                throw new IllegalArgumentException("rowsRead < 0: " + rowsRead);
-            if (rowsLoaded < 0)
-                throw new IllegalArgumentException("rowsLoaded < 0: " + rowsLoaded);
-            if (rowsSkipped < 0)
-                throw new IllegalArgumentException("rowsSkipped < 0: " + rowsSkipped);
-        }
-    }
-    
 }

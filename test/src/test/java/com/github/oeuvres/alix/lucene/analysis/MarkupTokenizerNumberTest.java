@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.junit.jupiter.api.Test;
+
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /** Regression tests for numeric and XML character recognition. */

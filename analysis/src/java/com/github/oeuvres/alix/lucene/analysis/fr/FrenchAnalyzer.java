@@ -34,7 +34,6 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -46,8 +45,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import com.github.oeuvres.alix.lucene.analysis.CleanupFilter;
 import com.github.oeuvres.alix.lucene.analysis.LemmaFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
-import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
-import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.MarkupZoneFilter;
 import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
@@ -55,6 +52,8 @@ import com.github.oeuvres.alix.lucene.analysis.PosTagger;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.util.CharsMap;
@@ -62,7 +61,6 @@ import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
 
 import opennlp.tools.postag.MutableTagDictionary;
-import opennlp.tools.postag.POSDictionary;
 import opennlp.tools.postag.POSModel;
 
 /**
@@ -71,7 +69,9 @@ import opennlp.tools.postag.POSModel;
  * <p>The analyzer owns mutable lexical resources. Expressions loaded through
  * {@link #addExpressions(List)} are compiled with the normalization
  * resources present at call time. Previously compiled expressions are not
- * rebuilt when those resources are modified later.</p>
+ * rebuilt when those resources are modified later. Configure normalization and
+ * uppercase exceptions before adding expressions, and complete all MWE additions
+ * before freezing the lexicon or starting analysis.</p>
  */
 public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
 {
@@ -235,11 +235,12 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     }
 
     /**
-     * Adds and freezes MWE files.
+     * Adds MWE files and freezes the expression lexicon.
      *
      * <p>Each entry is compiled with the current normalization resources.
      * Verbal declarations expand only their initial verbal head. Explicit
-     * declarations take precedence over generated variants across all files.</p>
+     * declarations take precedence over generated variants across all files.
+     * Call once, after any individual expression additions and before analysis.</p>
      *
      * @param files CSV files to load
      * @throws IOException if a file cannot be read
@@ -352,16 +353,32 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     }
 
     /**
-     * Builds the shared canonical filter chain.
+     * Builds the canonical filter chain using the same pre-MWE analysis as
+     * dictionary entries, then applies contextual tagging and lemmatization.
      *
      * @param stream upstream token stream
      * @return final canonical token stream
      */
     private TokenStream canonicChain(final TokenStream stream)
     {
+        TokenStream ts = preMweChain(stream);
+        ts = new MweFilter(ts, expressions);
+        ts = new PosTaggingFilter(ts, posTagger);
+        ts = new LemmaFilter(ts, lemmaLexicon, propn);
+        return ts;
+    }
+
+    /**
+     * Builds the common analysis prefix for corpus tokens and MWE declarations.
+     * No contextual POS tagging, lexical lemmatization, MWE recognition or
+     * cleanup occurs here.
+     *
+     * @param stream upstream token stream
+     * @return tokens as seen by MweFilter
+     */
+    private TokenStream preMweChain(final TokenStream stream)
+    {
         TokenStream ts = stream;
-        
-        // Must exist before filters such as MweFilter create AttributeSource snapshots.
         ts.addAttribute(BoundaryAttribute.class);
         ts = new MarkupBoundaryFilter(ts);
         ts = new FrenchCliticSplitFilter(ts);
@@ -369,9 +386,6 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         ts = new NumberFilter(ts, numbers);
         ts = new AgeFilter(ts);
         ts = new UppercaseFilter(ts, ucwords, 4);
-        ts = new MweFilter(ts, expressions);
-        ts = new PosTaggingFilter(ts, posTagger);
-        ts = new LemmaFilter(ts, lemmaLexicon, propn);
         return ts;
     }
 
@@ -457,7 +471,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     }
 
     /**
-     * Analyzer used to compile one MWE declaration from a CSV cell.
+     * Analyzer used to compile plain-text MWE declarations and verbal forms.
      *
      * <p>The chain deliberately omits POS tagging, lemmatization, MWE recognition,
      * cleanup, and stop-word removal. Unconditional lemma aliases would introduce
@@ -475,12 +489,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         @Override
         protected TokenStreamComponents createComponents(final String fieldName)
         {
-            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
-            TokenStream ts = tokenizer;
-            ts = new NumberFilter(ts, numbers);
-            ts = new FrenchCliticSplitFilter(ts);
-            ts = new ReplaceFilter(ts, normalizer);
-            return new TokenStreamComponents(tokenizer, ts);
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, MarkupMode.NONE);
+            return new TokenStreamComponents(tokenizer, preMweChain(tokenizer));
         }
     }
 

@@ -33,13 +33,12 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
+import static com.github.oeuvres.alix.common.Upos.*;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.text.ParseException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
@@ -48,13 +47,12 @@ import org.apache.lucene.analysis.hunspell.Dictionary;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 
+import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
-import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.PosResolver;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
-import com.github.oeuvres.alix.util.MweLexicon;
 
 import opennlp.tools.postag.MutableTagDictionary;
 import opennlp.tools.postag.POSDictionary;
@@ -72,62 +70,19 @@ public final class FrenchLexicons
     }
 
     /**
-     * Resolver shared by word.csv consumers. Source lexical tags are rewritten
-     * to the POS vocabulary used by the French OpenNLP model.
+     * Projects source lexical tags onto the standard UPOS used by the model.
+     * @param posName trimmed source tag
+     * @return standard UPOS, or null for unsupported tags
      */
-    private static PosResolver wordPosResolver()
+    private static Upos wordPos(final String posName)
     {
-        final Map<String, String> posList = Map.ofEntries(
-            Map.entry("VERB", "VERB"), // 305193
-            Map.entry("NOUN", "NOUN"), // 110474
-            Map.entry("ADJ", "ADJ"), // 67833
-            Map.entry("VERBpartpast", "VERB"), // 29612
-            Map.entry("VERBpartpres", "VERB"), // 8207
-            Map.entry("ADV", "ADV"), // 2331
-            // Map.entry("VERBaux2", "VERB"), // 639
-            // Map.entry("VERBexpr", "VERB"), // 270
-            Map.entry("NUM", "NUM"), // 254
-            Map.entry("INTJ", "INTJ"), // 166
-            Map.entry("AUX", "AUX"), // 132
-            // Map.entry("VERBmod", "VERB"), // 91
-            Map.entry("ADP", "ADP"), // 73
-            Map.entry("PRONprs", "PRON"), // 59
-            Map.entry("ADVsit", "ADV"), // 32
-            // Map.entry("DETposs", "DET"), // 31
-            Map.entry("PRONdem", "PRON"), // 21
-            Map.entry("ADVasp", "ADV"), // 24
-            Map.entry("ADVdeg", "ADV"), // 23
-            Map.entry("PRONind", "PRON"), // 22
-            Map.entry("DETind", "DET"), // 22
-            Map.entry("ADVconj", "ADV"), // 20
-            Map.entry("PRONrel", "PRON"), // 18
-            Map.entry("PRONint", "PRON"), // 16
-            Map.entry("SCONJ", "SCONJ"), // 16
-            Map.entry("DETprs", "DET"), // 15
-            Map.entry("DETart", "DET"), // 11
-            Map.entry("CCONJ", "CCONJ"), // 10
-            Map.entry("DETneg", "DET"), // 15
-            Map.entry("DETdem", "DET"), // 10
-            Map.entry("ADVneg", "ADV"), // 9
-            Map.entry("ADP+DET", "ADP+DET"), // 7
-            Map.entry("ADP+PRON", "ADP+PRON"), // 6
-            Map.entry("PRONneg", "PRON"), // 5
-            // Map.entry("DETdem", "DETdem"), // 4
-            Map.entry("ADVint", "ADV"), // 4
-            Map.entry("PRON", "PRON"), // 2
-            Map.entry("DET", "DET"), // 1
-            Map.entry("", "")
-        );
-
-        return new PosResolver()
-        {
-            @Override
-            protected String posRewrite(final String posName)
-            {
-                return posList.get(posName);
-            }
-
+        final Upos tag = switch (posName) {
+            case "ADP+DET" -> ADP_DET;
+            case "ADP+PRON" -> ADP_PRON;
+            case "ADVconj" -> ADV;
+            default -> Upos.get(posName);
         };
+        return tag == null ? null : tag.base();
     }
 
     /**
@@ -166,7 +121,7 @@ public final class FrenchLexicons
             0,
             1,
             2,
-            wordPosResolver()
+            FrenchLexicons::wordPos
         );
         return lexicon;
     }
@@ -239,7 +194,7 @@ public final class FrenchLexicons
             1,
             3, // freq filter, to avoid to much pos that will confuse the tagger
             freqMin,
-            wordPosResolver()
+            FrenchLexicons::wordPos
         );
         // add multi words expressions, especially grammatical words that confuse the tagger
         LexiconHelper.loadTags(
@@ -252,7 +207,7 @@ public final class FrenchLexicons
             1,
             -1, // no freq filter
             -1,
-            wordPosResolver()
+            FrenchLexicons::wordPos
         );
         // Load PROPN words
         try (CSVReader csv = new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-words.csv")) {
@@ -309,17 +264,6 @@ public final class FrenchLexicons
         compiler.loadExpressions(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/mwe-words.csv");
         compiler.loadExpressions(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/mwe-propn.csv");
         return compiler;
-    }
-
-    /**
-     * Builds the default MWE lexicon, including single-head verbal variants.
-     *
-     * @param analyzer analyzer used to compile normalized expression keys
-     * @return mutable MWE lexicon populated with the default resources
-     */
-    public static MweLexicon buildMweLexicon(final Analyzer analyzer)
-    {
-        return buildMweCompiler(analyzer).lexicon();
     }
 
     /**

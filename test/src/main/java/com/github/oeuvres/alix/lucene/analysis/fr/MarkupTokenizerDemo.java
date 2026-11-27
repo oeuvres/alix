@@ -4,8 +4,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 
 import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper;
-import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
+import com.github.oeuvres.alix.lucene.analysis.AnalysisDemoHelper.Case;
 
 import java.util.List;
 import java.util.function.Supplier;

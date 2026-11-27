@@ -1,5 +1,7 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
+import static com.github.oeuvres.alix.common.Upos.*;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -11,23 +13,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+
 import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.hunspell.AffixedWord;
 import org.apache.lucene.analysis.hunspell.DictEntries;
 import org.apache.lucene.analysis.hunspell.DictEntry;
 import org.apache.lucene.analysis.hunspell.Dictionary;
 import org.apache.lucene.analysis.hunspell.WordFormGenerator;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
+import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.util.CSVReader;
-import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.MweLexicon;
 
 /**
- * Compiles French MWE declarations from normalized surface tokens, optionally
+ * Compiles French lexical MWE declarations, optionally
  * expanding the initial verbal head using Lucene Hunspell on demand.
  *
  * <p>Only declarations tagged VERB are expanded. An initial sequence of
@@ -48,7 +50,7 @@ final class VerbalMweCompiler
         "me", "te", "se", "nous", "vous", "le", "la", "les", "l'", "lui", "leur", "en", "y"
     );
 
-    /** Surface-only entry analyzer shared by explicit and generated keys. */
+    /** Pre-MWE entry analyzer shared by explicit and generated keys. */
     private final Analyzer analyzer;
 
     /** Immutable Hunspell dictionary shared between compiler instances. */
@@ -88,29 +90,19 @@ final class VerbalMweCompiler
      * @param expression source expression
      * @param pos declared grammatical category, or empty for exact matching
      * @param canonical canonical output
-     * @return true when the explicit expression contains at least two tokens
+     * @return true when the explicit expression contains at least two nonempty tokens
      * @throws UncheckedIOException if token analysis fails
      */
     public boolean addExpression(final CharSequence expression,
         final CharSequence pos, final CharSequence canonical)
     {
-        final StringBuilder source = new StringBuilder(expression);
-        Char.trim(source);
-        final StringBuilder output = new StringBuilder(canonical);
-        Char.trim(output);
-        if (source.length() == 0 || output.length() == 0) {
-            return false;
-        }
-        Char.translate(output, "\u2019\u2018\u02BC\u2010\u2011\u00AD", "'''---");
-
-        final List<String> forms = analyze(source);
-        if (forms.size() < 2) {
-            return false;
-        }
+        final List<String> forms = LexiconHelper.expressionForms(analyzer, expression);
+        final String output = LexiconHelper.expressionOutput(expression, canonical);
+        if (forms.size() < 2 || output.isEmpty()) return false;
         // Explicit declarations always win, including over earlier generated keys.
         lexicon.addExpression(forms, output);
         registered.add(key(forms));
-        if (!"VERB".contentEquals(pos)) {
+        if (Upos.get(pos.toString()) != VERB) {
             return true;
         }
 
@@ -126,7 +118,7 @@ final class VerbalMweCompiler
         final List<String> candidate = new ArrayList<>(forms);
         for (String variant : variants) {
             // Apply the same normalization as to the original components.
-            final List<String> normalized = analyze(variant);
+            final List<String> normalized = LexiconHelper.expressionForms(analyzer, variant);
             if (normalized.size() != 1) {
                 continue;
             }
@@ -158,7 +150,7 @@ final class VerbalMweCompiler
     public void loadExpressions(final Class<?> anchor, final String resourcePath)
     {
         try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
-            loadExpressions(csv);
+            LexiconHelper.loadExpressions(csv, this::addExpression);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -173,35 +165,10 @@ final class VerbalMweCompiler
     public void loadExpressions(final Path file)
     {
         try (CSVReader csv = new CSVReader(file)) {
-            loadExpressions(csv);
+            LexiconHelper.loadExpressions(csv, this::addExpression);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-    }
-
-    /**
-     * Analyzes a declaration or a generated component without reading lemmas.
-     *
-     * @param expression text to analyze
-     * @return nonempty normalized tokens
-     * @throws UncheckedIOException if token-stream consumption fails
-     */
-    private List<String> analyze(final CharSequence expression)
-    {
-        final List<String> forms = new ArrayList<>();
-        try (TokenStream stream = analyzer.tokenStream("mwe", expression.toString())) {
-            final CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
-            stream.reset();
-            while (stream.incrementToken()) {
-                if (term.length() != 0) {
-                    forms.add(term.toString());
-                }
-            }
-            stream.end();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        return forms;
     }
 
     /**
@@ -240,37 +207,6 @@ final class VerbalMweCompiler
     private static List<String> key(final List<String> forms)
     {
         return forms.stream().map(VerbalMweCompiler::lower).toList();
-    }
-
-    /**
-     * Loads CSV rows in declaration order, skipping the header and comments.
-     *
-     * @param csv open CSV reader
-     * @throws IOException if the reader fails
-     */
-    private void loadExpressions(final CSVReader csv) throws IOException
-    {
-        csv.cellMax(3);
-        if (!csv.readRow()) {
-            return;
-        }
-        while (csv.readRow()) {
-            if (csv.getCellCount() < 3) {
-                continue;
-            }
-            final String expression = csv.getCell(0).toString().strip();
-            if (expression.isEmpty() || expression.startsWith("#")) {
-                continue;
-            }
-            final String pos = csv.getCell(1).toString().strip();
-            final String canonical = csv.getCell(2).toString();
-            try {
-                addExpression(expression, pos, canonical.isBlank() ? expression : canonical);
-            } catch (UncheckedIOException e) {
-                throw new UncheckedIOException(new IOException(
-                    csv.getSpec() + ":" + csv.getLineNo() + " cannot analyze MWE: " + expression, e));
-            }
-        }
     }
 
     /**
