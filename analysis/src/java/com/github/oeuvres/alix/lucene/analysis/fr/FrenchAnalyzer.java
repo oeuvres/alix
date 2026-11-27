@@ -32,6 +32,9 @@
  */
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
+import static com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.CsvHeader.SKIP;
+import static com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.OnDuplicate.REPLACE;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -56,6 +59,7 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
+import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
@@ -191,14 +195,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public void addBrevidots(final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            LexiconHelper.loadSet(
-                brevidots,
-                path,
-                0,
-                LexiconHelper.CsvHeader.SKIP
-            );
-        }
+        addWords(brevidots, files);
     }
 
     /**
@@ -248,7 +245,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public void addExpressions(final List<Path> files) throws IOException
     {
         for (Path path : files) {
-            mweCompiler.loadExpressions(path);
+            try (CSVReader csv = new CSVReader(path)) {
+                mweCompiler.loadExpressions(csv);
+            }
         }
         expressions.freeze();
     }
@@ -261,9 +260,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public void addGramwords(final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            LexiconHelper.loadSet(gramwords, path);
-        }
+        addWords(gramwords, files);
     }
 
     /**
@@ -274,9 +271,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public void addNoisetokens(final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            LexiconHelper.loadSet(noisetokens, path);
-        }
+        addWords(noisetokens, files);
     }
 
     /**
@@ -288,11 +283,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     public void addNormalizations(final List<Path> files) throws IOException
     {
         for (Path path : files) {
-            LexiconHelper.loadMap(
-                normalizer,
-                path,
-                LexiconHelper.OnDuplicate.REPLACE
-            );
+            try (CSVReader csv = new CSVReader(path)) {
+                LexiconHelper.loadMap(normalizer, csv, REPLACE, SKIP, 0, 1, null);
+            }
         }
     }
 
@@ -304,9 +297,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public void addStopwords(final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            LexiconHelper.loadSet(stopwords, path);
-        }
+        addWords(stopwords, files);
     }
 
     /**
@@ -317,11 +308,24 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public void addUcwords(final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            LexiconHelper.loadSet(ucwords, path);
-        }
+        addWords(ucwords, files);
     }
     
+    /**
+     * Adds first-column words from headered CSV files.
+     * @param set target lexical set
+     * @param files files in loading order
+     * @throws IOException if a file cannot be opened or closed
+     */
+    private static void addWords(final CharArraySet set, final List<Path> files) throws IOException
+    {
+        for (Path path : files) {
+            try (CSVReader csv = new CSVReader(path)) {
+                LexiconHelper.loadSet(set, csv, 0, SKIP);
+            }
+        }
+    }
+
     /**
      * Returns the current stopwords for this analyzer.
      * @return

@@ -2,9 +2,7 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import static com.github.oeuvres.alix.common.Upos.*;
 
-import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -141,34 +139,13 @@ final class VerbalMweCompiler
     }
 
     /**
-     * Loads a classpath MWE CSV resource (form, POS, canonical form).
-     *
-     * @param anchor class used to locate the resource
-     * @param resourcePath classpath path
-     * @throws UncheckedIOException on read or analysis failure
+     * Loads headered CSV declarations, optionally expanding verbal heads.
+     * @param csv unread, caller-owned reader of form, POS and canonical columns
+     * @throws UncheckedIOException if reading or analysis fails
      */
-    public void loadExpressions(final Class<?> anchor, final String resourcePath)
+    public void loadExpressions(final CSVReader csv)
     {
-        try (CSVReader csv = new CSVReader(anchor, resourcePath)) {
-            LexiconHelper.loadExpressions(csv, this::addExpression);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    /**
-     * Loads a corpus-specific MWE CSV file (form, POS, canonical form).
-     *
-     * @param file dictionary file
-     * @throws UncheckedIOException on read or analysis failure
-     */
-    public void loadExpressions(final Path file)
-    {
-        try (CSVReader csv = new CSVReader(file)) {
-            LexiconHelper.loadExpressions(csv, this::addExpression);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        LexiconHelper.loadExpressions(csv, this::addExpression);
     }
 
     /**

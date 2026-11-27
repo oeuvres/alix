@@ -34,6 +34,9 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
 import static com.github.oeuvres.alix.common.Upos.*;
+import static com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.CsvHeader.SKIP;
+import static com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.OnDuplicate.ERROR;
+import static com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.OnDuplicate.REPLACE;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,6 +73,39 @@ public final class FrenchLexicons
     }
 
     /**
+     * Opens a CSV resource from the default French dictionary directory.
+     * @param filename resource filename
+     * @return unread CSV reader owned by the caller
+     * @throws IOException if the resource cannot be opened
+     */
+    private static CSVReader csv(final String filename) throws IOException
+    {
+        return new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/" + filename);
+    }
+
+    /**
+     * Builds a set from the first columns of headered French resources.
+     * @param capacity expected set size
+     * @param ignoreCase whether matching ignores case
+     * @param filenames resources in loading order
+     * @return populated set
+     * @throws UncheckedIOException if a resource cannot be read
+     */
+    private static CharArraySet buildSet(final int capacity, final boolean ignoreCase,
+        final String... filenames)
+    {
+        final CharArraySet set = new CharArraySet(capacity, ignoreCase);
+        for (String filename : filenames) {
+            try (CSVReader csv = csv(filename)) {
+                LexiconHelper.loadSet(set, csv, 0, SKIP);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return set;
+    }
+
+    /**
      * Projects source lexical tags onto the standard UPOS used by the model.
      * @param posName trimmed source tag
      * @return standard UPOS, or null for unsupported tags
@@ -92,15 +128,17 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildBrevidots()
     {
-        final CharArraySet set = new CharArraySet(300, true);
-        LexiconHelper.loadSet(
-            set,
-            LexiconHelper.class,
-            "/com/github/oeuvres/alix/fr/brevidots.csv",
-            0,
-            LexiconHelper.CsvHeader.SKIP
-        );
-        return set;
+        return buildSet(300, true, "brevidots.csv");
+    }
+
+    /**
+     * Builds the default stop-word set.
+     *
+     * @return case-insensitive stop-word set
+     */
+    public static CharArraySet buildGramwords()
+    {
+        return buildSet(1200, true, "gramwords.csv");
     }
 
     /**
@@ -112,27 +150,12 @@ public final class FrenchLexicons
     {
         final LemmaLexicon lexicon = new LemmaLexicon(500_000);
         lexicon.onDuplicate(LemmaLexicon.OnDuplicate.IGNORE);
-        LexiconHelper.loadLemma(
-            lexicon,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/word.csv",
-            ',',
-            LexiconHelper.CsvHeader.SKIP,
-            0,
-            1,
-            2,
-            FrenchLexicons::wordPos
-        );
+        try (CSVReader csv = csv("word.csv")) {
+            LexiconHelper.loadLemma(lexicon, csv, SKIP, 0, 1, 2, FrenchLexicons::wordPos);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
         return lexicon;
-    }
-
-    /**
-     * Returns the shared French numeric lookup table. Loaded lazily once per class loader.
-     * @return compiled immutable numerical vocabulary
-     */
-    public static NumberFilter.Lexicon buildNumberLexicon()
-    {
-        return NumberResources.LEXICON;
     }
 
     /** Lazy initialization for the immutable numerical vocabulary. */
@@ -149,10 +172,9 @@ public final class FrenchLexicons
     private static NumberFilter.Lexicon loadNumbers()
     {
         final CharArrayMap<char[]> map = new CharArrayMap<>(5000, true);
-        try (CSVReader csv = new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/numbers-fr.csv")) {
-            csv.cellMax(2);
-            LexiconHelper.loadMap(map, csv, LexiconHelper.OnDuplicate.ERROR,
-                LexiconHelper.CsvHeader.SKIP, 0, 1, null);
+        try (CSVReader csv = csv("numbers-fr.csv")) {
+            LexiconHelper.loadMap(map, csv, ERROR,
+                SKIP, 0, 1, null);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -160,60 +182,33 @@ public final class FrenchLexicons
     }
 
     /**
-     * Builds the default French OpenNLP tag dictionary from word.csv. Only
-     * rows carrying a FREQLIVRES value are eligible; the default threshold is
-     * zero.
+     * Builds the default tokens list that are not words, even function words.
      *
-     * @return populated mutable tag dictionary
-     * @throws IOException 
+     * @return case-insensitive noise tokens set
      */
-    public static MutableTagDictionary buildTagDictionary() throws IOException
+    public static CharArraySet buildNoisetokens()
     {
-        return buildTagDictionary(0.0);
+        return buildSet(1500, true, "noisetokens.csv");
     }
 
     /**
-     * Builds the French OpenNLP tag dictionary from word.csv using a minimum
-     * FREQLIVRES evidence threshold. Rows with a blank frequency are ignored.
+     * Builds the default French normalization map.
      *
-     * @param freqMin minimum FREQLIVRES value accepted
-     * @return populated mutable tag dictionary
-     * @throws IOException 
+     * @return populated normalization map
      */
-    public static MutableTagDictionary buildTagDictionary(final double freqMin) throws IOException
+    public static CharsMap buildNormalizer()
     {
-        // true = case sensitive, false = case insensitive
-        final MutableTagDictionary tagDic = new POSDictionary(true);
-        LexiconHelper.loadTags(
-            tagDic,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/word.csv",
-            ',',
-            LexiconHelper.CsvHeader.SKIP,
-            0,
-            1,
-            3, // freq filter, to avoid to much pos that will confuse the tagger
-            freqMin,
-            FrenchLexicons::wordPos
-        );
-        // add multi words expressions, especially grammatical words that confuse the tagger
-        LexiconHelper.loadTags(
-            tagDic,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/mwe-words.csv",
-            ',',
-            LexiconHelper.CsvHeader.SKIP,
-            0,
-            1,
-            -1, // no freq filter
-            -1,
-            FrenchLexicons::wordPos
-        );
-        // Load PROPN words
-        try (CSVReader csv = new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/propn-words.csv")) {
-            LexiconHelper.loadPROPN(tagDic, csv, null);
+        final CharsMap map = new CharsMap(2000, false);
+        for (String filename : new String[] {
+                "norm-variants.csv", "norm-aeoe.csv", "norm-maj-noacc.csv",
+                "norm-forenames.csv", "norm-names.csv", "norm-misc.csv" }) {
+            try (CSVReader csv = csv(filename)) {
+                LexiconHelper.loadMap(map, csv, REPLACE, SKIP, 0, 1, null);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
-        return tagDic;
+        return map;
     }
 
     /**
@@ -261,56 +256,23 @@ public final class FrenchLexicons
     static VerbalMweCompiler buildMweCompiler(final Analyzer analyzer)
     {
         final VerbalMweCompiler compiler = new VerbalMweCompiler(analyzer, HunspellResources.DICTIONARY);
-        compiler.loadExpressions(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/mwe-words.csv");
-        compiler.loadExpressions(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/mwe-propn.csv");
+        for (String filename : new String[] { "mwe-words.csv", "mwe-propn.csv" }) {
+            try (CSVReader csv = csv(filename)) {
+                compiler.loadExpressions(csv);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
         return compiler;
     }
 
     /**
-     * Builds the default French normalization map.
-     *
-     * @return populated normalization map
+     * Returns the shared French numeric lookup table. Loaded lazily once per class loader.
+     * @return compiled immutable numerical vocabulary
      */
-    public static CharsMap buildNormalizer()
+    public static NumberFilter.Lexicon buildNumberLexicon()
     {
-        final CharsMap map = new CharsMap(2000, false);
-        LexiconHelper.loadMap(
-            map,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/norm-variants.csv",
-            LexiconHelper.OnDuplicate.REPLACE
-        );
-        LexiconHelper.loadMap(
-            map,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/norm-aeoe.csv",
-            LexiconHelper.OnDuplicate.REPLACE
-        );
-        LexiconHelper.loadMap(
-            map,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/norm-maj-noacc.csv",
-            LexiconHelper.OnDuplicate.REPLACE
-        );
-        LexiconHelper.loadMap(
-            map,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/norm-forenames.csv",
-            LexiconHelper.OnDuplicate.REPLACE
-        );
-        LexiconHelper.loadMap(
-            map,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/norm-names.csv",
-            LexiconHelper.OnDuplicate.REPLACE
-        );
-        LexiconHelper.loadMap(
-            map,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/norm-misc.csv",
-            LexiconHelper.OnDuplicate.REPLACE
-        );
-        return map;
+        return NumberResources.LEXICON;
     }
 
     /**
@@ -320,13 +282,7 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildPropn()
     {
-        final CharArraySet set = new CharArraySet(2000, true);
-        LexiconHelper.loadSet(
-            set,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/propn-words.csv"
-        );
-        return set;
+        return buildSet(2000, true, "propn-words.csv");
     }
 
     /**
@@ -336,50 +292,44 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildStopwords()
     {
-        final CharArraySet set = new CharArraySet(4000, true);
-        LexiconHelper.loadSet(
-            set,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/gramwords.csv"
-        );
-        LexiconHelper.loadSet(
-            set,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/noisetokens.csv"
-        );
-        return set;
+        return buildSet(4000, true, "gramwords.csv", "noisetokens.csv");
     }
     
     /**
-     * Builds the default stop-word set.
+     * Builds the default French OpenNLP tag dictionary from word.csv. Only
+     * rows carrying a FREQLIVRES value are eligible; the default threshold is
+     * zero.
      *
-     * @return case-insensitive stop-word set
+     * @return populated mutable tag dictionary
+     * @throws IOException 
      */
-    public static CharArraySet buildGramwords()
+    public static MutableTagDictionary buildTagDictionary() throws IOException
     {
-        final CharArraySet set = new CharArraySet(1200, true);
-        LexiconHelper.loadSet(
-            set,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/gramwords.csv"
-        );
-        return set;
+        return buildTagDictionary(0.0);
     }
 
     /**
-     * Builds the default tokens list that are not words, even function words.
+     * Builds the French OpenNLP tag dictionary from word.csv using a minimum
+     * FREQLIVRES evidence threshold. Rows with a blank frequency are ignored.
      *
-     * @return case-insensitive noise tokens set
+     * @param freqMin minimum FREQLIVRES value accepted
+     * @return populated mutable tag dictionary
+     * @throws IOException 
      */
-    public static CharArraySet buildNoisetokens()
+    public static MutableTagDictionary buildTagDictionary(final double freqMin) throws IOException
     {
-        final CharArraySet set = new CharArraySet(1500, true);
-        LexiconHelper.loadSet(
-            set,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/noisetokens.csv"
-        );
-        return set;
+        // true = case sensitive, false = case insensitive
+        final MutableTagDictionary tagDic = new POSDictionary(true);
+        try (CSVReader csv = csv("word.csv")) {
+            LexiconHelper.loadTags(tagDic, csv, SKIP, 0, 1, 3, freqMin, FrenchLexicons::wordPos, null);
+        }
+        try (CSVReader csv = csv("mwe-words.csv")) {
+            LexiconHelper.loadTags(tagDic, csv, SKIP, 0, 1, -1, -1, FrenchLexicons::wordPos, null);
+        }
+        try (CSVReader csv = csv("propn-words.csv")) {
+            LexiconHelper.loadPROPN(tagDic, csv, null);
+        }
+        return tagDic;
     }
 
 
@@ -390,12 +340,6 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildUcwords()
     {
-        final CharArraySet set = new CharArraySet(200, false);
-        LexiconHelper.loadSet(
-            set,
-            FrenchLexicons.class,
-            "/com/github/oeuvres/alix/fr/ucwords.csv"
-        );
-        return set;
+        return buildSet(200, false, "ucwords.csv");
     }
 }
