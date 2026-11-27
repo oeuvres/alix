@@ -90,6 +90,7 @@ final class VerbalMweCompiler
      * @param canonical canonical output
      * @return true when the explicit expression contains at least two nonempty tokens
      * @throws UncheckedIOException if token analysis fails
+     * @throws IllegalArgumentException if a declared POS is unsupported or conflicts
      */
     public boolean addExpression(final CharSequence expression,
         final CharSequence pos, final CharSequence canonical)
@@ -97,10 +98,15 @@ final class VerbalMweCompiler
         final List<String> forms = LexiconHelper.expressionForms(analyzer, expression);
         final String output = LexiconHelper.expressionOutput(expression, canonical);
         if (forms.size() < 2 || output.isEmpty()) return false;
+        final String label = pos.toString().strip();
+        final Upos tag = label.isEmpty() ? TOKEN : FrenchLexicons.lexicalPos(label);
+        if (tag == null || (tag != TOKEN && tag.base() == null)) {
+            throw new IllegalArgumentException("Unsupported MWE POS: " + label + " for " + expression);
+        }
         // Explicit declarations always win, including over earlier generated keys.
-        lexicon.addExpression(forms, output);
+        lexicon.addExpression(forms, output, tag.ordinal());
         registered.add(key(forms));
-        if (Upos.get(pos.toString()) != VERB) {
+        if (tag != VERB) {
             return true;
         }
 
@@ -122,7 +128,7 @@ final class VerbalMweCompiler
             }
             candidate.set(head, normalized.get(0));
             if (registered.add(key(candidate))) {
-                lexicon.addExpression(candidate, output);
+                lexicon.addExpression(candidate, output, tag.ordinal());
             }
         }
         return true;

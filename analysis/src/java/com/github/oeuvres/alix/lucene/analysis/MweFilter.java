@@ -44,6 +44,7 @@ import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.MweLexicon;
 
 
@@ -74,7 +75,9 @@ import com.github.oeuvres.alix.util.MweLexicon;
  * {@link PositionIncrementAttribute} is inherited from the first component,
  * {@link OffsetAttribute} spans the complete expression, and
  * {@link TypeAttribute} is set to {@link #TYPE_MWE}. The merged token has an
- * empty {@link LemmaAttribute}, because its term is already canonical.</p>
+ * empty {@link LemmaAttribute}, because its term is already canonical. Its POS
+ * is the tag registered for the canonical form, or zero when unspecified,
+ * never the POS inherited from its first component.</p>
  *
  * <p>The filter must run after normalization and lemmatization annotation, but
  * before destructive lemma projection, stop-word removal, or stemming.</p>
@@ -95,6 +98,9 @@ public final class MweFilter extends TokenFilter
 
     /** Output offsets. */
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+
+    /** Output POS, assigned from the accepted lexicon entry. */
+    private final PosAttribute posAtt = addAttribute(PosAttribute.class);
 
     /** Buffered token states, including one look-ahead token. */
     private TokenStateQueue queue;
@@ -262,6 +268,7 @@ public final class MweFilter extends TokenFilter
          * first component's lemma into the compounded token.
          */
         lemmaAtt.setEmpty();
+        posAtt.setPos(lexicon.pos(matchOrd));
 
         final int length = lexicon.formLength(matchOrd);
         final char[] buffer = termAtt.resizeBuffer(length);

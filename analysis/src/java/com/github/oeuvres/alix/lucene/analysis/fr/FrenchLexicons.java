@@ -106,18 +106,28 @@ public final class FrenchLexicons
     }
 
     /**
-     * Projects source lexical tags onto the standard UPOS used by the model.
+     * Resolves a source lexical tag without discarding its specialization.
      * @param posName trimmed source tag
-     * @return standard UPOS, or null for unsupported tags
+     * @return lexical UPOS, or null for unsupported tags
      */
-    private static Upos wordPos(final String posName)
+    static Upos lexicalPos(final String posName)
     {
-        final Upos tag = switch (posName) {
+        return switch (posName) {
             case "ADP+DET" -> ADP_DET;
             case "ADP+PRON" -> ADP_PRON;
             case "ADVconj" -> ADV;
             default -> Upos.get(posName);
         };
+    }
+
+    /**
+     * Projects lexical tags onto the standard UPOS used by the model.
+     * @param posName trimmed source tag
+     * @return standard UPOS, or null for unsupported tags
+     */
+    private static Upos wordPos(final String posName)
+    {
+        final Upos tag = lexicalPos(posName);
         return tag == null ? null : tag.base();
     }
 

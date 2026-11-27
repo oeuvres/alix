@@ -102,10 +102,31 @@ public final class LexiconHelper
     public static boolean addExpression(final MweLexicon lexicon, final Analyzer analyzer,
         final CharSequence expression, final CharSequence canonical)
     {
+        return addExpression(lexicon, analyzer, expression, canonical, Upos.TOKEN);
+    }
+
+    /**
+     * Registers an expression and its declared lexical POS using surface tokens.
+     * @param lexicon mutable target lexicon
+     * @param analyzer entry analyzer
+     * @param expression source expression
+     * @param canonical canonical output (blank means the source expression)
+     * @param pos lexical UPOS; TOKEN means unspecified
+     * @return true if at least two tokens were registered
+     * @throws UncheckedIOException if analysis fails
+     * @throws IllegalArgumentException if the POS is unsupported or conflicts
+     */
+    public static boolean addExpression(final MweLexicon lexicon, final Analyzer analyzer,
+        final CharSequence expression, final CharSequence canonical, final Upos pos)
+    {
+        Objects.requireNonNull(pos, "pos");
+        if (pos != Upos.TOKEN && pos.base() == null) {
+            throw new IllegalArgumentException("Unsupported MWE POS: " + pos);
+        }
         final List<String> forms = expressionForms(analyzer, expression);
         final String output = expressionOutput(expression, canonical);
         if (forms.size() < 2 || output.isEmpty()) return false;
-        lexicon.addExpression(forms, output);
+        lexicon.addExpression(forms, output, pos.ordinal());
         return true;
     }
 
@@ -163,14 +184,41 @@ public final class LexiconHelper
     public static void loadExpressions(final MweLexicon lexicon, final Analyzer analyzer,
         final CSVReader csv, final int colExpression, final int colCanonical, final CsvHeader header)
     {
-        if (colCanonical < -1) throw new IllegalArgumentException("colCanonical must be >= -1");
-        final int columns = colCanonical < 0 ? maxRequiredCol(colExpression)
-            : maxRequiredCol(colExpression, colCanonical);
+        loadExpressions(lexicon, analyzer, csv, colExpression, -1, colCanonical, header);
+    }
+
+    /**
+     * Loads lexical MWEs with an optional UPOS column, without inflection.
+     * @param lexicon mutable target lexicon
+     * @param analyzer entry analyzer
+     * @param csv unread, caller-owned CSV reader
+     * @param colExpression source expression column
+     * @param colPos lexical UPOS column; -1 means unspecified
+     * @param colCanonical canonical output column; -1 means use source expression
+     * @param header header policy
+     * @throws UncheckedIOException if reading or analysis fails
+     * @throws IllegalArgumentException if a column index or POS is invalid, or POS conflicts
+     */
+    public static void loadExpressions(final MweLexicon lexicon, final Analyzer analyzer,
+        final CSVReader csv, final int colExpression, final int colPos, final int colCanonical,
+        final CsvHeader header)
+    {
+        checkColumnIndex(colExpression, "colExpression");
+        if (colCanonical < -1 || colPos < -1) {
+            throw new IllegalArgumentException("Optional column indices must be >= -1");
+        }
+        final int columns = Math.max(colExpression, Math.max(colPos, colCanonical)) + 1;
         forEachDataRow(csv, header, columns, colExpression, null, row -> {
             final String form = row.getCellAsString(colExpression);
             final String output = colCanonical < 0 ? form : row.getCellAsString(colCanonical);
+            final String label = colPos < 0 ? "" : row.getCellAsString(colPos).strip();
+            final Upos pos = label.isEmpty() ? Upos.TOKEN : Upos.get(label);
             try {
-                addExpression(lexicon, analyzer, form, output);
+                if (pos == null) throw new IllegalArgumentException("Unsupported MWE POS: " + label);
+                addExpression(lexicon, analyzer, form, output, pos);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(row.getSpec() + ":" + row.getLineNo()
+                    + " " + form + ": " + e.getMessage(), e);
             } catch (UncheckedIOException e) {
                 throw new UncheckedIOException(new IOException(row.getSpec() + ":" + row.getLineNo()
                     + " cannot analyze MWE: " + form, e));
@@ -193,6 +241,9 @@ public final class LexiconHelper
             final String canonical = row.getCellAsString(2);
             try {
                 handler.add(form, pos, canonical.isBlank() ? form : canonical);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(row.getSpec() + ":" + row.getLineNo()
+                    + " " + form + ": " + e.getMessage(), e);
             } catch (UncheckedIOException e) {
                 throw new UncheckedIOException(new IOException(row.getSpec() + ":" + row.getLineNo()
                     + " cannot analyze MWE: " + form, e));
