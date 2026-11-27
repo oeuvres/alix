@@ -37,181 +37,207 @@ import java.text.Normalizer;
 import java.util.Objects;
 
 /**
- * <p>
- * Efficient character categorizer, 4 or 5 times faster than Character.is*(),
- * for UTF-16 characters only, used in lucene tokenizer.
- * Idea is to populate a static array of properties for
- * the code points.
- * </p>
+ * Precomputed character properties for UTF-16 tokenization.
+ *
+ * <p>The table covers all 65,536 UTF-16 code units, not supplementary Unicode
+ * code points. Surrogate halves are classified separately. Unicode properties
+ * and Alix-specific tokenization policies occupy independent bits.</p>
+ *
+ * <p>Each hot-path test is an array read and a bit test. Property ordinals
+ * determine bit positions; masks are internal and must not be persisted.</p>
  */
-public class Char
+public final class Char
 {
-    /** The 2 bytes unicode */
-    static final int SIZE = 65536;
-    /** Properties of chars by index */
-    static final short[] CHARS = new short[SIZE];
-    /** Binary flag, a letter */
-    public static final short LETTER =       0b000000000000001;
-    /** Binary flag, a token char */
-    public static final short TOKEN =        0b000000000000010;
-    /** Binary flag, a space */
-    public static final short SPACE =        0b000000000000100;
-    /** Binary flag, punctuation char */
-    public static final short PUNCTUATION =  0b000000000001000;
-    /** Binary flag, lower case letter. */
-    public static final short LOWERCASE =    0b000000000010000;
-    /** Binary flag, upper case letter. */
-    public static final short UPPERCASE =    0b000000000100000;
-    /** Binary flag, not used. */
-    public static final short LATIN =        0b000000001000000;
-    /** Binary flag, not used. */
-    // public static final short ??? =   0b000000010000000;
-    /** Binary flag, a digit. */
-    public static final short DIGIT =        0b000000100000000;
-    /** Binary flag, punctuation char for sentence. */
-    public static final short PUNsent =      0b000001000000000;
-    /** Binary flag, punctuation char for clause in a sentence. */
-    public static final short PUNclause =    0b000010000000000;
-    /** Binary flag, math operator. */
-    public static final short MATH =         0b000100000000000;
-    /** Binary flag, isLowSurrogate. */
-    public static final short LOWSUR =       0b010000000000000;
-    /** Binary flag, isHighSurrogate. */
-    public static final short HIGHSUR =      0b100000000000000;
-    /** Binary flag, composite shortcut, word separator. */
-    public static final short PUNCTUATION_OR_SPACE = SPACE | PUNCTUATION;
-    /** Binary flag, composite shortcut, word char. */
-    public static final short LETTER_OR_DIGIT = LETTER | DIGIT;
+    /** Independent character properties. */
+    public enum Prop
+    {
+        /** Unicode letter. */
+        LETTER,
+        /** Unicode decimal digit. */
+        DIGIT,
+        /** Unicode lowercase character. */
+        LOWERCASE,
+        /** Unicode uppercase character. */
+        UPPERCASE,
+        /** Unicode titlecase character. */
+        TITLECASE,
+        /** Letter of Latin script. */
+        LATIN,
+        /** Unicode combining mark, including enclosing marks. */
+        MARK,
+        /** Unicode punctuation. */
+        PUNCTUATION,
+        /** Unicode mathematical symbol (Sm). */
+        MATH,
+        /** Low UTF-16 surrogate. */
+        LOW_SURROGATE,
+        /** High UTF-16 surrogate. */
+        HIGH_SURROGATE,
+        /** Whitespace or ISO control treated as a separator. */
+        SPACE,
+        /** Character admitted inside a word-like token. */
+        TOKEN,
+        /** Sentence punctuation in Alix. */
+        PUNCT_SENTENCE,
+        /** Clause punctuation in Alix. */
+        PUNCT_CLAUSE,
+        /** Mathematical symbol emitted separately by MarkupTokenizer. */
+        MATH_TOKEN,
+        /** Currency, percentage or degree symbol. */
+        UNIT_SYMBOL,
+        /** Unicode vulgar fraction accepted by the numerical tokenizer. */
+        VULGAR_FRACTION,
+        /** Hyphen or potential minus sign; interpretation is contextual. */
+        MINUS_SIGN,
+        /** Horizontal spacing used around guillemets. */
+        HORIZONTAL_SPACE,
+        /** Potential numeric grouping space. */
+        THOUSANDS_SEPARATOR,
+        /** CR or LF. */
+        LINE_BREAK;
+
+        /** Bit assigned to this property. */
+        public final int mask = 1 << ordinal();
+    }
+
+    /** All UTF-16 code units, including U+FFFF. */
+    private static final int[] CHARS = new int[Character.MAX_VALUE + 1];
+    /** Cached property vocabulary for diagnostic output. */
+    private static final Prop[] PROPS = Prop.values();
+    /** Combined Unicode letter and decimal digit mask. */
+    private static final int LETTER_OR_DIGIT = Prop.LETTER.mask | Prop.DIGIT.mask;
+    /** Combined uppercase and titlecase mask. */
+    private static final int UPPER_OR_TITLE = Prop.UPPERCASE.mask | Prop.TITLECASE.mask;
+    /** Combined punctuation and separator mask. */
+    private static final int PUNCTUATION_OR_SPACE = Prop.PUNCTUATION.mask | Prop.SPACE.mask;
+    /** Combined tokenizer symbol mask. */
+    private static final int NUMERIC_SYMBOL = Prop.MATH_TOKEN.mask | Prop.UNIT_SYMBOL.mask;
+
     static {
-        int type;
-        // infinite loop when size = 65536, a char restart to 0
-        int max = SIZE - 1;
-        for (char c = 0; c < max; c++) {
-            if (Character.isHighSurrogate(c)) {
-                CHARS[c] = HIGHSUR;
-                continue;
-            }
-            if (Character.isLowSurrogate(c)) {
-                CHARS[c] = LOWSUR;
-                continue;
-            }
-            type = Character.getType(c);
-            short properties = 0x0;
-            // DO NOT modify '<>' values
-
-            // inside a word ?
-            if (Character.isISOControl(c)) {
-                properties |= SPACE; // \n, \r, \t…
-            } else if (Character.isLetter(c)) {
-                properties |= LETTER | TOKEN;
-                if (Character.isUpperCase(c)) {
-                    properties |= UPPERCASE;
-                }
-                if (Character.isLowerCase(c)) {
-                    properties |= LOWERCASE;
-                }
-                if (Character.UnicodeScript.of(c) == Character.UnicodeScript.LATIN) {
-                    properties |= LATIN;
-                }
-            } else if (Character.isDigit(c)) {
-                properties |= DIGIT | TOKEN;
-            } else if (type == Character.MATH_SYMBOL) {
-                properties |= MATH;
-            } else if (Character.isSpaceChar(c)) {
-                properties |= SPACE; // Unicode classes, with unbreakable
-            } else if (Character.isWhitespace(c)) {
-                properties |= SPACE; // \n, \r, \t…
-            } else {
-                type = Character.getType(c);
-                // & is considered as Po OTHER_PUNCTUATION by unicode
-                if (c == '&') {
-                    properties |= LETTER | TOKEN;
-                } else if (type == Character.CONNECTOR_PUNCTUATION || type == Character.DASH_PUNCTUATION
-                        || type == Character.END_PUNCTUATION || type == Character.FINAL_QUOTE_PUNCTUATION
-                        || type == Character.INITIAL_QUOTE_PUNCTUATION || type == Character.OTHER_PUNCTUATION
-                        || type == Character.START_PUNCTUATION) {
-                    properties |= PUNCTUATION;
-                }
-                // hacky, hyphen maybe part of compound word, or start of a separator like ---
-                if (c == '-' || c == 0xAD || c == '\'' || c == '’' || c == '_') {
-                    properties |= TOKEN;
-                }
-                if (c == '�' || c == '°')
-                    properties |= LETTER | TOKEN;
-                if ('.' == c || '…' == c || '?' == c || '!' == c)
-                    properties |= PUNsent;
-                else if (',' == c || ';' == c || ':' == c || '(' == c || ')' == c || '—' == c || '–' == c || '⁂' == c
-                        || '»' == c || '«' == c)
-                    properties |= PUNclause;
-            }
-            CHARS[c] = properties;
+        if (PROPS.length > Integer.SIZE) {
+            throw new IllegalStateException("Too many character properties for int masks");
         }
+        for (int i = 0; i < CHARS.length; i++) {
+            final char c = (char) i;
+            final int type = Character.getType(c);
+            int flags = 0;
+            if (Character.isLetter(c)) {
+                flags |= Prop.LETTER.mask | Prop.TOKEN.mask;
+                if (Character.UnicodeScript.of(c) == Character.UnicodeScript.LATIN) {
+                    flags |= Prop.LATIN.mask;
+                }
+            }
+            if (Character.isDigit(c)) flags |= Prop.DIGIT.mask | Prop.TOKEN.mask;
+            if (Character.isLowerCase(c)) flags |= Prop.LOWERCASE.mask;
+            if (Character.isUpperCase(c)) flags |= Prop.UPPERCASE.mask;
+            if (Character.isTitleCase(c)) flags |= Prop.TITLECASE.mask;
+            if (Character.isHighSurrogate(c)) flags |= Prop.HIGH_SURROGATE.mask;
+            if (Character.isLowSurrogate(c)) flags |= Prop.LOW_SURROGATE.mask;
+            if (Character.isISOControl(c) || Character.isSpaceChar(c)
+                    || Character.isWhitespace(c)) flags |= Prop.SPACE.mask;
 
+            switch (type) {
+                case Character.CONNECTOR_PUNCTUATION, Character.DASH_PUNCTUATION,
+                     Character.END_PUNCTUATION, Character.FINAL_QUOTE_PUNCTUATION,
+                     Character.INITIAL_QUOTE_PUNCTUATION, Character.OTHER_PUNCTUATION,
+                     Character.START_PUNCTUATION -> flags |= Prop.PUNCTUATION.mask;
+                case Character.NON_SPACING_MARK, Character.COMBINING_SPACING_MARK ->
+                    flags |= Prop.MARK.mask | Prop.TOKEN.mask;
+                case Character.ENCLOSING_MARK -> flags |= Prop.MARK.mask;
+                case Character.MATH_SYMBOL -> flags |= Prop.MATH.mask;
+                case Character.CURRENCY_SYMBOL -> flags |= Prop.UNIT_SYMBOL.mask;
+                case Character.LETTER_NUMBER, Character.OTHER_NUMBER -> flags |= Prop.TOKEN.mask;
+                default -> { }
+            }
+
+            // Alix lexical policy, independent of Unicode general categories.
+            if ("&-\u00AD'’_\u2010\u2011�".indexOf(c) >= 0) flags |= Prop.TOKEN.mask;
+            if (".…?!".indexOf(c) >= 0) flags |= Prop.PUNCT_SENTENCE.mask;
+            if (",;:()—–\"«»".indexOf(c) >= 0) flags |= Prop.PUNCT_CLAUSE.mask;
+            if ("+×÷=≠≤≥±∓√∑∏∞∫*/⁄<>^".indexOf(c) >= 0) flags |= Prop.MATH_TOKEN.mask;
+            if ("%‰‱°".indexOf(c) >= 0) flags |= Prop.UNIT_SYMBOL.mask;
+            if ("-−\u2010\u2011\u00AD".indexOf(c) >= 0) flags |= Prop.MINUS_SIGN.mask;
+            if (" \t\u00A0\u202F".indexOf(c) >= 0) flags |= Prop.HORIZONTAL_SPACE.mask;
+            if ("\u00A0\u202F\u2009".indexOf(c) >= 0) flags |= Prop.THOUSANDS_SEPARATOR.mask;
+            if (c == '\n' || c == '\r') flags |= Prop.LINE_BREAK.mask;
+            if (c == 0x00BC || c == 0x00BD || c == 0x00BE
+                    || (c >= 0x2150 && c <= 0x215E) || c == 0x2189) {
+                flags |= Prop.VULGAR_FRACTION.mask;
+            }
+            if ((flags & (NUMERIC_SYMBOL | Prop.VULGAR_FRACTION.mask)) != 0) {
+                flags &= ~Prop.TOKEN.mask;
+            }
+            CHARS[i] = flags;
+        }
     }
-    /*
-     * private static final String ASCII_C0 = "AAAAAAACEEEEIIII" +
-     * "DNOOOOO\u00d7\u00d8UUUUYI\u00df" + "aaaaaaaceeeeiiii" +
-     * "\u00f0nooooo\u00f7\u00f8uuuuy\u00fey" + "AaAaAaCcCcCcCcDd" +
-     * "DdEeEeEeEeEeGgGg" + "GgGgHhHhIiIiIiIi" + "IiJjJjKkkLlLlLlL" +
-     * "lLlNnNnNnnNnOoOo" + "OoOoRrRrRrSsSsSs" + "SsTtTtTtUuUuUuUu" +
-     * "UuUuWwYyYZzZzZzF" ;
-     */
-    @SuppressWarnings("unused")
-    private static final String ASCII_LOW_C0 = "aaaaaaæceeeeiiii" + "ðnooooo×Øuuuuybß" + "aaaaaaæceeeeiiii"
-            + "ðnooooo÷øuuuuyþy" + "aaaaaaccccccccdd" + "ddeeeeeeeeeegggg" + "gggghhhhiiiiiiii" + "iijjjjkkklllllll"
-            + "lllnnnnnnnnnoooo" + "oooorrrrrrssssss" + "ssttttttuuuuuuuu" + "uuuuwwyyyzzzzzzf";
+
+    /** Prevents construction of this static utility class. */
+    private Char() { }
 
     /**
-     * No constructor, only static methods.
-     */
-    private Char() {
-        // Don't
-    }
-
-    /**
-     * Is Numeric, like {@link Character#isDigit(char)}.
-     * @param c char to test.
-     * @return true if c is digit.
+     * Tests for a Unicode decimal digit.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isDigit(final char c)
     {
-        return (CHARS[c] & DIGIT) != 0;
+        return (CHARS[c] & Prop.DIGIT.mask) != 0;
     }
 
     /**
-     * Is the first short of a supplemental unicode codepoint, like {@link Character#isHighSurrogate(char)}.
-     * @param c char to test.
-     * @return true if c is not a full char but a part.
+     * Tests for a Unicode decimal digit, accepting a UTF-16 reader result.
+     * @param c UTF-16 code unit or EOF (-1)
+     * @return true if the property is present; false outside the BMP
+     */
+    public static boolean isDigit(final int c)
+    {
+        return (c >>> 16) == 0 && isDigit((char) c);
+    }
+
+    /**
+     * Tests for a high surrogate.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isHighSurrogate(final char c)
     {
-        return (CHARS[c] & HIGHSUR) != 0;
+        return (CHARS[c] & Prop.HIGH_SURROGATE.mask) != 0;
     }
-    
+
     /**
-     * Is Latin script {@link Character.UnicodeScript#of(int)}.
-     * @param c char to test.
-     * @return true if c is Latin script, false otherwise.
+     * Tests for horizontal quotation spacing.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isHorizontalSpace(final char c)
+    {
+        return (CHARS[c] & Prop.HORIZONTAL_SPACE.mask) != 0;
+    }
+
+    /**
+     * Tests for a letter of Latin script.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isLatin(final char c)
     {
-        return (CHARS[c] & LATIN) != 0;
+        return (CHARS[c] & Prop.LATIN.mask) != 0;
     }
 
     /**
-     * Is a letter {@link Character#isLetter(char)}.
-     * @param c char to test.
-     * @return true if c is a letter, false otherwise.
+     * Tests for a Unicode letter.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isLetter(final char c)
     {
-        return (CHARS[c] & LETTER) != 0;
+        return (CHARS[c] & Prop.LETTER.mask) != 0;
     }
 
     /**
-     * Is a letter or a digit, like {@link Character#isLetterOrDigit(char)}.
-     * @param c char to test.
-     * @return true if c is a letter or a digit, false otherwise.
+     * Tests for a Unicode letter or decimal digit.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isLetterOrDigit(final char c)
     {
@@ -219,53 +245,139 @@ public class Char
     }
 
     /**
-     * Is a lower case letter, like {@link Character#isLowerCase(char)}.
-     * @param c char to test.
-     * @return true if c is a letter lower case, false otherwise.
+     * Tests for a Unicode letter or decimal digit, accepting a UTF-16 reader result.
+     * @param c UTF-16 code unit or EOF (-1)
+     * @return true if the property is present; false outside the BMP
      */
-    public static boolean isLowerCase(final char c)
+    public static boolean isLetterOrDigit(final int c)
     {
-        return (CHARS[c] & LOWERCASE) != 0;
+        return (c >>> 16) == 0 && isLetterOrDigit((char) c);
     }
 
     /**
-     * Is the second short of a supplemental unicode codepoint,
-     * like {@link Character#isLowSurrogate(char)}.
-     * @param c char to test.
-     * @return true if c is not a full char but a part, false otherwise.
+     * Tests for CR or LF.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isLineBreak(final char c)
+    {
+        return (CHARS[c] & Prop.LINE_BREAK.mask) != 0;
+    }
+
+    /**
+     * Tests for CR or LF, accepting a UTF-16 reader result.
+     * @param c UTF-16 code unit or EOF (-1)
+     * @return true if the property is present; false outside the BMP
+     */
+    public static boolean isLineBreak(final int c)
+    {
+        return (c >>> 16) == 0 && isLineBreak((char) c);
+    }
+
+    /**
+     * Tests for a low surrogate.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isLowSurrogate(final char c)
     {
-        return (CHARS[c] & LOWSUR) != 0;
+        return (CHARS[c] & Prop.LOW_SURROGATE.mask) != 0;
     }
 
     /**
-     * Is a Mathematic symbol, see {@link Character#MATH_SYMBOL}.
-     * 
-     * @param c char to test.
-     * @return true if c is a math symbol, false otherwise.
+     * Tests for a Unicode lowercase character.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isLowerCase(final char c)
+    {
+        return (CHARS[c] & Prop.LOWERCASE.mask) != 0;
+    }
+
+    /**
+     * Tests for a Unicode combining mark.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isMark(final char c)
+    {
+        return (CHARS[c] & Prop.MARK.mask) != 0;
+    }
+
+    /**
+     * Tests for a Unicode mathematical symbol (Sm).
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isMath(final char c)
     {
-        return (CHARS[c] & MATH) != 0;
+        return (CHARS[c] & Prop.MATH.mask) != 0;
     }
 
     /**
-     * Is a punctuation mark between words.
-     * 
-     * @param c char to test.
-     * @return true if c is punctuation, false otherwise.
+     * Tests for a mathematical symbol emitted separately by the tokenizer.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isMathToken(final char c)
+    {
+        return (CHARS[c] & Prop.MATH_TOKEN.mask) != 0;
+    }
+
+    /**
+     * Tests for a potential minus or hyphen.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isMinusSign(final char c)
+    {
+        return (CHARS[c] & Prop.MINUS_SIGN.mask) != 0;
+    }
+
+    /**
+     * Tests for a separate mathematical or unit symbol.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isNumericSymbol(final char c)
+    {
+        return (CHARS[c] & NUMERIC_SYMBOL) != 0;
+    }
+
+    /**
+     * Tests for Alix clause punctuation.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isPUNcl(final char c)
+    {
+        return (CHARS[c] & Prop.PUNCT_CLAUSE.mask) != 0;
+    }
+
+    /**
+     * Tests for Alix sentence punctuation.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isPUNsent(final char c)
+    {
+        return (CHARS[c] & Prop.PUNCT_SENTENCE.mask) != 0;
+    }
+
+    /**
+     * Tests for a Unicode punctuation character.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isPunctuation(final char c)
     {
-        return (CHARS[c] & PUNCTUATION) != 0;
+        return (CHARS[c] & Prop.PUNCTUATION.mask) != 0;
     }
 
     /**
-     * Is punctuation or space.
-     * 
-     * @param c char to test.
-     * @return true if c is a word separator, false otherwise.
+     * Tests for Unicode punctuation or an Alix separator.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isPunctuationOrSpace(final char c)
     {
@@ -273,70 +385,101 @@ public class Char
     }
 
     /**
-     * Is a punctuation mark of sentence break level (!?. etc.)
-     * 
-     * @param c char to test.
-     * @return true if c is a math symbol, false otherwise.
-     */
-    public static boolean isPUNsent(final char c)
-    {
-        return (CHARS[c] & PUNsent) != 0;
-    }
-
-    /**
-     * Is a punctuation mark of clause level (insisde a sentence) (,;: etc.)
-     * 
-     * @param c char to test.
-     * @return true if c is ending a sentence, false otherwise.
-     */
-    public static boolean isPUNcl(final char c)
-    {
-        return (CHARS[c] & PUNclause) != 0;
-    }
-
-    /**
-     * Is a "whitespace" according to ISO (space, tabs, new lines) and also for
-     * Unicode (non breakable spoaces), {@link Character#isSpaceChar(char)},
-     * {@link Character#isWhitespace(char)}.
-     * 
-     * @param c char to test.
-     * @return true if c is a space, false otherwise.
+     * Tests for whitespace or an ISO control separator.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isSpace(final char c)
     {
-        return (CHARS[c] & SPACE) != 0;
+        return (CHARS[c] & Prop.SPACE.mask) != 0;
     }
 
     /**
-     * Is a word character, letter, but also, '’-_ and some other tweaks for lexical
-     * parsing.
-     * 
-     * @param c char to test.
-     * @return true if c is a token char, false otherwise.
+     * Tests for a potential numeric grouping space.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isThousandsSeparator(final char c)
+    {
+        return (CHARS[c] & Prop.THOUSANDS_SEPARATOR.mask) != 0;
+    }
+
+    /**
+     * Tests for a Unicode titlecase character.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isTitleCase(final char c)
+    {
+        return (CHARS[c] & Prop.TITLECASE.mask) != 0;
+    }
+
+    /**
+     * Tests for admissible inside an Alix word-like token.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isToken(final char c)
     {
-        return (CHARS[c] & TOKEN) != 0;
+        return (CHARS[c] & Prop.TOKEN.mask) != 0;
     }
 
     /**
-     * Is an upper case letter, like {@link Character#isUpperCase(char)}.
-     * 
-     * @param c char to test.
-     * @return true if c is an upper case letter, false otherwise.
+     * Tests for a currency, percentage or degree symbol.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isUnitSymbol(final char c)
+    {
+        return (CHARS[c] & Prop.UNIT_SYMBOL.mask) != 0;
+    }
+
+    /**
+     * Tests for a Unicode uppercase character.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
     public static boolean isUpperCase(final char c)
     {
-        return (CHARS[c] & UPPERCASE) != 0;
+        return (CHARS[c] & Prop.UPPERCASE.mask) != 0;
     }
 
     /**
-     * Get the internal properties for a char as flags.
-     * 
-     * @param c char to test.
-     * @return raw flags as a short.
+     * Tests for a Unicode uppercase or titlecase character.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
      */
-    public static short props(final char c)
+    public static boolean isUpperOrTitleCase(final char c)
+    {
+        return (CHARS[c] & UPPER_OR_TITLE) != 0;
+    }
+
+    /**
+     * Tests for a supported vulgar fraction.
+     * @param c UTF-16 code unit
+     * @return true if the property is present
+     */
+    public static boolean isVulgarFraction(final char c)
+    {
+        return (CHARS[c] & Prop.VULGAR_FRACTION.mask) != 0;
+    }
+
+    /**
+     * Tests for a supported vulgar fraction, accepting a UTF-16 reader result.
+     * @param c UTF-16 code unit or EOF (-1)
+     * @return true if the property is present; false outside the BMP
+     */
+    public static boolean isVulgarFraction(final int c)
+    {
+        return (c >>> 16) == 0 && isVulgarFraction((char) c);
+    }
+
+    /**
+     * Returns all properties in one lookup for callers testing several masks.
+     * @param c UTF-16 code unit
+     * @return internal bit mask of properties
+     */
+    public static int props(final char c)
     {
         return CHARS[c];
     }
@@ -366,15 +509,15 @@ public class Char
     }
 
     /**
-     * Folds a string to ASCII lower-case.
+     * Applies compatibility decomposition, removes combining marks and lowercases.
      * <p>
      * Unicode NFKD decomposition, combining-mark removal, lower-casing.
-     * Handles diacritics ({@code é → e}), ligatures ({@code œ → oe}),
-     * and fullwidth forms ({@code Ａ → a}) in a single pass.
+     * Handles diacritics ({@code é → e}) and fullwidth forms ({@code Ａ → a}).
+     * This is not a general ASCII transliterator: characters such as œ remain.
      * </p>
      *
      * @param s input string
-     * @return folded ASCII lower-case string, may be longer than input
+     * @return folded lower-case string, may be longer than input
      */
     public static String toAscii(final String s)
     {
@@ -382,10 +525,7 @@ public class Char
         final StringBuilder sb = new StringBuilder(nfkd.length());
         for (int i = 0; i < nfkd.length(); i++) {
             final char c = nfkd.charAt(i);
-            final int type = Character.getType(c);
-            if (type == Character.NON_SPACING_MARK
-                || type == Character.COMBINING_SPACING_MARK
-                || type == Character.ENCLOSING_MARK) {
+            if (isMark(c)) {
                 continue;
             }
             sb.append(Character.toLowerCase(c));
@@ -394,14 +534,14 @@ public class Char
     }
     
     /**
-     * Efficient lower casing (test if {@link #isUpperCase(char)} before).
+     * Lowercases an uppercase or titlecase UTF-16 code unit.
      * 
      * @param c char to transform.
      * @return char to lower case.
      */
     public static char toLower(char c)
     {
-        if (!Char.isUpperCase(c))
+        if (!Char.isUpperOrTitleCase(c))
             return c;
         return Character.toLowerCase(c);
     }
@@ -418,31 +558,46 @@ public class Char
         char c;
         for (int i = 0; i < max; i++) {
             c = s.charAt(i);
-            if (!Char.isUpperCase(c))
+            if (!Char.isUpperOrTitleCase(c))
                 continue;
-            // 1003 chars in multiple blocks accept a lower case
-            // a hash of chars is not faster
             s.setCharAt(i, Character.toLowerCase(c));
         }
-        // x6 new StringBuilder( s.toString().toLowerCase() )
         return s;
     }
 
 
     /**
-     * Efficient upper casing (test if {@link #isLowerCase(char)} before).
+     * Returns the character, its property names and its Unicode name.
+     * @param c UTF-16 code unit
+     * @return diagnostic description, including unassigned characters
+     */
+    public static String toString(final char c)
+    {
+        final int flags = CHARS[c];
+        final StringBuilder sb = new StringBuilder();
+        sb.append(c).append('\t');
+        for (final Prop prop : PROPS) {
+            if ((flags & prop.mask) != 0) sb.append(prop.name()).append(' ');
+        }
+        return sb.append(Character.getName(c)).append('\t').toString();
+    }
+
+    /**
+     * Uppercases a lowercase or titlecase UTF-16 code unit.
      * 
      * @param c char to convert.
      * @return converted char.
      */
     public static char toUpper(char c)
     {
-        if (!Char.isLowerCase(c))
+        if (!Char.isLowerCase(c) && !Char.isTitleCase(c))
             return c;
         return Character.toUpperCase(c);
     }
     
+    /** Translation sentinel: keep the original character. */
     private static final int KEEP = -2;
+    /** Translation sentinel: delete the original character. */
     private static final int DELETE = -1;
     
     /**
@@ -451,24 +606,23 @@ public class Char
      * - map by position in 'from' -> 'to'
      * - if source index >= to.length(), delete char
      * - duplicate chars in 'from': first occurrence wins
+     * @param sb mutable text
+     * @param from source characters
+     * @param to replacement characters
      */
     public static void translate(StringBuilder sb, String from, String to) {
         if (sb == null) throw new NullPointerException("sb");
         if (from == null) throw new NullPointerException("from");
         if (to == null) throw new NullPointerException("to");
 
-        int i = 0;
-        while (i < sb.length()) {
-            int action = mapChar(sb.charAt(i), from, to);
-            if (action == KEEP) {
-                i++;
-            } else if (action == DELETE) {
-                sb.deleteCharAt(i);   // stay at same index
-            } else {
-                sb.setCharAt(i, (char) action);
-                i++;
-            }
+        int write = 0;
+        final int length = sb.length();
+        for (int read = 0; read < length; read++) {
+            final char c = sb.charAt(read);
+            final int action = mapChar(c, from, to);
+            if (action != DELETE) sb.setCharAt(write++, action == KEEP ? c : (char) action);
         }
+        sb.setLength(write);
     }
     
 
@@ -478,6 +632,8 @@ public class Char
      * @param chars buffer
      * @param off   start offset (inclusive)
      * @param len   logical length of range to translate
+     * @param from source characters
+     * @param to replacement characters
      * @return new logical length of translated range (because deletions may occur)
      *
      * Result is stored in chars[off .. off+newLen).
@@ -487,7 +643,7 @@ public class Char
         if (chars == null) throw new NullPointerException("chars");
         if (from == null) throw new NullPointerException("from");
         if (to == null) throw new NullPointerException("to");
-        if (off < 0 || len < 0 || off + len > chars.length) {
+        if (off < 0 || len < 0 || off > chars.length - len) {
             throw new IndexOutOfBoundsException(
                 "off=" + off + ", len=" + len + ", chars.length=" + chars.length);
         }
@@ -552,58 +708,19 @@ public class Char
             sb.delete(0, start);
         }
     }
-    // Shared mapping logic
+    /**
+     * Resolves the first occurrence of a character in a translation alphabet.
+     * @param c character to translate
+     * @param from source alphabet
+     * @param to target alphabet
+     * @return replacement character or KEEP or DELETE sentinel
+     */
     private static int mapChar(char c, String from, String to) {
-        int k = firstIndexOf(from, c);   // first occurrence wins
+        int k = from.indexOf(c);   // first occurrence wins
         if (k < 0) return KEEP;
         if (k >= to.length()) return DELETE;
         return to.charAt(k);
     }
     
-    private static int firstIndexOf(String s, char ch) {
-        for (int i = 0; i < s.length(); i++) {
-            if (s.charAt(i) == ch) return i;
-        }
-        return -1;
-    }
-
-    /**
-     * Human readable information about a char.
-     * 
-     * @param c char to test.
-     * @return human readable information.
-     */
-    static public String toString(char c)
-    {
-        short props = CHARS[c];
-        StringBuilder sb = new StringBuilder();
-        sb.append(c).append("\t");
-        if ((props & TOKEN) != 0)
-            sb.append("TOKEN ");
-        if ((props & LETTER) != 0)
-            sb.append("LETTER ");
-        if ((props & SPACE) != 0)
-            sb.append("SPACE ");
-        if ((props & PUNCTUATION) != 0)
-            sb.append("PUNCTUATION ");
-        if ((props & PUNsent) != 0)
-            sb.append("PUNsent ");
-        if ((props & PUNclause) != 0)
-            sb.append("PUNcl ");
-        if ((props & DIGIT) != 0)
-            sb.append("DIGIT ");
-        if ((props & LOWERCASE) != 0)
-            sb.append("LOWERCASE ");
-        if ((props & UPPERCASE) != 0)
-            sb.append("UPPERCASE ");
-        if ((props & MATH) != 0)
-            sb.append("MATH ");
-        if ((props & HIGHSUR) != 0)
-            sb.append("HIGHSUR ");
-        if ((props & LOWSUR) != 0)
-            sb.append("LOWSUR ");
-        sb.append(Character.getName(c).toLowerCase()).append("\t");
-        return sb.toString();
-    }
 
 }

@@ -354,8 +354,8 @@ public class MarkupTokenizer extends Tokenizer
         final char pc = (char) pendingChar;
         pendingChar = -1;
         termAtt.append(pc);
-        if (isNumericSymbol(pc) || isClausePunct(pc)) {
-            posAtt.setPos(isNumericSymbol(pc) ? symbolPos(pc) : PUNCTclause.ordinal());
+        if (Char.isNumericSymbol(pc) || Char.isPUNcl(pc)) {
+            posAtt.setPos(Char.isNumericSymbol(pc) ? symbolPos(pc) : PUNCTclause.ordinal());
             offsetAtt.setOffset(correctOffset(pendingStart), correctOffset(pendingEnd));
             return true;
         }
@@ -495,53 +495,6 @@ public class MarkupTokenizer extends Tokenizer
         if (looksLikeDottedAbbrev(buf, from, len)) return true;
         if (looksLikeHyphenatedInitials(buf, from, len)) return true;
         return brevidots.contains(buf, from, len - from);
-    }
-
-    /**
-     * Test for clause punctuation, kept as standalone single-char tokens.
-     *
-     * @param c character to test
-     * @return {@code true} for clause punctuation
-     */
-    private static boolean isClausePunct(final char c)
-    {
-        switch (c) {
-            case ',':
-            case ';':
-            case ':':
-            case '(':
-            case ')':
-            case '—':
-            case '–':
-            case '"':
-            case '«':
-            case '»':
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * Test for sentence punctuation, merged in runs ("?!", "...").
-     *
-     * @param c character to test
-     * @return {@code true} for sentence punctuation
-     */
-    private static boolean isSentencePunct(final char c)
-    {
-        return c == '.' || c == '…' || c == '?' || c == '!';
-    }
-
-    /**
-     * Test whether a character is an ASCII hyphen-minus or a Unicode minus sign.
-     *
-     * @param c character to test
-     * @return {@code true} for a potential minus sign
-     */
-    private static boolean isMinusSign(final char c)
-    {
-        return c == '-' || c == '\u2212' || c == '\u2010' || c == '\u2011' || c == '\u00AD';
     }
 
     /**
@@ -697,17 +650,6 @@ public class MarkupTokenizer extends Tokenizer
     }
 
     /**
-     * Test whether a character starts a logical line ending.
-     *
-     * @param c character to test
-     * @return {@code true} for LF or CR
-     */
-    private static boolean isLineBreak(final int c)
-    {
-        return c == '\n' || c == '\r';
-    }
-
-    /**
      * Consume one logical line ending from the current cursor. CRLF is consumed as one ending;
      * lone CR and lone LF are also accepted.
      *
@@ -753,7 +695,7 @@ public class MarkupTokenizer extends Tokenizer
             while ((c = peek()) == ' ' || c == '\t') {
                 skip();
             }
-            if (!isLineBreak(c)) break;
+            if (!Char.isLineBreak(c)) break;
             readLineBreak();
             count++;
             end = offset;
@@ -793,16 +735,16 @@ public class MarkupTokenizer extends Tokenizer
             if (Char.isDigit(ch)) {
                 digitsInGroup++;
             }
-            else if (!decimal && isThousandsSeparator(ch)
+            else if (!decimal && Char.isThousandsSeparator(ch)
                     && digitsInGroup > 0 && digitsInGroup <= 3
-                    && Char.isDigit((char) peekAhead(1)) && Char.isDigit((char) peekAhead(2))
-                    && Char.isDigit((char) peekAhead(3)) && !Char.isDigit((char) peekAhead(4))) {
+                    && Char.isDigit(peekAhead(1)) && Char.isDigit(peekAhead(2))
+                    && Char.isDigit(peekAhead(3)) && !Char.isDigit(peekAhead(4))) {
                 skip();
                 digitsInGroup = 0;
                 continue;
             }
             else if (!decimal && (ch == '.' || ch == ',')
-                    && Char.isDigit((char) peekAhead(1))) {
+                    && Char.isDigit(peekAhead(1))) {
                 decimal = true;
             }
             else {
@@ -813,7 +755,7 @@ public class MarkupTokenizer extends Tokenizer
         }
 
         final int next = peek();
-        if (!decimal && isVulgarFraction(next) && termAtt.length() < TOKEN_MAX_SIZE) {
+        if (!decimal && Char.isVulgarFraction(next) && termAtt.length() < TOKEN_MAX_SIZE) {
             termAtt.append((char) next);
             skip();
         }
@@ -824,7 +766,7 @@ public class MarkupTokenizer extends Tokenizer
                 termAtt.append((char) peek());
                 skip();
             }
-            while (termAtt.length() < TOKEN_MAX_SIZE && peek() >= 0 && Char.isDigit((char) peek())) {
+            while (termAtt.length() < TOKEN_MAX_SIZE && peek() >= 0 && Char.isDigit(peek())) {
                 termAtt.append((char) peek());
                 skip();
             }
@@ -855,14 +797,14 @@ public class MarkupTokenizer extends Tokenizer
         final StringBuilder suffix = new StringBuilder(5);
         for (int i = 0; i <= 5; i++) {
             final int c = peekAhead(i);
-            if (c < 0 || !Character.isLetterOrDigit(c)) break;
+            if (c < 0 || !Char.isLetterOrDigit(c)) break;
             if (i == 5) return false;
             suffix.append((char) c);
         }
         // A signed exponent is not an ordinal suffix.
         if (suffix.length() == 1 && suffix.charAt(0) == 'e') {
             final int next = peekAhead(1);
-            if ((next == '+' || next == '-') && Character.isDigit(peekAhead(2))) {
+            if ((next == '+' || next == '-') && Char.isDigit(peekAhead(2))) {
                 return false;
             }
         }
@@ -891,7 +833,7 @@ public class MarkupTokenizer extends Tokenizer
     {
         posAtt.setPos(PUNCTsent.ordinal());
         int c;
-        while ((c = peek()) >= 0 && isSentencePunct((char) c)) {
+        while ((c = peek()) >= 0 && Char.isPUNsent((char) c)) {
             termAtt.append((char) c);
             skip();
         }
@@ -1021,38 +963,7 @@ public class MarkupTokenizer extends Tokenizer
     {
         int c = peekAhead(1);
         if (c == '+' || c == '-' || c == '−') c = peekAhead(2);
-        return c >= 0 && Char.isDigit((char) c);
-    }
-
-    /**
-     * Tests for a Unicode vulgar fraction with a defined numerical value.
-     * @param c character or EOF
-     * @return whether the character is a vulgar fraction
-     */
-    private static boolean isVulgarFraction(final int c)
-    {
-        return c == 0x00BC || c == 0x00BD || c == 0x00BE
-            || (c >= 0x2150 && c <= 0x215E) || c == 0x2189;
-    }
-
-    /**
-     * Tests for symbols that must survive numerical and mathematical tokenization.
-     * @param c source character
-     * @return whether to emit the symbol separately
-     */
-    private static boolean isNumericSymbol(final char c)
-    {
-        return isUnitSymbol(c) || "+×÷=≠≤≥±∓√∑∏∞∫*/⁄<>^".indexOf(c) >= 0;
-    }
-
-    /**
-     * Tests whether a symbol denotes a unit rather than a mathematical operation.
-     * @param c source character
-     * @return true for percentage, degree or currency symbols
-     */
-    private static boolean isUnitSymbol(final char c)
-    {
-        return "%‰‱°".indexOf(c) >= 0 || Character.getType(c) == Character.CURRENCY_SYMBOL;
+        return c >= 0 && Char.isDigit(c);
     }
 
     /**
@@ -1062,21 +973,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private static int symbolPos(final char c)
     {
-        return (isUnitSymbol(c) ? SYMunit : SYMmath).ordinal();
-    }
-
-    /**
-     * Tests whether a character can continue a word, including combining marks
-     * and non-ASCII hyphens inside words.
-     * @param c source character
-     * @return whether the character is word-like
-     */
-    private static boolean isWordChar(final char c)
-    {
-        final int type = Character.getType(c);
-        return !isNumericSymbol(c) && (Char.isToken(c) || c == '\u2010' || c == '\u2011'
-            || type == Character.NON_SPACING_MARK || type == Character.COMBINING_SPACING_MARK
-            || type == Character.LETTER_NUMBER || (type == Character.OTHER_NUMBER && !isVulgarFraction(c)));
+        return (Char.isUnitSymbol(c) ? SYMunit : SYMmath).ordinal();
     }
 
     /**
@@ -1111,7 +1008,7 @@ public class MarkupTokenizer extends Tokenizer
         int c;
         while ((c = peek()) >= 0) {
             final char ch = (char) c;
-            if (isLineBreak(c)) {
+            if (Char.isLineBreak(c)) {
                 afterColon = false;
                 if (readLineBreakRun()) return true;
                 continue;
@@ -1124,7 +1021,7 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 return readTag();
             }
-            if (isClausePunct(ch)) {
+            if (Char.isPUNcl(ch)) {
                 final int start = offset;
                 final boolean colonBefore = afterColon;
                 afterColon = false;
@@ -1148,7 +1045,7 @@ public class MarkupTokenizer extends Tokenizer
                 offsetAtt.setOffset(correctOffset(start), correctOffset(end));
                 return true;
             }
-            if (isSentencePunct(ch)) {
+            if (Char.isPUNsent(ch)) {
                 afterColon = false;
                 return readSentencePunctRun(offset);
             }
@@ -1156,7 +1053,7 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 return readNumber(offset);
             }
-            if (isVulgarFraction(ch)) {
+            if (Char.isVulgarFraction(ch)) {
                 final int start = offset;
                 afterColon = false;
                 termAtt.append(ch);
@@ -1165,7 +1062,7 @@ public class MarkupTokenizer extends Tokenizer
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
-            if (isNumericSymbol(ch)) {
+            if (Char.isNumericSymbol(ch)) {
                 final int start = offset;
                 afterColon = false;
                 termAtt.append(ch);
@@ -1174,17 +1071,17 @@ public class MarkupTokenizer extends Tokenizer
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
-            if (isMinusSign(ch)) {
+            if (Char.isMinusSign(ch)) {
                 final int next = peekAhead(1);
-                if (next >= 0 && (Char.isDigit((char) next) || isVulgarFraction(next)) && !afterNumber && (ch == '-' || ch == '−')) {
+                if (next >= 0 && (Char.isDigit(next) || Char.isVulgarFraction(next)) && !afterNumber && (ch == '-' || ch == '−')) {
                     final int start = offset;
                     afterColon = false;
                     termAtt.append(ch);
                     skip();
                     return readNumber(start);
                 }
-                if (ch == '\u2212' || next < 0 || !isWordChar((char) next)
-                        || Char.isDigit((char) next) || isVulgarFraction(next)) {
+                if (ch == '\u2212' || next < 0 || !Char.isToken((char) next)
+                        || Char.isDigit(next) || Char.isVulgarFraction(next)) {
                     final int start = offset;
                     afterColon = false;
                     termAtt.append(normalizeTokenChar(ch));
@@ -1195,12 +1092,12 @@ public class MarkupTokenizer extends Tokenizer
                     return true;
                 }
             }
-            if (isWordChar(ch)) {
+            if (Char.isToken(ch)) {
                 afterColon = false;
                 if (readWord()) return true;
                 continue; // an entity decoded to a delimiter and the term evaporated
             }
-            if (!isHorizontalSpace(ch)) afterColon = false;
+            if (!Char.isHorizontalSpace(ch)) afterColon = false;
             skip();
         }
         return false;
@@ -1214,29 +1111,12 @@ public class MarkupTokenizer extends Tokenizer
     private boolean uppercaseAfterHorizontalSpace() throws IOException
     {
         int c;
-        while ((c = peek()) >= 0 && isHorizontalSpace((char) c)) {
+        while ((c = peek()) >= 0 && Char.isHorizontalSpace((char) c)) {
             skip();
         }
         if (c < 0) return false;
         final char ch = (char) c;
-        return Character.isUpperCase(ch) || Character.isTitleCase(ch);
-    }
-
-    /** Horizontal spacing which may occur around French guillemets. */
-    private static boolean isHorizontalSpace(final char c)
-    {
-        return c == ' ' || c == '\t' || c == '\u00A0' || c == '\u202F';
-    }
-
-    /**
-     * Test whether a character may separate groups of three digits.
-     *
-     * @param c character to test
-     * @return {@code true} for common thousands-grouping spaces
-     */
-    private static boolean isThousandsSeparator(final char c)
-    {
-        return c == '\u00A0' || c == '\u202F' || c == '\u2009';
+        return Char.isUpperOrTitleCase(ch);
     }
 
     /**
@@ -1276,7 +1156,7 @@ public class MarkupTokenizer extends Tokenizer
                     continue;
                 }
                 termAtt.setLength(spellingStart);
-                if (isClausePunct(decoded) || isSentencePunct(decoded) || isNumericSymbol(decoded)) {
+                if (Char.isPUNcl(decoded) || Char.isPUNsent(decoded) || Char.isNumericSymbol(decoded)) {
                     pendingChar = decoded;
                     pendingStart = entityStart;
                     pendingEnd = offset;
@@ -1308,7 +1188,7 @@ public class MarkupTokenizer extends Tokenizer
             }
 
             // Clause punctuation, sentence punctuation, '<', whitespace: end of word.
-            if (!isWordChar(ch)) break;
+            if (!Char.isToken(ch)) break;
 
             if (ch == '&' && !inCdata) amp = termAtt.length();
             termAtt.append(normalizeTokenChar(ch));
@@ -1468,7 +1348,7 @@ public class MarkupTokenizer extends Tokenizer
 
         final char first = term.charAt(0);
         if (Char.isDigit(first)) return true;
-        if (isMinusSign(first) && length > 1 && Char.isDigit(term.charAt(1))) return true;
-        return Character.isUpperCase(first) || Character.isTitleCase(first);
+        if (Char.isMinusSign(first) && length > 1 && Char.isDigit(term.charAt(1))) return true;
+        return Char.isUpperOrTitleCase(first);
     }
 }
