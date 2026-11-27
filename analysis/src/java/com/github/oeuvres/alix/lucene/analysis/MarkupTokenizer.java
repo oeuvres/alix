@@ -52,6 +52,7 @@ import static com.github.oeuvres.alix.common.Upos.*;
 import com.github.oeuvres.alix.lucene.analysis.TokenStateQueue.OverflowPolicy;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
+import com.github.oeuvres.alix.util.Char.Prop;
 
 /**
  * Tokenizer for Latin-script languages and markup-oriented lexical events. Keeps XML-like tags
@@ -101,6 +102,18 @@ public class MarkupTokenizer extends Tokenizer
 {
     /** Controls whether angle-bracket markup is parsed as XML tokens. */
     public enum MarkupMode { NONE, XML }
+
+    /** Symbols emitted independently of lexical words. */
+    private static final int SYMBOL = Prop.MATH_TOKEN.mask | Prop.UNIT_SYMBOL.mask;
+    /** A digit or a vulgar fraction may begin a numerical literal. */
+    private static final int NUMBER_START = Prop.DIGIT.mask | Prop.VULGAR_FRACTION.mask;
+    /** Properties of a decoded entity that require independent emission. */
+    private static final int ENTITY_DELIMITER = SYMBOL | Prop.PUNCT_CLAUSE.mask | Prop.PUNCT_SENTENCE.mask;
+    /** Ordinary word starts exclude all special dispatch classes. */
+    private static final int WORD_DISPATCH = Prop.TOKEN.mask | NUMBER_START | ENTITY_DELIMITER
+        | Prop.MINUS_SIGN.mask | Prop.LINE_BREAK.mask;
+    /** Characters providing direct sentence-start evidence. */
+    private static final int SENTENCE_START = Prop.DIGIT.mask | Prop.UPPERCASE.mask | Prop.TITLECASE.mask;
 
     /** Max size of a word-like token (not tags). */
     private static final int TOKEN_MAX_SIZE = 256;
@@ -354,8 +367,9 @@ public class MarkupTokenizer extends Tokenizer
         final char pc = (char) pendingChar;
         pendingChar = -1;
         termAtt.append(pc);
-        if (Char.isNumericSymbol(pc) || Char.isPUNcl(pc)) {
-            posAtt.setPos(Char.isNumericSymbol(pc) ? symbolPos(pc) : PUNCTclause.ordinal());
+        final int props = Char.props(pc);
+        if ((props & (SYMBOL | Prop.PUNCT_CLAUSE.mask)) != 0) {
+            posAtt.setPos((props & SYMBOL) != 0 ? symbolPos(props) : PUNCTclause.ordinal());
             offsetAtt.setOffset(correctOffset(pendingStart), correctOffset(pendingEnd));
             return true;
         }
@@ -732,10 +746,11 @@ public class MarkupTokenizer extends Tokenizer
         int c;
         while (termAtt.length() < TOKEN_MAX_SIZE && (c = peek()) >= 0) {
             final char ch = (char) c;
-            if (Char.isDigit(ch)) {
+            final int props = Char.props(ch);
+            if ((props & Prop.DIGIT.mask) != 0) {
                 digitsInGroup++;
             }
-            else if (!decimal && Char.isThousandsSeparator(ch)
+            else if (!decimal && (props & Prop.THOUSANDS_SEPARATOR.mask) != 0
                     && digitsInGroup > 0 && digitsInGroup <= 3
                     && Char.isDigit(peekAhead(1)) && Char.isDigit(peekAhead(2))
                     && Char.isDigit(peekAhead(3)) && !Char.isDigit(peekAhead(4))) {
@@ -762,12 +777,13 @@ public class MarkupTokenizer extends Tokenizer
         else if (termAtt.length() <= TOKEN_MAX_SIZE - 3 && (next == 'e' || next == 'E') && hasExponent()) {
             termAtt.append((char) next);
             skip();
-            if (peek() == '+' || peek() == '-' || peek() == '−') {
-                termAtt.append((char) peek());
+            int exponentChar = peek();
+            if (exponentChar == '+' || exponentChar == '-' || exponentChar == '−') {
+                termAtt.append((char) exponentChar);
                 skip();
             }
-            while (termAtt.length() < TOKEN_MAX_SIZE && peek() >= 0 && Char.isDigit(peek())) {
-                termAtt.append((char) peek());
+            while (termAtt.length() < TOKEN_MAX_SIZE && Char.isDigit(exponentChar = peek())) {
+                termAtt.append((char) exponentChar);
                 skip();
             }
         }
@@ -968,12 +984,12 @@ public class MarkupTokenizer extends Tokenizer
 
     /**
      * Classifies an isolated numerical or mathematical symbol.
-     * @param c source character already recognized as a numerical symbol
+     * @param props properties of a character already recognized as a numerical symbol
      * @return specialized UPOS ordinal
      */
-    private static int symbolPos(final char c)
+    private static int symbolPos(final int props)
     {
-        return (Char.isUnitSymbol(c) ? SYMunit : SYMmath).ordinal();
+        return ((props & Prop.UNIT_SYMBOL.mask) != 0 ? SYMunit : SYMmath).ordinal();
     }
 
     /**
@@ -1008,7 +1024,8 @@ public class MarkupTokenizer extends Tokenizer
         int c;
         while ((c = peek()) >= 0) {
             final char ch = (char) c;
-            if (Char.isLineBreak(c)) {
+            final int props = Char.props(ch);
+            if ((props & Prop.LINE_BREAK.mask) != 0) {
                 afterColon = false;
                 if (readLineBreakRun()) return true;
                 continue;
@@ -1021,7 +1038,19 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 return readTag();
             }
-            if (Char.isPUNcl(ch)) {
+            // Ordinary words and ignored separators bypass exceptional dispatch.
+            final int kind = props & WORD_DISPATCH;
+            if (kind == 0) {
+                if ((props & Prop.HORIZONTAL_SPACE.mask) == 0) afterColon = false;
+                skip();
+                continue;
+            }
+            if (kind == Prop.TOKEN.mask) {
+                afterColon = false;
+                if (readWord()) return true;
+                continue;
+            }
+            if ((props & Prop.PUNCT_CLAUSE.mask) != 0) {
                 final int start = offset;
                 final boolean colonBefore = afterColon;
                 afterColon = false;
@@ -1045,15 +1074,15 @@ public class MarkupTokenizer extends Tokenizer
                 offsetAtt.setOffset(correctOffset(start), correctOffset(end));
                 return true;
             }
-            if (Char.isPUNsent(ch)) {
+            if ((props & Prop.PUNCT_SENTENCE.mask) != 0) {
                 afterColon = false;
                 return readSentencePunctRun(offset);
             }
-            if (Char.isDigit(ch)) {
+            if ((props & Prop.DIGIT.mask) != 0) {
                 afterColon = false;
                 return readNumber(offset);
             }
-            if (Char.isVulgarFraction(ch)) {
+            if ((props & Prop.VULGAR_FRACTION.mask) != 0) {
                 final int start = offset;
                 afterColon = false;
                 termAtt.append(ch);
@@ -1062,26 +1091,27 @@ public class MarkupTokenizer extends Tokenizer
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
-            if (Char.isNumericSymbol(ch)) {
+            if ((props & SYMBOL) != 0) {
                 final int start = offset;
                 afterColon = false;
                 termAtt.append(ch);
                 skip();
-                posAtt.setPos(symbolPos(ch));
+                posAtt.setPos(symbolPos(props));
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
-            if (Char.isMinusSign(ch)) {
+            if ((props & Prop.MINUS_SIGN.mask) != 0) {
                 final int next = peekAhead(1);
-                if (next >= 0 && (Char.isDigit(next) || Char.isVulgarFraction(next)) && !afterNumber && (ch == '-' || ch == '−')) {
+                final int nextProps = next < 0 ? 0 : Char.props((char) next);
+                if ((nextProps & NUMBER_START) != 0 && !afterNumber && (ch == '-' || ch == '−')) {
                     final int start = offset;
                     afterColon = false;
                     termAtt.append(ch);
                     skip();
                     return readNumber(start);
                 }
-                if (ch == '\u2212' || next < 0 || !Char.isToken((char) next)
-                        || Char.isDigit(next) || Char.isVulgarFraction(next)) {
+                if (ch == '\u2212' || (nextProps & Prop.TOKEN.mask) == 0
+                        || (nextProps & NUMBER_START) != 0) {
                     final int start = offset;
                     afterColon = false;
                     termAtt.append(normalizeTokenChar(ch));
@@ -1092,12 +1122,12 @@ public class MarkupTokenizer extends Tokenizer
                     return true;
                 }
             }
-            if (Char.isToken(ch)) {
+            if ((props & Prop.TOKEN.mask) != 0) {
                 afterColon = false;
                 if (readWord()) return true;
                 continue; // an entity decoded to a delimiter and the term evaporated
             }
-            if (!Char.isHorizontalSpace(ch)) afterColon = false;
+            if ((props & Prop.HORIZONTAL_SPACE.mask) == 0) afterColon = false;
             skip();
         }
         return false;
@@ -1111,12 +1141,14 @@ public class MarkupTokenizer extends Tokenizer
     private boolean uppercaseAfterHorizontalSpace() throws IOException
     {
         int c;
-        while ((c = peek()) >= 0 && Char.isHorizontalSpace((char) c)) {
+        while ((c = peek()) >= 0) {
+            final int props = Char.props((char) c);
+            if ((props & Prop.HORIZONTAL_SPACE.mask) == 0) {
+                return (props & (Prop.UPPERCASE.mask | Prop.TITLECASE.mask)) != 0;
+            }
             skip();
         }
-        if (c < 0) return false;
-        final char ch = (char) c;
-        return Char.isUpperOrTitleCase(ch);
+        return false;
     }
 
     /**
@@ -1136,11 +1168,12 @@ public class MarkupTokenizer extends Tokenizer
 
         while ((c = peek()) >= 0) {
             final char ch = (char) c;
+            final int props = Char.props(ch);
 
             // A following letter continues an internal dotted form. A recognized brevidot may
             // also continue with any token char, as the hyphen in "J.-J.".
             if (trailingDot) {
-                if (!Char.isLetter(ch) && !isBrevidot(termAtt.buffer(), termAtt.length())) break;
+                if ((props & Prop.LETTER.mask) == 0 && !isBrevidot(termAtt.buffer(), termAtt.length())) break;
                 trailingDot = false;
             }
 
@@ -1156,7 +1189,8 @@ public class MarkupTokenizer extends Tokenizer
                     continue;
                 }
                 termAtt.setLength(spellingStart);
-                if (Char.isPUNcl(decoded) || Char.isPUNsent(decoded) || Char.isNumericSymbol(decoded)) {
+                final int decodedProps = Char.props(decoded);
+                if ((decodedProps & ENTITY_DELIMITER) != 0) {
                     pendingChar = decoded;
                     pendingStart = entityStart;
                     pendingEnd = offset;
@@ -1166,7 +1200,7 @@ public class MarkupTokenizer extends Tokenizer
                     }
                     return emitPendingChar();
                 }
-                if (Char.isToken(decoded)) {
+                if ((decodedProps & Prop.TOKEN.mask) != 0) {
                     if (termAtt.length() == 0) start = entityStart;
                     termAtt.append(normalizeTokenChar(decoded));
                     continue;
@@ -1188,7 +1222,7 @@ public class MarkupTokenizer extends Tokenizer
             }
 
             // Clause punctuation, sentence punctuation, '<', whitespace: end of word.
-            if (!Char.isToken(ch)) break;
+            if ((props & Prop.TOKEN.mask) == 0) break;
 
             if (ch == '&' && !inCdata) amp = termAtt.length();
             termAtt.append(normalizeTokenChar(ch));
@@ -1347,8 +1381,8 @@ public class MarkupTokenizer extends Tokenizer
         if (length == 0) return false;
 
         final char first = term.charAt(0);
-        if (Char.isDigit(first)) return true;
-        if (Char.isMinusSign(first) && length > 1 && Char.isDigit(term.charAt(1))) return true;
-        return Char.isUpperOrTitleCase(first);
+        final int props = Char.props(first);
+        if ((props & SENTENCE_START) != 0) return true;
+        return (props & Prop.MINUS_SIGN.mask) != 0 && length > 1 && Char.isDigit(term.charAt(1));
     }
 }
