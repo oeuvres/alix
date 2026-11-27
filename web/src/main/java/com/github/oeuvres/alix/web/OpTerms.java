@@ -56,7 +56,8 @@ import static com.github.oeuvres.alix.web.Pars.*;
  *   <tr><td>{@code specif}</td><td>local keyness specificity; default 0.5</td></tr>
  *   <tr><td>{@code simplek}</td><td>optional smoothing centre for Simple Maths scorers</td></tr>
  *   <tr><td>{@code idfexp}</td><td>BM25 IDF exponent; used with vote=none and tsort=bm25 in theme mode</td></tr>
- *   <tr><td>{@code q}</td><td>query terms for co-occurrence mode (future)</td></tr>
+ *   <tr><td>{@code q}</td><td>query terms for co-occurrence mode</td></tr>
+ *   <tr><td>{@code focusrank}</td><td>rrf (default) or common (shared vocabulary of exclusive focuses)</td></tr>
  * </table>
  *
  * <h2>Response</h2>
@@ -137,7 +138,9 @@ public final class OpTerms extends Op
         final SpanWalker walker = new SpanWalker(index.searcher(), rewritten,
             new DocSnippets(DocSnippets.Usage.POSITIONS, slop), filterQuery);
         walker.walk(result);
-        result.complete(scorer, terms, incIds, excIds, tflags);
+        final boolean common = labels.size() >= 2 && "common".equals(pars.getString("focusrank", "rrf"));
+        result.complete(scorer, terms, incIds, excIds, common, tflags);
+        meta.put("focusrank", common ? "common" : "rrf");
         meta.put("pivotCount", result.spanCount());
         return result;
     }

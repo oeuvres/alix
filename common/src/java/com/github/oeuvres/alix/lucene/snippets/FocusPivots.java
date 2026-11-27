@@ -6,6 +6,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import org.apache.lucene.queries.spans.SpanQuery;
 
@@ -20,8 +21,9 @@ import com.github.oeuvres.alix.lucene.terms.TermLexicon.TermFlag;
  * Collects and ranks disjoint populations of merged query snippets. A population
  * mask identifies the focuses matched inside the snippet, before its margins
  * are added. Mask zero denotes an unpartitioned query. Each nonempty population
- * is ranked against the same corpus. Reciprocal rank fusion selects the final
- * terms without comparing keyness values between populations.
+ * is ranked against the same corpus. Reciprocal rank fusion selects a diverse
+ * union of terms; common ranking selects terms with positive keyness in every
+ * exclusive focus population, without comparing keyness values between populations.
  * This collector is request-local and single-use.
  */
 public final class FocusPivots implements SpanWalker.SnippetsConsumer
@@ -53,6 +55,7 @@ public final class FocusPivots implements SpanWalker.SnippetsConsumer
     private final List<Population> populations = new ArrayList<>();
     private final List<Map<Integer, Integer>> ranks = new ArrayList<>();
     private final Map<Integer, Double> fusion = new HashMap<>();
+    private double[] commonScores;
     private int[] selected = new int[0];
     /** Distinct documents containing at least one selected context. */
     private int documentCount;
@@ -105,8 +108,27 @@ public final class FocusPivots implements SpanWalker.SnippetsConsumer
     }
 
     /**
-     * Completes, ranks and fuses the nonempty populations. Query pivots are
-     * retained in token counts but never ranked, even if explicitly included.
+     * Reports whether the final selection uses common-context ranking.
+     * @return true for common-context ranking
+     */
+    public boolean commonRanking()
+    {
+        return commonScores != null;
+    }
+
+    /**
+     * Returns the common-context score of a term, or zero without positive
+     * evidence in every exclusive focus population.
+     * @param termId dense term id
+     * @return reciprocal worst rank, or zero outside common ranking mode
+     */
+    public double commonScore(final int termId)
+    {
+        return commonScores == null ? 0d : commonScores[termId];
+    }
+
+    /**
+     * Completes and ranks the populations using reciprocal rank fusion.
      * @param scorer common keyness scorer, reinitialized for each population
      * @param top maximum number of terms in each ranking and the final result
      * @param include mandatory term ids, or null
@@ -116,10 +138,37 @@ public final class FocusPivots implements SpanWalker.SnippetsConsumer
     public void complete(final KeynessScorer scorer, final int top, final int[] include,
             final int[] exclude, final TermFlag... flags)
     {
+        complete(scorer, top, include, exclude, false, flags);
+    }
+
+    /**
+     * Completes and ranks the nonempty populations. Common ranking uses the
+     * full local rankings and requires positive, finite keyness in every
+     * exclusive (single-bit) population. Joint populations remain available
+     * for display but cannot establish common-context evidence.
+     * Query pivots remain in token counts but are never ranked.
+     * @param scorer common keyness scorer, reinitialized for each population
+     * @param top maximum number of terms in the final result
+     * @param include mandatory term ids, or null
+     * @param exclude excluded term ids, or null
+     * @param common whether to rank shared rather than union vocabulary
+     * @param flags vocabulary filters
+     */
+    public void complete(final KeynessScorer scorer, final int top, final int[] include,
+            final int[] exclude, final boolean common, final TermFlag... flags)
+    {
         if (completed) throw new IllegalStateException("already completed");
+        if (top < 1) throw new IllegalArgumentException("top must be positive");
         this.scorer = scorer;
+        final int vocabSize = stats.vocabSize();
+        final boolean shared = common && !focuses.isEmpty();
+        final int[] support = shared ? new int[vocabSize] : null;
+        final int[] worst = shared ? new int[vocabSize] : null;
+        final long[] rankSum = shared ? new long[vocabSize] : null;
         final BitSet mandatory = new BitSet();
-        if (include != null) for (final int id : include) if (id > 0) mandatory.set(id);
+        if (include != null) {
+            for (final int id : include) if (id > 0 && id < vocabSize) mandatory.set(id);
+        }
         for (final int id : pivotIds) mandatory.clear(id);
         final int[] includes = mandatory.stream().toArray();
         // Preserve a single empty population for an unmatched, unpartitioned query.
@@ -130,20 +179,41 @@ public final class FocusPivots implements SpanWalker.SnippetsConsumer
             final TopTerms terms = termsByMask[mask];
             terms.exclude(exclude).include(includes).exclude(pivotIds);
             if (terms.tokens() == 0) terms.setRanking(new int[0], null, null);
-            else terms.rank(scorer, top, flags);
+            else terms.rank(scorer, shared ? vocabSize : top, flags);
             populations.add(new Population(mask, terms));
             final Map<Integer, Integer> localRanks = new HashMap<>();
             ranks.add(localRanks);
+            final boolean exclusive = shared && Integer.bitCount(mask) == 1;
             int rank = 0;
             for (final TopTerms.TermEntry entry : terms) {
                 final int id = entry.termId();
                 localRanks.put(id, ++rank);
-                // A forced absent or unscorable term is not evidence of recurrence.
-                fusion.merge(id, entry.freq() > 0 && Double.isFinite(entry.score())
-                    ? 1d / (RRF_K + rank) : 0d, Double::sum);
+                final boolean observed = entry.freq() > 0 && Double.isFinite(entry.score());
+                fusion.merge(id, observed ? 1d / (RRF_K + rank) : 0d, Double::sum);
+                if (exclusive && observed && entry.score() > 0d) {
+                    support[id]++;
+                    worst[id] = Math.max(worst[id], rank);
+                    rankSum[id] += rank;
+                }
             }
         }
-        if (populations.size() == 1) {
+        if (shared) {
+            commonScores = new double[vocabSize];
+            for (int id = 1; id < vocabSize; id++) {
+                if (support[id] == focuses.size()) {
+                    commonScores[id] = 1d / (RRF_K + (double) worst[id]);
+                }
+            }
+            selected = IntStream.range(1, vocabSize)
+                .filter(id -> mandatory.get(id) || commonScores[id] > 0d)
+                .boxed().sorted((a, b) -> {
+                    int cmp = Boolean.compare(mandatory.get(b), mandatory.get(a));
+                    if (cmp == 0) cmp = Double.compare(commonScores[b], commonScores[a]);
+                    if (cmp == 0) cmp = Long.compare(rankSum[a], rankSum[b]);
+                    return cmp == 0 ? Integer.compare(a, b) : cmp;
+                }).limit(top).mapToInt(Integer::intValue).toArray();
+        }
+        else if (populations.size() == 1) {
             final List<Integer> ids = new ArrayList<>();
             for (final TopTerms.TermEntry entry : populations.get(0).terms()) ids.add(entry.termId());
             selected = ids.stream().mapToInt(Integer::intValue).toArray();
@@ -276,7 +346,8 @@ public final class FocusPivots implements SpanWalker.SnippetsConsumer
     public SpanQuery query() { return query; }
 
     /**
-     * Returns a term's rank in a population's retained list.
+     * Returns a term's rank in a population's retained list (the full list
+     * in common ranking mode).
      * @param population zero-based population index
      * @param termId dense term id
      * @return one-based rank, zero if not retained

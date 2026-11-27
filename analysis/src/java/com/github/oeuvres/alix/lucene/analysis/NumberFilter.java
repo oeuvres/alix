@@ -58,18 +58,22 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /**
- * Canonicalizes numbers before contextual POS tagging, without a lemmatizer or
- * a locale-specific runtime parser. Output uses ASCII digits, decimal points,
- * and no grouping spaces. Ordinals retain their suffix and NUMord tag.
+ * Annotates numbers before contextual POS tagging, without a lemmatizer or
+ * a locale-specific runtime parser. Numerical lemmas use ASCII digits, decimal
+ * points and no grouping spaces. Ordinals retain their suffix and NUMord tag.
  *
  * <p>Lexical expressions are resolved by longest match against a shared lookup
  * table. Each scale multiplies the preceding block; successive scales must
- * decrease. Ambiguous isolated forms are not normalized. Punctuation, markup,
- * structural boundaries and position gaps interrupt matching.</p>
+ * decrease. Ambiguous isolated dictionary forms receive a numerical lemma
+ * candidate without changing their POS. Punctuation, markup, structural
+ * boundaries and position gaps interrupt matching.</p>
  *
  * <p>Replace-only semantics mirror MweFilter: the first position increment is
  * retained, the consumed positions collapse, and offsets cover the whole match.
- * Exact nonterminating vulgar fractions use a rational string (e.g. 1/3).</p>
+ * The term retains the upstream surface form; aggregated terms are reconstructed
+ * from component terms, inserting a space for a gap in source offsets. Exact
+ * nonterminating vulgar fractions use a rational string (e.g. 1/3). A later
+ * contextual filter must accept or reject ambiguous lemma candidates.</p>
  */
 public final class NumberFilter extends TokenFilter
 {
@@ -149,7 +153,7 @@ public final class NumberFilter extends TokenFilter
     }
 
     /**
-     * Emits a canonical number or the unchanged head of the buffered stream.
+     * Emits a numerical annotation or the head of the buffered stream.
      * @return true if a token is available
      * @throws IOException if the input cannot be read
      */
@@ -175,14 +179,27 @@ public final class NumberFilter extends TokenFilter
         final Match match = parseNumber();
         if (match == null) {
             queue.removeFirst(this);
+            annotateAmbiguous();
             rememberRomanCue();
             return true;
         }
         final int endOffset = queue.get(match.end - 1).getAttribute(OffsetAttribute.class).endOffset();
         queue.restoreTo(this, 0);
-        termAtt.setEmpty().append(match.value);
+        if (match.end > 1) {
+            // Single-token forms are already restored unchanged. Reconstruct only
+            // aggregated forms; the original Reader is not available here.
+            int previousEnd = queue.get(0).getAttribute(OffsetAttribute.class).endOffset();
+            for (int i = 1; i < match.end; i++) {
+                final AttributeSource slot = queue.get(i);
+                final OffsetAttribute offsets = slot.getAttribute(OffsetAttribute.class);
+                if (offsets.startOffset() > previousEnd) termAtt.append(' ');
+                termAtt.append(slot.getAttribute(CharTermAttribute.class));
+                previousEnd = offsets.endOffset();
+            }
+        }
         posAtt.setPos(isOrdinal(match.value) ? NUMord.code : DIGIT.code);
         lemmaAtt.setEmpty();
+        lemmaAtt.append(match.value);
         offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
         lenAtt.setPositionLength(1);
         for (int i = 0; i < match.end; i++) queue.removeFirst();
@@ -201,6 +218,19 @@ public final class NumberFilter extends TokenFilter
         if (queue != null) queue.clear();
         exhausted = false;
         romanCue = false;
+    }
+
+    /**
+     * Publishes an isolated ambiguous dictionary entry as a lemma candidate,
+     * preserving the surface term and the upstream POS. Called only after
+     * the numerical parser has found no confirmed match.
+     */
+    private void annotateAmbiguous()
+    {
+        final char[] value = lexicon.forms.get(termAtt.buffer(), 0, termAtt.length());
+        if (value != null && value.length > 1 && value[0] == '?') {
+            lemmaAtt.copyBuffer(value, 1, value.length - 1);
+        }
     }
 
     /**

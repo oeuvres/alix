@@ -17,12 +17,22 @@ import org.junit.jupiter.api.Test;
 
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchLexicons;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 
 /** Regression tests for the French resource and the generic number filter. */
 public class NumberFilterTest
 {
     private static final NumberFilter.Lexicon NUMBERS = FrenchLexicons.buildNumberLexicon();
-    private record Token(String term, int pos, int start, int end, int increment, int length) {}
+    private record Token(String term, String lemma, int pos, int start, int end, int increment, int length)
+    {
+        /** Returns the confirmed numerical normalization, otherwise the surface term.
+         * @return canonical numerical value or original term
+         */
+        String confirmedForm()
+        {
+            return (pos == DIGIT.code || pos == NUMord.code) && !lemma.isEmpty() ? lemma : term;
+        }
+    }
 
     /**
      * Runs the tokenizer and numeric filter without a POS model.
@@ -49,13 +59,14 @@ public class NumberFilterTest
     {
         final CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
         final PosAttribute pos = stream.addAttribute(PosAttribute.class);
+        final LemmaAttribute lemma = stream.addAttribute(LemmaAttribute.class);
         final OffsetAttribute off = stream.addAttribute(OffsetAttribute.class);
         final PositionIncrementAttribute inc = stream.addAttribute(PositionIncrementAttribute.class);
         final PositionLengthAttribute len = stream.addAttribute(PositionLengthAttribute.class);
         final List<Token> result = new ArrayList<>();
         stream.reset();
         while (stream.incrementToken()) {
-            result.add(new Token(term.toString(), pos.getPos(), off.startOffset(), off.endOffset(),
+            result.add(new Token(term.toString(), lemma.value(), pos.getPos(), off.startOffset(), off.endOffset(),
                 inc.getPositionIncrement(), len.getPositionLength()));
         }
         stream.end();
@@ -70,7 +81,29 @@ public class NumberFilterTest
      */
     private static void terms(final String text, final String... expected) throws IOException
     {
-        assertEquals(List.of(expected), analyze(text).stream().map(Token::term).toList(), text);
+        assertEquals(List.of(expected), analyze(text).stream().map(Token::confirmedForm).toList(), text);
+    }
+
+    /** Tests that numerical annotation preserves surfaces and leaves ambiguity to the tagger. */
+    @Test
+    void lemmaCandidates() throws IOException
+    {
+        final List<Token> tokens = analyze("un objet neuf une seconde");
+        assertEquals(List.of("un", "objet", "neuf", "une", "seconde"),
+            tokens.stream().map(Token::term).toList());
+        assertEquals(List.of("1", "", "9", "1", "2e"),
+            tokens.stream().map(Token::lemma).toList());
+        for (Token token : tokens) {
+            org.junit.jupiter.api.Assertions.assertNotEquals(DIGIT.code, token.pos());
+            org.junit.jupiter.api.Assertions.assertNotEquals(NUMord.code, token.pos());
+        }
+        final List<Token> confirmed = analyze("sept 3,50 vingtième vingt et un");
+        assertEquals(List.of("sept", "3,50", "vingtième", "vingt et un"),
+            confirmed.stream().map(Token::term).toList());
+        assertEquals(List.of("7", "3.5", "20e", "21"),
+            confirmed.stream().map(Token::lemma).toList());
+        assertEquals(List.of(DIGIT.code, DIGIT.code, NUMord.code, DIGIT.code),
+            confirmed.stream().map(Token::pos).toList());
     }
 
     /** Tests cardinal forms, decimal conventions and Swiss French. */
@@ -154,7 +187,7 @@ public class NumberFilterTest
     void offsetsAndPositions() throws IOException
     {
         final List<Token> tokens = analyze("deux cent trente enfants");
-        assertEquals(new Token("230", DIGIT.code, 0, 16, 1, 1), tokens.get(0));
+        assertEquals(new Token("deux cent trente", "230", DIGIT.code, 0, 16, 1, 1), tokens.get(0));
         assertEquals("enfants", tokens.get(1).term());
         assertEquals(17, tokens.get(1).start());
         assertEquals(1, tokens.get(1).increment());
@@ -169,11 +202,11 @@ public class NumberFilterTest
         final MarkupTokenizer tokenizer = new MarkupTokenizer();
         try (TokenStream stream = new NumberFilter(tokenizer, NUMBERS)) {
             tokenizer.setReader(new StringReader("vingt et arbre"));
-            assertEquals(List.of("20", "et", "arbre"), read(stream).stream().map(Token::term).toList());
+            assertEquals(List.of("20", "et", "arbre"), read(stream).stream().map(Token::confirmedForm).toList());
             // Lucene requires close before setting a new Reader on a tokenizer.
             stream.close();
             tokenizer.setReader(new StringReader("un"));
-            assertEquals(List.of("un"), read(stream).stream().map(Token::term).toList());
+            assertEquals(List.of("un"), read(stream).stream().map(Token::confirmedForm).toList());
         }
     }
 }

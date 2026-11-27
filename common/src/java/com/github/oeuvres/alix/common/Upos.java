@@ -159,10 +159,8 @@ public enum Upos implements Tag
     // Ax, numerals
     /** https://universaldependencies.org/u/pos/NUM.html */
     NUM(0xA0),
-    /** Ordinal */
-    NUMord(0xA1),
     /** https://universaldependencies.org/u/pos/SYM.html */
-    SYM(0xA8),
+    SYM(0xA1),
     /** [0-9\-] numbers */
     DIGIT(0x07),
     /** Math operator */
@@ -170,7 +168,11 @@ public enum Upos implements Tag
     /** Physical unit (cm, kg…) */
     UNIT(0xA4),
     /** A number reference, for example p. 50 */
-    REF(0xA2),
+    NUMref(0xA5),
+    /** Ordinal */
+    NUMord(0xA6),
+    /** Ordinal */
+    NUMage(0xA7),
 
     // misc
     /** https://universaldependencies.org/u/pos/INTJ.html */
