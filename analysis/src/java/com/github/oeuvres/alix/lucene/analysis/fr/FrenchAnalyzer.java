@@ -69,8 +69,8 @@ import opennlp.tools.postag.POSModel;
  * <p>The analyzer owns mutable lexical resources. Expressions loaded through
  * {@link #addExpressions(List)} are compiled with the normalization
  * resources present at call time. Previously compiled expressions are not
- * rebuilt when those resources are modified later. Configure normalization and
- * uppercase exceptions before adding expressions, and complete all MWE additions
+ * rebuilt when those resources are modified later. Configure normalization
+ * before adding expressions, and complete all MWE additions
  * before freezing the lexicon or starting analysis.</p>
  */
 public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
@@ -353,15 +353,18 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     }
 
     /**
-     * Builds the canonical filter chain using the same pre-MWE analysis as
-     * dictionary entries, then applies contextual tagging and lemmatization.
+     * Builds the canonical filter chain for running text.
      *
      * @param stream upstream token stream
      * @return final canonical token stream
      */
     private TokenStream canonicChain(final TokenStream stream)
     {
-        TokenStream ts = preMweChain(stream);
+        stream.addAttribute(BoundaryAttribute.class);
+        TokenStream ts = lexicalChain(new MarkupBoundaryFilter(stream));
+        ts = new NumberFilter(ts, numbers);
+        ts = new AgeFilter(ts);
+        ts = new UppercaseFilter(ts, ucwords, 4);
         ts = new MweFilter(ts, expressions);
         ts = new PosTaggingFilter(ts, posTagger);
         ts = new LemmaFilter(ts, lemmaLexicon, propn);
@@ -369,23 +372,18 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     }
 
     /**
-     * Builds the common analysis prefix for corpus tokens and MWE declarations.
-     * No contextual POS tagging, lexical lemmatization, MWE recognition or
-     * cleanup occurs here.
+     * Applies the shared lexical segmentation and normalization rules.
+     * Numerical recognition and case cleanup are specific to running text.
      *
      * @param stream upstream token stream
-     * @return tokens as seen by MweFilter
+     * @return lexically normalized tokens
      */
-    private TokenStream preMweChain(final TokenStream stream)
+    private TokenStream lexicalChain(final TokenStream stream)
     {
         TokenStream ts = stream;
         ts.addAttribute(BoundaryAttribute.class);
-        ts = new MarkupBoundaryFilter(ts);
         ts = new FrenchCliticSplitFilter(ts);
         ts = new ReplaceFilter(ts, normalizer);
-        ts = new NumberFilter(ts, numbers);
-        ts = new AgeFilter(ts);
-        ts = new UppercaseFilter(ts, ucwords, 4);
         return ts;
     }
 
@@ -473,9 +471,10 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /**
      * Analyzer used to compile plain-text MWE declarations and verbal forms.
      *
-     * <p>The chain deliberately omits POS tagging, lemmatization, MWE recognition,
-     * cleanup, and stop-word removal. Unconditional lemma aliases would introduce
-     * false matches for fixed expressions, such as de faire for de fait.
+     * <p>Only lexical segmentation and normalization are applied. Numerical
+     * aggregation, uppercase cleanup, POS tagging and lemmatization are omitted.
+     * Unconditional lemma aliases would introduce false matches for fixed
+     * expressions, such as de faire for de fait.
      * Verbal inflections are supplied separately by the MWE compiler.</p>
      */
     private final class MweEntryAnalyzer extends Analyzer
@@ -490,7 +489,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         protected TokenStreamComponents createComponents(final String fieldName)
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots, MarkupMode.NONE);
-            return new TokenStreamComponents(tokenizer, preMweChain(tokenizer));
+            return new TokenStreamComponents(tokenizer, lexicalChain(tokenizer));
         }
     }
 
