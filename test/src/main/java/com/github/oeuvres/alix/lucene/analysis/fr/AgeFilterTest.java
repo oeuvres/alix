@@ -15,12 +15,14 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.junit.jupiter.api.Test;
 
 import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
+import com.github.oeuvres.alix.lucene.analysis.NumberFilter.Lexicon;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /** Tests the UPOS and lemma contract between tokenizer, number and age filters. */
-public class NumericUposTest
+public class AgeFilterTest
 {
     /** Minimal lexical fixture, independent of production dictionary loading. */
     private static final NumberFilter.Lexicon NUMBERS = lexicon();

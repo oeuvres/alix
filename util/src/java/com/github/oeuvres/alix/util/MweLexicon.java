@@ -32,7 +32,9 @@ import java.util.Objects;
  * Component tokens are stored in a case-insensitive dictionary. Their ordinals
  * are used as automaton arc labels. Canonical multi-word expression forms are
  * stored separately in a case-sensitive dictionary. Their ordinals are used as
- * automaton accept values.
+ * automaton accept values. Each canonical-form ordinal also indexes a parallel
+ * array of integer POS tags. Tag zero means unspecified; all aliases of the
+ * same canonical form share its tag.
  * </p>
  *
  * <p>
@@ -67,6 +69,9 @@ public final class MweLexicon
      */
     private int[] idsBuf;
 
+    /** POS tags indexed by canonical-form ordinal; zero means unspecified. */
+    private int[] tags;
+
     /** Case-insensitive dictionary of component tokens used as automaton arc labels. */
     private final CharsDic tokenDic;
 
@@ -80,6 +85,7 @@ public final class MweLexicon
         this.auto = new IntAutomaton();
         this.formDic = new CharsDic(Math.max(8, expectedSize), false);
         this.idsBuf = new int[8];
+        this.tags = new int[Math.max(8, expectedSize)];
         this.tokenDic = new CharsDic(Math.max(8, expectedSize * 3), true);
     }
 
@@ -97,41 +103,61 @@ public final class MweLexicon
     }
 
     /**
-     * Adds a tokenized expression with an explicit canonical form.
+     * Adds a tokenized expression without declaring a POS tag. An existing tag
+     * for the canonical form is retained.
      *
-     * <p>
-     * Expressions yielding fewer than two non-empty tokens are silently skipped.
-     * If the same case-insensitive token sequence is added more than once, the
-     * last canonical form wins.
-     * </p>
-     *
-     * @param expression the already-tokenized multi-word expression
-     * @param canonical  the case-preserving canonical form to emit when the expression is matched
-     * @throws IllegalStateException if the lexicon has already been frozen
+     * @param expression already-tokenized expression
+     * @param canonical case-preserving canonical form
+     * @throws IllegalStateException if the lexicon is frozen
      */
     public void addExpression(final List<? extends CharSequence> expression, final CharSequence canonical)
     {
+        addExpression(expression, canonical, 0);
+    }
+
+    /**
+     * Adds a tokenized expression with a canonical form and POS tag.
+     * Expressions with fewer than two nonempty tokens are skipped. The last
+     * canonical form registered for a token sequence wins. Aliases of the same
+     * canonical form share one tag; zero never overwrites a declared tag.
+     *
+     * @param expression already-tokenized expression
+     * @param canonical case-preserving canonical form
+     * @param pos nonnegative POS identifier, or zero if unspecified
+     * @throws IllegalArgumentException if the tag is negative or conflicts with
+     *         a nonzero tag already declared for the canonical form
+     * @throws IllegalStateException if the lexicon is frozen
+     */
+    public void addExpression(final List<? extends CharSequence> expression,
+        final CharSequence canonical, final int pos)
+    {
         Objects.requireNonNull(expression, "expression");
         Objects.requireNonNull(canonical, "canonical");
-
         checkMutable();
+        if (pos < 0) throw new IllegalArgumentException("Negative POS: " + pos);
 
         final int count = countTokens(expression);
-        if (count < 2) {
-            return;
+        if (count < 2) return;
+
+        final int formOrd = formDic.add(canonical);
+        if (formOrd >= tags.length) {
+            tags = Arrays.copyOf(tags, Math.max(formOrd + 1, tags.length * 2));
+        }
+        if (pos != 0) {
+            final int previous = tags[formOrd];
+            if (previous != 0 && previous != pos) {
+                throw new IllegalArgumentException("Conflicting POS for " + canonical
+                    + ": " + previous + " and " + pos);
+            }
+            tags[formOrd] = pos;
         }
 
         ensureIdsCapacity(count);
-
         int len = 0;
         for (CharSequence token : expression) {
-            if (token == null || token.length() == 0) {
-                continue;
-            }
+            if (token == null || token.length() == 0) continue;
             idsBuf[len++] = tokenDic.add(token);
         }
-
-        final int formOrd = formDic.add(canonical);
         auto.add(idsBuf, len, formOrd);
     }
 
@@ -200,7 +226,7 @@ public final class MweLexicon
     }
 
     /**
-     * Freezes both dictionaries and packs the automaton into primitive arrays.
+     * Compacts the POS array and both dictionaries, and freezes the automaton.
      * Idempotent. Must be called before runtime matching.
      */
     public void freeze()
@@ -208,6 +234,7 @@ public final class MweLexicon
         if (idsBuf == null) {
             return;
         }
+        tags = Arrays.copyOf(tags, formDic.size());
         formDic.trimToSize();
         tokenDic.trimToSize();
         auto.freeze(false);
@@ -234,6 +261,21 @@ public final class MweLexicon
     {
         checkFrozen();
         return auto.maxLen();
+    }
+
+    /**
+     * Returns the POS tag associated with a canonical form.
+     *
+     * @param ord canonical-form ordinal returned by {@link #accept(int)}
+     * @return the registered POS identifier, or zero if unspecified
+     * @throws IllegalArgumentException if the ordinal is invalid
+     * @throws IllegalStateException if the lexicon is not frozen
+     */
+    public int pos(final int ord)
+    {
+        checkFrozen();
+        formDic.checkOrd(ord);
+        return tags[ord];
     }
 
     /**
