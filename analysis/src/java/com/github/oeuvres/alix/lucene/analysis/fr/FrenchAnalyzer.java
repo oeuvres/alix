@@ -424,7 +424,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     {
         public Word2vecAnalyzer()
         {
-            super();
+            super(PER_FIELD_REUSE_STRATEGY);
         }
 
         @Override
@@ -438,7 +438,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
                 MarkupZoneFilter.Mode.EXCLUDE
             );
             ts = canonicChain(ts);
-            ts = new CleanupFilter(ts, noisetokens, null); // keep function words
+            ts = new CleanupFilter(ts, fieldName, noisetokens, null); // keep function words
             return new TokenStreamComponents(tokenizer, ts);
         }
     }
@@ -453,7 +453,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
          */
         public CanonicAnalyzer()
         {
-            super();
+            super(PER_FIELD_REUSE_STRATEGY);
         }
 
         /**
@@ -467,7 +467,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
             TokenStream ts = canonicChain(tokenizer);
-            ts = new CleanupFilter(ts, noisetokens, gramwords); // remove noise and function words
+            ts = new CleanupFilter(ts, fieldName, noisetokens, gramwords); // remove noise and function words
             return new TokenStreamComponents(tokenizer, ts);
         }
     }

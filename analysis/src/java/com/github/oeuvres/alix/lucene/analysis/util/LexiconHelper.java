@@ -189,6 +189,8 @@ public final class LexiconHelper
 
     /**
      * Loads lexical MWEs with an optional UPOS column, without inflection.
+     * Unsupported POS labels are reported and reduced to a standard UPOS prefix
+     * when possible, or TOKEN otherwise.
      * @param lexicon mutable target lexicon
      * @param analyzer entry analyzer
      * @param csv unread, caller-owned CSV reader
@@ -197,7 +199,7 @@ public final class LexiconHelper
      * @param colCanonical canonical output column; -1 means use source expression
      * @param header header policy
      * @throws UncheckedIOException if reading or analysis fails
-     * @throws IllegalArgumentException if a column index or POS is invalid, or POS conflicts
+     * @throws IllegalArgumentException if a column index is invalid or POS conflicts
      */
     public static void loadExpressions(final MweLexicon lexicon, final Analyzer analyzer,
         final CSVReader csv, final int colExpression, final int colPos, final int colCanonical,
@@ -208,13 +210,13 @@ public final class LexiconHelper
             throw new IllegalArgumentException("Optional column indices must be >= -1");
         }
         final int columns = Math.max(colExpression, Math.max(colPos, colCanonical)) + 1;
-        forEachDataRow(csv, header, columns, colExpression, null, row -> {
+        final Report report = new Report.ReportConsole();
+        forEachDataRow(csv, header, columns, colExpression, report, row -> {
             final String form = row.getCellAsString(colExpression);
             final String output = colCanonical < 0 ? form : row.getCellAsString(colCanonical);
             final String label = colPos < 0 ? "" : row.getCellAsString(colPos).strip();
-            final Upos pos = label.isEmpty() ? Upos.TOKEN : Upos.get(label);
+            final Upos pos = mwePos(label, row, form, report);
             try {
-                if (pos == null) throw new IllegalArgumentException("Unsupported MWE POS: " + label);
                 addExpression(lexicon, analyzer, form, output, pos);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(row.getSpec() + ":" + row.getLineNo()
@@ -228,19 +230,23 @@ public final class LexiconHelper
 
     /**
      * Loads headered form, POS, canonical declarations using a caller-supplied compiler.
+     * Unsupported POS labels are reported and reduced to a standard UPOS prefix
+     * when possible, or left unspecified otherwise.
      * @param csv open CSV reader, owned by the caller
      * @param handler expression registration callback
      * @throws UncheckedIOException if reading or analysis fails
      */
     public static void loadExpressions(final CSVReader csv, final ExpressionHandler handler)
     {
-        forEachDataRow(csv, CsvHeader.SKIP, 3, 0, null, row -> {
+        final Report report = new Report.ReportConsole();
+        forEachDataRow(csv, CsvHeader.SKIP, 3, 0, report, row -> {
             final String form = row.getCellAsString(0).strip();
             if (form.isEmpty()) return;
-            final String pos = row.getCellAsString(1).strip();
+            final Upos pos = mwePos(row.getCellAsString(1).strip(), row, form, report);
             final String canonical = row.getCellAsString(2);
             try {
-                handler.add(form, pos, canonical.isBlank() ? form : canonical);
+                handler.add(form, pos == Upos.TOKEN ? "" : pos.name(),
+                    canonical.isBlank() ? form : canonical);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(row.getSpec() + ":" + row.getLineNo()
                     + " " + form + ": " + e.getMessage(), e);
@@ -258,7 +264,7 @@ public final class LexiconHelper
         /**
          * Registers a declaration.
          * @param form source expression
-         * @param pos declared POS, possibly empty
+         * @param pos resolved UPOS name, or empty for an unspecified POS
          * @param canonical canonical output
          */
         void add(String form, String pos, String canonical);
@@ -597,6 +603,47 @@ public final class LexiconHelper
 
         forEachDataRow(csv, csvHeader, minCols, formCol, report, handler);
         pr.report(csv.getSpec(), report == null ? new Report.ReportConsole() : report);
+    }
+
+    /**
+     * Resolves an MWE POS declaration, preserving supported refinements.
+     * Unsupported refinements fall back to their standard UPOS prefix; labels
+     * with no recognized category become TOKEN. Every fallback is reported.
+     * A blank declaration is intentionally untagged and needs no warning.
+     *
+     * @param label trimmed source POS label
+     * @param row current dictionary row, for diagnostics
+     * @param form source expression
+     * @param report diagnostic sink
+     * @return supported lexical UPOS, or TOKEN when unspecified
+     */
+    private static Upos mwePos(final String label, final CSVReader row,
+        final String form, final Report report)
+    {
+        if (label.isEmpty()) return Upos.TOKEN;
+        Upos tag = Upos.get(label);
+        if (tag == Upos.TOKEN || (tag != null && tag.base() != null)) return tag;
+
+        // Legacy composite labels such as ADP+DET correspond to ADP_DET.
+        tag = Upos.get(label.replace('+', '_'));
+        if (tag == null || tag.base() == null) {
+            tag = Upos.TOKEN;
+            for (Upos base : Upos.values()) {
+                if (base.base() != base) continue;
+                final String prefix = base.name();
+                if (!label.startsWith(prefix) || label.length() == prefix.length()) continue;
+                // Refinements begin with a lowercase suffix or a separator.
+                // Do not interpret an arbitrary uppercase label such as XYZ as X.
+                final char suffix = label.charAt(prefix.length());
+                if (Character.isLowerCase(suffix) || suffix == '_' || suffix == ':' || suffix == '+') {
+                    tag = base;
+                    break;
+                }
+            }
+        }
+        report.warn(row.getSpec() + ":" + row.getLineNo() + " " + form
+            + ": unsupported MWE POS " + label + " -> " + tag.name());
+        return tag;
     }
 
     /**
