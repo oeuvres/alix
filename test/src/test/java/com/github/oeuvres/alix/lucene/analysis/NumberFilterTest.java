@@ -30,7 +30,7 @@ public class NumberFilterTest
          */
         String confirmedForm()
         {
-            return (pos == DIGIT.code || pos == NUMord.code) && !lemma.isEmpty() ? lemma : term;
+            return (pos == NUMcard.ordinal() || pos == ADJord.ordinal()) && !lemma.isEmpty() ? lemma : term;
         }
     }
 
@@ -84,29 +84,9 @@ public class NumberFilterTest
         assertEquals(List.of(expected), analyze(text).stream().map(Token::confirmedForm).toList(), text);
     }
 
-    /** Tests that numerical annotation preserves surfaces and leaves ambiguity to the tagger. */
-    @Test
-    void lemmaCandidates() throws IOException
-    {
-        final List<Token> tokens = analyze("un objet neuf une seconde");
-        assertEquals(List.of("un", "objet", "neuf", "une", "seconde"),
-            tokens.stream().map(Token::term).toList());
-        assertEquals(List.of("1", "", "9", "1", "2e"),
-            tokens.stream().map(Token::lemma).toList());
-        for (Token token : tokens) {
-            org.junit.jupiter.api.Assertions.assertNotEquals(DIGIT.code, token.pos());
-            org.junit.jupiter.api.Assertions.assertNotEquals(NUMord.code, token.pos());
-        }
-        final List<Token> confirmed = analyze("sept 3,50 vingtième vingt et un");
-        assertEquals(List.of("sept", "3,50", "vingtième", "vingt et un"),
-            confirmed.stream().map(Token::term).toList());
-        assertEquals(List.of("7", "3.5", "20e", "21"),
-            confirmed.stream().map(Token::lemma).toList());
-        assertEquals(List.of(DIGIT.code, DIGIT.code, NUMord.code, DIGIT.code),
-            confirmed.stream().map(Token::pos).toList());
-    }
-
-    /** Tests cardinal forms, decimal conventions and Swiss French. */
+    /** Tests cardinal forms, decimal conventions and Swiss French.
+     * @throws IOException on stream error
+     */
     @Test
     void cardinals() throws IOException
     {
@@ -134,7 +114,9 @@ public class NumberFilterTest
         terms("3,50 7.5 −12,5", "3.5", "7.5", "−", "12.5");
     }
 
-    /** Checks that independent numbers, ambiguous words, and punctuation survive. */
+    /** Checks that independent numbers, ambiguous words, and punctuation survive.
+     * @throws IOException on stream error
+     */
     @Test
     void conservativeMatching() throws IOException
     {
@@ -160,7 +142,63 @@ public class NumberFilterTest
         terms("stade I puis III", "stade", "1", "puis", "3");
     }
 
-    /** Checks that canonical ordinals remain distinguishable from cardinals. */
+    /** Tests exact vulgar fractions and preserved numeric symbols.
+     * @throws IOException on stream error
+     */
+    @Test
+    void fractionsAndSymbols() throws IOException
+    {
+        terms("½ 2½ ¼ ¾ ⅓ 2⅓", "0.5", "2.5", "0.25", "0.75", "1/3", "7/3");
+        terms("−½", "-0.5");
+        terms("25% 20°C 3×4 x=2 2/3", "25", "%", "20", "°", "C", "3", "×", "4", "x", "=", "2", "2", "/", "3");
+        final List<Token> tokens = analyze("25% 3×4 7-8 €");
+        assertEquals(List.of(NUMcard.ordinal(), SYMunit.ordinal(), NUMcard.ordinal(),
+            SYMmath.ordinal(), NUMcard.ordinal(), NUMcard.ordinal(), PUNCTclause.ordinal(),
+            NUMcard.ordinal(), SYMunit.ordinal()), tokens.stream().map(Token::pos).toList());
+        assertEquals(List.of("25", "", "3", "", "4", "7", "", "8", ""),
+            tokens.stream().map(Token::lemma).toList());
+    }
+
+    /** Tests that numerical annotation preserves surfaces and leaves ambiguity to the tagger.
+     * @throws IOException on stream error
+     */
+    @Test
+    void lemmaCandidates() throws IOException
+    {
+        final List<Token> tokens = analyze("un objet neuf une seconde");
+        assertEquals(List.of("un", "objet", "neuf", "une", "seconde"),
+            tokens.stream().map(Token::term).toList());
+        assertEquals(List.of("1", "", "9", "1", "2e"),
+            tokens.stream().map(Token::lemma).toList());
+        assertEquals(List.of(TOKEN.ordinal(), TOKEN.ordinal(), TOKEN.ordinal(),
+            TOKEN.ordinal(), TOKEN.ordinal()), tokens.stream().map(Token::pos).toList());
+        final List<Token> confirmed = analyze("sept 3,50 vingtième vingt et un");
+        assertEquals(List.of("sept", "3,50", "vingtième", "vingt et un"),
+            confirmed.stream().map(Token::term).toList());
+        assertEquals(List.of("7", "3.5", "20e", "21"),
+            confirmed.stream().map(Token::lemma).toList());
+        assertEquals(List.of(NUMcard.ordinal(), NUMcard.ordinal(), ADJord.ordinal(), NUMcard.ordinal()),
+            confirmed.stream().map(Token::pos).toList());
+    }
+
+    /** Tests full span offsets, collapsed positions, and lookahead replay.
+     * @throws IOException on stream error
+     */
+    @Test
+    void offsetsAndPositions() throws IOException
+    {
+        final List<Token> tokens = analyze("deux cent trente enfants");
+        assertEquals(new Token("deux cent trente", "230", NUMcard.ordinal(), 0, 16, 1, 1), tokens.get(0));
+        assertEquals("enfants", tokens.get(1).term());
+        assertEquals(17, tokens.get(1).start());
+        assertEquals(1, tokens.get(1).increment());
+        terms("deux <hi>cent</hi> trente enfants", "230", "enfants");
+        terms("deux</p><p>cent", "2", "¶", "100");
+    }
+
+    /** Checks that canonical ordinals remain distinguishable from cardinals.
+     * @throws IOException on stream error
+     */
     @Test
     void ordinals() throws IOException
     {
@@ -169,33 +207,13 @@ public class NumberFilterTest
         terms("deux millième", "2000e");
         terms("2nd 2nde", "2e", "2e");
         final List<Token> tokens = analyze("16 et 16ème");
-        assertEquals(DIGIT.code, tokens.get(0).pos());
-        assertEquals(NUMord.code, tokens.get(2).pos());
+        assertEquals(NUMcard.ordinal(), tokens.get(0).pos());
+        assertEquals(ADJord.ordinal(), tokens.get(2).pos());
     }
 
-    /** Tests exact vulgar fractions and preserved numeric symbols. */
-    @Test
-    void fractionsAndSymbols() throws IOException
-    {
-        terms("½ 2½ ¼ ¾ ⅓ 2⅓", "0.5", "2.5", "0.25", "0.75", "1/3", "7/3");
-        terms("−½", "-0.5");
-        terms("25% 20°C 3×4 x=2 2/3", "25", "%", "20", "°", "C", "3", "×", "4", "x", "=", "2", "2", "/", "3");
-    }
-
-    /** Tests full span offsets, collapsed positions, and lookahead replay. */
-    @Test
-    void offsetsAndPositions() throws IOException
-    {
-        final List<Token> tokens = analyze("deux cent trente enfants");
-        assertEquals(new Token("deux cent trente", "230", DIGIT.code, 0, 16, 1, 1), tokens.get(0));
-        assertEquals("enfants", tokens.get(1).term());
-        assertEquals(17, tokens.get(1).start());
-        assertEquals(1, tokens.get(1).increment());
-        terms("deux <hi>cent</hi> trente enfants", "230", "enfants");
-        terms("deux</p><p>cent", "2", "¶", "100");
-    }
-
-    /** Tests reuse of the same stream and its buffered state. */
+    /** Tests reuse of the same stream and its buffered state.
+     * @throws IOException on stream error
+     */
     @Test
     void reuse() throws IOException
     {
@@ -206,7 +224,7 @@ public class NumberFilterTest
             // Lucene requires close before setting a new Reader on a tokenizer.
             stream.close();
             tokenizer.setReader(new StringReader("un"));
-            assertEquals(List.of("un"), read(stream).stream().map(Token::confirmedForm).toList());
+            assertEquals(List.of(new Token("un", "1", TOKEN.ordinal(), 0, 2, 1, 1)), read(stream));
         }
     }
 }

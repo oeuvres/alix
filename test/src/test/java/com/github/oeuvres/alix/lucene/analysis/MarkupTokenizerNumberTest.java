@@ -53,7 +53,54 @@ public class MarkupTokenizerNumberTest
         assertEquals(List.of(expected), tokenize(source).stream().map(Token::term).toList(), source);
     }
 
-    /** Tests numeric characters and ambiguous ordinary spaces. */
+    /** Exercises lookahead at the CharacterBuffer refill boundary.
+     * @throws IOException on stream error
+     */
+    @Test
+    void bufferRefill() throws IOException
+    {
+        terms(" ".repeat(32766) + "1\u00a0234,56", "1234,56");
+        terms(" ".repeat(32765) + "<!-- > -->12", "<!-- > -->", "12");
+    }
+
+    /** Checks the raw numerical, symbolic and punctuation categories before normalization.
+     * @throws IOException on stream error
+     */
+    @Test
+    void categories() throws IOException
+    {
+        final String source = "25% 16ème 3e10 ½ 20°C 3×4 2&lt;3 − 7-8 €";
+        final List<Token> tokens = tokenize(source);
+        assertEquals(List.of("25", "%", "16ème", "3e10", "½", "20", "°", "C",
+            "3", "×", "4", "2", "<", "3", "−", "7", "-", "8", "€"),
+            tokens.stream().map(Token::term).toList(), source);
+        assertEquals(List.of(NUM.ordinal(), SYMunit.ordinal(), ADJord.ordinal(),
+            NUM.ordinal(), NUM.ordinal(), NUM.ordinal(), SYMunit.ordinal(), TOKEN.ordinal(),
+            NUM.ordinal(), SYMmath.ordinal(), NUM.ordinal(), NUM.ordinal(), SYMmath.ordinal(),
+            NUM.ordinal(), SYMmath.ordinal(), NUM.ordinal(), PUNCTclause.ordinal(),
+            NUM.ordinal(), SYMunit.ordinal()), tokens.stream().map(Token::pos).toList(), source);
+    }
+
+    /** Checks XML markup, quoted delimiters, and visible CDATA content.
+     * @throws IOException on stream error
+     */
+    @Test
+    void markup() throws IOException
+    {
+        terms("<ref n=\"a>b\">12.</ref>", "<ref n=\"a>b\">", "12", ".", "</ref>");
+        terms("a<!-- x > y -->b", "a", "<!-- x > y -->", "b");
+        terms("<?test a>b?>x", "<?test a>b?>", "x");
+        terms("<!DOCTYPE p [<!ENTITY x '>'>]><p>2</p>", "<!DOCTYPE p [<!ENTITY x '>'>]>", "<p>", "2", "</p>");
+        terms("<![CDATA[3<4]]>", "<![CDATA[", "3", "<", "4", "]]>");
+        final List<Token> tokens = tokenize("<ref n='>'>12</ref>");
+        assertEquals(XML.ordinal(), tokens.get(0).pos());
+        assertEquals(11, tokens.get(0).end());
+        assertEquals(11, tokens.get(1).start());
+    }
+
+    /** Tests numeric characters and ambiguous ordinary spaces.
+     * @throws IOException on stream error
+     */
     @Test
     void numbers() throws IOException
     {
@@ -75,30 +122,7 @@ public class MarkupTokenizerNumberTest
         terms("é e\u0301 x²", "é", "e\u0301", "x²");
         terms("a\n\n\nb", "a", "↵↵↵", "b");
         final List<Token> tokens = tokenize("1\u00a0234,56.");
-        assertEquals(new Token("1234,56", DIGIT.code, 0, 8), tokens.get(0));
-        assertEquals(new Token(".", PUNCTsent.code, 8, 9), tokens.get(1));
-    }
-
-    /** Checks XML markup, quoted delimiters, and visible CDATA content. */
-    @Test
-    void markup() throws IOException
-    {
-        terms("<ref n=\"a>b\">12.</ref>", "<ref n=\"a>b\">", "12", ".", "</ref>");
-        terms("a<!-- x > y -->b", "a", "<!-- x > y -->", "b");
-        terms("<?test a>b?>x", "<?test a>b?>", "x");
-        terms("<!DOCTYPE p [<!ENTITY x '>'>]><p>2</p>", "<!DOCTYPE p [<!ENTITY x '>'>]>", "<p>", "2", "</p>");
-        terms("<![CDATA[3<4]]>", "<![CDATA[", "3", "<", "4", "]]>");
-        final List<Token> tokens = tokenize("<ref n='>'>12</ref>");
-        assertEquals(XML.code, tokens.get(0).pos());
-        assertEquals(11, tokens.get(0).end());
-        assertEquals(11, tokens.get(1).start());
-    }
-
-    /** Exercises lookahead at the CharacterBuffer refill boundary. */
-    @Test
-    void bufferRefill() throws IOException
-    {
-        terms(" ".repeat(32766) + "1\u00a0234,56", "1234,56");
-        terms(" ".repeat(32765) + "<!-- > -->12", "<!-- > -->", "12");
+        assertEquals(new Token("1234,56", NUM.ordinal(), 0, 8), tokens.get(0));
+        assertEquals(new Token(".", PUNCTsent.ordinal(), 8, 9), tokens.get(1));
     }
 }
