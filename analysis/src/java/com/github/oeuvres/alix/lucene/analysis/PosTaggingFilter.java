@@ -37,10 +37,12 @@ import static com.github.oeuvres.alix.common.Upos.PUNCTpara;
 import static com.github.oeuvres.alix.common.Upos.PUNCTsection;
 import static com.github.oeuvres.alix.common.Upos.PUNCTsent;
 import static com.github.oeuvres.alix.common.Upos.PUNCTstruct;
+import static com.github.oeuvres.alix.common.Upos.PUNCT;
+import static com.github.oeuvres.alix.common.Upos.PROPN;
+import static com.github.oeuvres.alix.common.Upos.TOKEN;
 import static com.github.oeuvres.alix.common.Upos.XML;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -48,7 +50,7 @@ import java.util.Locale;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.AttributeSource;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
@@ -57,21 +59,17 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import opennlp.tools.util.Sequence;
 
 /**
- * Assigns POS tags to a Lucene token stream by buffering tokens and submitting
- * each sentence or bounded chunk to a shared {@link PosTagger}.
- * <p>
- * Each non-XML Lucene token is submitted to the tagger as exactly one token.
- * Multiword expressions therefore remain single tokens, including any spaces
- * they contain. Structural punctuation supplied by upstream filters is
- * preserved. Sentence boundaries are submitted to the tagger as {@code "."},
- * while XML tokens are omitted.
- * </p>
- * <p>
- * The first lexical token after a sentence boundary is lowercased before it is
- * submitted to the tagger. Leading punctuation does not consume this
- * sentence-initial state, and the state is preserved when a sentence is split
- * because it exceeds {@link #SENTMAX}.
- * </p>
+ * Completes unassigned POS annotations in sentence-sized chunks.
+ *
+ * <p>Only {@link Upos#TOKEN} is eligible for statistical assignment. An
+ * existing grammatical POS constrains decoding through {@link Upos#base()},
+ * without replacing the original tag. Other technical tags are preserved;
+ * XML and empty terms are omitted. Structural boundaries are submitted as
+ * periods. Each submitted token remains one model token, including MWEs.</p>
+ *
+ * <p>Sentence-initial lowercasing is confined to unassigned tokens and uses
+ * the model's dictionary. Terms, lemmas, offsets and positions are unchanged.
+ * A failed decode leaves the upstream annotations intact.</p>
  */
 public class PosTaggingFilter extends TokenFilter
 {
@@ -82,17 +80,18 @@ public class PosTaggingFilter extends TokenFilter
     @SuppressWarnings("unused")
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
-    /** Current token POS; contains upstream structural classes before tagging. */
+    /** Current token POS, including authoritative upstream annotations. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
 
-    /** Current token tagging probability; registering it ensures that buffered states contain it. */
+    /** Current token tagging probability, registered before queue snapshots. */
+    @SuppressWarnings("unused")
     private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
 
     /** Buffered token states for the current sentence or chunk. */
     private TokenStateQueue queue;
 
     /** Queue index to corresponding tagger-token index, or {@code -1} when omitted. */
-    private int[] queueToTagIndex = new int[0];
+    private final int[] queueToTagIndex = new int[SENTMAX];
 
     /** Whether the next lexical token is the first lexical token of a sentence. */
     private boolean sentenceStart = true;
@@ -207,108 +206,79 @@ public class PosTaggingFilter extends TokenFilter
     }
 
     /**
-     * Builds the tagger input for the buffered queue, invokes the tagger, and
-     * writes each tag and probability back to its corresponding Lucene token.
+     * Decodes the buffered tokens with authoritative upstream POS constraints,
+     * then writes model predictions only to unassigned tokens.
      */
     private void tagBufferedQueue()
     {
         final int n = queue.size();
-        if (n == 0) {
-            return;
-        }
-
-        queueToTagIndex = ArrayUtil.grow(queueToTagIndex, n);
+        final String[] sentence = new String[n];
+        final String[] forcedTags = new String[n];
         Arrays.fill(queueToTagIndex, 0, n, -1);
-
-        final List<String> sentence = new ArrayList<>(n);
+        int count = 0;
+        boolean unresolved = false;
 
         for (int i = 0; i < n; i++) {
-            final PosAttribute pos = queue.get(i).getAttribute(PosAttribute.class);
-            if (pos == null) {
-                continue;
+            final AttributeSource slot = queue.get(i);
+            final Upos tag = Upos.get(slot.getAttribute(PosAttribute.class).getPos());
+            if (tag == null) {
+                throw new IllegalStateException("Invalid upstream POS: "
+                    + slot.getAttribute(PosAttribute.class).getPos());
             }
-
-            final int origPos = pos.getPos();
-
-            if (origPos == XML.compareTo(PUNCTsection)) {
-                final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
-                if (prob != null) prob.setProb(1.0);
-                continue;
+            final Upos base = tag.base();
+            if (base != null || tag == XML) {
+                slot.getAttribute(ProbAttribute.class).setProb(1.0);
             }
+            if (tag == XML) continue;
 
-            if (isSentenceBoundary(origPos)) {
-                sentence.add(".");
+            if (isSentenceBoundary(tag.ordinal())) {
+                sentence[count] = ".";
+                forcedTags[count++] = PUNCT.name();
                 sentenceStart = true;
                 continue;
             }
 
-            final CharTermAttribute term = queue.get(i).getAttribute(CharTermAttribute.class);
-            if (term == null || term.length() == 0) {
-                continue;
-            }
-
-            String taggerTerm = term.toString();
-            if (!Upos.isPunct(origPos)) {
-                if (sentenceStart) {
-                    // if not known has PROPN, try lower casing
-                    if (!tagger.hasTag(taggerTerm, "PROPN")) {
-                        final String lowerTerm = taggerTerm.toLowerCase(Locale.ROOT);
-                        String[] tags = tagger.tags(lowerTerm);
-                        // lower case word is known by dic, lower case it
-                        if (tags != null && tags.length != 0) {
-                            taggerTerm = lowerTerm;
-                        }
-                    }
+            final CharTermAttribute term = slot.getAttribute(CharTermAttribute.class);
+            if (term.length() == 0) continue;
+            String word = term.toString();
+            if (base != PUNCT) {
+                if (sentenceStart && tag == TOKEN && !tagger.hasTag(word, PROPN.name())) {
+                    final String lower = word.toLowerCase(Locale.ROOT);
+                    final String[] tags = tagger.tags(lower);
+                    if (tags != null && tags.length != 0) word = lower;
                 }
                 sentenceStart = false;
             }
-
-            queueToTagIndex[i] = sentence.size();
-            sentence.add(taggerTerm);
+            if (tag == TOKEN) {
+                queueToTagIndex[i] = count;
+                unresolved = true;
+            }
+            sentence[count] = word;
+            forcedTags[count] = base == null ? null : base.name();
+            count++;
         }
 
-        if (sentence.isEmpty()) {
-            return;
-        }
-
-        final Sequence sequence = tagger.tag(sentence.toArray(new String[0]));
-        if (sequence == null) {
-            return;
-        }
+        if (!unresolved) return;
+        final String[] words = count == n ? sentence : Arrays.copyOf(sentence, count);
+        final String[] constraints = count == n ? forcedTags : Arrays.copyOf(forcedTags, count);
+        final Sequence sequence = tagger.tag(words, constraints);
+        if (sequence == null) return;
 
         final List<String> tags = sequence.getOutcomes();
         final double[] probabilities = sequence.getProbs();
-        final int taggedLength = Math.min(sentence.size(), Math.min(tags.size(), probabilities.length));
-
+        if (tags.size() != count || probabilities.length != count) return;
+        // Do not apply a partial or unconstrained result.
+        for (int i = 0; i < count; i++) {
+            if (constraints[i] != null && !constraints[i].equals(tags.get(i))) return;
+        }
         for (int i = 0; i < n; i++) {
-            final int tagIndex = queueToTagIndex[i];
-            if (tagIndex < 0 || tagIndex >= taggedLength) {
-                continue;
-            }
-
-            final PosAttribute pos = queue.get(i).getAttribute(PosAttribute.class);
-            if (pos == null || Upos.isPunct(pos.getPos())) {
-                continue;
-            }
-
-            // The tokenizer has identified these from their orthography. Keep
-            // that information even if the statistical model proposes ADJ or X.
-            if (pos.getPos() == Upos.DIGIT.code || pos.getPos() == Upos.NUMord.code) {
-                final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
-                if (prob != null) prob.setProb(1.0);
-                continue;
-            }
-
-            final ProbAttribute prob = queue.get(i).getAttribute(ProbAttribute.class);
-            if (prob != null) {
-                prob.setProb(probabilities[tagIndex]);
-            }
-
-            final Upos taggedPos = Upos.get(tags.get(tagIndex));
-            if (taggedPos != null) {
-                pos.setPos(taggedPos.ordinal());
-            }
+            final int index = queueToTagIndex[i];
+            if (index < 0) continue;
+            final Upos predicted = Upos.get(tags.get(index));
+            if (predicted == null || predicted.base() == null) continue;
+            final AttributeSource slot = queue.get(i);
+            slot.getAttribute(PosAttribute.class).setPos(predicted.ordinal());
+            slot.getAttribute(ProbAttribute.class).setProb(probabilities[index]);
         }
     }
-    
 }

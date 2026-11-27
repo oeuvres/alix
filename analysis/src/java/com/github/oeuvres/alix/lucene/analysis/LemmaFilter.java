@@ -43,70 +43,35 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
+import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.TermProbe;
 import com.github.oeuvres.alix.util.Char;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 
 /**
- * Populates a parallel lemma channel for each token using a {@link LemmaLexicon}.
+ * Resolves numerical lemma candidates and looks up lexical lemmas after POS tagging.
  *
- * <p>This filter never changes the token text carried by {@link CharTermAttribute}.
- * Resolved lemmas are written to {@link LemmaAttribute}; an empty lemma means that
- * no lemma override is required and downstream code may retain the surface form.
+ * <p>Confirmed numerical annotations, canonical ages and quantities, symbols,
+ * keywords, proper names and canonical MWEs are protected. Ambiguous numerical
+ * candidates from {@link NumberFilter} are accepted only with compatible POS;
+ * otherwise they are cleared before lexical lookup. This relies on the current
+ * upstream contract: unresolved numerical candidates are unsigned integers or
+ * integer ordinals ending in {@code e} or {@code er}.</p>
  *
- * <h2>Lookup policy</h2>
+ * <p>Lexical lookup tries the exact POS, its standard UPOS base, then the
+ * POS-independent mapping. The last fallback is not used for rejected numeric
+ * candidates, so an unrelated dictionary sense cannot restore the candidate.
+ * Other upstream lemma overrides are preserved.</p>
  *
- * <p>The filter gives precedence to information that is stronger than a generic
- * dictionary lookup:
- * <ol>
- *   <li>An uppercase form present in the supplied proper-name set is protected,
- *       tagged {@code PROPN}, and is not lemmatized through the word lexicon.</li>
- *   <li>A token already tagged as {@code PROPN} (or a project-specific PROPN
- *       subtype) is protected from common-word lemmatization. Proper-name
- *       normalization belongs to a separate resource.</li>
- *   <li>When a POS is present, lemma lookup first uses that POS. If the
- *       POS-specific mapping is absent, lookup falls back to the POS-agnostic
- *       mapping. The tagger POS is evidence, not an authority for lemma choice.</li>
- *   <li>A sentence-internal capitalized {@code NOUN} is protected from common-word
- *       lemmatization. Its surface form is retained unchanged (for example
- *       {@code Vendéens}, {@code Vierge}, or {@code Bac}) without promoting the
- *       token to {@code PROPN}.</li>
- *   <li>For an uppercase form unknown in its original case, lowercase lookup is
- *       attempted. If the lowercase form is also absent, the token is tagged
- *       {@code PROPN}, even when the statistical tagger proposed another POS.</li>
- *   <li>When POS itself is unknown, sentence position adds a further fallback:
- *       an uppercase token inside a sentence is treated as a proper name, whereas
- *       an uppercase token at sentence start may be probed in lowercase.</li>
- *   <li>A POS-agnostic lemma is therefore both the fallback after a failed
- *       POS-specific lookup and the direct lookup when POS is unknown.</li>
- * </ol>
- *
- * <p>Lowercase probing never rewrites {@code CharTermAttribute}. If the lowercase
- * dictionary form is itself the lemma, it is copied to {@code LemmaAttribute};
- * for example surface {@code Mais} may yield lemma {@code mais}.
- *
- * <h2>Sentence-start state</h2>
- *
- * <p>Start of stream is treated as sentence start. Sentence, paragraph, section,
- * and structural boundaries reset the state. XML and other punctuation do not
- * consume it. The first non-punctuation token consumes the state even when that
- * token is a keyword or a number.
- *
- * <h2>Tokens ignored by design</h2>
- *
- * <p>No lemma is written for XML, punctuation, numbers, keywords, protected or
- * tagged proper names, sentence-internal capitalized nouns, acronyms protected
- * from lowercase probing, unknown forms, or forms for which neither a POS-specific
- * nor a POS-agnostic lemma can be found.
- *
- * @see LemmaAttribute
- * @see LemmaLexicon
- * @see PosAttribute
+ * <p>Known capitalized common words are normalized to lowercase, except
+ * acronyms and protected proper names. Unknown capitalized forms are retained.
+ * Sentence boundaries reset the sentence-start state. XML and punctuation do
+ * not consume it. POS is never changed by lexical lookup; accepted numerical
+ * candidates are refined to NUMcard or ADJord.</p>
  */
 public final class LemmaFilter extends TokenFilter
 {
@@ -128,8 +93,8 @@ public final class LemmaFilter extends TokenFilter
     /** Current POS supplied by upstream analysis. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
     
-    /** Current token tagging probability; registering it ensures that buffered states contain it. */
-    private final ProbAttribute probAtt = addAttribute(ProbAttribute.class);
+    /** Token type identifies already canonical multiword expressions. */
+    private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
 
     /** Sparse output lemma channel. */
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
@@ -178,120 +143,63 @@ public final class LemmaFilter extends TokenFilter
     public boolean incrementToken() throws IOException
     {
         lemmaAtt.setEmpty();
-        if (!input.incrementToken()) {
-            return false;
+        if (!input.incrementToken()) return false;
+
+        final Upos pos = Upos.get(posAtt.getPos());
+        if (pos == null) {
+            throw new IllegalStateException("Invalid upstream POS: " + posAtt.getPos());
         }
-
-        final int posId = posAtt.getPos();
-
-        if (isSentenceBoundary(posId)) {
+        final Upos base = pos.base();
+        if (isSentenceBoundary(pos.ordinal())) {
             sentenceStart = true;
             return true;
         }
+        if (pos == Upos.XML || base == Upos.PUNCT || termAtt.length() == 0) return true;
 
-        // XML and non-boundary punctuation do not consume sentence-start state.
-        if (posId == Upos.XML.ordinal() || Upos.isPunct(posId)) {
-            return true;
-        }
-
-        if (termAtt.length() < 1) {
-            return true;
-        }
-
-        // Any non-punctuation token consumes sentence-start state, even if skipped below.
         final boolean atSentenceStart = sentenceStart;
         sentenceStart = false;
 
-        if (keywordAtt.isKeyword() || Upos.isNum(posId)) {
+        // These annotations have already been resolved by upstream rules.
+        if (pos == Upos.NUMcard || pos == Upos.ADJord
+                || pos == Upos.NOUNage || pos == Upos.NOUNqty || base == Upos.SYM) {
+            return true;
+        }
+
+        // Only unresolved numerical candidates need contextual validation.
+        final Upos candidate = numericCandidate(lemmaAtt);
+        if (candidate != null) {
+            if (!keywordAtt.isKeyword() && (base == Upos.NUM
+                    || (candidate == Upos.ADJord && base == Upos.ADJ))) {
+                posAtt.setPos(candidate.ordinal());
+                return true;
+            }
+            lemmaAtt.setEmpty();
+        }
+        // Retain other upstream lemmas and canonical expressions.
+        if (lemmaAtt.length() != 0 || keywordAtt.isKeyword() || base == Upos.NUM
+                || base == Upos.PROPN || MweFilter.TYPE_MWE.equals(typeAtt.type())) {
             return true;
         }
 
         final boolean uppercase = Char.isUpperCase(termAtt.charAt(0));
-        final boolean hasPos = hasPos(posId);
-
-
-
-        // Protect acronyms from accidental lowercase lexical matches (USA != user, etc.).
-        if (uppercase && termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) {
-            return true;
-        }
-        
-        // Take note of the pos tagger proposition
-        boolean isPROPN = isPROPN(posId);
-        // try to inform lemma
-        int lemmaId = NO_LEMMA;
-        // Not upper case, simple case
-        if (!uppercase) {
-            int termId = lexicon.ord(termAtt);
-            // unknown from dic, go
+        int termId;
+        if (uppercase) {
+            // Protect acronyms and sentence-internal known proper names.
+            if (termAtt.length() > 1 && Char.isUpperCase(termAtt.charAt(1))) return true;
+            if (!atSentenceStart && propn != null && propn.contains(termAtt)) return true;
+            probe.copyFrom(termAtt).toLowerCase();
+            termId = lexicon.ord(probe);
             if (termId < 0) return true;
-            // try form+pos for nicer lemma
-            if (hasPos) {
-                lemmaId = lexicon.lemmaId(termId, posId);
-            }
-            // lemma not found with pos, get 
-            if (lemmaId < 0) {
-                lemmaId = lexicon.lemmaId(termId);
-            }
-            if (lemmaId < 0 || lemmaId == termId) {
-                return true;
-            }
-            copyLemma(lemmaId);
-            return true;
+            // Keep the existing common-word case normalization policy.
+            termAtt.setEmpty().append(probe);
+        }
+        else {
+            termId = lexicon.ord(termAtt);
+            if (termId < 0) return true;
         }
 
-        // Explicit proper-name protection, known to be in the word dictionary,
-        // but could be very common, example Pas (en Artois)
-        final boolean isProtected = (propn != null && propn.contains(termAtt));
-        if (isProtected) {
-            if (!atSentenceStart) {
-                return true;
-            }
-            // at start of sentence, accept only if tagged as PROPN
-            if (isPROPN) {
-                return true;
-            }
-        }
-
-        
-        probe.copyFrom(termAtt).toLowerCase();
-        int termId = lexicon.ord(probe);
-        // Uppercase not known as word and tagged as PROPN, seems safe
-        if (termId < 0 && isPROPN) {
-            return true;
-        }
-        // Uppercase not known as word, but not tagged as PROPN, is the tag of the tagger correct ? 
-        if (termId < 0) {
-            // Could be a German noun, or Révolution, République, do not fix the tag
-            return true;
-        }
-        // Uppercase known as a word, but tagged as PROPN at start of sentence, ex: Blanche
-        // Could be wrong for verses
-        if (atSentenceStart && isPROPN) {
-            return true;
-        }
-        // let’s be confident in the tagger?
-        if (isPROPN) { 
-            return true;
-        }
-        
-        // copy lower cased probe into term
-        termAtt.setEmpty().append(probe);
-        if (hasPos) {
-            lemmaId = lexicon.lemmaId(termId, posId);
-        }
-        if (lemmaId == NO_LEMMA) {
-            lemmaId = lexicon.lemmaId(termId);
-        }
-        // term known but wit
-        if (lemmaId == NO_LEMMA) {
-            return true;
-        }
-
-        if (lemmaId == termId) {
-            return true;
-        }
-        copyLemma(lemmaId);
+        final int lemmaId = lookup(termId, pos, candidate == null);
+        if (lemmaId >= 0 && lemmaId != termId) copyLemma(lemmaId);
         return true;
     }
 
@@ -322,25 +230,44 @@ public final class LemmaFilter extends TokenFilter
     }
 
     /**
-     * Tests whether a POS value is available for a first, POS-specific lemma lookup.
-     *
-     * @param posId POS code
-     * @return {@code true} unless the POS is unset or explicitly unknown
+     * Looks up a lemma using the exact POS, its standard base and optionally
+     * the POS-independent mapping.
+     * @param termId interned surface form
+     * @param pos upstream grammatical tag
+     * @param fallback whether a POS-independent mapping may be used
+     * @return lemma ordinal, or {@link LemmaLexicon#NO_LEMMA}
      */
-    private static boolean hasPos(final int posId)
+    private int lookup(final int termId, final Upos pos, final boolean fallback)
     {
-        return posId > PosAttribute.UNKNOWN && posId != Upos.UNKNOWN.ordinal();
+        final Upos base = pos.base();
+        int lemmaId = NO_LEMMA;
+        if (base != null) {
+            lemmaId = lexicon.lemmaId(termId, pos.ordinal());
+            if (lemmaId == NO_LEMMA && base != pos) {
+                lemmaId = lexicon.lemmaId(termId, base.ordinal());
+            }
+        }
+        if (lemmaId == NO_LEMMA && fallback) lemmaId = lexicon.lemmaId(termId);
+        return lemmaId;
     }
 
     /**
-     * Tests the PROPN code family, including project-specific PROPN subtypes.
-     *
-     * @param posId POS code
-     * @return {@code true} for a proper-name POS
+     * Identifies an unresolved integer or ordinal candidate supplied by NumberFilter.
+     * The numeric grammar itself remains in NumberFilter.
+     * @param lemma upstream lemma value
+     * @return canonical numeric category, or null for a noncandidate
      */
-    private static boolean isPROPN(final int posId)
+    private static Upos numericCandidate(final CharSequence lemma)
     {
-        return posId >= Upos.PROPN.code && posId <= Upos.PROPNgod.code;
+        final int length = lemma.length();
+        if (length == 0) return null;
+        int i = 0;
+        while (i < length && lemma.charAt(i) >= '0' && lemma.charAt(i) <= '9') i++;
+        if (i == 0) return null;
+        if (i == length) return Upos.NUMcard;
+        if (lemma.charAt(i) == 'e' && (i + 1 == length
+                || (i + 2 == length && lemma.charAt(i + 1) == 'r'))) return Upos.ADJord;
+        return null;
     }
 
     /**
@@ -354,6 +281,6 @@ public final class LemmaFilter extends TokenFilter
         return posId == Upos.PUNCTsent.ordinal()
             || posId == Upos.PUNCTpara.ordinal()
             || posId == Upos.PUNCTsection.ordinal()
-            || posId == Upos.PUNCTstruct.ordinal()
+            || posId == Upos.PUNCTstruct.ordinal();
     }
 }

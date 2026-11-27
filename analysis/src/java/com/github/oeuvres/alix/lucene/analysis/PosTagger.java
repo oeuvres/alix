@@ -39,7 +39,6 @@ import opennlp.tools.ml.BeamSearch;
 import opennlp.tools.ml.model.SequenceClassificationModel;
 import opennlp.tools.postag.DefaultPOSSequenceValidator;
 import opennlp.tools.postag.POSContextGenerator;
-import opennlp.tools.postag.POSDictionary;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTaggerFactory;
 import opennlp.tools.postag.POSTaggerME;
@@ -48,29 +47,20 @@ import opennlp.tools.util.Sequence;
 import opennlp.tools.util.SequenceValidator;
 
 /**
- * Shared OpenNLP POS decoder.
+ * Shared OpenNLP POS decoder with optional per-token constraints.
  *
- * <p>This class is thread-safe with OpenNLP 3.0.0-M6. The supplied
- * {@link TagDictionary} must not be mutated concurrently with tagging.</p>
+ * <p>Thread-safe with OpenNLP 3.0.0-M6, provided the supplied tag dictionary
+ * is not mutated concurrently. Forced tags are local to each decoding call.</p>
  */
 public final class PosTagger
 {
-    /** Statistical sequence model used for beam-search decoding. */
     private final SequenceClassificationModel model;
-
-    /** Feature-context generator. */
     private final POSContextGenerator contextGenerator;
-    
-    /** Optional dictionary-aware sequence validator. */
     private final TagDictionary tagDic;
-
-    /** Optional dictionary-aware sequence validator. */
     private final SequenceValidator<String> sequenceValidator;
-    
 
     /**
-     * Builds a decoder using the tag dictionary embedded in the model, if any.
-     *
+     * Builds a decoder using the model's embedded tag dictionary, if any.
      * @param posModel OpenNLP POS model
      */
     public PosTagger(final POSModel posModel)
@@ -79,69 +69,89 @@ public final class PosTagger
     }
 
     /**
-     * Builds a decoder constrained by an external tag dictionary.
-     *
-     * <p>For a token absent from the dictionary, all model outcomes remain
-     * available. For a token present in the dictionary, only its listed tags
-     * are accepted by beam search.</p>
-     *
+     * Builds a decoder with an optional external tag dictionary.
      * @param posModel OpenNLP POS model
-     * @param tagDic external tag dictionary, or {@code null} to use the
-     *        model factory's normal sequence validator
+     * @param tagDic external tag dictionary, or null for the model's dictionary
      */
     public PosTagger(final POSModel posModel, final TagDictionary tagDic)
     {
         Objects.requireNonNull(posModel, "posModel");
-
         final POSTaggerFactory factory = posModel.getFactory();
-
         int beamSize = POSTaggerME.DEFAULT_BEAM_SIZE;
         final String beamSizeString = posModel.getManifestProperty(BeamSearch.BEAM_SIZE_PARAMETER);
         if (beamSizeString != null) {
             beamSize = Integer.parseInt(beamSizeString);
         }
-
-        this.model = Objects.requireNonNull(
-            posModel.getPosSequenceModel(),
-            "POS model has no sequence model"
-        );
+        this.model = Objects.requireNonNull(posModel.getPosSequenceModel(),
+            "POS model has no sequence model");
         this.contextGenerator = factory.getPOSContextGenerator(beamSize);
-        this.tagDic = tagDic;
-        this.sequenceValidator = (tagDic == null)
+        this.tagDic = tagDic == null ? factory.getTagDictionary() : tagDic;
+        this.sequenceValidator = tagDic == null
             ? factory.getSequenceValidator()
             : new DefaultPOSSequenceValidator(tagDic);
     }
-    
-    public String[] tags(final String word)
-    {
-        Objects.requireNonNull(word, "word");
-        return tagDic.getTags(word);
-    }
 
-    
+    /**
+     * Tests whether a tag is listed for a word in the lexical dictionary.
+     * @param word word to look up
+     * @param tag model POS label
+     * @return true if the dictionary lists the label
+     */
     public boolean hasTag(final String word, final String tag)
     {
-        Objects.requireNonNull(word, "word");
         Objects.requireNonNull(tag, "tag");
-        final String[] tags = tagDic.getTags(word);
-        if (tags == null || tags.length < 1) return false;
-        for (String aTag : tags) {
-            if (tag.equals(aTag)) {
-                return true;
-            }
+        final String[] tags = tags(word);
+        if (tags == null) return false;
+        for (String value : tags) {
+            if (tag.equals(value)) return true;
         }
         return false;
     }
 
     /**
-     * Decodes the best POS sequence for a sentence.
-     *
+     * Decodes the best POS sequence subject to the lexical dictionary.
      * @param sentence token sequence
-     * @return best sequence, or {@code null} if no valid sequence exists
+     * @return best sequence, or null if no valid sequence exists
      */
     public Sequence tag(final String[] sentence)
     {
+        return tag(sentence, null);
+    }
+
+    /**
+     * Decodes the best POS sequence with optional authoritative model labels.
+     * Forced labels take precedence over dictionary restrictions. No constraint
+     * is relaxed when decoding fails.
+     * @param sentence token sequence
+     * @param forcedTags parallel model labels; null entries are unconstrained,
+     *        or null for the entire array to use the usual dictionary validator
+     * @return best sequence, or null if no valid sequence exists
+     * @throws IllegalArgumentException if the arrays differ in length
+     */
+    public Sequence tag(final String[] sentence, final String[] forcedTags)
+    {
         Objects.requireNonNull(sentence, "sentence");
-        return model.bestSequence(sentence, null, contextGenerator, sequenceValidator);
+        if (forcedTags == null) {
+            return model.bestSequence(sentence, null, contextGenerator, sequenceValidator);
+        }
+        if (forcedTags.length != sentence.length) {
+            throw new IllegalArgumentException("One forced tag per sentence token is required");
+        }
+        final SequenceValidator<String> validator = (i, input, previous, outcome) ->
+            forcedTags[i] == null
+                ? sequenceValidator.validSequence(i, input, previous, outcome)
+                : forcedTags[i].equals(outcome);
+        return model.bestSequence(sentence, null, contextGenerator, validator);
+    }
+
+    /**
+     * Returns the lexical dictionary's possible labels for a word.
+     * @param word word to look up
+     * @return dictionary labels, or null if no entry or dictionary exists
+     */
+    public String[] tags(final String word)
+    {
+        Objects.requireNonNull(word, "word");
+        return tagDic == null ? null : tagDic.getTags(word);
     }
 }

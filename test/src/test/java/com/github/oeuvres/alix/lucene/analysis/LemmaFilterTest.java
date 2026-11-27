@@ -1,237 +1,239 @@
 package com.github.oeuvres.alix.lucene.analysis;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static com.github.oeuvres.alix.common.Upos.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.junit.jupiter.api.Test;
 
+import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 
-public class LemmaFilterTest {
-
-    // Test-only POS ids. They just need to be consistent within the test + lexicon.
-    private static final int POS_NOUN = 1;
-    private static final int POS_VERB = 2;
-    private static final int POS_ADJ  = 3;
-
-    private LemmaLexicon lex;
-
-    @BeforeEach
-    void setUp() {
-        lex = new LemmaLexicon(64);
-
-        // "saw": noun lemma == surface; verb lemma == "see"
-        put(lex, "saw",  POS_NOUN, "saw");
-        put(lex, "saw",  POS_VERB, "see");
-
-        // "rose": noun "rose"; verb past of rise => "rise"
-        put(lex, "rose", POS_NOUN, "rose");
-        put(lex, "rose", POS_VERB, "rise");
-
-        // "dove": noun "dove"; verb (AmE past of dive) => "dive"
-        put(lex, "dove", POS_NOUN, "dove");
-        put(lex, "dove", POS_VERB, "dive");
-
-        // "shot": noun "shot"; verb past of shoot => "shoot"
-        put(lex, "shot", POS_NOUN, "shot");
-        put(lex, "shot", POS_VERB, "shoot");
-
-        // "left": adjective "left"; verb past of leave => "leave"
-        put(lex, "left", POS_ADJ,  "left");
-        put(lex, "left", POS_VERB, "leave");
-
-        // POS-agnostic (DEFAULT_POS) entries
-        put(lex, "children", LemmaLexicon.ANY_POS, "child");
-        put(lex, "mice",     LemmaLexicon.ANY_POS, "mouse");
-
-        // A normal plural -> singular POS-specific example
-        put(lex, "cats", POS_NOUN, "cat");
-
-        lex.trimToSize();
-    }
-
-    @Test
-    void lemmatizes_homographs_by_pos() throws Exception {
-        // "I saw a saw ."
-        // VERB saw -> see ; NOUN saw -> saw (no rewrite because lemma == surface)
-        assertArrayEquals(
-            new String[] { "I", "see", "a", "saw", "." },
-            runFilter(
-                new String[] { "I", "saw", "a", "saw", "." },
-                new int[]    { -1,  POS_VERB, -1, POS_NOUN, -1 },
-                new boolean[] { false, false, false, false, false }
-            )
-        );
-
-        // "A rose rose ."
-        assertArrayEquals(
-            new String[] { "A", "rose", "rise", "." },
-            runFilter(
-                new String[] { "A", "rose", "rose", "." },
-                new int[]    { -1,  POS_NOUN, POS_VERB, -1 },
-                new boolean[] { false, false, false, false }
-            )
-        );
-
-        // "A dove dove ."
-        assertArrayEquals(
-            new String[] { "A", "dove", "dive", "." },
-            runFilter(
-                new String[] { "A", "dove", "dove", "." },
-                new int[]    { -1,  POS_NOUN, POS_VERB, -1 },
-                new boolean[] { false, false, false, false }
-            )
-        );
-
-        // "They shot the shot ."
-        assertArrayEquals(
-            new String[] { "They", "shoot", "the", "shot", "." },
-            runFilter(
-                new String[] { "They", "shot", "the", "shot", "." },
-                new int[]    { -1,     POS_VERB, -1,  POS_NOUN, -1 },
-                new boolean[] { false, false, false, false, false }
-            )
-        );
-
-        // "The left left ."
-        assertArrayEquals(
-            new String[] { "The", "left", "leave", "." },
-            runFilter(
-                new String[] { "The", "left", "left", "." },
-                new int[]    { -1,    POS_ADJ, POS_VERB, -1 },
-                new boolean[] { false, false, false, false }
-            )
-        );
-    }
-
-    @Test
-    void falls_back_to_default_pos_mapping_when_specific_missing() throws Exception {
-        // children has DEFAULT_POS mapping but no explicit (children, POS_NOUN) mapping
-        assertArrayEquals(
-            new String[] { "child" },
-            runFilter(
-                new String[] { "children" },
-                new int[]    { POS_NOUN },
-                new boolean[] { false }
-            )
-        );
-    }
-
-    @Test
-    void uses_default_mapping_when_pos_is_negative() throws Exception {
-        // LemmaFilter: posId < 0 -> skips exact lookup and tries DEFAULT_POS
-        assertArrayEquals(
-            new String[] { "mouse" },
-            runFilter(
-                new String[] { "mice" },
-                new int[]    { -1 },
-                new boolean[] { false }
-            )
-        );
-    }
-
-    @Test
-    void does_not_touch_keyword_tokens_even_if_mapping_exists() throws Exception {
-        assertArrayEquals(
-            new String[] { "cats" },
-            runFilter(
-                new String[] { "cats" },
-                new int[]    { POS_NOUN },
-                new boolean[] { true } // keyword => bypass
-            )
-        );
-    }
-
-    @Test
-    void leaves_unknown_terms_untouched() throws Exception {
-        assertArrayEquals(
-            new String[] { "quux" },
-            runFilter(
-                new String[] { "quux" },
-                new int[]    { POS_NOUN },
-                new boolean[] { false }
-            )
-        );
-    }
-
-    // -----------------------
-    // Helpers
-    // -----------------------
-
-    private static void put(LemmaLexicon lex, String inflected, int posId, String lemma) {
-        char[] i = inflected.toCharArray();
-        char[] l = lemma.toCharArray();
-        lex.onDuplicate(LemmaLexicon.OnDuplicate.ERROR);
-        lex.put(i, 0, i.length, posId, l, 0, l.length);
-    }
-
-    private String[] runFilter(String[] terms, int[] pos, boolean[] keyword) throws Exception {
-        TokenStream src = new TermPosTokenStream(terms, pos, keyword);
-        TokenStream ts = new LemmaFilter(src, lex);
-
-        List<String> out = new ArrayList<>();
-        CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
-
-        ts.reset();
-        while (ts.incrementToken()) {
-            out.add(termAtt.toString());
+/** Regression tests for contextual numerical and lexical lemma resolution. */
+public class LemmaFilterTest
+{
+    /** Explicit upstream or expected output token. */
+    private record Token(String term, String lemma, Upos pos, boolean keyword, String type)
+    {
+        /** Creates an ordinary token. */
+        Token(String term, String lemma, Upos pos) {
+            this(term, lemma, pos, false, TypeAttribute.DEFAULT_TYPE);
         }
-        ts.end();
-        ts.close();
-
-        return out.toArray(new String[0]);
     }
 
     /**
-     * Minimal TokenStream for tests: emits (term, pos, keyword) triples.
-     * This avoids depending on a tokenizer/tagger in unit tests.
+     * Verifies preservation of numerical and other canonical annotations.
+     * @throws IOException on stream error
      */
-    private static final class TermPosTokenStream extends TokenStream {
-        private final String[] terms;
-        private final int[] pos;
-        private final boolean[] keyword;
-        private int i = 0;
+    @Test
+    public void confirmedAnnotations() throws IOException
+    {
+        final LemmaLexicon lex = new LemmaLexicon(16);
+        lex.put("6ans", "incorrect");
+        lex.put("prendre conscience", "incorrect");
+        lex.put("paris", "incorrect");
+        final List<Token> tokens = List.of(
+            new Token("sept", "7", NUMcard),
+            new Token("troisième", "3e", ADJord),
+            new Token("6ans", "", NOUNage),
+            new Token("25kg", "", NOUNqty),
+            new Token("%", "", SYMunit),
+            new Token("prendre conscience", "", VERB, false, MweFilter.TYPE_MWE),
+            new Token("paris", "", PROPNgeo),
+            new Token("went", "go", VERB),
+            new Token("6", "", NUM));
+        check(lex, tokens, tokens);
+    }
 
-        private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-        private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-        private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
+    /**
+     * Checks the exact POS, base UPOS and independent lemma lookup precedence.
+     * @throws IOException on stream error
+     */
+    @Test
+    public void lexicalLookup() throws IOException
+    {
+        final LemmaLexicon lex = new LemmaLexicon(16);
+        lex.put("saw", "see");
+        lex.put("saw", VERB.ordinal(), "see");
+        lex.put("saw", NOUN.ordinal(), "saw");
+        lex.put("prises", NOUN.ordinal(), "prise");
+        lex.put("prises", VERB.ordinal(), "prendre");
+        lex.put("prises", VERBpartpast.ordinal(), "pris");
+        lex.put("kilogrammes", NOUN.ordinal(), "kilogramme");
+        lex.put("children", "child");
+        lex.put("mice", "mouse");
+        check(lex, List.of(
+            new Token("saw", "", VERB),
+            new Token("saw", "", NOUN),
+            new Token("prises", "", VERBpartpast),
+            new Token("kilogrammes", "", NOUNunit),
+            new Token("children", "", NOUN),
+            new Token("mice", "", TOKEN)), List.of(
+            new Token("saw", "see", VERB),
+            new Token("saw", "", NOUN),
+            new Token("prises", "pris", VERBpartpast),
+            new Token("kilogrammes", "kilogramme", NOUNunit),
+            new Token("children", "child", NOUN),
+            new Token("mice", "mouse", TOKEN)));
+    }
 
-        TermPosTokenStream(String[] terms, int[] pos, boolean[] keyword) {
-            if (terms.length != pos.length) throw new IllegalArgumentException("terms.length != pos.length");
-            if (keyword != null && keyword.length != terms.length) throw new IllegalArgumentException("keyword.length != terms.length");
-            this.terms = terms;
-            this.pos = pos;
-            this.keyword = keyword;
+    /**
+     * Checks cardinal and ordinal candidates against contextual POS, including
+     * rejected candidates for which the independent mapping is inappropriate.
+     * @throws IOException on stream error
+     */
+    @Test
+    public void numericalCandidates() throws IOException
+    {
+        final LemmaLexicon lex = new LemmaLexicon(16);
+        lex.put("un", DET.ordinal(), "un");
+        lex.put("une", DET.ordinal(), "un");
+        lex.put("neuf", ADJ.ordinal(), "neuf");
+        lex.put("secondes", NOUN.ordinal(), "seconde");
+        lex.put("seconde", "second");
+        lex.put("second", "2e");
+        check(lex, List.of(
+            new Token("un", "1", DET),
+            new Token("un", "1", NUM),
+            new Token("une", "1", DETart),
+            new Token("neuf", "9", ADJ),
+            new Token("neuf", "9", NUM),
+            new Token("neuf", "9", TOKEN),
+            new Token("seconde", "2e", NOUN),
+            new Token("secondes", "2e", NOUN),
+            new Token("seconde", "2e", ADJ),
+            new Token("second", "2e", NUM),
+            new Token("second", "2e", NOUN)), List.of(
+            new Token("un", "", DET),
+            new Token("un", "1", NUMcard),
+            new Token("une", "un", DETart),
+            new Token("neuf", "", ADJ),
+            new Token("neuf", "9", NUMcard),
+            new Token("neuf", "", TOKEN),
+            new Token("seconde", "", NOUN),
+            new Token("secondes", "seconde", NOUN),
+            new Token("seconde", "2e", ADJord),
+            new Token("second", "2e", ADJord),
+            new Token("second", "", NOUN)));
+    }
+
+    /**
+     * Checks keyword protection, capitalized words and sentence boundaries.
+     * @throws IOException on stream error
+     */
+    @Test
+    public void protectedForms() throws IOException
+    {
+        final LemmaLexicon lex = new LemmaLexicon(16);
+        lex.put("mais", CCONJ.ordinal(), "mais");
+        lex.put("pas", ADV.ordinal(), "pas");
+        lex.put("cats", NOUN.ordinal(), "cat");
+        final Token keyword = new Token("cats", "", NOUN, true, TypeAttribute.DEFAULT_TYPE);
+        final Token dot = new Token(".", "", PUNCTsent);
+        final Token xml = new Token("<p>", "", XML);
+        final CharArraySet propn = new CharArraySet(List.of("Pas"), false);
+        final List<Token> tokens = List.of(xml, new Token("Mais", "", CCONJ),
+            new Token("Pas", "", ADV), keyword, dot, xml, new Token("Pas", "", ADV));
+        final List<Token> expected = List.of(xml, new Token("mais", "", CCONJ),
+            new Token("Pas", "", ADV), keyword, dot, xml, new Token("pas", "", ADV));
+        try (TokenStream stream = new LemmaFilter(new Fixture(tokens), lex, propn)) {
+            assertEquals(expected, read(stream));
+            assertEquals(expected, read(stream));
         }
+    }
 
+    /**
+     * Compares a complete output stream with the expected token states.
+     * @param lex lemma dictionary
+     * @param tokens upstream tokens
+     * @param expected expected output
+     * @throws IOException on stream error
+     */
+    private static void check(final LemmaLexicon lex, final List<Token> tokens,
+        final List<Token> expected) throws IOException
+    {
+        try (TokenStream stream = new LemmaFilter(new Fixture(tokens), lex)) {
+            assertEquals(expected, read(stream));
+        }
+    }
+
+    /**
+     * Reads terms, lemmas, POS, keywords and token types from a stream.
+     * @param stream input stream
+     * @return token states
+     * @throws IOException on stream error
+     */
+    private static List<Token> read(final TokenStream stream) throws IOException
+    {
+        final CharTermAttribute term = stream.addAttribute(CharTermAttribute.class);
+        final LemmaAttribute lemma = stream.addAttribute(LemmaAttribute.class);
+        final PosAttribute pos = stream.addAttribute(PosAttribute.class);
+        final KeywordAttribute keyword = stream.addAttribute(KeywordAttribute.class);
+        final TypeAttribute type = stream.addAttribute(TypeAttribute.class);
+        final List<Token> result = new ArrayList<>();
+        stream.reset();
+        while (stream.incrementToken()) {
+            result.add(new Token(term.toString(), lemma.value(), Upos.get(pos.getPos()),
+                keyword.isKeyword(), type.type()));
+        }
+        stream.end();
+        return result;
+    }
+
+    /** Controlled upstream token states, independent of statistical predictions. */
+    private static final class Fixture extends TokenStream
+    {
+        private final List<Token> tokens;
+        private int index;
+        private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
+        private final LemmaAttribute lemma = addAttribute(LemmaAttribute.class);
+        private final PosAttribute pos = addAttribute(PosAttribute.class);
+        private final KeywordAttribute keyword = addAttribute(KeywordAttribute.class);
+        private final TypeAttribute type = addAttribute(TypeAttribute.class);
+
+        /**
+         * Creates a reusable stream from explicit token states.
+         * @param tokens input states
+         */
+        Fixture(final List<Token> tokens) { this.tokens = tokens; }
+
+        /**
+         * Emits the next token with its supplied annotations.
+         * @return true if a token is available
+         */
         @Override
-        public boolean incrementToken() throws IOException {
-            if (i >= terms.length) return false;
-
+        public boolean incrementToken()
+        {
+            if (index == tokens.size()) return false;
             clearAttributes();
-            termAtt.setEmpty().append(terms[i]);
-
-            // This is the only line you may need to adapt if your setter is not named setPos(int).
-            posAtt.setPos(pos[i]);
-
-            keywordAtt.setKeyword(keyword != null && keyword[i]);
-
-            i++;
+            final Token token = tokens.get(index++);
+            term.append(token.term());
+            lemma.append(token.lemma());
+            pos.setPos(token.pos().ordinal());
+            keyword.setKeyword(token.keyword());
+            type.setType(token.type());
             return true;
         }
 
+        /**
+         * Resets the fixture for reuse.
+         * @throws IOException on stream error
+         */
         @Override
-        public void reset() throws IOException {
+        public void reset() throws IOException
+        {
             super.reset();
-            i = 0;
+            index = 0;
         }
     }
 }
