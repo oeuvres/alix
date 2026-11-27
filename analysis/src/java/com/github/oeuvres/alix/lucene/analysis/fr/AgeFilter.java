@@ -1,5 +1,7 @@
 package com.github.oeuvres.alix.lucene.analysis.fr;
 
+import static com.github.oeuvres.alix.common.Upos.*;
+
 import java.io.IOException;
 
 import org.apache.lucene.analysis.TokenFilter;
@@ -10,7 +12,6 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeSource;
 
-import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.TokenStateQueue;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
@@ -36,10 +37,12 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  * <p>YEAR, MONTH and DAY in PIAGET are surface decimal integers, respectively
  * 0–18, 0–11 and 0–31. These bounds cannot disambiguate all numerical lists.
  * Ordinary quantities in time units may also denote durations; this filter is
- * intended for corpora where treating them as ages is useful. Ordinal periods
- * retain NUMord rather than being treated as attained ages.</p>
- * <p>Numbers are read preferentially from the lemma, otherwise from the term.
- * Isolated ambiguous words un, une, neuf, second and seconde are confirmed
+ * intended for corpora where treating them as ages is useful. All recognized
+ * expressions receive NOUNage, including ordinal age periods, which retain
+ * their ordinal spelling and are never rounded.</p>
+ * <p>Run after NumberFilter and before contextual POS tagging. Numbers are
+ * read preferentially from the lemma, otherwise from the term.
+ * Ambiguous numerical lemma candidates supplied by NumberFilter are confirmed
  * only when a complete age or period matches. No ordinary token is changed.
  * Matches do not cross structural boundaries or position gaps; punctuation
  * explicitly present in the grammar is allowed. Only the longest accepted
@@ -89,7 +92,7 @@ public final class AgeFilter extends TokenFilter
                        boolean simple, boolean ordinal) {}
 
     /** A complete replacement, with an exclusive end index. */
-    private record Match(int end, String text, int pos) {}
+    private record Match(int end, String text) {}
 
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
@@ -157,7 +160,7 @@ public final class AgeFilter extends TokenFilter
         queue.restoreTo(this, 0);
         termAtt.setEmpty().append(match.text);
         lemmaAtt.setEmpty();
-        posAtt.setPos(match.pos);
+        posAtt.setPos(NOUNage.ordinal());
         offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
         lenAtt.setPositionLength(1);
         for (int i = 0; i < match.end; i++) queue.removeFirst();
@@ -211,8 +214,9 @@ public final class AgeFilter extends TokenFilter
         return token.getAttribute(BoundaryAttribute.class).getBoundary() != BoundaryAttribute.NONE
             || token.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1
             || token.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
-            || pos == Upos.PUNCTpara.ordinal() || pos == Upos.PUNCTsection.ordinal()
-            || pos == Upos.PUNCTstruct.ordinal() || pos == Upos.XML.ordinal();
+            || pos == PUNCTpara.ordinal() || pos == PUNCTsection.ordinal()
+            || pos == PUNCTstruct.ordinal() || pos == PUNCTsent.ordinal()
+            || pos == XML.ordinal();
     }
 
     /**
@@ -264,9 +268,6 @@ public final class AgeFilter extends TokenFilter
         if (digitStart(term) || digitStart(lemma)) return true;
         if (term.length() == 0) return false;
         return switch (Character.toLowerCase(term.charAt(0))) {
-            case 'u' -> eq(term, "un") || eq(term, "une");
-            case 'n' -> eq(term, "neuf");
-            case 's' -> eq(term, "second") || eq(term, "seconde");
             case 'd' -> eq(term, "de");
             case 'e' -> eq(term, "entre");
             default -> false;
@@ -315,7 +316,7 @@ public final class AgeFilter extends TokenFilter
 
     /**
      * Recognizes the canonical cardinal representation of a token.
-     * The old NumberFilter's surface numbers and new numeric lemmas both work.
+     * Canonical surface numbers and numerical lemmas are accepted.
      * @param index lookahead index
      * @return normalized number or null
      * @throws IOException on stream error
@@ -323,16 +324,12 @@ public final class AgeFilter extends TokenFilter
     private String number(final int index) throws IOException
     {
         final AttributeSource token = at(index);
-        if (token == null || token.getAttribute(PosAttribute.class).getPos() == Upos.NUMord.ordinal()) return null;
+        if (token == null || token.getAttribute(PosAttribute.class).getPos() == ADJord.ordinal()) return null;
         final LemmaAttribute lemma = token.getAttribute(LemmaAttribute.class);
         final CharTermAttribute term = token.getAttribute(CharTermAttribute.class);
         String n = cardinal(lemma);
         if (n == null) n = cardinal(term);
-        if (n != null) return n;
-        // Context confirms these only when the entire construction succeeds.
-        if (eq(term, "un") || eq(term, "une")) return "1";
-        if (eq(term, "neuf")) return "9";
-        return null;
+        return n;
     }
 
     /**
@@ -374,7 +371,7 @@ public final class AgeFilter extends TokenFilter
     }
 
     /**
-     * Recognizes a normalized ordinal, including an unresolved second/seconde.
+     * Recognizes a canonical ordinal, including a numerical lemma candidate.
      * @param index lookahead index
      * @return normalized ordinal or null
      * @throws IOException on stream error
@@ -387,9 +384,7 @@ public final class AgeFilter extends TokenFilter
         final CharTermAttribute term = token.getAttribute(CharTermAttribute.class);
         final String l = ordinalForm(lemma);
         if (l != null) return l;
-        final String t = ordinalForm(term);
-        if (t != null) return t;
-        return eq(term, "second") || eq(term, "seconde") ? "2e" : null;
+        return ordinalForm(term);
     }
 
     /**
@@ -515,18 +510,18 @@ public final class AgeFilter extends TokenFilter
         final int start = between || from ? 1 : 0;
         final Age a = age(start, !between);
         if (a == null) return null;
-        if (a.ordinal) return start == 0 ? new Match(a.end, a.text, Upos.NUMord.ordinal()) : null;
+        if (a.ordinal) return start == 0 ? new Match(a.end, a.text) : null;
         if (connector(a.end, between, from)) {
             final Age b = age(a.end + 1, true);
             if (b != null && !b.ordinal && b.unit != null) {
                 final Age left = a.unit == null
                     ? new Age(a.end, a.number + b.unit.suffix, a.number, b.unit,
                         a.months * b.unit.months, true, false) : a;
-                return new Match(b.end, range(left, b), Upos.NUMage.ordinal());
+                return new Match(b.end, range(left, b));
             }
         }
         if (start != 0 || a.unit == null) return null;
-        return new Match(a.end, format(a), Upos.NUMage.ordinal());
+        return new Match(a.end, format(a));
     }
 
     /**

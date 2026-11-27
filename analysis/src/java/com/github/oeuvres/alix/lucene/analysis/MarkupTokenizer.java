@@ -55,10 +55,11 @@ import com.github.oeuvres.alix.util.Char;
 
 /**
  * Tokenizer for Latin-script languages and markup-oriented lexical events. Keeps XML-like tags
- * as tokens (flags XML), clause punctuation as tokens (flags PUNCTclause), sentence punctuation
- * runs as tokens (flags PUNCTsent), numbers as tokens (flags DIGIT or NUMord), and runs of two or more
+ * as tokens (POS XML), clause punctuation as tokens (POS PUNCTclause), sentence punctuation
+ * runs as tokens (POS PUNCTsent), numbers as tokens (POS NUM or ADJord), and runs of two or more
  * logical line endings as one token containing one {@value #LINE_BREAK_MARK} per line ending
- * (flags PUNCTstruct).
+ * (POS PUNCTstruct). Raw cardinal literals carry NUM; NumberFilter resolves
+ * their canonical lemmas and promotes them to NUMcard.
  *
  * <p>An attached trailing dot is always retained by the raw character pass. Configured or
  * structurally recognized brevidots keep it unconditionally. Other dotted tokens are buffered
@@ -170,7 +171,7 @@ public class MarkupTokenizer extends Tokenizer
     /** True after an emitted colon, across horizontal spacing only. */
     private boolean afterColon;
 
-    /** True when the preceding raw token was a digit or ordinal token. */
+    /** True when the preceding raw token was a numeral or ordinal token. */
     private boolean afterNumber;
 
     /** True inside a CDATA section; its contents are ordinary character data. */
@@ -353,8 +354,8 @@ public class MarkupTokenizer extends Tokenizer
         final char pc = (char) pendingChar;
         pendingChar = -1;
         termAtt.append(pc);
-        if (isClausePunct(pc) || isNumericSymbol(pc)) {
-            posAtt.setPos(PUNCTclause.ordinal());
+        if (isNumericSymbol(pc) || isClausePunct(pc)) {
+            posAtt.setPos(isNumericSymbol(pc) ? symbolPos(pc) : PUNCTclause.ordinal());
             offsetAtt.setOffset(correctOffset(pendingStart), correctOffset(pendingEnd));
             return true;
         }
@@ -783,7 +784,7 @@ public class MarkupTokenizer extends Tokenizer
      */
     private boolean readNumber(final int start) throws IOException
     {
-        posAtt.setPos(DIGIT.ordinal());
+        posAtt.setPos(NUM.ordinal());
         int digitsInGroup = 0;
         boolean decimal = false;
         int c;
@@ -829,7 +830,7 @@ public class MarkupTokenizer extends Tokenizer
             }
         }
         else if (termAtt.length() <= TOKEN_MAX_SIZE - 5 && readOrdinalSuffix()) {
-            posAtt.setPos(NUMord.ordinal());
+            posAtt.setPos(ADJord.ordinal());
         }
         offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
         return true;
@@ -1041,7 +1042,27 @@ public class MarkupTokenizer extends Tokenizer
      */
     private static boolean isNumericSymbol(final char c)
     {
-        return "%‰‱°+×÷=≠≤≥±∓√∑∏∞∫*/⁄<>^".indexOf(c) >= 0;
+        return isUnitSymbol(c) || "+×÷=≠≤≥±∓√∑∏∞∫*/⁄<>^".indexOf(c) >= 0;
+    }
+
+    /**
+     * Tests whether a symbol denotes a unit rather than a mathematical operation.
+     * @param c source character
+     * @return true for percentage, degree or currency symbols
+     */
+    private static boolean isUnitSymbol(final char c)
+    {
+        return "%‰‱°".indexOf(c) >= 0 || Character.getType(c) == Character.CURRENCY_SYMBOL;
+    }
+
+    /**
+     * Classifies an isolated numerical or mathematical symbol.
+     * @param c source character already recognized as a numerical symbol
+     * @return specialized UPOS ordinal
+     */
+    private static int symbolPos(final char c)
+    {
+        return (isUnitSymbol(c) ? SYMunit : SYMmath).ordinal();
     }
 
     /**
@@ -1069,7 +1090,7 @@ public class MarkupTokenizer extends Tokenizer
     private boolean readToken() throws IOException
     {
         final boolean found = readRawToken();
-        afterNumber = found && (posAtt.getPos() == DIGIT.ordinal() || posAtt.getPos() == NUMord.ordinal());
+        afterNumber = found && (posAtt.getPos() == NUM.ordinal() || posAtt.getPos() == ADJord.ordinal());
         return found;
     }
 
@@ -1140,7 +1161,7 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 termAtt.append(ch);
                 skip();
-                posAtt.setPos(DIGIT.ordinal());
+                posAtt.setPos(NUM.ordinal());
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
@@ -1149,7 +1170,7 @@ public class MarkupTokenizer extends Tokenizer
                 afterColon = false;
                 termAtt.append(ch);
                 skip();
-                posAtt.setPos(PUNCTclause.ordinal());
+                posAtt.setPos(symbolPos(ch));
                 offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                 return true;
             }
@@ -1168,7 +1189,8 @@ public class MarkupTokenizer extends Tokenizer
                     afterColon = false;
                     termAtt.append(normalizeTokenChar(ch));
                     skip();
-                    posAtt.setPos(PUNCTclause.ordinal());
+                    // Hyphens may delimit ranges; the Unicode minus is mathematical.
+                    posAtt.setPos((ch == '−' ? SYMmath : PUNCTclause).ordinal());
                     offsetAtt.setOffset(correctOffset(start), correctOffset(offset));
                     return true;
                 }
@@ -1394,6 +1416,9 @@ public class MarkupTokenizer extends Tokenizer
                 final char c = termAtt.charAt(0);
                 if (c == ',' || c == ';' || c == ':') return; // keeps all pending dots
                 continue; // quotes, parentheses, dashes: transparent
+            }
+            if (pos == SYMmath.ordinal() || pos == SYMunit.ordinal()) {
+                continue; // symbols are transparent to the pending-dot decision
             }
             if (isUnknownDotted()) {
                 rememberCandidate(lookahead.size() - 1);

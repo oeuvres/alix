@@ -60,7 +60,8 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 /**
  * Annotates numbers before contextual POS tagging, without a lemmatizer or
  * a locale-specific runtime parser. Numerical lemmas use ASCII digits, decimal
- * points and no grouping spaces. Ordinals retain their suffix and NUMord tag.
+ * points and no grouping spaces. Resolved cardinals receive NUMcard; ordinals
+ * retain their suffix and receive ADJord. Raw NUM tokens come from the tokenizer.
  *
  * <p>Lexical expressions are resolved by longest match against a shared lookup
  * table. Each scale multiplies the preceding block; successive scales must
@@ -179,7 +180,7 @@ public final class NumberFilter extends TokenFilter
         final Match match = parseNumber();
         if (match == null) {
             queue.removeFirst(this);
-            annotateAmbiguous();
+            if (!blocksNumber(posAtt.getPos())) annotateAmbiguous();
             rememberRomanCue();
             return true;
         }
@@ -197,7 +198,7 @@ public final class NumberFilter extends TokenFilter
                 previousEnd = offsets.endOffset();
             }
         }
-        posAtt.setPos(isOrdinal(match.value) ? NUMord.code : DIGIT.code);
+        posAtt.setPos(isOrdinal(match.value) ? ADJord.ordinal() : NUMcard.ordinal());
         lemmaAtt.setEmpty();
         lemmaAtt.append(match.value);
         offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
@@ -240,8 +241,8 @@ public final class NumberFilter extends TokenFilter
     private boolean mayStartNumber()
     {
         final int pos = posAtt.getPos();
-        if (pos == XML.code || Upos.isPunct(pos) || termAtt.length() == 0) return false;
-        if (pos == DIGIT.code || pos == NUMord.code) return true;
+        if (blocksNumber(pos) || termAtt.length() == 0) return false;
+        if (pos == NUM.ordinal() || pos == NUMcard.ordinal() || pos == ADJord.ordinal()) return true;
         final char[] chars = termAtt.buffer();
         final int length = termAtt.length();
         if (lexicon.forms.containsKey(chars, 0, length) || lexicon.prefixes.contains(chars, 0, length)) return true;
@@ -256,10 +257,21 @@ public final class NumberFilter extends TokenFilter
         return false;
     }
 
+    /**
+     * Tests for structural or symbolic tokens that cannot join a number.
+     * @param pos upstream UPOS ordinal
+     * @return true for invalid codes, markup, punctuation or symbols
+     */
+    private static boolean blocksNumber(final int pos)
+    {
+        final Upos tag = get(pos);
+        return tag == null || tag == XML || tag.base() == PUNCT || tag.base() == SYM;
+    }
+
     /** Records whether the emitted token licenses a following single Roman numeral. */
     private void rememberRomanCue()
     {
-        romanCue = !Upos.isPunct(posAtt.getPos()) && posAtt.getPos() != XML.ordinal()
+        romanCue = !blocksNumber(posAtt.getPos())
             && lexicon.romanCues.contains(termAtt.buffer(), 0, termAtt.length());
     }
 
@@ -290,7 +302,7 @@ public final class NumberFilter extends TokenFilter
         if (!ensure(index)) return false;
         final AttributeSource slot = queue.get(index);
         final int pos = slot.getAttribute(PosAttribute.class).getPos();
-        if (pos == XML.code || Upos.isPunct(pos)
+        if (blocksNumber(pos)
                 || slot.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
                 || slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 0) return false;
         return index == 0 || (slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 1
@@ -310,7 +322,7 @@ public final class NumberFilter extends TokenFilter
         final CharTermAttribute term = slot.getAttribute(CharTermAttribute.class);
         final int pos = slot.getAttribute(PosAttribute.class).getPos();
         final String raw = term.toString();
-        if (pos == DIGIT.code || pos == NUMord.code) {
+        if (pos == NUM.ordinal() || pos == NUMcard.ordinal() || pos == ADJord.ordinal()) {
             final String literal = normalizeLiteral(raw);
             if (literal == null) return null;
             if (isUnsignedInteger(literal) && eligible(start + 1)) {
