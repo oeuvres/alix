@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.hunspell.AffixedWord;
@@ -25,6 +26,7 @@ import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.MweLexicon;
+import com.github.oeuvres.alix.util.Report;
 
 /**
  * Compiles French lexical MWE declarations, optionally
@@ -90,21 +92,32 @@ final class VerbalMweCompiler
      * @param canonical canonical output
      * @return true when the explicit expression contains at least two nonempty tokens
      * @throws UncheckedIOException if token analysis fails
-     * @throws IllegalArgumentException if a declared POS is unsupported or conflicts
      */
     public boolean addExpression(final CharSequence expression,
         final CharSequence pos, final CharSequence canonical)
     {
+        final Report report = new Report.ReportConsole();
+        final Consumer<String> warn = message -> report.warn(expression + ": " + message);
+        return addExpression(expression, LexiconHelper.resolveMwePos(pos.toString(), warn),
+            canonical, warn);
+    }
+
+    /**
+     * Registers a resolved declaration and expands its verbal head when applicable.
+     * @param expression source expression
+     * @param tag resolved lexical POS
+     * @param canonical canonical output
+     * @param warn diagnostic callback with source location
+     * @return true when the expression was registered
+     */
+    private boolean addExpression(final CharSequence expression, final Upos tag,
+        final CharSequence canonical, final Consumer<String> warn)
+    {
         final List<String> forms = LexiconHelper.expressionForms(analyzer, expression);
         final String output = LexiconHelper.expressionOutput(expression, canonical);
         if (forms.size() < 2 || output.isEmpty()) return false;
-        final String label = pos.toString().strip();
-        final Upos tag = label.isEmpty() ? TOKEN : FrenchLexicons.lexicalPos(label);
-        if (tag == null || (tag != TOKEN && tag.base() == null)) {
-            throw new IllegalArgumentException("Unsupported MWE POS: " + label + " for " + expression);
-        }
         // Explicit declarations always win, including over earlier generated keys.
-        lexicon.addExpression(forms, output, tag.ordinal());
+        LexiconHelper.registerExpression(lexicon, forms, output, tag, warn);
         registered.add(key(forms));
         if (tag != VERB) {
             return true;
@@ -128,7 +141,7 @@ final class VerbalMweCompiler
             }
             candidate.set(head, normalized.get(0));
             if (registered.add(key(candidate))) {
-                lexicon.addExpression(candidate, output, tag.ordinal());
+                lexicon.addExpression(candidate, output);
             }
         }
         return true;

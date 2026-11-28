@@ -90,6 +90,8 @@ public enum Upos
     NOUNqty(NOUN),
     /** Lexical or alphabetic measurement unit, e.g. kilogramme or kg. */
     NOUNunit(NOUN),
+    /** Species */
+    NOUNbio(NOUN),
 
     /** Numeral. */
     NUM,
@@ -123,7 +125,7 @@ public enum Upos
     /** Fictional character name. */
     PROPNfict(PROPN),
     /** Geographical name. */
-    PROPNgeo(PROPN),
+    PROPNplace(PROPN),
     /** Feminine given name. */
     PROPNgivfem(PROPN),
     /** Masculine given name. */
@@ -135,7 +137,7 @@ public enum Upos
     /** People name. */
     PROPNpeople(PROPN),
     /** Personal name. */
-    PROPNprs(PROPN),
+    PROPNpers(PROPN),
     /** Natural species name. */
     PROPNspec(PROPN),
     /** Title of a work. */

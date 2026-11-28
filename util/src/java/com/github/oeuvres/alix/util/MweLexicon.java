@@ -17,6 +17,7 @@ package com.github.oeuvres.alix.util;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.IntBinaryOperator;
 
 /**
  * Incremental lexicon of multi-word expressions backed by two {@link CharsDic}
@@ -131,6 +132,25 @@ public final class MweLexicon
     public void addExpression(final List<? extends CharSequence> expression,
         final CharSequence canonical, final int pos)
     {
+        addExpression(expression, canonical, pos, null);
+    }
+
+    /**
+     * Registers an expression with a caller-defined POS conflict policy.
+     * The resolver is invoked only for two different nonzero tags, with the
+     * existing tag as its first argument and the incoming tag as its second.
+     * Zero declarations never overwrite an established tag.
+     *
+     * @param expression already-tokenized expression
+     * @param canonical case-preserving canonical form
+     * @param pos nonnegative POS identifier, or zero if unspecified
+     * @param resolveConflict conflict resolver, or null to reject conflicts
+     * @throws IllegalArgumentException if a tag is negative or a conflict is rejected
+     * @throws IllegalStateException if the lexicon is frozen
+     */
+    public void addExpression(final List<? extends CharSequence> expression,
+        final CharSequence canonical, final int pos, final IntBinaryOperator resolveConflict)
+    {
         Objects.requireNonNull(expression, "expression");
         Objects.requireNonNull(canonical, "canonical");
         checkMutable();
@@ -146,10 +166,16 @@ public final class MweLexicon
         if (pos != 0) {
             final int previous = tags[formOrd];
             if (previous != 0 && previous != pos) {
-                throw new IllegalArgumentException("Conflicting POS for " + canonical
-                    + ": " + previous + " and " + pos);
+                if (resolveConflict == null) {
+                    throw new IllegalArgumentException("Conflicting POS for " + canonical
+                        + ": " + previous + " and " + pos);
+                }
+                final int resolved = resolveConflict.applyAsInt(previous, pos);
+                if (resolved < 0) throw new IllegalArgumentException("Negative POS: " + resolved);
+                tags[formOrd] = resolved;
+            } else {
+                tags[formOrd] = pos;
             }
-            tags[formOrd] = pos;
         }
 
         ensureIdsCapacity(count);

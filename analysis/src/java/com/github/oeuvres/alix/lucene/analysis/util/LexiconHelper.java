@@ -114,19 +114,33 @@ public final class LexiconHelper
      * @param pos lexical UPOS; TOKEN means unspecified
      * @return true if at least two tokens were registered
      * @throws UncheckedIOException if analysis fails
-     * @throws IllegalArgumentException if the POS is unsupported or conflicts
+     * @throws IllegalArgumentException if the POS is unsupported
      */
     public static boolean addExpression(final MweLexicon lexicon, final Analyzer analyzer,
         final CharSequence expression, final CharSequence canonical, final Upos pos)
     {
-        Objects.requireNonNull(pos, "pos");
-        if (pos != Upos.TOKEN && pos.base() == null) {
-            throw new IllegalArgumentException("Unsupported MWE POS: " + pos);
-        }
+        return addExpression(lexicon, analyzer, expression, canonical, pos,
+            new Report.ReportConsole()::warn);
+    }
+
+    /**
+     * Analyzes and registers a declaration with contextual diagnostics.
+     * @param lexicon mutable target lexicon
+     * @param analyzer entry analyzer
+     * @param expression source expression
+     * @param canonical canonical output
+     * @param pos resolved lexical POS
+     * @param warn diagnostic callback
+     * @return true if an expression was registered
+     */
+    private static boolean addExpression(final MweLexicon lexicon, final Analyzer analyzer,
+        final CharSequence expression, final CharSequence canonical, final Upos pos,
+        final Consumer<String> warn)
+    {
         final List<String> forms = expressionForms(analyzer, expression);
         final String output = expressionOutput(expression, canonical);
         if (forms.size() < 2 || output.isEmpty()) return false;
-        lexicon.addExpression(forms, output, pos.ordinal());
+        registerExpression(lexicon, forms, output, pos, warn);
         return true;
     }
 
@@ -199,7 +213,7 @@ public final class LexiconHelper
      * @param colCanonical canonical output column; -1 means use source expression
      * @param header header policy
      * @throws UncheckedIOException if reading or analysis fails
-     * @throws IllegalArgumentException if a column index is invalid or POS conflicts
+     * @throws IllegalArgumentException if a column index is invalid
      */
     public static void loadExpressions(final MweLexicon lexicon, final Analyzer analyzer,
         final CSVReader csv, final int colExpression, final int colPos, final int colCanonical,
@@ -215,9 +229,10 @@ public final class LexiconHelper
             final String form = row.getCellAsString(colExpression);
             final String output = colCanonical < 0 ? form : row.getCellAsString(colCanonical);
             final String label = colPos < 0 ? "" : row.getCellAsString(colPos).strip();
-            final Upos pos = mwePos(label, row, form, report);
+            final Consumer<String> warn = mweWarnings(row, form, report);
+            final Upos pos = resolveMwePos(label, warn);
             try {
-                addExpression(lexicon, analyzer, form, output, pos);
+                addExpression(lexicon, analyzer, form, output, pos, warn);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(row.getSpec() + ":" + row.getLineNo()
                     + " " + form + ": " + e.getMessage(), e);
@@ -242,11 +257,11 @@ public final class LexiconHelper
         forEachDataRow(csv, CsvHeader.SKIP, 3, 0, report, row -> {
             final String form = row.getCellAsString(0).strip();
             if (form.isEmpty()) return;
-            final Upos pos = mwePos(row.getCellAsString(1).strip(), row, form, report);
+            final Consumer<String> warn = mweWarnings(row, form, report);
+            final Upos pos = resolveMwePos(row.getCellAsString(1), warn);
             final String canonical = row.getCellAsString(2);
             try {
-                handler.add(form, pos == Upos.TOKEN ? "" : pos.name(),
-                    canonical.isBlank() ? form : canonical);
+                handler.add(form, pos, canonical.isBlank() ? form : canonical, warn);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(row.getSpec() + ":" + row.getLineNo()
                     + " " + form + ": " + e.getMessage(), e);
@@ -264,10 +279,11 @@ public final class LexiconHelper
         /**
          * Registers a declaration.
          * @param form source expression
-         * @param pos resolved UPOS name, or empty for an unspecified POS
+         * @param pos resolved UPOS, or TOKEN for an unspecified POS
          * @param canonical canonical output
+         * @param warn diagnostic callback including dictionary location
          */
-        void add(String form, String pos, String canonical);
+        void add(String form, Upos pos, String canonical, Consumer<String> warn);
     }
 
     /**
@@ -606,44 +622,98 @@ public final class LexiconHelper
     }
 
     /**
-     * Resolves an MWE POS declaration, preserving supported refinements.
-     * Unsupported refinements fall back to their standard UPOS prefix; labels
-     * with no recognized category become TOKEN. Every fallback is reported.
-     * A blank declaration is intentionally untagged and needs no warning.
-     *
-     * @param label trimmed source POS label
-     * @param row current dictionary row, for diagnostics
-     * @param form source expression
-     * @param report diagnostic sink
-     * @return supported lexical UPOS, or TOKEN when unspecified
+     * Registers already-tokenized forms under a shared canonical POS.
+     * Ancestor/descendant declarations retain the more specific tag; other
+     * conflicts retain the latest explicit tag and report the change.
+     * @param lexicon mutable target lexicon
+     * @param forms analyzed component tokens
+     * @param canonical canonical output
+     * @param pos resolved lexical POS
+     * @param warn diagnostic callback
+     * @throws IllegalArgumentException if the POS is unsupported
      */
-    private static Upos mwePos(final String label, final CSVReader row,
-        final String form, final Report report)
+    public static void registerExpression(final MweLexicon lexicon,
+        final List<? extends CharSequence> forms, final CharSequence canonical,
+        final Upos pos, final Consumer<String> warn)
     {
+        Objects.requireNonNull(pos, "pos");
+        Objects.requireNonNull(warn, "warn");
+        if (pos != Upos.TOKEN && pos.base() == null) {
+            throw new IllegalArgumentException("Unsupported MWE POS: " + pos);
+        }
+        lexicon.addExpression(forms, canonical, pos.ordinal(), (previous, incoming) -> {
+            final Upos oldTag = Upos.get(previous);
+            if (isAncestor(oldTag, pos)) return incoming;
+            if (isAncestor(pos, oldTag)) return previous;
+            warn.accept("conflicting POS for " + canonical + ": " + oldTag
+                + " / " + pos + "; retained " + pos);
+            return incoming;
+        });
+    }
+
+    /**
+     * Resolves a source MWE tag, preserving supported refinements and aliases.
+     * Unknown refinements use their standard UPOS prefix when recognizable;
+     * other unsupported labels become TOKEN. Approximation is reported.
+     * @param raw source POS label
+     * @param warn diagnostic callback
+     * @return lexical UPOS, or TOKEN when unspecified
+     */
+    public static Upos resolveMwePos(final String raw, final Consumer<String> warn)
+    {
+        final String label = raw.strip();
         if (label.isEmpty()) return Upos.TOKEN;
         Upos tag = Upos.get(label);
         if (tag == Upos.TOKEN || (tag != null && tag.base() != null)) return tag;
 
-        // Legacy composite labels such as ADP+DET correspond to ADP_DET.
+        // Recognized composite notations are aliases, not approximations.
         tag = Upos.get(label.replace('+', '_'));
-        if (tag == null || tag.base() == null) {
-            tag = Upos.TOKEN;
-            for (Upos base : Upos.values()) {
-                if (base.base() != base) continue;
-                final String prefix = base.name();
-                if (!label.startsWith(prefix) || label.length() == prefix.length()) continue;
-                // Refinements begin with a lowercase suffix or a separator.
-                // Do not interpret an arbitrary uppercase label such as XYZ as X.
-                final char suffix = label.charAt(prefix.length());
-                if (Character.isLowerCase(suffix) || suffix == '_' || suffix == ':' || suffix == '+') {
-                    tag = base;
-                    break;
-                }
+        if (tag != null && tag.base() != null) return tag;
+        if (label.equals("ADVconj")) return Upos.ADV;
+
+        tag = Upos.TOKEN;
+        for (Upos base : Upos.values()) {
+            if (base.base() != base) continue;
+            final String prefix = base.name();
+            if (!label.startsWith(prefix) || label.length() == prefix.length()) continue;
+            final char suffix = label.charAt(prefix.length());
+            if (Character.isLowerCase(suffix) || suffix == '_' || suffix == ':' || suffix == '+') {
+                tag = base;
+                break;
             }
         }
-        report.warn(row.getSpec() + ":" + row.getLineNo() + " " + form
-            + ": unsupported MWE POS " + label + " -> " + tag.name());
+        warn.accept("unsupported MWE POS " + label + " -> " + tag.name());
         return tag;
+    }
+
+    /**
+     * Tests whether a tag is an ancestor of another tag.
+     * @param ancestor candidate ancestor
+     * @param tag candidate descendant
+     * @return true if the ancestor occurs in the parent chain
+     */
+    private static boolean isAncestor(final Upos ancestor, final Upos tag)
+    {
+        if (ancestor == null) return false;
+        for (Upos parent = tag == null ? null : tag.parent(); parent != null;
+                parent = parent.parent()) {
+            if (parent == ancestor) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Captures a dictionary row location for warnings during registration.
+     * @param row current dictionary row
+     * @param form source expression
+     * @param report diagnostic sink
+     * @return callback that prefixes messages with the dictionary location
+     */
+    private static Consumer<String> mweWarnings(final CSVReader row, final String form,
+        final Report report)
+    {
+        final String location = row.getSpec() + ":" + row.getLineNo() + " " + form + ": ";
+        return message -> report.warn(location + message);
     }
 
     /**
