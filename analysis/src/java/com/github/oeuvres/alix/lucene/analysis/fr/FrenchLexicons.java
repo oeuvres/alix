@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.text.ParseException;
+import java.util.Objects;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArrayMap;
@@ -65,16 +66,21 @@ import opennlp.tools.postag.POSDictionary;
  */
 public final class FrenchLexicons
 {
-    /**
-     * Utility class; no instance.
-     */
-    private FrenchLexicons()
-    {
-    }
-
+    /** Classpath directory of the French lexical resources. */
     private static final String DIRECTORY = "/com/github/oeuvres/alix/fr/";
-    private static final LexiconHelper LEXICONS =
-        new LexiconHelper(FrenchLexicons.class, DIRECTORY, new Report.ReportConsole());
+
+    /** Resource loader using the caller's diagnostic sink. */
+    private final LexiconHelper lexicons;
+
+    /**
+     * Creates a factory for French lexical resources.
+     * @param report non-null diagnostic sink
+     */
+    public FrenchLexicons(final Report report)
+    {
+        lexicons = new LexiconHelper(FrenchLexicons.class, DIRECTORY,
+            Objects.requireNonNull(report, "report"));
+    }
 
     /**
      * Resolves a source lexical tag without discarding its specialization.
@@ -107,9 +113,9 @@ public final class FrenchLexicons
      *
      * @return case-insensitive abbreviation set
      */
-    public static CharArraySet buildBrevidots()
+    public CharArraySet buildBrevidots()
     {
-        return LEXICONS.buildSet(300, true, "brevidots.csv");
+        return lexicons.buildSet(300, true, "brevidots.csv");
     }
 
     /**
@@ -117,9 +123,9 @@ public final class FrenchLexicons
      *
      * @return case-insensitive stop-word set
      */
-    public static CharArraySet buildGramwords()
+    public CharArraySet buildGramwords()
     {
-        return LEXICONS.buildSet(1200, true, "gramwords.csv");
+        return lexicons.buildSet(1200, true, "gramwords.csv");
     }
 
     /**
@@ -127,30 +133,13 @@ public final class FrenchLexicons
      *
      * @return populated lemma lexicon
      */
-    public static LemmaLexicon buildLemmaLexicon()
+    public LemmaLexicon buildLemmaLexicon()
     {
         final LemmaLexicon lexicon = new LemmaLexicon(500_000);
         lexicon.onDuplicate(LemmaLexicon.OnDuplicate.IGNORE);
-        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadLemma(lexicon, csv, SKIP,
+        lexicons.loadResources((csv, report) -> LexiconHelper.loadLemma(lexicon, csv, SKIP,
             0, 1, 2, FrenchLexicons::wordPos, report), "word.csv");
         return lexicon;
-    }
-
-    /** Lazy initialization for the immutable numerical vocabulary. */
-    private static final class NumberResources
-    {
-        private static final NumberFilter.Lexicon LEXICON = loadNumbers();
-    }
-
-    /**
-     * Loads the two-column numeric resource using the existing CSV loader.
-     * @return compiled numerical lexicon
-     * @throws UncheckedIOException if the resource cannot be read
-     */
-    private static NumberFilter.Lexicon loadNumbers()
-    {
-        return new NumberFilter.Lexicon(
-            LEXICONS.buildMap(5000, true, ERROR, "numbers-fr.csv"));
     }
 
     /**
@@ -158,9 +147,9 @@ public final class FrenchLexicons
      *
      * @return case-insensitive noise tokens set
      */
-    public static CharArraySet buildNoisetokens()
+    public CharArraySet buildNoisetokens()
     {
-        return LEXICONS.buildSet(1500, true, "noisetokens.csv");
+        return lexicons.buildSet(1500, true, "noisetokens.csv");
     }
 
     /**
@@ -168,10 +157,10 @@ public final class FrenchLexicons
      *
      * @return populated normalization map
      */
-    public static CharsMap buildNormalizer()
+    public CharsMap buildNormalizer()
     {
         final CharsMap map = new CharsMap(2000, false);
-        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadMap(map, csv, REPLACE,
+        lexicons.loadResources((csv, report) -> LexiconHelper.loadMap(map, csv, REPLACE,
             SKIP, 0, 1, report), "norm-variants.csv", "norm-aeoe.csv", "norm-maj-noacc.csv",
             "norm-forenames.csv", "norm-names.csv", "norm-misc.csv");
         return map;
@@ -218,21 +207,22 @@ public final class FrenchLexicons
      * @param analyzer normalized surface-form entry analyzer
      * @return compiler with a mutable lexicon
      */
-    static VerbalMweCompiler buildMweCompiler(final Analyzer analyzer)
+    VerbalMweCompiler buildMweCompiler(final Analyzer analyzer)
     {
         final VerbalMweCompiler compiler = new VerbalMweCompiler(analyzer, HunspellResources.DICTIONARY);
-        LEXICONS.loadResources(compiler::loadExpressions,
+        lexicons.loadResources(compiler::loadExpressions,
             "mwe-words.csv", "mwe-propn.csv");
         return compiler;
     }
 
     /**
-     * Returns the shared French numeric lookup table. Loaded lazily once per class loader.
+     * Builds the French numeric lookup table with this factory's diagnostics.
      * @return compiled immutable numerical vocabulary
      */
-    public static NumberFilter.Lexicon buildNumberLexicon()
+    public NumberFilter.Lexicon buildNumberLexicon()
     {
-        return NumberResources.LEXICON;
+        return new NumberFilter.Lexicon(
+            lexicons.buildMap(5000, true, ERROR, "numbers-fr.csv"));
     }
 
     /**
@@ -240,27 +230,27 @@ public final class FrenchLexicons
      *
      * @return case-insensitive proper-name set
      */
-    public static CharArraySet buildPropn()
+    public CharArraySet buildPropn()
     {
-        return LEXICONS.buildSet(2000, true, "propn-words.csv");
+        return lexicons.buildSet(2000, true, "propn-words.csv");
     }
 
     /**
      * Builds the case-sensitive unit dictionary.
      * @return unit names mapped to canonical dimension lemmas
      */
-    public static CharArrayMap<char[]> buildQuantities()
+    public CharArrayMap<char[]> buildQuantities()
     {
-        return LEXICONS.buildMap(160, false, ERROR, "quantities-fr.csv");
+        return lexicons.buildMap(160, false, ERROR, "quantities-fr.csv");
     }
 
     /**
      * Builds the localized reference introducer dictionary.
      * @return case-insensitive reference introducers
      */
-    public static CharArraySet buildReferences()
+    public CharArraySet buildReferences()
     {
-        return LEXICONS.buildSet(32, true, "references-fr.csv");
+        return lexicons.buildSet(32, true, "references-fr.csv");
     }
 
     /**
@@ -268,9 +258,9 @@ public final class FrenchLexicons
      *
      * @return case-insensitive stop-word set
      */
-    public static CharArraySet buildStopwords()
+    public CharArraySet buildStopwords()
     {
-        return LEXICONS.buildSet(4000, true, "gramwords.csv", "noisetokens.csv");
+        return lexicons.buildSet(4000, true, "gramwords.csv", "noisetokens.csv");
     }
     
     /**
@@ -281,7 +271,7 @@ public final class FrenchLexicons
      * @return populated mutable tag dictionary
      * @throws UncheckedIOException if a resource cannot be read
      */
-    public static MutableTagDictionary buildTagDictionary()
+    public MutableTagDictionary buildTagDictionary()
     {
         return buildTagDictionary(0.0);
     }
@@ -294,15 +284,15 @@ public final class FrenchLexicons
      * @return populated mutable tag dictionary
      * @throws UncheckedIOException if a resource cannot be read
      */
-    public static MutableTagDictionary buildTagDictionary(final double freqMin)
+    public MutableTagDictionary buildTagDictionary(final double freqMin)
     {
         // true = case sensitive, false = case insensitive
         final MutableTagDictionary tagDic = new POSDictionary(true);
-        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadTags(tagDic, csv, SKIP,
+        lexicons.loadResources((csv, report) -> LexiconHelper.loadTags(tagDic, csv, SKIP,
             0, 1, 3, freqMin, FrenchLexicons::wordPos, report), "word.csv");
-        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadTags(tagDic, csv, SKIP,
+        lexicons.loadResources((csv, report) -> LexiconHelper.loadTags(tagDic, csv, SKIP,
             0, 1, -1, -1, FrenchLexicons::wordPos, report), "mwe-words.csv");
-        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadPROPN(tagDic, csv, report),
+        lexicons.loadResources((csv, report) -> LexiconHelper.loadPROPN(tagDic, csv, report),
             "propn-words.csv");
         return tagDic;
     }
@@ -313,8 +303,8 @@ public final class FrenchLexicons
      *
      * @return case-sensitive uppercase-word set
      */
-    public static CharArraySet buildUcwords()
+    public CharArraySet buildUcwords()
     {
-        return LEXICONS.buildSet(200, false, "ucwords.csv");
+        return lexicons.buildSet(200, false, "ucwords.csv");
     }
 }

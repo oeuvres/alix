@@ -38,6 +38,7 @@ import static com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper.OnDupli
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
@@ -58,10 +59,10 @@ import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
-import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
 import com.github.oeuvres.alix.util.MweLexicon;
+import com.github.oeuvres.alix.util.Report;
 
 import opennlp.tools.postag.MutableTagDictionary;
 import opennlp.tools.postag.POSModel;
@@ -85,6 +86,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Shared immutable POS model. */
     private static final POSModel POS_MODEL =
         LexiconHelper.loadPosModel(FrenchAnalyzer.class, POS_PATH);
+
+    /** Diagnostic sink shared by all lexical loading operations. */
+    private final Report report;
 
     /** Shared thread-safe POS decoder for this analyzer. */
     private final PosTagger posTagger;
@@ -161,23 +165,46 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public FrenchAnalyzer(final MarkupMode markupMode) throws IOException
     {
-        super(PER_FIELD_REUSE_STRATEGY);
-        this.markupMode = (markupMode == null) ? MarkupMode.XML : markupMode;
+        this(markupMode, new Report.ReportConsole());
+    }
 
-        numbers = FrenchLexicons.buildNumberLexicon();
-        stopwords = FrenchLexicons.buildStopwords();
-        gramwords = FrenchLexicons.buildGramwords();
-        noisetokens = FrenchLexicons.buildNoisetokens();
-        normalizer = FrenchLexicons.buildNormalizer();
-        lemmaLexicon = FrenchLexicons.buildLemmaLexicon();
-        brevidots = FrenchLexicons.buildBrevidots();
-        propn = FrenchLexicons.buildPropn();
-        ucwords = FrenchLexicons.buildUcwords();
-        tagDic = FrenchLexicons.buildTagDictionary();
+    /**
+     * Builds a French analyzer in XML mode with caller-selected diagnostics.
+     * @param report non-null diagnostic sink
+     * @throws IOException if an analyzer resource cannot be initialized
+     */
+    public FrenchAnalyzer(final Report report) throws IOException
+    {
+        this(MarkupMode.XML, report);
+    }
+
+    /**
+     * Builds a French analyzer with caller-selected markup mode and diagnostics.
+     * @param markupMode markup parsing mode used by the analyzer tokenizers
+     * @param report non-null diagnostic sink
+     * @throws IOException if an analyzer resource cannot be initialized
+     */
+    public FrenchAnalyzer(final MarkupMode markupMode, final Report report) throws IOException
+    {
+        super(PER_FIELD_REUSE_STRATEGY);
+        this.report = Objects.requireNonNull(report, "report");
+        this.markupMode = (markupMode == null) ? MarkupMode.XML : markupMode;
+        final FrenchLexicons lexicons = new FrenchLexicons(this.report);
+
+        numbers = lexicons.buildNumberLexicon();
+        stopwords = lexicons.buildStopwords();
+        gramwords = lexicons.buildGramwords();
+        noisetokens = lexicons.buildNoisetokens();
+        normalizer = lexicons.buildNormalizer();
+        lemmaLexicon = lexicons.buildLemmaLexicon();
+        brevidots = lexicons.buildBrevidots();
+        propn = lexicons.buildPropn();
+        ucwords = lexicons.buildUcwords();
+        tagDic = lexicons.buildTagDictionary();
         posTagger = new PosTagger(POS_MODEL, tagDic);
         
         mweEntryAnalyzer = new MweEntryAnalyzer();
-        mweCompiler = FrenchLexicons.buildMweCompiler(mweEntryAnalyzer);
+        mweCompiler = lexicons.buildMweCompiler(mweEntryAnalyzer);
         expressions = mweCompiler.lexicon();
 
         canonic = new CanonicAnalyzer();
@@ -227,7 +254,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         final CharSequence expression,
         final CharSequence canonical)
     {
-        return mweCompiler.addExpression(expression, "", canonical);
+        return mweCompiler.addExpression(expression, "", canonical, report);
     }
 
     /**
@@ -243,11 +270,7 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public void addExpressions(final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            try (CSVReader csv = new CSVReader(path)) {
-                mweCompiler.loadExpressions(csv);
-            }
-        }
+        LexiconHelper.loadFiles(files, report, mweCompiler::loadExpressions);
         expressions.freeze();
     }
 
@@ -281,11 +304,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     public void addNormalizations(final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            try (CSVReader csv = new CSVReader(path)) {
-                LexiconHelper.loadMap(normalizer, csv, REPLACE, SKIP, 0, 1, null);
-            }
-        }
+        LexiconHelper.loadFiles(files, report,
+            (csv, rep) -> LexiconHelper.loadMap(normalizer, csv, REPLACE, SKIP, 0, 1, rep));
     }
 
     /**
@@ -316,18 +336,15 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      * @param files files in loading order
      * @throws IOException if a file cannot be opened or closed
      */
-    private static void addWords(final CharArraySet set, final List<Path> files) throws IOException
+    private void addWords(final CharArraySet set, final List<Path> files) throws IOException
     {
-        for (Path path : files) {
-            try (CSVReader csv = new CSVReader(path)) {
-                LexiconHelper.loadSet(set, csv, 0, SKIP);
-            }
-        }
+        LexiconHelper.loadFiles(files, report,
+            (csv, rep) -> LexiconHelper.loadSet(set, csv, 0, SKIP, rep));
     }
 
     /**
      * Returns the current stopwords for this analyzer.
-     * @return
+     * @return current stop-word set
      */
     public CharArraySet stopwords()
     {

@@ -90,13 +90,14 @@ final class VerbalMweCompiler
      * @param expression source expression
      * @param pos declared grammatical category, or empty for exact matching
      * @param canonical canonical output
+     * @param report non-null diagnostic sink
      * @return true when the explicit expression contains at least two nonempty tokens
      * @throws UncheckedIOException if token analysis fails
      */
     public boolean addExpression(final CharSequence expression,
-        final CharSequence pos, final CharSequence canonical)
+        final CharSequence pos, final CharSequence canonical, final Report report)
     {
-        final Report report = new Report.ReportConsole();
+        Objects.requireNonNull(report, "report");
         final Consumer<String> warn = message -> report.warn(expression + ": " + message);
         return addExpression(expression, LexiconHelper.resolveMwePos(pos.toString(), warn),
             canonical, warn);
@@ -160,12 +161,12 @@ final class VerbalMweCompiler
     /**
      * Loads headered expression declarations with caller-selected diagnostics.
      * @param csv unread, caller-owned reader
-     * @param report diagnostic sink; null suppresses warnings
+     * @param report non-null diagnostic sink
      * @throws UncheckedIOException if reading or analysis fails
      */
     public void loadExpressions(final CSVReader csv, final Report report)
     {
-        LexiconHelper.loadExpressions(csv, this::addExpression, report);
+        LexiconHelper.loadExpressions(csv, this::addExpression, Objects.requireNonNull(report, "report"));
     }
 
     /**
