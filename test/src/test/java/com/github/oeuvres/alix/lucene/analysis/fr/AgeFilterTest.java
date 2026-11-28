@@ -21,12 +21,15 @@ import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
+import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /** Tests the age grammar, precision policy and lossless failed lookahead. */
 public class AgeFilterTest
 {
-    private static final NumberFilter.Lexicon NUMBERS = FrenchLexicons.buildNumberLexicon();
+    /** Numerical vocabulary with explicit diagnostic reporting. */
+    private static final NumberFilter.Lexicon NUMBERS =
+        new FrenchLexicons(new Report.ReportConsole()).buildNumberLexicon();
     /** A token with its lexical and positional attributes. */
     private record Token(String term, String lemma, int pos, int start, int end, int inc, int len) {}
 

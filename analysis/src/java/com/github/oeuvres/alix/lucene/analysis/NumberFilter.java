@@ -569,6 +569,8 @@ public final class NumberFilter extends CompoundFilterBase
             previous = Math.max(previous, current);
         }
         if (value < 1 || value > 3999) return null;
+        // The French ordinal suffix -er/-re is valid only for the first ordinal.
+        if ("er".equals(suffix) && value != 1) return null;
         final String[] thousands = {"", "M", "MM", "MMM"};
         final String[] hundreds = {"", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM"};
         final String[] tens = {"", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"};

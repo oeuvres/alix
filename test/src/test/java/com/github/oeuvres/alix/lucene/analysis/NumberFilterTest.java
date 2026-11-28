@@ -19,11 +19,14 @@ import org.junit.jupiter.api.Test;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchLexicons;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
+import com.github.oeuvres.alix.util.Report;
 
 /** Regression tests for the French resource and the generic number filter. */
 public class NumberFilterTest
 {
-    private static final NumberFilter.Lexicon NUMBERS = FrenchLexicons.buildNumberLexicon();
+    /** Numerical vocabulary with explicit diagnostic reporting. */
+    private static final NumberFilter.Lexicon NUMBERS =
+        new FrenchLexicons(new Report.ReportConsole()).buildNumberLexicon();
     private record Token(String term, String lemma, int pos, int start, int end, int increment, int length)
     {
         /** Returns the confirmed numerical normalization, otherwise the surface term.
@@ -140,7 +143,7 @@ public class NumberFilterTest
         terms("3 e 12 euros", "3", "e", "12", "euros");
         terms("millions de gens", "millions", "de", "gens");
         terms("I V X CIVIL", "I", "V", "X", "CIVIL");
-        terms("stade I puis III", "stade", "1", "puis", "3");
+        terms("stade I puis III", "stade", "I", "puis", "3");
     }
 
     /** Tests exact vulgar fractions and preserved numeric symbols.
@@ -234,14 +237,37 @@ public class NumberFilterTest
     }
 
     /**
-     * Tests that ordinary capitalized words are not Roman ordinals, while
-     * explicitly marked or contextually licensed numerals remain accepted.
+     * Checks that single-letter Romans supply numerical lemma candidates,
+     * independently of preceding words, while unambiguous Romans are resolved.
+     * @throws IOException on stream error
+     */
+    @Test
+    void romanCandidates() throws IOException
+    {
+        final List<Token> tokens = analyze("I V X L C D M Ie Ve Ier III IIA Vᵉ");
+        assertEquals(List.of("I", "V", "X", "L", "C", "D", "M", "Ie", "Ve", "Ier", "III", "IIA", "Vᵉ"),
+            tokens.stream().map(Token::term).toList());
+        assertEquals(List.of("1", "5", "10", "50", "100", "500", "1000", "1e", "5e", "1er", "3", "", "5e"),
+            tokens.stream().map(Token::lemma).toList());
+        assertEquals(List.of(TOKEN.ordinal(), TOKEN.ordinal(), TOKEN.ordinal(),
+            TOKEN.ordinal(), TOKEN.ordinal(), TOKEN.ordinal(), TOKEN.ordinal(),
+            TOKEN.ordinal(), TOKEN.ordinal(), TOKEN.ordinal(), NUMcard.ordinal(),
+            TOKEN.ordinal(), ADJord.ordinal()), tokens.stream().map(Token::pos).toList());
+        final List<Token> contextual = analyze("stade I chapitre Ve Ier chapitre");
+        assertEquals(List.of("", "1", "", "5e", "1er", ""),
+            contextual.stream().map(Token::lemma).toList());
+        assertEquals(List.of(TOKEN.ordinal()), contextual.stream().map(Token::pos).distinct().toList());
+    }
+
+    /**
+     * Tests that ordinary capitalized words do not receive numerical lemma
+     * candidates, while valid Roman ordinals remain recognized.
      * @throws IOException on stream error
      */
     @Test
     void romanOrdinals() throws IOException
     {
-        final String text = "Le Les Ce Ces De Des Ver LE LES CE CES DE DES VER";
+        final String text = "Le Les Ce Ces De Des Ver Mer LE LES CE CES DE DES VER MER";
         final List<Token> tokens = analyze(text);
         assertEquals(List.of(text.split(" ")), tokens.stream().map(Token::term).toList());
         assertEquals(List.of(text.split(" ")), tokens.stream().map(Token::confirmedForm).toList());
@@ -249,9 +275,9 @@ public class NumberFilterTest
         assertEquals(List.of(TOKEN.ordinal()), tokens.stream().map(Token::pos).distinct().toList());
         terms("Le texte. Ces enfants. Des objets.", "Le", "texte", ".", "Ces", "enfants", ".", "Des", "objets", ".");
         terms("Ve Ie Ier", "Ve", "Ie", "Ier");
-        terms("stade I puis III", "stade", "1", "puis", "3");
-        terms("stade Ve", "stade", "5e");
-        terms("chapitre Ier", "chapitre", "1er");
+        terms("stade I puis III", "stade", "I", "puis", "3");
+        terms("stade Ve", "stade", "Ve");
+        terms("chapitre Ier", "chapitre", "Ier");
         terms("chapitre XIXe", "chapitre", "19e");
         terms("stade. Le", "stade", ".", "Le");
     }

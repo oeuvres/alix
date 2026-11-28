@@ -27,3 +27,4 @@ common/*.tsv
 common/*.json
 common/word2vec*
 common/hs_err_pid*.log
+*.jfr
