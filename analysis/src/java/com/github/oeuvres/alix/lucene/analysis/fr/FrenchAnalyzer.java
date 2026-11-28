@@ -57,7 +57,6 @@ import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
 import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.CharsMap;
@@ -353,6 +352,9 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         if (fieldName.startsWith("word2vec")) {
             return word2vec;
         }
+        if (fieldName.startsWith("debug")) {
+            return new DebugAnalyzer();
+        }
         return canonic;
     }
 
@@ -362,33 +364,18 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      * @param stream upstream token stream
      * @return final canonical token stream
      */
-    private TokenStream canonicChain(final TokenStream stream)
+    private TokenStream canonicChain(TokenStream stream)
     {
-        stream.addAttribute(BoundaryAttribute.class);
-        TokenStream ts = lexicalChain(new MarkupBoundaryFilter(stream));
-        ts = new NumberFilter(ts, numbers);
-        ts = new AgeFilter(ts);
-        ts = new UppercaseFilter(ts, ucwords, 4);
-        ts = new MweFilter(ts, expressions);
-        ts = new PosTaggingFilter(ts, posTagger);
-        ts = new LemmaFilter(ts, lemmaLexicon, propn);
-        return ts;
-    }
-
-    /**
-     * Applies the shared lexical segmentation and normalization rules.
-     * Numerical recognition and case cleanup are specific to running text.
-     *
-     * @param stream upstream token stream
-     * @return lexically normalized tokens
-     */
-    private TokenStream lexicalChain(final TokenStream stream)
-    {
-        TokenStream ts = stream;
-        ts.addAttribute(BoundaryAttribute.class);
-        ts = new FrenchCliticSplitFilter(ts);
-        ts = new ReplaceFilter(ts, normalizer);
-        return ts;
+        stream = new MarkupBoundaryFilter(stream);
+        stream = new FrenchCliticSplitFilter(stream);
+        stream = new ReplaceFilter(stream, normalizer);
+        stream = new NumberFilter(stream, numbers);
+        stream = new AgeFilter(stream);
+        stream = new UppercaseFilter(stream, ucwords, 4);
+        stream = new MweFilter(stream, expressions);
+        stream = new PosTaggingFilter(stream, posTagger);
+        stream = new LemmaFilter(stream, lemmaLexicon, propn);
+        return stream;
     }
 
     /**
@@ -466,9 +453,36 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         protected TokenStreamComponents createComponents(final String fieldName)
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
-            TokenStream ts = canonicChain(tokenizer);
-            ts = new CleanupFilter(ts, fieldName, noisetokens, gramwords); // remove noise and function words
-            return new TokenStreamComponents(tokenizer, ts);
+            TokenStream stream = canonicChain(tokenizer);
+            stream = new CleanupFilter(stream, fieldName, noisetokens, gramwords);
+            return new TokenStreamComponents(tokenizer, stream);
+        }
+    }
+
+    /**
+     * Analyzer for word2vec, lemmatize, but keep function words
+     * (useful to separate words by pos)
+     */
+    public class DebugAnalyzer extends Analyzer
+    {
+        public DebugAnalyzer()
+        {
+            super(PER_FIELD_REUSE_STRATEGY);
+        }
+    
+        @Override
+        protected TokenStreamComponents createComponents(final String fieldName)
+        {
+            final Tokenizer tokenizer = new MarkupTokenizer(brevidots, markupMode);
+            TokenStream stream = tokenizer;
+            stream = new MarkupZoneFilter(
+                    stream,
+                "teiHeader | head | note | listBibl | bibl | table",
+                MarkupZoneFilter.Mode.EXCLUDE
+            );
+            stream = new MarkupBoundaryFilter(stream);
+            stream = new FrenchCliticSplitFilter(stream);
+            return new TokenStreamComponents(tokenizer, stream);
         }
     }
 
@@ -493,7 +507,10 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         protected TokenStreamComponents createComponents(final String fieldName)
         {
             final Tokenizer tokenizer = new MarkupTokenizer(brevidots, MarkupMode.NONE);
-            return new TokenStreamComponents(tokenizer, lexicalChain(tokenizer));
+            TokenStream stream = tokenizer;
+            stream = new FrenchCliticSplitFilter(stream);
+            stream = new ReplaceFilter(stream, normalizer);
+            return new TokenStreamComponents(tokenizer, stream);
         }
     }
 

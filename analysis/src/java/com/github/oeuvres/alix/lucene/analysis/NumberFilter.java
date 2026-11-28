@@ -53,7 +53,6 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeSource;
 
 import com.github.oeuvres.alix.common.Upos;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
@@ -133,8 +132,6 @@ public final class NumberFilter extends TokenFilter
     private final PositionIncrementAttribute incAtt = addAttribute(PositionIncrementAttribute.class);
     private final PositionLengthAttribute lenAtt = addAttribute(PositionLengthAttribute.class);
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
-    @SuppressWarnings("unused")
-    private final BoundaryAttribute boundaryAtt = addAttribute(BoundaryAttribute.class);
     private TokenStateQueue queue;
     private boolean exhausted;
     private boolean romanCue;
@@ -175,8 +172,7 @@ public final class NumberFilter extends TokenFilter
             queue.addLast(this);
         }
         final AttributeSource first = queue.get(0);
-        if (first.getAttribute(BoundaryAttribute.class).getBoundary() != BoundaryAttribute.NONE
-                || first.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1) romanCue = false;
+        if (first.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1) romanCue = false;
         final Match match = parseNumber();
         if (match == null) {
             queue.removeFirst(this);
@@ -305,8 +301,7 @@ public final class NumberFilter extends TokenFilter
         if (blocksNumber(pos)
                 || slot.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
                 || slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 0) return false;
-        return index == 0 || (slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 1
-            && slot.getAttribute(BoundaryAttribute.class).getBoundary() == BoundaryAttribute.NONE);
+        return index == 0 || slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 1;
     }
 
     /**

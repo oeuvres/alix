@@ -3,6 +3,8 @@ package com.github.oeuvres.alix.lucene.analysis.fr;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static com.github.oeuvres.alix.common.Upos.*;
 
+import com.github.oeuvres.alix.common.Upos;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -18,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import com.github.oeuvres.alix.lucene.analysis.MarkupBoundaryFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
 import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
@@ -27,7 +28,7 @@ public class AgeFilterTest
 {
     private static final NumberFilter.Lexicon NUMBERS = FrenchLexicons.buildNumberLexicon();
     /** A token with its lexical and positional attributes. */
-    private record Token(String term, String lemma, int pos, int start, int end, int inc, int len, int boundary) {}
+    private record Token(String term, String lemma, int pos, int start, int end, int inc, int len) {}
 
     /**
      * Tests an artificial upstream stream carrying numerical lemmas.
@@ -41,7 +42,6 @@ public class AgeFilterTest
         final OffsetAttribute off = addAttribute(OffsetAttribute.class);
         final PositionIncrementAttribute inc = addAttribute(PositionIncrementAttribute.class);
         final PositionLengthAttribute len = addAttribute(PositionLengthAttribute.class);
-        final BoundaryAttribute boundary = addAttribute(BoundaryAttribute.class);
         final Token[] tokens;
         int index;
 
@@ -67,7 +67,6 @@ public class AgeFilterTest
             off.setOffset(t.start, t.end);
             inc.setPositionIncrement(t.inc);
             len.setPositionLength(t.len);
-            boundary.setBoundary(t.boundary);
             return true;
         }
 
@@ -106,20 +105,20 @@ public class AgeFilterTest
     @Test
     public void defaultDiscretization() throws IOException
     {
-        final Token number = new Token("18", "18", NUMcard.ordinal(), 0, 2, 1, 1, 0);
-        final Token unit = new Token("mois", "", TOKEN.ordinal(), 3, 7, 1, 1, 0);
+        final Token number = new Token("18", "18", NUMcard.ordinal(), 0, 2, 1, 1);
+        final Token unit = new Token("mois", "", TOKEN.ordinal(), 3, 7, 1, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(number, unit))) {
-            assertEquals(List.of(new Token("18mois", "", NOUNage.ordinal(), 0, 7, 1, 1, 0)), read(f));
+            assertEquals(List.of(new Token("18mois", "", NOUNage.ordinal(), 0, 7, 1, 1)), read(f));
         }
-        final Token years = new Token("7", "7", NUMcard.ordinal(), 0, 1, 1, 1, 0);
-        final Token yearUnit = new Token("ans", "", TOKEN.ordinal(), 2, 5, 1, 1, 0);
-        final Token months = new Token("2", "2", NUMcard.ordinal(), 6, 7, 1, 1, 0);
-        final Token monthUnit = new Token("mois", "", TOKEN.ordinal(), 8, 12, 1, 1, 0);
+        final Token years = new Token("7", "7", NUMcard.ordinal(), 0, 1, 1, 1);
+        final Token yearUnit = new Token("ans", "", TOKEN.ordinal(), 2, 5, 1, 1);
+        final Token months = new Token("2", "2", NUMcard.ordinal(), 6, 7, 1, 1);
+        final Token monthUnit = new Token("mois", "", TOKEN.ordinal(), 8, 12, 1, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(years, yearUnit, months, monthUnit))) {
-            assertEquals(List.of(new Token("7ans", "", NOUNage.ordinal(), 0, 12, 1, 1, 0)), read(f));
+            assertEquals(List.of(new Token("7ans", "", NOUNage.ordinal(), 0, 12, 1, 1)), read(f));
         }
         try (AgeFilter f = new AgeFilter(new Fixture(years, yearUnit, months, monthUnit), false)) {
-            assertEquals(List.of(new Token("7ans2mois", "", NOUNage.ordinal(), 0, 12, 1, 1, 0)), read(f));
+            assertEquals(List.of(new Token("7ans2mois", "", NOUNage.ordinal(), 0, 12, 1, 1)), read(f));
         }
     }
 
@@ -161,14 +160,14 @@ public class AgeFilterTest
         terms(false, "2. Ans", "2", ".", "Ans");
         terms(false, "2</p><p>ans", "2", "¶", "ans");
         assertEquals(List.of(
-            new Token("un", "1", TOKEN.ordinal(), 0, 2, 1, 1, 0),
-            new Token("enfant", "", TOKEN.ordinal(), 3, 9, 1, 1, 0),
-            new Token("neuf", "9", TOKEN.ordinal(), 10, 14, 1, 1, 0)),
+            new Token("un", "1", TOKEN.ordinal(), 0, 2, 1, 1),
+            new Token("enfant", "", TOKEN.ordinal(), 3, 9, 1, 1),
+            new Token("neuf", "9", TOKEN.ordinal(), 10, 14, 1, 1)),
             analyze("un enfant neuf", false));
         assertEquals(List.of(
-            new Token("de", "", TOKEN.ordinal(), 0, 2, 1, 1, 0),
-            new Token("trois", "3", NUMcard.ordinal(), 3, 8, 1, 1, 0),
-            new Token("enfants", "", TOKEN.ordinal(), 9, 16, 1, 1, 0)),
+            new Token("de", "", TOKEN.ordinal(), 0, 2, 1, 1),
+            new Token("trois", "3", NUMcard.ordinal(), 3, 8, 1, 1),
+            new Token("enfants", "", TOKEN.ordinal(), 9, 16, 1, 1)),
             analyze("de trois enfants", false));
     }
 
@@ -179,38 +178,40 @@ public class AgeFilterTest
     @Test
     public void lemmaAndPositions() throws IOException
     {
-        final Token neuf = new Token("neuf", "9", TOKEN.ordinal(), 0, 4, 1, 1, 0);
-        final Token ans = new Token("ans", "", TOKEN.ordinal(), 5, 8, 1, 1, 0);
-        final Token noun = new Token("enfant", "", TOKEN.ordinal(), 9, 15, 1, 1, 0);
+        final Token neuf = new Token("neuf", "9", TOKEN.ordinal(), 0, 4, 1, 1);
+        final Token ans = new Token("ans", "", TOKEN.ordinal(), 5, 8, 1, 1);
+        final Token noun = new Token("enfant", "", TOKEN.ordinal(), 9, 15, 1, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(neuf, ans, noun))) {
-            assertEquals(List.of(new Token("9ans", "", NOUNage.ordinal(), 0, 8, 1, 1, 0), noun), read(f));
-            assertEquals(List.of(new Token("9ans", "", NOUNage.ordinal(), 0, 8, 1, 1, 0), noun), read(f));
+            assertEquals(List.of(new Token("9ans", "", NOUNage.ordinal(), 0, 8, 1, 1), noun), read(f));
+            assertEquals(List.of(new Token("9ans", "", NOUNage.ordinal(), 0, 8, 1, 1), noun), read(f));
         }
-        final Token gap = new Token("ans", "", TOKEN.ordinal(), 5, 8, 2, 1, 0);
+        final Token gap = new Token("ans", "", TOKEN.ordinal(), 5, 8, 2, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(neuf, gap))) {
             assertEquals(List.of(neuf, gap), read(f));
         }
-        final Token boundary = new Token("ans", "", TOKEN.ordinal(), 5, 8, 1, 1, BoundaryAttribute.SENTENCE);
-        try (AgeFilter f = new AgeFilter(new Fixture(neuf, boundary))) {
-            assertEquals(List.of(neuf, boundary), read(f));
+        for (Upos tag : List.of(PUNCTpara, PUNCTsection, PUNCTstruct, PUNCTsent, XML)) {
+            final Token boundary = new Token("|", "", tag.ordinal(), 4, 5, 1, 1);
+            try (AgeFilter f = new AgeFilter(new Fixture(neuf, boundary, ans))) {
+                assertEquals(List.of(neuf, boundary, ans), read(f), tag.name());
+            }
         }
-        final Token un = new Token("un", "1", TOKEN.ordinal(), 0, 2, 1, 1, 0);
+        final Token un = new Token("un", "1", TOKEN.ordinal(), 0, 2, 1, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(un, noun))) {
             assertEquals(List.of(un, noun), read(f));
         }
-        final Token semi = new Token(";", "", PUNCTclause.ordinal(), 3, 4, 1, 1, 0);
-        final Token deux = new Token("deux", "2", NUMcard.ordinal(), 5, 9, 1, 1, 0);
+        final Token semi = new Token(";", "", PUNCTclause.ordinal(), 3, 4, 1, 1);
+        final Token deux = new Token("deux", "2", NUMcard.ordinal(), 5, 9, 1, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(un, semi, deux))) {
             assertEquals(List.of(un, semi, deux), read(f));
         }
         // An unannotated ambiguous surface is not a numerical candidate.
-        final Token rawNeuf = new Token("neuf", "", TOKEN.ordinal(), 0, 4, 1, 1, 0);
+        final Token rawNeuf = new Token("neuf", "", TOKEN.ordinal(), 0, 4, 1, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(rawNeuf, ans))) {
             assertEquals(List.of(rawNeuf, ans), read(f));
         }
-        final Token sept = new Token("sept", "7", NUMcard.ordinal(), 0, 4, 1, 1, 0);
+        final Token sept = new Token("sept", "7", NUMcard.ordinal(), 0, 4, 1, 1);
         try (AgeFilter f = new AgeFilter(new Fixture(sept, ans))) {
-            assertEquals(List.of(new Token("7ans", "", NOUNage.ordinal(), 0, 8, 1, 1, 0)), read(f));
+            assertEquals(List.of(new Token("7ans", "", NOUNage.ordinal(), 0, 8, 1, 1)), read(f));
         }
     }
 
@@ -224,9 +225,9 @@ public class AgeFilterTest
         terms(false, "troisième mois", "3emois");
         terms(true, "première année", "1erannée");
         terms(false, "seconde semaine", "2esemaine");
-        assertEquals(List.of(new Token("3emois", "", NOUNage.ordinal(), 0, 14, 1, 1, 0)),
+        assertEquals(List.of(new Token("3emois", "", NOUNage.ordinal(), 0, 14, 1, 1)),
             analyze("troisième mois", false));
-        assertEquals(List.of(new Token("troisième", "3e", ADJord.ordinal(), 0, 9, 1, 1, 0)),
+        assertEquals(List.of(new Token("troisième", "3e", ADJord.ordinal(), 0, 9, 1, 1)),
             analyze("troisième", false));
     }
 
@@ -296,12 +297,11 @@ public class AgeFilterTest
         final OffsetAttribute off = stream.addAttribute(OffsetAttribute.class);
         final PositionIncrementAttribute inc = stream.addAttribute(PositionIncrementAttribute.class);
         final PositionLengthAttribute len = stream.addAttribute(PositionLengthAttribute.class);
-        final BoundaryAttribute boundary = stream.addAttribute(BoundaryAttribute.class);
         final List<Token> result = new ArrayList<>();
         stream.reset();
         while (stream.incrementToken()) {
             result.add(new Token(term.toString(), lemma.value(), pos.getPos(), off.startOffset(), off.endOffset(),
-                inc.getPositionIncrement(), len.getPositionLength(), boundary.getBoundary()));
+                inc.getPositionIncrement(), len.getPositionLength()));
         }
         stream.end();
         return result;

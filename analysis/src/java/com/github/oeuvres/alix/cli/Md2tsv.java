@@ -17,10 +17,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.ingest.IngestConfig;
 import com.github.oeuvres.alix.lucene.analysis.fr.FrenchAnalyzer;
-import com.github.oeuvres.alix.lucene.analysis.fr.MarkupTokenizer.MarkupMode;
+import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer.MarkupMode;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.ProbAttribute;
 import com.github.oeuvres.alix.util.Dir;
 import com.github.oeuvres.alix.util.Report;
 import com.github.oeuvres.alix.util.Report.ReportConsole;
@@ -33,6 +32,8 @@ import static com.github.oeuvres.alix.ingest.IngestConfig.KeyGlob.*;
  *
  * <p>YAML front matter is copied to the TSV header as comment metadata.
  * The Markdown body is then passed directly to the Lucene analyzer.
+ * Structural punctuation, including source line-break events, is exported
+ * as ordinary TSV rows with its own UPOS tag.
  * With {@code --config}, corpus normalizations, expressions, and stopwords
  * are loaded before processing any files.</p>
  */
@@ -205,7 +206,7 @@ public class Md2tsv
 
     /**
      * Analyze the remaining Markdown content and write its terms, lemmas,
-     * part-of-speech tags, and POS-tagging probabilities.
+     * part-of-speech tags. Structural punctuation is retained.
      *
      * @param reader reader positioned at the Markdown body
      * @param out TSV writer
@@ -225,8 +226,6 @@ public class Md2tsv
                 tokens.addAttribute(PosAttribute.class);
             LemmaAttribute lemmaAtt =
                 tokens.addAttribute(LemmaAttribute.class);
-            ProbAttribute probAtt =
-                tokens.addAttribute(ProbAttribute.class);
 
             tokens.reset();
 
@@ -234,17 +233,13 @@ public class Md2tsv
                 String term = termAtt.toString();
                 String lemma = lemmaAtt.isEmpty()
                     ? term
-                    : lemmaAtt.toString();
+                    : lemmaAtt.value();
 
                 out.write(term);
                 out.write('\t');
                 out.write(lemma);
                 out.write('\t');
-                out.write(Upos.get(posAtt.getPos()).toString());
-                /*
-                out.write('\t');
-                out.write(Double.toString(probAtt.getProb()));
-                */
+                out.write(Upos.get(posAtt.getPos()).name());
                 out.newLine();
             }
 

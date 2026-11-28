@@ -197,6 +197,27 @@ public class NumberFilterTest
         terms("deux</p><p>cent", "2", "¶", "100");
     }
 
+    /**
+     * Tests numerical recognition directly on tokenizer events, without a markup filter.
+     * @throws IOException on stream error
+     */
+    @Test
+    void rawStructuralBarriers() throws IOException
+    {
+        final MarkupTokenizer tokenizer = new MarkupTokenizer();
+        try (TokenStream stream = new NumberFilter(tokenizer, NUMBERS)) {
+            tokenizer.setReader(new StringReader("deux\n\ncent"));
+            assertEquals(List.of("2", "↵↵", "100"),
+                read(stream).stream().map(Token::confirmedForm).toList());
+            tokenizer.setReader(new StringReader("stade\n\nI"));
+            assertEquals(List.of("stade", "↵↵", "I"),
+                read(stream).stream().map(Token::confirmedForm).toList());
+            tokenizer.setReader(new StringReader("deux</p><p>cent"));
+            assertEquals(List.of("2", "</p>", "<p>", "100"),
+                read(stream).stream().map(Token::confirmedForm).toList());
+        }
+    }
+
     /** Checks that canonical ordinals remain distinguishable from cardinals.
      * @throws IOException on stream error
      */

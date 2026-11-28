@@ -13,7 +13,6 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeSource;
 
 import com.github.oeuvres.alix.lucene.analysis.TokenStateQueue;
-import com.github.oeuvres.alix.lucene.analysis.tokenattributes.BoundaryAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
@@ -101,7 +100,6 @@ public final class AgeFilter extends TokenFilter
     private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
     private final PositionIncrementAttribute incAtt = addAttribute(PositionIncrementAttribute.class);
     private final PositionLengthAttribute lenAtt = addAttribute(PositionLengthAttribute.class);
-    private final BoundaryAttribute boundaryAtt = addAttribute(BoundaryAttribute.class);
     private final boolean discretize;
     private TokenStateQueue queue;
     private boolean exhausted;
@@ -212,8 +210,7 @@ public final class AgeFilter extends TokenFilter
     private static boolean barrier(final AttributeSource token)
     {
         final int pos = token.getAttribute(PosAttribute.class).getPos();
-        return token.getAttribute(BoundaryAttribute.class).getBoundary() != BoundaryAttribute.NONE
-            || token.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1
+        return token.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1
             || token.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
             || pos == PUNCTpara.ordinal() || pos == PUNCTsection.ordinal()
             || pos == PUNCTstruct.ordinal() || pos == PUNCTsent.ordinal()
