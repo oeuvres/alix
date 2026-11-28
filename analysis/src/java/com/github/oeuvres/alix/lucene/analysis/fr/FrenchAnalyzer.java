@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 import org.apache.lucene.analysis.TokenStream;
@@ -54,6 +55,8 @@ import com.github.oeuvres.alix.lucene.analysis.MweFilter;
 import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
 import com.github.oeuvres.alix.lucene.analysis.PosTagger;
 import com.github.oeuvres.alix.lucene.analysis.PosTaggingFilter;
+import com.github.oeuvres.alix.lucene.analysis.QuantityFilter;
+import com.github.oeuvres.alix.lucene.analysis.ReferenceFilter;
 import com.github.oeuvres.alix.lucene.analysis.ReplaceFilter;
 import com.github.oeuvres.alix.lucene.analysis.UppercaseFilter;
 import com.github.oeuvres.alix.lucene.analysis.MarkupTokenizer;
@@ -126,6 +129,12 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
     /** Shared numerical vocabulary. */
     private final NumberFilter.Lexicon numbers;
 
+    /** Localized reference introducers. */
+    private final CharArraySet references;
+
+    /** Case-sensitive unit forms mapped to dimension lemmas. */
+    private final CharArrayMap<char[]> quantities;
+
     /** Term normalizer. */
     public final CharsMap normalizer;
 
@@ -192,6 +201,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
         final FrenchLexicons lexicons = new FrenchLexicons(this.report);
 
         numbers = lexicons.buildNumberLexicon();
+        references = lexicons.buildReferences();
+        quantities = lexicons.buildQuantities();
         stopwords = lexicons.buildStopwords();
         gramwords = lexicons.buildGramwords();
         noisetokens = lexicons.buildNoisetokens();
@@ -383,11 +394,13 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
      */
     private TokenStream canonicChain(TokenStream stream)
     {
-        stream = new MarkupBoundaryFilter(stream);
         stream = new FrenchCliticSplitFilter(stream);
+        stream = new MarkupBoundaryFilter(stream);
         stream = new ReplaceFilter(stream, normalizer);
         stream = new NumberFilter(stream, numbers);
         stream = new AgeFilter(stream);
+        stream = new ReferenceFilter(stream, references);
+        stream = new QuantityFilter(stream, quantities);
         stream = new UppercaseFilter(stream, ucwords, 4);
         stream = new MweFilter(stream, expressions);
         stream = new PosTaggingFilter(stream, posTagger);
@@ -497,8 +510,8 @@ public class FrenchAnalyzer extends DelegatingAnalyzerWrapper
                 "teiHeader | head | note | listBibl | bibl | table",
                 MarkupZoneFilter.Mode.EXCLUDE
             );
-            stream = new MarkupBoundaryFilter(stream);
             stream = new FrenchCliticSplitFilter(stream);
+            stream = new MarkupBoundaryFilter(stream);
             return new TokenStreamComponents(tokenizer, stream);
         }
     }

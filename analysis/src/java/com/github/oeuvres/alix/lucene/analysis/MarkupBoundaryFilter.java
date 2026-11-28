@@ -28,8 +28,8 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
 /**
  * Removes XML markup, emits structural punctuation for configured closing tags,
- * and annotates the final token of each consecutive punctuation run with the
- * strongest boundary in that run.
+ * and attaches the strongest boundary of a punctuation run to the next
+ * non-punctuation token.
  *
  * <p>Paragraph and section tokens retain the source offsets and positions of
  * their triggering closing tags. Consecutive closing-tag requests with no
@@ -41,9 +41,9 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  * language-specific punctuation rules is performed here. PUNCTstruct does
  * not independently imply a paragraph or sentence boundary.</p>
  *
- * <p>The boundary event occurs AFTER the annotated punctuation token. Only
- * the last punctuation token of the run carries a non-NONE value. The event
- * is emitted even at EOF. Lexical tokens carry NONE.</p>
+ * <p>The boundary event occurs BEFORE the annotated token. Punctuation tokens
+ * carry NONE; the next non-punctuation token receives the strongest pending
+ * boundary. A trailing boundary is available after {@link #end()}.</p>
  *
  * <p>Downstream linguistic filters can continue using POS to recognize
  * punctuation barriers without depending on BoundaryAttribute.</p>
@@ -71,7 +71,6 @@ public final class MarkupBoundaryFilter extends TokenFilter
     private State pendingBoundaryState;
     private State deferredVisibleToken;
     private boolean exhausted;
-    private State lookahead;
     private int boundaryStrength = BoundaryAttribute.NONE;
 
     /**
@@ -130,43 +129,33 @@ public final class MarkupBoundaryFilter extends TokenFilter
     }
 
     /**
-     * Finishes the stream. All boundary events have already been emitted.
+     * Finishes the stream, exposing any trailing boundary.
      * @throws IOException if the upstream stream cannot finish
      */
     @Override
     public void end() throws IOException
     {
         super.end();
+        boundaryAtt.setBoundary(boundaryStrength);
         clearPending();
-        boundaryAtt.setBoundary(BoundaryAttribute.NONE);
     }
 
     /**
-     * Emits the next visible or synthetic punctuation token. A punctuation
-     * token is delayed by one token to determine whether it ends its run.
+     * Emits the next visible or synthetic punctuation token. Boundaries are
+     * accumulated until the next non-punctuation token, without lookahead.
      * @return true if a token is available
      * @throws IOException if reading the upstream stream fails
      */
     @Override
     public boolean incrementToken() throws IOException
     {
-        if (lookahead != null) {
-            restoreState(lookahead);
-            lookahead = null;
-        }
-        else if (!readMarkupToken()) return false;
-
-        boundaryAtt.setBoundary(BoundaryAttribute.NONE);
+        if (!readMarkupToken()) return false;
         final Upos pos = get(posAtt.getPos());
-        if (!isPunctuation(pos)) return true;
-
-        boundaryStrength = Math.max(boundaryStrength, strength(pos));
-        final State current = captureState();
-        final boolean hasNext = readMarkupToken();
-        final boolean continues = hasNext && isPunctuation(get(posAtt.getPos()));
-        if (hasNext) lookahead = captureState();
-        restoreState(current);
-        if (!continues) {
+        if (isPunctuation(pos)) {
+            boundaryStrength = Math.max(boundaryStrength, strength(pos));
+            boundaryAtt.setBoundary(BoundaryAttribute.NONE);
+        }
+        else {
             boundaryAtt.setBoundary(boundaryStrength);
             boundaryStrength = BoundaryAttribute.NONE;
         }
@@ -185,14 +174,13 @@ public final class MarkupBoundaryFilter extends TokenFilter
         boundaryAtt.setBoundary(BoundaryAttribute.NONE);
     }
 
-    /** Clears both markup and punctuation lookahead state. */
+    /** Clears markup buffering and the pending boundary. */
     private void clearPending()
     {
         pendingBoundaryPos = 0;
         pendingBoundaryState = null;
         deferredVisibleToken = null;
         exhausted = false;
-        lookahead = null;
         boundaryStrength = BoundaryAttribute.NONE;
     }
 

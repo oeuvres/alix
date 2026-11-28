@@ -49,7 +49,7 @@ public class LemmaFilterTest
             new Token("25kg", "", NOUNqty),
             new Token("%", "", SYMunit),
             new Token("prendre conscience", "", VERB, false, MweFilter.TYPE_MWE),
-            new Token("paris", "", PROPNgeo),
+            new Token("paris", "", PROPNplace),
             new Token("went", "go", VERB),
             new Token("6", "", NUM));
         check(lex, tokens, tokens);

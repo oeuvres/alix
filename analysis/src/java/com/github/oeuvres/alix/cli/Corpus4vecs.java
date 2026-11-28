@@ -22,7 +22,7 @@ import com.github.oeuvres.alix.util.Report.ReportConsole;
 
 /**
  * Exports tokenized sentences, one nonempty training sequence per line.
- * Boundary events are read after the token carrying them.
+ * Boundary events are read before the token carrying them.
  */
 public class Corpus4vecs
 {
@@ -32,7 +32,7 @@ public class Corpus4vecs
     }
     
     /**
-     * Exports the configured corpus using the debug analyzer.
+     * Exports the configured corpus using the Word2Vec analyzer.
      * @param args configuration XML path and output text path
      * @throws IOException if input, analysis or writing fails
      */
@@ -62,7 +62,7 @@ public class Corpus4vecs
                     report.info(tei.toString());
                     boolean lineHasToken = false;
                     try (Reader reader = Files.newBufferedReader(tei, StandardCharsets.UTF_8);
-                         TokenStream tokens = analyzer.tokenStream("debug", reader)) {
+                         TokenStream tokens = analyzer.tokenStream("word2vec", reader)) {
 
                         CharTermAttribute term = tokens.addAttribute(CharTermAttribute.class);
                         final BoundaryAttribute boundary = tokens.getAttribute(BoundaryAttribute.class);
@@ -74,15 +74,15 @@ public class Corpus4vecs
                             if (pos == null) {
                                 throw new IllegalStateException("Invalid POS: " + posAtt.getPos());
                             }
+                            if (lineHasToken && boundary.getBoundary() != BoundaryAttribute.NONE) {
+                                out.newLine();
+                                lineHasToken = false;
+                            }
                             if (pos != Upos.XML && pos.base() != Upos.PUNCT
                                 && pos.base() != Upos.SYM && term.length() != 0) {
                                 if (lineHasToken) out.write(' ');
                                 out.write(term.toString().replace(' ', '_'));
                                 lineHasToken = true;
-                            }
-                            if (lineHasToken && boundary.getBoundary() != BoundaryAttribute.NONE) {
-                                out.newLine();
-                                lineHasToken = false;
                             }
                         }
                         tokens.end();

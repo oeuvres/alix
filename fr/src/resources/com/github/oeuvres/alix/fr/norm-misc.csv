@@ -2,31 +2,6 @@ SURFACE,CORRECTION
 –,—
 &,et
 &c,etc.
-# vie,6e
-1 e,1er
-1 er,1er
-10 e,10e
-11 e,11e
-12 e,12e
-13 e,13e
-14 e,14e
-15 e,15e
-16 e,16e
-17 e,17e
-18 e,18e
-19 e,19e
-2 e,2e
-2 eme,2e
-2 ème,2e
-20 e,20e
-21 e,21e
-4 e,4e
-5 e,5e
-5e,5e
-6 e,6e
-7 e,6e
-8 e,8e
-9 e,9e
 ah,ha
 ann.,annexe
 ap.,après
@@ -44,8 +19,6 @@ cf,cf.
 ch.,chapitre
 chap.,chapitre
 Chap.,chapitre
-Child Harold,Childe-Harold
-Childe Harold,Childe-Harold
 cinquième,5e
 Cpt.,compte
 cpt.,compte
@@ -71,7 +44,6 @@ eh,hé
 éh,hé
 encor,encore
 espece,espèce
-et cætera,et cetera
 EXP,exp.
 Exp.,exp.
 EXP.,exp.
@@ -83,10 +55,6 @@ françois,français
 grace,grâce
 hélico,hélicoptère
 huitième,8e
-I e,1er
-i e,1er
-I er,1er
-i er,1er
 Ib.,ibid.
 ib.,ibid.
 Ie,1er
@@ -95,33 +63,19 @@ Iᵉ,1er
 ier,1er
 Ier,1er
 ih,hi
-II e,2e
-ii e,2e
-II nd,2e
-ii nd,2e
 IIe,2e
 iie,2e
 IIᵉ,2e
 iiᵉ,2e
-III e,3e
-iii e,3e
 IIIe,3e
 iiie,3e
 IIIᵉ,3e
 iiiᵉ,3e
 introd.,introduction
-IV e,4e
-iv e,4e
-IV e,4e
-iv e,4e
 IVe,4e
 ive,4e
 IVᵉ,4e
 ivᵉ,4e
-ix e,9e
-IX e,9e
-ix e,9e
-IX e,9e
 ixe,9e
 IXe,9e
 ixᵉ,9e
@@ -133,15 +87,12 @@ Jan.,janvier
 janv,janvier
 janv.,janvier
 Janv.,janvier
-Jean de Mena,Juan de Mena
 juil,juillet
 juil.,juillet
 Juil.,juillet
 juill,juillet
 juill.,juillet
 Juill.,juillet
-Laurent Valla,Lorenzo Valla
-Le Peletier,Le Pelletier
 maniere,manière
 Mᵉ,maître
 Me.,maître
@@ -184,8 +135,6 @@ n',ne
 national-soialistes,national-socialiste
 nationale-soialiste,national-socialiste
 nationale-soialistes,national-socialiste
-ncpt.,numéro de compte
-nCpt.,numéro de compte
 neuvième,9e
 no,n°
 nov,novembre
@@ -237,29 +186,17 @@ tems,temps
 Trad.,trad.
 treizième,13e
 U.S.A.,USA
-V e,5e
-v e,5e
-V e,5e
-v e,5e
 Ve,5e
 ve,5e
 Vᵉ,5e
 vᵉ,5e
-VI e,6e
-vi e,6e
-VI e,6e
-vi e,6e
 VIe,6e
 viᵉ,6e
 VIᵉ,6e
-VII e,7e
-vii e,7e
 viie,7e
 VIIe,7e
 viiᵉ,7e
 VIIᵉ,7e
-viii e,8e
-VIII e,8e
 viiie,8e
 VIIIe,8e
 viiiᵉ,8e
@@ -268,78 +205,50 @@ vingt-et-unième,21e
 vingtième,20e
 Vve,veuve
 vve,veuve
-X e,10e
-x e,10e
-x e,10e
-X e,10e
 xe,10e
 Xe,10e
 xᵉ,10e
 Xᵉ,10e
-XI e,11e
-xi e,11e
 xie,11e
 XIe,11e
 xiᵉ,11e
 XIᵉ,11e
-xii e,12e
-XII e,12e
 xiie,12e
 XIIe,12e
 xiiᵉ,12e
 XIIᵉ,12e
-xiii e,13e
-XIII e,13e
 xiiie,13e
 XIIIe,13e
 xiiiᵉ,13e
 XIIIᵉ,13e
-xiv e,14e
-XIV e,14e
 xive,14e
 XIVe,14e
 xivᵉ,14e
 XIVᵉ,14e
-xix e,19e
-XIX e,19e
 xixe,19e
 XIXe,19e
 xixᵉ,19e
 XIXᵉ,19e
-XV e,15e
-xv e,15e
 xve,15e
 XVe,15e
 xvᵉ,15e
 XVᵉ,15e
-xvi e,16e
-XVI e,16e
 xvie,16e
 XVIe,16e
 xviᵉ,16e
 XVIᵉ,16e
-xvii e,17e
-XVII e,17e
 xviie,17e
 XVIIe,17e
 xviiᵉ,17e
 XVIIᵉ,17e
-xviii e,18e
-XVIII e,18e
 xviiie,18e
 XVIIIe,18e
 xviiiᵉ,18e
 XVIIIᵉ,18e
-xx e,20e
-XX e,20e
 xxe,20e
 XXe,20e
 xxᵉ,20e
 XXᵉ,20e
-XXI e,21e
-xxi e,21e
-xxi e,21e
-XXI e,21e
 xxie,21e
 XXIe,21e
 xxiᵉ,21e
@@ -374,13 +283,13 @@ sônt,sont
 tres,très
 unè,une
 ùne,une
-luy	lui
-mesme	même
-mesmes	mêmes
-plutost	plutôt
-puet	peut
-quoy	quoi
-seroit	serait
-soubz	sous
-touz	tous
-ycelle	icelle
+luy,lui
+mesme,même
+mesmes,mêmes
+plutost,plutôt
+puet,peut
+quoy,quoi
+seroit,serait
+soubz,sous
+touz,tous
+ycelle,icelle

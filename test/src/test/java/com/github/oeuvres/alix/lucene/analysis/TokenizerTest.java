@@ -62,7 +62,7 @@ public class TokenizerTest
                     ts.reset();
                     while (ts.incrementToken()) {
                         final int flags = flagsAttribute.getFlags();
-                        if (flags != TOKEN.code)
+                        if (flags != TOKEN.ordinal())
                             continue;
                         char[] chars = termAttribute.buffer();
                         chars[0] = Char.toLower(chars[0]);
