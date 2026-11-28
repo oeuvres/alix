@@ -158,13 +158,14 @@ final class VerbalMweCompiler
     }
 
     /**
-     * Loads headered CSV declarations, optionally expanding verbal heads.
-     * @param csv unread, caller-owned reader of form, POS and canonical columns
+     * Loads headered expression declarations with caller-selected diagnostics.
+     * @param csv unread, caller-owned reader
+     * @param report diagnostic sink; null suppresses warnings
      * @throws UncheckedIOException if reading or analysis fails
      */
-    public void loadExpressions(final CSVReader csv)
+    public void loadExpressions(final CSVReader csv, final Report report)
     {
-        LexiconHelper.loadExpressions(csv, this::addExpression);
+        LexiconHelper.loadExpressions(csv, this::addExpression, report);
     }
 
     /**

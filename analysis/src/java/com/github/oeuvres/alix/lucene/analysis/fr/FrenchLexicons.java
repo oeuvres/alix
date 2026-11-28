@@ -53,9 +53,9 @@ import org.apache.lucene.store.Directory;
 import com.github.oeuvres.alix.common.Upos;
 import com.github.oeuvres.alix.lucene.analysis.NumberFilter;
 import com.github.oeuvres.alix.lucene.analysis.util.LexiconHelper;
-import com.github.oeuvres.alix.util.CSVReader;
 import com.github.oeuvres.alix.util.CharsMap;
 import com.github.oeuvres.alix.util.LemmaLexicon;
+import com.github.oeuvres.alix.util.Report;
 
 import opennlp.tools.postag.MutableTagDictionary;
 import opennlp.tools.postag.POSDictionary;
@@ -72,38 +72,9 @@ public final class FrenchLexicons
     {
     }
 
-    /**
-     * Opens a CSV resource from the default French dictionary directory.
-     * @param filename resource filename
-     * @return unread CSV reader owned by the caller
-     * @throws IOException if the resource cannot be opened
-     */
-    private static CSVReader csv(final String filename) throws IOException
-    {
-        return new CSVReader(FrenchLexicons.class, "/com/github/oeuvres/alix/fr/" + filename);
-    }
-
-    /**
-     * Builds a set from the first columns of headered French resources.
-     * @param capacity expected set size
-     * @param ignoreCase whether matching ignores case
-     * @param filenames resources in loading order
-     * @return populated set
-     * @throws UncheckedIOException if a resource cannot be read
-     */
-    private static CharArraySet buildSet(final int capacity, final boolean ignoreCase,
-        final String... filenames)
-    {
-        final CharArraySet set = new CharArraySet(capacity, ignoreCase);
-        for (String filename : filenames) {
-            try (CSVReader csv = csv(filename)) {
-                LexiconHelper.loadSet(set, csv, 0, SKIP);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
-        return set;
-    }
+    private static final String DIRECTORY = "/com/github/oeuvres/alix/fr/";
+    private static final LexiconHelper LEXICONS =
+        new LexiconHelper(FrenchLexicons.class, DIRECTORY, new Report.ReportConsole());
 
     /**
      * Resolves a source lexical tag without discarding its specialization.
@@ -138,7 +109,7 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildBrevidots()
     {
-        return buildSet(300, true, "brevidots.csv");
+        return LEXICONS.buildSet(300, true, "brevidots.csv");
     }
 
     /**
@@ -148,7 +119,7 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildGramwords()
     {
-        return buildSet(1200, true, "gramwords.csv");
+        return LEXICONS.buildSet(1200, true, "gramwords.csv");
     }
 
     /**
@@ -160,11 +131,8 @@ public final class FrenchLexicons
     {
         final LemmaLexicon lexicon = new LemmaLexicon(500_000);
         lexicon.onDuplicate(LemmaLexicon.OnDuplicate.IGNORE);
-        try (CSVReader csv = csv("word.csv")) {
-            LexiconHelper.loadLemma(lexicon, csv, SKIP, 0, 1, 2, FrenchLexicons::wordPos);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadLemma(lexicon, csv, SKIP,
+            0, 1, 2, FrenchLexicons::wordPos, report), "word.csv");
         return lexicon;
     }
 
@@ -181,14 +149,8 @@ public final class FrenchLexicons
      */
     private static NumberFilter.Lexicon loadNumbers()
     {
-        final CharArrayMap<char[]> map = new CharArrayMap<>(5000, true);
-        try (CSVReader csv = csv("numbers-fr.csv")) {
-            LexiconHelper.loadMap(map, csv, ERROR,
-                SKIP, 0, 1, null);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        return new NumberFilter.Lexicon(map);
+        return new NumberFilter.Lexicon(
+            LEXICONS.buildMap(5000, true, ERROR, "numbers-fr.csv"));
     }
 
     /**
@@ -198,7 +160,7 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildNoisetokens()
     {
-        return buildSet(1500, true, "noisetokens.csv");
+        return LEXICONS.buildSet(1500, true, "noisetokens.csv");
     }
 
     /**
@@ -209,15 +171,9 @@ public final class FrenchLexicons
     public static CharsMap buildNormalizer()
     {
         final CharsMap map = new CharsMap(2000, false);
-        for (String filename : new String[] {
-                "norm-variants.csv", "norm-aeoe.csv", "norm-maj-noacc.csv",
-                "norm-forenames.csv", "norm-names.csv", "norm-misc.csv" }) {
-            try (CSVReader csv = csv(filename)) {
-                LexiconHelper.loadMap(map, csv, REPLACE, SKIP, 0, 1, null);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
+        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadMap(map, csv, REPLACE,
+            SKIP, 0, 1, report), "norm-variants.csv", "norm-aeoe.csv", "norm-maj-noacc.csv",
+            "norm-forenames.csv", "norm-names.csv", "norm-misc.csv");
         return map;
     }
 
@@ -240,10 +196,9 @@ public final class FrenchLexicons
      */
     private static Dictionary loadHunspell()
     {
-        final String base = "/com/github/oeuvres/alix/fr/";
         try (Directory tmp = new ByteBuffersDirectory();
-                InputStream aff = FrenchLexicons.class.getResourceAsStream(base + "fr-alix.aff");
-                InputStream dic = FrenchLexicons.class.getResourceAsStream(base + "fr-alix.dic")) {
+                InputStream aff = FrenchLexicons.class.getResourceAsStream(DIRECTORY + "fr-alix.aff");
+                InputStream dic = FrenchLexicons.class.getResourceAsStream(DIRECTORY + "fr-alix.dic")) {
             if (aff == null || dic == null) {
                 throw new IOException("Missing French Hunspell resources: fr-alix.aff or fr-alix.dic");
             }
@@ -266,13 +221,8 @@ public final class FrenchLexicons
     static VerbalMweCompiler buildMweCompiler(final Analyzer analyzer)
     {
         final VerbalMweCompiler compiler = new VerbalMweCompiler(analyzer, HunspellResources.DICTIONARY);
-        for (String filename : new String[] { "mwe-words.csv", "mwe-propn.csv" }) {
-            try (CSVReader csv = csv(filename)) {
-                compiler.loadExpressions(csv);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
+        LEXICONS.loadResources(compiler::loadExpressions,
+            "mwe-words.csv", "mwe-propn.csv");
         return compiler;
     }
 
@@ -292,7 +242,25 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildPropn()
     {
-        return buildSet(2000, true, "propn-words.csv");
+        return LEXICONS.buildSet(2000, true, "propn-words.csv");
+    }
+
+    /**
+     * Builds the case-sensitive unit dictionary.
+     * @return unit names mapped to canonical dimension lemmas
+     */
+    public static CharArrayMap<char[]> buildQuantities()
+    {
+        return LEXICONS.buildMap(160, false, ERROR, "quantities-fr.csv");
+    }
+
+    /**
+     * Builds the localized reference introducer dictionary.
+     * @return case-insensitive reference introducers
+     */
+    public static CharArraySet buildReferences()
+    {
+        return LEXICONS.buildSet(32, true, "references-fr.csv");
     }
 
     /**
@@ -302,7 +270,7 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildStopwords()
     {
-        return buildSet(4000, true, "gramwords.csv", "noisetokens.csv");
+        return LEXICONS.buildSet(4000, true, "gramwords.csv", "noisetokens.csv");
     }
     
     /**
@@ -311,9 +279,9 @@ public final class FrenchLexicons
      * zero.
      *
      * @return populated mutable tag dictionary
-     * @throws IOException 
+     * @throws UncheckedIOException if a resource cannot be read
      */
-    public static MutableTagDictionary buildTagDictionary() throws IOException
+    public static MutableTagDictionary buildTagDictionary()
     {
         return buildTagDictionary(0.0);
     }
@@ -324,21 +292,18 @@ public final class FrenchLexicons
      *
      * @param freqMin minimum FREQLIVRES value accepted
      * @return populated mutable tag dictionary
-     * @throws IOException 
+     * @throws UncheckedIOException if a resource cannot be read
      */
-    public static MutableTagDictionary buildTagDictionary(final double freqMin) throws IOException
+    public static MutableTagDictionary buildTagDictionary(final double freqMin)
     {
         // true = case sensitive, false = case insensitive
         final MutableTagDictionary tagDic = new POSDictionary(true);
-        try (CSVReader csv = csv("word.csv")) {
-            LexiconHelper.loadTags(tagDic, csv, SKIP, 0, 1, 3, freqMin, FrenchLexicons::wordPos, null);
-        }
-        try (CSVReader csv = csv("mwe-words.csv")) {
-            LexiconHelper.loadTags(tagDic, csv, SKIP, 0, 1, -1, -1, FrenchLexicons::wordPos, null);
-        }
-        try (CSVReader csv = csv("propn-words.csv")) {
-            LexiconHelper.loadPROPN(tagDic, csv, null);
-        }
+        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadTags(tagDic, csv, SKIP,
+            0, 1, 3, freqMin, FrenchLexicons::wordPos, report), "word.csv");
+        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadTags(tagDic, csv, SKIP,
+            0, 1, -1, -1, FrenchLexicons::wordPos, report), "mwe-words.csv");
+        LEXICONS.loadResources((csv, report) -> LexiconHelper.loadPROPN(tagDic, csv, report),
+            "propn-words.csv");
         return tagDic;
     }
 
@@ -350,6 +315,6 @@ public final class FrenchLexicons
      */
     public static CharArraySet buildUcwords()
     {
-        return buildSet(200, false, "ucwords.csv");
+        return LEXICONS.buildSet(200, false, "ucwords.csv");
     }
 }

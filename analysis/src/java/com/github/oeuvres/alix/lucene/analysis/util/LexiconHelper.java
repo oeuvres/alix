@@ -3,13 +3,15 @@ package com.github.oeuvres.alix.lucene.analysis.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -40,11 +42,12 @@ import opennlp.tools.postag.POSModel;
  * <li>Rows whose selected "key" cell is blank are ignored.</li>
  * <li>Rows whose first cell starts with {@code '#'} are treated as
  * comments and ignored.</li>
- * <li>Rows with fewer columns than required are ignored.</li>
+ * <li>Rows with fewer columns than required are reported and skipped.</li>
  * </ul>
- * <p>Every CSV loader takes an unread, caller-owned reader. The caller opens
- * and closes it and configures the separator if necessary; the loader sets the
- * column limit. The class is stateless.</p>
+ * <p>The reader-based loaders take unread, caller-owned readers and set their
+ * column limit. {@link #loadFiles} and {@link #loadResources} instead manage
+ * the readers they open, including closure on failure. A configured instance
+ * builds dictionaries from classpath resources.</p>
  */
 public final class LexiconHelper
 {
@@ -82,12 +85,23 @@ public final class LexiconHelper
         ERROR
     }
 
+    private final Class<?> anchor;
+    private final String directory;
+    private final Report report;
+
     /**
-     * Utility class; no instance.
+     * Configures loading of lexical resources from a classpath directory.
+     * @param anchor class used for resource lookup
+     * @param directory classpath directory, absolute or relative to the anchor
+     * @param report diagnostics sink; null suppresses warnings
      */
-    private LexiconHelper()
+    public LexiconHelper(final Class<?> anchor, final String directory, final Report report)
     {
-        // no-op
+        this.anchor = Objects.requireNonNull(anchor, "anchor");
+        Objects.requireNonNull(directory, "directory");
+        this.directory = directory.isEmpty() || directory.endsWith("/")
+            ? directory : directory + "/";
+        this.report = orSilent(report);
     }
 
     /**
@@ -142,6 +156,39 @@ public final class LexiconHelper
         if (forms.size() < 2 || output.isEmpty()) return false;
         registerExpression(lexicon, forms, output, pos, warn);
         return true;
+    }
+
+    /**
+     * Builds a map from headered resources using columns zero and one.
+     * @param capacity expected number of entries
+     * @param ignoreCase whether keys are case-insensitive
+     * @param policy duplicate handling policy
+     * @param filenames resource filenames in loading order
+     * @return populated map
+     * @throws UncheckedIOException if a resource cannot be read
+     */
+    public CharArrayMap<char[]> buildMap(final int capacity, final boolean ignoreCase,
+        final OnDuplicate policy, final String... filenames)
+    {
+        final CharArrayMap<char[]> map = new CharArrayMap<>(capacity, ignoreCase);
+        loadResources((csv, diagnostics) -> loadMap(map, csv, policy, CsvHeader.SKIP, 0, 1, diagnostics), filenames);
+        return map;
+    }
+
+    /**
+     * Builds a set from the first columns of headered resources.
+     * @param capacity expected number of entries
+     * @param ignoreCase whether entries are case-insensitive
+     * @param filenames resource filenames in loading order
+     * @return populated set
+     * @throws UncheckedIOException if a resource cannot be read
+     */
+    public CharArraySet buildSet(final int capacity, final boolean ignoreCase,
+        final String... filenames)
+    {
+        final CharArraySet set = new CharArraySet(capacity, ignoreCase);
+        loadResources((csv, diagnostics) -> loadSet(set, csv, 0, CsvHeader.SKIP, diagnostics), filenames);
+        return set;
     }
 
     /**
@@ -219,17 +266,37 @@ public final class LexiconHelper
         final CSVReader csv, final int colExpression, final int colPos, final int colCanonical,
         final CsvHeader header)
     {
+        loadExpressions(lexicon, analyzer, csv, colExpression, colPos, colCanonical, header,
+            new Report.ReportConsole());
+    }
+
+    /**
+     * Loads lexical MWEs using the supplied diagnostic sink.
+     * @param lexicon mutable target lexicon
+     * @param analyzer entry analyzer
+     * @param csv unread, caller-owned reader
+     * @param colExpression source expression column
+     * @param colPos lexical UPOS column; -1 means unspecified
+     * @param colCanonical canonical output column; -1 means source expression
+     * @param header header policy
+     * @param report diagnostic sink; null suppresses warnings
+     * @throws UncheckedIOException if reading or analysis fails
+     */
+    public static void loadExpressions(final MweLexicon lexicon, final Analyzer analyzer,
+        final CSVReader csv, final int colExpression, final int colPos, final int colCanonical,
+        final CsvHeader header, final Report report)
+    {
         checkColumnIndex(colExpression, "colExpression");
         if (colCanonical < -1 || colPos < -1) {
             throw new IllegalArgumentException("Optional column indices must be >= -1");
         }
         final int columns = Math.max(colExpression, Math.max(colPos, colCanonical)) + 1;
-        final Report report = new Report.ReportConsole();
-        forEachDataRow(csv, header, columns, colExpression, report, row -> {
+        final Report rep = orSilent(report);
+        forEachDataRow(csv, header, columns, colExpression, rep, row -> {
             final String form = row.getCellAsString(colExpression);
             final String output = colCanonical < 0 ? form : row.getCellAsString(colCanonical);
             final String label = colPos < 0 ? "" : row.getCellAsString(colPos).strip();
-            final Consumer<String> warn = mweWarnings(row, form, report);
+            final Consumer<String> warn = mweWarnings(row, form, rep);
             final Upos pos = resolveMwePos(label, warn);
             try {
                 addExpression(lexicon, analyzer, form, output, pos, warn);
@@ -253,11 +320,24 @@ public final class LexiconHelper
      */
     public static void loadExpressions(final CSVReader csv, final ExpressionHandler handler)
     {
-        final Report report = new Report.ReportConsole();
-        forEachDataRow(csv, CsvHeader.SKIP, 3, 0, report, row -> {
+        loadExpressions(csv, handler, new Report.ReportConsole());
+    }
+
+    /**
+     * Loads headered expression declarations with caller-selected diagnostics.
+     * @param csv unread, caller-owned reader
+     * @param handler expression registration callback
+     * @param report diagnostic sink; null suppresses warnings
+     * @throws UncheckedIOException if reading or analysis fails
+     */
+    public static void loadExpressions(final CSVReader csv, final ExpressionHandler handler,
+        final Report report)
+    {
+        final Report rep = orSilent(report);
+        forEachDataRow(csv, CsvHeader.SKIP, 3, 0, rep, row -> {
             final String form = row.getCellAsString(0).strip();
             if (form.isEmpty()) return;
-            final Consumer<String> warn = mweWarnings(row, form, report);
+            final Consumer<String> warn = mweWarnings(row, form, rep);
             final Upos pos = resolveMwePos(row.getCellAsString(1), warn);
             final String canonical = row.getCellAsString(2);
             try {
@@ -287,6 +367,31 @@ public final class LexiconHelper
     }
 
     /**
+     * Opens, loads and closes external CSV files in declaration order.
+     * The callback must not close the reader.
+     * @param files files in loading order
+     * @param report diagnostic sink; null suppresses warnings
+     * @param loader operation on an unread CSV reader and its diagnostic sink
+     * @throws IOException if a file cannot be opened, read or closed
+     */
+    public static void loadFiles(final Iterable<Path> files, final Report report,
+        final BiConsumer<CSVReader, Report> loader) throws IOException
+    {
+        Objects.requireNonNull(loader, "loader");
+        final Report rep = orSilent(report);
+        for (Path path : files) {
+            try (CSVReader csv = new CSVReader(path)) {
+                csv.report(rep);
+                loader.accept(csv, rep);
+            } catch (UncheckedIOException e) {
+                throw new IOException("Cannot load lexical file " + path + ": " + e.getMessage(), e);
+            } catch (IOException e) {
+                throw new IOException("Cannot open or close lexical file " + path, e);
+            }
+        }
+    }
+
+    /**
      * Loads a lemma dictionary with optional POS-specific entries. Every
      * accepted form has a POS-independent entry, even if its POS is unknown.
      *
@@ -310,6 +415,26 @@ public final class LexiconHelper
         final int lemmaCol,
         final Function<String, Upos> posResolver)
         throws UncheckedIOException
+    {
+        loadLemma(lex, csv, csvHeader, formCol, posCol, lemmaCol, posResolver,
+            new Report.ReportConsole());
+    }
+
+    /**
+     * Loads a lemma dictionary with caller-selected diagnostics.
+     * @param lex target lemma lexicon
+     * @param csv unread, caller-owned reader
+     * @param csvHeader header policy
+     * @param formCol surface form column
+     * @param posCol POS column
+     * @param lemmaCol lemma column
+     * @param posResolver POS resolver; null uses Upos.get
+     * @param report diagnostic sink; null suppresses warnings
+     * @throws UncheckedIOException on read error
+     */
+    public static void loadLemma(final LemmaLexicon lex, final CSVReader csv,
+        final CsvHeader csvHeader, final int formCol, final int posCol, final int lemmaCol,
+        final Function<String, Upos> posResolver, final Report report)
     {
         Objects.requireNonNull(lex, "lex");
         Objects.requireNonNull(csv, "csv");
@@ -336,14 +461,14 @@ public final class LexiconHelper
             }
             lex.put(form, lemma);
             final String rawPosName = row.getCellAsString(posCol);
-            final Upos tag = pr.resolve(rawPosName);
+            final Upos tag = pr.resolve(rawPosName, row.getLineNo());
             if (tag != null) {
                 lex.put(form, tag.ordinal(), lemma);
             }
         };
 
-        forEachDataRow(csv, csvHeader, maxRequiredCol(formCol, posCol, lemmaCol), formCol, null, handler);
-        pr.report(csv.getSpec(), new Report.ReportConsole());
+        forEachDataRow(csv, csvHeader, maxRequiredCol(formCol, posCol, lemmaCol), formCol, report, handler);
+        pr.report(csv.getSpec(), orSilent(report));
     }
 
     /**
@@ -504,6 +629,27 @@ public final class LexiconHelper
     }
 
     /**
+     * Opens, loads and closes classpath resources in declaration order.
+     * The callback must not close the reader.
+     * @param loader operation on an unread CSV reader and its diagnostic sink
+     * @param filenames resource filenames in loading order
+     * @throws UncheckedIOException on open, read or close failure
+     */
+    public void loadResources(final BiConsumer<CSVReader, Report> loader, final String... filenames)
+    {
+        Objects.requireNonNull(loader, "loader");
+        for (String filename : filenames) {
+            final String path = directory + filename;
+            try (CSVReader csv = new CSVReader(anchor, path)) {
+                csv.report(report);
+                loader.accept(csv, report);
+            } catch (IOException e) {
+                throw new UncheckedIOException("Cannot open or close lexical resource " + path, e);
+            }
+        }
+    }
+
+    /**
      * Load a CSV reader into a {@link CharArraySet}.
      *
      * @param set        target set
@@ -518,6 +664,21 @@ public final class LexiconHelper
         final CsvHeader csvHeader)
         throws UncheckedIOException
     {
+        loadSet(set, csv, col, csvHeader, new Report.ReportConsole());
+    }
+
+    /**
+     * Loads a set with caller-selected diagnostics.
+     * @param set target set
+     * @param csv unread, caller-owned reader
+     * @param col form column
+     * @param csvHeader header policy
+     * @param report diagnostic sink; null suppresses warnings
+     * @throws UncheckedIOException on read error
+     */
+    public static void loadSet(final CharArraySet set, final CSVReader csv,
+        final int col, final CsvHeader csvHeader, final Report report)
+    {
         Objects.requireNonNull(set, "set");
         Objects.requireNonNull(csv, "csv");
         checkColumnIndex(col, "col");
@@ -531,7 +692,7 @@ public final class LexiconHelper
             set.add(form);
         };
 
-        forEachDataRow(csv, csvHeader, col + 1, col, null, handler);
+        forEachDataRow(csv, csvHeader, col + 1, col, report, handler);
     }
 
     /**
@@ -549,7 +710,7 @@ public final class LexiconHelper
      * @param freqCol      frequency column; if negative, frequency is ignored
      * @param freqMin      minimum accepted frequency when {@code freqCol >= 0}
      * @param posResolver  POS resolver; {@code null} uses {@code Upos::get}
-     * @param report       diagnostic sink; null suppresses row warnings but reports unknown POS to the console
+     * @param report       diagnostic sink; null suppresses warnings
      * @throws UncheckedIOException on read error
      */
     public static void loadTags(
@@ -596,12 +757,15 @@ public final class LexiconHelper
                     return;
                 }
 
-                if (!Double.isFinite(frequency) || frequency < freqMin) {
+                if (!Double.isFinite(frequency)) {
+                    rep.warn(row.getSpec() + ":" + row.getLineNo()
+                        + " invalid frequency=" + freqText);
                     return;
                 }
+                if (frequency < freqMin) return;
             }
 
-            final Upos pos = pr.resolve(row.getCellAsString(tagCol));
+            final Upos pos = pr.resolve(row.getCellAsString(tagCol), row.getLineNo());
             if (pos == null) {
                 return;
             }
@@ -618,7 +782,7 @@ public final class LexiconHelper
         };
 
         forEachDataRow(csv, csvHeader, minCols, formCol, report, handler);
-        pr.report(csv.getSpec(), report == null ? new Report.ReportConsole() : report);
+        pr.report(csv.getSpec(), rep);
     }
 
     /**
@@ -788,7 +952,7 @@ public final class LexiconHelper
         Objects.requireNonNull(handler, "handler");
         final Report rep = orSilent(report);
         csv.cellMax(minCols);
-        if (report != null) csv.report(report);
+        csv.report(rep);
         try {
             if (csvHeader == CsvHeader.SKIP && !csv.readRow()) {
                 return; // empty file
@@ -811,7 +975,8 @@ public final class LexiconHelper
                 handler.accept(csv);
             }
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException(csv.getSpec() + ":" + csv.getLineNo()
+                + " cannot read lexical row", e);
         }
     }
 
@@ -862,6 +1027,7 @@ public final class LexiconHelper
     {
         private final Function<String, Upos> mapping;
         private final Map<String, Integer> unknown = new HashMap<>();
+        private final Map<String, Integer> firstLine = new HashMap<>();
 
         /**
          * Creates a resolver local to one load.
@@ -875,14 +1041,16 @@ public final class LexiconHelper
         /**
          * Resolves a source POS label and counts unsupported labels.
          * @param raw source label
+         * @param line physical starting line of the CSV row
          * @return resolved tag, or null
          */
-        private Upos resolve(final String raw)
+        private Upos resolve(final String raw, final int line)
         {
             final Upos tag = raw == null || raw.isBlank() ? null : mapping.apply(raw.strip());
             if (tag == null) {
                 final String label = raw == null ? "<null>" : raw.isBlank() ? "<blank>" : raw.strip();
                 unknown.merge(label, 1, Integer::sum);
+                firstLine.putIfAbsent(label, line);
             }
             return tag;
         }
@@ -898,7 +1066,8 @@ public final class LexiconHelper
             report.warn(source + " unknown POS tags: " + unknown.size());
             unknown.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .forEach(e -> report.warn(e.getKey() + ": " + e.getValue()));
+                .forEach(e -> report.warn(source + ":" + firstLine.get(e.getKey())
+                    + " unknown POS=" + e.getKey() + " (" + e.getValue() + " occurrence(s))"));
         }
     }
 }
