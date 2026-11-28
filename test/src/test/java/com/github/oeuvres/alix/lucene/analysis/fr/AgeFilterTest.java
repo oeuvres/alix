@@ -99,6 +99,31 @@ public class AgeFilterTest
     }
 
     /**
+     * Tests that the one-argument constructor rounds ages, while the
+     * explicit false argument preserves exact precision.
+     * @throws IOException on stream error
+     */
+    @Test
+    public void defaultDiscretization() throws IOException
+    {
+        final Token number = new Token("18", "18", NUMcard.ordinal(), 0, 2, 1, 1, 0);
+        final Token unit = new Token("mois", "", TOKEN.ordinal(), 3, 7, 1, 1, 0);
+        try (AgeFilter f = new AgeFilter(new Fixture(number, unit))) {
+            assertEquals(List.of(new Token("18mois", "", NOUNage.ordinal(), 0, 7, 1, 1, 0)), read(f));
+        }
+        final Token years = new Token("7", "7", NUMcard.ordinal(), 0, 1, 1, 1, 0);
+        final Token yearUnit = new Token("ans", "", TOKEN.ordinal(), 2, 5, 1, 1, 0);
+        final Token months = new Token("2", "2", NUMcard.ordinal(), 6, 7, 1, 1, 0);
+        final Token monthUnit = new Token("mois", "", TOKEN.ordinal(), 8, 12, 1, 1, 0);
+        try (AgeFilter f = new AgeFilter(new Fixture(years, yearUnit, months, monthUnit))) {
+            assertEquals(List.of(new Token("7ans", "", NOUNage.ordinal(), 0, 12, 1, 1, 0)), read(f));
+        }
+        try (AgeFilter f = new AgeFilter(new Fixture(years, yearUnit, months, monthUnit), false)) {
+            assertEquals(List.of(new Token("7ans2mois", "", NOUNage.ordinal(), 0, 12, 1, 1, 0)), read(f));
+        }
+    }
+
+    /**
      * Tests exact and rounded ages.
      * @throws IOException on stream error
      */
@@ -113,6 +138,10 @@ public class AgeFilterTest
         terms(true, "2 ; 6", "2½ans");
         terms(true, "4 ; 8", "5ans");
         terms(true, "1 ; 3 à 1 ; 6", "15-18mois");
+        terms(true, "7 ; 2 à 7 ; 4", "7ans");
+        terms(true, "4 ; 8 à 5 ; 2", "5ans");
+        terms(true, "0 ; 2 (3) à 0 ; 2 (6)", "2mois");
+        terms(false, "7 ; 2 à 7 ; 4", "7ans2mois-7ans4mois");
     }
 
     /**

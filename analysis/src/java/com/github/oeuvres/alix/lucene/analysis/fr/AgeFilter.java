@@ -48,13 +48,14 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  * explicitly present in the grammar is allowed. Only the longest accepted
  * expression at the current position is emitted, with the first position
  * increment, the full source offsets, position length one and an empty lemma.</p>
- * <p>The default preserves the numerical precision in a canonical term.
- * The optional analytical mode rounds to weeks below one month, half months
+ * <p>The default analytical mode rounds to weeks below one month, half months
  * below six months, months below twelve months, quarters below two years,
  * half years below four years and years thereafter. Conversion between days
  * and months uses the mean Gregorian month (365.25 / 12 days). Nonzero ages
  * below one month receive at least one week. Ranges round
- * their endpoints independently. No rounding is applied to ordinal periods.</p>
+ * their endpoints independently and collapse when the rounded endpoints
+ * coincide. Exact output is available explicitly. No rounding is applied to
+ * ordinal periods. Cardinal unit suffixes are invariant plural forms.</p>
  */
 public final class AgeFilter extends TokenFilter
 {
@@ -106,12 +107,12 @@ public final class AgeFilter extends TokenFilter
     private boolean exhausted;
 
     /**
-     * Creates a filter preserving recorded age precision.
+     * Creates a filter using analytical age discretization.
      * @param input upstream numeric token stream
      */
     public AgeFilter(final TokenStream input)
     {
-        this(input, false);
+        this(input, true);
     }
 
     /**
@@ -535,6 +536,7 @@ public final class AgeFilter extends TokenFilter
         if (discretize) {
             final String left = format(a);
             final String right = format(b);
+            if (left.equals(right)) return left;
             for (Unit u : Unit.values()) {
                 if (left.endsWith(u.suffix) && right.endsWith(u.suffix)) {
                     return left.substring(0, left.length() - u.suffix.length()) + "-" + right;

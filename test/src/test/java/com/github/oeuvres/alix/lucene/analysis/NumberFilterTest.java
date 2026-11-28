@@ -8,6 +8,7 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -211,6 +212,29 @@ public class NumberFilterTest
         assertEquals(ADJord.ordinal(), tokens.get(2).pos());
     }
 
+    /**
+     * Tests that ordinary capitalized words are not Roman ordinals, while
+     * explicitly marked or contextually licensed numerals remain accepted.
+     * @throws IOException on stream error
+     */
+    @Test
+    void romanOrdinals() throws IOException
+    {
+        final String text = "Le Les Ce Ces De Des Ver LE LES CE CES DE DES VER";
+        final List<Token> tokens = analyze(text);
+        assertEquals(List.of(text.split(" ")), tokens.stream().map(Token::term).toList());
+        assertEquals(List.of(text.split(" ")), tokens.stream().map(Token::confirmedForm).toList());
+        assertEquals(List.of(""), tokens.stream().map(Token::lemma).distinct().toList());
+        assertEquals(List.of(TOKEN.ordinal()), tokens.stream().map(Token::pos).distinct().toList());
+        terms("Le texte. Ces enfants. Des objets.", "Le", "texte", ".", "Ces", "enfants", ".", "Des", "objets", ".");
+        terms("Ve Ie Ier", "Ve", "Ie", "Ier");
+        terms("stade I puis III", "stade", "1", "puis", "3");
+        terms("stade Ve", "stade", "5e");
+        terms("chapitre Ier", "chapitre", "1er");
+        terms("chapitre XIXe", "chapitre", "19e");
+        terms("stade. Le", "stade", ".", "Le");
+    }
+
     /** Tests reuse of the same stream and its buffered state.
      * @throws IOException on stream error
      */
@@ -227,4 +251,25 @@ public class NumberFilterTest
             assertEquals(List.of(new Token("un", "1", TOKEN.ordinal(), 0, 2, 1, 1)), read(stream));
         }
     }
+    /**
+     * Tests that upstream numerical annotations survive uppercase cleanup.
+     * @throws IOException on stream error
+     */
+    @Test
+    void uppercasePreservation() throws IOException
+    {
+        final MarkupTokenizer tokenizer = new MarkupTokenizer();
+        tokenizer.setReader(new StringReader("II III IV XIXe AB"));
+        try (TokenStream stream = new UppercaseFilter(
+                new NumberFilter(tokenizer, NUMBERS), CharArraySet.EMPTY_SET, 4)) {
+            final List<Token> tokens = read(stream);
+            assertEquals(List.of("II", "III", "IV", "XIXe", ""),
+                tokens.stream().map(Token::term).toList());
+            assertEquals(List.of("2", "3", "4", "19e", ""),
+                tokens.stream().map(Token::lemma).toList());
+            assertEquals(List.of(NUMcard.ordinal(), NUMcard.ordinal(), NUMcard.ordinal(),
+                ADJord.ordinal(), TOKEN.ordinal()), tokens.stream().map(Token::pos).toList());
+        }
+    }
+
 }

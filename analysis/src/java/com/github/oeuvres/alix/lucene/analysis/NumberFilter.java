@@ -585,7 +585,9 @@ public final class NumberFilter extends TokenFilter
 
     /**
      * Parses uppercase, canonical Roman notation and optional localized suffixes.
-     * Single-letter Romans require a configured contextual cue or a suffix.
+     * Single-letter ASCII Romans require a configured contextual cue unless
+     * their ordinal suffix consists entirely of Unicode modifier letters.
+     * Plain alphabetic suffixes alone are ambiguous (e.g. Le, Ces, Des).
      * @param raw original token, including case
      * @return canonical cardinal or ordinal, or null
      */
@@ -604,7 +606,12 @@ public final class NumberFilter extends TokenFilter
         }
         if (roman.length() == 0 || roman.length() > 15) return null;
         final String suffix = i == raw.length() ? "" : lexicon.get("@suffix:" + raw.substring(i));
-        if (suffix == null || (roman.length() == 1 && suffix.isEmpty() && !romanCue && raw.charAt(0) < '\u2160')) return null;
+        if (suffix == null) return null;
+        if (roman.length() == 1 && raw.charAt(0) < '\u2160' && !romanCue) {
+            // A plain suffix is not evidence that a capitalized word is a number.
+            if (i == raw.length() || !raw.substring(i).codePoints()
+                    .allMatch(c -> Character.getType(c) == Character.MODIFIER_LETTER)) return null;
+        }
         int value = 0;
         int previous = 0;
         for (int p = roman.length() - 1; p >= 0; p--) {

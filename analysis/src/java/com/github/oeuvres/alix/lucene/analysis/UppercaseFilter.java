@@ -8,10 +8,14 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
+import com.github.oeuvres.alix.common.Upos;
+import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 import com.github.oeuvres.alix.util.Char;
 
 /**
- * Applies custom logic to tokens whose letters are all uppercase.
+ * Applies custom logic to unannotated tokens whose letters are all uppercase.
+ * Established grammatical annotations are protected, including numerical
+ * forms whose original surface contains Roman numerals.
  * <p>
  * Digits, punctuation, and combining marks are ignored. A token containing
  * no letters is not considered uppercase.
@@ -20,12 +24,15 @@ public final class UppercaseFilter extends TokenFilter
 {
     private final CharArraySet ucWords;
     private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+    private final PosAttribute posAtt = addAttribute(PosAttribute.class);
     private final int minUcLetters;
 
     /**
      * Creates an uppercase token filter.
      *
      * @param input source token stream
+     * @param ucWords uppercase forms exempt from rewriting
+     * @param minUcLetters minimum uppercase letter count for case normalization
      */
     public UppercaseFilter(
         final TokenStream input,
@@ -38,17 +45,19 @@ public final class UppercaseFilter extends TokenFilter
     }
 
     /**
-     * Reads and processes the next token.
+     * Reads and processes the next token, preserving any established UPOS.
      *
      * @return {@code true} when a token is available; otherwise {@code false}
      * @throws IOException if the input stream cannot be read
      */
     @Override
-    public boolean incrementToken()
-        throws IOException {
+    public boolean incrementToken() throws IOException
+    {
         if (!input.incrementToken()) {
             return false;
         }
+        final Upos pos = Upos.get(posAtt.getPos());
+        if (pos != null && pos.base() != null) return true;
         final int len = termAtt.length();
         int letters = 0;
         int dots = 0;
@@ -95,5 +104,4 @@ public final class UppercaseFilter extends TokenFilter
         }
         return true;
     }
-
 }
