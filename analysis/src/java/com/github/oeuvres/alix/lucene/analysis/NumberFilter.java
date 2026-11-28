@@ -44,7 +44,6 @@ import java.util.Objects;
 
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -75,21 +74,20 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  * nonterminating vulgar fractions use a rational string (e.g. 1/3). A later
  * contextual filter must accept or reject ambiguous lemma candidates.</p>
  */
-public final class NumberFilter extends TokenFilter
+public final class NumberFilter extends CompoundFilterBase
 {
     /** Shared, read-only numeric vocabulary, with prefixes for bounded lookahead. */
     public static final class Lexicon
     {
         private final CharArrayMap<char[]> forms;
         private final CharArraySet prefixes = new CharArraySet(256, true);
-        private final CharArraySet romanCues = new CharArraySet(16, true);
 
         /**
          * Compiles the lookup table once. Keys are lowercase-insensitive words or
          * expressions with hyphens represented by spaces. Values are canonical
          * numbers, optionally prefixed by '?' (ambiguous) or '*' (scale).
          * The values '-', '+' and '.' designate sign and decimal words.
-         * Keys starting @suffix: and @roman: supply suffixes and Roman cues.
+         * Keys starting @suffix: supply ordinal suffixes.
          * @param map loaded numerical dictionary, not modified by this method
          */
         public Lexicon(final CharArrayMap<char[]> map)
@@ -100,7 +98,6 @@ public final class NumberFilter extends TokenFilter
                 final String form = key instanceof char[] chars ? new String(chars) : key.toString();
                 final String normalized = form.startsWith("@") ? form : wordKey(form);
                 copy.put(normalized, entry.getValue().clone());
-                if (normalized.startsWith("@roman:")) romanCues.add(normalized.substring(7));
                 if (normalized.startsWith("@")) continue;
                 for (int p = normalized.indexOf(' '); p >= 0; p = normalized.indexOf(' ', p + 1)) {
                     prefixes.add(normalized.substring(0, p));
@@ -125,16 +122,8 @@ public final class NumberFilter extends TokenFilter
     private static final int LOOKAHEAD = 32;
     private static final BigInteger ZERO = BigInteger.ZERO;
     private final Lexicon lexicon;
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-    @SuppressWarnings("unused")
-    private final PositionIncrementAttribute incAtt = addAttribute(PositionIncrementAttribute.class);
-    private final PositionLengthAttribute lenAtt = addAttribute(PositionLengthAttribute.class);
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
-    private TokenStateQueue queue;
-    private boolean exhausted;
-    private boolean romanCue;
 
     /** Accepted term and exclusive end index in the lookahead queue. */
     private record Match(String value, int end) {}
@@ -146,79 +135,52 @@ public final class NumberFilter extends TokenFilter
      */
     public NumberFilter(final TokenStream input, final Lexicon lexicon)
     {
-        super(input);
+        super(input, LOOKAHEAD);
         this.lexicon = Objects.requireNonNull(lexicon, "lexicon");
     }
 
     /**
-     * Emits a numerical annotation or the head of the buffered stream.
-     * @return true if a token is available
-     * @throws IOException if the input cannot be read
+     * Determines whether a following token can extend a numerical expression.
+     * @param token buffered token
+     * @return true for contiguous, non-punctuation lexical input
      */
     @Override
-    public boolean incrementToken() throws IOException
+    protected boolean canJoin(final AttributeSource token)
     {
-        // Most lexical tokens are not numbers. Do not copy their states into a queue.
-        if (queue == null || queue.isEmpty()) {
-            if (exhausted || !input.incrementToken()) {
-                exhausted = true;
-                return false;
-            }
-            if (!mayStartNumber()) {
-                rememberRomanCue();
-                return true;
-            }
-            if (queue == null) queue = new TokenStateQueue(LOOKAHEAD, this);
-            queue.addLast(this);
-        }
-        final AttributeSource first = queue.get(0);
-        if (first.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1) romanCue = false;
+        return super.canJoin(token) && !blocksNumber(token.getAttribute(PosAttribute.class).getPos());
+    }
+
+    /**
+     * Recognizes and emits a number at the buffered head.
+     * @return true when a numerical match is emitted
+     * @throws IOException if lookahead fails
+     */
+    @Override
+    protected boolean compound() throws IOException
+    {
         final Match match = parseNumber();
-        if (match == null) {
-            queue.removeFirst(this);
-            if (!blocksNumber(posAtt.getPos())) annotateAmbiguous();
-            rememberRomanCue();
-            return true;
-        }
-        final int endOffset = queue.get(match.end - 1).getAttribute(OffsetAttribute.class).endOffset();
-        queue.restoreTo(this, 0);
-        if (match.end > 1) {
-            // Single-token forms are already restored unchanged. Reconstruct only
-            // aggregated forms; the original Reader is not available here.
-            int previousEnd = queue.get(0).getAttribute(OffsetAttribute.class).endOffset();
-            for (int i = 1; i < match.end; i++) {
-                final AttributeSource slot = queue.get(i);
-                final OffsetAttribute offsets = slot.getAttribute(OffsetAttribute.class);
-                if (offsets.startOffset() > previousEnd) termAtt.append(' ');
-                termAtt.append(slot.getAttribute(CharTermAttribute.class));
-                previousEnd = offsets.endOffset();
-            }
-        }
+        if (match == null) return false;
+        merge(match.end, true);
         posAtt.setPos(isOrdinal(match.value) ? ADJord.ordinal() : NUMcard.ordinal());
         lemmaAtt.setEmpty();
         lemmaAtt.append(match.value);
-        offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
         lenAtt.setPositionLength(1);
-        for (int i = 0; i < match.end; i++) queue.removeFirst();
-        romanCue = false;
         return true;
     }
 
     /**
-     * Clears all buffered input and contextual state before stream reuse.
-     * @throws IOException if the input cannot be reset
+     * Annotates an unresolved number candidate.
+     * Runs on the restored live token, not on speculative lookahead.
+     * @param attempted true if numerical recognition was attempted
      */
     @Override
-    public void reset() throws IOException
+    protected void unmatched(final boolean attempted)
     {
-        super.reset();
-        if (queue != null) queue.clear();
-        exhausted = false;
-        romanCue = false;
+        if (attempted && !blocksNumber(posAtt.getPos())) annotateAmbiguous();
     }
 
     /**
-     * Publishes an isolated ambiguous dictionary entry as a lemma candidate,
+     * Publishes an ambiguous lexical or Roman numeral as a lemma candidate,
      * preserving the surface term and the upstream POS. Called only after
      * the numerical parser has found no confirmed match.
      */
@@ -227,26 +189,36 @@ public final class NumberFilter extends TokenFilter
         final char[] value = lexicon.forms.get(termAtt.buffer(), 0, termAtt.length());
         if (value != null && value.length > 1 && value[0] == '?') {
             lemmaAtt.copyBuffer(value, 1, value.length - 1);
+            return;
+        }
+        if (termAtt.length() == 0 || "IVXLCDM".indexOf(termAtt.charAt(0)) < 0) return;
+        final String roman = normalizeRoman(termAtt.toString());
+        if (roman != null && roman.startsWith("?")) {
+            lemmaAtt.setEmpty();
+            lemmaAtt.append(roman.substring(1));
         }
     }
 
     /**
      * Tests the live token for a possible numeric start without allocating a token state.
+     * @param token live source token
      * @return true for literal numbers, dictionary forms, prefixes or possible Roman notation
      */
-    private boolean mayStartNumber()
+    @Override
+    protected boolean mayStart(final AttributeSource token)
     {
-        final int pos = posAtt.getPos();
-        if (blocksNumber(pos) || termAtt.length() == 0) return false;
+        final int pos = token.getAttribute(PosAttribute.class).getPos();
+        final CharTermAttribute term = token.getAttribute(CharTermAttribute.class);
+        if (blocksNumber(pos) || term.length() == 0) return false;
         if (pos == NUM.ordinal() || pos == NUMcard.ordinal() || pos == ADJord.ordinal()) return true;
-        final char[] chars = termAtt.buffer();
-        final int length = termAtt.length();
+        final char[] chars = term.buffer();
+        final int length = term.length();
         if (lexicon.forms.containsKey(chars, 0, length) || lexicon.prefixes.contains(chars, 0, length)) return true;
         final char first = chars[0];
         if ("IVXLCDM".indexOf(first) >= 0 || (first >= '\u2160' && first <= '\u216F')) return true;
         for (int i = 0; i < length; i++) {
             if (chars[i] == '-' || chars[i] == '‐' || chars[i] == '‑') {
-                final String key = wordKey(termAtt.toString());
+                final String key = wordKey(term.toString());
                 return lexicon.forms.containsKey(key) || lexicon.prefixes.contains(key);
             }
         }
@@ -264,44 +236,19 @@ public final class NumberFilter extends TokenFilter
         return tag == null || tag == XML || tag.base() == PUNCT || tag.base() == SYM;
     }
 
-    /** Records whether the emitted token licenses a following single Roman numeral. */
-    private void rememberRomanCue()
-    {
-        romanCue = !blocksNumber(posAtt.getPos())
-            && lexicon.romanCues.contains(termAtt.buffer(), 0, termAtt.length());
-    }
-
     /**
-     * Buffers tokens up to an index, preserving failed lookahead for replay.
-     * @param index zero-based queue index
-     * @return whether that token exists within the lookahead bound
-     * @throws IOException if the input cannot be read
-     */
-    private boolean ensure(final int index) throws IOException
-    {
-        if (index >= LOOKAHEAD) return false;
-        while (queue.size() <= index && !exhausted) {
-            if (!input.incrementToken()) exhausted = true;
-            else queue.addLast(this);
-        }
-        return queue.size() > index;
-    }
-
-    /**
-     * Tests whether a slot may participate in a number.
+     * Tests whether a slot may participate in a number, including the head.
      * @param index buffered token index
-     * @return true for a lexical token without an intervening boundary
-     * @throws IOException if the input cannot be read
+     * @return true for eligible input
+     * @throws IOException if lookahead fails
      */
     private boolean eligible(final int index) throws IOException
     {
-        if (!ensure(index)) return false;
-        final AttributeSource slot = queue.get(index);
-        final int pos = slot.getAttribute(PosAttribute.class).getPos();
-        if (blocksNumber(pos)
-                || slot.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
-                || slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 0) return false;
-        return index == 0 || slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 1;
+        final AttributeSource slot = at(index);
+        if (slot == null) return false;
+        return !blocksNumber(slot.getAttribute(PosAttribute.class).getPos())
+            && slot.getAttribute(PositionLengthAttribute.class).getPositionLength() == 1
+            && slot.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 0;
     }
 
     /**
@@ -313,7 +260,7 @@ public final class NumberFilter extends TokenFilter
     private Match block(final int start) throws IOException
     {
         if (!eligible(start)) return null;
-        final AttributeSource slot = queue.get(start);
+        final AttributeSource slot = at(start);
         final CharTermAttribute term = slot.getAttribute(CharTermAttribute.class);
         final int pos = slot.getAttribute(PosAttribute.class).getPos();
         final String raw = term.toString();
@@ -321,7 +268,7 @@ public final class NumberFilter extends TokenFilter
             final String literal = normalizeLiteral(raw);
             if (literal == null) return null;
             if (isUnsignedInteger(literal) && eligible(start + 1)) {
-                final String suffix = queue.get(start + 1).getAttribute(CharTermAttribute.class).toString();
+                final String suffix = at(start + 1).getAttribute(CharTermAttribute.class).toString();
                 final String canonical = lexicon.get("@suffix:" + suffix);
                 // A separated plain 'e' may be a mathematical variable.
                 if (canonical != null && (!suffix.equalsIgnoreCase("e") || adjacent(start, start + 1))) {
@@ -336,7 +283,7 @@ public final class NumberFilter extends TokenFilter
         final StringBuilder candidate = new StringBuilder(key);
         int index = start + 1;
         while (lexicon.prefixes.contains(candidate) && eligible(index)) {
-            candidate.append(' ').append(wordKey(queue.get(index).getAttribute(CharTermAttribute.class).toString()));
+            candidate.append(' ').append(wordKey(at(index).getAttribute(CharTermAttribute.class).toString()));
             value = lexicon.get(candidate);
             if (value != null) best = new Match(value, index + 1);
             index++;
@@ -354,11 +301,12 @@ public final class NumberFilter extends TokenFilter
      * @param left first buffered token
      * @param right following buffered token
      * @return true when their original offsets touch
+     * @throws IOException if lookahead fails
      */
-    private boolean adjacent(final int left, final int right)
+    private boolean adjacent(final int left, final int right) throws IOException
     {
-        return queue.get(left).getAttribute(OffsetAttribute.class).endOffset()
-            == queue.get(right).getAttribute(OffsetAttribute.class).startOffset();
+        return at(left).getAttribute(OffsetAttribute.class).endOffset()
+            == at(right).getAttribute(OffsetAttribute.class).startOffset();
     }
 
     /**
@@ -482,11 +430,12 @@ public final class NumberFilter extends TokenFilter
      * @param atom matched decimal block
      * @param start index of its first token
      * @return canonical digits, without removing leading zeros in the fraction
+     * @throws IOException if lookahead fails
      */
-    private String decimalDigits(final Match atom, final int start)
+    private String decimalDigits(final Match atom, final int start) throws IOException
     {
         if (atom.end == start + 1) {
-            final CharTermAttribute raw = queue.get(start).getAttribute(CharTermAttribute.class);
+            final CharTermAttribute raw = at(start).getAttribute(CharTermAttribute.class);
             final StringBuilder digits = new StringBuilder(raw.length());
             for (int i = 0; i < raw.length(); i++) {
                 final int digit = Character.digit(raw.charAt(i), 10);
@@ -580,11 +529,12 @@ public final class NumberFilter extends TokenFilter
 
     /**
      * Parses uppercase, canonical Roman notation and optional localized suffixes.
-     * Single-letter ASCII Romans require a configured contextual cue unless
-     * their ordinal suffix consists entirely of Unicode modifier letters.
-     * Plain alphabetic suffixes alone are ambiguous (e.g. Le, Ces, Des).
+     * Single-letter ASCII Romans are ambiguous unless explicitly marked with
+     * a superscript ordinal suffix. Common French grammatical words such as
+     * Le, Les, Ce, Ces, De, Des, Me and Mes are not numerical candidates.
      * @param raw original token, including case
-     * @return canonical cardinal or ordinal, or null
+     * @return canonical cardinal or ordinal, prefixed with '?' if ambiguous,
+     *         or null if not a valid Roman numeral
      */
     private String normalizeRoman(final String raw)
     {
@@ -602,11 +552,12 @@ public final class NumberFilter extends TokenFilter
         if (roman.length() == 0 || roman.length() > 15) return null;
         final String suffix = i == raw.length() ? "" : lexicon.get("@suffix:" + raw.substring(i));
         if (suffix == null) return null;
-        if (roman.length() == 1 && raw.charAt(0) < '\u2160' && !romanCue) {
-            // A plain suffix is not evidence that a capitalized word is a number.
-            if (i == raw.length() || !raw.substring(i).codePoints()
-                    .allMatch(c -> Character.getType(c) == Character.MODIFIER_LETTER)) return null;
-        }
+        final boolean single = roman.length() == 1 && raw.charAt(0) < '\u2160';
+        // Do not propose numerical lemmas for ordinary grammatical words.
+        if (single && "LCDM".indexOf(raw.charAt(0)) >= 0
+                && (raw.substring(i).equalsIgnoreCase("e") || raw.substring(i).equalsIgnoreCase("es"))) return null;
+        final boolean ambiguous = single && (i == raw.length() || !raw.substring(i).codePoints()
+            .allMatch(c -> Character.getType(c) == Character.MODIFIER_LETTER));
         int value = 0;
         int previous = 0;
         for (int p = roman.length() - 1; p >= 0; p--) {
@@ -624,7 +575,7 @@ public final class NumberFilter extends TokenFilter
         final String[] units = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"};
         final String canonical = thousands[value / 1000] + hundreds[value / 100 % 10]
             + tens[value / 10 % 10] + units[value % 10];
-        return canonical.contentEquals(roman) ? value + suffix : null;
+        return canonical.contentEquals(roman) ? (ambiguous ? "?" : "") + value + suffix : null;
     }
 
     /**

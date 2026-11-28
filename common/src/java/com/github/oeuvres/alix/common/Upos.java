@@ -29,10 +29,6 @@ public enum Upos
     UNKNOWN(null),
     /** XML markup, not a linguistic token. */
     XML(null),
-    /** Abbreviation awaiting resolution. */
-    ABBR(null),
-    /** Grammatical word awaiting resolution. */
-    MG(null),
 
     /** Adjective. */
     ADJ,
@@ -97,7 +93,9 @@ public enum Upos
     NUM,
     /** Cardinal number with a resolved canonical numerical value. */
     NUMcard(NUM),
-
+    /** Numbered reference, e.g. chapitre IV. */
+    NUMref(NUM),
+    
     /** Particle. */
     PART,
 

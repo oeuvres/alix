@@ -4,15 +4,13 @@ import static com.github.oeuvres.alix.common.Upos.*;
 
 import java.io.IOException;
 
-import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeSource;
 
-import com.github.oeuvres.alix.lucene.analysis.TokenStateQueue;
+import com.github.oeuvres.alix.lucene.analysis.CompoundFilterBase;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.LemmaAttribute;
 import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
 
@@ -56,7 +54,7 @@ import com.github.oeuvres.alix.lucene.analysis.tokenattributes.PosAttribute;
  * coincide. Exact output is available explicitly. No rounding is applied to
  * ordinal periods. Cardinal unit suffixes are invariant plural forms.</p>
  */
-public final class AgeFilter extends TokenFilter
+public final class AgeFilter extends CompoundFilterBase
 {
     /** Maximum buffered tokens, including a failed lookahead. */
     private static final int LOOKAHEAD = 32;
@@ -94,15 +92,9 @@ public final class AgeFilter extends TokenFilter
     /** A complete replacement, with an exclusive end index. */
     private record Match(int end, String text) {}
 
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-    private final PositionIncrementAttribute incAtt = addAttribute(PositionIncrementAttribute.class);
-    private final PositionLengthAttribute lenAtt = addAttribute(PositionLengthAttribute.class);
     private final boolean discretize;
-    private TokenStateQueue queue;
-    private boolean exhausted;
 
     /**
      * Creates a filter using analytical age discretization.
@@ -120,101 +112,53 @@ public final class AgeFilter extends TokenFilter
      */
     public AgeFilter(final TokenStream input, final boolean discretize)
     {
-        super(input);
+        super(input, LOOKAHEAD);
         this.discretize = discretize;
     }
 
     /**
-     * Emits a complete age or the next unchanged input token.
-     * @return true if a token is available
-     * @throws IOException if the input cannot be read
+     * Allows age notation punctuation but not structural events or gaps.
+     * @param token buffered token
+     * @return true if the token may extend an age expression
      */
     @Override
-    public boolean incrementToken() throws IOException
+    protected boolean canJoin(final AttributeSource token)
     {
-        if (queue == null || queue.isEmpty()) {
-            if (exhausted || !input.incrementToken()) {
-                exhausted = true;
-                return false;
-            }
-            // No allocations, queue copies or lookahead for ordinary words.
-            if (lenAtt.getPositionLength() != 1 || incAtt.getPositionIncrement() == 0
-                    || !mayStart(termAtt, lemmaAtt)) return true;
-            if (queue == null) queue = new TokenStateQueue(LOOKAHEAD, this);
-            queue.addLast(this);
-        }
-        final AttributeSource first = queue.get(0);
-        if (first.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
-                || first.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() == 0
-                || !mayStart(first.getAttribute(CharTermAttribute.class), first.getAttribute(LemmaAttribute.class))) {
-            queue.removeFirst(this);
-            return true;
-        }
+        final int pos = token.getAttribute(PosAttribute.class).getPos();
+        return super.canJoin(token) && pos != PUNCTpara.ordinal() && pos != PUNCTsection.ordinal()
+            && pos != PUNCTstruct.ordinal() && pos != PUNCTsent.ordinal() && pos != XML.ordinal();
+    }
+
+    /**
+     * Recognizes and emits an age at the buffered head.
+     * @return true if an age is emitted
+     * @throws IOException if lookahead fails
+     */
+    @Override
+    protected boolean compound() throws IOException
+    {
+        if (!mayStart(at(0))) return false;
         final Match match = match();
-        if (match == null) {
-            queue.removeFirst(this);
-            return true;
-        }
-        final int endOffset = queue.get(match.end - 1).getAttribute(OffsetAttribute.class).endOffset();
-        queue.restoreTo(this, 0);
+        if (match == null) return false;
+        merge(match.end, false);
         termAtt.setEmpty().append(match.text);
         lemmaAtt.setEmpty();
         posAtt.setPos(NOUNage.ordinal());
-        offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
         lenAtt.setPositionLength(1);
-        for (int i = 0; i < match.end; i++) queue.removeFirst();
         return true;
     }
 
     /**
-     * Clears all buffered input before reuse.
-     * @throws IOException if the input cannot be reset
+     * Tests whether the current token can begin an age.
+     * @param token live or buffered token
+     * @return true if age recognition is worth attempting
      */
     @Override
-    public void reset() throws IOException
+    protected boolean mayStart(final AttributeSource token)
     {
-        super.reset();
-        if (queue != null) queue.clear();
-        exhausted = false;
-    }
-
-    /**
-     * Returns a buffered token, reading only as far as necessary, without
-     * permitting a match to cross a structural boundary or position gap.
-     * @param index zero-based index from the current input head
-     * @return token state, or null at a boundary or end of input
-     * @throws IOException on stream error
-     */
-    private AttributeSource at(final int index) throws IOException
-    {
-        if (index >= LOOKAHEAD) return null;
-        // The last buffered token may be a barrier from failed lookahead.
-        if (queue.size() > 1 && index >= queue.size() - 1
-                && barrier(queue.get(queue.size() - 1))) return null;
-        while (queue.size() <= index) {
-            if (exhausted || !input.incrementToken()) {
-                exhausted = true;
-                return null;
-            }
-            queue.addLast(this);
-            if (barrier(queue.get(queue.size() - 1))) return null;
-        }
-        return queue.get(index);
-    }
-
-    /**
-     * Tests whether a non-initial token blocks a match.
-     * @param token buffered state
-     * @return true if this token cannot be joined to the preceding token
-     */
-    private static boolean barrier(final AttributeSource token)
-    {
-        final int pos = token.getAttribute(PosAttribute.class).getPos();
-        return token.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 1
-            || token.getAttribute(PositionLengthAttribute.class).getPositionLength() != 1
-            || pos == PUNCTpara.ordinal() || pos == PUNCTsection.ordinal()
-            || pos == PUNCTstruct.ordinal() || pos == PUNCTsent.ordinal()
-            || pos == XML.ordinal();
+        return token.getAttribute(PositionLengthAttribute.class).getPositionLength() == 1
+            && token.getAttribute(PositionIncrementAttribute.class).getPositionIncrement() != 0
+            && mayStart(token.getAttribute(CharTermAttribute.class), token.getAttribute(LemmaAttribute.class));
     }
 
     /**

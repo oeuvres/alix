@@ -35,7 +35,6 @@ package com.github.oeuvres.alix.lucene.analysis;
 
 import java.io.IOException;
 
-import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -82,13 +81,10 @@ import com.github.oeuvres.alix.util.MweLexicon;
  * <p>The filter must run after normalization and lemmatization annotation, but
  * before destructive lemma projection, stop-word removal, or stemming.</p>
  */
-public final class MweFilter extends TokenFilter
+public final class MweFilter extends CompoundFilterBase
 {
     /** Token type assigned to compounded multi-word expressions. */
     public static final String TYPE_MWE = "MWE";
-
-    /** Whether the upstream input has been exhausted. */
-    private boolean inputExhausted;
 
     /** Optional lemma override populated by the upstream lemmatizer. */
     private final LemmaAttribute lemmaAtt = addAttribute(LemmaAttribute.class);
@@ -96,17 +92,8 @@ public final class MweFilter extends TokenFilter
     /** Frozen lexicon and automaton used for both matching paths. */
     private final MweLexicon lexicon;
 
-    /** Output offsets. */
-    private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-
     /** Output POS, assigned from the accepted lexicon entry. */
     private final PosAttribute posAtt = addAttribute(PosAttribute.class);
-
-    /** Buffered token states, including one look-ahead token. */
-    private TokenStateQueue queue;
-
-    /** Normalized token text. */
-    private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
     /** Output token type. */
     private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
@@ -120,167 +107,81 @@ public final class MweFilter extends TokenFilter
      */
     public MweFilter(final TokenStream input, final MweLexicon lexicon)
     {
-        super(input);
-        lexicon.freeze();
+        super(input, capacity(lexicon));
         this.lexicon = lexicon;
     }
 
     /**
-     * Emits the next ordinary or compounded token.
-     *
-     * @return {@code true} when a token was emitted, otherwise {@code false}
-     * @throws IOException if the upstream stream cannot be read
+     * Retains the existing dictionary-driven positional policy for MWEs.
+     * @param token buffered token
+     * @return true; the automaton determines whether this component matches
      */
     @Override
-    public boolean incrementToken() throws IOException
+    protected boolean canJoin(final AttributeSource token)
     {
-        int formState = lexicon.root();
-        int lemmaState = lexicon.root();
-        int matchPos = -1;
-        int matchOrd = -1;
-        boolean dead = false;
-
-        /*
-         * Re-walk buffered tail tokens. A previous call may have consumed
-         * look-ahead beyond the emitted token.
-         */
-        for (int i = 0; i < queue.size(); i++) {
-            final AttributeSource slot = queue.get(i);
-
-            formState = stepForm(formState, slot);
-            lemmaState = stepLemma(lemmaState, slot);
-
-            if (formState < 0 && lemmaState < 0) {
-                dead = true;
-                break;
-            }
-
-            /*
-             * Record lemma first and form second: when both accept at this
-             * position, the exact normalized-form match takes precedence.
-             */
-            if (lemmaState >= 0) {
-                final int accepted = lexicon.accept(lemmaState);
-                if (accepted >= 0) {
-                    matchPos = i;
-                    matchOrd = accepted;
-                }
-            }
-            if (formState >= 0) {
-                final int accepted = lexicon.accept(formState);
-                if (accepted >= 0) {
-                    matchPos = i;
-                    matchOrd = accepted;
-                }
-            }
-        }
-
-        /*
-         * Continue with fresh input until both paths die or input ends.
-         */
-        while (!dead && !inputExhausted) {
-            if (!input.incrementToken()) {
-                inputExhausted = true;
-                break;
-            }
-
-            queue.addLast(this);
-            final int pos = queue.size() - 1;
-            final AttributeSource slot = queue.get(pos);
-
-            formState = stepForm(formState, slot);
-            lemmaState = stepLemma(lemmaState, slot);
-
-            if (formState < 0 && lemmaState < 0) {
-                dead = true;
-                break;
-            }
-
-            if (lemmaState >= 0) {
-                final int accepted = lexicon.accept(lemmaState);
-                if (accepted >= 0) {
-                    matchPos = pos;
-                    matchOrd = accepted;
-                }
-            }
-            if (formState >= 0) {
-                final int accepted = lexicon.accept(formState);
-                if (accepted >= 0) {
-                    matchPos = pos;
-                    matchOrd = accepted;
-                }
-            }
-        }
-
-        if (queue.isEmpty()) {
-            return false;
-        }
-
-        if (matchPos >= 0) {
-            emitMerged(matchPos, matchOrd);
-            return true;
-        }
-
-        /*
-         * No expression begins at the queue head. Emit that token unchanged;
-         * later buffered tokens remain available as possible MWE starts.
-         */
-        queue.removeFirst(this);
         return true;
     }
 
     /**
-     * Resets this filter and discards all buffered states.
-     *
-     * @throws IOException if the upstream stream cannot be reset
+     * Finds the longest match on either automaton path, preferring form over
+     * lemma when both accept at the same position.
+     * @return true if a canonical expression is emitted
+     * @throws IOException if lookahead fails
      */
     @Override
-    public void reset() throws IOException
+    protected boolean compound() throws IOException
     {
-        super.reset();
-        if (this.queue == null) {
-            this.queue = new TokenStateQueue(lexicon.maxLen() + 1, this);
+        int formState = lexicon.root();
+        int lemmaState = lexicon.root();
+        int count = 0;
+        int matchOrd = -1;
+        for (int i = 0; ; i++) {
+            final AttributeSource slot = at(i);
+            if (slot == null) break;
+            formState = stepForm(formState, slot);
+            lemmaState = stepLemma(lemmaState, slot);
+            if (formState < 0 && lemmaState < 0) break;
+            final int formOrd = formState < 0 ? -1 : lexicon.accept(formState);
+            final int lemmaOrd = lemmaState < 0 ? -1 : lexicon.accept(lemmaState);
+            final int accepted = formOrd >= 0 ? formOrd : lemmaOrd;
+            if (accepted >= 0) {
+                count = i + 1;
+                matchOrd = accepted;
+            }
         }
-        queue.clear();
-        inputExhausted = false;
-    }
-
-    /**
-     * Emits one canonical token for an accepted expression.
-     *
-     * @param matchPos zero-based position of the final matched queue slot
-     * @param matchOrd ordinal of the canonical expression in the lexicon
-     */
-    private void emitMerged(final int matchPos, final int matchOrd)
-    {
-        final int endOffset = queue.get(matchPos)
-            .getAttribute(OffsetAttribute.class)
-            .endOffset();
-
-        /*
-         * Preserve the first component's position increment, start offset,
-         * flags, and other attributes.
-         */
-        queue.restoreTo(this, 0);
-
-        /*
-         * The canonical MWE is stored directly in termAtt. Do not leak the
-         * first component's lemma into the compounded token.
-         */
+        if (matchOrd < 0) return false;
+        merge(count, false);
         lemmaAtt.setEmpty();
         posAtt.setPos(lexicon.pos(matchOrd));
-
         final int length = lexicon.formLength(matchOrd);
         final char[] buffer = termAtt.resizeBuffer(length);
         lexicon.copy(matchOrd, buffer, 0);
         termAtt.setLength(length);
-
-        offsetAtt.setOffset(offsetAtt.startOffset(), endOffset);
         typeAtt.setType(TYPE_MWE);
+        return true;
+    }
 
-        for (int i = 0; i <= matchPos; i++) {
-            queue.removeFirst();
-        }
+    /**
+     * Avoids buffering ordinary words absent from both automaton root paths.
+     * @param token live input token
+     * @return true if either path can begin a match
+     */
+    @Override
+    protected boolean mayStart(final AttributeSource token)
+    {
+        final int root = lexicon.root();
+        return stepForm(root, token) >= 0 || stepLemma(root, token) >= 0;
+    }
+
+    /**
+     * Freezes the lexicon before determining its lookahead requirement.
+     * @param lexicon expression dictionary
+     * @return maximum expression length plus one lookahead slot
+     */
+    private static int capacity(final MweLexicon lexicon)
+    {
+        lexicon.freeze();
+        return lexicon.maxLen() + 1;
     }
 
     /**

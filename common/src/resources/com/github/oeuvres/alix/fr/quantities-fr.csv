@@ -1,0 +1,129 @@
+form,lemma
+$,#prix
+%,#proportion
+Hz,#fréquence
+MHz,#fréquence
+cL,#volume
+centimètre,#distance
+centimètres,#distance
+cl,#volume
+cm,#distance
+cm / s,#vitesse
+cm / sec,#vitesse
+cm 2,#surface
+cm 3,#volume
+cm ²,#surface
+cm ³,#volume
+cm-sec,#vitesse
+cm.,#distance
+cm²,#surface
+cm³,#volume
+dL,#volume
+dl,#volume
+dm,#distance
+dm 2,#surface
+dm 3,#volume
+dm ²,#surface
+dm ³,#volume
+dm.,#distance
+dm²,#surface
+dm³,#volume
+dollar,#prix
+dollars,#prix
+décimètre,#distance
+décimètres,#distance
+fr.,#prix
+franc,#prix
+francs,#prix
+frs,#prix
+g,#masse
+g.,#masse
+gr,#masse
+gr.,#masse
+gramme,#masse
+grammes,#masse
+h,#durée
+h.,#durée
+ha,#surface
+hectare,#surface
+hectares,#surface
+hertz,#fréquence
+heure,#durée
+heures,#durée
+kHz,#fréquence
+kg,#masse
+kg.,#masse
+kilo,#masse
+kilogramme,#masse
+kilogrammes,#masse
+kilomètre,#distance
+kilomètres,#distance
+kilos,#masse
+km,#distance
+km / h,#vitesse
+km 2,#surface
+km ²,#surface
+km.,#distance
+km²,#surface
+litre,#volume
+litres,#volume
+lux,#éclairement
+m,#distance
+m / s,#vitesse
+m 2,#surface
+m 3,#volume
+m ²,#surface
+m ³,#volume
+m.,#distance
+mL,#volume
+mg,#masse
+milligramme,#masse
+milligrammes,#masse
+millimètre,#distance
+millimètres,#distance
+min,#durée
+min.,#durée
+minute,#durée
+minutes,#durée
+ml,#volume
+mm,#distance
+mm / s,#vitesse
+mm 2,#surface
+mm 3,#volume
+mm ²,#surface
+mm ³,#volume
+mm.,#distance
+mm²,#surface
+mm³,#volume
+mn,#durée
+mn.,#durée
+ms,#durée
+m²,#surface
+m³,#volume
+mètre,#distance
+mètres,#distance
+pour-cent,#proportion
+rad,#angle
+radian,#angle
+radians,#angle
+s,#durée
+sec,#durée
+sec.,#durée
+seconde,#durée
+secondes,#durée
+tonne,#masse
+tonnes,#masse
+tr / min,#fréquence
+tr / mn,#fréquence
+tr min,#fréquence
+tr mn,#fréquence
+tr. min,#fréquence
+watt,#puissance
+watts,#puissance
+°,#angle
+° C,#température
+° F,#température
+°C,#température
+°F,#température
+‰,#proportion
+€,#prix
